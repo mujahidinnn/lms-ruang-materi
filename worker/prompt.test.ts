@@ -25,6 +25,12 @@ test("gemini: valid draft parses", () => {
   expect(draftSchema.safeParse(valid).success).toBe(true);
 });
 
+test("extra exam questions are trimmed to 40", () => {
+  const extra = { ...valid, exam_questions: [...valid.exam_questions, q(999)] };
+  const parsed = draftSchema.parse(extra);
+  expect(parsed.exam_questions).toHaveLength(40);
+});
+
 test("gemini: broken drafts fail", () => {
   const broken = [
     { ...valid, exam_questions: valid.exam_questions.slice(0, 39) },
