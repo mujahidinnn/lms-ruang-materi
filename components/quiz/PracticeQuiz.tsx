@@ -2,16 +2,18 @@
 
 import { Check, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { simpanLatihan } from "@/app/latihan/actions";
 import type { Question } from "@/lib/content";
+import { shuffleOptions } from "@/lib/quiz";
 import { primaryButton } from "@/components/ui/styles";
 
 const HINT_KEY = "ruang-materi:hint-masuk";
 
 // Untimed, instant feedback, not graded. 1 to 4 pick an option, Enter checks
 // and moves on. A finished set is saved for signed-in learners only.
-export default function PracticeQuiz({ topicId, slug, questions, hasExam }: { topicId: string; slug: string; questions: Question[]; hasExam: boolean }) {
+export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }: { topicId: string; slug: string; questions: Question[]; hasExam: boolean }) {
+  const questions = useMemo(() => raw.map(shuffleOptions), [raw]);
   const [set, setSet] = useState(questions);
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
