@@ -2,6 +2,27 @@ import { FinishReason, GoogleGenAI, createPartFromUri } from "@google/genai";
 import { draftJsonSchema, type Prompt } from "../prompt.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
+// Gemini's responseJsonSchema accepts only this subset; the rest (minLength,
+// pattern, ...) is a 400. zod still checks the full schema afterwards.
+const SUPPORTED = new Set([
+  "type", "title", "description", "properties", "required", "additionalProperties",
+  "enum", "format", "minimum", "maximum", "items", "prefixItems", "minItems", "maxItems", "anyOf", "$ref",
+]);
+
+export function geminiSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(geminiSchema);
+  if (!node || typeof node !== "object") return node;
+  return Object.fromEntries(
+    Object.entries(node)
+      .filter(([k]) => SUPPORTED.has(k))
+      .map(([k, v]) =>
+        k === "properties"
+          ? [k, Object.fromEntries(Object.entries(v as object).map(([name, sub]) => [name, geminiSchema(sub)]))]
+          : [k, geminiSchema(v)]
+      )
+  );
+}
+
 export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -12,14 +33,13 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
   });
 
   try {
-    const schema = { ...draftJsonSchema, $schema: undefined };
     const res = await ai.models.generateContent({
       model,
       contents: [createPartFromUri(file.uri!, "application/pdf"), prompt.user],
       config: {
         systemInstruction: prompt.system,
         responseMimeType: "application/json",
-        responseJsonSchema: schema,
+        responseJsonSchema: geminiSchema(draftJsonSchema),
         maxOutputTokens: 32768,
         httpOptions: { timeout: 15 * 60 * 1000 },
       },

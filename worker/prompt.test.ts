@@ -35,3 +35,12 @@ test("gemini: broken drafts fail", () => {
   ];
   for (const b of broken) expect(draftSchema.safeParse(b).success).toBe(false);
 });
+
+test("gemini: schema keeps only supported keywords", async () => {
+  const { geminiSchema } = await import("./llm/gemini");
+  const { draftJsonSchema } = await import("./prompt");
+  const out = JSON.stringify(geminiSchema(draftJsonSchema));
+  expect(out).not.toMatch(/"(minLength|maxLength|pattern|\$schema)":/);
+  expect(out).toContain('"exam_questions"');
+  expect(out).toContain('"minItems":40');
+});
