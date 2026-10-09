@@ -348,17 +348,17 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
 | Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | reworked with logo and topics; switch to tracks in phase 9 |
-| Belajar | `app/belajar/[slug]` | `topics`, `slides` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips planned |
+| Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5) |
 | Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/`, move to `/template` |
-| Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `progress` | `components/roadmap/` | planned |
+| Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states wait for `progress`, Latihan/Flashcard/Ujian links for their phases |
 | Latihan | `app/latihan/[slug]` | `practice_questions` | `components/quiz/` | planned |
 | Flashcard | `app/flashcard` | `flashcards`, `flashcard_reviews` | `components/flashcard/` | planned |
 | Ujian | `app/ujian/[slug]` | `exams`, `exam_questions`, `exam_attempts` | `components/quiz/` | planned |
-| Tips | inside `app/belajar/[slug]` | `tips` | `components/belajar/` | planned (`/tips` page deferred) |
+| Tips | inside `app/belajar/[slug]` | `tips` | - | built (phase 5, `/tips` page deferred) |
 | Nilai, Dasbor | `app/nilai`, `app/dasbor` | `progress`, `exam_attempts` | `components/dashboard/` | planned |
 | Level, streak, lencana | `app/nilai`, `app/dasbor` | `track_levels`, `learning_streaks`, `badges` | `components/dashboard/` | planned (public lencana deferred) |
 | Auth, Profil | `app/masuk`, `app/profil` | Supabase Auth, `profiles` | `components/auth/` | login, roles, `/admin` gate built (phase 1); `/profil` planned |
-| Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4); regenerate one section planned |
+| Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4), `/admin/roadmap` (phase 5); regenerate one section planned |
 | Privasi | `app/privasi` | - | - | built |
 | SEO | `opengraph-image.tsx`, `robots.ts`, `sitemap.ts` | `lib/site` | - | built |
 

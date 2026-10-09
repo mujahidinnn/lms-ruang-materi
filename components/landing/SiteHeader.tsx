@@ -9,8 +9,9 @@ export default function SiteHeader() {
           <Logo />
         </Link>
         <nav aria-label="Utama" className="ml-auto flex items-center gap-1 text-sm">
-          <a href="#materi" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Materi</a>
-          <a href="#template" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Template</a>
+          <Link href="/roadmap" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Roadmap</Link>
+          <Link href="/#materi" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Materi</Link>
+          <Link href="/#template" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Template</Link>
           <Link
             href="/masuk"
             className="ml-2 flex min-h-11 items-center rounded-lg border border-zinc-800/80 px-4 text-zinc-50 hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent"

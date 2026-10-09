@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(33);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -23,6 +23,39 @@ insert into public.exams (id, topic_id, status, question_count) values
 insert into public.exam_questions (exam_id, type, prompt, options, answer, explanation, status) values
   ('20000000-0000-0000-0000-000000000001', 'benar_salah', 'Git itu VCS?', '{Benar,Salah}', 0, 'Ya.', 'published'),
   ('20000000-0000-0000-0000-000000000001', 'benar_salah', 'Commit itu snapshot?', '{Benar,Salah}', 0, 'Ya.', 'published');
+insert into public.tracks (id, slug, title) values
+  ('30000000-0000-0000-0000-000000000001', 'uji-track-a', 'A'),
+  ('30000000-0000-0000-0000-000000000002', 'uji-track-b', 'B');
+insert into public.track_nodes (id, track_id, topic_id) values
+  ('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001'),
+  ('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002'),
+  ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001');
+insert into public.track_edges (from_node_id, to_node_id) values
+  ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002');
+
+select throws_ok(
+  $$ insert into public.track_edges (from_node_id, to_node_id)
+     values ('40000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000001') $$,
+  'P0001',
+  'Prasyarat ini membuat lingkaran',
+  'roadmap cycles are rejected'
+);
+
+select throws_ok(
+  $$ insert into public.track_edges (from_node_id, to_node_id)
+     values ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000003') $$,
+  'P0001',
+  'Prasyarat harus dari track yang sama',
+  'cross-track edges are rejected'
+);
+
+select throws_ok(
+  $$ update public.track_nodes set track_id = '30000000-0000-0000-0000-000000000002'
+     where id = '40000000-0000-0000-0000-000000000002' $$,
+  'P0001',
+  null,
+  'a node cannot move to another track'
+);
 
 select is(
   (select role from public.profiles where user_id = '00000000-0000-0000-0000-000000000001'),
@@ -63,6 +96,11 @@ select results_eq(
 select is_empty(
   $$ select 1 from public.exam_questions $$,
   'anon cannot read exam_questions'
+);
+
+select is_empty(
+  $$ select 1 from public.track_nodes where id::text like '40000000-%' $$,
+  'anon cannot read draft roadmap nodes'
 );
 
 select throws_ok(
@@ -142,6 +180,13 @@ select throws_ok(
   'learner cannot publish'
 );
 
+select throws_ok(
+  $$ select public.publish_track('uji-track-b') $$,
+  '42501',
+  null,
+  'learner cannot publish a track'
+);
+
 reset role;
 
 -- Admin
@@ -198,6 +243,27 @@ select results_eq(
   $$ select body from public.tips where topic_id = '10000000-0000-0000-0000-000000000001' and status = 'published' $$,
   array['tip draf'],
   'publish replaces published tips with drafts'
+);
+
+select throws_ok(
+  $$ select public.publish_track('uji-track-a') $$,
+  'P0001',
+  'Semua topik di track harus sudah terbit',
+  'a track with a draft topic cannot be published'
+);
+
+select lives_ok(
+  $$ select public.publish_track('uji-track-b') $$,
+  'admin publishes a track'
+);
+
+reset role;
+set local role anon;
+
+select results_eq(
+  $$ select t.slug from public.tracks t join public.track_nodes n on n.track_id = t.id where t.slug like 'uji-%' $$,
+  array['uji-track-b'],
+  'anon reads a published track and its nodes'
 );
 
 select * from finish();

@@ -63,6 +63,30 @@ export default async function PresentationPage(
   return (
     <main>
       <PresentationViewer presentation={presentation} />
+      {(presentation.summary || presentation.tips.length > 0) && (
+        <section aria-label="Ringkasan dan tips" className="border-t border-zinc-800/80 px-6 py-14 sm:px-10">
+          <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-[3fr_2fr]">
+            {presentation.summary && (
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">Ringkasan</h2>
+                <div className="mt-4 space-y-4 leading-relaxed text-zinc-300">
+                  {presentation.summary.split(/\n\s*\n/).map((p, i) => <p key={i}>{p}</p>)}
+                </div>
+              </div>
+            )}
+            {presentation.tips.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">Tips</h2>
+                <ul className="mt-4 space-y-3">
+                  {presentation.tips.map((tip, i) => (
+                    <li key={i} className="border-l-2 border-accent/50 pl-4 text-sm leading-relaxed text-zinc-300">{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
