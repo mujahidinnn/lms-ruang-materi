@@ -1,0 +1,18 @@
+// Providers and models the import dropdown offers. The worker accepts only
+// these. Pick IDs from each provider's docs, never guess.
+export const LLM_MODELS: Record<string, string[]> = {
+  gemini: ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-3.5-flash", "gemini-3.5-flash-lite"],
+};
+
+export function isAllowedModel(provider: string, model: string): boolean {
+  return LLM_MODELS[provider]?.includes(model) ?? false;
+}
+
+// "provider:model" options for the dropdown, from LLM_PROVIDERS (server
+// env). The default (LLM_PROVIDER + LLM_MODEL) comes first.
+export function enabledModels(): string[] {
+  const providers = (process.env.LLM_PROVIDERS ?? "").split(",").map((s) => s.trim());
+  const all = providers.flatMap((p) => (LLM_MODELS[p] ?? []).map((m) => `${p}:${m}`));
+  const preferred = `${process.env.LLM_PROVIDER}:${process.env.LLM_MODEL}`;
+  return all.includes(preferred) ? [preferred, ...all.filter((m) => m !== preferred)] : all;
+}

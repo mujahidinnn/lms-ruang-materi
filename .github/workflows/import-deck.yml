@@ -1,0 +1,39 @@
+name: import-deck
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: import_jobs.id
+        required: true
+        type: string
+
+concurrency: import-deck
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install LibreOffice and poppler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-impress poppler-utils \
+            fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 fonts-noto-core
+      - run: npm ci --no-audit --no-fund
+      - name: Import
+        # job_id via env, never interpolated into the script.
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node worker/import-deck.ts --job-id "$JOB_ID"

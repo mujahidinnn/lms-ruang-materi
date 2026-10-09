@@ -357,7 +357,7 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 | Nilai, Dasbor | `app/nilai`, `app/dasbor` | `progress`, `exam_attempts` | `components/dashboard/` | planned |
 | Level, streak, lencana | `app/nilai`, `app/dasbor` | `track_levels`, `learning_streaks`, `badges` | `components/dashboard/` | planned (public lencana deferred) |
 | Auth, Profil | `app/masuk`, `app/profil` | Supabase Auth, `profiles` | `components/auth/` | login, roles, `/admin` gate built (phase 1); `/profil` planned |
-| Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | planned |
+| Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4); regenerate one section planned |
 | Privasi | `app/privasi` | - | - | built |
 | SEO | `opengraph-image.tsx`, `robots.ts`, `sitemap.ts` | `lib/site` | - | built |
 
@@ -410,7 +410,7 @@ Server Action: insert import_job, workflow_dispatch(job_id) --->
                              job status: rendering, drafting,
                              done or failed + error  ---------->   import_jobs
 /admin/topik/[slug]  <---- review, edit, approve ------------------
-Publish (Server Action): status = published, slides point to the new folder,
+Publish (Server Action): publish_topic(slug) swaps drafts in per table,
                          updateTag('content')
 ```
 
@@ -425,7 +425,8 @@ Publish (Server Action): status = published, slides point to the new folder,
 - **Progress**: `/admin/impor` polls `import_jobs.status` every few seconds
   while a job runs. No websockets.
 - **LLM provider is pluggable.** Each file in `worker/llm/` exports the same
-  function, `generateDraft(pdf: Buffer, prompt: Prompt): Promise<unknown>`,
+  function, `generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult>`
+  (`output: unknown` plus token counts),
   using that provider's official SDK. The worker picks the file from
   `import_jobs.provider` and `import_jobs.model`, chosen in a dropdown on
   `/admin/impor`. The dropdown lists providers from `LLM_PROVIDERS`, a
@@ -447,14 +448,18 @@ Publish (Server Action): status = published, slides point to the new folder,
 - **Adding a provider** is one new file in `worker/llm/`, one entry in the
   provider map, one secret. Nothing else changes. OpenRouter or any
   OpenAI-compatible endpoint can cover the rest with a `baseURL`.
-- **Current defaults**: Claude (`claude-opus-5-5`, effort `high`,
-  `fallbacks: "default"`), OpenAI and Gemini as alternatives. Pick model
-  names from each provider's docs when adding them; do not guess model IDs.
+- **Current defaults**: Gemini free tier (`gemini-3.8-flash`), the only
+  free provider that reads PDF directly. The allowed models per provider live
+  in `lib/llm.ts`; the worker refuses anything else. Pick model names from
+  each provider's docs when adding them; do not guess model IDs. Free tier
+  content may be used by Google for training: only admin decks go there.
 - Every job stores `provider`, `model` and token usage, so drafts can be
   compared and cost tracked per import.
 - **Cost limits**, enforced in the database when inserting `import_jobs`,
   not only in the UI:
-  - one job in `rendering` or `drafting` at a time
+  - one job in `queued`, `rendering` or `drafting` at a time (GitHub keeps
+    only one pending run per concurrency group), counted for 30 minutes at
+    most so a crashed worker cannot block imports
   - at most 10 jobs per day, a constant in the insert check function
   - decks over 80 slides are rejected; split them first
   - `/admin/impor` shows the slide count and a token estimate before the
@@ -632,7 +637,7 @@ has `id uuid`, `created_at`, and content tables have `status`
 | Table | Key columns | Notes |
 | --- | --- | --- |
 | `profiles` | `user_id`, `display_name`, `role`, `timezone`, `guardian_consent` | 1:1 with `auth.users` |
-| `topics` | `slug`, `title`, `description`, `summary`, `status` | one per deck |
+| `topics` | `slug`, `title`, `description`, `summary`, `draft_summary`, `status` | one per deck; publish moves `draft_summary` into `summary` |
 | `slides` | `topic_id`, `index`, `path`, `width`, `height` | files in Storage `slides/<slug>/<job_id>/` |
 | `tips` | `topic_id`, `body`, `position` | |
 | `flashcards` | `topic_id`, `front`, `back`, `position` | |
@@ -647,7 +652,7 @@ has `id uuid`, `created_at`, and content tables have `status`
 | `practice_sessions` | `user_id`, `topic_id`, `correct`, `total`, `finished_at` | `finished_at` stamped by the database |
 | `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `started_at`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |
 | `badges` | `user_id`, `track_id`, `granted_at` | written by functions only |
-| `import_jobs` | `created_by`, `file_path`, `slug`, `provider`, `model`, `status`, `error`, `input_tokens`, `output_tokens` | `status`: queued, rendering, drafting, done, failed |
+| `import_jobs` | `created_by`, `file_path`, `original_name`, `slug`, `provider`, `model`, `slide_count`, `status`, `error`, `input_tokens`, `output_tokens`, `prerequisites` | `status`: queued, rendering, drafting, done, failed |
 
 Views: `track_levels` (user, track, level), `learning_streaks` (user,
 current days, best days, over reviews, practice sessions and exam submits).
@@ -655,7 +660,8 @@ current days, best days, over reviews, practice sessions and exam submits).
 Constraints every migration keeps:
 
 - Unique `(user_id, flashcard_id)`, `(user_id, topic_id)` on `progress`,
-  `(user_id, track_id)` on `badges`, `(topic_id, index)` on `slides`,
+  `(user_id, track_id)` on `badges`, `(topic_id, status, index)` on `slides`
+  (draft slides sit next to live ones until publish),
   `slug` on `topics` and `tracks`.
 - `topics.slug` and `tracks.slug` match `^[a-z0-9-]+$`.
 - `answer` is within the bounds of `options`; `options` has 2 or 4 items by
@@ -838,7 +844,8 @@ Vitest.
 
 - The import worker runs in GitHub Actions (`ubuntu-latest`, installs
   LibreOffice and poppler-utils), as
-  `npx tsx worker/import-deck.ts --job-id "$JOB_ID"`. Secrets there:
+  `node worker/import-deck.ts --job-id "$JOB_ID"` (Node 22 strips
+  types, imports use `.ts` extensions). Secrets there:
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and the LLM keys; variables
   `LLM_PROVIDERS`, `LLM_PROVIDER`, `LLM_MODEL`.
 - Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
