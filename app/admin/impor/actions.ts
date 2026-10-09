@@ -14,7 +14,7 @@ const input = z.object({
   filePath: z.string().regex(/^(migrasi\/[a-z0-9-]+|[0-9a-f-]{36})\.pptx$/),
   originalName: z.string().max(200).regex(/\.pptx$/i),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Slug hanya huruf kecil, angka dan tanda hubung").max(60),
-  model: z.string().regex(/^[a-z]+:[a-z0-9.-]+$/),
+  model: z.string().regex(/^[a-z]+:[a-z0-9./:-]+$/),
 });
 
 export async function mulaiImpor(raw: z.input<typeof input>): Promise<ImporState> {
@@ -23,7 +23,10 @@ export async function mulaiImpor(raw: z.input<typeof input>): Promise<ImporState
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { filePath, originalName, slug } = parsed.data;
   if (!enabledModels().includes(parsed.data.model)) return { error: "Model tidak tersedia." };
-  const [provider, model] = parsed.data.model.split(":");
+  // Split at the first colon: OpenRouter model IDs contain one too.
+  const i = parsed.data.model.indexOf(":");
+  const provider = parsed.data.model.slice(0, i);
+  const model = parsed.data.model.slice(i + 1);
 
   // Re-check what the browser uploaded: size, zip magic bytes, slide count.
   const supabase = await createClient();

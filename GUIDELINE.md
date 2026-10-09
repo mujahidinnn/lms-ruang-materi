@@ -455,6 +455,9 @@ Publish (Server Action): publish_topic(slug) swaps drafts in per table,
   content may be used by Google for training: only admin decks go there.
   The free tier allows about 20 requests per model per day and often
   answers 503, so a failed job is retried with another model or the next day.
+  OpenRouter `:free` models are the backup (`worker/llm/openrouter.ts`):
+  the free `cloudflare-ai` parser sends the PDF as text only, 50 requests
+  a day (1000 after 10 USD of credits).
 - Every job stores `provider`, `model` and token usage, so drafts can be
   compared and cost tracked per import.
 - **Cost limits**, enforced in the database when inserting `import_jobs`,

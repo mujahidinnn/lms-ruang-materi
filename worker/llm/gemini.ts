@@ -1,29 +1,7 @@
 import { FinishReason, GoogleGenAI, createPartFromUri } from "@google/genai";
 import { draftJsonSchema, type Prompt } from "../prompt.ts";
+import { simpleSchema } from "./schema.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
-
-// Gemini's responseJsonSchema accepts only a subset; the rest (minLength,
-// pattern, ...) is a 400. minItems/maxItems are dropped too: minItems 40 on
-// an array of objects is rejected. Counts are asked in the prompt and zod
-// still checks the full schema afterwards.
-const SUPPORTED = new Set([
-  "type", "title", "description", "properties", "required", "additionalProperties",
-  "enum", "format", "minimum", "maximum", "items", "prefixItems", "anyOf", "$ref",
-]);
-
-export function geminiSchema(node: unknown): unknown {
-  if (Array.isArray(node)) return node.map(geminiSchema);
-  if (!node || typeof node !== "object") return node;
-  return Object.fromEntries(
-    Object.entries(node)
-      .filter(([k]) => SUPPORTED.has(k))
-      .map(([k, v]) =>
-        k === "properties"
-          ? [k, Object.fromEntries(Object.entries(v as object).map(([name, sub]) => [name, geminiSchema(sub)]))]
-          : [k, geminiSchema(v)]
-      )
-  );
-}
 
 export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -41,7 +19,7 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
       config: {
         systemInstruction: prompt.system,
         responseMimeType: "application/json",
-        responseJsonSchema: geminiSchema(draftJsonSchema),
+        responseJsonSchema: simpleSchema(draftJsonSchema),
         maxOutputTokens: 32768,
         // Free tier often answers 503 (busy). Every retry counts against the daily
         // quota (20 requests per model on the free tier), so keep it short.
