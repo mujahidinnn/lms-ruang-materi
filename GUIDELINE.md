@@ -374,7 +374,7 @@ prerequisites are open.
 
 **Before any code**
 
-- [ ] `lms-ruang-materi` is a git repo pushed to GitHub (Actions needs it)
+- [x] `lms-ruang-materi` is a git repo pushed to GitHub (Actions needs it)
 - [x] Supabase project created, URL and publishable key in `.env.local`
 - [ ] At least one LLM key (Claude, OpenAI or Gemini) in GitHub Secrets
 - [ ] Vercel project linked, env vars from Deployment Notes set
