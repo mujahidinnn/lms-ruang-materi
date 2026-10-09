@@ -69,3 +69,8 @@ test("repair cannot rescue a draft below the minimums", () => {
   const short = { ...valid, practice_questions: [{ ...q(1), answer: 4 }, ...valid.practice_questions.slice(1)] };
   expect(draftSchema.safeParse(repairDraft(short)).success).toBe(false);
 });
+
+test("repair trims too many practice questions", () => {
+  const many = { ...valid, practice_questions: Array.from({ length: 33 }, (_, i) => q(i)) };
+  expect(draftSchema.parse(repairDraft(many)).practice_questions).toHaveLength(15);
+});

@@ -33,11 +33,11 @@ export type Draft = z.infer<typeof draftSchema>;
 // Models often slip on one rule per question: a baca_kode without code, or
 // code on another type. Before validating, make the type follow the code
 // (only where the option count fits that type), then drop questions that
-// still break the schema. The array minimums in draftSchema still apply, so
+// still break the schema and trim to the maximums. The array minimums in draftSchema still apply, so
 // a draft that loses too many questions fails as before.
 export function repairDraft(output: unknown): unknown {
   if (!output || typeof output !== "object") return output;
-  const fix = (qs: unknown) =>
+  const fix = (qs: unknown, max: number) =>
     Array.isArray(qs)
       ? qs
           .map((q) => {
@@ -51,9 +51,10 @@ export function repairDraft(output: unknown): unknown {
             return r;
           })
           .filter((q) => question.safeParse(q).success)
+          .slice(0, max)
       : qs;
   const o = output as Record<string, unknown>;
-  return { ...o, practice_questions: fix(o.practice_questions), exam_questions: fix(o.exam_questions) };
+  return { ...o, practice_questions: fix(o.practice_questions, 15), exam_questions: fix(o.exam_questions, 60) };
 }
 
 export const draftJsonSchema = z.toJSONSchema(draftSchema, { io: "input" });
