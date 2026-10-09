@@ -870,6 +870,8 @@ Vitest.
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint over the repo |
 | `npm run test:run` | Vitest, single pass (added in phase 1) |
+| `npm run db:push` | Apply `supabase/migrations` to the remote project through the session pooler (`SUPABASE_POOLER_HOST`, `SUPABASE_DB_PW`) |
+| `npm run draft:decks -- <slug>...` | Draft migrated decks one at a time through the import workflow, as the dev admin; `IMPORT_MODEL=provider:model` overrides the default |
 
 ## Deployment Notes
 
