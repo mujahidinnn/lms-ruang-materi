@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { keluar } from "@/app/masuk/actions";
 import AdminNav, { NavLinks } from "@/components/admin/AdminNav";
+import Logo from "@/components/brand/Logo";
 import PageBackdrop from "@/components/PageBackdrop";
 import { requireAdmin } from "@/lib/dal";
 
@@ -11,8 +12,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="relative flex flex-1 flex-col lg:flex-row">
       <PageBackdrop />
       <aside className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800/80 px-4 py-3 lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-8 lg:border-r lg:border-b-0 lg:px-4 lg:py-6">
-        <Link href="/" className="px-3 font-semibold tracking-tight">
-          Ruang Materi <span className="font-normal text-zinc-500">admin</span>
+        <Link href="/" aria-label="Ruang Materi, beranda" className="flex items-center gap-2 px-3">
+          <Logo />
+          <span className="text-sm text-zinc-500">admin</span>
         </Link>
         <Suspense>
           <Akun />

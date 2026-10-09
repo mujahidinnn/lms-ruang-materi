@@ -279,9 +279,10 @@ Use them where a screen would otherwise feel empty or where they explain
 something: landing hero, empty states (no due cards, no exams yet), exam
 result (lulus / belum lulus), login page, 404. Not on every card.
 
-- Inline SVG components in `components/illustrations/`, same style as
-  `HeroIllustration`: simple shapes, `rounded` corners, no gradients or
-  people, no stock or AI-generated images.
+- Inline SVG components in `components/illustrations/`, same visual language
+  as the logo (`components/brand/Logo.tsx`): simple shapes, `rounded`
+  corners, thick round strokes, no gradients or people, no stock or
+  AI-generated images.
 - Colors only through classes (`fill-zinc-800/60`, `fill-accent`,
   `stroke-accent/40`) so they flip with light and dark. No hex in SVG.
 - `role="img"` with an Indonesian `aria-label`, or `aria-hidden` when the
@@ -346,7 +347,7 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
-| Landing | `app/page.tsx` | `tracks`, `topics` | `AnimatedHeroTitle`, `HeroIllustration`, `PageBackdrop` | built, rework to tracks |
+| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | reworked with logo and topics; switch to tracks in phase 9 |
 | Belajar | `app/belajar/[slug]` | `topics`, `slides` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips planned |
 | Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/`, move to `/template` |
 | Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `progress` | `components/roadmap/` | planned |
@@ -544,6 +545,12 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 - **State colors**: correct and passed use the accent, wrong and failed use
   `red-500`, `dilewati` uses `zinc-600` with a strikethrough. Warnings use
   `accent-warm`, never red, so "hampir habis" and "salah" never look alike.
+- **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
+  rounded square open at its top right corner, holding two stacked slides:
+  material laid out in a space whose door is open to anyone, growing
+  outward. Room in zinc-50, slides in the accent. `app/icon.svg` and
+  `app/opengraph-image.tsx` repeat it with hex colors. Never recolor the
+  room, never close the corner.
 - **Fonts** from `next/font` in `app/layout.tsx`: Geist (`font-sans`), Geist
   Mono (`font-mono`, also for code in questions), Babylonica
   (`--font-signature`) for the signature link only.

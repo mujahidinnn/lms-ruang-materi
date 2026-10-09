@@ -1,103 +1,67 @@
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import CurrentYear from "@/components/CurrentYear";
-import AnimatedHeroTitle from "@/components/AnimatedHeroTitle";
-import HeroIllustration from "@/components/HeroIllustration";
 import PageBackdrop from "@/components/PageBackdrop";
 import TemplateGallery from "@/components/TemplateGallery";
+import { LogoMark } from "@/components/brand/Logo";
+import HeroRoom from "@/components/landing/HeroRoom";
+import SiteHeader from "@/components/landing/SiteHeader";
+import TopicCard from "@/components/landing/TopicCard";
 import { templates } from "@/data/templates";
 import { getTopics } from "@/lib/content";
-import { coverSrc } from "@/lib/slides";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+import Link from "next/link";
 
 export default async function Home() {
-  const presentations = await getTopics();
-  const totalSlides = presentations.reduce((sum, p) => sum + p.slideCount, 0);
+  const topics = await getTopics();
+  const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
 
   return (
     <div className="relative">
       <PageBackdrop />
+      <SiteHeader />
 
       <main className="px-6 sm:px-10">
         <div className="mx-auto max-w-7xl">
-          <section className="grid grid-cols-1 items-center gap-10 border-b border-zinc-800/80 py-16 sm:py-24 lg:grid-cols-[1fr_auto] lg:gap-16">
+          <section className="grid grid-cols-1 items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
             <div>
-              <p className="text-xs font-medium tracking-widest text-zinc-500 uppercase">
-                {presentations.length} materi · {totalSlides} slide
+              <h1 className="max-w-xl text-4xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+                Ruang untuk belajar, satu slide setiap langkah
+              </h1>
+              <p className="mt-6 max-w-lg text-lg leading-relaxed text-zinc-400">
+                Materi pemrograman dari deck presentasi, bisa kamu buka dan
+                telusuri langsung di browser. Tanpa unduh, tanpa daftar.
               </p>
-              <AnimatedHeroTitle />
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-                {SITE_DESCRIPTION}
-              </p>
-            </div>
-            <div className="hidden justify-self-center lg:block lg:justify-self-end">
-              <HeroIllustration />
-            </div>
-          </section>
-
-          <section
-            aria-label="Daftar materi belajar"
-            className="py-16 sm:py-24"
-          >
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8">
-              {presentations.map((presentation) => (
-                <article
-                  key={presentation.slug}
-                  className="overflow-hidden rounded-lg border border-zinc-800/80 bg-zinc-950 transition-colors hover:border-zinc-700"
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <a
+                  href="#materi"
+                  className="flex min-h-12 items-center rounded-lg bg-accent px-5 font-medium text-zinc-950 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  <Link
-                    href={`/belajar/${presentation.slug}`}
-                    className="group flex h-full flex-col"
-                  >
-                    <div className="relative aspect-video overflow-hidden border-b border-zinc-800/80">
-                      <Image
-                        src={coverSrc(presentation)}
-                        alt={`Sampul materi ${presentation.title}`}
-                        fill
-                        sizes="(min-width: 640px) 50vw, 100vw"
-                        className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
-                      />
-                    </div>
-                    <div className="flex flex-1 flex-col gap-3 p-6">
-                      <div className="flex items-start justify-between gap-4">
-                        <h2 className="text-xl font-semibold tracking-tight text-zinc-50">
-                          {presentation.title}
-                        </h2>
-                        <ArrowUpRight
-                          className="mt-1 h-5 w-5 shrink-0 text-zinc-600 transition-colors group-hover:text-zinc-50"
-                          strokeWidth={1.75}
-                        />
-                      </div>
-                      <p className="flex-1 text-sm leading-relaxed text-zinc-400">
-                        {presentation.description}
-                      </p>
-                      <span className="font-mono text-xs tracking-wide text-zinc-500">
-                        {String(presentation.slideCount).padStart(2, "0")} SLIDE
-                      </span>
-                    </div>
-                  </Link>
-                </article>
-              ))}
+                  Pilih materi
+                </a>
+                <a
+                  href="#template"
+                  className="flex min-h-12 items-center rounded-lg px-4 text-zinc-300 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  Lihat template HTML
+                </a>
+              </div>
+              <p className="mt-10 text-sm text-zinc-500">
+                {topics.length} materi, {totalSlides} slide, semuanya gratis.
+              </p>
             </div>
+            <HeroRoom topics={topics} />
           </section>
 
-          <section
-            id="template"
-            aria-labelledby="template-heading"
-            className="border-t border-zinc-800/80 py-16 sm:py-24"
-          >
+          <section id="materi" aria-labelledby="materi-judul" className="scroll-mt-6 border-t border-zinc-800/80 py-16 sm:py-20">
+            <h2 id="materi-judul" className="text-2xl font-semibold tracking-tight sm:text-3xl">Semua materi</h2>
+            <p className="mt-2 max-w-xl text-zinc-400">Mulai dari mana saja. Setiap materi berdiri sendiri.</p>
+            <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {topics.map((t) => <TopicCard key={t.slug} topic={t} />)}
+            </ul>
+          </section>
+
+          <section id="template" aria-labelledby="template-judul" className="scroll-mt-6 border-t border-zinc-800/80 py-16 sm:py-20">
             <div className="mb-10 max-w-xl">
-              <h2
-                id="template-heading"
-                className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl"
-              >
-                Template HTML
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:text-base">
-                Lihat preview langsung, lalu unduh kodenya untuk kamu pakai dan
-                ubah sendiri.
-              </p>
+              <h2 id="template-judul" className="text-2xl font-semibold tracking-tight sm:text-3xl">Template HTML</h2>
+              <p className="mt-2 text-zinc-400">Lihat preview langsung, lalu unduh kodenya untuk kamu pakai dan ubah sendiri.</p>
             </div>
             <TemplateGallery templates={templates} />
           </section>
@@ -105,17 +69,18 @@ export default async function Home() {
       </main>
 
       <footer className="border-t border-zinc-800/80 px-6 py-8 sm:px-10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1 text-xs text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            &copy; <CurrentYear /> {SITE_NAME}. Seluruh hak cipta
-            dilindungi.
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-3 text-sm text-zinc-500">
+          <span className="flex items-center gap-2">
+            <LogoMark className="size-5" />
+            &copy; <CurrentYear /> Ruang Materi
           </span>
+          <Link href="/privasi" className="hover:text-zinc-300">Privasi</Link>
           <a
             href="https://mujahidin.my.id"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="mujahidin.my.id"
-            className="font-(family-name:--font-signature) text-2xl text-zinc-500 transition-colors hover:text-zinc-300"
+            className="ml-auto font-(family-name:--font-signature) text-2xl text-zinc-500 transition-colors hover:text-zinc-300"
           >
             Mujahidin
           </a>
