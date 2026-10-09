@@ -13,36 +13,41 @@ export const metadata: Metadata = {
 
 export default function TopikListPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-12">
-      <div>
-        <Link href="/admin" className="text-sm text-zinc-400 hover:text-zinc-50">&larr; Admin</Link>
-        <h1 className="mt-2 text-2xl font-semibold">Topik</h1>
-      </div>
-      <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
+    <div className="mx-auto max-w-3xl">
+      <h1 className="text-3xl font-semibold tracking-tight">Topik</h1>
+      <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
         <List />
       </Suspense>
-    </main>
+    </div>
   );
 }
 
 async function List() {
   await requireAdmin("/admin/topik");
   const db = await createClient();
-  const [{ data: topics }, { data: drafts }] = await Promise.all([
-    db.from("topics").select("slug, title, status, draft_summary").order("created_at"),
-    db.from("tips").select("topic:topics(slug)").eq("status", "draft"),
-  ]);
-  const pending = new Set((drafts ?? []).map((d) => (d.topic as unknown as { slug: string }).slug));
+  const { data: topics } = await db
+    .from("topics")
+    .select("slug, title, status, draft_summary, slides(count)")
+    .order("created_at");
 
-  if (!topics?.length) return <p className="text-sm text-zinc-500">Belum ada topik. Mulai dari impor materi.</p>;
+  if (!topics?.length) {
+    return (
+      <p className="mt-6 text-zinc-400">
+        Belum ada topik. <Link href="/admin/impor" className="text-accent hover:underline">Impor deck</Link> untuk membuat yang pertama.
+      </p>
+    );
+  }
 
   return (
-    <ul className="divide-y divide-zinc-800/80 rounded-lg border border-zinc-800/80">
+    <ul className="mt-6 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
       {topics.map((t) => (
         <li key={t.slug}>
-          <Link href={`/admin/topik/${t.slug}`} className="flex min-h-11 items-center gap-3 px-4 py-2 hover:bg-zinc-900">
-            <span className="flex-1">{t.title}</span>
-            {(pending.has(t.slug) || t.draft_summary) && <span className="text-xs text-accent">draf menunggu</span>}
+          <Link href={`/admin/topik/${t.slug}`} className="group flex min-h-16 items-center gap-4 py-3 focus-visible:outline-2 focus-visible:outline-accent">
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium group-hover:text-accent">{t.title}</span>
+              <span className="font-mono text-xs text-zinc-500">{t.slug}</span>
+            </span>
+            {t.draft_summary && <span className="text-sm text-zinc-400">Draf menunggu</span>}
             <StatusBadge status={t.status} />
           </Link>
         </li>

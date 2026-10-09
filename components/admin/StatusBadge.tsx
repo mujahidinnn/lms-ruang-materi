@@ -1,7 +1,12 @@
+import { CircleCheck, CircleDashed } from "lucide-react";
+
 export default function StatusBadge({ status }: { status: string }) {
+  const draft = status === "draft";
+  const Icon = draft ? CircleDashed : CircleCheck;
   return (
-    <span className={`w-fit rounded-md px-2 py-0.5 text-xs ${status === "draft" ? "bg-zinc-800 text-zinc-300" : "bg-accent/15 text-accent"}`}>
-      {status === "draft" ? "draf" : "terbit"}
+    <span className={`inline-flex items-center gap-1 text-xs ${draft ? "text-zinc-400" : "text-accent"}`}>
+      <Icon aria-hidden className="size-3.5" />
+      {draft ? "Draf" : "Terbit"}
     </span>
   );
 }

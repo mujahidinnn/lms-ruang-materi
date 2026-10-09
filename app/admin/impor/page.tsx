@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import ImporForm from "@/components/admin/ImporForm";
 import JobList, { type Job } from "@/components/admin/JobList";
@@ -16,15 +15,15 @@ export const metadata: Metadata = {
 
 export default function ImporPage() {
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12">
+    <div className="mx-auto flex max-w-3xl flex-col gap-10">
       <div>
-        <Link href="/admin" className="text-sm text-zinc-400 hover:text-zinc-50">&larr; Admin</Link>
-        <h1 className="mt-2 text-2xl font-semibold">Impor materi</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Impor materi</h1>
+        <p className="mt-2 text-zinc-400">Unggah deck. Slide dirender dan draf disusun otomatis, lalu kamu tinjau sebelum terbit.</p>
       </div>
       <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
         <Impor />
       </Suspense>
-    </main>
+    </div>
   );
 }
 
@@ -40,7 +39,7 @@ async function Impor() {
   const models = enabledModels();
 
   if (models.length === 0) {
-    return <p className="text-sm text-red-500">LLM_PROVIDERS belum diisi di env server.</p>;
+    return <p className="text-sm text-red-500">Belum ada model aktif. Isi LLM_PROVIDERS di env server.</p>;
   }
 
   return (
@@ -48,7 +47,7 @@ async function Impor() {
       <ImporForm models={models} />
       {/* Remount on a new job (router.refresh) so polling restarts. */}
       <JobList key={jobs?.[0]?.id ?? "kosong"} initial={(jobs ?? []) as Job[]} models={models} />
-      <MigrasiList slugs={(topics ?? []).map((t) => t.slug).filter((s) => !drafted.has(s))} model={models[0]} />
+      <MigrasiList slugs={(topics ?? []).map((t) => t.slug).filter((s) => !drafted.has(s))} models={models} />
     </>
   );
 }

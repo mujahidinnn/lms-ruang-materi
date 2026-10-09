@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import MasukForm from "@/components/auth/MasukForm";
+import PageBackdrop from "@/components/PageBackdrop";
 import { safeNext } from "@/lib/safe-next";
 
 export const metadata: Metadata = {
@@ -11,16 +12,19 @@ export const metadata: Metadata = {
 
 export default function MasukPage(props: PageProps<"/masuk">) {
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-4 py-16">
-      <div>
-        <h1 className="text-2xl font-semibold">Masuk</h1>
-        <p className="mt-2 text-sm text-zinc-400">
-          Pakai kata sandi, atau kosongkan dan kami kirim tautan masuk ke email kamu.
-        </p>
+    <main className="relative flex flex-1 flex-col justify-center px-4 py-16">
+      <PageBackdrop />
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Masuk</h1>
+          <p className="mt-2 text-sm text-zinc-400">
+            Pakai kata sandi, atau kosongkan dan kami kirim tautan masuk ke email kamu.
+          </p>
+        </div>
+        <Suspense>
+          <Form searchParams={props.searchParams} />
+        </Suspense>
       </div>
-      <Suspense>
-        <Form searchParams={props.searchParams} />
-      </Suspense>
     </main>
   );
 }

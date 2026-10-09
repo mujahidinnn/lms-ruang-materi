@@ -1,6 +1,7 @@
+import { Check } from "lucide-react";
 import { hapusBaris, simpanBaris } from "@/app/admin/topik/actions";
 import StatusBadge from "./StatusBadge";
-import { field, smallButton } from "./editor";
+import { dangerButton, field, smallButton } from "./editor";
 
 export type Question = {
   id: string;
@@ -13,7 +14,7 @@ export type Question = {
   explanation: string;
 };
 
-const TYPE = { pilihan_ganda: "Pilihan ganda", benar_salah: "Benar / salah", baca_kode: "Baca kode" };
+const TYPE = { pilihan_ganda: "Pilihan ganda", benar_salah: "Benar atau salah", baca_kode: "Baca kode" };
 
 export default function QuestionEditor({
   table,
@@ -27,35 +28,53 @@ export default function QuestionEditor({
   n: number;
 }) {
   return (
-    <form action={simpanBaris} className="flex flex-col gap-2 rounded-lg border border-zinc-800/80 p-3">
-      <input type="hidden" name="table" value={table} />
-      <input type="hidden" name="id" value={q.id} />
-      <input type="hidden" name="slug" value={slug} />
-      <div className="flex items-center gap-2 text-xs text-zinc-400">
-        <span>Soal {n}</span>
-        <span>{TYPE[q.type]}</span>
+    <li className="py-5">
+      <div className="flex items-baseline justify-between gap-4 text-xs text-zinc-500">
+        <span>{n}. {TYPE[q.type]}</span>
         <StatusBadge status={q.status} />
       </div>
-      <textarea name="prompt" aria-label="Pertanyaan" defaultValue={q.prompt} rows={2} required className={field} />
-      {q.type === "baca_kode" ? (
-        <textarea name="code" aria-label="Kode" defaultValue={q.code ?? ""} rows={4} required className={`${field} font-mono`} />
-      ) : (
-        <input type="hidden" name="code" value="" />
+      <p className="mt-2 text-zinc-50">{q.prompt}</p>
+      {q.code && (
+        <pre className="mt-2 overflow-x-auto rounded-md border border-zinc-800/80 bg-zinc-900 p-3 text-sm"><code className="font-mono">{q.code}</code></pre>
       )}
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 text-xs text-zinc-400">Opsi, pilih jawaban benar</legend>
+      <ol className="mt-3 space-y-1">
         {q.options.map((opt, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input type="radio" name="answer" value={i} defaultChecked={q.answer === i} aria-label={`Opsi ${i + 1} benar`} className="size-5 accent-(--accent)" />
-            <input name="options" defaultValue={opt} required aria-label={`Opsi ${i + 1}`} className={field} />
-          </div>
+          <li key={i} className={`flex items-start gap-2 text-sm ${i === q.answer ? "text-accent" : "text-zinc-300"}`}>
+            {i === q.answer ? <Check aria-label="Jawaban benar" className="mt-0.5 size-4 shrink-0" /> : <span aria-hidden className="w-4 shrink-0" />}
+            {opt}
+          </li>
         ))}
-      </fieldset>
-      <textarea name="explanation" aria-label="Pembahasan" defaultValue={q.explanation} rows={2} required className={field} />
-      <div className="flex gap-2">
-        <button className={smallButton}>Simpan</button>
-        <button formAction={hapusBaris} formNoValidate className={`${smallButton} text-red-500`}>Hapus</button>
-      </div>
-    </form>
+      </ol>
+      <p className="mt-3 text-sm text-zinc-400">{q.explanation}</p>
+
+      <details className="mt-2">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm text-zinc-400 hover:text-zinc-50">Edit</summary>
+        <form action={simpanBaris} className="mt-2 flex flex-col gap-3">
+          <input type="hidden" name="table" value={table} />
+          <input type="hidden" name="id" value={q.id} />
+          <input type="hidden" name="slug" value={slug} />
+          <textarea name="prompt" aria-label="Pertanyaan" defaultValue={q.prompt} rows={2} required className={field} />
+          {q.type === "baca_kode" ? (
+            <textarea name="code" aria-label="Kode" defaultValue={q.code ?? ""} rows={4} required className={`${field} font-mono`} />
+          ) : (
+            <input type="hidden" name="code" value="" />
+          )}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm text-zinc-300">Opsi, tandai jawaban yang benar</legend>
+            {q.options.map((opt, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input type="radio" name="answer" value={i} defaultChecked={q.answer === i} aria-label={`Opsi ${i + 1} benar`} className="size-5 shrink-0 accent-(--accent)" />
+                <input name="options" defaultValue={opt} required aria-label={`Opsi ${i + 1}`} className={field} />
+              </div>
+            ))}
+          </fieldset>
+          <textarea name="explanation" aria-label="Pembahasan" defaultValue={q.explanation} rows={2} required className={field} />
+          <div className="flex gap-2">
+            <button className={smallButton}>Simpan</button>
+            <button formAction={hapusBaris} formNoValidate className={dangerButton}>Hapus</button>
+          </div>
+        </form>
+      </details>
+    </li>
   );
 }

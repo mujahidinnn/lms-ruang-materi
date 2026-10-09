@@ -1,36 +1,43 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { hapusTopik, tarik, terbitkan, type TopikState } from "@/app/admin/topik/actions";
-import { smallButton } from "./editor";
+import { dangerButton, primaryButton, smallButton } from "./editor";
 
-export default function TopicActions({ slug, published }: { slug: string; published: boolean }) {
+export default function TopicActions({ slug, published, hasDraft }: { slug: string; published: boolean; hasDraft: boolean }) {
+  const router = useRouter();
   const [state, setState] = useState<TopikState>({});
   const [pending, start] = useTransition();
-  const run = (fn: (s: string) => Promise<TopikState>) => start(async () => setState(await fn(slug)));
+  const run = (fn: (s: string) => Promise<TopikState>) =>
+    start(async () => {
+      const res = await fn(slug);
+      setState(res);
+      if (res.ok) router.refresh();
+    });
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex flex-wrap gap-2">
-        {published && <button onClick={() => run(tarik)} disabled={pending} className={smallButton}>Tarik</button>}
+    <div className="flex flex-col gap-3">
+      <button onClick={() => run(terbitkan)} disabled={pending || (published && !hasDraft)} className={primaryButton}>
+        {pending ? "Memproses..." : published && hasDraft ? "Terbitkan draf" : "Terbitkan"}
+      </button>
+      <div aria-live="polite">
+        {(state.error || state.ok) && (
+          <p className={`rounded-md border px-3 py-2 text-sm ${state.error ? "border-red-500/40 text-red-500" : "border-accent/40 text-accent"}`}>
+            {state.error ?? state.ok}
+          </p>
+        )}
+      </div>
+      <div className="flex gap-2">
+        {published && <button onClick={() => run(tarik)} disabled={pending} className={smallButton}>Tarik dari publik</button>}
         <button
-          onClick={() => confirm(`Hapus topik ${slug} beserta semua isinya?`) && run(hapusTopik)}
+          onClick={() => confirm(`Hapus topik ${slug} beserta semua isinya? Ini tidak bisa dibatalkan.`) && run(hapusTopik)}
           disabled={pending}
-          className={`${smallButton} text-red-500`}
+          className={dangerButton}
         >
           Hapus
         </button>
-        <button
-          onClick={() => run(terbitkan)}
-          disabled={pending}
-          className="min-h-11 rounded-md bg-accent px-4 font-medium text-zinc-950 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
-        >
-          Terbitkan
-        </button>
       </div>
-      <p aria-live="polite" className={`min-h-5 text-sm ${state.error ? "text-red-500" : "text-accent"}`}>
-        {state.error ?? state.ok}
-      </p>
     </div>
   );
 }
