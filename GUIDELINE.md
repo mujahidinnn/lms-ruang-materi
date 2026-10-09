@@ -889,5 +889,5 @@ Vitest.
 - `images.unoptimized` is on in `next.config.ts` on purpose: slides are
   already AVIF, a second pass by the Next optimizer softens them.
 - `NEXT_PUBLIC_SITE_URL` sets canonical and OG URLs. Without it they fall back
-  to `https://ruang-materi.vercel.app`; set it on Vercel if the domain changes.
+  to `https://lms-ruang-materi.vercel.app`; set it on Vercel if the domain changes.
 - Add the site URL to Supabase Auth redirect URLs for the magic link.
