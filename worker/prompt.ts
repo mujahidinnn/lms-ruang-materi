@@ -30,6 +30,32 @@ export const draftSchema = z.object({
 
 export type Draft = z.infer<typeof draftSchema>;
 
+// Models often slip on one rule per question: a baca_kode without code, or
+// code on another type. Before validating, make the type follow the code
+// (only where the option count fits that type), then drop questions that
+// still break the schema. The array minimums in draftSchema still apply, so
+// a draft that loses too many questions fails as before.
+export function repairDraft(output: unknown): unknown {
+  if (!output || typeof output !== "object") return output;
+  const fix = (qs: unknown) =>
+    Array.isArray(qs)
+      ? qs
+          .map((q) => {
+            if (!q || typeof q !== "object") return q;
+            const r = q as { type?: string; code?: unknown; options?: unknown[] };
+            const code = typeof r.code === "string" ? r.code.trim() : "";
+            const four = Array.isArray(r.options) && r.options.length === 4;
+            if (r.type === "baca_kode" && !code && four) return { ...r, type: "pilihan_ganda", code: "" };
+            if (r.type === "pilihan_ganda" && code) return { ...r, type: "baca_kode" };
+            if (r.type === "benar_salah" && code) return { ...r, code: "" };
+            return r;
+          })
+          .filter((q) => question.safeParse(q).success)
+      : qs;
+  const o = output as Record<string, unknown>;
+  return { ...o, practice_questions: fix(o.practice_questions), exam_questions: fix(o.exam_questions) };
+}
+
 export const draftJsonSchema = z.toJSONSchema(draftSchema, { io: "input" });
 
 export type Prompt = { system: string; user: string };

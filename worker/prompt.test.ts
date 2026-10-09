@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { draftSchema } from "./prompt";
+import { draftSchema, repairDraft } from "./prompt";
 
 const q = (i: number, type = "pilihan_ganda") => ({
   type,
@@ -49,4 +49,23 @@ test("schema sent to providers keeps only supported keywords", async () => {
   expect(out).not.toMatch(/"(minLength|maxLength|pattern|\$schema)":/);
   expect(out).toContain('"exam_questions"');
   expect(out).not.toContain('"minItems"');
+});
+
+test("repair fixes the type to match the code, then drops what is still broken", () => {
+  const exam = [
+    ...valid.exam_questions.slice(0, 40),
+    { ...q(200, "baca_kode"), code: "" },
+    { ...q(201), code: "x = 1" },
+    { ...q(202, "benar_salah"), options: ["a", "b", "c", "d"] },
+  ];
+  const out = repairDraft({ ...valid, exam_questions: exam }) as typeof valid;
+  expect(out.exam_questions).toHaveLength(42);
+  expect(out.exam_questions[40].type).toBe("pilihan_ganda");
+  expect(out.exam_questions[41].type).toBe("baca_kode");
+  expect(draftSchema.safeParse(out).success).toBe(true);
+});
+
+test("repair cannot rescue a draft below the minimums", () => {
+  const short = { ...valid, practice_questions: [{ ...q(1), answer: 4 }, ...valid.practice_questions.slice(1)] };
+  expect(draftSchema.safeParse(repairDraft(short)).success).toBe(false);
 });

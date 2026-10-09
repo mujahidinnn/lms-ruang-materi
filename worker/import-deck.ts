@@ -12,7 +12,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { isAllowedModel } from "../lib/llm.ts";
 import { providers } from "./llm/index.ts";
-import { buildPrompt, draftSchema, type Draft } from "./prompt.ts";
+import { buildPrompt, draftSchema, repairDraft, type Draft } from "./prompt.ts";
 
 const run = promisify(execFile);
 const jobId = process.argv[process.argv.indexOf("--job-id") + 1] ?? "";
@@ -66,7 +66,7 @@ try {
   const generate = await providers[job.provider]();
   const result = await generate(pdf, buildPrompt(known), job.model);
 
-  const parsed = draftSchema.safeParse(result.output);
+  const parsed = draftSchema.safeParse(repairDraft(result.output));
   if (!parsed.success) {
     // Paths and codes only, no values.
     const where = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
