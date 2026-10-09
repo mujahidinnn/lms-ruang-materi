@@ -453,6 +453,8 @@ Publish (Server Action): publish_topic(slug) swaps drafts in per table,
   in `lib/llm.ts`; the worker refuses anything else. Pick model names from
   each provider's docs when adding them; do not guess model IDs. Free tier
   content may be used by Google for training: only admin decks go there.
+  The free tier allows about 20 requests per model per day and often
+  answers 503, so a failed job is retried with another model or the next day.
 - Every job stores `provider`, `model` and token usage, so drafts can be
   compared and cost tracked per import.
 - **Cost limits**, enforced in the database when inserting `import_jobs`,
