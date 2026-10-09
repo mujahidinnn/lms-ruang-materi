@@ -12,7 +12,7 @@ export default function SiteHeader() {
         <nav aria-label="Utama" className="ml-auto flex items-center gap-1 text-sm">
           <Link href="/roadmap" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Roadmap</Link>
           <Link href="/#materi" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Materi</Link>
-          <Link href="/#template" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Template</Link>
+          <Link href="/template" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Template</Link>
           <AccountLink />
         </nav>
       </div>

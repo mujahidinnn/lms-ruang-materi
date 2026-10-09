@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import PageBackdrop from "@/components/PageBackdrop";
 import AccountNav from "@/components/dashboard/AccountNav";
+import Room from "@/components/illustrations/Room";
 import TrackProgress from "@/components/dashboard/TrackProgress";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { primaryButton } from "@/components/ui/styles";
@@ -54,10 +55,15 @@ async function Home() {
   const rows = (progress ?? []) as unknown as Recent[];
   if (rows.length === 0) {
     return (
-      <div className="mt-12 rounded-2xl border border-zinc-800/80 p-8">
-        <p className="text-lg font-semibold">Mulai dari satu roadmap</p>
-        <p className="mt-1 text-zinc-400">Pilih jalur belajar, lalu buka topik pertamanya. Kemajuanmu tersimpan otomatis.</p>
-        <Link href="/roadmap" className={`${primaryButton} mt-6`}>Pilih track pertama</Link>
+      <div className="mt-12 flex flex-col gap-6 rounded-2xl border border-zinc-800/80 p-8 sm:flex-row sm:items-center">
+        <Room className="size-20 shrink-0">
+          <rect x="24" y="40" width="36" height="27" rx="5" className="fill-accent" />
+        </Room>
+        <div>
+          <p className="text-lg font-semibold">Mulai dari satu roadmap</p>
+          <p className="mt-1 text-zinc-400">Pilih jalur belajar, lalu buka topik pertamanya. Kemajuanmu tersimpan otomatis.</p>
+          <Link href="/roadmap" className={`${primaryButton} mt-6`}>Pilih track pertama</Link>
+        </div>
       </div>
     );
   }

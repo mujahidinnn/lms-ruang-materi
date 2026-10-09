@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import PageBackdrop from "@/components/PageBackdrop";
 import FlashcardDeck, { type Card } from "@/components/flashcard/FlashcardDeck";
 import AccountNav from "@/components/dashboard/AccountNav";
+import { NothingDue } from "@/components/illustrations";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -42,9 +43,12 @@ async function Queue() {
 
   if (cards.length === 0) {
     return (
-      <p className="text-zinc-400">
-        Belum ada kartu jatuh tempo. Buka <Link href="/roadmap" className="text-accent hover:underline">roadmap</Link> untuk mulai topik baru.
-      </p>
+      <div className="flex flex-col items-center py-10 text-center">
+        <NothingDue className="size-24" />
+        <p className="mt-6 max-w-sm text-zinc-400">
+          Belum ada kartu jatuh tempo. Buka <Link href="/roadmap" className="text-accent hover:underline">roadmap</Link> untuk mulai topik baru.
+        </p>
+      </div>
     );
   }
 

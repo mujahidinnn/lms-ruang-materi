@@ -21,10 +21,15 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
 
   async function rate(rating: Rating) {
     if (!flipped) return;
+    // Scheduling needs the database; keep the card instead of losing the rating.
+    if (!navigator.onLine) {
+      setNote("Kamu sedang offline. Sambungkan internet untuk menyimpan nilai kartu.");
+      return;
+    }
     setI(i + 1);
     setFlipped(false);
-    const res = await nilaiKartu(card.id, rating);
-    if (res.guest && !guestShown) {
+    const res = await nilaiKartu(card.id, rating).catch(() => ({ saved: false, error: "Koneksi terputus, nilai kartu tadi tidak tersimpan." }) as const);
+    if ("guest" in res && res.guest && !guestShown) {
       setGuestShown(true);
       setNote(<Link href={masukHref} className="text-accent hover:underline">Masuk untuk menyimpan progres</Link>);
     } else if (res.error) {

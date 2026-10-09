@@ -305,7 +305,6 @@ app/
   profil/                account settings (auth)
   template/              portfolio template gallery
   privasi/               privacy page (UU PDP)
-  offline/               PWA offline fallback
   manifest.ts            PWA manifest
   admin/                 content management (admin role)
     impor/               upload pptx, start and watch import jobs
@@ -339,7 +338,7 @@ worker/
 supabase/
   migrations/            schema, RLS policies, functions
   tests/security_smoke.sql
-public/                  templates/, template-previews/, icons/, sw.js (slides move to Storage)
+public/                  templates/, template-previews/, icons/, sw.js, offline.html
 scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 ```
 
@@ -347,9 +346,9 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
-| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | reworked with logo and topics; switch to tracks in phase 9 |
+| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
 | Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
-| Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/`, move to `/template` |
+| Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
 | Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
 | Latihan | `app/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" when the topic has a published exam (phase 7) |
 | Flashcard | `app/flashcard` | `flashcards`, `flashcard_reviews`, `flashcard_queue()` | `components/flashcard/` | built (phase 6) |
@@ -361,6 +360,8 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 | Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4), `/admin/roadmap` (phase 5); regenerate one section planned |
 | Privasi | `app/privasi` | - | - | built |
 | SEO | `opengraph-image.tsx`, `robots.ts`, `sitemap.ts` | `lib/site` | - | built |
+| PWA | `app/manifest.ts`, `public/sw.js`, `public/offline.html` | - | `ServiceWorker`, `SignOutButton` | built (phase 9): installable, visited decks and roadmaps open offline |
+| Illustrations | `app/not-found.tsx`, empty states, exam result | - | `components/illustrations/` | built (phase 9); login page has none yet |
 
 Helpers worth knowing before writing a new one: `thumbSrc`, `coverSrc` and
 `slideUrl` in `lib/slides.ts` (slide, thumb and cover file naming; never in
@@ -638,7 +639,9 @@ The mobile experience is an installable PWA, not a native app.
     `/roadmap/*`, so a deck opened once can be read offline
   - never: any request with `?_rsc=`, Server Actions (POST), Supabase, and
     every route not listed above
-  - offline fallback page `/offline` for navigations that fail
+  - offline fallback `public/offline.html` for navigations that fail: plain
+    HTML with inline styles, because the Next.js chunks of an unvisited
+    route are not cached and a Next page would fail to hydrate offline
 - On sign-out the app tells the service worker to clear its page caches, so
   a shared phone keeps nothing from the previous learner.
 - Serve `sw.js` with `Cache-Control: no-cache` and register it from a small

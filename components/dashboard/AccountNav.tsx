@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { keluar } from "@/app/masuk/actions";
+import SignOutButton from "@/components/auth/SignOutButton";
 
 const LINKS = [
   ["/dasbor", "Dasbor"],
@@ -21,9 +21,7 @@ export default function AccountNav({ current }: { current: string }) {
           {label}
         </Link>
       ))}
-      <form action={keluar}>
-        <button className="min-h-11 rounded-lg px-3 text-zinc-400 hover:text-zinc-50">Keluar</button>
-      </form>
+      <SignOutButton className="min-h-11 rounded-lg px-3 text-zinc-400 hover:text-zinc-50" />
     </nav>
   );
 }
