@@ -73,7 +73,7 @@ export default function RoadmapGraph({
               } ${n.optional ? "border-dashed" : ""}`}
             >
               <StateIcon state={state} />
-              <span className="truncate font-medium">{n.title}</span>
+              <span className="line-clamp-2 leading-tight font-medium">{n.title}</span>
             </button>
           );
         })}
