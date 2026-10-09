@@ -11,6 +11,7 @@ const node = (id: string, position = 0): RoadmapNode => ({
   position,
   practiceCount: 0,
   cardCount: 0,
+  hasExam: false,
 });
 
 describe("layout", () => {

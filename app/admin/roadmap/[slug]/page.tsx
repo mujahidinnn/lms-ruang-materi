@@ -52,7 +52,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
   const hasDraft = [...nodes, ...edges].some((r) => r.status === "draft");
   const graphEdges = edges.map((e) => ({ from: e.from_node_id, to: e.to_node_id }));
   const placed = layout(
-    nodes.map((n) => ({ id: n.id, topicId: "", slug: n.topics.slug, title: n.topics.title, summary: "", optional: n.optional, position: n.position, practiceCount: 0, cardCount: 0 })),
+    nodes.map((n) => ({ id: n.id, topicId: "", slug: n.topics.slug, title: n.topics.title, summary: "", optional: n.optional, position: n.position, practiceCount: 0, cardCount: 0, hasExam: false })),
     graphEdges
   );
   const hidden = <input type="hidden" name="track" value={slug} />;

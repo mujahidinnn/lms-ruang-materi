@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, type ReactNode } from "react";
-import type { RoadmapState } from "@/app/admin/roadmap/actions";
+
+type FormState = { error?: string; ok?: string };
 
 // A form whose action returns { error, ok }, shown under it.
 export default function ActionForm({
@@ -9,7 +10,7 @@ export default function ActionForm({
   className,
   children,
 }: {
-  action: (state: RoadmapState, form: FormData) => Promise<RoadmapState>;
+  action: (state: FormState, form: FormData) => Promise<FormState>;
   className?: string;
   children: ReactNode;
 }) {

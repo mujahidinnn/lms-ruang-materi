@@ -1,5 +1,5 @@
 begin;
-select plan(44);
+select plan(59);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -265,6 +265,123 @@ select is(
   'practice finished_at is stamped by the database'
 );
 
+-- Exam: bank of 2 benar/salah questions, 1 per attempt, 3 attempts, pass 70.
+-- Shown position 0 holds the key (both answers are 0, benar_salah keeps order).
+select isnt(public.start_exam_attempt('20000000-0000-0000-0000-000000000001'), null, 'learner starts an exam');
+
+select is(
+  public.start_exam_attempt('20000000-0000-0000-0000-000000000001'),
+  (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null),
+  'starting again resumes the open attempt instead of using another'
+);
+
+select is(
+  (select bool_or(q ? 'answer') from jsonb_array_elements(public.exam_attempt_questions(
+    (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null))) q),
+  false,
+  'attempt questions carry no answer key'
+);
+
+select throws_ok(
+  $$ select public.submit_exam_attempt(
+       (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null),
+       '{"10000000-0000-0000-0000-000000000001": 0}') $$,
+  '22023',
+  null,
+  'answers outside the attempt questions are rejected'
+);
+
+select is(
+  (select row(score, passed) from public.submit_exam_attempt(
+    (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null),
+    (select jsonb_build_object(question_ids[1], 1) from public.exam_attempts where user_id = auth.uid() and submitted_at is null))),
+  row(0, false),
+  'a wrong answer is graded on the server'
+);
+
+select throws_ok(
+  $$ select public.submit_exam_attempt((select id from public.exam_attempts where user_id = auth.uid()), '{}') $$,
+  'P0001',
+  'Jawaban sudah dikumpulkan',
+  'a second submit is rejected'
+);
+
+select is(
+  (select bool_and(q -> 'answer' = 'null'::jsonb) from jsonb_array_elements(
+    public.exam_attempt_review((select id from public.exam_attempts where user_id = auth.uid())) -> 'questions') q),
+  true,
+  'the key stays hidden after a failed attempt with attempts left'
+);
+
+select public.start_exam_attempt('20000000-0000-0000-0000-000000000001');
+reset role;
+update public.exam_attempts set deadline = now() - interval '1 hour' where submitted_at is null;
+set local role authenticated;
+
+select throws_ok(
+  $$ select public.submit_exam_attempt(
+       (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null), '{}') $$,
+  'P0001',
+  'Waktu ujian sudah habis',
+  'a late submit is rejected'
+);
+
+select public.submit_exam_attempt(
+  public.start_exam_attempt('20000000-0000-0000-0000-000000000001'), '{}'
+);
+
+select is(
+  (select bool_and(q -> 'answer' = '0'::jsonb) from jsonb_array_elements(
+    public.exam_attempt_review((select id from public.exam_attempts where user_id = auth.uid() and submitted_at is not null order by score limit 1)) -> 'questions') q),
+  true,
+  'the key shows after the last attempt of a set'
+);
+
+select throws_ok(
+  $$ select public.start_exam_attempt('20000000-0000-0000-0000-000000000001') $$,
+  'P0001',
+  'Percobaan habis, set baru dibuka 24 jam setelah percobaan terakhir',
+  'no fourth attempt within 24 hours'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "role": "authenticated"}';
+
+select throws_ok(
+  $$ select public.submit_exam_attempt((select id from public.exam_attempts limit 1), '{}') $$,
+  '42501',
+  null,
+  'a learner cannot submit another learner''s attempt'
+);
+
+select public.start_exam_attempt('20000000-0000-0000-0000-000000000001');
+
+select is(
+  (select passed from public.submit_exam_attempt(
+    (select id from public.exam_attempts where user_id = auth.uid()),
+    (select jsonb_build_object(question_ids[1], 0) from public.exam_attempts where user_id = auth.uid()))),
+  true,
+  'a right answer passes'
+);
+
+select is(
+  (select state from public.progress where user_id = auth.uid() and topic_id = '10000000-0000-0000-0000-000000000001'),
+  'selesai'::public.progress_state,
+  'passing the exam marks the topic selesai'
+);
+
+select throws_ok(
+  $$ select public.start_exam_attempt('20000000-0000-0000-0000-000000000001') $$,
+  'P0001',
+  'Kamu sudah lulus ujian ini',
+  'a passed exam is not retaken'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+
 reset role;
 
 -- Admin
@@ -315,6 +432,13 @@ select throws_ok(
 select lives_ok(
   $$ select public.publish_topic('uji-git') $$,
   'admin publishes a topic'
+);
+
+select throws_ok(
+  $$ update public.exams set question_count = 2 where id = '20000000-0000-0000-0000-000000000001' $$,
+  'P0001',
+  null,
+  'a published exam keeps a bank of twice question_count'
 );
 
 select results_eq(

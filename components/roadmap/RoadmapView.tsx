@@ -112,6 +112,11 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
               <Link href={`/belajar/${node.slug}`} className={`${primaryButton} mt-6 w-full`}>
                 Belajar
               </Link>
+              {node.hasExam && states[node.id] !== "selesai" && (
+                <Link href={`/ujian/${node.slug}`} className="mt-3 block text-center text-sm text-accent hover:underline">
+                  Sudah paham? Langsung ujian
+                </Link>
+              )}
               {(node.practiceCount > 0 || node.cardCount > 0) && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {node.practiceCount > 0 && (

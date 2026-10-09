@@ -58,7 +58,7 @@ async function Latihan({ params }: { params: PageProps<"/latihan/[slug]">["param
           <Link href={`/belajar/${slug}`} className="text-accent hover:underline">Kembali ke materi</Link>
         </p>
       ) : (
-        <PracticeQuiz topicId={practice.id} slug={slug} questions={practice.questions} />
+        <PracticeQuiz topicId={practice.id} slug={slug} questions={practice.questions} hasExam={practice.hasExam} />
       )}
     </>
   );

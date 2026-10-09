@@ -11,7 +11,7 @@ const HINT_KEY = "ruang-materi:hint-masuk";
 
 // Untimed, instant feedback, not graded. 1 to 4 pick an option, Enter checks
 // and moves on. A finished set is saved for signed-in learners only.
-export default function PracticeQuiz({ topicId, slug, questions }: { topicId: string; slug: string; questions: Question[] }) {
+export default function PracticeQuiz({ topicId, slug, questions, hasExam }: { topicId: string; slug: string; questions: Question[]; hasExam: boolean }) {
   const [set, setSet] = useState(questions);
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
@@ -86,7 +86,16 @@ export default function PracticeQuiz({ topicId, slug, questions }: { topicId: st
           </p>
         )}
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          {wrong.length > 0 ? (
+          {hasExam ? (
+            <>
+              <Link href={`/ujian/${slug}`} className={primaryButton}>Coba ujian</Link>
+              {wrong.length > 0 && (
+                <button onClick={() => restart(wrong)} className="min-h-11 text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent">
+                  Ulangi yang salah
+                </button>
+              )}
+            </>
+          ) : wrong.length > 0 ? (
             <button onClick={() => restart(wrong)} className={primaryButton}>Ulangi yang salah</button>
           ) : (
             <Link href={`/flashcard/${slug}`} className={primaryButton}>Lanjut ke flashcard</Link>

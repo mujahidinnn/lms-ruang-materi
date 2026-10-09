@@ -72,13 +72,13 @@ type TrackRow = {
     id: string;
     optional: boolean;
     position: number;
-    topics: { id: string; slug: string; title: string; summary: string; practice_questions: { count: number }[]; flashcards: { count: number }[] };
+    topics: { id: string; slug: string; title: string; summary: string; practice_questions: { count: number }[]; flashcards: { count: number }[]; exams: unknown };
     track_edges: { to_node_id: string }[];
   }[];
 };
 
 const TRACK_SELECT =
-  "slug, title, description, track_nodes(id, optional, position, topics(id, slug, title, summary, practice_questions(count), flashcards(count)), track_edges!track_edges_from_node_id_fkey(to_node_id))";
+  "slug, title, description, track_nodes(id, optional, position, topics(id, slug, title, summary, practice_questions(count), flashcards(count), exams(id)), track_edges!track_edges_from_node_id_fkey(to_node_id))";
 
 function toTrack(row: TrackRow): Track {
   const nodes = row.track_nodes.map((n) => ({
@@ -91,6 +91,7 @@ function toTrack(row: TrackRow): Track {
     position: n.position,
     practiceCount: n.topics.practice_questions[0]?.count ?? 0,
     cardCount: n.topics.flashcards[0]?.count ?? 0,
+    hasExam: !!n.topics.exams,
   }));
   // RLS already hides edges to unpublished nodes; this only guards a stale read.
   const ids = new Set(nodes.map((n) => n.id));
@@ -137,20 +138,21 @@ export type Flashcard = { id: string; front: string; back: string };
 type TopicRef = { id: string; slug: string; title: string };
 
 // Practice keys are public on purpose: latihan gives instant feedback.
-export async function getPractice(slug: string): Promise<(TopicRef & { questions: Question[] }) | null> {
+export async function getPractice(slug: string): Promise<(TopicRef & { questions: Question[]; hasExam: boolean }) | null> {
   "use cache";
   cacheTag("content");
 
   const { data, error } = await publicClient
     .from("topics")
-    .select("id, slug, title, practice_questions(id, type, prompt, code, options, answer, explanation)")
+    .select("id, slug, title, exams(id), practice_questions(id, type, prompt, code, options, answer, explanation)")
     .eq("slug", slug)
     .order("created_at", { referencedTable: "practice_questions" })
     .maybeSingle();
   if (error) throw new Error(`getPractice: ${error.message}`);
   if (!data) return null;
-  const { practice_questions: questions, ...topic } = data as TopicRef & { practice_questions: Question[] };
-  return { ...topic, questions };
+  const { practice_questions: questions, exams, ...topic } = data as TopicRef & { practice_questions: Question[]; exams: unknown };
+  // RLS returns the exam only when it is published.
+  return { ...topic, questions, hasExam: !!exams };
 }
 
 export async function getDeck(slug: string): Promise<(TopicRef & { cards: Flashcard[] }) | null> {

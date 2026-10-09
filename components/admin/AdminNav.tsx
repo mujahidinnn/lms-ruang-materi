@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, FileUp, LayoutDashboard, Route } from "lucide-react";
+import { BookOpen, ClipboardCheck, FileUp, LayoutDashboard, Route } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/impor", label: "Impor", Icon: FileUp },
   { href: "/admin/topik", label: "Topik", Icon: BookOpen },
   { href: "/admin/roadmap", label: "Roadmap", Icon: Route },
+  { href: "/admin/ujian", label: "Ujian", Icon: ClipboardCheck },
 ];
 
 export default function AdminNav() {

@@ -10,6 +10,7 @@ export type RoadmapNode = {
   position: number;
   practiceCount: number;
   cardCount: number;
+  hasExam: boolean;
 };
 
 export type RoadmapEdge = { from: string; to: string };
