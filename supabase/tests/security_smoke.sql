@@ -1,5 +1,5 @@
 begin;
-select plan(59);
+select plan(60);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -326,8 +326,17 @@ select throws_ok(
   'a late submit is rejected'
 );
 
+select public.start_exam_attempt('20000000-0000-0000-0000-000000000001');
+
+select is(
+  (select bool_and(q -> 'answer' = 'null'::jsonb) from jsonb_array_elements(
+    public.exam_attempt_review((select id from public.exam_attempts where user_id = auth.uid() and submitted_at is not null)) -> 'questions') q),
+  true,
+  'keys stay hidden while the last attempt of a set is running'
+);
+
 select public.submit_exam_attempt(
-  public.start_exam_attempt('20000000-0000-0000-0000-000000000001'), '{}'
+  (select id from public.exam_attempts where user_id = auth.uid() and submitted_at is null and deadline > now()), '{}'
 );
 
 select is(
