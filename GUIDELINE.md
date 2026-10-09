@@ -547,9 +547,21 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 - **Fonts** from `next/font` in `app/layout.tsx`: Geist (`font-sans`), Geist
   Mono (`font-mono`, also for code in questions), Babylonica
   (`--font-signature`) for the signature link only.
-- **Shapes**: `rounded-md` by default, `rounded-lg` for cards and roadmap
-  nodes. Thin borders over shadows; `shadow-lg` only on floating menus and
-  sheets.
+- **Shapes**: `rounded-lg` for inputs and buttons, `rounded-xl` for nav
+  pills and small cards, `rounded-2xl` for the featured card. Thin borders
+  over shadows; `shadow-lg` only on floating menus and sheets.
+- **Featured card**: each screen has at most one card that carries the main
+  action ("Lanjutkan belajar", "Tinjau draf"), tinted mint with
+  `border-accent/20 bg-accent/5`. Everything else stays neutral zinc.
+- **App shell**: signed-in areas (dasbor, admin) use a left sidebar from
+  `lg` with lucide icons; the active item is `bg-accent/10 text-accent`.
+  Below `lg` it becomes a top bar with the nav on its own row.
+- **Progress cards**: a number in text ("5 dari 12") with a thin
+  `rounded-full` teal bar under it; the bar only repeats the text.
+- **Sequences** (roadmap steps, missions) may use numbered cards because
+  they are ordered: done shows a check, current a teal border, the rest
+  stay muted. Visual direction taken from the DevOrbit reference, adapted:
+  no emoji, no exclamation marks, no leaderboard, orange stays for streak.
 - **Shared CSS** lives in `app/globals.css`: `scrollbar-thin`,
   `animate-word-in`, the `short:` variant for landscape phones. Reuse these
   before adding new utilities. Every animation needs a

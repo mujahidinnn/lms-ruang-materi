@@ -78,9 +78,10 @@ async function Topik({ params }: { params: PageProps<"/admin/topik/[slug]">["par
   return (
     <div className="grid gap-10 lg:grid-cols-[17rem_1fr]">
       <aside className="flex flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
+        <Link href="/admin/topik" className="text-sm text-zinc-400 hover:text-zinc-50">Semua topik</Link>
+        <div className="flex flex-col gap-5 rounded-2xl border border-accent/20 bg-accent/5 p-5">
         <div>
-          <Link href="/admin/topik" className="text-sm text-zinc-400 hover:text-zinc-50">Semua topik</Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">{topic.title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{topic.title}</h1>
           <p className="mt-1 font-mono text-sm text-zinc-500">{slug}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <StatusBadge status={topic.status} />
@@ -89,6 +90,7 @@ async function Topik({ params }: { params: PageProps<"/admin/topik/[slug]">["par
           </div>
         </div>
         <TopicActions slug={slug} published={topic.status === "published"} hasDraft={hasDraft} />
+        </div>
         {prereq.length > 0 && (
           <p className="text-sm text-zinc-400">
             Saran prasyarat dari model: <span className="font-mono text-zinc-300">{prereq.join(", ")}</span>
