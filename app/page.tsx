@@ -47,7 +47,7 @@ export default async function Home() {
                 {topics.length} materi, {totalSlides} slide, semuanya gratis.
               </p>
             </div>
-            <HeroRoom topics={topics} />
+            <HeroRoom topics={topics.slice(0, 5)} />
           </section>
 
           <section id="materi" aria-labelledby="materi-judul" className="scroll-mt-6 border-t border-zinc-800/80 py-16 sm:py-20">
