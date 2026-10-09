@@ -537,8 +537,8 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 - **Second accent: orange, for motivation and attention only**, via
   `accent-warm` (`text-accent-warm`, `bg-accent-warm/15`). It is `orange-400`
   on dark and `orange-600` on light. Use it for streak, level up and lencana,
-  the exam timer warning (5 and 1 minute) and "ragu-ragu" questions. Nothing
-  else.
+  the exam timer warning (5 and 1 minute), "ragu-ragu" questions and the
+  logo's room. Nothing else.
   - Teal carries about 90% of the color on a screen, orange about 10%.
   - Orange appears as a badge, icon or small text, never as a button next to
     a teal one with equal weight. One dominant accent per screen.
@@ -548,9 +548,10 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 - **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
   rounded square open at its top right corner, holding two stacked slides:
   material laid out in a space whose door is open to anyone, growing
-  outward. Room in zinc-50, slides in the accent. `app/icon.svg` and
-  `app/opengraph-image.tsx` repeat it with hex colors. Never recolor the
-  room, never close the corner.
+  outward. Room in `accent-warm` (orange), slides in `accent` (teal): the
+  two brand colors in one mark. `app/icon.svg` and
+  `app/opengraph-image.tsx` repeat it with hex colors. Never swap the two
+  colors, never close the corner.
 - **Fonts** from `next/font` in `app/layout.tsx`: Geist (`font-sans`), Geist
   Mono (`font-mono`, also for code in questions), Babylonica
   (`--font-signature`) for the signature link only.

@@ -1,13 +1,14 @@
 // The mark: a room (rounded square, open at the top right corner) holding
 // two stacked slides. Ruang Materi = material laid out in a space whose door
-// is open to anyone; the gap also reads as growing outward. Colors come from
-// classes so it flips with light and dark.
+// is open to anyone; the gap also reads as growing outward. The room is the
+// warm accent, the material teal. Colors come from classes so they flip
+// with light and dark.
 export function LogoMark({ className = "size-7" }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" fill="none" aria-hidden className={className}>
       <path
         d="M20 3H8a5 5 0 0 0-5 5v16a5 5 0 0 0 5 5h16a5 5 0 0 0 5-5V12"
-        className="stroke-zinc-50"
+        className="stroke-accent-warm"
         strokeWidth="2.5"
         strokeLinecap="round"
       />

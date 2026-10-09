@@ -5,13 +5,15 @@ export const alt = `${SITE_NAME}, ruang untuk belajar satu slide setiap langkah`
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// ImageResponse cannot read CSS variables: zinc on dark, accent teal-400.
+// ImageResponse cannot read CSS variables: zinc on dark, teal-400 and
+// orange-400 as in the dark theme.
 const ACCENT = "#00d3bd";
+const ACCENT_WARM = "#ff8904";
 
 function Mark({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <path d="M20 3H8a5 5 0 0 0-5 5v16a5 5 0 0 0 5 5h16a5 5 0 0 0 5-5V12" stroke="#fafafa" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M20 3H8a5 5 0 0 0-5 5v16a5 5 0 0 0 5 5h16a5 5 0 0 0 5-5V12" stroke={ACCENT_WARM} strokeWidth="2.5" strokeLinecap="round" />
       <rect x="12.5" y="9.5" width="11" height="8" rx="1.75" stroke={ACCENT} strokeWidth="1.75" />
       <rect x="8" y="14" width="12" height="9" rx="1.75" fill={ACCENT} />
       <path d="M10.75 17.5h6.5M10.75 20.25h3.5" stroke="#09090b" strokeWidth="1.5" strokeLinecap="round" />
