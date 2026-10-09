@@ -42,5 +42,5 @@ test("gemini: schema keeps only supported keywords", async () => {
   const out = JSON.stringify(geminiSchema(draftJsonSchema));
   expect(out).not.toMatch(/"(minLength|maxLength|pattern|\$schema)":/);
   expect(out).toContain('"exam_questions"');
-  expect(out).toContain('"minItems":40');
+  expect(out).not.toContain('"minItems"');
 });

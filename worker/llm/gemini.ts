@@ -2,11 +2,13 @@ import { FinishReason, GoogleGenAI, createPartFromUri } from "@google/genai";
 import { draftJsonSchema, type Prompt } from "../prompt.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
-// Gemini's responseJsonSchema accepts only this subset; the rest (minLength,
-// pattern, ...) is a 400. zod still checks the full schema afterwards.
+// Gemini's responseJsonSchema accepts only a subset; the rest (minLength,
+// pattern, ...) is a 400. minItems/maxItems are dropped too: minItems 40 on
+// an array of objects is rejected. Counts are asked in the prompt and zod
+// still checks the full schema afterwards.
 const SUPPORTED = new Set([
   "type", "title", "description", "properties", "required", "additionalProperties",
-  "enum", "format", "minimum", "maximum", "items", "prefixItems", "minItems", "maxItems", "anyOf", "$ref",
+  "enum", "format", "minimum", "maximum", "items", "prefixItems", "anyOf", "$ref",
 ]);
 
 export function geminiSchema(node: unknown): unknown {
@@ -41,10 +43,11 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
         responseMimeType: "application/json",
         responseJsonSchema: geminiSchema(draftJsonSchema),
         maxOutputTokens: 32768,
-        // Free tier often answers 503 (busy) or 429; back off for up to ~4 min.
+        // Free tier often answers 503 (busy). Every retry counts against the daily
+        // quota (20 requests per model on the free tier), so keep it short.
         httpOptions: {
           timeout: 15 * 60 * 1000,
-          retryOptions: { attempts: 5, initialDelay: 15, maxDelay: 120, httpStatusCodes: [429, 500, 503] },
+          retryOptions: { attempts: 3, initialDelay: 20, maxDelay: 120, httpStatusCodes: [429, 500, 503] },
         },
       },
     });
