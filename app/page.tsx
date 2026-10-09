@@ -3,6 +3,7 @@ import PageBackdrop from "@/components/PageBackdrop";
 import TemplateGallery from "@/components/TemplateGallery";
 import { LogoMark } from "@/components/brand/Logo";
 import HeroRoom from "@/components/landing/HeroRoom";
+import SignedInRedirect from "@/components/landing/SignedInRedirect";
 import SiteHeader from "@/components/landing/SiteHeader";
 import TopicCard from "@/components/landing/TopicCard";
 import { templates } from "@/data/templates";
@@ -17,6 +18,7 @@ export default async function Home() {
     <div className="relative">
       <PageBackdrop />
       <SiteHeader />
+      <SignedInRedirect />
 
       <main className="px-6 sm:px-10">
         <div className="mx-auto max-w-7xl">

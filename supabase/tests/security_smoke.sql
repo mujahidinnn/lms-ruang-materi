@@ -1,5 +1,5 @@
 begin;
-select plan(60);
+select plan(71);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -38,6 +38,9 @@ insert into public.track_nodes (id, track_id, topic_id) values
   ('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001');
 insert into public.track_edges (from_node_id, to_node_id) values
   ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002');
+-- Track B is live from the start so passing its one core topic grants lencana.
+update public.tracks set status = 'published' where id = '30000000-0000-0000-0000-000000000002';
+update public.track_nodes set status = 'published' where id = '40000000-0000-0000-0000-000000000003';
 
 select throws_ok(
   $$ insert into public.track_edges (from_node_id, to_node_id)
@@ -105,7 +108,7 @@ select is_empty(
 );
 
 select is_empty(
-  $$ select 1 from public.track_nodes where id::text like '40000000-%' $$,
+  $$ select 1 from public.track_nodes where track_id = '30000000-0000-0000-0000-000000000001' $$,
   'anon cannot read draft roadmap nodes'
 );
 
@@ -265,6 +268,33 @@ select is(
   'practice finished_at is stamped by the database'
 );
 
+select is(
+  (select count(*)::int from public.learning_days where user_id = auth.uid()),
+  1,
+  'learning activity logs one day'
+);
+
+select throws_ok(
+  $$ insert into public.learning_days (user_id, day) values (auth.uid(), current_date - 1) $$,
+  '42501',
+  null,
+  'learner cannot write learning days'
+);
+
+select throws_ok(
+  $$ insert into public.badges (user_id, track_id) values (auth.uid(), '30000000-0000-0000-0000-000000000002') $$,
+  '42501',
+  null,
+  'learner cannot grant themselves lencana'
+);
+
+select throws_ok(
+  $$ select public.topic_passed('00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001') $$,
+  '42501',
+  null,
+  'learner cannot ask whether another learner passed'
+);
+
 -- Exam: bank of 2 benar/salah questions, 1 per attempt, 3 attempts, pass 70.
 -- Shown position 0 holds the key (both answers are 0, benar_salah keeps order).
 select isnt(public.start_exam_attempt('20000000-0000-0000-0000-000000000001'), null, 'learner starts an exam');
@@ -380,6 +410,24 @@ select is(
   'passing the exam marks the topic selesai'
 );
 
+select results_eq(
+  $$ select track_id::text from public.badges where user_id = auth.uid() $$,
+  array['30000000-0000-0000-0000-000000000002'],
+  'passing the last core topic of a track grants its lencana'
+);
+
+select is(
+  (select row(core_passed, core_total) from public.track_levels where slug = 'uji-track-b'),
+  row(1, 1),
+  'track level counts core topics passed by exam'
+);
+
+select is(
+  (select row(current_days, best_days) from public.learning_streaks where user_id = auth.uid()),
+  row(1, 1),
+  'a learning day starts a streak'
+);
+
 select throws_ok(
   $$ select public.start_exam_attempt('20000000-0000-0000-0000-000000000001') $$,
   'P0001',
@@ -475,6 +523,42 @@ select results_eq(
   $$ select t.slug from public.tracks t join public.track_nodes n on n.track_id = t.id where t.slug like 'uji-%' $$,
   array['uji-track-b'],
   'anon reads a published track and its nodes'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "role": "authenticated"}';
+
+select throws_ok(
+  $$ select public.delete_own_account() $$,
+  'P0001',
+  null,
+  'an admin cannot delete their own account from the app'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "role": "authenticated"}';
+
+select lives_ok($$ select public.delete_own_account() $$, 'a learner deletes their account');
+
+reset role;
+
+select is(
+  (select count(*)::int from (
+    select user_id from public.profiles union all select user_id from public.progress
+    union all select user_id from public.flashcard_reviews union all select user_id from public.practice_sessions
+    union all select user_id from public.exam_attempts union all select user_id from public.badges
+    union all select user_id from public.learning_days
+  ) r where user_id = '00000000-0000-0000-0000-000000000002'),
+  0,
+  'deleting an account leaves no learner rows'
+);
+
+select is(
+  (select count(*)::int from public.topics where slug like 'uji-%'),
+  2,
+  'deleting an account keeps the content'
 );
 
 select * from finish();

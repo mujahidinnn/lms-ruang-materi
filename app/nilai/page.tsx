@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { Award } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import PageBackdrop from "@/components/PageBackdrop";
 import SiteHeader from "@/components/landing/SiteHeader";
+import AccountNav from "@/components/dashboard/AccountNav";
+import TrackProgress from "@/components/dashboard/TrackProgress";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,7 +22,10 @@ export default function NilaiPage() {
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-3xl font-semibold tracking-tight">Nilai</h1>
+          <div className="flex flex-wrap items-baseline justify-between gap-4">
+            <h1 className="text-3xl font-semibold tracking-tight">Nilai</h1>
+            <AccountNav current="/nilai" />
+          </div>
           <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
             <Report />
           </Suspense>
@@ -30,18 +36,21 @@ export default function NilaiPage() {
 }
 
 type AttemptRow = { score: number | null; passed: boolean | null; exam_id: string; exams: { max_attempts: number; topics: { slug: string; title: string } } };
-type TrackRow = { slug: string; title: string; track_nodes: { optional: boolean; topic_id: string }[] };
+type TrackRow = { id: string; slug: string; title: string };
 
 async function Report() {
-  await requireUser("/nilai");
+  const user = await requireUser("/nilai");
   const db = await createClient();
-  const [{ data: attempts }, { data: tracks }, { data: progress }] = await Promise.all([
+  const [{ data: attempts }, { data: tracks }, { data: levels }, { data: badges }, { data: streak }] = await Promise.all([
     db.from("exam_attempts").select("score, passed, exam_id, exams(max_attempts, topics(slug, title))").order("created_at"),
-    db.from("tracks").select("slug, title, track_nodes(optional, topic_id)").order("created_at"),
-    db.from("progress").select("topic_id, state"),
+    db.from("tracks").select("id, slug, title").order("created_at"),
+    db.from("track_levels").select("slug, core_passed, core_total"),
+    db.from("badges").select("track_id"),
+    db.from("learning_streaks").select("best_days").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const done = new Set((progress ?? []).filter((p) => p.state === "selesai").map((p) => p.topic_id));
+  const levelBySlug = new Map((levels ?? []).map((l) => [l.slug, l]));
+  const earned = new Set((badges ?? []).map((b) => b.track_id));
   const exams = new Map<string, { slug: string; title: string; best: number | null; tries: number; max: number; passed: boolean }>();
   for (const a of (attempts ?? []) as unknown as AttemptRow[]) {
     const e = exams.get(a.exam_id) ?? { ...a.exams.topics, best: null, tries: 0, max: a.exams.max_attempts, passed: false };
@@ -57,21 +66,40 @@ async function Report() {
         <h2 id="roadmap" className="text-lg font-semibold">Roadmap</h2>
         <ul className="mt-4 space-y-5">
           {((tracks ?? []) as TrackRow[]).map((t) => {
-            const core = t.track_nodes.filter((n) => !n.optional);
-            const n = core.filter((c) => done.has(c.topic_id)).length;
+            const l = levelBySlug.get(t.slug);
             return (
               <li key={t.slug}>
-                <div className="flex items-baseline justify-between gap-4">
-                  <Link href={`/roadmap/${t.slug}`} className="font-medium hover:text-accent">{t.title}</Link>
-                  <span className="text-sm text-zinc-400 tabular-nums">{n} dari {core.length} topik selesai</span>
-                </div>
-                <div aria-hidden className="mt-2 h-1.5 rounded-full bg-zinc-800">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${core.length ? (n / core.length) * 100 : 0}%` }} />
-                </div>
+                <TrackProgress slug={t.slug} title={t.title} passed={l?.core_passed ?? 0} total={l?.core_total ?? 0} />
               </li>
             );
           })}
         </ul>
+      </section>
+
+      <section aria-labelledby="lencana" className="mt-12 grid gap-6 sm:grid-cols-[1fr_auto]">
+        <div>
+          <h2 id="lencana" className="text-lg font-semibold">Lencana</h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {((tracks ?? []) as TrackRow[]).map((t) => {
+              const got = earned.has(t.id);
+              return (
+                <li
+                  key={t.id}
+                  className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm ${got ? "border-accent-warm/50 text-zinc-50" : "border-dashed border-zinc-800 text-zinc-500"}`}
+                >
+                  <Award aria-hidden className={`size-4 ${got ? "text-accent-warm" : ""}`} />
+                  {t.title}
+                  <span className="sr-only">{got ? ", didapat" : ", belum"}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-xs text-zinc-500">Lencana didapat setelah lulus ujian semua topik inti satu roadmap.</p>
+        </div>
+        <div className="sm:text-right">
+          <h2 className="text-lg font-semibold">Streak terbaik</h2>
+          <p className="mt-2 text-3xl font-semibold text-accent-warm tabular-nums">{streak?.best_days ?? 0} <span className="text-base font-normal text-zinc-400">hari</span></p>
+        </div>
       </section>
 
       <section aria-labelledby="ujian" className="mt-12">

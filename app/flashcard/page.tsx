@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import PageBackdrop from "@/components/PageBackdrop";
 import FlashcardDeck, { type Card } from "@/components/flashcard/FlashcardDeck";
+import AccountNav from "@/components/dashboard/AccountNav";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +21,10 @@ export default function FlashcardPage() {
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
-          <h1 className="mb-8 text-3xl font-semibold tracking-tight">Flashcard</h1>
+          <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
+            <h1 className="text-3xl font-semibold tracking-tight">Flashcard</h1>
+            <AccountNav current="/flashcard" />
+          </div>
           <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
             <Queue />
           </Suspense>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AccountLink from "@/components/auth/AccountLink";
 import Logo from "@/components/brand/Logo";
 
 export default function SiteHeader() {
@@ -12,12 +13,7 @@ export default function SiteHeader() {
           <Link href="/roadmap" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Roadmap</Link>
           <Link href="/#materi" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Materi</Link>
           <Link href="/#template" className="hidden min-h-11 items-center rounded-lg px-3 text-zinc-400 hover:text-zinc-50 sm:flex">Template</Link>
-          <Link
-            href="/masuk"
-            className="ml-2 flex min-h-11 items-center rounded-lg border border-zinc-800/80 px-4 text-zinc-50 hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            Masuk
-          </Link>
+          <AccountLink />
         </nav>
       </div>
     </header>
