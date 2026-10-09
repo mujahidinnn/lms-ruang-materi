@@ -3,11 +3,14 @@ import { layout, openPrerequisites, type RoadmapNode } from "./roadmap";
 
 const node = (id: string, position = 0): RoadmapNode => ({
   id,
+  topicId: id,
   slug: id,
   title: id,
   summary: "",
   optional: false,
   position,
+  practiceCount: 0,
+  cardCount: 0,
 });
 
 describe("layout", () => {

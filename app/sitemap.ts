@@ -26,6 +26,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.9,
     })),
+    ...presentations
+      .filter((presentation) => presentation.practiceCount > 0)
+      .map((presentation) => ({
+        url: `${SITE_URL}/latihan/${presentation.slug}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+      })),
     ...presentations.map((presentation) => ({
       url: `${SITE_URL}/belajar/${presentation.slug}`,
       changeFrequency: "yearly" as const,

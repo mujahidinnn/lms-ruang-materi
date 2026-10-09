@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(44);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -23,6 +23,12 @@ insert into public.exams (id, topic_id, status, question_count) values
 insert into public.exam_questions (exam_id, type, prompt, options, answer, explanation, status) values
   ('20000000-0000-0000-0000-000000000001', 'benar_salah', 'Git itu VCS?', '{Benar,Salah}', 0, 'Ya.', 'published'),
   ('20000000-0000-0000-0000-000000000001', 'benar_salah', 'Commit itu snapshot?', '{Benar,Salah}', 0, 'Ya.', 'published');
+insert into public.flashcards (id, topic_id, front, back, position, status)
+select ('50000000-0000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid,
+  '10000000-0000-0000-0000-000000000001', 'depan ' || i, 'belakang ' || i, i, 'published'
+from generate_series(1, 21) i;
+insert into public.progress (user_id, topic_id, state) values
+  ('00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'sedang');
 insert into public.tracks (id, slug, title) values
   ('30000000-0000-0000-0000-000000000001', 'uji-track-a', 'A'),
   ('30000000-0000-0000-0000-000000000002', 'uji-track-b', 'B');
@@ -185,6 +191,78 @@ select throws_ok(
   '42501',
   null,
   'learner cannot publish a track'
+);
+
+select is_empty(
+  $$ select 1 from public.progress $$,
+  'learner cannot read another learner''s progress'
+);
+
+select throws_ok(
+  $$ insert into public.flashcard_reviews (user_id, flashcard_id, box, due_on, reviewed_at, added_on)
+     values (auth.uid(), '50000000-0000-0000-0000-000000000001', 5, current_date + 99, now(), current_date) $$,
+  '42501',
+  null,
+  'learner cannot write flashcard_reviews directly'
+);
+
+select throws_ok(
+  $$ select public.review_flashcard('50000000-0000-0000-0000-000000000001', 3) $$,
+  'P0001',
+  'Buka topiknya di Belajar dulu',
+  'new cards need the topic opened in Belajar'
+);
+
+select throws_ok(
+  $$ insert into public.progress (topic_id, state) values ('10000000-0000-0000-0000-000000000001', 'selesai') $$,
+  '42501',
+  'Topik ini selesai lewat ujian',
+  'learner cannot mark a topic with an exam selesai'
+);
+
+select lives_ok(
+  $$ insert into public.progress (topic_id) values ('10000000-0000-0000-0000-000000000001') $$,
+  'learner opens a topic'
+);
+
+select is(
+  (select row(box, due_on - public.learner_today()) from public.review_flashcard('50000000-0000-0000-0000-000000000001', 3)),
+  row(2, 2),
+  'Bisa on a new card: box 2, due in 2 days'
+);
+
+select is(
+  (select row(box, due_on - public.learner_today()) from public.review_flashcard('50000000-0000-0000-0000-000000000001', 3)),
+  row(3, 4),
+  'Bisa again: box 3, due in 4 days'
+);
+
+select is(
+  (select row(box, due_on - public.learner_today()) from public.review_flashcard('50000000-0000-0000-0000-000000000001', 1)),
+  row(1, 1),
+  'Lupa: back to box 1, due tomorrow'
+);
+
+select lives_ok(
+  $$ select public.review_flashcard(('50000000-0000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid, 2)
+     from generate_series(2, 20) i $$,
+  'learner adds 20 new cards in a day'
+);
+
+select throws_ok(
+  $$ select public.review_flashcard('50000000-0000-0000-0000-000000000021', 2) $$,
+  'P0001',
+  'Sudah 20 kartu baru hari ini, lanjut besok',
+  'the 21st new card in a day is refused'
+);
+
+insert into public.practice_sessions (topic_id, correct, total, finished_at)
+values ('10000000-0000-0000-0000-000000000001', 3, 5, '2000-01-01');
+
+select is(
+  (select finished_at from public.practice_sessions where user_id = auth.uid()),
+  now(),
+  'practice finished_at is stamped by the database'
 );
 
 reset role;

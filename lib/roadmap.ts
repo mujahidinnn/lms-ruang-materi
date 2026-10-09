@@ -2,11 +2,14 @@
 
 export type RoadmapNode = {
   id: string;
+  topicId: string;
   slug: string;
   title: string;
   summary: string;
   optional: boolean;
   position: number;
+  practiceCount: number;
+  cardCount: number;
 };
 
 export type RoadmapEdge = { from: string; to: string };

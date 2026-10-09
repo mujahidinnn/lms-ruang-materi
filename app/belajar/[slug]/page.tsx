@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import PresentationViewer from "@/components/PresentationViewer";
+import MarkOpened from "@/components/belajar/MarkOpened";
+import { primaryButton } from "@/components/ui/styles";
 import { getTopic, getTopics } from "@/lib/content";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
@@ -63,7 +66,8 @@ export default async function PresentationPage(
   return (
     <main>
       <PresentationViewer presentation={presentation} />
-      {(presentation.summary || presentation.tips.length > 0) && (
+      <MarkOpened topicId={presentation.id} />
+      {(presentation.summary || presentation.tips.length > 0 || presentation.practiceCount > 0) && (
         <section aria-label="Ringkasan dan tips" className="border-t border-zinc-800/80 px-6 py-14 sm:px-10">
           <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-[3fr_2fr]">
             {presentation.summary && (
@@ -85,6 +89,18 @@ export default async function PresentationPage(
               </div>
             )}
           </div>
+          {(presentation.practiceCount > 0 || presentation.cardCount > 0) && (
+            <div className="mx-auto mt-12 flex max-w-5xl flex-wrap items-center justify-end gap-4">
+              {presentation.cardCount > 0 && (
+                <Link href={`/flashcard/${slug}`} className="min-h-11 content-center text-zinc-400 hover:text-zinc-50">
+                  Flashcard {presentation.cardCount} kartu
+                </Link>
+              )}
+              {presentation.practiceCount > 0 && (
+                <Link href={`/latihan/${slug}`} className={primaryButton}>Mulai latihan</Link>
+              )}
+            </div>
+          )}
         </section>
       )}
     </main>

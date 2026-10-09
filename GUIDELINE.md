@@ -348,11 +348,11 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
 | Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | reworked with logo and topics; switch to tracks in phase 9 |
-| Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5) |
+| Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
 | Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/`, move to `/template` |
-| Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states wait for `progress`, Latihan/Flashcard/Ujian links for their phases |
-| Latihan | `app/latihan/[slug]` | `practice_questions` | `components/quiz/` | planned |
-| Flashcard | `app/flashcard` | `flashcards`, `flashcard_reviews` | `components/flashcard/` | planned |
+| Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); Ujian link in phase 7 |
+| Latihan | `app/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" waits for phase 7 |
+| Flashcard | `app/flashcard` | `flashcards`, `flashcard_reviews`, `flashcard_queue()` | `components/flashcard/` | built (phase 6) |
 | Ujian | `app/ujian/[slug]` | `exams`, `exam_questions`, `exam_attempts` | `components/quiz/` | planned |
 | Tips | inside `app/belajar/[slug]` | `tips` | - | built (phase 5, `/tips` page deferred) |
 | Nilai, Dasbor | `app/nilai`, `app/dasbor` | `progress`, `exam_attempts` | `components/dashboard/` | planned |

@@ -6,25 +6,29 @@ import { slideUrl, type Presentation } from "@/lib/slides";
 // Cached reads of published content. RLS on the anon client hides drafts
 // and exam_questions; publishing calls updateTag('content').
 
-export type Topic = Presentation & { summary: string; tips: string[] };
+export type Topic = Presentation & { id: string; summary: string; tips: string[]; practiceCount: number; cardCount: number };
 
 type Row = {
+  id: string;
   slug: string;
   title: string;
   description: string;
   summary: string;
   slides: { index: number; path: string; width: number; height: number }[];
   tips: { body: string; position: number }[];
+  practice_questions: { count: number }[];
+  flashcards: { count: number }[];
 };
 
 const SELECT =
-  "slug, title, description, summary, slides(index, path, width, height), tips(body, position)";
+  "id, slug, title, description, summary, slides(index, path, width, height), tips(body, position), practice_questions(count), flashcards(count)";
 
 function toTopic(row: Row): Topic {
   const slides = row.slides
     .toSorted((a, b) => a.index - b.index)
     .map(({ path, ...s }) => ({ ...s, src: slideUrl(path) }));
   return {
+    id: row.id,
     slug: row.slug,
     title: row.title,
     description: row.description,
@@ -32,6 +36,8 @@ function toTopic(row: Row): Topic {
     slideCount: slides.length,
     slides,
     tips: row.tips.toSorted((a, b) => a.position - b.position).map((t) => t.body),
+    practiceCount: row.practice_questions[0]?.count ?? 0,
+    cardCount: row.flashcards[0]?.count ?? 0,
   };
 }
 
@@ -66,22 +72,25 @@ type TrackRow = {
     id: string;
     optional: boolean;
     position: number;
-    topics: { slug: string; title: string; summary: string };
+    topics: { id: string; slug: string; title: string; summary: string; practice_questions: { count: number }[]; flashcards: { count: number }[] };
     track_edges: { to_node_id: string }[];
   }[];
 };
 
 const TRACK_SELECT =
-  "slug, title, description, track_nodes(id, optional, position, topics(slug, title, summary), track_edges!track_edges_from_node_id_fkey(to_node_id))";
+  "slug, title, description, track_nodes(id, optional, position, topics(id, slug, title, summary, practice_questions(count), flashcards(count)), track_edges!track_edges_from_node_id_fkey(to_node_id))";
 
 function toTrack(row: TrackRow): Track {
   const nodes = row.track_nodes.map((n) => ({
     id: n.id,
+    topicId: n.topics.id,
     slug: n.topics.slug,
     title: n.topics.title,
     summary: n.topics.summary,
     optional: n.optional,
     position: n.position,
+    practiceCount: n.topics.practice_questions[0]?.count ?? 0,
+    cardCount: n.topics.flashcards[0]?.count ?? 0,
   }));
   // RLS already hides edges to unpublished nodes; this only guards a stale read.
   const ids = new Set(nodes.map((n) => n.id));
@@ -113,4 +122,49 @@ export async function getTrack(slug: string): Promise<Track | null> {
   if (error) throw new Error(`getTrack: ${error.message}`);
   const track = data ? toTrack(data as unknown as TrackRow) : null;
   return track && track.nodes.length > 0 ? track : null;
+}
+
+export type Question = {
+  id: string;
+  type: "pilihan_ganda" | "benar_salah" | "baca_kode";
+  prompt: string;
+  code: string | null;
+  options: string[];
+  answer: number;
+  explanation: string;
+};
+export type Flashcard = { id: string; front: string; back: string };
+type TopicRef = { id: string; slug: string; title: string };
+
+// Practice keys are public on purpose: latihan gives instant feedback.
+export async function getPractice(slug: string): Promise<(TopicRef & { questions: Question[] }) | null> {
+  "use cache";
+  cacheTag("content");
+
+  const { data, error } = await publicClient
+    .from("topics")
+    .select("id, slug, title, practice_questions(id, type, prompt, code, options, answer, explanation)")
+    .eq("slug", slug)
+    .order("created_at", { referencedTable: "practice_questions" })
+    .maybeSingle();
+  if (error) throw new Error(`getPractice: ${error.message}`);
+  if (!data) return null;
+  const { practice_questions: questions, ...topic } = data as TopicRef & { practice_questions: Question[] };
+  return { ...topic, questions };
+}
+
+export async function getDeck(slug: string): Promise<(TopicRef & { cards: Flashcard[] }) | null> {
+  "use cache";
+  cacheTag("content");
+
+  const { data, error } = await publicClient
+    .from("topics")
+    .select("id, slug, title, flashcards(id, front, back)")
+    .eq("slug", slug)
+    .order("position", { referencedTable: "flashcards" })
+    .maybeSingle();
+  if (error) throw new Error(`getDeck: ${error.message}`);
+  if (!data) return null;
+  const { flashcards: cards, ...topic } = data as TopicRef & { flashcards: Flashcard[] };
+  return { ...topic, cards };
 }
