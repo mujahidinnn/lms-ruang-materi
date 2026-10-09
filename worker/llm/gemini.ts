@@ -41,7 +41,11 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
         responseMimeType: "application/json",
         responseJsonSchema: geminiSchema(draftJsonSchema),
         maxOutputTokens: 32768,
-        httpOptions: { timeout: 15 * 60 * 1000 },
+        // Free tier often answers 503 (busy) or 429; back off for up to ~4 min.
+        httpOptions: {
+          timeout: 15 * 60 * 1000,
+          retryOptions: { attempts: 5, initialDelay: 15, maxDelay: 120, httpStatusCodes: [429, 500, 503] },
+        },
       },
     });
 
