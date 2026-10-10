@@ -15,7 +15,7 @@ import {
   PanelRight,
   PanelTop,
 } from "lucide-react";
-import { thumbSrc, type Presentation } from "@/lib/slides";
+import { mediumSrc, thumbSrc, type Presentation } from "@/lib/slides";
 
 type NavPosition = "bottom" | "top" | "left" | "right";
 
@@ -106,13 +106,17 @@ export default function PresentationViewer({
     });
   }, [index]);
 
-  // Warm the cache for the neighbouring slides so navigation doesn't wait on
-  // a network fetch of a 3200px image.
+  // Warm the cache for the neighbouring slides, picking the same file from
+  // the srcset as the stage will, so navigation doesn't wait on the network.
   useEffect(() => {
     for (const neighbour of [slides[index + 1], slides[index - 1]]) {
-      if (neighbour) new window.Image().src = neighbour.src;
+      if (!neighbour) continue;
+      const img = new window.Image();
+      img.sizes = isFullscreen ? "100vw" : "(min-width: 1280px) 1152px, 100vw";
+      img.srcset = `${mediumSrc(neighbour)} 1600w, ${neighbour.src} ${neighbour.width}w`;
+      img.src = mediumSrc(neighbour);
     }
-  }, [index, slides]);
+  }, [index, slides, isFullscreen]);
 
   useEffect(() => {
     function onFullscreenChange() {
@@ -267,14 +271,17 @@ export default function PresentationViewer({
           isFullscreen ? "" : "rounded-lg"
         }`}
       >
-        <Image
+        {/* A plain img: images are unoptimized (pre-encoded AVIF), so next/image
+            would emit no srcset and every screen would load the 3200px file. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           key={slide.src}
-          src={slide.src}
-          alt={`${title}, slide ${index + 1} dari ${slides.length}`}
-          fill
-          fetchPriority="high"
+          src={mediumSrc(slide)}
+          srcSet={`${mediumSrc(slide)} 1600w, ${slide.src} ${slide.width}w`}
           sizes={isFullscreen ? "100vw" : "(min-width: 1280px) 1152px, 100vw"}
-          className="object-contain"
+          alt={`${title}, slide ${index + 1} dari ${slides.length}`}
+          fetchPriority="high"
+          className="absolute inset-0 size-full object-contain"
         />
       </div>
 

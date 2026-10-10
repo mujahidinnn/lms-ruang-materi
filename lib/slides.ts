@@ -25,6 +25,12 @@ export function thumbSrc(slide: Slide): string {
   return slide.src.replace(/slide-(\d+)\.avif$/, "thumb-$1.avif");
 }
 
+// The 1600px variant beside every slide (worker, or
+// scripts/backfill-slide-variants.mjs for decks rendered before it).
+export function mediumSrc(slide: Slide): string {
+  return slide.src.replace(/\.avif$/, "-1600.avif");
+}
+
 export function coverSrc(presentation: Presentation): string {
   return presentation.slides[0].src.replace(/slide-\d+\.avif$/, "cover.avif");
 }
