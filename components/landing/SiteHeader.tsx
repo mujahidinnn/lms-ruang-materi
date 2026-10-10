@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import AccountLink from "@/components/auth/AccountLink";
 import Logo from "@/components/brand/Logo";
 import ThemeButton from "@/components/ThemeButton";
@@ -29,7 +30,11 @@ export default function SiteHeader() {
           <AccountLink />
         </div>
       </div>
-      <MobileNav />
+      {/* usePathname() is request data; outside Suspense it breaks prerendering
+          of dynamic routes under cacheComponents. */}
+      <Suspense>
+        <MobileNav />
+      </Suspense>
     </header>
   );
 }
