@@ -54,3 +54,10 @@ export async function hapusAkun(_: State, form: FormData): Promise<State> {
   await db.auth.signOut();
   redirect("/");
 }
+
+// One click from the Dasbor notice; the same consent as the Profil checkbox.
+export async function setujuiWali() {
+  const user = await requireUser("/dasbor");
+  await (await createClient()).from("profiles").update({ guardian_consent: true }).eq("user_id", user.id);
+  revalidatePath("/dasbor");
+}

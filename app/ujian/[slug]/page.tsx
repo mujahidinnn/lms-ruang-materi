@@ -107,7 +107,8 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
         <section aria-labelledby="riwayat" className="mt-12">
           <h2 id="riwayat" className="text-lg font-semibold">Riwayat</h2>
           <ol className="mt-3 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
-            {attempts!.filter((a) => a.submitted_at).map((a, n) => (
+            {/* Numbered over every attempt, timed-out ones included, as the set counts them. */}
+            {attempts!.map((a, n) => ({ a, n })).filter(({ a }) => a.submitted_at).map(({ a, n }) => (
               <li key={a.id}>
                 <Link href={`/ujian/${slug}/${a.id}`} className="flex min-h-12 items-center gap-4 py-2 hover:text-accent">
                   <span className="flex-1">Percobaan {n + 1}</span>

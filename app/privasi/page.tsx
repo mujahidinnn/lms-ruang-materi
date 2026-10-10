@@ -9,10 +9,11 @@ export const metadata: Metadata = {
 };
 
 const processors = [
-  ["Supabase", "akun, progres belajar, dan materi", "Singapura (ap-southeast-1)"],
+  ["Supabase", "akun, progres belajar, dan materi", "Korea Selatan (ap-northeast-2)"],
   ["Vercel", "hosting situs, tanpa cookie pelacak", "global, data diproses di server terdekat"],
   ["GitHub", "memproses file materi yang diunggah admin", "Amerika Serikat"],
   ["Anthropic, OpenAI, Google", "membuat draf materi dari slide yang diunggah admin, tidak pernah data pelajar", "Amerika Serikat"],
+  ["OpenRouter", "meneruskan slide yang diunggah admin ke model AI pilihan admin untuk membuat draf, tidak pernah data pelajar", "Amerika Serikat"],
 ];
 
 export default function PrivasiPage() {

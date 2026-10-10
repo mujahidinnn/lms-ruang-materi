@@ -33,17 +33,17 @@ export default function NilaiPage() {
   );
 }
 
-type AttemptRow = { score: number | null; passed: boolean | null; exam_id: string; exams: { max_attempts: number; topics: { slug: string; title: string } } };
+type AttemptRow = { score: number | null; passed: boolean | null; exam_id: string; exams: { max_attempts: number; topics: { slug: string; title: string } | null } | null };
 type TrackRow = { id: string; slug: string; title: string };
 
 async function Report() {
   const user = await requireUser("/nilai");
   const db = await createClient();
   const [{ data: attempts }, { data: tracks }, { data: levels }, { data: badges }, { data: streak }] = await Promise.all([
-    db.from("exam_attempts").select("score, passed, exam_id, exams(max_attempts, topics(slug, title))").order("created_at"),
+    db.from("exam_attempts").select("score, passed, exam_id, exams(max_attempts, topics(slug, title))").eq("user_id", user.id).order("created_at"),
     db.from("tracks").select("id, slug, title").order("created_at"),
     db.from("track_levels").select("slug, core_passed, core_total"),
-    db.from("badges").select("track_id"),
+    db.from("badges").select("track_id").eq("user_id", user.id),
     db.from("learning_streaks").select("best_days").eq("user_id", user.id).maybeSingle(),
   ]);
 
@@ -51,6 +51,8 @@ async function Report() {
   const earned = new Set((badges ?? []).map((b) => b.track_id));
   const exams = new Map<string, { slug: string; title: string; best: number | null; tries: number; max: number; passed: boolean }>();
   for (const a of (attempts ?? []) as unknown as AttemptRow[]) {
+    // Exams of unpublished topics come back as null embeds.
+    if (!a.exams?.topics) continue;
     const e = exams.get(a.exam_id) ?? { ...a.exams.topics, best: null, tries: 0, max: a.exams.max_attempts, passed: false };
     e.tries += 1;
     e.passed ||= !!a.passed;

@@ -346,7 +346,7 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
-| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/`, `PageBackdrop` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
+| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
 | Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
 | Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
 | Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
@@ -391,7 +391,7 @@ prerequisites are open.
 | 5 | Roadmap + Tips | `/admin/roadmap`, `/roadmap`, tips inside Belajar, `lib/roadmap.ts` | a track renders as graph and mobile list, cycles and cross-track edges rejected |
 | 6 | Latihan + Flashcard | `/latihan`, `practice_sessions`, `/flashcard`, `lib/leitner.ts`, `review_flashcard()` | practice works logged out, reviews schedule correctly (tests), 20 new cards a day max |
 | 7 | Ujian + Nilai | exam functions, `/ujian`, `/admin/ujian`, `/nilai` | keys never reach a student before a pass or the last attempt, late, foreign and double submits rejected, parallel starts cannot exceed `max_attempts` (smoke test) |
-| 8 | Dasbor + leveling | `/dasbor`, `/profil` with hapus akun and data export, level and streak views, lencana | level changes only after a passed exam; deleting an account leaves no learner rows or Storage objects and keeps content |
+| 8 | Dasbor + leveling | `/dasbor`, `/profil` with hapus akun and data export, level and streak views, lencana | level changes only after a passed exam; deleting an account leaves no learner rows and keeps content |
 | 9 | Polish + PWA | landing reworked to tracks, `/template`, illustrations, empty states, manifest, `sw.js`, `/offline` | Screen Sketches matched on mobile and desktop; installable, a visited deck opens offline |
 
 ## Content Pipeline
@@ -664,21 +664,21 @@ has `id uuid`, `created_at`, and content tables have `status`
 
 | Table | Key columns | Notes |
 | --- | --- | --- |
-| `profiles` | `user_id`, `display_name`, `role`, `timezone`, `guardian_consent` | 1:1 with `auth.users` |
+| `profiles` | `user_id`, `display_name`, `role`, `timezone`, `timezone_changed_at`, `guardian_consent` | 1:1 with `auth.users`; timezone changes once a day |
 | `topics` | `slug`, `title`, `description`, `summary`, `draft_summary`, `status` | one per deck; publish moves `draft_summary` into `summary` |
 | `slides` | `topic_id`, `index`, `path`, `width`, `height` | files in Storage `slides/<slug>/<job_id>/` |
 | `tips` | `topic_id`, `body`, `position` | |
-| `flashcards` | `topic_id`, `front`, `back`, `position` | |
+| `flashcards` | `topic_id`, `front`, `back`, `position` | republishing moves a learner's review to the new card with the same front |
 | `practice_questions` | `topic_id`, `type`, `prompt`, `code`, `options`, `answer`, `explanation` | public when published |
 | `exams` | `topic_id`, `duration_minutes`, `max_attempts`, `pass_score`, `question_count` | defaults 30, 3, 70, 20; bank needs 2x `question_count` |
-| `exam_questions` | `exam_id`, same shape as practice | admin only |
+| `exam_questions` | `exam_id`, same shape as practice | admin only; a question an attempt used is `archived`, never deleted |
 | `tracks` | `slug`, `title`, `description`, `status` | |
 | `track_nodes` | `track_id`, `topic_id`, `optional`, `position` | |
 | `track_edges` | `from_node_id`, `to_node_id` | prerequisites, no cycles |
-| `progress` | `user_id`, `topic_id`, `state`, `last_slide`, `updated_at` | `state`: belum, sedang, selesai, dilewati |
+| `progress` | `user_id`, `topic_id`, `state`, `last_slide`, `updated_at` | `state`: belum, sedang, selesai, dilewati; written through `touch_progress()`, learners update only `state` and `last_slide` |
 | `flashcard_reviews` | `user_id`, `flashcard_id`, `box`, `due_on`, `reviewed_at`, `added_on` | Leitner box 1 to 5, written by `review_flashcard()` |
 | `practice_sessions` | `user_id`, `topic_id`, `correct`, `total`, `finished_at` | `finished_at` stamped by the database |
-| `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `started_at`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |
+| `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `option_orders`, `started_at`, `deadline`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |
 | `badges` | `user_id`, `track_id`, `granted_at` | written by functions only |
 | `import_jobs` | `created_by`, `file_path`, `original_name`, `slug`, `provider`, `model`, `slide_count`, `status`, `error`, `input_tokens`, `output_tokens`, `prerequisites` | `status`: queued, rendering, drafting, done, failed |
 
@@ -768,12 +768,13 @@ UI. The UI only hides actions the database would refuse.
   - Role changes need the service role. A smoke case proves a learner's role
     update fails.
 - **Hapus akun** is `delete_own_account()`, `security definer`, scoped to
-  `auth.uid()`. It deletes the auth user (learner tables cascade) and the
-  user's Storage objects.
+  `auth.uid()`. It deletes the auth user (learner tables cascade). Learners
+  cannot upload, so they own no Storage objects.
 - Every rule that protects data gets a case in
-  `supabase/tests/security_smoke.sql`. There is no local stack: push with
-  `supabase db push --db-url` and run `supabase test db --db-url` against
-  the remote project (the test rolls back, it leaves no rows).
+  `supabase/tests/security_smoke.sql`. Run it on the local stack
+  (`npx supabase start`, `db reset`, `test db`), then `npm run db:push`.
+  The test rolls back, so it can also run against the remote project with
+  `supabase test db --db-url`.
 - A dev admin for testing lives in the remote project; its login is
   `DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD` in `.env.local`.
   A dev student (role `student`) sits beside it as `DEV_STUDENT_EMAIL` /
@@ -846,6 +847,8 @@ UI. The UI only hides actions the database would refuse.
 - **Ekspor data** in `/profil` downloads the learner's own rows as JSON.
 - **Minors**: learners under 18 confirm a parent or guardian agrees
   (`profiles.guardian_consent`) before their progress is saved.
+  `require_consent()` refuses every learner insert until then; Dasbor asks
+  once with "Saya konfirmasi".
 - **Breach**: if learner data leaks, affected users and the authority are
   told within 3x24 jam. The steps live in `/privasi` and this file.
 - **Learner data never goes to an LLM.** Only admin-uploaded decks are sent.

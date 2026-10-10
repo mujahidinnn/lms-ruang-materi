@@ -7,6 +7,7 @@ import Room from "@/components/illustrations/Room";
 import TrackProgress from "@/components/dashboard/TrackProgress";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { primaryButton } from "@/components/ui/styles";
+import { setujuiWali } from "@/app/profil/actions";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,23 +36,44 @@ export default function DasborPage() {
   );
 }
 
-type Recent = { state: string; topics: { id: string; slug: string; title: string } };
-type ExamRow = { id: string; topics: { slug: string; title: string } };
+type Recent = { state: string; last_slide: number; topics: { id: string; slug: string; title: string; slides: { count: number }[] } | null };
+type ExamRow = { id: string; topics: { slug: string; title: string } | null };
 type TrackRow = { slug: string; title: string; track_nodes: { topic_id: string }[] };
 
 async function Home() {
   const user = await requireUser("/dasbor");
   const db = await createClient();
+  const { data: me } = await db.from("profiles").select("guardian_consent").eq("user_id", user.id).single();
+  const consent = user.role === "admin" || !!me?.guardian_consent;
+  return (
+    <>
+      {!consent && (
+        <form action={setujuiWali} className="mt-8 flex flex-col gap-4 rounded-2xl border border-accent-warm/40 p-6 sm:flex-row sm:items-center">
+          <p className="flex-1 text-sm text-zinc-300">
+            Sebelum progres belajarmu disimpan, konfirmasi dulu: kamu berusia 18 tahun ke atas, atau orang tua atau wali sudah setuju kamu memakai Ruang Materi.
+          </p>
+          <button className={primaryButton}>Saya konfirmasi</button>
+        </form>
+      )}
+      <Overview userId={user.id} />
+    </>
+  );
+}
+
+async function Overview({ userId }: { userId: string }) {
+  const db = await createClient();
+  const user = { id: userId };
   const [{ data: progress }, { data: streak }, { data: queue }, { data: levels }, { data: tracks }, { data: passed }] = await Promise.all([
-    db.from("progress").select("state, topics(id, slug, title)").order("updated_at", { ascending: false }),
+    db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count))").eq("user_id", user.id).order("updated_at", { ascending: false }),
     db.from("learning_streaks").select("current_days").eq("user_id", user.id).maybeSingle(),
     db.rpc("flashcard_queue"),
     db.from("track_levels").select("slug, core_passed, core_total"),
     db.from("tracks").select("slug, title, track_nodes(topic_id)").order("created_at"),
-    db.from("exam_attempts").select("exam_id").eq("passed", true),
+    db.from("exam_attempts").select("exam_id").eq("user_id", user.id).eq("passed", true),
   ]);
 
-  const rows = (progress ?? []) as unknown as Recent[];
+  // A topic pulled from publication comes back as a null embed; skip it.
+  const rows = ((progress ?? []) as unknown as Recent[]).filter((r): r is Recent & { topics: NonNullable<Recent["topics"]> } => !!r.topics);
   if (rows.length === 0) {
     return (
       <div className="mt-12 flex flex-col gap-6 rounded-2xl border border-zinc-800/80 p-8 sm:flex-row sm:items-center">
@@ -68,6 +90,7 @@ async function Home() {
   }
 
   const latest = rows[0].topics;
+  const slideTotal = latest.slides[0]?.count ?? 0;
   const days = streak?.current_days ?? 0;
   const due = (queue ?? []) as { box: number | null }[];
   const open = rows.filter((r) => r.state === "sedang").map((r) => r.topics.id);
@@ -75,7 +98,7 @@ async function Home() {
   const { data: exams } = open.length
     ? await db.from("exams").select("id, topics(slug, title)").in("topic_id", open)
     : { data: [] };
-  const openExams = ((exams ?? []) as unknown as ExamRow[]).filter((e) => !passedIds.has(e.id));
+  const openExams = ((exams ?? []) as unknown as ExamRow[]).filter((e): e is ExamRow & { topics: NonNullable<ExamRow["topics"]> } => !!e.topics && !passedIds.has(e.id));
   const touched = new Set(rows.map((r) => r.topics.id));
   const myTracks = ((tracks ?? []) as TrackRow[]).filter((t) => t.track_nodes.some((n) => touched.has(n.topic_id)));
   const levelBySlug = new Map((levels ?? []).map((l) => [l.slug, l]));
@@ -86,6 +109,9 @@ async function Home() {
         <div>
           <h2 id="lanjut" className="text-sm text-zinc-400">Lanjutkan belajar</h2>
           <p className="mt-1 text-2xl font-semibold tracking-tight">{latest.title}</p>
+          {slideTotal > 0 && (
+            <p className="mt-1 text-sm text-zinc-400 tabular-nums">Slide {Math.min(rows[0].last_slide + 1, slideTotal)} dari {slideTotal}</p>
+          )}
           <p className={`mt-2 text-sm ${days ? "text-accent-warm" : "text-zinc-400"}`}>
             {days ? `Streak ${days} hari` : "Mulai lagi hari ini"}
           </p>

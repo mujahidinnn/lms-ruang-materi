@@ -25,6 +25,12 @@ export function timedOut(deadline: string, now = Date.now()): boolean {
   return new Date(deadline).getTime() + GRACE_MS < now;
 }
 
+// Seconds to the deadline by the server's clock. The runner counts down from
+// this, so a phone whose clock is off still submits on time.
+export function secondsLeft(deadline: string, now = Date.now()): number {
+  return Math.max(0, Math.round((new Date(deadline).getTime() - now) / 1000));
+}
+
 export function standing(attempts: AttemptRow[], maxAttempts: number, now: Date): ExamStanding {
   const open = attempts.find((a) => !a.submitted_at && new Date(a.deadline).getTime() + GRACE_MS > now.getTime());
   const scores = attempts.flatMap((a) => (a.score === null ? [] : [a.score]));

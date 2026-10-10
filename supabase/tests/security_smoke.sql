@@ -1,5 +1,5 @@
 begin;
-select plan(71);
+select plan(80);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -27,6 +27,9 @@ insert into public.flashcards (id, topic_id, front, back, position, status)
 select ('50000000-0000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid,
   '10000000-0000-0000-0000-000000000001', 'depan ' || i, 'belakang ' || i, i, 'published'
 from generate_series(1, 21) i;
+-- Both learners confirmed guardian consent; require_consent is tested below.
+update public.profiles set guardian_consent = true
+where user_id in ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002');
 insert into public.progress (user_id, topic_id, state) values
   ('00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'sedang');
 insert into public.tracks (id, slug, title) values
@@ -559,6 +562,89 @@ select is(
   (select count(*)::int from public.topics where slug like 'uji-%'),
   2,
   'deleting an account keeps the content'
+);
+
+-- Review fixes (2026-10-10).
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-000000000004', 'baru@contoh.id');
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000004", "role": "authenticated"}';
+
+select throws_ok(
+  $$ select public.touch_progress('10000000-0000-0000-0000-000000000001') $$,
+  'P0001',
+  'Konfirmasi persetujuan dulu di halaman Profil',
+  'no progress is saved before guardian consent'
+);
+
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+
+select lives_ok(
+  $$ select public.touch_progress('10000000-0000-0000-0000-000000000001', null, 5) $$,
+  'touch_progress saves the last slide'
+);
+
+select is(
+  (select last_slide from public.progress where user_id = auth.uid() and topic_id = '10000000-0000-0000-0000-000000000001'),
+  5,
+  'last slide is stored'
+);
+
+select throws_ok(
+  $$ update public.progress set topic_id = '10000000-0000-0000-0000-000000000002' where user_id = auth.uid() $$,
+  '42501',
+  null,
+  'a progress row cannot be moved to another topic'
+);
+
+select lives_ok(
+  $$ update public.profiles set timezone = 'Asia/Makassar' where user_id = auth.uid() $$,
+  'first timezone change of the day works'
+);
+
+select throws_ok(
+  $$ update public.profiles set timezone = 'Pacific/Kiritimati' where user_id = auth.uid() $$,
+  'P0001',
+  'Zona waktu hanya bisa diganti sekali sehari',
+  'a second timezone change the same day is refused'
+);
+
+reset role;
+set constraints all immediate;
+
+-- A third question keeps the 2x bank when one used question is archived.
+insert into public.exam_questions (exam_id, type, prompt, options, answer, explanation, status) values
+  ('20000000-0000-0000-0000-000000000001', 'benar_salah', 'Branch itu pointer?', '{Benar,Salah}', 0, 'Ya.', 'published');
+
+delete from public.exam_questions
+where id = (select question_ids[1] from public.exam_attempts where user_id = '00000000-0000-0000-0000-000000000001' limit 1);
+
+select is(
+  (select status::text from public.exam_questions
+   where id = (select question_ids[1] from public.exam_attempts where user_id = '00000000-0000-0000-0000-000000000001' limit 1)),
+  'archived',
+  'a question an attempt used is archived, not deleted'
+);
+
+select throws_ok(
+  $$ delete from public.exam_questions
+     where exam_id = '20000000-0000-0000-0000-000000000001' and status = 'published'
+       and not exists (select 1 from public.exam_attempts a where a.question_ids @> array[exam_questions.id]) $$,
+  'P0001',
+  null,
+  'deleting below the 2x bank of a published exam is refused'
+);
+
+insert into public.flashcards (id, topic_id, front, back, position, status) values
+  ('50000000-0000-0000-0000-000000000099', '10000000-0000-0000-0000-000000000001', 'Depan 1 ', 'baru', 1, 'draft');
+delete from public.flashcards where id = '50000000-0000-0000-0000-000000000001';
+
+select is(
+  (select count(*)::int from public.flashcard_reviews
+   where user_id = '00000000-0000-0000-0000-000000000001' and flashcard_id = '50000000-0000-0000-0000-000000000099'),
+  1,
+  'republished flashcards keep the learner''s Leitner box'
 );
 
 select * from finish();

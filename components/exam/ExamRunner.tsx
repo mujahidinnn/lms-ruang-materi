@@ -9,12 +9,11 @@ import { primaryButton } from "@/components/ui/styles";
 export type ExamQuestion = { id: string; prompt: string; code: string | null; options: string[] };
 type Saved = { answers: Record<string, number>; doubts: string[] };
 
-const WARN = [5 * 60, 60];
 
 // No feedback until submit. Answers autosave to localStorage per attempt,
 // leaving asks first, and the clock submits on its own at zero. The timer is
 // text; its live region speaks only the 5 and 1 minute warnings.
-export default function ExamRunner({ attemptId, deadline, questions }: { attemptId: string; deadline: string; questions: ExamQuestion[] }) {
+export default function ExamRunner({ attemptId, secondsLeft, questions }: { attemptId: string; secondsLeft: number; questions: ExamQuestion[] }) {
   const router = useRouter();
   const key = `ruang-materi:ujian:${attemptId}`;
   const [i, setI] = useState(0);
@@ -26,6 +25,9 @@ export default function ExamRunner({ attemptId, deadline, questions }: { attempt
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const sent = useRef(false);
+  const warned = useRef(0);
+  // Local deadline from the server's remaining seconds, not the device clock.
+  const [deadline] = useState(() => Date.now() + secondsLeft * 1000);
 
   const q = questions[i];
   const answered = Object.keys(answers).length;
@@ -39,10 +41,15 @@ export default function ExamRunner({ attemptId, deadline, questions }: { attempt
     }
     sent.current = true;
     setSending(true);
-    const res = await kumpulkanUjian(attemptId, answers);
+    let res;
+    try {
+      res = await kumpulkanUjian(attemptId, answers);
+    } catch {
+      res = { error: "Koneksi terputus. Jawabanmu masih tersimpan, coba kumpulkan lagi." };
+    }
     if (res.error) {
-      // An automatic submit is not retried every second; the button stays.
-      sent.current = auto;
+      // Not retried every second; the learner presses Kumpulkan again.
+      sent.current = false;
       setSending(false);
       setError(res.error);
       return;
@@ -75,10 +82,17 @@ export default function ExamRunner({ attemptId, deadline, questions }: { attempt
 
   useEffect(() => {
     const tick = () => {
-      const s = Math.max(0, Math.round((new Date(deadline).getTime() - Date.now()) / 1000));
+      const s = Math.max(0, Math.round((deadline - Date.now()) / 1000));
       setLeft(s);
-      if (WARN.includes(s)) setWarning(s === 60 ? "Sisa waktu 1 menit." : "Sisa waktu 5 menit.");
-      if (s === 0) submit(true);
+      // Thresholds, not exact seconds: a throttled tab can skip a second.
+      if (s <= 60 && warned.current < 2) {
+        warned.current = 2;
+        setWarning("Sisa waktu 1 menit.");
+      } else if (s <= 5 * 60 && warned.current < 1) {
+        warned.current = 1;
+        setWarning("Sisa waktu 5 menit.");
+      }
+      if (s === 0 && !error) submit(true);
     };
     tick();
     const t = setInterval(tick, 1000);
@@ -137,12 +151,11 @@ export default function ExamRunner({ attemptId, deadline, questions }: { attempt
         <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-900 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
       )}
 
-      <div role="radiogroup" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
+      <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
         {q.options.map((opt, n) => (
           <button
             key={n}
-            role="radio"
-            aria-checked={answers[q.id] === n}
+            aria-pressed={answers[q.id] === n}
             onClick={() => setAnswers((a) => ({ ...a, [q.id]: n }))}
             className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
               answers[q.id] === n ? "border-accent bg-accent/10" : "border-zinc-800 hover:border-zinc-600"

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -22,7 +22,7 @@ const DEVICES: { id: Device; label: string; icon: typeof Monitor }[] = [
 ];
 
 const buttonClass =
-  "inline-flex items-center gap-2 rounded-md border px-3.5 py-2 text-sm font-medium transition-colors";
+  "inline-flex min-h-11 items-center gap-2 rounded-md border px-3.5 text-sm font-medium transition-colors";
 
 function CopyCodeButton({
   file,
@@ -71,8 +71,13 @@ export default function TemplateGallery({
   const [active, setActive] = useState<TemplateEntry | null>(null);
   const [device, setDevice] = useState<Device>("desktop");
 
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Focus moves into the dialog on open and back to the opener on close.
   useEffect(() => {
     if (!active) return;
+    const opener = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function onKeyDown(event: KeyboardEvent) {
@@ -82,6 +87,7 @@ export default function TemplateGallery({
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
+      opener?.focus();
     };
   }, [active]);
 
@@ -175,7 +181,7 @@ export default function TemplateGallery({
                     onClick={() => setDevice(id)}
                     aria-label={label}
                     aria-pressed={device === id}
-                    className={`p-2 transition-colors ${
+                    className={`grid size-11 place-items-center transition-colors ${
                       device === id
                         ? "bg-zinc-800 text-zinc-50"
                         : "text-zinc-500 hover:text-zinc-200"
@@ -208,10 +214,11 @@ export default function TemplateGallery({
                 className={`${buttonClass} border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50`}
               />
               <button
+                ref={closeRef}
                 type="button"
                 onClick={() => setActive(null)}
                 aria-label="Tutup preview"
-                className="rounded-md border border-zinc-800 p-2 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-50"
+                className="grid size-11 place-items-center rounded-md border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-50"
               >
                 <X className="h-4 w-4" strokeWidth={1.75} />
               </button>

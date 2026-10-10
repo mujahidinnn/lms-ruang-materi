@@ -22,7 +22,7 @@ export function LogoMark({ className = "size-7" }: { className?: string }) {
 
 export default function Logo({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-3 text-lg font-semibold tracking-tight text-zinc-50 ${className}`}>
+    <span className={`inline-flex items-center gap-3 text-lg whitespace-nowrap font-semibold tracking-tight text-zinc-50 ${className}`}>
       <LogoMark className="size-9" />
       Ruang Materi
     </span>

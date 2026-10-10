@@ -21,6 +21,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
   const [wrong, setWrong] = useState<Question[]>([]);
   const [done, setDone] = useState(false);
   const [hint, setHint] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const q = set[i];
   const last = i === set.length - 1;
@@ -40,7 +41,8 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
     }
     setDone(true);
     const wrongCount = wrong.length;
-    const { saved } = await simpanLatihan(topicId, set.length - wrongCount, set.length);
+    const { saved, needsConsent } = await simpanLatihan(topicId, set.length - wrongCount, set.length);
+    if (needsConsent) return setConsent(true);
     try {
       if (!saved && !localStorage.getItem(HINT_KEY)) {
         localStorage.setItem(HINT_KEY, "1");
@@ -61,7 +63,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
   useEffect(() => {
     if (done) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && e.target.closest("a, button") && e.key === "Enter") return;
+      if (e.target instanceof HTMLElement && e.target.closest("a, button:not([data-option])") && e.key === "Enter") return;
       const n = Number(e.key);
       if (!checked && n >= 1 && n <= q.options.length) setPicked(n - 1);
       if (e.key !== "Enter") return;
@@ -82,6 +84,12 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
         <p className="mt-2 text-zinc-400">
           {wrong.length === 0 ? "Semua benar. Kamu siap lanjut." : "Ulangi yang salah sampai semuanya kamu pahami."}
         </p>
+        {consent && (
+          <p className="mt-4 text-sm text-zinc-400">
+            Hasil ini belum tersimpan.{" "}
+            <Link href="/profil" className="text-accent hover:underline">Konfirmasi persetujuan di Profil</Link> agar progresmu tersimpan.
+          </p>
+        )}
         {hint && (
           <p className="mt-4 text-sm text-zinc-400">
             <Link href={`/masuk?next=/latihan/${slug}`} className="text-accent hover:underline">Masuk untuk menyimpan progres</Link>
@@ -124,15 +132,15 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
         <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-900 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
       )}
 
-      <div role="radiogroup" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
+      <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
         {q.options.map((opt, n) => {
           const isAnswer = checked && n === q.answer;
           const isWrong = checked && n === picked && n !== q.answer;
           return (
             <button
               key={n}
-              role="radio"
-              aria-checked={picked === n}
+              data-option
+              aria-pressed={picked === n}
               disabled={checked}
               onClick={() => setPicked(n)}
               className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${

@@ -122,7 +122,7 @@ async function render(dir: string, folder: string): Promise<RenderedSlide[]> {
 
     for (const [name, buf] of files) {
       must(
-        await db.storage.from("slides").upload(`${folder}/${name}`, buf, { contentType: "image/avif", upsert: true }),
+        await db.storage.from("slides").upload(`${folder}/${name}`, buf, { contentType: "image/avif", upsert: true, cacheControl: "31536000" }),
         `upload ${name}`
       );
     }

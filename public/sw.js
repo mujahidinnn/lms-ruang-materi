@@ -1,6 +1,6 @@
 // Hand-written service worker. Caches an allowlist only; everything else
 // goes straight to the network. Bump VERSION on every change to this file.
-const VERSION = "rm-2";
+const VERSION = "rm-3";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE = "/offline.html";
@@ -25,19 +25,26 @@ self.addEventListener("message", (event) => {
 
 // ponytail: the static cache grows with every slide viewed; add an LRU trim
 // if storage warnings show up on phones.
-async function cacheFirst(request) {
+// Slide images are fetched with CORS, never stored opaque: an opaque entry
+// counts as several MB against the storage quota and may hide an error page.
+async function cacheFirst(request, cors = false) {
   const hit = await caches.match(request);
   if (hit) return hit;
-  const response = await fetch(request);
-  if (response.ok || response.type === "opaque") (await caches.open(STATIC)).put(request, response.clone());
+  const response = await fetch(cors ? new Request(request.url, { mode: "cors", credentials: "omit" }) : request);
+  if (response.ok) (await caches.open(STATIC)).put(request, response.clone());
   return response;
 }
 
+// A slow network falls back to the cached page after 4 seconds instead of
+// spinning; the fetch still finishes and refreshes the cache.
 async function networkFirst(request) {
-  try {
-    const response = await fetch(request);
+  const network = fetch(request).then(async (response) => {
     if (response.ok) (await caches.open(PAGES)).put(request, response.clone());
     return response;
+  });
+  const slow = new Promise((resolve) => setTimeout(resolve, 4000)).then(() => caches.match(request));
+  try {
+    return (await Promise.race([network, slow.then((hit) => hit ?? network)]));
   } catch {
     return (await caches.match(request)) ?? (await caches.match(OFFLINE));
   }
@@ -51,7 +58,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin !== self.location.origin) {
     // Slide images in Supabase Storage. Nothing else from Supabase.
-    if (url.pathname.includes("/storage/v1/object/public/slides/")) event.respondWith(cacheFirst(request));
+    if (url.pathname.includes("/storage/v1/object/public/slides/")) event.respondWith(cacheFirst(request, true));
     return;
   }
 

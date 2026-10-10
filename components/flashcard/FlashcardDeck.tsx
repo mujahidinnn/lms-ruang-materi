@@ -65,7 +65,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
       <button
         type="button"
         onClick={() => setFlipped((f) => !f)}
-        className="group relative block aspect-[3/2] w-full [perspective:1200px] focus-visible:outline-none sm:aspect-[2/1]"
+        className="group relative block aspect-[3/2] w-full [perspective:1200px] rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:aspect-[2/1]"
       >
         <span
           className={`relative block size-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}

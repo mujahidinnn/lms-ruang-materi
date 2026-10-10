@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import ExamReview, { type Review } from "@/components/exam/ExamReview";
 import ExamRunner, { type ExamQuestion } from "@/components/exam/ExamRunner";
 import { requireUser } from "@/lib/dal";
-import { timedOut } from "@/lib/exam";
+import { secondsLeft, timedOut } from "@/lib/exam";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -65,7 +65,7 @@ async function Attempt({ params }: { params: PageProps<"/ujian/[slug]/[attempt]"
   return (
     <>
       <h1 className="sr-only">Ujian</h1>
-      <ExamRunner attemptId={a.id} deadline={a.deadline} questions={questions as ExamQuestion[]} />
+      <ExamRunner attemptId={a.id} secondsLeft={secondsLeft(a.deadline)} questions={questions as ExamQuestion[]} />
     </>
   );
 }

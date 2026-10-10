@@ -48,7 +48,8 @@ export default async function Home() {
                 {tracks.length} roadmap, {topics.length} materi, {totalSlides} slide, semuanya gratis.
               </p>
             </div>
-            <HeroRoom topics={topics.slice(0, 5)} />
+            {/* Only the cover slide crosses to the client, not every slide of every deck. */}
+            <HeroRoom topics={topics.slice(0, 5).map((t) => ({ ...t, slides: t.slides.slice(0, 1) }))} />
           </section>
 
           <section id="roadmap" aria-labelledby="roadmap-judul" className="scroll-mt-6 border-t border-zinc-800/80 py-16 sm:py-20">

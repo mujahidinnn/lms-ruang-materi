@@ -62,7 +62,7 @@ async function List() {
     <ul className="mt-6 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
       {exams.map((e) => {
         const bank = e.exam_questions.filter((q) => q.status === "published").length;
-        const drafts = e.exam_questions.length - bank;
+        const drafts = e.exam_questions.filter((q) => q.status === "draft").length;
         return (
           <li key={e.id} className="py-5">
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">

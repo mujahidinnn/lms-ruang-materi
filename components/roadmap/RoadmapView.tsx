@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronRight, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, SkipForward, Undo2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { primaryButton } from "@/components/ui/styles";
@@ -14,7 +14,9 @@ import StateIcon from "./StateIcon";
 export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; edges: RoadmapEdge[] }) {
   const placed = layout(nodes, edges);
   const [selected, setSelected] = useState<string | null>(null);
-  const states = useProgress(nodes);
+  const { states, scores, signedIn, mark, error } = useProgress(nodes);
+  const core = placed.filter((n) => !n.optional);
+  const coreDone = core.filter((n) => states[n.id] === "selesai").length;
   const node = placed.find((n) => n.id === selected);
   const heading = useRef<HTMLHeadingElement>(null);
   const lastPicked = useRef<string | null>(null);
@@ -58,6 +60,14 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
       </div>
 
       <div>
+        {signedIn && core.length > 0 && (
+          <div className={`mb-5 ${node ? "lg:hidden" : ""}`}>
+            <p className="text-sm text-zinc-400 tabular-nums">{coreDone} dari {core.length} topik inti selesai</p>
+            <div aria-hidden className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${(coreDone / core.length) * 100}%` }} />
+            </div>
+          </div>
+        )}
         <ol className={`divide-y divide-zinc-800/80 border-y border-zinc-800/80 ${node ? "lg:hidden" : ""}`}>
           {placed.map((n) => {
             const state = states[n.id] ?? "belum";
@@ -104,6 +114,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                 <StateIcon state={states[node.id] ?? "belum"} />
                 {states[node.id] ?? "belum"}
                 {node.optional && <span className="text-zinc-500">, opsional</span>}
+                {scores[node.topicId] !== undefined && <span className="ml-auto tabular-nums">Nilai ujian {scores[node.topicId]}</span>}
               </p>
               {open.length > 0 && (
                 <p className="mt-4 text-sm text-zinc-400">Disarankan setelah {open.join(", ")}.</p>
@@ -132,6 +143,27 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                   )}
                 </div>
               )}
+              {signedIn && (
+                <div className="mt-4 flex flex-wrap gap-x-4 border-t border-zinc-800/80 pt-3 text-sm">
+                  {!node.hasExam && states[node.id] !== "selesai" && (
+                    <button type="button" onClick={() => mark(node, "selesai")} className="inline-flex min-h-11 items-center gap-2 text-zinc-300 hover:text-zinc-50">
+                      <Check aria-hidden className="size-4" />Tandai selesai
+                    </button>
+                  )}
+                  {states[node.id] === "dilewati" ? (
+                    <button type="button" onClick={() => mark(node, "sedang")} className="inline-flex min-h-11 items-center gap-2 text-zinc-300 hover:text-zinc-50">
+                      <Undo2 aria-hidden className="size-4" />Batal lewati
+                    </button>
+                  ) : (
+                    states[node.id] !== "selesai" && (
+                      <button type="button" onClick={() => mark(node, "dilewati")} className="inline-flex min-h-11 items-center gap-2 text-zinc-400 hover:text-zinc-50">
+                        <SkipForward aria-hidden className="size-4" />Lewati
+                      </button>
+                    )
+                  )}
+                  <p aria-live="polite" className="w-full text-red-500 empty:hidden">{error}</p>
+                </div>
+              )}
             </section>
           </>
         )}
@@ -140,18 +172,42 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
   );
 }
 
-// The signed-in learner's state per node, read with their own session (RLS
-// returns only their rows). Logged out every node stays "belum".
-function useProgress(nodes: RoadmapNode[]): Record<string, NodeState> {
+// The signed-in learner's state and best exam score per node, read with
+// their own session. Logged out every node stays "belum". mark() sets
+// selesai or dilewati through touch_progress(); the database refuses
+// selesai on a topic that has an exam.
+function useProgress(nodes: RoadmapNode[]) {
   const [states, setStates] = useState<Record<string, NodeState>>({});
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [signedIn, setSignedIn] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
     const db = createClient();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const { data: rows } = await db.from("progress").select("topic_id, state").in("topic_id", nodes.map((n) => n.topicId));
+      const uid = data.session.user.id;
+      const topics = nodes.map((n) => n.topicId);
+      const [{ data: rows }, { data: attempts }] = await Promise.all([
+        db.from("progress").select("topic_id, state").eq("user_id", uid).in("topic_id", topics),
+        db.from("exam_attempts").select("score, exams(topic_id)").eq("user_id", uid).not("score", "is", null),
+      ]);
       const byTopic = new Map((rows ?? []).map((r) => [r.topic_id as string, r.state as NodeState]));
+      const best: Record<string, number> = {};
+      for (const a of (attempts ?? []) as unknown as { score: number; exams: { topic_id: string } | null }[]) {
+        if (a.exams) best[a.exams.topic_id] = Math.max(best[a.exams.topic_id] ?? 0, a.score);
+      }
+      setSignedIn(true);
+      setScores(best);
       setStates(Object.fromEntries(nodes.flatMap((n) => (byTopic.has(n.topicId) ? [[n.id, byTopic.get(n.topicId)!]] : []))));
     });
   }, [nodes]);
-  return states;
+
+  async function mark(node: RoadmapNode, state: NodeState) {
+    setError("");
+    const { error } = await createClient().rpc("touch_progress", { p_topic: node.topicId, p_state: state });
+    if (error) return setError(error.code === "P0001" ? error.message : "Gagal menyimpan, coba lagi.");
+    setStates((s) => ({ ...s, [node.id]: state }));
+  }
+
+  return { states, scores, signedIn, mark, error };
 }

@@ -50,7 +50,8 @@ async function Topik({ params }: { params: PageProps<"/admin/topik/[slug]">["par
     by("tips").order("position"),
     by("flashcards").order("position"),
     by("practice_questions").order("created_at"),
-    db.from("exams").select("id, exam_questions(*)").eq("topic_id", topic.id).maybeSingle(),
+    // Archived questions stay only for old attempts; the editor skips them.
+    db.from("exams").select("id, exam_questions(*)").eq("topic_id", topic.id).neq("exam_questions.status", "archived").maybeSingle(),
     db.from("import_jobs").select("prerequisites").eq("slug", slug).eq("status", "done").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 

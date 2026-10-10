@@ -28,11 +28,22 @@ const NAV_POSITIONS: { id: NavPosition; label: string; icon: typeof PanelBottom 
 
 export default function PresentationViewer({
   presentation,
+  resumeAt = null,
+  onSlide,
 }: {
   presentation: Presentation;
+  resumeAt?: number | null;
+  onSlide?: (index: number) => void;
 }) {
   const { title, slides } = presentation;
   const [index, setIndex] = useState(0);
+  // Jump once when a saved position arrives after mount.
+  const [resumed, setResumed] = useState<number | null>(null);
+  if (resumeAt !== null && resumeAt !== resumed) {
+    setResumed(resumeAt);
+    setIndex(Math.min(Math.max(resumeAt, 0), slides.length - 1));
+  }
+  useEffect(() => onSlide?.(index), [index, onSlide]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [navPosition, setNavPosition] = useState<NavPosition>("bottom");
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
@@ -295,7 +306,7 @@ export default function PresentationViewer({
           <Link
             href="/"
             aria-label="Kembali ke beranda"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
+            className="relative flex h-9 w-9 shrink-0 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
           </Link>
@@ -314,7 +325,7 @@ export default function PresentationViewer({
               onClick={() => setIsLayoutMenuOpen((open) => !open)}
               aria-label="Atur posisi daftar slide"
               aria-expanded={isLayoutMenuOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
+              className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
             >
               <ActiveLayoutIcon className="h-4 w-4" strokeWidth={1.75} />
             </button>
@@ -328,7 +339,7 @@ export default function PresentationViewer({
                       setNavPosition(id);
                       setIsLayoutMenuOpen(false);
                     }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors ${
+                    className={`flex min-h-11 w-full items-center gap-2.5 px-3 text-left text-xs transition-colors ${
                       id === navPosition
                         ? "bg-zinc-800/80 text-zinc-50"
                         : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-50"
@@ -345,7 +356,7 @@ export default function PresentationViewer({
             type="button"
             onClick={toggleFullscreen}
             aria-label={isFullscreen ? "Keluar layar penuh" : "Layar penuh"}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50"
+            className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50"
           >
             {isFullscreen ? (
               <Minimize className="h-4 w-4" strokeWidth={1.75} />
