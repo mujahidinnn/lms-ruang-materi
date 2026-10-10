@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PageBackdrop from "@/components/PageBackdrop";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { getTracks } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
@@ -16,7 +15,6 @@ export default async function RoadmapListPage() {
 
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-3xl">

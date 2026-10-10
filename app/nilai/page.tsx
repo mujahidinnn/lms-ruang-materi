@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Award } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import SiteHeader from "@/components/landing/SiteHeader";
 import AccountNav from "@/components/dashboard/AccountNav";
 import TrackProgress from "@/components/dashboard/TrackProgress";
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
 export default function NilaiPage() {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-3xl">

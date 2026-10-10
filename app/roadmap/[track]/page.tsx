@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import SiteHeader from "@/components/landing/SiteHeader";
 import RoadmapView from "@/components/roadmap/RoadmapView";
 import { getTrack, getTracks } from "@/lib/content";
@@ -40,7 +39,6 @@ export async function generateMetadata(props: PageProps<"/roadmap/[track]">): Pr
 export default function TrackPage(props: PageProps<"/roadmap/[track]">) {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">

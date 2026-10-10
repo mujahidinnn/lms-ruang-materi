@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import SiteHeader from "@/components/landing/SiteHeader";
 import PracticeQuiz from "@/components/quiz/PracticeQuiz";
 import { getPractice, getTopics } from "@/lib/content";
@@ -30,7 +29,6 @@ export async function generateMetadata(props: PageProps<"/latihan/[slug]">): Pro
 export default function LatihanPage(props: PageProps<"/latihan/[slug]">) {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">

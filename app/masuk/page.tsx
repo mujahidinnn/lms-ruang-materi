@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import MasukForm from "@/components/auth/MasukForm";
 import Logo from "@/components/brand/Logo";
-import PageBackdrop from "@/components/PageBackdrop";
 import { safeNext } from "@/lib/safe-next";
 
 export const metadata: Metadata = {
@@ -15,7 +14,6 @@ export const metadata: Metadata = {
 export default function MasukPage(props: PageProps<"/masuk">) {
   return (
     <main className="relative flex flex-1 flex-col justify-center px-4 py-16">
-      <PageBackdrop />
       <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
         <Link href="/" aria-label="Ruang Materi, beranda" className="w-fit">
           <Logo />

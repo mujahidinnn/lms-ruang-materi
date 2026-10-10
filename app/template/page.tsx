@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import PageBackdrop from "@/components/PageBackdrop";
 import TemplateGallery from "@/components/TemplateGallery";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { templates } from "@/data/templates";
@@ -14,7 +13,6 @@ export const metadata: Metadata = {
 export default function TemplatePage() {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">

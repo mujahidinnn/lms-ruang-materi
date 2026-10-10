@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import StartExam from "@/components/exam/StartExam";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { requireUser } from "@/lib/dal";
@@ -20,7 +19,6 @@ export const metadata: Metadata = {
 export default function UjianPage(props: PageProps<"/ujian/[slug]">) {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import FlashcardDeck from "@/components/flashcard/FlashcardDeck";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { getDeck, getTopics } from "@/lib/content";
@@ -26,7 +25,6 @@ export async function generateMetadata(props: PageProps<"/flashcard/[slug]">): P
 export default function DeckPage(props: PageProps<"/flashcard/[slug]">) {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">

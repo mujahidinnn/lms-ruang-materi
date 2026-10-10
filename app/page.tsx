@@ -1,6 +1,5 @@
 import { LayoutTemplate, Route } from "lucide-react";
 import CurrentYear from "@/components/CurrentYear";
-import PageBackdrop from "@/components/PageBackdrop";
 import { LogoMark } from "@/components/brand/Logo";
 import HeroRoom from "@/components/landing/HeroRoom";
 import SignedInRedirect from "@/components/landing/SignedInRedirect";
@@ -16,7 +15,6 @@ export default async function Home() {
 
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <SignedInRedirect />
 

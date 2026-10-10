@@ -2,7 +2,6 @@ import { Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { hapusAkun, simpanProfil } from "@/app/profil/actions";
-import PageBackdrop from "@/components/PageBackdrop";
 import ActionForm from "@/components/admin/ActionForm";
 import { field } from "@/components/admin/editor";
 import AccountNav from "@/components/dashboard/AccountNav";
@@ -24,7 +23,6 @@ const ZONES = [...INDONESIA, ...Intl.supportedValuesOf("timeZone").filter((z) =>
 export default function ProfilPage() {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">

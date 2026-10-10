@@ -4,14 +4,12 @@ import { Suspense } from "react";
 import { keluar } from "@/app/masuk/actions";
 import AdminNav, { NavLinks } from "@/components/admin/AdminNav";
 import Logo from "@/components/brand/Logo";
-import PageBackdrop from "@/components/PageBackdrop";
 import { requireAdmin } from "@/lib/dal";
 
 // Shell only. Every page and action still checks the admin role itself.
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="relative flex flex-1 flex-col lg:flex-row">
-      <PageBackdrop />
       <aside className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-800/80 px-4 py-3 lg:sticky lg:top-0 lg:h-dvh lg:w-60 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-8 lg:border-r lg:border-b-0 lg:px-4 lg:py-6">
         <Link href="/" aria-label="Ruang Materi, beranda" className="flex items-center gap-2 px-3">
           <Logo />

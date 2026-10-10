@@ -2,7 +2,6 @@ import { Layers, Play, Route } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import PageBackdrop from "@/components/PageBackdrop";
 import AccountNav from "@/components/dashboard/AccountNav";
 import Room from "@/components/illustrations/Room";
 import TrackProgress from "@/components/dashboard/TrackProgress";
@@ -20,7 +19,6 @@ export const metadata: Metadata = {
 export default function DasborPage() {
   return (
     <div className="relative">
-      <PageBackdrop />
       <SiteHeader />
       <main className="px-6 pb-20 sm:px-10">
         <div className="mx-auto max-w-4xl">
