@@ -61,3 +61,19 @@ export async function setujuiWali() {
   await (await createClient()).from("profiles").update({ guardian_consent: true }).eq("user_id", user.id);
   revalidatePath("/dasbor");
 }
+
+// Sets or changes the password. The learner is signed in already (also
+// after a lupa-sandi email), which is what proves who they are.
+export async function aturSandi(_: State, form: FormData): Promise<State> {
+  await requireUser("/profil");
+  const parsed = z
+    .object({ password: z.string().min(8).max(72), confirm: z.string() })
+    .refine((v) => v.password === v.confirm)
+    .safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "Kata sandi minimal 8 karakter dan kedua kolom harus sama." };
+  const { error } = await (await createClient()).auth.updateUser({ password: parsed.data.password });
+  if (error?.code === "same_password") return { error: "Kata sandi baru sama dengan yang lama." };
+  if (error?.code === "weak_password") return { error: "Kata sandi terlalu lemah. Pakai campuran huruf dan angka." };
+  if (error) return { error: "Gagal menyimpan kata sandi, coba lagi." };
+  return { ok: "Kata sandi tersimpan. Lain kali bisa masuk dengan email dan kata sandi ini." };
+}

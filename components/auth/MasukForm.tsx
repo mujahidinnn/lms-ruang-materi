@@ -37,7 +37,7 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
         className="min-h-11 rounded-md border border-zinc-800/80 bg-zinc-900 px-3 text-zinc-50 outline-none focus-visible:ring-2 focus-visible:ring-accent"
       />
       <p id="password-hint" className="text-xs text-zinc-500">
-        Kosongkan untuk masuk lewat tautan email.
+        Kosongkan untuk masuk lewat tautan email. Lupa kata sandi? Kosongkan juga, lalu buat yang baru di Profil.
       </p>
       <button
         type="submit"

@@ -823,9 +823,18 @@ UI. The UI only hides actions the database would refuse.
   arguments, not interpolated into a shell string.
 - **Redirects after login** only go to a relative path starting with `/`, so
   `?next=` cannot send users off-site.
-- **Login**: magic link by default, or email + password for accounts that
-  have one (admins created in the dashboard). No sign-up with password from
-  the app.
+- **Login**: magic link by default (it also creates the account), or email
+  + password for accounts that set one. A signed-in learner sets or changes
+  the password in `/profil#sandi`; lupa kata sandi is the magic link, then a
+  new password there. No sign-up with password.
+- **Email links work across devices**: `/masuk/callback` accepts
+  `?token_hash=&type=` (`verifyOtp`) as well as the PKCE `?code=`, which only
+  works in the browser that asked. The Supabase "Magic Link" and "Confirm
+  signup" templates link to
+  `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`.
+- **Sessions**: `proxy.ts` refreshes the access token on every request; the
+  browser client refreshes on its own and `useSignedIn()` follows sign-in
+  and sign-out across tabs.
 - **Rate limits**: magic link, OTP and password sign-in limits are set in
   Supabase Auth.
   `start_exam_attempt` is limited by `max_attempts` in the database; Server
@@ -899,4 +908,5 @@ Vitest.
   already AVIF, a second pass by the Next optimizer softens them.
 - `NEXT_PUBLIC_SITE_URL` sets canonical and OG URLs. Without it they fall back
   to `https://lms-ruang-materi.vercel.app`; set it on Vercel if the domain changes.
-- Add the site URL to Supabase Auth redirect URLs for the magic link.
+- Add the site URL to Supabase Auth redirect URLs for the magic link, and
+  set the email templates above.

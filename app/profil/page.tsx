@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { hapusAkun, simpanProfil } from "@/app/profil/actions";
+import { aturSandi, hapusAkun, simpanProfil } from "@/app/profil/actions";
 import ActionForm from "@/components/admin/ActionForm";
 import { field } from "@/components/admin/editor";
 import AccountNav from "@/components/dashboard/AccountNav";
@@ -68,6 +68,25 @@ async function Profil() {
             Saya berusia 18 tahun ke atas, atau orang tua atau wali saya sudah setuju saya memakai Ruang Materi.
           </label>
           <button className={`${primaryButton} justify-self-start`}>Simpan</button>
+        </ActionForm>
+      </section>
+
+      <section id="sandi" aria-labelledby="sandi-judul" className="mt-12 scroll-mt-6">
+        <h2 id="sandi-judul" className="text-lg font-semibold">Kata sandi</h2>
+        <p className="mt-1 text-sm text-zinc-400">
+          Opsional. Dengan kata sandi kamu bisa masuk tanpa menunggu email. Lupa? Masuk lewat tautan email, lalu buat yang baru di sini.
+        </p>
+        <ActionForm action={aturSandi} className="mt-4 grid gap-4">
+          <input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+          <label className="text-sm text-zinc-400">
+            Kata sandi baru
+            <input name="password" type="password" required minLength={8} maxLength={72} autoComplete="new-password" className={`${field} mt-1`} />
+          </label>
+          <label className="text-sm text-zinc-400">
+            Ulangi kata sandi
+            <input name="confirm" type="password" required minLength={8} maxLength={72} autoComplete="new-password" className={`${field} mt-1`} />
+          </label>
+          <button className={`${primaryButton} justify-self-start`}>Simpan kata sandi</button>
         </ActionForm>
       </section>
 
