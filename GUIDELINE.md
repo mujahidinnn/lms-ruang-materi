@@ -783,8 +783,10 @@ UI. The UI only hides actions the database would refuse.
 ## Security Rules
 
 - **Auth checks sit next to the data.** `lib/dal.ts` imports `server-only`,
-  gets the user with `supabase.auth.getUser()` (never `getSession()` on the
-  server) and is the only way pages and Server Actions read user data.
+  gets the user with `supabase.auth.getClaims()`, which verifies the JWT
+  signature (never `getSession()` on the server), with the role from
+  `is_admin()` in parallel. It is the only way pages and Server Actions read
+  user data.
   `proxy.ts` only refreshes the session; it is not the gate.
 - **Server Actions re-check the user** and validate input shape before calling
   Supabase. Never take `user_id` from the form, use `auth.uid()`.

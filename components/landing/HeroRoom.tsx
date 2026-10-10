@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { coverSrc, type Presentation } from "@/lib/slides";
 
 // Solid tints so the tab and the panel join without doubled transparency.
@@ -20,10 +20,12 @@ const HIDDEN = `${SLOTS[2]} z-0 opacity-0`;
 const PULL_OUT = 80; // px dragged before release files the cover away
 const FLY = 700; // px the cover travels on its way out
 const tilt = (dx: number) => Math.max(-15, Math.min(15, dx / 12));
+const HOLD_MS = 200; // touch: hold this long before a drag, so a swipe scrolls
 
 // A folder with real covers filed inside, their tops peeking over the front
 // pocket. Drag the front cover up and out: it leaves, the next takes its
 // place, and it drops back into the folder behind the rest. Click opens it.
+// On touch the cover moves only after a short hold; a plain swipe scrolls.
 export default function HeroRoom({ topics }: { topics: Presentation[] }) {
   const [order, setOrder] = useState(() => topics.map((_, i) => i));
   const [drag, setDrag] = useState({ x: 0, y: 0 });
@@ -31,6 +33,68 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
   const [leaving, setLeaving] = useState(false);
   const start = useRef<{ x: number; y: number } | null>(null);
   const moved = useRef(false);
+  const armed = useRef(false);
+  const hold = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const box = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ x: 0, y: 0 });
+
+  function moveTo(d: { x: number; y: number }) {
+    dragRef.current = d;
+    setDrag(d);
+  }
+
+  function follow(x: number, y: number) {
+    if (!start.current) return;
+    const dx = x - start.current.x;
+    const dy = y - start.current.y;
+    if (Math.hypot(dx, dy) > 5) moved.current = true;
+    // Pulling down only gives a little; the pocket holds it.
+    moveTo({ x: dx, y: dy < 0 ? dy : dy / 4 });
+  }
+
+  // Touch runs on touch events, not pointer events: Chrome cancels the
+  // pointer as soon as a pan-y gesture moves. A drag arms after a short hold;
+  // moving earlier is a swipe and scrolls. Added by hand because React's
+  // touch listeners are passive and cannot stop the scroll.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const onStart = (e: TouchEvent) => {
+      if (!(e.target as Element).closest("[data-front]")) return;
+      const t = e.touches[0];
+      start.current = { x: t.clientX, y: t.clientY };
+      moved.current = false;
+      hold.current = setTimeout(() => {
+        armed.current = true;
+        setDragging(true);
+        navigator.vibrate?.(10);
+      }, HOLD_MS);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!start.current) return;
+      const t = e.touches[0];
+      if (armed.current) {
+        if (e.cancelable) e.preventDefault();
+        follow(t.clientX, t.clientY);
+      } else if (Math.hypot(t.clientX - start.current.x, t.clientY - start.current.y) > 8) {
+        clearTimeout(hold.current);
+        start.current = null;
+        moved.current = true;
+      }
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", release);
+    el.addEventListener("touchcancel", release);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", release);
+      el.removeEventListener("touchcancel", release);
+    };
+    // Mounted once; everything it calls reads refs or setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const front = topics[order[0]];
   if (!front) return null;
@@ -38,22 +102,25 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
   // The cover flies out along the line it was pulled.
   function next(dir = { x: 0, y: -1 }) {
     const len = Math.hypot(dir.x, dir.y) || 1;
-    setDrag({ x: (dir.x / len) * FLY, y: (dir.y / len) * FLY });
+    moveTo({ x: (dir.x / len) * FLY, y: (dir.y / len) * FLY });
     setLeaving(true);
     setTimeout(() => {
       setOrder(([first, ...rest]) => [...rest, first]);
       setLeaving(false);
-      setDrag({ x: 0, y: 0 });
+      moveTo({ x: 0, y: 0 });
     }, 250);
   }
 
   function release() {
+    clearTimeout(hold.current);
+    armed.current = false;
     if (start.current === null) return;
     start.current = null;
     setDragging(false);
     // Any pull that clears the pocket counts; one into the pocket springs back.
-    if (Math.hypot(drag.x, drag.y) > PULL_OUT && drag.y < 0 && topics.length > 1) next(drag);
-    else setDrag({ x: 0, y: 0 });
+    const d = dragRef.current;
+    if (Math.hypot(d.x, d.y) > PULL_OUT && d.y < 0 && topics.length > 1) next(d);
+    else moveTo({ x: 0, y: 0 });
   }
 
   return (
@@ -64,7 +131,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         <span className="absolute top-3 right-4 size-2 rounded-full bg-accent-warm" />
       </span>
 
-      <div className={`relative aspect-4/3 rounded-2xl rounded-tl-none border border-accent/30 ${FOLDER}`}>
+      <div ref={box} className={`relative aspect-4/3 rounded-2xl rounded-tl-none border border-accent/30 ${FOLDER}`}>
         {topics.map((t, i) => {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
@@ -81,28 +148,25 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
               aria-label={`Buka materi ${t.title}`}
               aria-describedby="hero-room-hint"
               draggable={false}
-              className={`${base} ${motion} cursor-grab touch-none shadow-lg select-none hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
+              className={`${base} ${motion} cursor-grab touch-pan-y shadow-lg select-none [-webkit-touch-callout:none] hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
               style={{
                 transform: `translate(${drag.x}px, ${drag.y}px) rotate(${tilt(drag.x)}deg)`,
                 opacity: leaving ? 0 : undefined,
               }}
+              data-front
               onPointerDown={(e) => {
+                if (e.pointerType === "touch") return;
                 e.currentTarget.setPointerCapture(e.pointerId);
                 start.current = { x: e.clientX, y: e.clientY };
                 moved.current = false;
+                armed.current = true;
                 setDragging(true);
               }}
-              onPointerMove={(e) => {
-                if (start.current === null) return;
-                const dx = e.clientX - start.current.x;
-                const dy = e.clientY - start.current.y;
-                if (Math.hypot(dx, dy) > 5) moved.current = true;
-                // Pulling down only gives a little; the pocket holds it.
-                setDrag({ x: dx, y: dy < 0 ? dy : dy / 4 });
-              }}
-              onPointerUp={release}
-              onPointerCancel={release}
+              onPointerMove={(e) => e.pointerType !== "touch" && armed.current && follow(e.clientX, e.clientY)}
+              onPointerUp={(e) => e.pointerType !== "touch" && release()}
+              onPointerCancel={(e) => e.pointerType !== "touch" && release()}
               onClick={(e) => moved.current && e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
               onKeyDown={(e) => {
                 if (e.key !== "ArrowUp" || topics.length < 2) return;
                 e.preventDefault();

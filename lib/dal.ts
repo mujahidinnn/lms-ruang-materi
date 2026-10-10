@@ -6,22 +6,20 @@ import { createClient } from "@/lib/supabase/server";
 export type Role = "student" | "admin";
 export type CurrentUser = { id: string; email: string; role: Role };
 
-// Returns null when signed out. getUser() verifies with the Auth server.
+// Returns null when signed out. getClaims() verifies the JWT signature
+// (locally with the project's signing keys, else against the Auth server),
+// never trusting the cookie as getSession() would. is_admin() reads the role
+// from the same JWT, so both run at once instead of one after the other.
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", data.user.id)
-    .single();
+  const [{ data }, { data: admin }] = await Promise.all([supabase.auth.getClaims(), supabase.rpc("is_admin")]);
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
 
   return {
-    id: data.user.id,
-    email: data.user.email ?? "",
-    role: profile?.role === "admin" ? "admin" : "student",
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : "",
+    role: admin === true ? "admin" : "student",
   };
 });
 
