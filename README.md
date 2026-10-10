@@ -54,7 +54,8 @@ npx supabase test db
 | `npm run build` | Build untuk produksi |
 | `npm run lint` | Jalankan ESLint |
 | `npm run test:run` | Jalankan Vitest sekali |
+| `npm run test:e2e` | Test end-to-end Playwright sebagai tamu (`E2E_BASE_URL`, default localhost:3000) |
 | `npm run db:push` | Kirim migrasi ke database produksi lewat session pooler |
 | `npm run draft:decks -- <slug>...` | Buat draf materi dari deck migrasi |
 
-CI (`.github/workflows/ci.yml`) menjalankan typecheck, lint, Vitest, dan smoke test database di setiap push.
+CI (`.github/workflows/ci.yml`) menjalankan typecheck, lint, Vitest, dan smoke test database di setiap push. `.github/workflows/e2e.yml` menjalankan test end-to-end ke setiap deploy produksi Vercel.
