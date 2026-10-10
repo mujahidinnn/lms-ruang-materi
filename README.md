@@ -1,16 +1,20 @@
 # Ruang Materi
 
-Ruang Materi mengubah slide pembelajaran (PowerPoint) menjadi halaman interaktif yang bisa ditelusuri langsung di browser, tanpa mengunduh atau membuka aplikasi tambahan.
+Ruang Materi mengubah slide pembelajaran (PowerPoint) menjadi ruang belajar di browser: slide interaktif, ringkasan dan tips, latihan, flashcard, ujian, roadmap per track, level, streak, dan lencana. Tanpa unduh, dan bisa dibuka offline sebagai PWA.
+
+Live: https://lms-ruang-materi.vercel.app
 
 ## Cara Kerja
 
-Semua materi disimpan di Supabase: topik dan slide di database, gambar slide (AVIF) di Storage `slides/<slug>/<folder>/`. Halaman `app/belajar/[slug]` membaca topik yang sudah published lewat `lib/content.ts`. Menambah materi baru lewat `/admin/impor` (menyusul di phase 4).
+- **Konten** ada di Supabase: topik, slide, tips, flashcard, dan soal di database; gambar slide (AVIF, 3200px dan 1600px) di Storage `slides/<slug>/<folder>/`.
+- **Impor**: admin mengunggah `.pptx` di `/admin/impor`. GitHub Actions (`.github/workflows/import-deck.yml`) merender slide dan meminta LLM (Gemini atau OpenRouter) membuat draf ringkasan, tips, flashcard, dan soal. Draf ditinjau lalu diterbitkan di `/admin/topik`.
+- **Belajar**: murid masuk lewat tautan email atau kata sandi. Progres, review flashcard, dan ujian dinilai di database (RLS dan fungsi Postgres), bukan di browser.
 
-Aturan kode dan rencana fitur ada di `GUIDELINE.md`.
+Aturan kode, keamanan, dan rencana fitur lengkap ada di `GUIDELINE.md`.
 
 ## Menjalankan Secara Lokal
 
-Isi `.env.local`:
+Isi `.env.local` (lihat `GUIDELINE.md` untuk daftar lengkap):
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=...
@@ -24,13 +28,23 @@ npm run dev
 
 Buka [http://localhost:3000](http://localhost:3000). Build butuh minimal satu topik published di Supabase.
 
+Database lokal untuk mengetes migrasi:
+
+```bash
+npx supabase start
+npx supabase db reset
+npx supabase test db
+```
+
 ## Struktur Proyek
 
-- `app/`: halaman Next.js (App Router).
+- `app/`: halaman Next.js 16 (App Router, Cache Components).
 - `components/`: komponen UI.
-- `lib/`: helper tanpa React (`content.ts`, `slides.ts`, `dal.ts`, `supabase/`).
-- `supabase/migrations/`: skema, RLS, fungsi. `supabase/tests/`: smoke test keamanan.
-- `data/templates.ts`, `public/templates/`: galeri template portofolio.
+- `lib/`: helper tanpa React (`content.ts`, `dal.ts`, `exam.ts`, `leitner.ts`, `level.ts`, `roadmap.ts`, `supabase/`).
+- `supabase/migrations/`: skema, RLS, fungsi. `supabase/tests/`: smoke test keamanan (pgTAP).
+- `worker/`: worker impor deck yang dijalankan GitHub Actions.
+- `scripts/`: `db-push`, `draft-decks`, `backfill-slide-variants`.
+- `public/sw.js`: service worker untuk mode offline.
 
 ## Skrip
 
@@ -38,6 +52,9 @@ Buka [http://localhost:3000](http://localhost:3000). Build butuh minimal satu to
 | --- | --- |
 | `npm run dev` | Jalankan server pengembangan Next.js |
 | `npm run build` | Build untuk produksi |
-| `npm run start` | Jalankan build produksi |
 | `npm run lint` | Jalankan ESLint |
 | `npm run test:run` | Jalankan Vitest sekali |
+| `npm run db:push` | Kirim migrasi ke database produksi lewat session pooler |
+| `npm run draft:decks -- <slug>...` | Buat draf materi dari deck migrasi |
+
+CI (`.github/workflows/ci.yml`) menjalankan typecheck, lint, Vitest, dan smoke test database di setiap push.

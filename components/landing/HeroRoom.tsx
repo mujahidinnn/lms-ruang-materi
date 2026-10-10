@@ -13,8 +13,8 @@ const POCKET = "bg-[color-mix(in_oklab,var(--color-accent)_14%,var(--color-zinc-
 // wait, hidden, behind it.
 const SLOTS = [
   "z-30 inset-x-12 top-16 sm:inset-x-14",
-  "z-20 top-6 right-20 left-8 -rotate-3 brightness-75",
-  "z-10 top-8 right-6 left-24 rotate-3 brightness-50",
+  "z-20 top-6 right-20 left-8 -rotate-3 brightness-(--dim-1)",
+  "z-10 top-8 right-6 left-24 rotate-3 brightness-(--dim-2)",
 ];
 const HIDDEN = `${SLOTS[2]} z-0 opacity-0`;
 const PULL_OUT = 80; // px dragged before release files the cover away

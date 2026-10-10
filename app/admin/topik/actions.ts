@@ -50,9 +50,12 @@ export async function hapusBaris(formData: FormData) {
   if (!schemas[table]) throw new Error("tabel tidak dikenal");
   const id = z.uuid().parse(formData.get("id"));
 
+  const slug = String(formData.get("slug"));
   const { error } = await (await createClient()).from(table).delete().eq("id", id);
+  // A rule the database enforces (the 2x exam bank): say which, on the page.
+  if (error?.code === "P0001") redirect(`/admin/topik/${slug}?galat=${encodeURIComponent(error.message)}`);
   if (error) throw new Error(error.message);
-  done(String(formData.get("slug")));
+  done(slug);
 }
 
 export async function simpanRingkasan(formData: FormData) {

@@ -31,13 +31,14 @@ const pending = <T extends Row>(rows: T[] | null) => {
 export default function TopikPage(props: PageProps<"/admin/topik/[slug]">) {
   return (
     <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
-      <Topik params={props.params} />
+      <Topik params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function Topik({ params }: { params: PageProps<"/admin/topik/[slug]">["params"] }) {
+async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">) {
   const { slug } = await params;
+  const { galat } = await searchParams;
   await requireAdmin(`/admin/topik/${slug}`);
   const db = await createClient();
 
@@ -91,6 +92,9 @@ async function Topik({ params }: { params: PageProps<"/admin/topik/[slug]">["par
           </div>
         </div>
         <TopicActions slug={slug} published={topic.status === "published"} hasDraft={hasDraft} />
+        {typeof galat === "string" && (
+          <p role="alert" className="rounded-md border border-red-500/40 px-3 py-2 text-sm text-red-500">{galat}</p>
+        )}
         </div>
         {prereq.length > 0 && (
           <p className="text-sm text-zinc-400">
