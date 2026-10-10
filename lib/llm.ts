@@ -1,7 +1,7 @@
 // Providers and models the import dropdown offers. The worker accepts only
 // these. Pick IDs from each provider's docs, never guess.
 export const LLM_MODELS: Record<string, string[]> = {
-  gemini: ["gemini-3.8-flash", "gemini-2.5-pro", "gemini-3.5-flash", "gemini-3.5-flash-lite"],
+  gemini: ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"],
   // Free variants with structured_outputs, from openrouter.ai/api/v1/models.
   openrouter: ["nvidia/nemotron-3-super-120b-a12b:free", "dots-studio/dots-3-note-preview:free"],
 };
