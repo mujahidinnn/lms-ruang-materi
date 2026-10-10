@@ -116,6 +116,8 @@ async function render(dir: string, folder: string): Promise<RenderedSlide[]> {
     const { width, height } = await img.metadata();
     const files: [string, Buffer][] = [
       [`slide-${nn}.avif`, await img.clone().avif({ quality: 60, effort: 4 }).toBuffer()],
+      // Phones and laptops get this one; the 3200px file is for big screens.
+      [`slide-${nn}-1600.avif`, await img.clone().resize({ width: 1600 }).avif({ quality: 60, effort: 4 }).toBuffer()],
       [`thumb-${nn}.avif`, await img.clone().resize({ width: 400 }).avif({ quality: 55, effort: 4 }).toBuffer()],
     ];
     if (i === 0) files.push(["cover.avif", await img.clone().resize({ width: 1280 }).avif({ quality: 60, effort: 4 }).toBuffer()]);
