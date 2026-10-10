@@ -13,8 +13,8 @@ const POCKET = "bg-[color-mix(in_oklab,var(--color-accent)_14%,var(--color-zinc-
 // wait, hidden, behind it.
 const SLOTS = [
   "z-30 inset-x-12 top-16 sm:inset-x-14",
-  "z-20 top-6 right-20 left-8 -rotate-3 opacity-60",
-  "z-10 top-8 right-6 left-24 rotate-3 opacity-60",
+  "z-20 top-6 right-20 left-8 -rotate-3 brightness-75",
+  "z-10 top-8 right-6 left-24 rotate-3 brightness-50",
 ];
 const HIDDEN = `${SLOTS[2]} z-0 opacity-0`;
 const PULL_OUT = 80; // px dragged before release files the cover away
@@ -69,7 +69,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
           const base = `absolute block aspect-video overflow-hidden rounded-lg border border-zinc-800/80 ${SLOTS[slot] ?? HIDDEN}`;
-          const motion = dragging && isFront ? "" : "transition-[top,left,right,rotate,translate,transform,opacity] duration-300 ease-out motion-reduce:transition-none";
+          const motion = dragging && isFront ? "" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
           const img = <Image src={coverSrc(t)} alt="" fill sizes="(min-width: 1024px) 450px, 90vw" draggable={false} className="object-cover" priority={isFront} />;
 
           if (!isFront) return <div key={t.slug} aria-hidden className={`${base} ${motion}`}>{img}</div>;
