@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { hapusAkun, simpanProfil } from "@/app/profil/actions";
@@ -85,7 +86,8 @@ async function Profil() {
         </p>
         <ActionForm action={hapusAkun} className="mt-4 flex flex-wrap gap-2">
           <input name="email" type="email" required autoComplete="off" aria-label="Email akun" placeholder={user.email} className={`${field} flex-1`} />
-          <button className="inline-flex min-h-11 items-center rounded-lg bg-red-600 px-4 font-medium text-white hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-red-500">
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-red-600 px-4 font-medium text-white hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-red-500">
+            <Trash2 aria-hidden className="size-4" />
             Hapus akun
           </button>
         </ActionForm>

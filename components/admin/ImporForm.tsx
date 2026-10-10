@@ -98,6 +98,7 @@ export default function ImporForm({ models }: { models: string[] }) {
             </select>
           </label>
           <button onClick={submit} disabled={!slug || pending} className={primaryButton}>
+            {!pending && <FileUp aria-hidden className="size-4" />}
             {pending ? "Memproses..." : "Mulai impor"}
           </button>
         </div>

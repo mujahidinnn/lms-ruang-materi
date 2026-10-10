@@ -1,3 +1,4 @@
+import { ListChecks } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -97,7 +98,7 @@ export default async function PresentationPage(
                 </Link>
               )}
               {presentation.practiceCount > 0 && (
-                <Link href={`/latihan/${slug}`} className={primaryButton}>Mulai latihan</Link>
+                <Link href={`/latihan/${slug}`} className={primaryButton}><ListChecks aria-hidden className="size-4" />Mulai latihan</Link>
               )}
             </div>
           )}

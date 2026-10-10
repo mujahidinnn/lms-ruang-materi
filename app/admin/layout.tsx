@@ -1,3 +1,4 @@
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { keluar } from "@/app/masuk/actions";
@@ -36,7 +37,8 @@ async function Akun() {
   return (
     <form action={keluar} className="ml-auto flex items-center gap-2 text-sm lg:order-last lg:mt-auto lg:ml-0 lg:flex-col lg:items-stretch">
       <span className="hidden truncate px-3 text-zinc-500 lg:block">{user.email}</span>
-      <button className="min-h-11 rounded-xl px-3 text-left text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent">
+      <button className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-left text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent">
+        <LogOut aria-hidden className="size-4" />
         Keluar
       </button>
     </form>

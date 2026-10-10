@@ -1,5 +1,6 @@
 "use client";
 
+import { EyeOff, Globe, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { hapusTopik, tarik, terbitkan, type TopikState } from "@/app/admin/topik/actions";
@@ -19,6 +20,7 @@ export default function TopicActions({ slug, published, hasDraft }: { slug: stri
   return (
     <div className="flex flex-col gap-3">
       <button onClick={() => run(terbitkan)} disabled={pending || (published && !hasDraft)} className={primaryButton}>
+        {!pending && <Globe aria-hidden className="size-4" />}
         {pending ? "Memproses..." : published && hasDraft ? "Terbitkan draf" : "Terbitkan"}
       </button>
       <div aria-live="polite">
@@ -29,12 +31,13 @@ export default function TopicActions({ slug, published, hasDraft }: { slug: stri
         )}
       </div>
       <div className="flex gap-2">
-        {published && <button onClick={() => run(tarik)} disabled={pending} className={smallButton}>Tarik dari publik</button>}
+        {published && <button onClick={() => run(tarik)} disabled={pending} className={smallButton}><EyeOff aria-hidden className="size-4" />Tarik dari publik</button>}
         <button
           onClick={() => confirm(`Hapus topik ${slug} beserta semua isinya? Ini tidak bisa dibatalkan.`) && run(hapusTopik)}
           disabled={pending}
           className={dangerButton}
         >
+          <Trash2 aria-hidden className="size-4" />
           Hapus
         </button>
       </div>

@@ -1,3 +1,4 @@
+import { Play } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -85,7 +86,8 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
             {last && <Link href={`/ujian/${slug}/${last.id}`} className="text-accent hover:underline">Lihat pembahasan</Link>}
           </p>
         ) : s.openId ? (
-          <Link href={`/ujian/${slug}/${s.openId}`} className="inline-flex min-h-11 items-center rounded-lg bg-accent px-4 font-medium text-zinc-950 hover:opacity-90">
+          <Link href={`/ujian/${slug}/${s.openId}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-medium text-zinc-950 hover:opacity-90">
+            <Play aria-hidden className="size-4" />
             Lanjutkan ujian
           </Link>
         ) : s.nextSetAt ? (

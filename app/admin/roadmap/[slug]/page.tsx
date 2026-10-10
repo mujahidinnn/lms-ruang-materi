@@ -1,3 +1,4 @@
+import { Plus, Trash2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -123,7 +124,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
                   {hidden}
                   <input type="hidden" name="table" value="track_nodes" />
                   <input type="hidden" name="id" value={n.id} />
-                  <button aria-label={`Hapus ${n.topics.title}`} className={`${smallButton} text-red-500`}>Hapus</button>
+                  <button aria-label={`Hapus ${n.topics.title}`} className={`${smallButton} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus</button>
                 </ActionForm>
               </li>
             ))}
@@ -137,7 +138,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
                 </option>
               ))}
             </select>
-            <button className={primaryButton}>Tambah topik</button>
+            <button className={primaryButton}><Plus aria-hidden className="size-4" />Tambah topik</button>
           </ActionForm>
         </section>
 
@@ -156,7 +157,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
                     {hidden}
                     <input type="hidden" name="table" value="track_edges" />
                     <input type="hidden" name="id" value={e.id} />
-                    <button className={`${smallButton} text-red-500`}>Hapus</button>
+                    <button className={`${smallButton} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus</button>
                   </ActionForm>
                 </li>
               ))}
@@ -170,7 +171,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
               <select name="to" required aria-label="Topik lanjutan" className={`${field} w-auto flex-1`}>
                 {nodes.map((n) => <option key={n.id} value={n.id}>{n.topics.title}</option>)}
               </select>
-              <button className={primaryButton}>Tambah</button>
+              <button className={primaryButton}><Plus aria-hidden className="size-4" />Tambah</button>
             </ActionForm>
           </section>
         )}

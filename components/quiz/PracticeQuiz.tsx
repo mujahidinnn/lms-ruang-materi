@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Check, ClipboardCheck, Layers, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { simpanLatihan } from "@/app/latihan/actions";
@@ -90,7 +90,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
         <div className="mt-8 flex flex-wrap items-center gap-4">
           {hasExam ? (
             <>
-              <Link href={`/ujian/${slug}`} className={primaryButton}>Coba ujian</Link>
+              <Link href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Coba ujian</Link>
               {wrong.length > 0 && (
                 <button onClick={() => restart(wrong)} className="min-h-11 text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent">
                   Ulangi yang salah
@@ -98,9 +98,9 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
               )}
             </>
           ) : wrong.length > 0 ? (
-            <button onClick={() => restart(wrong)} className={primaryButton}>Ulangi yang salah</button>
+            <button onClick={() => restart(wrong)} className={primaryButton}><RotateCcw aria-hidden className="size-4" />Ulangi yang salah</button>
           ) : (
-            <Link href={`/flashcard/${slug}`} className={primaryButton}>Lanjut ke flashcard</Link>
+            <Link href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</Link>
           )}
           <button onClick={() => restart(questions)} className="min-h-11 text-zinc-400 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent">
             Ulangi semua soal
@@ -169,7 +169,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
         {checked ? (
           <button onClick={next} className={primaryButton}>{last ? "Lihat hasil" : "Soal berikutnya"}</button>
         ) : (
-          <button onClick={check} disabled={picked === null} className={primaryButton}>Periksa jawaban</button>
+          <button onClick={check} disabled={picked === null} className={primaryButton}><Check aria-hidden className="size-4" />Periksa jawaban</button>
         )}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { Route } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Missing } from "@/components/illustrations";
@@ -12,7 +13,7 @@ export default function NotFound() {
       <h1 className="mt-6 text-2xl font-semibold tracking-tight">Halaman tidak ditemukan</h1>
       <p className="mt-2 max-w-sm text-zinc-400">Mungkin materinya sudah dipindah atau alamatnya salah ketik.</p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-        <Link href="/roadmap" className={primaryButton}>Buka roadmap</Link>
+        <Link href="/roadmap" className={primaryButton}><Route aria-hidden className="size-4" />Buka roadmap</Link>
         <Link href="/" className="text-zinc-400 hover:text-zinc-50">Ke beranda</Link>
       </div>
     </main>

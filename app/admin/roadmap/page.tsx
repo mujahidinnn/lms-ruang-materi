@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -36,7 +37,7 @@ export default function RoadmapAdminPage() {
           Deskripsi
           <textarea name="description" rows={2} className={`${field} mt-1`} />
         </label>
-        <button className={`${primaryButton} sm:col-span-2 sm:justify-self-end`}>Buat track</button>
+        <button className={`${primaryButton} sm:col-span-2 sm:justify-self-end`}><Plus aria-hidden className="size-4" />Buat track</button>
       </ActionForm>
     </div>
   );

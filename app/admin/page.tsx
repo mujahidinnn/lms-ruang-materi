@@ -1,3 +1,4 @@
+import { FileSearch, FileUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -44,13 +45,13 @@ async function Overview() {
             <p className="text-sm text-accent">{rest.length + 1} draf menunggu tinjauan</p>
             <h2 id="fokus" className="mt-2 text-2xl font-semibold tracking-tight">{next.title}</h2>
             <p className="mt-1 max-w-prose text-zinc-400">Periksa ringkasan, tips dan soal dari model, lalu terbitkan.</p>
-            <Link href={`/admin/topik/${next.slug}`} className={`${primaryButton} mt-6`}>Tinjau draf</Link>
+            <Link href={`/admin/topik/${next.slug}`} className={`${primaryButton} mt-6`}><FileSearch aria-hidden className="size-4" />Tinjau draf</Link>
           </>
         ) : (
           <>
             <h2 id="fokus" className="text-2xl font-semibold tracking-tight">Semua draf sudah ditinjau</h2>
             <p className="mt-1 max-w-prose text-zinc-400">Impor deck baru untuk menambah materi.</p>
-            <Link href="/admin/impor" className={`${primaryButton} mt-6`}>Impor deck</Link>
+            <Link href="/admin/impor" className={`${primaryButton} mt-6`}><FileUp aria-hidden className="size-4" />Impor deck</Link>
           </>
         )}
       </section>

@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { hapusBaris, simpanBaris } from "@/app/admin/topik/actions";
 import StatusBadge from "./StatusBadge";
 import { dangerButton, field, smallButton } from "./editor";
@@ -38,7 +39,7 @@ export default function RowEditor({
           ))}
           <div className="flex gap-2">
             <button className={smallButton}>Simpan</button>
-            <button formAction={hapusBaris} formNoValidate className={dangerButton}>Hapus</button>
+            <button formAction={hapusBaris} formNoValidate className={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus</button>
           </div>
         </form>
       </details>

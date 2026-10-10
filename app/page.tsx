@@ -1,3 +1,4 @@
+import { LayoutTemplate, Route } from "lucide-react";
 import CurrentYear from "@/components/CurrentYear";
 import PageBackdrop from "@/components/PageBackdrop";
 import { LogoMark } from "@/components/brand/Logo";
@@ -33,8 +34,9 @@ export default async function Home() {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <a
                   href="#roadmap"
-                  className="flex min-h-12 items-center rounded-lg bg-accent px-5 font-medium text-zinc-950 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="flex min-h-12 items-center gap-2 rounded-lg bg-accent px-5 font-medium text-zinc-950 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
+                  <Route aria-hidden className="size-4" />
                   Pilih roadmap
                 </a>
                 <a
@@ -72,7 +74,8 @@ export default async function Home() {
               <h2 id="template-judul" className="text-lg font-semibold">Template HTML</h2>
               <p className="mt-1 text-sm text-zinc-400">Template portfolio gratis untuk kamu pakai dan ubah sendiri.</p>
             </div>
-            <Link href="/template" className="flex min-h-11 items-center rounded-lg border border-zinc-800 px-4 text-sm hover:border-zinc-600">
+            <Link href="/template" className="flex min-h-11 items-center gap-2 rounded-lg border border-zinc-800 px-4 text-sm hover:border-zinc-600">
+              <LayoutTemplate aria-hidden className="size-4" />
               Lihat template
             </Link>
           </section>

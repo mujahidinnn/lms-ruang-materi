@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, LoaderCircle, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, LoaderCircle, RotateCcw, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -118,7 +118,7 @@ function Ulang({ models, current, disabled, onRetry }: { models: string[]; curre
       >
         {models.map((m) => <option key={m} value={m}>{m.replace(":", " / ")}</option>)}
       </select>
-      <button onClick={() => onRetry(model)} disabled={disabled} className={smallButton}>Ulang</button>
+      <button onClick={() => onRetry(model)} disabled={disabled} className={smallButton}><RotateCcw aria-hidden className="size-4" />Ulang</button>
     </>
   );
 }

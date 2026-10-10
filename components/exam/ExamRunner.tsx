@@ -1,6 +1,6 @@
 "use client";
 
-import { WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { kumpulkanUjian } from "@/app/ujian/actions";
@@ -168,14 +168,16 @@ export default function ExamRunner({ attemptId, deadline, questions }: { attempt
         <button
           onClick={() => setI(i - 1)}
           disabled={i === 0}
-          className="min-h-11 rounded-lg border border-zinc-800 px-4 text-sm hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
+          className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-zinc-800 pr-4 pl-3 text-sm hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
         >
+          <ChevronLeft aria-hidden className="size-4" />
           Sebelumnya
         </button>
         {i < questions.length - 1 ? (
-          <button onClick={() => setI(i + 1)} className={primaryButton}>Berikutnya</button>
+          <button onClick={() => setI(i + 1)} className={primaryButton}>Berikutnya<ChevronRight aria-hidden className="size-4" /></button>
         ) : (
           <button onClick={() => submit()} disabled={sending || offline} className={primaryButton}>
+            {!sending && <Send aria-hidden className="size-4" />}
             {sending ? "Mengumpulkan..." : "Kumpulkan"}
           </button>
         )}

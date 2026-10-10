@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, X } from "lucide-react";
+import { BookOpen, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { primaryButton } from "@/components/ui/styles";
@@ -110,6 +110,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
               )}
               {node.summary && <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-zinc-300">{node.summary}</p>}
               <Link href={`/belajar/${node.slug}`} className={`${primaryButton} mt-6 w-full`}>
+                <BookOpen aria-hidden className="size-4" />
                 Belajar
               </Link>
               {node.hasExam && states[node.id] !== "selesai" && (

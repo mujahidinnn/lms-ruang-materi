@@ -1,3 +1,4 @@
+import { Layers, Play, Route } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -62,7 +63,7 @@ async function Home() {
         <div>
           <p className="text-lg font-semibold">Mulai dari satu roadmap</p>
           <p className="mt-1 text-zinc-400">Pilih jalur belajar, lalu buka topik pertamanya. Kemajuanmu tersimpan otomatis.</p>
-          <Link href="/roadmap" className={`${primaryButton} mt-6`}>Pilih track pertama</Link>
+          <Link href="/roadmap" className={`${primaryButton} mt-6`}><Route aria-hidden className="size-4" />Pilih track pertama</Link>
         </div>
       </div>
     );
@@ -91,7 +92,7 @@ async function Home() {
             {days ? `Streak ${days} hari` : "Mulai lagi hari ini"}
           </p>
         </div>
-        <Link href={`/belajar/${latest.slug}`} className={primaryButton}>Lanjutkan</Link>
+        <Link href={`/belajar/${latest.slug}`} className={primaryButton}><Play aria-hidden className="size-4" />Lanjutkan</Link>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -105,7 +106,8 @@ async function Home() {
               : "Kartu dari topik yang kamu buka muncul di sini sesuai jadwalnya."}
           </p>
           {due.length > 0 && (
-            <Link href="/flashcard" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-zinc-800 px-4 text-sm hover:border-zinc-600">
+            <Link href="/flashcard" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-800 px-4 text-sm hover:border-zinc-600">
+              <Layers aria-hidden className="size-4" />
               Mulai review
             </Link>
           )}
