@@ -40,7 +40,7 @@ export default function TrackPage(props: PageProps<"/roadmap/[track]">) {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">
           <Link href="/roadmap" className="text-sm text-zinc-400 hover:text-zinc-50">
             Semua roadmap
@@ -62,8 +62,8 @@ async function Track({ params }: { params: PageProps<"/roadmap/[track]">["params
   return (
     <>
       <div className="mt-3 mb-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{track.title}</h1>
-        <p className="text-sm text-zinc-400 tabular-nums">{track.nodes.length} topik</p>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{track.title}</h1>
+        <p className="inline-flex min-h-8 items-center rounded-full bg-tile-lavender px-3 text-xs font-medium tabular-nums">{track.nodes.length} topik</p>
       </div>
       {track.description && <p className="-mt-6 mb-10 max-w-2xl text-zinc-400">{track.description}</p>}
       <RoadmapView nodes={track.nodes} edges={track.edges} />

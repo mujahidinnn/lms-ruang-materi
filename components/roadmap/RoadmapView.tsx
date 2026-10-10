@@ -53,7 +53,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             </span>
           ))}
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-5 rounded border border-dashed border-zinc-600" />
+            <span className="h-3 w-5 rounded-md border-2 border-dashed border-zinc-700" />
             opsional
           </span>
         </p>
@@ -63,12 +63,12 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
         {signedIn && core.length > 0 && (
           <div className={`mb-5 ${node ? "lg:hidden" : ""}`}>
             <p className="text-sm text-zinc-400 tabular-nums">{coreDone} dari {core.length} topik inti selesai</p>
-            <div aria-hidden className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-              <div className="h-full rounded-full bg-accent" style={{ width: `${(coreDone / core.length) * 100}%` }} />
+            <div aria-hidden className="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="h-full rounded-full bg-zinc-50" style={{ width: `${(coreDone / core.length) * 100}%` }} />
             </div>
           </div>
         )}
-        <ol className={`divide-y divide-zinc-800/80 border-y border-zinc-800/80 ${node ? "lg:hidden" : ""}`}>
+        <ol className={`space-y-2 ${node ? "lg:hidden" : ""}`}>
           {placed.map((n) => {
             const state = states[n.id] ?? "belum";
             return (
@@ -77,12 +77,12 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                   id={`node-${n.id}`}
                   type="button"
                   onClick={() => pick(n.id)}
-                  className="flex min-h-12 w-full items-center gap-3 py-2 text-left hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"
+                  className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-zinc-900 px-4 py-2 text-left shadow-soft hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <StateIcon state={state} />
                   <span className="min-w-0 flex-1 truncate font-medium">{n.title}</span>
                   <span className="sr-only">, {state}</span>
-                  {n.optional && <span className="text-xs text-zinc-500">opsional</span>}
+                  {n.optional && <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">opsional</span>}
                   <ChevronRight aria-hidden className="size-4 text-zinc-600" />
                 </button>
               </li>
@@ -95,17 +95,17 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             <div aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSelected(null)} />
             <section
               aria-labelledby="node-title"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:static lg:z-auto lg:max-h-none lg:rounded-2xl lg:border lg:border-zinc-800/80 lg:bg-zinc-900/40"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[32px] bg-zinc-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft lg:static lg:z-auto lg:max-h-none lg:rounded-[28px]"
             >
               <div className="flex items-start gap-3">
-                <h2 id="node-title" ref={heading} tabIndex={-1} className="flex-1 text-xl font-semibold tracking-tight outline-none">
+                <h2 id="node-title" ref={heading} tabIndex={-1} className="flex-1 text-2xl font-bold tracking-tight outline-none">
                   {node.title}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setSelected(null)}
                   aria-label="Tutup"
-                  className="-mt-2 -mr-2 grid size-11 place-items-center rounded-xl text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent"
+                  className="-mt-1 -mr-1 grid size-11 place-items-center rounded-full bg-zinc-800 text-zinc-400 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   <X aria-hidden className="size-5" />
                 </button>
@@ -132,12 +132,12 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
               {(node.practiceCount > 0 || node.cardCount > 0) && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {node.practiceCount > 0 && (
-                    <Link href={`/latihan/${node.slug}`} className="flex min-h-11 items-center justify-center rounded-lg border border-zinc-800 text-sm hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent">
+                    <Link href={`/latihan/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-mint text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
                       Latihan
                     </Link>
                   )}
                   {node.cardCount > 0 && (
-                    <Link href={`/flashcard/${node.slug}`} className="flex min-h-11 items-center justify-center rounded-lg border border-zinc-800 text-sm hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent">
+                    <Link href={`/flashcard/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-lavender text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
                       Flashcard
                     </Link>
                   )}

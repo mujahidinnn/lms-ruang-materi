@@ -14,10 +14,10 @@ export default function TemplatePage() {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-10 max-w-xl">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Template HTML</h1>
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Template HTML</h1>
             <p className="mt-2 text-zinc-400">Lihat preview langsung, lalu unduh kodenya untuk kamu pakai dan ubah sendiri.</p>
           </div>
           <TemplateGallery templates={templates} />

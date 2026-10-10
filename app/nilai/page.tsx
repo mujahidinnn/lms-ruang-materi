@@ -6,6 +6,7 @@ import SiteHeader from "@/components/landing/SiteHeader";
 import AccountNav from "@/components/dashboard/AccountNav";
 import TrackProgress from "@/components/dashboard/TrackProgress";
 import { requireUser } from "@/lib/dal";
+import { card, chip } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -18,12 +19,10 @@ export default function NilaiPage() {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-3xl">
-          <div className="flex flex-wrap items-baseline justify-between gap-4">
-            <h1 className="text-3xl font-semibold tracking-tight">Nilai</h1>
-            <AccountNav current="/nilai" />
-          </div>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Nilai</h1>
+          <div className="mt-5"><AccountNav current="/nilai" /></div>
           <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
             <Report />
           </Suspense>
@@ -62,8 +61,8 @@ async function Report() {
 
   return (
     <>
-      <section aria-labelledby="roadmap" className="mt-10">
-        <h2 id="roadmap" className="text-lg font-semibold">Roadmap</h2>
+      <section aria-labelledby="roadmap" className={`mt-8 p-6 ${card}`}>
+        <h2 id="roadmap" className="text-xl font-bold tracking-tight">Roadmap</h2>
         <ul className="mt-4 space-y-5">
           {((tracks ?? []) as TrackRow[]).map((t) => {
             const l = levelBySlug.get(t.slug);
@@ -76,16 +75,16 @@ async function Report() {
         </ul>
       </section>
 
-      <section aria-labelledby="lencana" className="mt-12 grid gap-6 sm:grid-cols-[1fr_auto]">
-        <div>
-          <h2 id="lencana" className="text-lg font-semibold">Lencana</h2>
+      <section aria-labelledby="lencana" className="mt-4 grid gap-4 sm:grid-cols-[1fr_14rem]">
+        <div className={`p-6 ${card}`}>
+          <h2 id="lencana" className="text-xl font-bold tracking-tight">Lencana</h2>
           <ul className="mt-3 flex flex-wrap gap-2">
             {((tracks ?? []) as TrackRow[]).map((t) => {
               const got = earned.has(t.id);
               return (
                 <li
                   key={t.id}
-                  className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm ${got ? "border-accent-warm/50 text-zinc-50" : "border-dashed border-zinc-800 text-zinc-500"}`}
+                  className={`flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium ${got ? "bg-tile-butter text-zinc-50" : "border border-dashed border-zinc-700 text-zinc-500"}`}
                 >
                   <Award aria-hidden className={`size-4 ${got ? "text-accent-warm" : ""}`} />
                   {t.title}
@@ -96,14 +95,14 @@ async function Report() {
           </ul>
           <p className="mt-2 text-xs text-zinc-500">Lencana didapat setelah lulus ujian semua topik inti satu roadmap.</p>
         </div>
-        <div className="sm:text-right">
-          <h2 className="text-lg font-semibold">Streak terbaik</h2>
-          <p className="mt-2 text-3xl font-semibold text-accent-warm tabular-nums">{streak?.best_days ?? 0} <span className="text-base font-normal text-zinc-400">hari</span></p>
+        <div className="rounded-[28px] bg-tile-peach p-6">
+          <h2 className="text-sm font-medium text-zinc-300">Streak terbaik</h2>
+          <p className="mt-2 text-5xl font-bold tracking-tight tabular-nums">{streak?.best_days ?? 0}<span className="ml-1.5 text-base font-medium text-zinc-300">hari</span></p>
         </div>
       </section>
 
-      <section aria-labelledby="ujian" className="mt-12">
-        <h2 id="ujian" className="text-lg font-semibold">Ujian</h2>
+      <section aria-labelledby="ujian" className={`mt-4 p-6 ${card}`}>
+        <h2 id="ujian" className="text-xl font-bold tracking-tight">Ujian</h2>
         {exams.size === 0 ? (
           <p className="mt-3 text-zinc-400">
             Belum ada ujian yang kamu kerjakan. Buka <Link href="/roadmap" className="text-accent hover:underline">roadmap</Link> dan pilih topik untuk diuji.
@@ -124,7 +123,7 @@ async function Report() {
                   <td className="py-3"><Link href={`/ujian/${e.slug}`} className="hover:text-accent">{e.title}</Link></td>
                   <td className="py-3 text-right font-semibold tabular-nums">{e.best ?? "-"}</td>
                   <td className="hidden py-3 text-right text-zinc-400 tabular-nums sm:table-cell">{e.tries}</td>
-                  <td className={`py-3 text-right ${e.passed ? "text-accent" : "text-zinc-400"}`}>{e.passed ? "lulus" : "belum"}</td>
+                  <td className="py-3 text-right"><span className={`${chip} ${e.passed ? "bg-tile-mint" : "bg-zinc-800"}`}>{e.passed ? "lulus" : "belum"}</span></td>
                 </tr>
               ))}
             </tbody>

@@ -35,7 +35,7 @@ const FIELDS = [
 export default function UjianAdminPage() {
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="text-3xl font-semibold tracking-tight">Ujian</h1>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Ujian</h1>
       <p className="mt-2 text-sm text-zinc-400">
         Soal dan kuncinya diedit di halaman topik. Bank soal yang terbit harus minimal dua kali jumlah soal per percobaan.
       </p>
@@ -59,7 +59,7 @@ async function List() {
   }
 
   return (
-    <ul className="mt-6 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+    <ul className="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
       {exams.map((e) => {
         const bank = e.exam_questions.filter((q) => q.status === "published").length;
         const drafts = e.exam_questions.filter((q) => q.status === "draft").length;

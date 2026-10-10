@@ -25,7 +25,7 @@ export default function TopicActions({ slug, published, hasDraft }: { slug: stri
       </button>
       <div aria-live="polite">
         {(state.error || state.ok) && (
-          <p className={`rounded-md border px-3 py-2 text-sm ${state.error ? "border-red-500/40 text-red-500" : "border-accent/40 text-accent"}`}>
+          <p className={`rounded-2xl px-4 py-3 text-sm ${state.error ? "bg-tile-pink" : "bg-tile-mint"}`}>
             {state.error ?? state.ok}
           </p>
         )}

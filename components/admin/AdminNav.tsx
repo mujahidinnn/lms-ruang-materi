@@ -20,7 +20,7 @@ export default function AdminNav() {
 // A row on mobile, a column in the sidebar from lg.
 export function NavLinks({ path }: { path: string }) {
   return (
-    <nav aria-label="Admin" className="flex gap-1 lg:flex-col">
+    <nav aria-label="Admin" className="scrollbar-thin flex gap-1 overflow-x-auto lg:flex-col">
       {LINKS.map(({ href, label, Icon }) => {
         const current = href === "/admin" ? path === href : path.startsWith(href);
         return (
@@ -28,8 +28,8 @@ export function NavLinks({ path }: { path: string }) {
             key={href}
             href={href}
             aria-current={current ? "page" : undefined}
-            className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
-              current ? "bg-accent/10 font-medium text-accent" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50"
+            className={`flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+              current ? "bg-zinc-50 font-medium text-zinc-950" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
             }`}
           >
             <Icon aria-hidden className="size-4" />

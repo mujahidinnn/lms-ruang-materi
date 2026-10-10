@@ -18,14 +18,14 @@ export default function MigrasiList({ slugs, models }: { slugs: string[]; models
     <section aria-labelledby="deck-lama" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id="deck-lama" className="text-lg font-semibold">Deck lama tanpa draf</h2>
+          <h2 id="deck-lama" className="text-xl font-bold tracking-tight">Deck lama tanpa draf</h2>
           <p className="text-sm text-zinc-400">Slide-nya sudah tayang. Buat ringkasan, tips, flashcard dan soal untuk satu deck sekali klik.</p>
         </div>
         <select
           aria-label="Model untuk deck lama"
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          className="min-h-11 w-full rounded-md border border-zinc-800/80 bg-zinc-900 px-2 text-sm text-zinc-50 sm:w-72"
+          className="min-h-11 w-full rounded-full border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-50 sm:w-72"
         >
           {models.map((m) => <option key={m} value={m}>{m.replace(":", " / ")}</option>)}
         </select>

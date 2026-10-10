@@ -30,7 +30,7 @@ export default function LatihanPage(props: PageProps<"/latihan/[slug]">) {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
           <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
             <Latihan params={props.params} />
@@ -49,7 +49,7 @@ async function Latihan({ params }: { params: PageProps<"/latihan/[slug]">["param
   return (
     <>
       <Link href={`/belajar/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-50">{practice.title}</Link>
-      <h1 className="mt-2 mb-8 text-3xl font-semibold tracking-tight">Latihan</h1>
+      <h1 className="mt-2 mb-8 text-4xl font-bold tracking-tight sm:text-5xl">Latihan</h1>
       {practice.questions.length === 0 ? (
         <p className="text-zinc-400">
           Soal latihan untuk topik ini belum tersedia.{" "}

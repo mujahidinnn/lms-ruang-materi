@@ -26,7 +26,7 @@ export default function DeckPage(props: PageProps<"/flashcard/[slug]">) {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
           <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
             <Deck params={props.params} />
@@ -45,7 +45,7 @@ async function Deck({ params }: { params: PageProps<"/flashcard/[slug]">["params
   return (
     <>
       <Link href={`/belajar/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-50">{deck.title}</Link>
-      <h1 className="mt-2 mb-8 text-3xl font-semibold tracking-tight">Flashcard</h1>
+      <h1 className="mt-2 mb-8 text-4xl font-bold tracking-tight">Flashcard</h1>
       {deck.cards.length === 0 ? (
         <p className="text-zinc-400">
           Flashcard untuk topik ini belum tersedia.{" "}

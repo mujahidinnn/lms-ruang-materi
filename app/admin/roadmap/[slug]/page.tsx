@@ -63,7 +63,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
       <aside className="flex flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
         <Link href="/admin/roadmap" className="text-sm text-zinc-400 hover:text-zinc-50">Semua roadmap</Link>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{track.title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{track.title}</h1>
           <p className="mt-1 flex items-center gap-3 font-mono text-xs text-zinc-500">
             {slug} <StatusBadge status={track.status} />
           </p>
@@ -79,7 +79,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
 
       <div className="flex min-w-0 flex-col gap-12">
         <section aria-labelledby="info">
-          <h2 id="info" className="text-lg font-semibold">Info track</h2>
+          <h2 id="info" className="text-xl font-bold tracking-tight">Info track</h2>
           <ActionForm action={simpanTrack} className="mt-4 grid gap-3">
             {hidden}
             <input name="title" defaultValue={track.title} aria-label="Judul" required className={field} />
@@ -90,17 +90,17 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
 
         {placed.length > 0 && (
           <section aria-labelledby="pratinjau">
-            <h2 id="pratinjau" className="text-lg font-semibold">Pratinjau</h2>
-            <div className="mt-4 rounded-2xl border border-zinc-800/80 p-6">
+            <h2 id="pratinjau" className="text-xl font-bold tracking-tight">Pratinjau</h2>
+            <div className="mt-4 rounded-[28px] bg-zinc-900 p-6 shadow-soft">
               <RoadmapGraph nodes={placed} edges={graphEdges} states={{}} selected={null} />
             </div>
           </section>
         )}
 
         <section aria-labelledby="topik">
-          <h2 id="topik" className="text-lg font-semibold">Topik <span className="text-zinc-500">{nodes.length}</span></h2>
+          <h2 id="topik" className="text-xl font-bold tracking-tight">Topik <span className="text-zinc-500">{nodes.length}</span></h2>
           <p className="mt-1 text-sm text-zinc-500">Urutan menentukan posisi atas ke bawah dalam satu kolom.</p>
-          <ul className="mt-4 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+          <ul className="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
             {nodes.map((n) => (
               <li key={n.id} className="flex flex-wrap items-center gap-3 py-3">
                 <span className="min-w-0 flex-1">
@@ -144,9 +144,9 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
 
         {nodes.length > 1 && (
           <section aria-labelledby="prasyarat">
-            <h2 id="prasyarat" className="text-lg font-semibold">Prasyarat <span className="text-zinc-500">{edges.length}</span></h2>
+            <h2 id="prasyarat" className="text-xl font-bold tracking-tight">Prasyarat <span className="text-zinc-500">{edges.length}</span></h2>
             <p className="mt-1 text-sm text-zinc-500">Saran urutan, bukan kunci. Lingkaran ditolak.</p>
-            <ul className="mt-4 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+            <ul className="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
               {edges.map((e) => (
                 <li key={e.id} className="flex items-center gap-3 py-2">
                   <span className="min-w-0 flex-1 text-sm">

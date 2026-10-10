@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { nilaiKartu } from "@/app/flashcard/actions";
+import { primaryButton } from "@/components/ui/styles";
 import { daysFor, nextBox, RATINGS, type Rating } from "@/lib/leitner";
 
 export type Card = { id: string; front: string; back: string; topic?: string; box?: number | null };
@@ -53,7 +54,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
   if (!card) {
     return (
       <div className="py-6">
-        <p className="text-2xl font-semibold tracking-tight">{cards.length} kartu selesai</p>
+        <p className="text-3xl font-bold tracking-tight">{cards.length} kartu selesai</p>
         <p aria-live="polite" className="mt-2 text-sm text-zinc-400">{note}</p>
         <div className="mt-6">{end}</div>
       </div>
@@ -65,7 +66,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
       <button
         type="button"
         onClick={() => setFlipped((f) => !f)}
-        className="group relative block aspect-[3/2] w-full [perspective:1200px] rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:aspect-[2/1]"
+        className="group relative block aspect-[3/2] w-full [perspective:1200px] rounded-[32px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:aspect-[2/1]"
       >
         <span
           className={`relative block size-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
@@ -81,8 +82,8 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
             <button
               key={rating}
               onClick={() => rate(rating)}
-              className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border px-4 font-medium focus-visible:outline-2 focus-visible:outline-accent ${
-                rating === 3 ? "border-accent bg-accent text-zinc-950 hover:opacity-90" : "border-zinc-800 hover:border-zinc-600"
+              className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                rating === 3 ? "bg-zinc-50 text-zinc-950 hover:bg-zinc-300" : rating === 2 ? "bg-tile-butter hover:brightness-95" : "bg-tile-pink hover:brightness-95"
               }`}
             >
               <span className="font-mono text-xs opacity-60">{rating}</span>
@@ -95,9 +96,9 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
         ) : (
           <button
             onClick={() => setFlipped(true)}
-            className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-800 font-medium hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent"
+            className={`${primaryButton} flex-1`}
           >
-            Balik kartu <span className="font-mono text-xs text-zinc-500">Space</span>
+            Balik kartu <span className="font-mono text-xs opacity-60">Space</span>
           </button>
         )}
       </div>
@@ -114,12 +115,12 @@ function Face({ label, text, hidden, back = false }: { label: string; text: stri
   return (
     <span
       aria-hidden={hidden}
-      className={`absolute inset-0 flex flex-col rounded-2xl border p-6 text-left [backface-visibility:hidden] sm:p-10 ${
-        back ? "[transform:rotateY(180deg)] border-accent/40 bg-zinc-900" : "border-zinc-800 bg-zinc-900/60 group-hover:border-zinc-700"
+      className={`absolute inset-0 flex flex-col rounded-[32px] p-6 text-left [backface-visibility:hidden] sm:p-10 ${
+        back ? "[transform:rotateY(180deg)] bg-zinc-900 shadow-soft" : "bg-tile-lavender"
       }`}
     >
-      <span className="text-xs text-zinc-500">{label}</span>
-      <span className={`m-auto text-center text-balance ${back ? "text-lg leading-relaxed text-zinc-200" : "text-2xl font-semibold tracking-tight sm:text-3xl"}`}>
+      <span className="text-xs font-medium text-zinc-400">{label}</span>
+      <span className={`m-auto text-center text-balance ${back ? "text-lg leading-relaxed text-zinc-200" : "text-2xl font-bold tracking-tight sm:text-4xl"}`}>
         {text}
       </span>
     </span>

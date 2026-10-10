@@ -525,60 +525,70 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 
 ## Style
 
-- **Light and dark, follows the system** unless the learner picks one with
-  the theme button in the header (`components/ThemeButton.tsx`, saved in
-  localStorage, applied as `<html data-theme>` by an inline script before
-  first paint). Write classes for dark: background
-  `zinc-950`, text `zinc-50`, muted text `zinc-300` to `zinc-500`, borders
-  `zinc-800/80`, surfaces `zinc-900`. `app/globals.css` mirrors the zinc scale
-  under `prefers-color-scheme: light` and `[data-theme="light"]`, so no
-  `dark:` or light variants are
-  needed. Use zinc for neutrals, never `white`, `black` or hex, or that
-  element will not flip.
-- **Main accent: teal**, via the `accent` color (`text-accent`, `bg-accent`,
-  `fill-accent/15`). It is `teal-400` on dark and `teal-700` on light, set in
-  `app/globals.css`. Use it for the primary action, `selesai` and `sedang`
-  states, passed, and highlights, not for body text.
-- **Second accent: orange, for motivation and attention only**, via
-  `accent-warm` (`text-accent-warm`, `bg-accent-warm/15`). It is `orange-400`
-  on dark and `orange-600` on light. Use it for streak, level up and lencana,
-  the exam timer warning (5 and 1 minute), "ragu-ragu" questions and the
-  logo's spark. Nothing else.
-  - Teal carries about 90% of the color on a screen, orange about 10%.
-  - Orange appears as a badge, icon or small text, never as a button next to
-    a teal one with equal weight. One dominant accent per screen.
-- **State colors**: correct and passed use the accent, wrong and failed use
-  `red-500`, `dilewati` uses `zinc-600` with a strikethrough. Warnings use
-  `accent-warm`, never red, so "hampir habis" and "salah" never look alike.
+The visual direction comes from the soft pastel learning-app references the
+owner chose on 2026-10-10: a lavender canvas, white cards, pastel tiles, ink
+pill buttons, big bold headings. Every new screen follows it.
+
+- **Light first.** Light is the design; dark is a choice made with the theme
+  button in the header (`components/ThemeButton.tsx`, saved in localStorage,
+  applied as `<html data-theme="dark">` by an inline script in
+  `app/layout.tsx` before first paint). The OS setting does not switch it.
+- **Neutrals through the zinc scale.** `app/globals.css` maps zinc onto the
+  theme, so components write zinc classes and never `white`, `black` or hex:
+  - `zinc-950`: the lavender canvas (`#f2f1f7`), the page background.
+  - `zinc-900`: white surfaces (cards, inputs, pills on the canvas).
+  - `zinc-800`: soft lines, track of progress bars, quiet fills.
+  - `zinc-500` to `zinc-300`: muted to secondary text. `zinc-50`: ink
+    (`#141318`), for text and the primary pill.
+  - Dark mode redefines the same names (canvas `#131217`, surfaces
+    `#1d1c23`), so no `dark:` variants are needed.
+- **Pastel tiles** carry color: `bg-tile-lavender`, `-mint`, `-butter`,
+  `-pink`, `-sky`, `-peach`. Text on a tile stays ink. Lists hand them out
+  in turn with `tile(i)` from `components/ui/styles.ts`, so neighbours
+  differ. Fixed meanings where there is one: mint = done or correct, pink =
+  wrong or danger, butter = streak, warning, ragu-ragu, lavender = the
+  current or featured item.
+- **Brand teal** (`accent`, `#0f766e` light, `#2dd4bf` dark) is for links,
+  the logo and small highlights only, not for buttons. **Orange**
+  (`accent-warm`) stays for the logo's spark, streak icons and timer urgency.
+- **Buttons**, all `rounded-full`, from `components/ui/styles.ts`:
+  - `primaryButton`: the one main action on a screen, an ink pill with light
+    text (`bg-zinc-50 text-zinc-950`).
+  - `secondaryButton`: a white pill with `shadow-soft`.
+  - `iconButton`: a 44px white circle.
+  - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the ink circle with an
+    up-right arrow in the corner of a tile or card that opens something.
+- **Cards and tiles**: `card` = `rounded-[28px] bg-zinc-900 shadow-soft`, no
+  borders. Tiles use the same radius with a pastel background. Sheets,
+  folders and big panels go to `rounded-[32px]`; inner items to
+  `rounded-2xl`. `shadow-soft` is the only shadow.
+- **Chips**: `chip` plus a background (`bg-tile-*`), or `mutedChip`; pills
+  for counts, filters and states ("33 slide", "lulus").
+- **Typography**: Plus Jakarta Sans (`font-sans`, `--font-jakarta`), Geist
+  Mono for code, Babylonica (`--font-signature`) for the signature link only.
+  Page titles `text-4xl sm:text-5xl font-bold tracking-tight`, card titles
+  `text-xl` to `text-2xl font-bold tracking-tight`, body `text-zinc-400` on
+  the canvas, `text-zinc-300` on tiles. Sentence case, no all-caps labels.
+- **Navigation**: desktop header = logo, a white pill holding the links, the
+  theme button and an ink account pill. Phones get the floating bottom pill
+  (`components/landing/MobileNav.tsx`, round icon buttons, the current one
+  ink); `globals.css` pads the body for it. Account pages switch between
+  Dasbor, Flashcard, Nilai and Profil with pill tabs (`AccountNav`), the
+  current one ink.
+- **Quiz and exam options** are white rounded-2xl rows with a pastel number
+  circle; the picked one gets an ink border, checked answers turn mint or
+  pink. Progress bars are `h-2.5 rounded-full` with an ink fill.
 - **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
-  rounded square open at its top right corner, holding two stacked slides:
-  material laid out in a space whose door is open to anyone, growing
-  outward, marked by a small spark dot at the gap. Room in `accent` (teal),
-  slides too, spark in `accent-warm` (orange). `app/icon.svg` and
-  `app/opengraph-image.tsx` repeat it with hex colors. Never recolor the
-  room, never close the corner.
-- **Fonts** from `next/font` in `app/layout.tsx`: Geist (`font-sans`), Geist
-  Mono (`font-mono`, also for code in questions), Babylonica
-  (`--font-signature`) for the signature link only.
-- **Shapes**: `rounded-lg` for inputs and buttons, `rounded-xl` for nav
-  pills and small cards, `rounded-2xl` for the featured card. Thin borders
-  over shadows; `shadow-lg` only on floating menus and sheets.
-- **Featured card**: each screen has at most one card that carries the main
-  action ("Lanjutkan belajar", "Tinjau draf"), tinted mint with
-  `border-accent/20 bg-accent/5`. Everything else stays neutral zinc.
-- **App shell**: signed-in areas (dasbor, admin) use a left sidebar from
-  `lg` with lucide icons; the active item is `bg-accent/10 text-accent`.
-  Below `lg` it becomes a top bar with the nav on its own row.
-- **Progress cards**: a number in text ("5 dari 12") with a thin
-  `rounded-full` teal bar under it; the bar only repeats the text.
-- **Sequences** (roadmap steps, missions) may use numbered cards because
-  they are ordered: done shows a check, current a teal border, the rest
-  stay muted. Visual direction taken from the DevOrbit reference, adapted:
-  no emoji, no exclamation marks, no leaderboard, orange stays for streak.
-- **Shared CSS** lives in `app/globals.css`: `scrollbar-thin`,
+  rounded square open at its top right corner, holding two stacked slides,
+  marked by a small spark dot at the gap. Room and slides teal, spark
+  orange. `app/icon.svg` and `app/opengraph-image.tsx` repeat it with hex
+  colors. Never recolor the room, never close the corner.
+- **Motion**: only in answer to the learner (hover lift on tiles, the arrow
+  badge turning, the hero cover drag, card flips). Every animation has a
+  `motion-reduce` fallback.
+- **Shared CSS** lives in `app/globals.css`: theme tokens, `scrollbar-thin`,
   `animate-word-in`, the `short:` variant for landscape phones. Reuse these
-  before adding new utilities. Every animation needs a
-  `prefers-reduced-motion` fallback.
+  and `components/ui/styles.ts` before adding new utilities.
 - **Language**: UI text and README in Bahasa Indonesia, code comments in
   English.
 
@@ -626,7 +636,7 @@ description, OG image), `app/sitemap.ts`, `app/robots.ts` and
 - **Language.** `lang="id"` and `locale: "id_ID"` stay as set in the layout.
 - **OG image** is 1200x630 and drawn with inline hex colors, since
   `ImageResponse` cannot read CSS variables. Keep it in sync with the Style
-  rules: zinc on dark, accent `#00d3bd` (teal-400).
+  rules: lavender canvas `#f2f1f7`, ink `#141318`, teal mark.
 
 ## PWA
 

@@ -187,11 +187,11 @@ export default function PresentationViewer({
 
   const navBorderClass = isVerticalNav
     ? navPosition === "left"
-      ? "border-r border-zinc-800/80"
-      : "border-l border-zinc-800/80"
+      ? ""
+      : ""
     : navPosition === "top"
-    ? "border-b border-zinc-800/80"
-    : "border-t border-zinc-800/80";
+    ? ""
+    : "";
 
   const navList = (
     <nav
@@ -229,12 +229,12 @@ export default function PresentationViewer({
             onClick={() => goTo(i)}
             aria-label={`Ke slide ${i + 1}`}
             aria-current={i === index}
-            className={`relative aspect-video overflow-hidden rounded-md border transition-colors ${
+            className={`relative aspect-video overflow-hidden rounded-xl border-2 transition-colors ${
               isVerticalNav ? "w-full" : "h-14 shrink-0 short:h-9! sm:h-16"
             } ${
               i === index
                 ? "border-zinc-50"
-                : "border-zinc-800/80 hover:border-zinc-700"
+                : "border-transparent hover:border-zinc-700"
             }`}
           >
             <Image
@@ -290,7 +290,7 @@ export default function PresentationViewer({
         onClick={() => goTo(index - 1)}
         disabled={isFirst}
         aria-label="Slide sebelumnya"
-        className="absolute left-3 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-md border border-zinc-800/80 bg-zinc-950/80 p-2 text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
+        className="absolute left-3 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-zinc-900/90 p-3 shadow-soft text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
       >
         <ChevronLeft className="h-5 w-5" strokeWidth={1.75} />
       </button>
@@ -299,7 +299,7 @@ export default function PresentationViewer({
         onClick={() => goTo(index + 1)}
         disabled={isLast}
         aria-label="Slide berikutnya"
-        className="absolute right-3 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-md border border-zinc-800/80 bg-zinc-950/80 p-2 text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
+        className="absolute right-3 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-zinc-900/90 p-3 shadow-soft text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
       >
         <ChevronRight className="h-5 w-5" strokeWidth={1.75} />
       </button>
@@ -308,12 +308,12 @@ export default function PresentationViewer({
 
   return (
     <div className="flex h-dvh flex-col bg-zinc-950 text-zinc-50">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-zinc-800/80 px-4 py-3 short:py-1.5! sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-4 px-4 py-3 short:py-1.5! sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/"
             aria-label="Kembali ke beranda"
-            className="relative flex h-9 w-9 shrink-0 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
+            className="relative flex h-9 w-9 shrink-0 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-full bg-zinc-900 shadow-soft text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
           >
             <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
           </Link>
@@ -332,12 +332,12 @@ export default function PresentationViewer({
               onClick={() => setIsLayoutMenuOpen((open) => !open)}
               aria-label="Atur posisi daftar slide"
               aria-expanded={isLayoutMenuOpen}
-              className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
+              className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-full bg-zinc-900 shadow-soft text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50 short:h-7! short:w-7!"
             >
               <ActiveLayoutIcon className="h-4 w-4" strokeWidth={1.75} />
             </button>
             {isLayoutMenuOpen && (
-              <div className="absolute right-0 top-11 z-10 w-40 overflow-hidden rounded-md border border-zinc-800/80 bg-zinc-900 py-1 shadow-lg shadow-black/40">
+              <div className="absolute right-0 top-11 z-10 w-44 overflow-hidden rounded-2xl bg-zinc-900 p-1 shadow-soft">
                 {NAV_POSITIONS.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -363,7 +363,7 @@ export default function PresentationViewer({
             type="button"
             onClick={toggleFullscreen}
             aria-label={isFullscreen ? "Keluar layar penuh" : "Layar penuh"}
-            className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-md border border-zinc-800/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50"
+            className="relative flex h-9 w-9 items-center after:absolute after:-inset-1 after:content-[''] short:after:-inset-2 justify-center rounded-full bg-zinc-900 shadow-soft text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-50"
           >
             {isFullscreen ? (
               <Minimize className="h-4 w-4" strokeWidth={1.75} />

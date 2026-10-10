@@ -22,7 +22,7 @@ const DEVICES: { id: Device; label: string; icon: typeof Monitor }[] = [
 ];
 
 const buttonClass =
-  "inline-flex min-h-11 items-center gap-2 rounded-md border px-3.5 text-sm font-medium transition-colors";
+  "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors";
 
 function CopyCodeButton({
   file,
@@ -104,13 +104,13 @@ export default function TemplateGallery({
           return (
             <article
               key={template.slug}
-              className="flex flex-col overflow-hidden rounded-lg border border-zinc-800/80 bg-zinc-950 transition-colors hover:border-zinc-700"
+              className="flex flex-col overflow-hidden rounded-[28px] bg-zinc-900 p-2 shadow-soft"
             >
               <button
                 type="button"
                 onClick={() => openPreview(template)}
                 aria-label={`Preview ${template.title}`}
-                className="group relative aspect-video overflow-hidden border-b border-zinc-800/80"
+                className="group relative aspect-video overflow-hidden rounded-[22px]"
               >
                 <Image
                   src={template.preview}
@@ -122,7 +122,7 @@ export default function TemplateGallery({
               </button>
               <div className="flex flex-1 flex-col gap-4 p-6">
                 <div className="flex flex-1 flex-col gap-3">
-                  <h3 className="text-xl font-semibold tracking-tight text-zinc-50">
+                  <h3 className="text-xl font-bold tracking-tight text-zinc-50">
                     {template.title}
                   </h3>
                   <p className="flex-1 text-sm leading-relaxed text-zinc-400">
@@ -144,7 +144,7 @@ export default function TemplateGallery({
                   <a
                     href={href}
                     download={template.file}
-                    className={`${buttonClass} border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50`}
+                    className={`${buttonClass} bg-zinc-800 text-zinc-300 hover:text-zinc-50`}
                   >
                     <Download className="h-4 w-4" strokeWidth={1.75} />
                     Unduh Kode
@@ -152,7 +152,7 @@ export default function TemplateGallery({
                   <CopyCodeButton
                     file={template.file}
                     label="Salin Kode"
-                    className={`${buttonClass} border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50`}
+                    className={`${buttonClass} bg-zinc-800 text-zinc-300 hover:text-zinc-50`}
                   />
                 </div>
               </div>
@@ -168,12 +168,12 @@ export default function TemplateGallery({
           aria-label={`Preview ${active.title}`}
           className="fixed inset-0 z-50 flex flex-col bg-zinc-950"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <h3 className="truncate text-sm font-semibold text-zinc-50">
               {active.title}
             </h3>
             <div className="flex items-center gap-2">
-              <div className="hidden overflow-hidden rounded-md border border-zinc-800 sm:flex">
+              <div className="hidden gap-1 rounded-full bg-zinc-800 p-1 sm:flex">
                 {DEVICES.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -181,9 +181,9 @@ export default function TemplateGallery({
                     onClick={() => setDevice(id)}
                     aria-label={label}
                     aria-pressed={device === id}
-                    className={`grid size-11 place-items-center transition-colors ${
+                    className={`grid size-10 place-items-center rounded-full transition-colors ${
                       device === id
-                        ? "bg-zinc-800 text-zinc-50"
+                        ? "bg-zinc-900 text-zinc-50 shadow-soft"
                         : "text-zinc-500 hover:text-zinc-200"
                     }`}
                   >
@@ -195,7 +195,7 @@ export default function TemplateGallery({
                 href={`/templates/${active.file}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${buttonClass} hidden border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50 sm:inline-flex`}
+                className={`${buttonClass} hidden bg-zinc-800 text-zinc-300 hover:text-zinc-50 sm:inline-flex`}
               >
                 <ExternalLink className="h-4 w-4" strokeWidth={1.75} />
                 Tab baru
@@ -203,7 +203,7 @@ export default function TemplateGallery({
               <a
                 href={`/templates/${active.file}`}
                 download={active.file}
-                className={`${buttonClass} border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50`}
+                className={`${buttonClass} bg-zinc-800 text-zinc-300 hover:text-zinc-50`}
               >
                 <Download className="h-4 w-4" strokeWidth={1.75} />
                 Unduh
@@ -211,14 +211,14 @@ export default function TemplateGallery({
               <CopyCodeButton
                 file={active.file}
                 label="Salin"
-                className={`${buttonClass} border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50`}
+                className={`${buttonClass} bg-zinc-800 text-zinc-300 hover:text-zinc-50`}
               />
               <button
                 ref={closeRef}
                 type="button"
                 onClick={() => setActive(null)}
                 aria-label="Tutup preview"
-                className="grid size-11 place-items-center rounded-md border border-zinc-800 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-50"
+                className="grid size-11 place-items-center rounded-full bg-zinc-50 text-zinc-950 transition-colors hover:bg-zinc-300"
               >
                 <X className="h-4 w-4" strokeWidth={1.75} />
               </button>

@@ -3,7 +3,7 @@
 export default function ProgressStat({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950 p-4">
+    <div className="rounded-3xl bg-zinc-900 p-5 shadow-soft">
       <p className="text-sm text-zinc-400">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums">
         {value} <span className="text-sm font-normal text-zinc-500">dari {max}</span>

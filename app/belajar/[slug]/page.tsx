@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import BelajarViewer from "@/components/belajar/BelajarViewer";
-import { primaryButton } from "@/components/ui/styles";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { getTopic, getTopics } from "@/lib/content";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
 
@@ -67,31 +67,31 @@ export default async function PresentationPage(
     <main>
       <BelajarViewer presentation={presentation} />
       {(presentation.summary || presentation.tips.length > 0 || presentation.practiceCount > 0) && (
-        <section aria-label="Ringkasan dan tips" className="border-t border-zinc-800/80 px-6 py-14 sm:px-10">
-          <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-[3fr_2fr]">
+        <section aria-label="Ringkasan dan tips" className="px-5 py-12 sm:px-10">
+          <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-[3fr_2fr]">
             {presentation.summary && (
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">Ringkasan</h2>
+              <div className="rounded-[28px] bg-zinc-900 p-6 shadow-soft sm:p-8">
+                <h2 className="text-2xl font-bold tracking-tight">Ringkasan</h2>
                 <div className="mt-4 space-y-4 leading-relaxed text-zinc-300">
                   {presentation.summary.split(/\n\s*\n/).map((p, i) => <p key={i}>{p}</p>)}
                 </div>
               </div>
             )}
             {presentation.tips.length > 0 && (
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">Tips</h2>
+              <div className="rounded-[28px] bg-tile-butter p-6 sm:p-8">
+                <h2 className="text-2xl font-bold tracking-tight">Tips</h2>
                 <ul className="mt-4 space-y-3">
                   {presentation.tips.map((tip, i) => (
-                    <li key={i} className="border-l-2 border-accent/50 pl-4 text-sm leading-relaxed text-zinc-300">{tip}</li>
+                    <li key={i} className="flex gap-3 rounded-2xl bg-zinc-900/70 p-4 text-sm leading-relaxed text-zinc-200"><span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-accent-warm" />{tip}</li>
                   ))}
                 </ul>
               </div>
             )}
           </div>
           {(presentation.practiceCount > 0 || presentation.cardCount > 0) && (
-            <div className="mx-auto mt-12 flex max-w-5xl flex-wrap items-center justify-end gap-4">
+            <div className="mx-auto mt-6 flex max-w-5xl flex-wrap items-center justify-end gap-3">
               {presentation.cardCount > 0 && (
-                <Link href={`/flashcard/${slug}`} className="min-h-11 content-center text-zinc-400 hover:text-zinc-50">
+                <Link href={`/flashcard/${slug}`} className={secondaryButton}>
                   Flashcard {presentation.cardCount} kartu
                 </Link>
               )}

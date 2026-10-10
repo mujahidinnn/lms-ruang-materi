@@ -83,7 +83,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
         <Link href="/admin/topik" className="text-sm text-zinc-400 hover:text-zinc-50">Semua topik</Link>
         <div className="flex flex-col gap-5 rounded-2xl border border-accent/20 bg-accent/5 p-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{topic.title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{topic.title}</h1>
           <p className="mt-1 font-mono text-sm text-zinc-500">{slug}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <StatusBadge status={topic.status} />
@@ -93,7 +93,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
         </div>
         <TopicActions slug={slug} published={topic.status === "published"} hasDraft={hasDraft} />
         {typeof galat === "string" && (
-          <p role="alert" className="rounded-md border border-red-500/40 px-3 py-2 text-sm text-red-500">{galat}</p>
+          <p role="alert" className="rounded-2xl bg-tile-pink px-4 py-3 text-sm">{galat}</p>
         )}
         </div>
         {prereq.length > 0 && (
@@ -127,7 +127,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
         <Section id="slide" title="Slide" note={`${shownSlides.length} slide${shownSlides[0]?.status === "draft" ? ", hasil render baru" : ""}`}>
           <ul className="scrollbar-thin flex gap-2 overflow-x-auto pb-2">
             {shownSlides.map((s) => (
-              <li key={s.id} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-md border border-zinc-800/80">
+              <li key={s.id} className="relative aspect-video w-36 shrink-0 overflow-hidden rounded-xl">
                 <Image src={thumbSrc({ ...s, src: slideUrl(s.path) })} alt={`${topic.title}, slide ${s.index} dari ${shownSlides.length}`} fill sizes="144px" className="object-cover" />
               </li>
             ))}
@@ -162,7 +162,7 @@ function Section({ id, title, note, children }: { id: string; title: string; not
   return (
     <section id={id} aria-labelledby={`${id}-judul`} className="scroll-mt-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 border-b border-zinc-800/80 pb-2">
-        <h2 id={`${id}-judul`} className="text-lg font-semibold">{title}</h2>
+        <h2 id={`${id}-judul`} className="text-xl font-bold tracking-tight">{title}</h2>
         {note && <p className="text-sm text-zinc-500">{note}</p>}
       </div>
       {children}

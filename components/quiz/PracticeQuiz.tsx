@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { simpanLatihan } from "@/app/latihan/actions";
 import type { Question } from "@/lib/content";
 import { shuffleOptions } from "@/lib/quiz";
-import { primaryButton } from "@/components/ui/styles";
+import { card, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 
 const HINT_KEY = "ruang-materi:hint-masuk";
 
@@ -78,7 +78,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
     const correct = set.length - wrong.length;
     return (
       <div aria-live="polite" className="py-6">
-        <p className="text-4xl font-semibold tracking-tight tabular-nums">
+        <p className="text-5xl font-bold tracking-tight tabular-nums">
           {correct} dari {set.length} benar
         </p>
         <p className="mt-2 text-zinc-400">
@@ -100,7 +100,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
             <>
               <Link href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Coba ujian</Link>
               {wrong.length > 0 && (
-                <button onClick={() => restart(wrong)} className="min-h-11 text-accent hover:underline focus-visible:outline-2 focus-visible:outline-accent">
+                <button onClick={() => restart(wrong)} className={secondaryButton}>
                   Ulangi yang salah
                 </button>
               )}
@@ -110,7 +110,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
           ) : (
             <Link href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</Link>
           )}
-          <button onClick={() => restart(questions)} className="min-h-11 text-zinc-400 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent">
+          <button onClick={() => restart(questions)} className={secondaryButton}>
             Ulangi semua soal
           </button>
         </div>
@@ -123,13 +123,13 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
       <div className="flex items-center justify-between text-sm text-zinc-400 tabular-nums">
         <span>Soal {i + 1} dari {set.length}</span>
       </div>
-      <div aria-hidden className="mt-2 h-1 rounded-full bg-zinc-800">
-        <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
+      <div aria-hidden className="mt-2 h-2.5 rounded-full bg-zinc-800">
+        <div className="h-full rounded-full bg-zinc-50 transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
       </div>
 
-      <h2 className="mt-8 text-xl leading-snug font-semibold text-balance">{q.prompt}</h2>
+      <h2 className="mt-8 text-2xl leading-snug font-bold tracking-tight text-balance">{q.prompt}</h2>
       {q.code && (
-        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-900 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
+        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
 
       <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
@@ -143,17 +143,17 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
               aria-pressed={picked === n}
               disabled={checked}
               onClick={() => setPicked(n)}
-              className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
+              className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left shadow-soft transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 isAnswer
-                  ? "border-accent bg-accent/10"
+                  ? "border-transparent bg-tile-mint"
                   : isWrong
-                    ? "border-red-500/60 bg-red-500/10"
+                    ? "border-transparent bg-tile-pink"
                     : picked === n
-                      ? "border-zinc-400 bg-zinc-900"
-                      : "border-zinc-800 hover:border-zinc-600 disabled:hover:border-zinc-800"
+                      ? "border-zinc-50 bg-zinc-900"
+                      : "border-transparent bg-zinc-900 hover:border-zinc-700 disabled:hover:border-transparent"
               }`}
             >
-              <span className="grid size-6 shrink-0 place-items-center rounded-md border border-zinc-700 font-mono text-xs text-zinc-400">{n + 1}</span>
+              <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-zinc-200 ${tile(n)}`}>{n + 1}</span>
               <span className="flex-1">{opt}</span>
               {isAnswer && <Check aria-label="benar" className="size-5 text-accent" />}
               {isWrong && <X aria-label="salah" className="size-5 text-red-500" />}
@@ -164,7 +164,7 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
 
       <div aria-live="polite">
         {checked && (
-          <div className="mt-6 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
+          <div className={`mt-6 p-5 ${card}`}>
             <p className={`font-medium ${picked === q.answer ? "text-accent" : "text-red-500"}`}>
               {picked === q.answer ? "Benar" : "Belum tepat"}
             </p>

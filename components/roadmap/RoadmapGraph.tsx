@@ -64,13 +64,15 @@ export default function RoadmapGraph({
               tabIndex={-1}
               onClick={() => onSelect?.(n.id)}
               style={{ left: x(n), top: y(n), width: W, height: H }}
-              className={`absolute flex items-center gap-2 rounded-xl border px-3 text-left text-sm transition-colors ${
+              className={`absolute flex items-center gap-2 rounded-2xl border-2 px-3 text-left text-sm transition-colors ${
                 selected === n.id
-                  ? "border-accent bg-accent/10 text-zinc-50"
+                  ? "border-zinc-50 bg-zinc-900 text-zinc-50"
                   : state === "selesai"
-                    ? "border-accent/40 bg-zinc-900 text-zinc-50 hover:border-accent"
-                    : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-600 hover:text-zinc-50"
-              } ${n.optional ? "border-dashed" : ""}`}
+                    ? "border-transparent bg-tile-mint text-zinc-50"
+                    : state === "sedang"
+                      ? "border-transparent bg-tile-lavender text-zinc-50"
+                      : "border-transparent bg-zinc-900 text-zinc-300 shadow-soft hover:text-zinc-50"
+              } ${n.optional ? "border-dashed !border-zinc-700" : ""}`}
             >
               <StateIcon state={state} />
               <span className="line-clamp-2 leading-tight font-medium">{n.title}</span>

@@ -16,8 +16,8 @@ export default function ExamReview({ review, slug }: { review: Review; slug: str
   return (
     <div>
       {review.passed ? <Passed className="mb-6 size-20" /> : <TryAgain className="mb-6 size-20" />}
-      <p className={`text-sm font-medium ${review.passed ? "text-accent" : "text-zinc-400"}`}>{review.passed ? "Lulus" : "Belum lulus"}</p>
-      <p className="mt-1 text-5xl font-semibold tracking-tight tabular-nums">{review.score}</p>
+      <p className={`inline-flex min-h-8 items-center rounded-full px-3 text-sm font-semibold ${review.passed ? "bg-tile-mint" : "bg-tile-pink"}`}>{review.passed ? "Lulus" : "Belum lulus"}</p>
+      <p className="mt-1 text-6xl font-bold tracking-tight tabular-nums">{review.score}</p>
       <p className="mt-2 text-zinc-400">Nilai lulus {review.pass_score}.</p>
       {!review.passed && (
         <p className="mt-4 text-zinc-300">
@@ -29,13 +29,13 @@ export default function ExamReview({ review, slug }: { review: Review; slug: str
         <p className="mt-4 text-sm text-zinc-500">Kunci jawaban tampil setelah kamu lulus atau setelah percobaan terakhir.</p>
       )}
 
-      <ol className="mt-10 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+      <ol className="mt-10 space-y-3">
         {review.questions.map((q, n) => (
-          <li key={n} className="py-6">
+          <li key={n} className="rounded-[28px] bg-zinc-900 p-6 shadow-soft">
             <p className="text-xs text-zinc-500">Soal {n + 1}</p>
-            <p className="mt-1 font-medium">{q.prompt}</p>
+            <p className="mt-1 text-lg font-semibold">{q.prompt}</p>
             {q.code && (
-              <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-900 p-3 text-sm"><code className="font-mono">{q.code}</code></pre>
+              <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
             )}
             <ul className="mt-3 space-y-1 text-sm">
               {q.options.map((opt, i) => {

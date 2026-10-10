@@ -18,12 +18,12 @@ export const metadata: Metadata = {
 export default function RoadmapAdminPage() {
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-3xl font-semibold tracking-tight">Roadmap</h1>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Roadmap</h1>
       <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
         <List />
       </Suspense>
 
-      <h2 className="mt-12 text-lg font-semibold">Track baru</h2>
+      <h2 className="mt-12 text-xl font-bold tracking-tight">Track baru</h2>
       <ActionForm action={buatTrack} className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm text-zinc-400">
           Judul
@@ -53,7 +53,7 @@ async function List() {
   if (!tracks?.length) return <p className="mt-6 text-zinc-400">Belum ada track. Buat yang pertama di bawah.</p>;
 
   return (
-    <ul className="mt-6 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+    <ul className="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
       {tracks.map((t) => (
         <li key={t.slug}>
           <Link href={`/admin/roadmap/${t.slug}`} className="group flex min-h-16 items-center gap-4 py-3 focus-visible:outline-2 focus-visible:outline-accent">

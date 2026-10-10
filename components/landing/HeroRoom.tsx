@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { coverSrc, type Presentation } from "@/lib/slides";
 
-// Solid tints so the tab and the panel join without doubled transparency.
-const FOLDER = "bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--color-zinc-950))]";
-const POCKET = "bg-[color-mix(in_oklab,var(--color-accent)_14%,var(--color-zinc-950))]";
+// A lavender folder with a white front pocket.
+const FOLDER = "bg-tile-lavender";
+const POCKET = "bg-zinc-900";
 
 // Where each cover sits in the folder, front first. Covers past the last slot
 // wait, hidden, behind it.
@@ -127,15 +127,15 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
     <div className="relative pt-8">
       {/* Tab, sitting on the panel's top edge; it covers the panel border
           beneath it so the two read as one sheet. */}
-      <span aria-hidden className={`absolute top-0 left-0 z-10 h-[calc(2rem+1px)] w-2/5 rounded-t-xl border border-b-0 border-accent/30 ${FOLDER}`}>
-        <span className="absolute top-3 right-4 size-2 rounded-full bg-accent-warm" />
+      <span aria-hidden className={`absolute top-0 left-0 z-10 h-[calc(2rem+1px)] w-2/5 rounded-t-[22px] ${FOLDER}`}>
+        <span className="absolute top-3 right-5 size-2.5 rounded-full bg-accent-warm" />
       </span>
 
-      <div ref={box} className={`relative aspect-4/3 rounded-2xl rounded-tl-none border border-accent/30 ${FOLDER}`}>
+      <div ref={box} className={`relative aspect-4/3 rounded-[32px] rounded-tl-none ${FOLDER}`}>
         {topics.map((t, i) => {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
-          const base = `absolute block aspect-video overflow-hidden rounded-lg border border-zinc-800/80 ${SLOTS[slot] ?? HIDDEN}`;
+          const base = `absolute block aspect-video overflow-hidden rounded-2xl ${SLOTS[slot] ?? HIDDEN}`;
           const motion = dragging && isFront ? "" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
           const img = <Image src={coverSrc(t)} alt="" fill sizes="(min-width: 1024px) 450px, 90vw" draggable={false} className="object-cover" priority={isFront} />;
 
@@ -179,13 +179,13 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         })}
 
         {/* Front pocket, holding the label. */}
-        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-40 flex h-[40%] items-end rounded-2xl border-t border-accent/40 p-6 shadow-[0_-12px_24px_-16px_rgb(0_0_0/0.6)] sm:p-8 ${POCKET}`}>
-          <p className="flex w-full items-baseline justify-between gap-4">
+        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-40 flex h-[40%] items-end rounded-[32px] p-6 shadow-[0_-16px_32px_-20px_rgb(20_19_24/0.35)] sm:p-7 ${POCKET}`}>
+          <p className="flex w-full items-end justify-between gap-4">
             <span>
-              <span className="block text-sm text-accent">Mulai dari sini</span>
-              <span className="text-lg font-semibold">{front.title}</span>
+              <span className="block text-sm text-zinc-400">Mulai dari sini</span>
+              <span className="text-2xl font-bold tracking-tight">{front.title}</span>
             </span>
-            <span className="text-sm text-zinc-400 tabular-nums">{front.slideCount} slide</span>
+            <span className="inline-flex min-h-8 items-center rounded-full bg-tile-mint px-3 text-xs font-semibold text-zinc-200 tabular-nums">{front.slideCount} slide</span>
           </p>
         </div>
       </div>

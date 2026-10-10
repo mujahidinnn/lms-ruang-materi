@@ -35,7 +35,7 @@ export default function QuestionEditor({
       </div>
       <p className="mt-2 text-zinc-50">{q.prompt}</p>
       {q.code && (
-        <pre className="mt-2 overflow-x-auto rounded-md border border-zinc-800/80 bg-zinc-900 p-3 text-sm"><code className="font-mono">{q.code}</code></pre>
+        <pre className="mt-2 overflow-x-auto rounded-2xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
       )}
       <ol className="mt-3 space-y-1">
         {q.options.map((opt, i) => (

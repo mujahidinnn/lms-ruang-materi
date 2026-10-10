@@ -22,15 +22,15 @@ test("pulling the front cover brings the next one forward", async ({ page, isMob
   await expect(front(page)).not.toHaveAttribute("aria-label", before!);
 });
 
-test("theme button cycles and survives a reload", async ({ page }) => {
+test("dark theme is a choice that survives a reload", async ({ page }) => {
   await page.goto("/");
-  const button = page.getByRole("button", { name: /^Tema:/ });
-  await button.click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: /^Tema:/ }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Pakai tema gelap" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Pakai tema terang" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", "dark");
 });
 
 test("roadmap opens a track and a topic panel", async ({ page }) => {
@@ -43,6 +43,7 @@ test("roadmap opens a track and a topic panel", async ({ page }) => {
 
 test("the slide viewer moves to the next slide", async ({ page, isMobile }) => {
   await page.goto("/belajar/github");
+  await page.waitForLoadState("networkidle"); // a key press before hydration is lost
   const stage = page.locator("img[srcset]").first();
   await expect(stage).toHaveAttribute("alt", /slide 1 dari/);
   if (isMobile) await page.getByRole("button", { name: "Ke slide 2", exact: true }).click();
@@ -77,9 +78,11 @@ test("unknown pages show the 404 page", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Halaman tidak ditemukan" })).toBeVisible();
 });
 
-test("phones get the menu in the header", async ({ page, isMobile }) => {
+test("phones get the floating bottom nav", async ({ page, isMobile }) => {
   test.skip(!isMobile, "phone only");
   await page.goto("/");
-  await page.getByLabel("Menu").click();
-  await expect(page.getByRole("link", { name: "Template" }).last()).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+  await expect(nav.getByRole("link", { name: "Beranda" })).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("link", { name: "Roadmap" }).click();
+  await expect(page).toHaveURL(/\/roadmap$/);
 });

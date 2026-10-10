@@ -17,7 +17,7 @@ export default function ImporPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-10">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Impor materi</h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Impor materi</h1>
         <p className="mt-2 text-zinc-400">Unggah deck. Slide dirender dan draf disusun otomatis, lalu kamu tinjau sebelum terbit.</p>
       </div>
       <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>

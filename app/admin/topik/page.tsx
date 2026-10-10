@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function TopikListPage() {
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-3xl font-semibold tracking-tight">Topik</h1>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Topik</h1>
       <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
         <List />
       </Suspense>
@@ -39,7 +39,7 @@ async function List() {
   }
 
   return (
-    <ul className="mt-6 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+    <ul className="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
       {topics.map((t) => (
         <li key={t.slug}>
           <Link href={`/admin/topik/${t.slug}`} className="group flex min-h-16 items-center gap-4 py-3 focus-visible:outline-2 focus-visible:outline-accent">

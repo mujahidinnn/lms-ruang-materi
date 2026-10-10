@@ -60,13 +60,13 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
 
   return (
     <section aria-labelledby="riwayat" className="flex flex-col gap-3">
-      <h2 id="riwayat" className="text-lg font-semibold">Riwayat impor</h2>
+      <h2 id="riwayat" className="text-xl font-bold tracking-tight">Riwayat impor</h2>
       <p aria-live="polite" className="sr-only">{message}</p>
       {message && <p className="text-sm text-zinc-400">{message}</p>}
       {jobs.length === 0 ? (
         <p className="text-sm text-zinc-400">Belum ada impor. Unggah deck pertama di atas.</p>
       ) : (
-        <ul className="divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+        <ul className="divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
           {jobs.map((j) => {
             const { label, Icon, tone } = STATUS[j.status];
             return (
@@ -114,7 +114,7 @@ function Ulang({ models, current, disabled, onRetry }: { models: string[]; curre
         aria-label="Model untuk ulang"
         value={model}
         onChange={(e) => setModel(e.target.value)}
-        className="min-h-11 max-w-56 rounded-md border border-zinc-800/80 bg-zinc-900 px-2 text-sm text-zinc-50"
+        className="min-h-11 max-w-56 rounded-full border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-50"
       >
         {models.map((m) => <option key={m} value={m}>{m.replace(":", " / ")}</option>)}
       </select>

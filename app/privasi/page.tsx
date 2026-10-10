@@ -19,13 +19,13 @@ const processors = [
 export default function PrivasiPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-zinc-300">
-      <h1 className="text-3xl font-semibold text-zinc-50">Privasi</h1>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl text-zinc-50">Privasi</h1>
       <p className="mt-4">
         {SITE_NAME} menyimpan data sesedikit mungkin, sesuai Undang-Undang
         Pelindungan Data Pribadi (UU PDP).
       </p>
 
-      <h2 className="mt-10 text-xl font-semibold text-zinc-50">Data yang disimpan</h2>
+      <h2 className="mt-10 text-xl font-bold tracking-tight text-zinc-50">Data yang disimpan</h2>
       <ul className="mt-3 list-disc space-y-1 pl-5">
         <li>Email, untuk mengirim tautan masuk.</li>
         <li>Nama tampilan dan zona waktu, untuk profil dan menghitung streak harian.</li>
@@ -37,11 +37,11 @@ export default function PrivasiPage() {
         Tidak ada iklan atau pelacak pihak ketiga.
       </p>
 
-      <h2 className="mt-10 text-xl font-semibold text-zinc-50">Pemroses data</h2>
+      <h2 className="mt-10 text-xl font-bold tracking-tight text-zinc-50">Pemroses data</h2>
       <p className="mt-3">Data kamu disimpan dan diproses di luar Indonesia oleh:</p>
       <ul className="mt-3 space-y-3">
         {processors.map(([name, use, region]) => (
-          <li key={name} className="rounded-lg border border-zinc-800/80 p-4">
+          <li key={name} className="rounded-3xl bg-zinc-900 p-5 shadow-soft">
             <p className="font-medium text-zinc-50">{name}</p>
             <p className="text-sm">{use}</p>
             <p className="text-sm text-zinc-500">Lokasi: {region}</p>
@@ -49,14 +49,14 @@ export default function PrivasiPage() {
         ))}
       </ul>
 
-      <h2 className="mt-10 text-xl font-semibold text-zinc-50">Ekspor dan hapus akun</h2>
+      <h2 className="mt-10 text-xl font-bold tracking-tight text-zinc-50">Ekspor dan hapus akun</h2>
       <p className="mt-3">
         Di halaman profil kamu bisa mengunduh semua data belajar kamu sebagai
         JSON, atau menghapus akun. Menghapus akun menghapus semua data belajar
         kamu dan tidak bisa dibatalkan.
       </p>
 
-      <h2 className="mt-10 text-xl font-semibold text-zinc-50">Jika terjadi kebocoran</h2>
+      <h2 className="mt-10 text-xl font-bold tracking-tight text-zinc-50">Jika terjadi kebocoran</h2>
       <p className="mt-3">
         Jika data pelajar bocor, kami memberi tahu pengguna yang terdampak dan
         otoritas pelindungan data dalam 3x24 jam, lewat email dan pengumuman

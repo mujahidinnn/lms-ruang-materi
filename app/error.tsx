@@ -7,7 +7,7 @@ import { primaryButton } from "@/components/ui/styles";
 export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">Halaman ini gagal dimuat</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Halaman ini gagal dimuat</h1>
       <p className="mt-2 max-w-sm text-zinc-400">
         Periksa koneksimu lalu muat ulang. Kalau masih gagal, kembali ke beranda dan coba lagi nanti.
       </p>

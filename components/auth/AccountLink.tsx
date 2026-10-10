@@ -9,7 +9,7 @@ export default function AccountLink() {
   return (
     <Link
       href={signedIn ? "/dasbor" : "/masuk"}
-      className="ml-2 flex min-h-11 items-center gap-2 rounded-lg border border-zinc-800/80 px-4 text-zinc-50 hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent"
+      className="flex min-h-11 items-center gap-2 rounded-full bg-zinc-50 px-5 text-sm font-semibold text-zinc-950 hover:bg-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {signedIn ? <LayoutDashboard aria-hidden className="size-4" /> : <LogIn aria-hidden className="size-4" />}
       {signedIn ? "Dasbor" : "Masuk"}

@@ -1,12 +1,14 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import ServiceWorker from "@/components/ServiceWorker";
-import { Babylonica, Geist, Geist_Mono } from "next/font/google";
+import { Babylonica, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Plus Jakarta Sans: a geometric sans drawn for Jakarta, round enough for
+// the pastel UI and solid in bold headings.
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
@@ -62,14 +64,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#f2f1f7",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} ${babylonica.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${geistMono.variable} ${babylonica.variable} h-full antialiased`}
       // data-theme is set by the script below before React hydrates.
       suppressHydrationWarning
     >
@@ -77,7 +79,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Applies a saved theme before first paint, so there is no flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("ruang-materi:tema");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("ruang-materi:tema");if(t==="dark")document.documentElement.dataset.theme=t}catch(e){}`,
           }}
         />
       </head>

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 // No site header while an exam runs: fewer ways to leave by accident.
 export default function AttemptPage(props: PageProps<"/ujian/[slug]/[attempt]">) {
   return (
-    <main className="px-6 pt-0 pb-20 sm:px-10">
+    <main className="px-5 pt-0 pb-20 sm:px-10">
       <div className="mx-auto max-w-2xl">
         <Suspense fallback={<p className="pt-10 text-sm text-zinc-500">Memuat...</p>}>
           <Attempt params={props.params} />
@@ -55,7 +55,7 @@ async function Attempt({ params }: { params: PageProps<"/ujian/[slug]/[attempt]"
     return (
       <div className="pt-10">
         {back}
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">Waktu habis</h1>
+        <h1 className="mt-6 text-3xl font-bold tracking-tight">Waktu habis</h1>
         <p className="mt-2 text-zinc-400">Jawaban percobaan ini tidak sempat terkumpul, jadi tidak dinilai. Percobaan ini tetap terhitung.</p>
       </div>
     );

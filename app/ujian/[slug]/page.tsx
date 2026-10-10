@@ -8,6 +8,7 @@ import StartExam from "@/components/exam/StartExam";
 import SiteHeader from "@/components/landing/SiteHeader";
 import { requireUser } from "@/lib/dal";
 import { standing, type AttemptRow } from "@/lib/exam";
+import { card, chip, primaryButton, tile } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export default function UjianPage(props: PageProps<"/ujian/[slug]">) {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
           <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
             <Intro params={props.params} />
@@ -61,18 +62,18 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
   return (
     <>
       <Link href={`/belajar/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-50">{topic.title}</Link>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">Ujian</h1>
+      <h1 className="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">Ujian</h1>
 
-      <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-800/80 sm:grid-cols-4">
+      <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           ["Soal", e.question_count],
           ["Waktu", `${e.duration_minutes} menit`],
           ["Nilai lulus", e.pass_score],
           ["Sisa percobaan", s.passed ? "-" : `${s.left} dari ${e.max_attempts}`],
-        ].map(([k, v]) => (
-          <div key={k} className="bg-zinc-950 p-4">
-            <dt className="text-xs text-zinc-500">{k}</dt>
-            <dd className="mt-1 font-semibold tabular-nums">{v}</dd>
+        ].map(([k, v], n) => (
+          <div key={k} className={`rounded-3xl p-4 ${tile(n)}`}>
+            <dt className="text-xs font-medium text-zinc-300">{k}</dt>
+            <dd className="mt-1 text-xl font-bold tabular-nums">{v}</dd>
           </div>
         ))}
       </dl>
@@ -84,7 +85,7 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
             {last && <Link href={`/ujian/${slug}/${last.id}`} className="text-accent hover:underline">Lihat pembahasan</Link>}
           </p>
         ) : s.openId ? (
-          <Link href={`/ujian/${slug}/${s.openId}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-accent px-4 font-medium text-zinc-950 hover:opacity-90">
+          <Link href={`/ujian/${slug}/${s.openId}`} className={primaryButton}>
             <Play aria-hidden className="size-4" />
             Lanjutkan ujian
           </Link>
@@ -104,15 +105,15 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
       </div>
 
       {(attempts?.length ?? 0) > 0 && (
-        <section aria-labelledby="riwayat" className="mt-12">
-          <h2 id="riwayat" className="text-lg font-semibold">Riwayat</h2>
-          <ol className="mt-3 divide-y divide-zinc-800/80 border-y border-zinc-800/80">
+        <section aria-labelledby="riwayat" className={`mt-10 p-6 ${card}`}>
+          <h2 id="riwayat" className="text-xl font-bold tracking-tight">Riwayat</h2>
+          <ol className="mt-3 space-y-2">
             {/* Numbered over every attempt, timed-out ones included, as the set counts them. */}
             {attempts!.map((a, n) => ({ a, n })).filter(({ a }) => a.submitted_at).map(({ a, n }) => (
               <li key={a.id}>
-                <Link href={`/ujian/${slug}/${a.id}`} className="flex min-h-12 items-center gap-4 py-2 hover:text-accent">
+                <Link href={`/ujian/${slug}/${a.id}`} className="flex min-h-14 items-center gap-4 rounded-2xl bg-zinc-800/60 px-4 py-2 hover:bg-zinc-800">
                   <span className="flex-1">Percobaan {n + 1}</span>
-                  <span className="text-sm text-zinc-500">{a.passed ? "lulus" : "belum lulus"}</span>
+                  <span className={`${chip} ${a.passed ? "bg-tile-mint" : "bg-zinc-900"}`}>{a.passed ? "lulus" : "belum lulus"}</span>
                   <span className="w-10 text-right font-semibold tabular-nums">{a.score}</span>
                 </Link>
               </li>

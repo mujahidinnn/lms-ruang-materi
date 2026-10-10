@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Send, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { kumpulkanUjian } from "@/app/ujian/actions";
-import { primaryButton } from "@/components/ui/styles";
+import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 
 export type ExamQuestion = { id: string; prompt: string; code: string | null; options: string[] };
 type Saved = { answers: Record<string, number>; doubts: string[] };
@@ -130,25 +130,25 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
 
   return (
     <div>
-      <div className="sticky top-0 z-10 -mx-6 flex items-center justify-between gap-4 border-b border-zinc-800/80 bg-zinc-950/90 px-6 py-3 backdrop-blur sm:-mx-10 sm:px-10">
+      <div className="sticky top-3 z-10 flex items-center justify-between gap-4 rounded-full bg-zinc-900/90 py-2 pr-2 pl-5 shadow-soft backdrop-blur">
         <span className="text-sm text-zinc-400 tabular-nums">
           Soal {i + 1} dari {questions.length}
         </span>
-        <span className={`font-mono text-lg tabular-nums ${low ? "text-accent-warm" : "text-zinc-50"}`}>
+        <span className={`rounded-full px-4 py-1.5 font-mono text-lg font-semibold tabular-nums ${low ? "bg-tile-peach text-zinc-50" : "bg-zinc-800 text-zinc-50"}`}>
           <span className="sr-only">Sisa waktu </span>
           {left === null ? "--:--" : `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`}
         </span>
       </div>
       <p aria-live="assertive" className="sr-only">{warning}</p>
       {offline && (
-        <p role="status" className="mt-4 flex items-center gap-2 rounded-lg border border-accent-warm/40 px-3 py-2 text-sm text-accent-warm">
+        <p role="status" className="mt-4 flex items-center gap-2 rounded-2xl bg-tile-butter px-4 py-3 text-sm">
           <WifiOff aria-hidden className="size-4" /> Kamu sedang offline. Jawaban tetap tersimpan di perangkat ini.
         </p>
       )}
 
-      <h2 className="mt-8 text-xl leading-snug font-semibold text-balance">{q.prompt}</h2>
+      <h2 className="mt-8 text-2xl leading-snug font-bold tracking-tight text-balance">{q.prompt}</h2>
       {q.code && (
-        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-900 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
+        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
 
       <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
@@ -157,11 +157,11 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
             key={n}
             aria-pressed={answers[q.id] === n}
             onClick={() => setAnswers((a) => ({ ...a, [q.id]: n }))}
-            className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-accent ${
-              answers[q.id] === n ? "border-accent bg-accent/10" : "border-zinc-800 hover:border-zinc-600"
+            className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 bg-zinc-900 px-3 py-2.5 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              answers[q.id] === n ? "border-zinc-50" : "border-transparent hover:border-zinc-700"
             }`}
           >
-            <span className="grid size-6 shrink-0 place-items-center rounded-md border border-zinc-700 font-mono text-xs text-zinc-400">{n + 1}</span>
+            <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-zinc-200 ${tile(n)}`}>{n + 1}</span>
             <span className="flex-1">{opt}</span>
           </button>
         ))}
@@ -181,7 +181,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
         <button
           onClick={() => setI(i - 1)}
           disabled={i === 0}
-          className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-zinc-800 pr-4 pl-3 text-sm hover:border-zinc-600 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
+          className={`${secondaryButton} disabled:opacity-40`}
         >
           <ChevronLeft aria-hidden className="size-4" />
           Sebelumnya
@@ -197,7 +197,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
       </div>
       <p aria-live="polite" className="mt-3 text-right text-sm text-red-500 empty:hidden">{error}</p>
 
-      <nav aria-label="Daftar soal" className="mt-10 border-t border-zinc-800/80 pt-6">
+      <nav aria-label="Daftar soal" className="mt-10 rounded-[28px] bg-zinc-800/50 p-5">
         <ol className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-2">
           {questions.map((qq, n) => {
             const isDoubt = doubts.includes(qq.id);
@@ -208,9 +208,9 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
                   onClick={() => setI(n)}
                   aria-current={n === i ? "step" : undefined}
                   aria-label={`Soal ${n + 1}${done ? ", dijawab" : ""}${isDoubt ? ", ragu-ragu" : ""}`}
-                  className={`relative grid size-11 place-items-center rounded-lg border font-mono text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-accent ${
-                    n === i ? "border-zinc-50" : isDoubt ? "border-accent-warm/60" : done ? "border-accent/40" : "border-zinc-800"
-                  } ${done ? "bg-accent/10" : ""}`}
+                  className={`relative grid size-11 place-items-center rounded-full text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    n === i ? "bg-zinc-50 text-zinc-950" : isDoubt ? "bg-tile-butter" : done ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"
+                  }`}
                 >
                   {n + 1}
                   {isDoubt && <span aria-hidden className="absolute top-1 right-1 size-1.5 rounded-full bg-accent-warm" />}

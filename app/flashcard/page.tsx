@@ -18,12 +18,10 @@ export default function FlashcardPage() {
   return (
     <div className="relative">
       <SiteHeader />
-      <main className="px-6 pb-20 sm:px-10">
+      <main className="px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
-          <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-            <h1 className="text-3xl font-semibold tracking-tight">Flashcard</h1>
-            <AccountNav current="/flashcard" />
-          </div>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Flashcard</h1>
+          <div className="mb-8 mt-5"><AccountNav current="/flashcard" /></div>
           <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
             <Queue />
           </Suspense>

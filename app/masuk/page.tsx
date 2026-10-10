@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import MasukForm from "@/components/auth/MasukForm";
 import Logo from "@/components/brand/Logo";
+import Room from "@/components/illustrations/Room";
 import { safeNext } from "@/lib/safe-next";
 
 export const metadata: Metadata = {
@@ -13,20 +14,25 @@ export const metadata: Metadata = {
 
 export default function MasukPage(props: PageProps<"/masuk">) {
   return (
-    <main className="relative flex flex-1 flex-col justify-center px-4 py-16">
-      <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
+    <main className="relative flex flex-1 flex-col justify-center px-5 py-10">
+      <div className="mx-auto flex w-full max-w-md flex-col gap-6">
         <Link href="/" aria-label="Ruang Materi, beranda" className="w-fit">
           <Logo />
         </Link>
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Masuk</h1>
-          <p className="mt-2 text-sm text-zinc-400">
+        <div className="rounded-[32px] bg-tile-lavender p-6 sm:p-8">
+          <Room className="size-20">
+            <rect x="24" y="40" width="36" height="27" rx="5" className="fill-zinc-50" />
+          </Room>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight">Masuk</h1>
+          <p className="mt-2 text-sm text-zinc-300">
             Pakai kata sandi, atau kosongkan dan kami kirim tautan masuk ke email kamu.
           </p>
         </div>
-        <Suspense>
-          <Form searchParams={props.searchParams} />
-        </Suspense>
+        <div className="rounded-[32px] bg-zinc-900 p-6 shadow-soft sm:p-8">
+          <Suspense>
+            <Form searchParams={props.searchParams} />
+          </Suspense>
+        </div>
       </div>
     </main>
   );
