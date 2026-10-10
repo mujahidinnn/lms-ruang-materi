@@ -19,7 +19,7 @@ export default function BelajarViewer({ presentation }: { presentation: Topic })
     const db = createClient();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const { data: row } = await db.from("progress").select("last_slide").eq("topic_id", topic).maybeSingle();
+      const { data: row } = await db.from("progress").select("last_slide").eq("user_id", data.session.user.id).eq("topic_id", topic).maybeSingle();
       await db.rpc("touch_progress", { p_topic: topic });
       if (row?.last_slide) setResumeAt(row.last_slide);
       ready.current = true;

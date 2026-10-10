@@ -38,7 +38,7 @@ const time = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: 
 
 async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] }) {
   const { slug } = await params;
-  await requireUser(`/ujian/${slug}`);
+  const user = await requireUser(`/ujian/${slug}`);
   await connection();
   const db = await createClient();
 
@@ -54,6 +54,7 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
   const { data: attempts } = await db
     .from("exam_attempts")
     .select("id, deadline, submitted_at, score, passed")
+    .eq("user_id", user.id) // RLS lets an admin read everyone's attempts
     .eq("exam_id", e.id)
     .order("created_at");
   const s = standing((attempts ?? []) as AttemptRow[], e.max_attempts, new Date());

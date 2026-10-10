@@ -1,5 +1,5 @@
 begin;
-select plan(80);
+select plan(83);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -646,6 +646,33 @@ select is(
   1,
   'republished flashcards keep the learner''s Leitner box'
 );
+
+-- Best-practices audit (2026-10-10).
+set local role anon;
+select throws_ok(
+  $$ select public.track_is_published('30000000-0000-0000-0000-000000000002') $$,
+  '42501',
+  null,
+  'anon cannot call internal security definer helpers'
+);
+select is(
+  (select count(*)::int from public.tips where topic_id = '10000000-0000-0000-0000-000000000001'),
+  1,
+  'anon still reads only the published tip of a published topic'
+);
+
+reset role;
+delete from public.import_jobs; -- the one-running-job trigger would fire first
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "role": "authenticated"}';
+select throws_ok(
+  $$ insert into public.import_jobs (file_path, original_name, slug, provider, model, slide_count, created_by)
+     values ('x/y.pptx', 'y.pptx', 'uji-palsu', 'gemini', 'gemini-3.7-flash', 3, '00000000-0000-0000-0000-000000000001') $$,
+  '42501',
+  null,
+  'an import job cannot name another admin as its creator'
+);
+
 
 select * from finish();
 rollback;
