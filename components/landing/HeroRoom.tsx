@@ -17,28 +17,33 @@ const SLOTS = [
   "z-10 top-8 right-6 left-24 rotate-3 opacity-60",
 ];
 const HIDDEN = `${SLOTS[2]} z-0 opacity-0`;
-const PULL_OUT = 80; // px dragged up before release files the cover away
+const PULL_OUT = 80; // px dragged before release files the cover away
+const FLY = 700; // px the cover travels on its way out
+const tilt = (dx: number) => Math.max(-15, Math.min(15, dx / 12));
 
 // A folder with real covers filed inside, their tops peeking over the front
 // pocket. Drag the front cover up and out: it leaves, the next takes its
 // place, and it drops back into the folder behind the rest. Click opens it.
 export default function HeroRoom({ topics }: { topics: Presentation[] }) {
   const [order, setOrder] = useState(() => topics.map((_, i) => i));
-  const [dragY, setDragY] = useState(0);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const start = useRef<number | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
   const moved = useRef(false);
 
   const front = topics[order[0]];
   if (!front) return null;
 
-  function next() {
+  // The cover flies out along the line it was pulled.
+  function next(dir = { x: 0, y: -1 }) {
+    const len = Math.hypot(dir.x, dir.y) || 1;
+    setDrag({ x: (dir.x / len) * FLY, y: (dir.y / len) * FLY });
     setLeaving(true);
     setTimeout(() => {
       setOrder(([first, ...rest]) => [...rest, first]);
       setLeaving(false);
-      setDragY(0);
+      setDrag({ x: 0, y: 0 });
     }, 250);
   }
 
@@ -46,8 +51,9 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
     if (start.current === null) return;
     start.current = null;
     setDragging(false);
-    if (dragY < -PULL_OUT && topics.length > 1) next();
-    else setDragY(0);
+    // Any pull that clears the pocket counts; one into the pocket springs back.
+    if (Math.hypot(drag.x, drag.y) > PULL_OUT && drag.y < 0 && topics.length > 1) next(drag);
+    else setDrag({ x: 0, y: 0 });
   }
 
   return (
@@ -77,21 +83,22 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
               draggable={false}
               className={`${base} ${motion} cursor-grab touch-none shadow-lg select-none hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
               style={{
-                transform: `translateY(${leaving ? "-130%" : `${dragY}px`})`,
+                transform: `translate(${drag.x}px, ${drag.y}px) rotate(${tilt(drag.x)}deg)`,
                 opacity: leaving ? 0 : undefined,
               }}
               onPointerDown={(e) => {
                 e.currentTarget.setPointerCapture(e.pointerId);
-                start.current = e.clientY;
+                start.current = { x: e.clientX, y: e.clientY };
                 moved.current = false;
                 setDragging(true);
               }}
               onPointerMove={(e) => {
                 if (start.current === null) return;
-                const dy = e.clientY - start.current;
-                if (Math.abs(dy) > 5) moved.current = true;
+                const dx = e.clientX - start.current.x;
+                const dy = e.clientY - start.current.y;
+                if (Math.hypot(dx, dy) > 5) moved.current = true;
                 // Pulling down only gives a little; the pocket holds it.
-                setDragY(dy < 0 ? dy : dy / 4);
+                setDrag({ x: dx, y: dy < 0 ? dy : dy / 4 });
               }}
               onPointerUp={release}
               onPointerCancel={release}
