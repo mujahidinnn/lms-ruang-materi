@@ -776,6 +776,8 @@ UI. The UI only hides actions the database would refuse.
   the remote project (the test rolls back, it leaves no rows).
 - A dev admin for testing lives in the remote project; its login is
   `DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD` in `.env.local`.
+  A dev student (role `student`) sits beside it as `DEV_STUDENT_EMAIL` /
+  `DEV_STUDENT_PASSWORD`, for checking the learner side.
 
 ## Security Rules
 
