@@ -849,9 +849,13 @@ UI. The UI only hides actions the database would refuse.
   new password there. No sign-up with password.
 - **Email links work across devices**: `/masuk/callback` accepts
   `?token_hash=&type=` (`verifyOtp`) as well as the PKCE `?code=`, which only
-  works in the browser that asked. The Supabase "Magic Link" and "Confirm
-  signup" templates link to
-  `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`.
+  works in the browser that asked. The email templates live in
+  `supabase/templates/` (pastel, email-safe HTML) and link to
+  `{{ .SiteURL }}/masuk/callback?token_hash={{ .TokenHash }}&type=...`. The
+  host is pinned to the Site URL, never `{{ .RedirectTo }}`, so a token can
+  only land on this site; the learner arrives on `/` and is sent on to
+  Dasbor. Paste them into Authentication -> Email Templates with the
+  subjects from `supabase/config.toml`.
 - **Sessions**: `proxy.ts` refreshes the access token on every request; the
   browser client refreshes on its own and `useSignedIn()` follows sign-in
   and sign-out across tabs.
