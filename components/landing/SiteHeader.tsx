@@ -2,6 +2,7 @@ import { Menu } from "lucide-react";
 import Link from "next/link";
 import AccountLink from "@/components/auth/AccountLink";
 import Logo from "@/components/brand/Logo";
+import ThemeButton from "@/components/ThemeButton";
 
 const LINKS = [
   { href: "/roadmap", label: "Roadmap" },
@@ -31,6 +32,7 @@ export default function SiteHeader() {
               ))}
             </div>
           </details>
+          <ThemeButton />
           <AccountLink />
         </nav>
       </div>

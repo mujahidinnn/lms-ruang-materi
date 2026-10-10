@@ -1,8 +1,7 @@
-import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { keluar } from "@/app/masuk/actions";
 import AdminNav, { NavLinks } from "@/components/admin/AdminNav";
+import SignOutButton from "@/components/auth/SignOutButton";
 import Logo from "@/components/brand/Logo";
 import { requireAdmin } from "@/lib/dal";
 
@@ -33,12 +32,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 async function Akun() {
   const user = await requireAdmin();
   return (
-    <form action={keluar} className="ml-auto flex items-center gap-2 text-sm lg:order-last lg:mt-auto lg:ml-0 lg:flex-col lg:items-stretch">
+    <div className="ml-auto flex items-center gap-2 text-sm lg:order-last lg:mt-auto lg:ml-0 lg:flex-col lg:items-stretch">
       <span className="hidden truncate px-3 text-zinc-500 lg:block">{user.email}</span>
-      <button className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-left text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent">
-        <LogOut aria-hidden className="size-4" />
-        Keluar
-      </button>
-    </form>
+      <SignOutButton className="min-h-11 w-full rounded-xl px-3 text-left text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent" />
+    </div>
   );
 }

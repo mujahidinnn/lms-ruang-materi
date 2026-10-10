@@ -69,7 +69,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} ${babylonica.variable} h-full antialiased`}
+      // data-theme is set by the script below before React hydrates.
+      suppressHydrationWarning
     >
+      <head>
+        {/* Applies a saved theme before first paint, so there is no flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("ruang-materi:tema");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50">
         {children}
         <ServiceWorker />

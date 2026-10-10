@@ -525,14 +525,18 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 
 ## Style
 
-- **Light and dark, follows the system.** Write classes for dark: background
+- **Light and dark, follows the system** unless the learner picks one with
+  the theme button in the header (`components/ThemeButton.tsx`, saved in
+  localStorage, applied as `<html data-theme>` by an inline script before
+  first paint). Write classes for dark: background
   `zinc-950`, text `zinc-50`, muted text `zinc-300` to `zinc-500`, borders
   `zinc-800/80`, surfaces `zinc-900`. `app/globals.css` mirrors the zinc scale
-  under `prefers-color-scheme: light`, so no `dark:` or light variants are
+  under `prefers-color-scheme: light` and `[data-theme="light"]`, so no
+  `dark:` or light variants are
   needed. Use zinc for neutrals, never `white`, `black` or hex, or that
   element will not flip.
 - **Main accent: teal**, via the `accent` color (`text-accent`, `bg-accent`,
-  `fill-accent/15`). It is `teal-400` on dark and `teal-600` on light, set in
+  `fill-accent/15`). It is `teal-400` on dark and `teal-700` on light, set in
   `app/globals.css`. Use it for the primary action, `selesai` and `sedang`
   states, passed, and highlights, not for body text.
 - **Second accent: orange, for motivation and attention only**, via
