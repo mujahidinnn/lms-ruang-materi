@@ -53,13 +53,14 @@ export async function tambahNode(_: RoadmapState, form: FormData): Promise<Roadm
   await requireAdmin();
   const track = slug.parse(form.get("track"));
   const db = await createClient();
-  const { data: t } = await db.from("tracks").select("id, track_nodes(count)").eq("slug", track).single();
+  const { data: t } = await db.from("tracks").select("id, track_nodes(position)").eq("slug", track).single();
   if (!t) return { error: "Track tidak ditemukan." };
 
   const { error } = await db.from("track_nodes").insert({
     track_id: t.id,
     topic_id: id.parse(form.get("topic_id")),
-    position: t.track_nodes[0]?.count ?? 0,
+    // After the last one, not the count: deleted nodes leave gaps.
+    position: Math.max(-1, ...t.track_nodes.map((n) => n.position)) + 1,
   });
   if (error) return fail(error, "Gagal menambah topik.");
   done(track);
