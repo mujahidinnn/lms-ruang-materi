@@ -15,11 +15,11 @@ export default async function Home() {
   const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-1 flex-col">
       <SiteHeader />
       <SignedInRedirect />
 
-      <main className="px-5 sm:px-10">
+      <main className="flex-1 px-5 sm:px-10">
         <div className="mx-auto max-w-7xl">
           <section className="grid grid-cols-1 items-center gap-12 py-10 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
             <div>

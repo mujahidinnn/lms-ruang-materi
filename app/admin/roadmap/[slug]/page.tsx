@@ -91,7 +91,7 @@ async function Editor({ params }: { params: PageProps<"/admin/roadmap/[slug]">["
         {placed.length > 0 && (
           <section aria-labelledby="pratinjau">
             <h2 id="pratinjau" className="text-xl font-bold tracking-tight">Pratinjau</h2>
-            <div className="mt-4 rounded-[28px] bg-zinc-900 p-6 shadow-soft">
+            <div className="mt-4">
               <RoadmapGraph nodes={placed} edges={graphEdges} states={{}} selected={null} />
             </div>
           </section>

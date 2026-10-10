@@ -81,7 +81,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
     <div className="grid gap-10 lg:grid-cols-[17rem_1fr]">
       <aside className="flex flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
         <Link href="/admin/topik" className="text-sm text-zinc-400 hover:text-zinc-50">Semua topik</Link>
-        <div className="flex flex-col gap-5 rounded-2xl border border-accent/20 bg-accent/5 p-5">
+        <div className="flex flex-col gap-5 rounded-[28px] bg-tile-lavender p-5">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{topic.title}</h1>
           <p className="mt-1 font-mono text-sm text-zinc-500">{slug}</p>

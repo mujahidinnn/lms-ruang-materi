@@ -20,9 +20,9 @@ export const metadata: Metadata = {
 
 export default function DasborPage() {
   return (
-    <div className="relative">
+    <div className="relative flex flex-1 flex-col">
       <SiteHeader />
-      <main className="px-5 pb-20 sm:px-10">
+      <main className="flex-1 px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-4xl">
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Dasbor</h1>
           <div className="mt-5"><AccountNav current="/dasbor" /></div>
@@ -77,7 +77,7 @@ async function Overview({ userId }: { userId: string }) {
     return (
       <div className="mt-8 flex flex-col gap-6 rounded-[28px] bg-tile-lavender p-8 sm:flex-row sm:items-center">
         <Room className="size-20 shrink-0">
-          <rect x="24" y="40" width="36" height="27" rx="5" className="fill-accent" />
+          <rect x="24" y="40" width="36" height="27" rx="5" className="fill-brand" />
         </Room>
         <div>
           <p className="text-2xl font-bold tracking-tight">Mulai dari satu roadmap</p>

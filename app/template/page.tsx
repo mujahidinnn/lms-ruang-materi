@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 
 export default function TemplatePage() {
   return (
-    <div className="relative">
+    <div className="relative flex flex-1 flex-col">
       <SiteHeader />
-      <main className="px-5 pb-20 sm:px-10">
+      <main className="flex-1 px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-10 max-w-xl">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Template HTML</h1>

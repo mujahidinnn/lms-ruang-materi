@@ -21,7 +21,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         <span aria-hidden className="relative mt-6 flex items-center justify-between">
           <span className="absolute inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-zinc-800" />
           {Array.from({ length: dots }, (_, i) => (
-            <span key={i} className={`relative size-3 rounded-full ring-4 ring-zinc-900 ${i === 0 ? "bg-accent" : "bg-zinc-700"}`} />
+            <span key={i} className={`relative size-3 rounded-full ring-4 ring-zinc-900 ${i === 0 ? "bg-brand" : "bg-zinc-700"}`} />
           ))}
         </span>
       </Link>

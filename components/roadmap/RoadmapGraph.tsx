@@ -3,9 +3,9 @@
 import type { NodeState, PlacedNode, RoadmapEdge } from "@/lib/roadmap";
 import StateIcon from "./StateIcon";
 
-const W = 148;
+const W = 132;
 const H = 48;
-const GAP_X = 44;
+const GAP_X = 28; // five columns fit beside the 20rem list at 1280px
 const GAP_Y = 20;
 
 const x = (n: PlacedNode) => n.column * (W + GAP_X);
@@ -31,7 +31,7 @@ export default function RoadmapGraph({
   const height = Math.max(...nodes.map((n) => y(n) + H));
 
   return (
-    <div aria-hidden className="scrollbar-thin overflow-x-auto pb-4">
+    <div aria-hidden className="scrollbar-thin overflow-x-auto rounded-[28px] bg-zinc-800/40 p-5">
       <div className="relative" style={{ width, height }}>
         <svg width={width} height={height} className="absolute inset-0" fill="none">
           {edges.map(({ from, to }) => {
@@ -50,7 +50,7 @@ export default function RoadmapGraph({
                 d={`M${x1} ${y1}C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`}
                 strokeWidth="2"
                 strokeLinecap="round"
-                className={lit ? "stroke-accent" : "stroke-zinc-700"}
+                className={lit ? "stroke-brand" : "stroke-zinc-700"}
               />
             );
           })}

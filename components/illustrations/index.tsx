@@ -7,7 +7,7 @@ export function NothingDue(props: Props) {
   return (
     <Room {...props}>
       <rect x="27" y="34" width="42" height="30" rx="6" className="fill-zinc-900 stroke-zinc-600" strokeWidth="4" />
-      <path d="M38 49l7 7 13-13" className="stroke-accent" strokeWidth="5" />
+      <path d="M38 49l7 7 13-13" className="stroke-brand" strokeWidth="5" />
     </Room>
   );
 }
@@ -16,8 +16,8 @@ export function NothingDue(props: Props) {
 export function Passed(props: Props) {
   return (
     <Room {...props}>
-      <rect x="36" y="27" width="34" height="24" rx="5" className="stroke-accent/50" strokeWidth="4" />
-      <rect x="24" y="40" width="36" height="27" rx="5" className="fill-accent" />
+      <rect x="36" y="27" width="34" height="24" rx="5" className="stroke-brand/50" strokeWidth="4" />
+      <rect x="24" y="40" width="36" height="27" rx="5" className="fill-brand" />
       <path d="M34 54l6 6 11-11" className="stroke-zinc-950" strokeWidth="5" />
     </Room>
   );

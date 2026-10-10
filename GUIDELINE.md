@@ -548,8 +548,10 @@ pill buttons, big bold headings. Every new screen follows it.
   differ. Fixed meanings where there is one: mint = done or correct, pink =
   wrong or danger, butter = streak, warning, ragu-ragu, lavender = the
   current or featured item.
-- **Brand teal** (`accent`, `#0f766e` light, `#2dd4bf` dark) is for links,
-  the logo and small highlights only, not for buttons. **Orange**
+- **Brand teal** comes from the mint tile's family (hue 168): `accent`
+  (`#1d7c69`, 4.5:1 on the canvas) for links and teal text, `brand`
+  (`#23957e`, 3.3:1) for the logo, progress fills, dots and other graphics;
+  both `#45d6b8` in dark. Not for buttons. **Orange**
   (`accent-warm`) stays for the logo's spark, streak icons and timer urgency.
 - **Buttons**, all `rounded-full`, from `components/ui/styles.ts`:
   - `primaryButton`: the one main action on a screen, an ink pill with light
@@ -564,6 +566,10 @@ pill buttons, big bold headings. Every new screen follows it.
   `rounded-2xl`. `shadow-soft` is the only shadow.
 - **Chips**: `chip` plus a background (`bg-tile-*`), or `mutedChip`; pills
   for counts, filters and states ("33 slide", "lulus").
+- **Page frame**: `<body>` is at least `100dvh` tall and full width
+  (`min-w-full`, not `100dvw`, which counts the scrollbar and would scroll
+  sideways); page wrappers are `flex flex-1 flex-col` and `<main>` is
+  `flex-1`, so short pages still fill the screen.
 - **Typography**: Plus Jakarta Sans (`font-sans`, `--font-jakarta`), Geist
   Mono for code, Babylonica (`--font-signature`) for the signature link only.
   Page titles `text-4xl sm:text-5xl font-bold tracking-tight`, card titles
@@ -636,7 +642,7 @@ description, OG image), `app/sitemap.ts`, `app/robots.ts` and
 - **Language.** `lang="id"` and `locale: "id_ID"` stay as set in the layout.
 - **OG image** is 1200x630 and drawn with inline hex colors, since
   `ImageResponse` cannot read CSS variables. Keep it in sync with the Style
-  rules: lavender canvas `#f2f1f7`, ink `#141318`, teal mark.
+  rules: lavender canvas `#f2f1f7`, ink `#141318`, brand teal `#23957e`.
 
 ## PWA
 

@@ -38,9 +38,9 @@ export async function generateMetadata(props: PageProps<"/roadmap/[track]">): Pr
 
 export default function TrackPage(props: PageProps<"/roadmap/[track]">) {
   return (
-    <div className="relative">
+    <div className="relative flex flex-1 flex-col">
       <SiteHeader />
-      <main className="px-5 pb-20 sm:px-10">
+      <main className="flex-1 px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-7xl">
           <Link href="/roadmap" className="text-sm text-zinc-400 hover:text-zinc-50">
             Semua roadmap

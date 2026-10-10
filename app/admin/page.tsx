@@ -39,7 +39,7 @@ async function Overview() {
     <div className="flex flex-col gap-8">
       <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Ringkasan</h1>
 
-      <section aria-labelledby="fokus" className="rounded-2xl border border-accent/20 bg-accent/5 p-6 sm:p-8">
+      <section aria-labelledby="fokus" className="rounded-[28px] bg-tile-lavender p-6 sm:p-8">
         {next ? (
           <>
             <p className="text-sm text-accent">{rest.length + 1} draf menunggu tinjauan</p>

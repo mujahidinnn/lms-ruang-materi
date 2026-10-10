@@ -13,7 +13,7 @@ export default function TrackProgress({ slug, title, passed, total }: { slug: st
         </span>
       </div>
       <div aria-hidden className="mt-2 h-2.5 rounded-full bg-zinc-800">
-        <div className="h-full rounded-full bg-accent" style={{ width: `${total ? (passed / total) * 100 : 0}%` }} />
+        <div className="h-full rounded-full bg-brand" style={{ width: `${total ? (passed / total) * 100 : 0}%` }} />
       </div>
       {next && <p className="mt-1.5 text-xs text-zinc-500">{next.name} butuh {next.topics} topik lagi</p>}
     </>

@@ -128,9 +128,11 @@ export default function TemplateGallery({
                   <p className="flex-1 text-sm leading-relaxed text-zinc-400">
                     {template.description}
                   </p>
-                  <span className="font-mono text-xs tracking-wide text-zinc-500 uppercase">
-                    {template.tags.join(" · ")}
-                  </span>
+                  <ul aria-label="Teknologi" className="flex flex-wrap gap-1.5">
+                    {template.tags.map((tag, n) => (
+                      <li key={tag} className={`rounded-full px-3 py-1 text-xs font-medium text-zinc-300 ${["bg-tile-lavender", "bg-tile-mint", "bg-tile-butter"][n % 3]}`}>{tag}</li>
+                    ))}
+                  </ul>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button

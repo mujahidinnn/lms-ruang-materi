@@ -83,7 +83,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50">
+      {/* At least one screen tall and the full width, so short pages still fill
+          the canvas. min-w-full, not 100dvw: viewport units include the
+          scrollbar and would add a sideways scroll on desktop. */}
+      <body className="flex min-h-dvh w-full min-w-full flex-col overflow-x-clip bg-zinc-950 text-zinc-50">
         {children}
         <ServiceWorker />
         {/* Cookieless page views (GUIDELINE, Privacy); no-op outside Vercel. */}

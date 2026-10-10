@@ -7,7 +7,7 @@ export const contentType = "image/png";
 
 // ImageResponse cannot read CSS variables: zinc on dark, teal-400 and
 // orange-400 as in the dark theme.
-const ACCENT = "#0f766e";
+const ACCENT = "#23957e";
 const ACCENT_WARM = "#ea7a17";
 
 function Mark({ size }: { size: number }) {

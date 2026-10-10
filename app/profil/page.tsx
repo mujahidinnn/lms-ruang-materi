@@ -23,9 +23,9 @@ const ZONES = [...INDONESIA, ...Intl.supportedValuesOf("timeZone").filter((z) =>
 
 export default function ProfilPage() {
   return (
-    <div className="relative">
+    <div className="relative flex flex-1 flex-col">
       <SiteHeader />
-      <main className="px-5 pb-20 sm:px-10">
+      <main className="flex-1 px-5 pb-20 sm:px-10">
         <div className="mx-auto max-w-2xl">
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Profil</h1>
           <div className="mt-5"><AccountNav current="/profil" /></div>

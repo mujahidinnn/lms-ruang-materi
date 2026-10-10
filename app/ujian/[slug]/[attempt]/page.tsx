@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 // No site header while an exam runs: fewer ways to leave by accident.
 export default function AttemptPage(props: PageProps<"/ujian/[slug]/[attempt]">) {
   return (
-    <main className="px-5 pt-0 pb-20 sm:px-10">
+    <main className="flex-1 px-5 pt-0 pb-20 sm:px-10">
       <div className="mx-auto max-w-2xl">
         <Suspense fallback={<p className="pt-10 text-sm text-zinc-500">Memuat...</p>}>
           <Attempt params={props.params} />

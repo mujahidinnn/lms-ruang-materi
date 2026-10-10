@@ -63,10 +63,10 @@ export default function ImporForm({ models }: { models: string[] }) {
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => (e.preventDefault(), setDragging(false), pick(e.dataTransfer.files[0]))}
         className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center transition-colors focus-within:outline-2 focus-within:outline-accent ${
-          dragging ? "border-accent bg-accent/10" : "border-accent/30 bg-accent/5 hover:border-accent/60"
+          dragging ? "border-zinc-50 bg-tile-mint" : "border-zinc-700 bg-zinc-900 hover:border-zinc-500"
         }`}
       >
-        <span className="grid size-14 place-items-center rounded-xl bg-accent/10">
+        <span className="grid size-14 place-items-center rounded-full bg-tile-mint">
           <FileUp aria-hidden className="size-7 text-accent" strokeWidth={1.5} />
         </span>
         {picked ? (

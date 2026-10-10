@@ -9,7 +9,7 @@ export default function ProgressStat({ label, value, max }: { label: string; val
         {value} <span className="text-sm font-normal text-zinc-500">dari {max}</span>
       </p>
       <div aria-hidden className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-        <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
