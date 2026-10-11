@@ -3,10 +3,23 @@
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
 import { EditorView, basicSetup } from "codemirror";
 import { useEffect, useRef } from "react";
 
 const LANG = { html, css, javascript };
+
+// Token colors are CSS variables (globals.css) so they follow the theme;
+// basicSetup's default style is only a fallback.
+const highlight = HighlightStyle.define([
+  { tag: [t.keyword, t.operatorKeyword, t.modifier], color: "var(--code-keyword)" },
+  { tag: [t.string, t.special(t.string), t.regexp], color: "var(--code-string)" },
+  { tag: [t.number, t.bool, t.null, t.atom], color: "var(--code-number)" },
+  { tag: [t.comment, t.meta], color: "var(--code-comment)", fontStyle: "italic" },
+  { tag: [t.definition(t.variableName), t.function(t.variableName), t.tagName], color: "var(--code-def)" },
+  { tag: [t.propertyName, t.attributeName], color: "var(--code-prop)" },
+]);
 export type EditorLanguage = keyof typeof LANG;
 
 // CodeMirror 6, uncontrolled after mount: value seeds it, every edit is
@@ -26,6 +39,7 @@ export default function CodeEditor({ value, onChange, language, label }: { value
       extensions: [
         basicSetup,
         LANG[language](),
+        syntaxHighlighting(highlight),
         EditorView.lineWrapping,
         EditorView.contentAttributes.of({ "aria-label": label }),
         EditorView.updateListener.of((u) => {

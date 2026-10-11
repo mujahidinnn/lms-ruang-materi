@@ -112,3 +112,18 @@ test("exam prep draws a set and checks each answer at once", async ({ page }) =>
   await page.getByRole("group", { name: "Pilihan jawaban" }).getByRole("button").first().click();
   await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();
 });
+
+test("a code exercise fails the starter, then passes with the solution", async ({ page }) => {
+  await page.goto("/belajar/nodejs/membangun-aplikasi-web-dan-rest-api");
+  const card = page.locator('section[aria-labelledby^="kode-"]').first();
+  await expect(card.locator(".cm-content")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const check = card.getByRole("button", { name: "Periksa" });
+  await check.click();
+  await expect(card.getByLabel("gagal").first()).toBeVisible();
+  await check.click();
+  await card.getByRole("button", { name: "Lihat solusi" }).click();
+  await check.click();
+  await expect(card.getByText("Lolos", { exact: true })).toBeVisible();
+  await expect(card.getByLabel("gagal")).toHaveCount(0);
+});
