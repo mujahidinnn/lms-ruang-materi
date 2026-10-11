@@ -21,6 +21,7 @@ const schemas = {
   flashcards: z.object({ front: text, back: text }),
   practice_questions: question,
   exam_questions: question,
+  chapter_questions: question,
 } as const;
 
 type Table = keyof typeof schemas;

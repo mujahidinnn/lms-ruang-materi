@@ -1,5 +1,5 @@
 begin;
-select plan(93);
+select plan(95);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -719,6 +719,21 @@ delete from public.chapters where id = '60000000-0000-0000-0000-000000000001';
 select is(
   (select count(*)::int from public.chapter_progress where user_id = '00000000-0000-0000-0000-000000000001' and chapter_id = '60000000-0000-0000-0000-000000000011'),
   1, 'chapter progress follows the republished chapter with the same slug');
+
+-- Reordering chapters.
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select public.swap_chapters('60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000011');
+reset role;
+select is((select position from public.chapters where id = '60000000-0000-0000-0000-000000000003'), 2, 'a learner cannot reorder chapters');
+set local role authenticated;
+-- An earlier block set all constraints immediate; the position key is
+-- deferred in real use, where each swap is its own transaction.
+set constraints chapters_topic_id_status_position_key deferred;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "role": "authenticated"}';
+select public.swap_chapters('60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000011');
+reset role;
+select is((select position from public.chapters where id = '60000000-0000-0000-0000-000000000003'), 0, 'an admin swaps two chapter positions');
 
 select * from finish();
 rollback;

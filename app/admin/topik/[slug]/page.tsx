@@ -4,7 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { simpanRingkasan } from "@/app/admin/topik/actions";
+import ChapterEditor, { type ChapterRow } from "@/components/admin/ChapterEditor";
 import QuestionEditor, { type Question } from "@/components/admin/QuestionEditor";
+import { tambahBab } from "@/app/admin/topik/chapter-actions";
 import RowEditor from "@/components/admin/RowEditor";
 import StatusBadge from "@/components/admin/StatusBadge";
 import TopicActions from "@/components/admin/TopicActions";
@@ -46,7 +48,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
   if (!topic) notFound();
 
   const by = (t: string) => db.from(t).select("*").eq("topic_id", topic.id);
-  const [slides, tips, cards, practice, exam, job] = await Promise.all([
+  const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions] = await Promise.all([
     by("slides").order("index"),
     by("tips").order("position"),
     by("flashcards").order("position"),
@@ -54,22 +56,27 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
     // Archived questions stay only for old attempts; the editor skips them.
     db.from("exams").select("id, exam_questions(*)").eq("topic_id", topic.id).neq("exam_questions.status", "archived").maybeSingle(),
     db.from("import_jobs").select("prerequisites").eq("slug", slug).eq("status", "done").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    by("chapters").order("position"),
+    db.from("chapter_questions").select("*, chapters!inner(topic_id)").eq("chapters.topic_id", topic.id).order("position"),
   ]);
 
+  const shownChapters = pending(chapters.data as ChapterRow[] | null);
   const shownSlides = pending(slides.data);
   const shownTips = pending(tips.data);
   const shownCards = pending(cards.data);
   const shownPractice = pending(practice.data as Question[]);
   const shownExam = pending(exam.data?.exam_questions as Question[] | null);
   const prereq: string[] = job.data?.prerequisites ?? [];
+  const slidesForPreview = shownSlides.map((s) => ({ index: s.index, src: slideUrl(s.path), width: s.width, height: s.height }));
   const hasDraft =
     !!topic.draft_summary ||
-    [slides.data, tips.data, cards.data, practice.data, exam.data?.exam_questions as Row[] | undefined].some((rows) =>
+    [chapters.data as Row[] | null, slides.data, tips.data, cards.data, practice.data, exam.data?.exam_questions as Row[] | undefined].some((rows) =>
       rows?.some((x) => x.status === "draft")
     );
 
   const sections = [
     { id: "ringkasan", title: "Ringkasan" },
+    { id: "bab", title: "Bab", count: shownChapters.length },
     { id: "slide", title: "Slide", count: shownSlides.length },
     { id: "tips", title: "Tips", count: shownTips.length },
     { id: "flashcard", title: "Flashcard", count: shownCards.length },
@@ -121,6 +128,29 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
             <input type="hidden" name="slug" value={slug} />
             <textarea name="summary" aria-label="Ringkasan" defaultValue={topic.draft_summary ?? topic.summary} rows={10} required className={`${field} leading-relaxed`} />
             <button className={`${smallButton} w-fit`}>Simpan ringkasan</button>
+          </form>
+        </Section>
+
+        <Section id="bab" title="Bab" note="Isi bab dalam markdown, kuis tiap bab di bawahnya">
+          <ul className="divide-y divide-zinc-800/80">
+            {shownChapters.map((c, i) => (
+              <li key={c.id}>
+                <ul>
+                  <ChapterEditor topic={slug} c={c} n={i + 1} slides={slidesForPreview} />
+                </ul>
+                <ul className="divide-y divide-zinc-800/80 pl-4">
+                  {((chapterQuestions.data ?? []) as (Question & { chapter_id: string })[])
+                    .filter((q) => q.chapter_id === c.id)
+                    .map((q, qi) => (
+                      <QuestionEditor key={q.id} table="chapter_questions" slug={slug} q={{ ...q, status: c.status }} n={qi + 1} />
+                    ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          <form action={tambahBab} className="mt-4">
+            <input type="hidden" name="topic" value={slug} />
+            <button className={smallButton}>Tambah bab</button>
           </form>
         </Section>
 

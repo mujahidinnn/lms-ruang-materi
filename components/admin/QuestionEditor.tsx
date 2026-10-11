@@ -22,7 +22,7 @@ export default function QuestionEditor({
   q,
   n,
 }: {
-  table: "practice_questions" | "exam_questions";
+  table: "practice_questions" | "exam_questions" | "chapter_questions";
   slug: string;
   q: Question;
   n: number;
