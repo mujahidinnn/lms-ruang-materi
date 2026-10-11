@@ -1,5 +1,5 @@
 begin;
-select plan(98);
+select plan(104);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -754,6 +754,31 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000004", "role": "authenticated"}';
 select is((select count(*)::int from public.chapter_progress), 0, 'a learner sees only their own chapter progress');
+reset role;
+
+-- Code exercises (2026-10-11).
+insert into public.topics (id, slug, title, status) values
+  ('10000000-0000-0000-0000-00000000000a', 'uji-kode', 'Kode', 'published');
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-0000000000a0', '10000000-0000-0000-0000-00000000000a', 0, 'satu', 'Satu', 'Isi', 'published'),
+  ('60000000-0000-0000-0000-0000000000a1', '10000000-0000-0000-0000-00000000000a', 0, 'draf', 'Draf', 'Isi', 'draft');
+insert into public.code_exercises (id, chapter_id, position, kind, title, prompt, starter, solution, tests) values
+  ('70000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-0000000000a0', 0, 'js', 'Jumlah', 'Buat fungsi jumlah.',
+   '{"code": ""}', '{"code": "function jumlah(a, b) { return a + b }"}', '[{"name": "2 + 3 = 5", "check": "jumlah(2, 3) === 5"}]'),
+  ('70000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-0000000000a1', 0, 'js', 'Draf', 'x', '{"code": ""}', '{"code": ""}', '[]');
+set local role anon;
+select is((select count(*)::int from public.code_exercises), 1, 'anon sees exercises of published chapters only');
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select throws_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000a0') $$,
+  'P0001', 'Selesaikan latihan kode di bab ini dulu', 'a chapter with exercises needs them passed first');
+select throws_ok($$ insert into public.code_progress (user_id, exercise_id) values (auth.uid(), '70000000-0000-0000-0000-000000000001') $$,
+  '42501', null, 'learners cannot write code progress directly');
+select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000002', '{}') $$,
+  'P0002', null, 'an exercise of a draft chapter cannot be passed');
+select lives_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000001', '{"code": "x"}') $$, 'a learner passes an exercise');
+select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000a0') $$, 'then the chapter completes');
 reset role;
 
 select * from finish();
