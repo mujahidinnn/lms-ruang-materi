@@ -8,6 +8,7 @@ Live: https://lms-ruang-materi.vercel.app
 
 - **Konten** ada di Supabase: topik, slide, tips, flashcard, dan soal di database; gambar slide (AVIF, 3200px dan 1600px) di Storage `slides/<slug>/<folder>/`.
 - **Impor**: admin mengunggah `.pptx` di `/admin/impor`. GitHub Actions (`.github/workflows/import-deck.yml`) merender slide dan meminta LLM (Gemini atau OpenRouter) membuat draf ringkasan, tips, flashcard, dan soal. Draf ditinjau lalu diterbitkan di `/admin/topik`.
+- **Kelas**: tiap topik adalah kelas berisi bab: bacaan markdown dengan contoh kode dan slide yang disisipkan, kuis singkat per bab, lalu latihan, flashcard, dan ujian akhir. Bab disusun AI dari deck dan bisa ditulis atau diedit admin.
 - **Belajar**: murid masuk lewat tautan email atau kata sandi. Progres, review flashcard, dan ujian dinilai di database (RLS dan fungsi Postgres), bukan di browser.
 
 Aturan kode, keamanan, dan rencana fitur lengkap ada di `GUIDELINE.md`.

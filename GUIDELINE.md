@@ -295,7 +295,9 @@ result (lulus / belum lulus), login page, 404. Not on every card.
 app/
   page.tsx               landing: tracks, featured topics
   roadmap/               track list, roadmap/[track] graph
-  belajar/[slug]/        slide viewer + summary + tips
+  belajar/[slug]/        course page: syllabus, progress, extras (old slide page when a topic has no chapters)
+  belajar/[slug]/[bab]/  chapter: markdown lesson, slide embeds, quiz
+  belajar/[slug]/slide/  full slide viewer
   latihan/[slug]/        practice quiz
   flashcard/             due review, flashcard/[slug] one topic
   ujian/[slug]/          exam intro, attempt, result
@@ -348,6 +350,7 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 | --- | --- | --- | --- | --- |
 | Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
 | Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
+| Kelas and bab | `app/belajar/[slug]`, `app/belajar/[slug]/[bab]`, `app/belajar/[slug]/slide` | `chapters`, `chapter_questions`, `chapter_progress` | `components/belajar/` (`CourseView`, `ChapterMarkdown`/`MarkdownBase`, `ChapterQuiz`, `ChapterSyllabus`) | built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-chapters-design.md`); a topic with published chapters is a course, chapters open in any order, a chapter is done when its quiz is all correct |
 | Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
 | Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
 | Latihan | `app/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" when the topic has a published exam (phase 7) |
@@ -695,7 +698,10 @@ has `id uuid`, `created_at`, and content tables have `status`
 | `tracks` | `slug`, `title`, `description`, `status` | |
 | `track_nodes` | `track_id`, `topic_id`, `optional`, `position` | |
 | `track_edges` | `from_node_id`, `to_node_id` | prerequisites, no cycles |
-| `progress` | `user_id`, `topic_id`, `state`, `last_slide`, `updated_at` | `state`: belum, sedang, selesai, dilewati; written through `touch_progress()`, learners update only `state` and `last_slide` |
+| `progress` | `user_id`, `topic_id`, `state`, `last_slide`, `last_chapter_id`, `updated_at` | `state`: belum, sedang, selesai, dilewati; written through `touch_progress()`, `open_chapter()` and `complete_chapter()`, learners update only `state` and `last_slide` |
+| `chapters` | `topic_id`, `position`, `slug`, `title`, `body` (markdown), `slide_from`, `slide_to`, `est_minutes`, `status` | slug never `slide`; position and slug unique per topic and status (deferred); republish carries `chapter_progress` by slug |
+| `chapter_questions` | `chapter_id`, `position`, same shape as practice | visible when its chapter is |
+| `chapter_progress` | `user_id`, `chapter_id`, `completed_at` | written only by `complete_chapter()`; a topic without an exam is selesai when all its chapters are |
 | `flashcard_reviews` | `user_id`, `flashcard_id`, `box`, `due_on`, `reviewed_at`, `added_on` | Leitner box 1 to 5, written by `review_flashcard()` |
 | `practice_sessions` | `user_id`, `topic_id`, `correct`, `total`, `finished_at` | `finished_at` stamped by the database |
 | `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `option_orders`, `started_at`, `deadline`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |

@@ -86,3 +86,14 @@ test("phones get the floating bottom nav", async ({ page, isMobile }) => {
   await nav.getByRole("link", { name: "Roadmap" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
 });
+
+test("a course lists chapters and a chapter quiz gives feedback", async ({ page }) => {
+  await page.goto("/belajar/git");
+  const syllabus = page.getByRole("heading", { name: "Silabus" });
+  test.skip(!(await syllabus.isVisible()), "no chapters published yet");
+  await page.locator('ol a[href^="/belajar/git/"]').first().click();
+  await expect(page.getByRole("heading", { name: "Cek pemahaman" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("group").first().getByRole("button").first().click();
+  await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();
+});
