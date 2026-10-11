@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import SiteHeader from "@/components/landing/SiteHeader";
 import PracticeQuiz from "@/components/quiz/PracticeQuiz";
+import PracticeTabs from "@/components/quiz/PracticeTabs";
 import { getPractice, getTopics } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 
@@ -49,7 +50,8 @@ async function Latihan({ params }: { params: PageProps<"/latihan/[slug]">["param
   return (
     <>
       <Link href={`/belajar/${slug}`} className="text-sm text-zinc-400 hover:text-zinc-50">{practice.title}</Link>
-      <h1 className="mt-2 mb-8 text-4xl font-bold tracking-tight sm:text-5xl">Latihan</h1>
+      <h1 className="mt-2 mb-5 text-4xl font-bold tracking-tight sm:text-5xl">Latihan</h1>
+      <PracticeTabs slug={slug} current="latihan" />
       {practice.questions.length === 0 ? (
         <p className="text-zinc-400">
           Soal latihan untuk topik ini belum tersedia.{" "}

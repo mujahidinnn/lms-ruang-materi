@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Layers, ListChecks, ClipboardCheck, Presentation, Play } from "lucide-react";
+import { Check, Clock, Layers, ListChecks, ClipboardCheck, Presentation, Play, Target } from "lucide-react";
 import Link from "next/link";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, chip, primaryButton, tile } from "@/components/ui/styles";
@@ -62,6 +62,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <ul className="mt-4 grid gap-4 sm:grid-cols-2">
           {topic.practiceCount > 0 && <Extra href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan akhir" text={`${topic.practiceCount} soal dengan pembahasan`} color="bg-tile-mint" />}
           {topic.cardCount > 0 && <Extra href={`/flashcard/${topic.slug}`} icon={<Layers aria-hidden className="size-5" />} title="Flashcard" text={`${topic.cardCount} kartu`} color="bg-tile-butter" />}
+          {topic.hasExam && <Extra href={`/latihan/${topic.slug}/persiapan`} icon={<Target aria-hidden className="size-5" />} title="Simulasi ujian" text="20 soal acak, kunci langsung terlihat" color="bg-tile-peach" />}
           {topic.hasExam && <Extra href={`/ujian/${topic.slug}`} icon={<ClipboardCheck aria-hidden className="size-5" />} title="Ujian akhir" text="Lulus untuk naik level" color="bg-tile-pink" />}
           <Extra href={`/belajar/${topic.slug}/slide`} icon={<Presentation aria-hidden className="size-5" />} title="Semua slide" text={`${topic.slideCount} slide`} color="bg-tile-sky" />
         </ul>

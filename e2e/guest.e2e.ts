@@ -54,8 +54,10 @@ test("the slide viewer moves to the next slide", async ({ page, isMobile }) => {
 
 test("practice gives instant feedback to a guest", async ({ page }) => {
   await page.goto("/latihan/github");
+  await page.waitForLoadState("networkidle");
   await page.getByRole("group", { name: "Pilihan jawaban" }).getByRole("button").first().click();
-  await page.getByRole("button", { name: "Periksa jawaban" }).click();
+  // The key shows at once: the answer is marked and the next step appears.
+  await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Soal berikutnya|Lihat hasil/ })).toBeVisible();
 });
 
@@ -100,4 +102,13 @@ test("a course lists chapters, a chapter quiz gives feedback, next chapter opens
   await page.getByRole("navigation", { name: "Bab lain" }).getByRole("link").last().click();
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(heading ?? "");
   await expect(page.getByText(/^Bab 2 dari/)).toBeVisible();
+});
+
+test("exam prep draws a set and checks each answer at once", async ({ page }) => {
+  await page.goto("/latihan/nodejs/persiapan");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Mulai simulasi" }).click();
+  await expect(page.getByText(/^Soal 1 dari \d+/)).toBeVisible();
+  await page.getByRole("group", { name: "Pilihan jawaban" }).getByRole("button").first().click();
+  await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();
 });

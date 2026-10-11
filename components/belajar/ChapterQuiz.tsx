@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import { quizDone } from "@/lib/chapters";
+import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import type { ChapterQuestion } from "@/lib/content";
 import { shuffleOptions } from "@/lib/quiz";
 import { createClient } from "@/lib/supabase/client";
@@ -33,17 +34,26 @@ export default function ChapterQuiz({ chapterId, slug, questions: raw }: { chapt
   const finished = quizDone(questions, answers);
 
   // The answer that makes the quiz all-correct completes the chapter.
-  function pick(id: string, n: number) {
+  function pick(id: string, n: number, el: HTMLElement) {
     const next = { ...answers, [id]: n };
     setAnswers(next);
-    if (!finished && quizDone(questions, next) && status === "idle") complete();
+    const right = questions.find((x) => x.id === id)?.answer === n;
+    if (right) {
+      playCorrect();
+      burstFrom(el);
+    } else playWrong();
+    if (!finished && quizDone(questions, next)) {
+      playWin();
+      celebrate();
+      if (status === "idle") complete();
+    }
   }
 
   return (
     <section aria-labelledby="kuis" className="mt-12 rounded-[28px] bg-zinc-800/50 p-5 sm:p-8">
       <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>
       {questions.length === 0 ? (
-        <button type="button" onClick={complete} disabled={status === "saved"} className={`${primaryButton} mt-5`}>
+        <button type="button" onClick={() => { playWin(); celebrate(); complete(); }} disabled={status === "saved"} className={`${primaryButton} mt-5`}>
           <Check aria-hidden className="size-4" />Tandai bab selesai
         </button>
       ) : (
@@ -64,7 +74,7 @@ export default function ChapterQuiz({ chapterId, slug, questions: raw }: { chapt
                         key={n}
                         type="button"
                         aria-pressed={chosen}
-                        onClick={() => pick(q.id, n)}
+                        onClick={(e) => pick(q.id, n, e.currentTarget)}
                         className={`flex min-h-12 items-center gap-3 rounded-2xl px-3 py-2 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-accent ${right ? "bg-tile-mint" : wrong ? "bg-tile-pink" : "bg-zinc-900 hover:bg-zinc-800"}`}
                       >
                         <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${tile(n)}`}>{n + 1}</span>

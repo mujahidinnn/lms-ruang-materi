@@ -1,6 +1,7 @@
 import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { Passed, TryAgain } from "@/components/illustrations";
+import Celebrate from "./Celebrate";
 
 export type Review = {
   score: number;
@@ -15,6 +16,7 @@ export type Review = {
 export default function ExamReview({ review, slug }: { review: Review; slug: string }) {
   return (
     <div>
+      {review.passed && <Celebrate />}
       {review.passed ? <Passed className="mb-6 size-20" /> : <TryAgain className="mb-6 size-20" />}
       <p className={`inline-flex min-h-8 items-center rounded-full px-3 text-sm font-semibold ${review.passed ? "bg-tile-mint" : "bg-tile-pink"}`}>{review.passed ? "Lulus" : "Belum lulus"}</p>
       <p className="mt-1 text-6xl font-bold tracking-tight tabular-nums">{review.score}</p>

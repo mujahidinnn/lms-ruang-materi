@@ -208,21 +208,37 @@ export type Flashcard = { id: string; front: string; back: string };
 type TopicRef = { id: string; slug: string; title: string };
 
 // Practice keys are public on purpose: latihan gives instant feedback.
-export async function getPractice(slug: string): Promise<(TopicRef & { questions: Question[]; hasExam: boolean }) | null> {
+// chapterQuestions (published chapters' quizzes) and passScore feed the
+// exam-prep simulation; the exam bank itself is never read here.
+export async function getPractice(
+  slug: string
+): Promise<(TopicRef & { questions: Question[]; chapterQuestions: Question[]; hasExam: boolean; passScore: number | null }) | null> {
   "use cache";
   cacheTag("content");
 
   const { data, error } = await publicClient
     .from("topics")
-    .select("id, slug, title, exams(id), practice_questions(id, type, prompt, code, options, answer, explanation)")
+    .select(
+      "id, slug, title, exams(id, pass_score), practice_questions(id, type, prompt, code, options, answer, explanation), chapters(chapter_questions(id, type, prompt, code, options, answer, explanation))"
+    )
     .eq("slug", slug)
     .order("created_at", { referencedTable: "practice_questions" })
     .maybeSingle();
   if (error) throw new Error(`getPractice: ${error.message}`);
   if (!data) return null;
-  const { practice_questions: questions, exams, ...topic } = data as TopicRef & { practice_questions: Question[]; exams: unknown };
+  const { practice_questions: questions, exams, chapters, ...topic } = data as unknown as TopicRef & {
+    practice_questions: Question[];
+    exams: { id: string; pass_score: number } | null;
+    chapters: { chapter_questions: Question[] }[];
+  };
   // RLS returns the exam only when it is published.
-  return { ...topic, questions, hasExam: !!exams };
+  return {
+    ...topic,
+    questions,
+    chapterQuestions: chapters.flatMap((c) => c.chapter_questions),
+    hasExam: !!exams,
+    passScore: exams?.pass_score ?? null,
+  };
 }
 
 export async function getDeck(slug: string): Promise<(TopicRef & { cards: Flashcard[] }) | null> {

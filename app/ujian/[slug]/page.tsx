@@ -101,6 +101,9 @@ async function Intro({ params }: { params: PageProps<"/ujian/[slug]">["params"] 
               Waktu berjalan sejak kamu mulai. Jawaban tersimpan otomatis di perangkat ini, dan terkumpul sendiri saat waktu habis.
             </p>
             <StartExam examId={e.id} slug={slug} label={attempts?.length ? "Coba lagi" : "Mulai ujian"} />
+            <p className="mt-4 text-sm text-zinc-400">
+              Belum yakin? <Link href={`/latihan/${slug}/persiapan`} className="text-accent hover:underline">Coba simulasi ujian dulu</Link>, kuncinya langsung terlihat.
+            </p>
           </>
         )}
       </div>

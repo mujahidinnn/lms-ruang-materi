@@ -1,47 +1,75 @@
 "use client";
 
-import { Check, ClipboardCheck, Layers, RotateCcw, X } from "lucide-react";
+import { Check, ClipboardCheck, Layers, PartyPopper, Play, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { simpanLatihan } from "@/app/latihan/actions";
-import type { Question } from "@/lib/content";
-import { shuffleOptions } from "@/lib/quiz";
+import SoundToggle from "@/components/quiz/SoundToggle";
 import { card, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import type { Question } from "@/lib/content";
+import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
+import { sampleQuestions, setResult, shuffleOptions } from "@/lib/quiz";
 
 const HINT_KEY = "ruang-materi:hint-masuk";
 
-// Untimed, instant feedback, not graded. 1 to 4 pick an option, Enter checks
-// and moves on. A finished set is saved for signed-in learners only.
-export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }: { topicId: string; slug: string; questions: Question[]; hasExam: boolean }) {
+export type Prep = { passScore: number; size: number };
+
+// Untimed and instant: tapping an option (or pressing 1 to 4) locks it in
+// and shows the key and the explanation at once; Enter moves on. With
+// `prep`, a random set of `size` questions from the pool is scored against
+// the exam's pass score. A finished set is saved for signed-in learners.
+export default function PracticeQuiz({
+  topicId,
+  slug,
+  questions: raw,
+  hasExam,
+  prep,
+}: {
+  topicId: string;
+  slug: string;
+  questions: Question[];
+  hasExam: boolean;
+  prep?: Prep;
+}) {
   const questions = useMemo(() => raw.map(shuffleOptions), [raw]);
-  const [set, setSet] = useState(questions);
+  const [set, setSet] = useState<Question[]>(prep ? [] : questions);
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
-  const [checked, setChecked] = useState(false);
   const [wrong, setWrong] = useState<Question[]>([]);
   const [done, setDone] = useState(false);
   const [hint, setHint] = useState(false);
   const [consent, setConsent] = useState(false);
+  const options = useRef<(HTMLButtonElement | null)[]>([]);
 
   const q = set[i];
   const last = i === set.length - 1;
+  const checked = picked !== null;
 
-  function check() {
-    if (picked === null || checked) return;
-    setChecked(true);
-    if (picked !== q.answer) setWrong((w) => [...w, q]);
+  function answer(n: number) {
+    if (checked || !q) return;
+    setPicked(n);
+    if (n === q.answer) {
+      playCorrect();
+      burstFrom(options.current[n]);
+    } else {
+      playWrong();
+      setWrong((w) => [...w, q]);
+    }
   }
 
   async function next() {
     if (!last) {
       setI(i + 1);
       setPicked(null);
-      setChecked(false);
       return;
     }
     setDone(true);
-    const wrongCount = wrong.length;
-    const { saved, needsConsent } = await simpanLatihan(topicId, set.length - wrongCount, set.length);
+    const correct = set.length - wrong.length;
+    if (setResult(correct, set.length, prep?.passScore).win) {
+      playWin();
+      celebrate();
+    }
+    const { saved, needsConsent } = await simpanLatihan(topicId, correct, set.length);
     if (needsConsent) return setConsent(true);
     try {
       if (!saved && !localStorage.getItem(HINT_KEY)) {
@@ -55,34 +83,54 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
     setSet(qs);
     setI(0);
     setPicked(null);
-    setChecked(false);
     setWrong([]);
     setDone(false);
   }
 
+  // Exam prep draws a fresh random set on every start (an event, so random is fine).
+  const startPrep = () => prep && restart(sampleQuestions(questions, prep.size, Math.random));
+
   useEffect(() => {
-    if (done) return;
+    if (done || !q) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLElement && e.target.closest("a, button:not([data-option])") && e.key === "Enter") return;
       const n = Number(e.key);
-      if (!checked && n >= 1 && n <= q.options.length) setPicked(n - 1);
-      if (e.key !== "Enter") return;
-      if (checked) next();
-      else check();
+      if (!checked && n >= 1 && n <= q.options.length) answer(n - 1);
+      if (e.key === "Enter" && checked) next();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  if (prep && set.length === 0) {
+    return (
+      <div className="rounded-[32px] bg-tile-butter p-6 sm:p-8">
+        <p className="text-2xl font-bold tracking-tight">Simulasi sebelum ujian</p>
+        <p className="mt-2 max-w-xl text-zinc-300">
+          {Math.min(prep.size, questions.length)} soal acak dari latihan dan kuis tiap bab. Kunci dan pembahasan langsung muncul setelah kamu menjawab. Lulus di nilai {prep.passScore}, sama seperti ujian.
+        </p>
+        <button onClick={startPrep} className={`${primaryButton} mt-6`}><Play aria-hidden className="size-4" />Mulai simulasi</button>
+      </div>
+    );
+  }
+
   if (done) {
     const correct = set.length - wrong.length;
+    const { score, win } = setResult(correct, set.length, prep?.passScore);
     return (
-      <div aria-live="polite" className="py-6">
-        <p className="text-5xl font-bold tracking-tight tabular-nums">
-          {correct} dari {set.length} benar
+      <div aria-live="polite" className={`rounded-[32px] p-6 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
+        {win && <PartyPopper aria-hidden className="size-10 text-accent-warm" />}
+        <p className="mt-2 text-5xl font-bold tracking-tight tabular-nums">
+          {prep ? `Nilai ${score}` : `${correct} dari ${set.length} benar`}
         </p>
-        <p className="mt-2 text-zinc-400">
-          {wrong.length === 0 ? "Semua benar. Kamu siap lanjut." : "Ulangi yang salah sampai semuanya kamu pahami."}
+        <p className="mt-2 text-zinc-300">
+          {prep
+            ? win
+              ? `${correct} dari ${set.length} benar. Kamu siap untuk ujian.`
+              : `${correct} dari ${set.length} benar. Lulus ujian butuh nilai ${prep.passScore}; ulangi yang salah dulu.`
+            : wrong.length === 0
+              ? "Semua benar. Kamu siap lanjut."
+              : "Ulangi yang salah sampai semuanya kamu pahami."}
         </p>
         {consent && (
           <p className="mt-4 text-sm text-zinc-400">
@@ -95,23 +143,19 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
             <Link href={`/masuk?next=/latihan/${slug}`} className="text-accent hover:underline">Masuk untuk menyimpan progres</Link>
           </p>
         )}
-        <div className="mt-8 flex flex-wrap items-center gap-4">
-          {hasExam ? (
-            <>
-              <Link href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Coba ujian</Link>
-              {wrong.length > 0 && (
-                <button onClick={() => restart(wrong)} className={secondaryButton}>
-                  Ulangi yang salah
-                </button>
-              )}
-            </>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {hasExam && (prep ? win : wrong.length === 0) ? (
+            <Link href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Mulai ujian</Link>
           ) : wrong.length > 0 ? (
             <button onClick={() => restart(wrong)} className={primaryButton}><RotateCcw aria-hidden className="size-4" />Ulangi yang salah</button>
           ) : (
             <Link href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</Link>
           )}
-          <button onClick={() => restart(questions)} className={secondaryButton}>
-            Ulangi semua soal
+          {hasExam && !prep && (
+            <Link href={`/latihan/${slug}/persiapan`} className={secondaryButton}>Simulasi ujian</Link>
+          )}
+          <button onClick={() => (prep ? startPrep() : restart(questions))} className={secondaryButton}>
+            {prep ? "Simulasi baru" : "Ulangi semua soal"}
           </button>
         </div>
       </div>
@@ -120,8 +164,9 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
 
   return (
     <div>
-      <div className="flex items-center justify-between text-sm text-zinc-400 tabular-nums">
+      <div className="flex items-center justify-between gap-3 text-sm text-zinc-400 tabular-nums">
         <span>Soal {i + 1} dari {set.length}</span>
+        <SoundToggle />
       </div>
       <div aria-hidden className="mt-2 h-2.5 rounded-full bg-zinc-800">
         <div className="h-full rounded-full bg-zinc-50 transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
@@ -139,24 +184,25 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
           return (
             <button
               key={n}
+              ref={(el) => {
+                options.current[n] = el;
+              }}
               data-option
               aria-pressed={picked === n}
               disabled={checked}
-              onClick={() => setPicked(n)}
-              className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left shadow-soft transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              onClick={() => answer(n)}
+              className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left shadow-soft transition-[background-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${
                 isAnswer
-                  ? "border-transparent bg-tile-mint"
+                  ? "answer-pop border-transparent bg-tile-mint"
                   : isWrong
-                    ? "border-transparent bg-tile-pink"
-                    : picked === n
-                      ? "border-zinc-50 bg-zinc-900"
-                      : "border-transparent bg-zinc-900 hover:border-zinc-700 disabled:hover:border-transparent"
+                    ? "answer-shake border-transparent bg-tile-pink"
+                    : "border-transparent bg-zinc-900 hover:border-zinc-700 disabled:opacity-60 disabled:hover:border-transparent"
               }`}
             >
               <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-zinc-200 ${tile(n)}`}>{n + 1}</span>
               <span className="flex-1">{opt}</span>
-              {isAnswer && <Check aria-label="benar" className="size-5 text-accent" />}
-              {isWrong && <X aria-label="salah" className="size-5 text-red-500" />}
+              {isAnswer && <Check aria-label="benar" className="size-5" />}
+              {isWrong && <X aria-label="salah" className="size-5" />}
             </button>
           );
         })}
@@ -165,20 +211,14 @@ export default function PracticeQuiz({ topicId, slug, questions: raw, hasExam }:
       <div aria-live="polite">
         {checked && (
           <div className={`mt-6 p-5 ${card}`}>
-            <p className={`font-medium ${picked === q.answer ? "text-accent" : "text-red-500"}`}>
-              {picked === q.answer ? "Benar" : "Belum tepat"}
-            </p>
+            <p className="font-semibold">{picked === q.answer ? "Benar" : `Belum tepat. Jawabannya: ${q.options[q.answer]}`}</p>
             <p className="mt-1 text-sm leading-relaxed text-zinc-300">{q.explanation}</p>
           </div>
         )}
       </div>
 
       <div className="mt-8 flex justify-end">
-        {checked ? (
-          <button onClick={next} className={primaryButton}>{last ? "Lihat hasil" : "Soal berikutnya"}</button>
-        ) : (
-          <button onClick={check} disabled={picked === null} className={primaryButton}><Check aria-hidden className="size-4" />Periksa jawaban</button>
-        )}
+        {checked && <button onClick={next} className={primaryButton}>{last ? "Lihat hasil" : "Soal berikutnya"}</button>}
       </div>
     </div>
   );

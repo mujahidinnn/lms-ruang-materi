@@ -24,3 +24,22 @@ export function shuffleOptions<Q extends Shufflable>(q: Q): Q {
   }
   return { ...q, options: order.map((i) => q.options[i]), answer: order.indexOf(q.answer) };
 }
+
+// Score of a finished set. Plain practice is a win only when every answer
+// is right; exam prep (passScore given) wins at or above the pass score.
+export function setResult(correct: number, total: number, passScore?: number): { score: number; win: boolean } {
+  const score = total ? Math.round((correct / total) * 100) : 0;
+  return { score, win: passScore === undefined ? total > 0 && correct === total : score >= passScore };
+}
+
+// n distinct questions in random order (all of them when there are fewer).
+// rand is injected so tests are deterministic; callers pass Math.random
+// from an event handler, never during render.
+export function sampleQuestions<T>(list: T[], n: number, rand: () => number): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
