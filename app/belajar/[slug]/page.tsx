@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import BelajarViewer from "@/components/belajar/BelajarViewer";
+import CourseView from "@/components/belajar/CourseView";
+import SiteHeader from "@/components/landing/SiteHeader";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { getTopic, getTopics } from "@/lib/content";
 import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/site";
@@ -61,6 +63,15 @@ export default async function PresentationPage(
 
   if (!presentation) {
     notFound();
+  }
+
+  if (presentation.chapters.length > 0) {
+    return (
+      <div className="relative flex flex-1 flex-col">
+        <SiteHeader />
+        <CourseView topic={presentation} />
+      </div>
+    );
   }
 
   return (
