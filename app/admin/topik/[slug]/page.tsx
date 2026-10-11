@@ -7,6 +7,8 @@ import { simpanRingkasan } from "@/app/admin/topik/actions";
 import ChapterEditor, { type ChapterRow } from "@/components/admin/ChapterEditor";
 import QuestionEditor, { type Question } from "@/components/admin/QuestionEditor";
 import { tambahBab } from "@/app/admin/topik/chapter-actions";
+import { tambahLatihanKode } from "@/app/admin/topik/exercise-actions";
+import ExerciseEditor, { type ExerciseRow } from "@/components/admin/ExerciseEditor";
 import RowEditor from "@/components/admin/RowEditor";
 import StatusBadge from "@/components/admin/StatusBadge";
 import TopicActions from "@/components/admin/TopicActions";
@@ -48,7 +50,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
   if (!topic) notFound();
 
   const by = (t: string) => db.from(t).select("*").eq("topic_id", topic.id);
-  const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions] = await Promise.all([
+  const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions, exercises] = await Promise.all([
     by("slides").order("index"),
     by("tips").order("position"),
     by("flashcards").order("position"),
@@ -58,6 +60,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
     db.from("import_jobs").select("prerequisites").eq("slug", slug).eq("status", "done").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     by("chapters").order("position"),
     db.from("chapter_questions").select("*, chapters!inner(topic_id)").eq("chapters.topic_id", topic.id).order("position"),
+    db.from("code_exercises").select("*, chapters!inner(topic_id)").eq("chapters.topic_id", topic.id).order("position"),
   ]);
 
   const shownChapters = pending(chapters.data as ChapterRow[] | null);
@@ -145,6 +148,18 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
                       <QuestionEditor key={q.id} table="chapter_questions" slug={slug} q={{ ...q, status: c.status }} n={qi + 1} />
                     ))}
                 </ul>
+                <ul className="divide-y divide-zinc-800/80 pl-4">
+                  {((exercises.data ?? []) as ExerciseRow[])
+                    .filter((x) => x.chapter_id === c.id)
+                    .map((x, xi) => (
+                      <ExerciseEditor key={x.id} topic={slug} ex={x} n={xi + 1} />
+                    ))}
+                </ul>
+                <form action={tambahLatihanKode} className="pb-4 pl-4">
+                  <input type="hidden" name="chapter" value={c.id} />
+                  <input type="hidden" name="topic" value={slug} />
+                  <button className={smallButton}>Tambah latihan kode</button>
+                </form>
               </li>
             ))}
           </ul>
