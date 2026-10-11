@@ -50,7 +50,13 @@ export default async function ChapterPage(props: PageProps<"/belajar/[slug]/[bab
             <p className="text-sm text-zinc-400 tabular-nums">Bab {index + 1} dari {topic.chapters.length} · {chapter.estMinutes} menit</p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl">{chapter.title}</h1>
             <div className="mt-8"><ChapterMarkdown body={chapter.body} slides={topic.slides} /></div>
-            <ChapterQuiz chapterId={chapter.id} slug={slug} questions={chapter.questions} />
+            <ChapterQuiz
+              chapterId={chapter.id}
+              slug={slug}
+              questions={chapter.questions}
+              exercises={chapter.exercises}
+              prompts={chapter.exercises.map((ex) => <ChapterMarkdown key={ex.id} body={ex.prompt} slides={topic.slides} />)}
+            />
             <nav aria-label="Bab lain" className="mt-8 flex flex-wrap justify-between gap-3">
               {prev ? <Link href={`/belajar/${slug}/${prev.slug}`} className={secondaryButton}><ChevronLeft aria-hidden className="size-4" />{prev.title}</Link> : <span />}
               {next ? (

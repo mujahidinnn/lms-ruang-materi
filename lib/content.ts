@@ -2,6 +2,8 @@ import { cacheTag } from "next/cache";
 import { publicClient } from "@/lib/supabase/public";
 import type { RoadmapEdge, RoadmapNode } from "@/lib/roadmap";
 import { slideUrl, type Presentation } from "@/lib/slides";
+import type { Check } from "@/lib/code/check-node";
+import type { ExerciseFiles, SandboxKind } from "@/lib/code/sandbox-doc";
 
 // Cached reads of published content. RLS on the anon client hides drafts
 // and exam_questions; publishing calls updateTag('content').
@@ -16,7 +18,23 @@ export type ChapterQuestion = {
   answer: number;
   explanation: string;
 };
-export type Chapter = ChapterSummary & { body: string; slideFrom: number | null; slideTo: number | null; questions: ChapterQuestion[] };
+export type CodeExerciseData = {
+  id: string;
+  kind: SandboxKind;
+  title: string;
+  prompt: string;
+  starter: ExerciseFiles;
+  solution: ExerciseFiles;
+  setup: string;
+  tests: Check[];
+};
+export type Chapter = ChapterSummary & {
+  body: string;
+  slideFrom: number | null;
+  slideTo: number | null;
+  questions: ChapterQuestion[];
+  exercises: CodeExerciseData[];
+};
 
 export type Topic = Presentation & {
   id: string;
@@ -99,7 +117,11 @@ type ChapterRow = {
   slide_from: number | null;
   slide_to: number | null;
   chapter_questions: (ChapterQuestion & { position: number })[];
+  code_exercises: (Omit<CodeExerciseData, "kind"> & { kind: string; position: number })[];
 };
+
+// Kinds this build can run; sql and git arrive in later phases.
+const RUNNABLE = new Set<string>(["web", "js", "express"]);
 
 export async function getChapter(topicSlug: string, chapterSlug: string): Promise<Chapter | null> {
   "use cache";
@@ -108,7 +130,7 @@ export async function getChapter(topicSlug: string, chapterSlug: string): Promis
   const { data, error } = await publicClient
     .from("chapters")
     .select(
-      "id, slug, title, position, est_minutes, body, slide_from, slide_to, chapter_questions(id, position, type, prompt, code, options, answer, explanation), topics!inner(slug)"
+      "id, slug, title, position, est_minutes, body, slide_from, slide_to, chapter_questions(id, position, type, prompt, code, options, answer, explanation), code_exercises(id, position, kind, title, prompt, starter, solution, setup, tests), topics!inner(slug)"
     )
     .eq("topics.slug", topicSlug)
     .eq("slug", chapterSlug)
@@ -128,6 +150,10 @@ export async function getChapter(topicSlug: string, chapterSlug: string): Promis
     questions: c.chapter_questions
       .toSorted((a, b) => a.position - b.position)
       .map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, code: q.code, options: q.options, answer: q.answer, explanation: q.explanation })),
+    exercises: c.code_exercises
+      .filter((e) => RUNNABLE.has(e.kind))
+      .toSorted((a, b) => a.position - b.position)
+      .map((e) => ({ id: e.id, kind: e.kind as SandboxKind, title: e.title, prompt: e.prompt, starter: e.starter, solution: e.solution, setup: e.setup, tests: e.tests })),
   };
 }
 
