@@ -42,8 +42,9 @@ in).
 
 Functions and rules:
 
-- `complete_chapter(p_chapter uuid)`: security invoker or definer with
-  `search_path = ''`; requires a signed-in caller, the chapter published in a
+- `complete_chapter(p_chapter uuid)`: security definer with
+  `search_path = ''` (learners have no direct write on `chapter_progress`),
+  execute granted to `authenticated` only; requires a signed-in caller, the chapter published in a
   published topic, and guardian consent (`require_consent` trigger on
   `chapter_progress` insert). Idempotent (on conflict do nothing). Also calls
   `touch_progress(topic, null, null)` so the topic becomes `sedang`.
