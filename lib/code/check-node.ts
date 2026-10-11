@@ -53,6 +53,8 @@ export function runChecksNode(input: { kind: "js" | "express"; code: string; set
         resolve({ results: [], error: TOO_LONG });
       }
     });
+    // A child that dies early must not crash the worker with EPIPE.
+    child.stdin.on("error", () => {});
     child.stdin.end(JSON.stringify(input));
   });
 }

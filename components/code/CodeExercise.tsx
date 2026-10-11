@@ -160,8 +160,8 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
         )}
         {out && out.results.length > 0 && (
           <ul className="space-y-2">
-            {out.results.map((r) => (
-              <li key={r.name} className={`flex items-start gap-2 rounded-2xl px-4 py-3 text-sm ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
+            {out.results.map((r, ri) => (
+              <li key={ri} className={`flex items-start gap-2 rounded-2xl px-4 py-3 text-sm ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
                 {r.pass ? <Check aria-label="lolos" className="mt-0.5 size-4 shrink-0" /> : <X aria-label="gagal" className="mt-0.5 size-4 shrink-0" />}
                 <span>
                   <span className="font-medium">{r.name}</span>

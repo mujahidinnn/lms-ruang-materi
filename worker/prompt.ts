@@ -146,7 +146,7 @@ export function buildPrompt(knownSlugs: string[]): Prompt {
       "Soal ujian tidak boleh sama dengan soal latihan.",
       "Fakta harus sesuai isi deck. Jangan mengarang hal di luar topik.",
       "Bab mengikuti urutan deck dan bersama-sama mencakup seluruh deck. Isi bab adalah penjelasan lengkap, bukan salinan teks slide.",
-      "Latihan kode hanya untuk bab praktik: web untuk HTML, CSS, DOM, React atau Vue tanpa build; js untuk logika JavaScript; express untuk route Express. Solusi harus lolos semua pemeriksaannya sendiri, dan kode awal tidak boleh sudah lolos.",
+      "Latihan kode hanya untuk bab praktik: web untuk HTML, CSS dan JavaScript DOM tanpa library luar; js untuk logika JavaScript; express untuk route Express. Solusi harus lolos semua pemeriksaannya sendiri, dan kode awal tidak boleh sudah lolos.",
     ].join("\n"),
     user: [
       "Buat dari deck ini: judul, deskripsi 1 kalimat, ringkasan 2 sampai 3 paragraf, 3 sampai 6 tips praktis,",

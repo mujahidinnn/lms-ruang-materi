@@ -62,8 +62,8 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
       {out && (
         <ul aria-live="polite" className="mt-3 space-y-2 text-sm">
           {out.error && <li className="rounded-2xl bg-tile-pink px-4 py-2">{out.error}</li>}
-          {out.results.map((r) => (
-            <li key={r.name} className={`rounded-2xl px-4 py-2 ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
+          {out.results.map((r, ri) => (
+            <li key={ri} className={`rounded-2xl px-4 py-2 ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
               {r.pass ? "Lolos" : "Gagal"}: {r.name}{r.error ? ` (${r.error})` : ""}
             </li>
           ))}

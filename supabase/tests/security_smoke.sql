@@ -1,5 +1,5 @@
 begin;
-select plan(104);
+select plan(107);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -779,6 +779,22 @@ select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-00
   'P0002', null, 'an exercise of a draft chapter cannot be passed');
 select lives_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000001', '{"code": "x"}') $$, 'a learner passes an exercise');
 select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000a0') $$, 'then the chapter completes');
+reset role;
+
+-- Review fixes for code exercises (2026-10-11).
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-0000000000a2', '10000000-0000-0000-0000-00000000000a', 1, 'dua', 'Dua', 'Isi', 'published');
+insert into public.code_exercises (chapter_id, kind, title, prompt, tests) values
+  ('60000000-0000-0000-0000-0000000000a2', 'js', 'Baru', 'x', '[]'),
+  ('60000000-0000-0000-0000-0000000000a2', 'sql', 'Nanti', 'x', '[{"name": "a", "check": "true"}]');
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000a2') $$,
+  'an exercise without checks, or of a kind not runnable yet, does not block a chapter');
+select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000001', '"teks"') $$,
+  '22023', null, 'passing code must be an object');
+select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000001', jsonb_build_object('code', repeat('x', 70000))) $$,
+  '22023', null, 'passing code is size-limited');
 reset role;
 
 select * from finish();

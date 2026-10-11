@@ -120,7 +120,8 @@ type ChapterRow = {
   code_exercises: (Omit<CodeExerciseData, "kind"> & { kind: string; position: number })[];
 };
 
-// Kinds this build can run; sql and git arrive in later phases.
+// Kinds this build can run (sql and git arrive in later phases); an
+// exercise without checks is unfinished. Same rule as counted_exercise().
 const RUNNABLE = new Set<string>(["web", "js", "express"]);
 
 export async function getChapter(topicSlug: string, chapterSlug: string): Promise<Chapter | null> {
@@ -151,7 +152,7 @@ export async function getChapter(topicSlug: string, chapterSlug: string): Promis
       .toSorted((a, b) => a.position - b.position)
       .map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, code: q.code, options: q.options, answer: q.answer, explanation: q.explanation })),
     exercises: c.code_exercises
-      .filter((e) => RUNNABLE.has(e.kind))
+      .filter((e) => RUNNABLE.has(e.kind) && e.tests.length > 0)
       .toSorted((a, b) => a.position - b.position)
       .map((e) => ({ id: e.id, kind: e.kind as SandboxKind, title: e.title, prompt: e.prompt, starter: e.starter, solution: e.solution, setup: e.setup, tests: e.tests })),
   };
