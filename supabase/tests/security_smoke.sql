@@ -1,5 +1,5 @@
 begin;
-select plan(87);
+select plan(93);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -30,7 +30,6 @@ from generate_series(1, 21) i;
 insert into public.chapters (id, topic_id, position, slug, title, body, status) values
   ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 0, 'pengenalan', 'Pengenalan', 'Isi', 'published'),
   ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 1, 'commit', 'Commit', 'Isi', 'published'),
-  ('60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 2, 'draf', 'Draf', 'Isi', 'draft'),
   ('60000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 0, 'di-topik-draf', 'X', 'Isi', 'published');
 insert into public.chapter_questions (chapter_id, type, prompt, options, answer, explanation) values
   ('60000000-0000-0000-0000-000000000001', 'benar_salah', 'Git itu VCS?', '{Benar,Salah}', 0, 'Ya.');
@@ -681,7 +680,11 @@ select throws_ok(
 );
 
 
--- Chapters (2026-10-11).
+-- Chapters (2026-10-11). The draft chapter is added here, after the admin
+-- publish test above, which would otherwise publish it.
+reset role;
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 2, 'draf', 'Draf', 'Isi', 'draft');
 set local role anon;
 select is((select count(*)::int from public.chapters), 2, 'anon sees only published chapters of published topics');
 select is((select count(*)::int from public.chapter_questions), 1, 'anon sees questions of published chapters');
@@ -695,6 +698,27 @@ select throws_ok(
   $$ insert into public.chapter_progress (user_id, chapter_id) values (auth.uid(), '60000000-0000-0000-0000-000000000001') $$,
   '42501', null, 'learners cannot write chapter progress directly');
 reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-000000000001') $$, 'learner completes a chapter');
+select is(
+  (select last_chapter_id from public.progress where user_id = auth.uid() and topic_id = '10000000-0000-0000-0000-000000000001'),
+  '60000000-0000-0000-0000-000000000001'::uuid, 'completing a chapter sets the resume chapter');
+select throws_ok($$ select public.complete_chapter('60000000-0000-0000-0000-000000000003') $$, 'P0002', null, 'a draft chapter cannot be completed');
+select throws_ok($$ select public.complete_chapter('60000000-0000-0000-0000-000000000004') $$, 'P0002', null, 'a chapter of an unpublished topic cannot be completed');
+reset role;
+set local role anon;
+select throws_ok($$ select public.complete_chapter('60000000-0000-0000-0000-000000000001') $$, '42501', null, 'guests cannot complete chapters');
+reset role;
+
+-- Republish keeps progress by slug.
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000001', 0, 'pengenalan', 'Pengenalan baru', 'Isi', 'draft');
+delete from public.chapters where id = '60000000-0000-0000-0000-000000000001';
+select is(
+  (select count(*)::int from public.chapter_progress where user_id = '00000000-0000-0000-0000-000000000001' and chapter_id = '60000000-0000-0000-0000-000000000011'),
+  1, 'chapter progress follows the republished chapter with the same slug');
 
 select * from finish();
 rollback;
