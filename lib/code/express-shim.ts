@@ -28,7 +28,10 @@ export function expressShim() {
 
   async function request(method: string, path: string, body?: unknown) {
     const [pathname, search = ""] = path.split("?");
-    const query = Object.fromEntries(new URLSearchParams(search));
+    // Parsed by hand: the Node check runner's vm context has no URLSearchParams.
+    const query = Object.fromEntries(
+      search.split("&").filter(Boolean).map((kv) => kv.split("=").map((x) => decodeURIComponent(x.replace(/\+/g, " "))) as [string, string])
+    );
     const parts = split(pathname);
     for (const r of routes) {
       if (r.method !== method.toUpperCase() || r.parts.length !== parts.length) continue;

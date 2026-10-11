@@ -38,3 +38,13 @@ test("an infinite loop is stopped", async () => {
   const r = await runChecksNode({ kind: "js", code: "while (true) {}", setup: "", tests: [] });
   expect(r.error).toMatch(/terlalu lama/);
 });
+
+test("drafted code cannot reach the worker's process, env or files", async () => {
+  process.env.RAHASIA_UJI = "bocor";
+  const tests = [
+    { name: "escape", check: "this.constructor.constructor('return process')().env.RAHASIA_UJI === 'bocor'" },
+    { name: "fs", check: "!!this.constructor.constructor('return process')().mainModule.require('fs').readFileSync('/etc/hostname')" },
+  ];
+  const r = await runChecksNode({ kind: "js", code: "", setup: "", tests });
+  expect(r.results.map((x) => x.pass)).toEqual([false, false]);
+});
