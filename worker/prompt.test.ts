@@ -10,6 +10,16 @@ const q = (i: number, type = "pilihan_ganda") => ({
   explanation: "karena",
 });
 
+const chapter = (i: number) => ({
+  slug: `bab-${i}`,
+  title: `Bab ${i}`,
+  est_minutes: 8,
+  slide_from: 1,
+  slide_to: 3,
+  body: "Isi bab yang cukup panjang untuk lolos batas minimum. ".repeat(6) + "\n\n![Slide](slide:2)",
+  quiz: [q(500 + i * 10), q(501 + i * 10, "benar_salah")],
+});
+
 const valid = {
   title: "Git",
   description: "Dasar Git.",
@@ -19,6 +29,7 @@ const valid = {
   practice_questions: Array.from({ length: 10 }, (_, i) => q(i, i % 3 === 0 ? "benar_salah" : "pilihan_ganda")),
   exam_questions: Array.from({ length: 40 }, (_, i) => q(100 + i, i % 5 === 0 ? "baca_kode" : "pilihan_ganda")),
   prerequisites: ["html5"],
+  chapters: [1, 2, 3, 4].map(chapter),
 };
 
 test("gemini: valid draft parses", () => {
@@ -73,4 +84,25 @@ test("repair cannot rescue a draft below the minimums", () => {
 test("repair trims too many practice questions", () => {
   const many = { ...valid, practice_questions: Array.from({ length: 33 }, (_, i) => q(i)) };
   expect(draftSchema.parse(repairDraft(many)).practice_questions).toHaveLength(15);
+});
+
+test("a draft needs 4 to 8 chapters", () => {
+  expect(draftSchema.safeParse(valid).success).toBe(true);
+  expect(draftSchema.safeParse({ ...valid, chapters: valid.chapters.slice(0, 3) }).success).toBe(false);
+});
+
+test("repairDraft clamps slide ranges and drops broken chapter questions", () => {
+  const broken = {
+    ...valid,
+    chapters: [
+      { ...chapter(1), slide_from: 0, slide_to: 99 },
+      { ...chapter(2), quiz: [q(1), q(2), { ...q(3), answer: 9 }] },
+      chapter(3),
+      chapter(4),
+    ],
+  };
+  const out = draftSchema.parse(repairDraft(broken, 30));
+  expect(out.chapters[0].slide_from).toBe(1);
+  expect(out.chapters[0].slide_to).toBe(30);
+  expect(out.chapters[1].quiz).toHaveLength(2);
 });

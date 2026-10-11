@@ -16,6 +16,19 @@ const question = z
   .refine((q) => q.answer < q.options.length, "answer di luar opsi")
   .refine((q) => (q.type === "baca_kode") === (q.code.trim() !== ""), "code hanya untuk baca_kode");
 
+const chapter = z.object({
+  slug: z.string().regex(/^[a-z0-9-]+$/).refine((s) => s !== "slide", "slug slide dipakai halaman slide"),
+  title: z.string().min(1).max(120),
+  est_minutes: z.int().min(1).max(60),
+  slide_from: z.int().min(1),
+  slide_to: z.int().min(1),
+  body: z
+    .string()
+    .min(200)
+    .describe("Markdown 400 sampai 800 kata, contoh kode di blok ```bahasa, sisipkan 1 sampai 3 slide dengan ![keterangan](slide:N) dalam rentang bab"),
+  quiz: z.array(question).min(2).max(4),
+});
+
 export const draftSchema = z.object({
   title: z.string().min(1).max(80),
   description: z.string().min(1).max(300),
@@ -26,6 +39,7 @@ export const draftSchema = z.object({
   // Models often give one or two extra; keep the first 40.
   exam_questions: z.array(question).min(40).max(60).transform((qs) => qs.slice(0, 40)),
   prerequisites: z.array(z.string().regex(/^[a-z0-9-]+$/)).max(5).describe("Slug topik yang sebaiknya dipelajari dulu"),
+  chapters: z.array(chapter).min(4).max(8),
 });
 
 export type Draft = z.infer<typeof draftSchema>;
@@ -35,7 +49,7 @@ export type Draft = z.infer<typeof draftSchema>;
 // (only where the option count fits that type), then drop questions that
 // still break the schema and trim to the maximums. The array minimums in draftSchema still apply, so
 // a draft that loses too many questions fails as before.
-export function repairDraft(output: unknown): unknown {
+export function repairDraft(output: unknown, slideCount = 80): unknown {
   if (!output || typeof output !== "object") return output;
   const fix = (qs: unknown, max: number) =>
     Array.isArray(qs)
@@ -54,7 +68,18 @@ export function repairDraft(output: unknown): unknown {
           .slice(0, max)
       : qs;
   const o = output as Record<string, unknown>;
-  return { ...o, practice_questions: fix(o.practice_questions, 15), exam_questions: fix(o.exam_questions, 60) };
+  // Slide ranges outside the deck are clamped into it; quiz questions get
+  // the same repair as the others.
+  const chapters = Array.isArray(o.chapters)
+    ? o.chapters.map((c) => {
+        if (!c || typeof c !== "object") return c;
+        const r = c as Record<string, unknown>;
+        const clamp = (v: unknown) => Math.min(Math.max(Math.trunc(Number(v)) || 1, 1), slideCount);
+        const from = clamp(r.slide_from);
+        return { ...r, slide_from: from, slide_to: Math.max(from, clamp(r.slide_to)), quiz: fix(r.quiz, 4) };
+      })
+    : o.chapters;
+  return { ...o, chapters, practice_questions: fix(o.practice_questions, 15), exam_questions: fix(o.exam_questions, 60) };
 }
 
 export const draftJsonSchema = z.toJSONSchema(draftSchema, { io: "input" });
@@ -71,11 +96,13 @@ export function buildPrompt(knownSlugs: string[]): Prompt {
       "Campur tipe soal: sebagian besar pilihan_ganda, sekitar seperempat benar_salah, dan baca_kode bila deck memuat kode.",
       "Soal ujian tidak boleh sama dengan soal latihan.",
       "Fakta harus sesuai isi deck. Jangan mengarang hal di luar topik.",
+      "Bab mengikuti urutan deck dan bersama-sama mencakup seluruh deck. Isi bab adalah penjelasan lengkap, bukan salinan teks slide.",
     ].join("\n"),
     user: [
       "Buat dari deck ini: judul, deskripsi 1 kalimat, ringkasan 2 sampai 3 paragraf, 3 sampai 6 tips praktis,",
       "15 sampai 30 flashcard, 10 sampai 15 soal latihan dengan pembahasan, dan tepat 40 soal ujian dengan pembahasan.",
       `Untuk prerequisites, pilih hanya dari slug berikut jika relevan: ${knownSlugs.join(", ") || "(belum ada)"}.`,
+      "Susun juga 4 sampai 8 bab: tiap bab punya slug, judul, estimasi menit, rentang slide, isi markdown 400 sampai 800 kata dengan contoh kode bila relevan dan 1 sampai 3 sisipan ![keterangan](slide:N), serta 2 sampai 4 soal kuis.",
     ].join("\n"),
   };
 }

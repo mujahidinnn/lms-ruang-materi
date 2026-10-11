@@ -66,7 +66,7 @@ try {
   const generate = await providers[job.provider]();
   const result = await generate(pdf, buildPrompt(known), job.model);
 
-  const parsed = draftSchema.safeParse(repairDraft(result.output));
+  const parsed = draftSchema.safeParse(repairDraft(result.output, slides.length));
   if (!parsed.success) {
     // Paths and codes only, no values.
     const where = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
@@ -152,7 +152,7 @@ async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
   }
   const topic_id = topic.id;
 
-  for (const table of ["slides", "tips", "flashcards", "practice_questions"]) {
+  for (const table of ["slides", "tips", "flashcards", "practice_questions", "chapters"]) {
     maybe(await db.from(table).delete().eq("topic_id", topic_id).eq("status", "draft"), `clear ${table}`);
   }
   let exam = maybe<{ id: string }>(await db.from("exams").select("id").eq("topic_id", topic_id).maybeSingle(), "exam");
@@ -170,4 +170,26 @@ async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
   );
   maybe(await db.from("practice_questions").insert(d.practice_questions.map((x) => ({ topic_id, ...q(x) }))), "practice");
   maybe(await db.from("exam_questions").insert(d.exam_questions.map((x) => ({ exam_id: examId, ...q(x) }))), "exam questions");
+
+  // Models sometimes repeat a slug; the (topic, status, slug) key is unique.
+  const seen = new Set<string>();
+  for (const [position, c] of d.chapters.entries()) {
+    let slug = c.slug;
+    for (let n = 2; seen.has(slug); n++) slug = `${c.slug}-${n}`;
+    seen.add(slug);
+    const row = must<{ id: string }>(
+      await db
+        .from("chapters")
+        .insert({ topic_id, position, slug, title: c.title, body: c.body, est_minutes: c.est_minutes, slide_from: c.slide_from, slide_to: c.slide_to, status: "draft" })
+        .select("id")
+        .single(),
+      `chapter ${slug}`
+    );
+    maybe(
+      await db.from("chapter_questions").insert(
+        c.quiz.map(({ code, ...rest }, qi) => ({ chapter_id: row.id, position: qi, ...rest, code: code.trim() || null }))
+      ),
+      `chapter ${slug} quiz`
+    );
+  }
 }
