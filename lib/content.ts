@@ -6,7 +6,27 @@ import { slideUrl, type Presentation } from "@/lib/slides";
 // Cached reads of published content. RLS on the anon client hides drafts
 // and exam_questions; publishing calls updateTag('content').
 
-export type Topic = Presentation & { id: string; summary: string; tips: string[]; practiceCount: number; cardCount: number };
+export type ChapterSummary = { id: string; slug: string; title: string; position: number; estMinutes: number };
+export type ChapterQuestion = {
+  id: string;
+  type: "pilihan_ganda" | "benar_salah" | "baca_kode";
+  prompt: string;
+  code: string | null;
+  options: string[];
+  answer: number;
+  explanation: string;
+};
+export type Chapter = ChapterSummary & { body: string; slideFrom: number | null; slideTo: number | null; questions: ChapterQuestion[] };
+
+export type Topic = Presentation & {
+  id: string;
+  summary: string;
+  tips: string[];
+  practiceCount: number;
+  cardCount: number;
+  chapters: ChapterSummary[];
+  hasExam: boolean;
+};
 
 type Row = {
   id: string;
@@ -18,10 +38,14 @@ type Row = {
   tips: { body: string; position: number }[];
   practice_questions: { count: number }[];
   flashcards: { count: number }[];
+  chapters: { id: string; slug: string; title: string; position: number; est_minutes: number }[];
+  // exams.topic_id is unique, so PostgREST embeds one object; RLS returns
+  // it only when the exam is published.
+  exams: { id: string } | null;
 };
 
 const SELECT =
-  "id, slug, title, description, summary, slides(index, path, width, height), tips(body, position), practice_questions(count), flashcards(count)";
+  "id, slug, title, description, summary, slides(index, path, width, height), tips(body, position), practice_questions(count), flashcards(count), chapters(id, slug, title, position, est_minutes), exams(id)";
 
 function toTopic(row: Row): Topic {
   const slides = row.slides
@@ -38,6 +62,10 @@ function toTopic(row: Row): Topic {
     tips: row.tips.toSorted((a, b) => a.position - b.position).map((t) => t.body),
     practiceCount: row.practice_questions[0]?.count ?? 0,
     cardCount: row.flashcards[0]?.count ?? 0,
+    chapters: row.chapters
+      .toSorted((a, b) => a.position - b.position)
+      .map((c) => ({ id: c.id, slug: c.slug, title: c.title, position: c.position, estMinutes: c.est_minutes })),
+    hasExam: row.exams !== null,
   };
 }
 
@@ -48,7 +76,7 @@ export async function getTopics(): Promise<Topic[]> {
   const { data, error } = await publicClient.from("topics").select(SELECT).order("created_at");
   if (error) throw new Error(`getTopics: ${error.message}`);
   // A topic without published slides cannot render, leave it out.
-  return (data as Row[]).map(toTopic).filter((t) => t.slideCount > 0);
+  return (data as unknown as Row[]).map(toTopic).filter((t) => t.slideCount > 0);
 }
 
 export async function getTopic(slug: string): Promise<Topic | null> {
@@ -57,8 +85,50 @@ export async function getTopic(slug: string): Promise<Topic | null> {
 
   const { data, error } = await publicClient.from("topics").select(SELECT).eq("slug", slug).maybeSingle();
   if (error) throw new Error(`getTopic: ${error.message}`);
-  const topic = data ? toTopic(data as Row) : null;
+  const topic = data ? toTopic(data as unknown as Row) : null;
   return topic && topic.slideCount > 0 ? topic : null;
+}
+
+type ChapterRow = {
+  id: string;
+  slug: string;
+  title: string;
+  position: number;
+  est_minutes: number;
+  body: string;
+  slide_from: number | null;
+  slide_to: number | null;
+  chapter_questions: (ChapterQuestion & { position: number })[];
+};
+
+export async function getChapter(topicSlug: string, chapterSlug: string): Promise<Chapter | null> {
+  "use cache";
+  cacheTag("content");
+
+  const { data, error } = await publicClient
+    .from("chapters")
+    .select(
+      "id, slug, title, position, est_minutes, body, slide_from, slide_to, chapter_questions(id, position, type, prompt, code, options, answer, explanation), topics!inner(slug)"
+    )
+    .eq("topics.slug", topicSlug)
+    .eq("slug", chapterSlug)
+    .maybeSingle();
+  if (error) throw new Error(`getChapter: ${error.message}`);
+  if (!data) return null;
+  const c = data as unknown as ChapterRow;
+  return {
+    id: c.id,
+    slug: c.slug,
+    title: c.title,
+    position: c.position,
+    estMinutes: c.est_minutes,
+    body: c.body,
+    slideFrom: c.slide_from,
+    slideTo: c.slide_to,
+    questions: c.chapter_questions
+      .toSorted((a, b) => a.position - b.position)
+      .map((q) => ({ id: q.id, type: q.type, prompt: q.prompt, code: q.code, options: q.options, answer: q.answer, explanation: q.explanation })),
+  };
 }
 
 export type TrackSummary = { slug: string; title: string; description: string; nodeCount: number };
