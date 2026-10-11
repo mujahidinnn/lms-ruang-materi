@@ -35,7 +35,12 @@ export default function DasborPage() {
   );
 }
 
-type Recent = { state: string; last_slide: number; topics: { id: string; slug: string; title: string; slides: { count: number }[] } | null };
+type Recent = {
+  state: string;
+  last_slide: number;
+  topics: { id: string; slug: string; title: string; slides: { count: number }[] } | null;
+  last_chapter: { slug: string; title: string } | null;
+};
 type ExamRow = { id: string; topics: { slug: string; title: string } | null };
 type TrackRow = { slug: string; title: string; track_nodes: { topic_id: string }[] };
 
@@ -63,7 +68,7 @@ async function Overview({ userId }: { userId: string }) {
   const db = await createClient();
   const user = { id: userId };
   const [{ data: progress }, { data: streak }, { data: queue }, { data: levels }, { data: tracks }, { data: passed }] = await Promise.all([
-    db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count))").eq("user_id", user.id).order("updated_at", { ascending: false }),
+    db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count)), last_chapter:chapters!progress_last_chapter_id_fkey(slug, title)").eq("user_id", user.id).order("updated_at", { ascending: false }),
     db.from("learning_streaks").select("current_days").eq("user_id", user.id).maybeSingle(),
     db.rpc("flashcard_queue"),
     db.from("track_levels").select("slug, core_passed, core_total"),
@@ -113,7 +118,9 @@ async function Overview({ userId }: { userId: string }) {
           </span>
         </div>
         <p className="mt-4 text-3xl leading-tight font-bold tracking-tight sm:text-4xl">{latest.title}</p>
-        {slideTotal > 0 && (
+        {rows[0].last_chapter ? (
+          <p className="mt-2 text-sm text-zinc-300">Bab terakhir: {rows[0].last_chapter.title}</p>
+        ) : slideTotal > 0 && (
           <div className="mt-5 max-w-md">
             <p className="text-sm text-zinc-300 tabular-nums">Slide {Math.min(rows[0].last_slide + 1, slideTotal)} dari {slideTotal}</p>
             <div aria-hidden className="mt-2 h-2.5 rounded-full bg-zinc-900/70">
@@ -121,7 +128,12 @@ async function Overview({ userId }: { userId: string }) {
             </div>
           </div>
         )}
-        <Link href={`/belajar/${latest.slug}`} className={`${primaryButton} mt-6`}><Play aria-hidden className="size-4" />Lanjutkan</Link>
+        <Link
+          href={rows[0].last_chapter ? `/belajar/${latest.slug}/${rows[0].last_chapter.slug}` : `/belajar/${latest.slug}`}
+          className={`${primaryButton} mt-6`}
+        >
+          <Play aria-hidden className="size-4" />Lanjutkan
+        </Link>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2">

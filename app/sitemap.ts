@@ -43,5 +43,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly" as const,
       priority: 0.8,
     })),
+    ...presentations.flatMap((p) =>
+      p.chapters.map((c) => ({ url: `${SITE_URL}/belajar/${p.slug}/${c.slug}`, changeFrequency: "monthly" as const, priority: 0.7 }))
+    ),
   ];
 }
