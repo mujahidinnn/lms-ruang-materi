@@ -12,7 +12,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { isAllowedModel } from "../lib/llm.ts";
 import { providers } from "./llm/index.ts";
-import { buildPrompt, draftSchema, repairDraft, type Draft } from "./prompt.ts";
+import { buildPrompt, draftSchema, repairDraft, validateExercises, type Draft } from "./prompt.ts";
 
 const run = promisify(execFile);
 const jobId = process.argv[process.argv.indexOf("--job-id") + 1] ?? "";
@@ -73,7 +73,7 @@ try {
     throw Object.assign(new Error(`output tidak valid (${where})`), { name: "SchemaError" });
   }
 
-  await writeDraft(job.slug, parsed.data, slides);
+  await writeDraft(job.slug, await validateExercises(parsed.data), slides);
   maybe(
     await db
       .from("import_jobs")
@@ -191,5 +191,11 @@ async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
       ),
       `chapter ${slug} quiz`
     );
+    if (c.exercises.length) {
+      maybe(
+        await db.from("code_exercises").insert(c.exercises.map((e, ei) => ({ chapter_id: row.id, position: ei, ...e }))),
+        `chapter ${slug} exercises`
+      );
+    }
   }
 }

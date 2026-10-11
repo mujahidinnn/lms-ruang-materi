@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { runChecksNode } from "../lib/code/check-node.ts";
 
 // One schema for every provider. Whatever a provider returns is parsed with
 // it before anything reaches the database.
@@ -16,6 +17,29 @@ const question = z
   .refine((q) => q.answer < q.options.length, "answer di luar opsi")
   .refine((q) => (q.type === "baca_kode") === (q.code.trim() !== ""), "code hanya untuk baca_kode");
 
+const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
+
+const exercise = z.object({
+  kind: z.enum(["web", "js", "express"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express"),
+  title: z.string().min(1).max(120),
+  prompt: z.string().min(1).describe("Instruksi markdown singkat: apa yang dibuat dan hasil yang diharapkan"),
+  starter: files.describe("Kode awal untuk murid: html, css, js untuk web; code untuk js dan express"),
+  solution: files.describe("Solusi lengkap dengan bentuk yang sama seperti starter"),
+  setup: z.string().default("").describe("Kode yang dijalankan sebelum kode murid, boleh kosong"),
+  tests: z
+    .array(
+      z.object({
+        name: z.string().min(1).describe("Apa yang diperiksa, dalam kalimat pendek"),
+        check: z
+          .string()
+          .min(1)
+          .describe("Satu ekspresi JavaScript yang bernilai true bila benar. web: periksa document. express: boleh (await request('GET', '/path')).status"),
+      })
+    )
+    .min(1)
+    .max(6),
+});
+
 const chapter = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/).refine((s) => s !== "slide", "slug slide dipakai halaman slide"),
   title: z.string().min(1).max(120),
@@ -27,6 +51,7 @@ const chapter = z.object({
     .min(200)
     .describe("Markdown 400 sampai 800 kata, contoh kode di blok ```bahasa, sisipkan 1 sampai 3 slide dengan ![keterangan](slide:N) dalam rentang bab"),
   quiz: z.array(question).min(2).max(4),
+  exercises: z.array(exercise).max(2).default([]),
 });
 
 export const draftSchema = z.object({
@@ -69,14 +94,15 @@ export function repairDraft(output: unknown, slideCount = 80): unknown {
       : qs;
   const o = output as Record<string, unknown>;
   // Slide ranges outside the deck are clamped into it; quiz questions get
-  // the same repair as the others.
+  // the same repair as the others; broken exercises are dropped.
   const chapters = Array.isArray(o.chapters)
     ? o.chapters.map((c) => {
         if (!c || typeof c !== "object") return c;
         const r = c as Record<string, unknown>;
         const clamp = (v: unknown) => Math.min(Math.max(Math.trunc(Number(v)) || 1, 1), slideCount);
         const from = clamp(r.slide_from);
-        return { ...r, slide_from: from, slide_to: Math.max(from, clamp(r.slide_to)), quiz: fix(r.quiz, 4) };
+        const exercises = Array.isArray(r.exercises) ? r.exercises.filter((e) => exercise.safeParse(e).success).slice(0, 2) : [];
+        return { ...r, slide_from: from, slide_to: Math.max(from, clamp(r.slide_to)), quiz: fix(r.quiz, 4), exercises };
       })
       // Drop a chapter that is still broken rather than fail the whole draft;
       // the 4-chapter minimum still applies.
@@ -86,6 +112,23 @@ export function repairDraft(output: unknown, slideCount = 80): unknown {
       })
     : o.chapters;
   return { ...o, chapters, practice_questions: fix(o.practice_questions, 15), exam_questions: fix(o.exam_questions, 60) };
+}
+
+// Runs js/express solutions against their own tests and drops the ones that
+// fail; web exercises are left for admin review ("Uji solusi").
+export async function validateExercises(d: Draft): Promise<Draft> {
+  for (const c of d.chapters) {
+    const kept = [];
+    for (const e of c.exercises) {
+      if (e.kind !== "web") {
+        const r = await runChecksNode({ kind: e.kind, code: e.solution.code ?? "", setup: e.setup, tests: e.tests });
+        if (r.error || !r.results.every((x) => x.pass)) continue;
+      }
+      kept.push(e);
+    }
+    c.exercises = kept;
+  }
+  return d;
 }
 
 export const draftJsonSchema = z.toJSONSchema(draftSchema, { io: "input" });
@@ -103,12 +146,14 @@ export function buildPrompt(knownSlugs: string[]): Prompt {
       "Soal ujian tidak boleh sama dengan soal latihan.",
       "Fakta harus sesuai isi deck. Jangan mengarang hal di luar topik.",
       "Bab mengikuti urutan deck dan bersama-sama mencakup seluruh deck. Isi bab adalah penjelasan lengkap, bukan salinan teks slide.",
+      "Latihan kode hanya untuk bab praktik: web untuk HTML, CSS, DOM, React atau Vue tanpa build; js untuk logika JavaScript; express untuk route Express. Solusi harus lolos semua pemeriksaannya sendiri, dan kode awal tidak boleh sudah lolos.",
     ].join("\n"),
     user: [
       "Buat dari deck ini: judul, deskripsi 1 kalimat, ringkasan 2 sampai 3 paragraf, 3 sampai 6 tips praktis,",
       "15 sampai 30 flashcard, 10 sampai 15 soal latihan dengan pembahasan, dan tepat 40 soal ujian dengan pembahasan.",
       `Untuk prerequisites, pilih hanya dari slug berikut jika relevan: ${knownSlugs.join(", ") || "(belum ada)"}.`,
       "Susun juga 4 sampai 8 bab: tiap bab punya slug, judul, estimasi menit, rentang slide, isi markdown 400 sampai 800 kata dengan contoh kode bila relevan dan 1 sampai 3 sisipan ![keterangan](slide:N), serta 2 sampai 4 soal kuis.",
+      "Tiap bab boleh punya 0 sampai 2 latihan kode (judul, instruksi, kode awal, solusi, setup, 1 sampai 6 pemeriksaan berupa ekspresi JavaScript). Bab konsep tanpa praktik tidak perlu latihan.",
     ].join("\n"),
   };
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { draftSchema, repairDraft } from "./prompt";
+import { draftSchema, repairDraft, validateExercises } from "./prompt";
 
 const q = (i: number, type = "pilihan_ganda") => ({
   type,
@@ -114,4 +114,22 @@ test("repairDraft drops a chapter left with one question or a short body", () =>
   };
   const out = draftSchema.parse(repairDraft(broken, 30));
   expect(out.chapters.map((c) => c.slug)).toEqual(["bab-1", "bab-4", "bab-5", "bab-6"]);
+});
+
+test("validateExercises drops an exercise whose solution fails its own tests", async () => {
+  const ok = { kind: "js", title: "Jumlah", prompt: "p", starter: { code: "" }, solution: { code: "function jumlah(a, b) { return a + b }" }, setup: "", tests: [{ name: "2+3", check: "jumlah(2, 3) === 5" }] };
+  const bad = { ...ok, title: "Salah", solution: { code: "function jumlah(a, b) { return a - b }" } };
+  const web = { ...ok, kind: "web", title: "Web", solution: { html: "<h1>x</h1>" } };
+  const d = draftSchema.parse({ ...valid, chapters: valid.chapters.map((c, i) => (i === 0 ? { ...c, exercises: [ok, bad] } : i === 1 ? { ...c, exercises: [web] } : c)) });
+  const out = await validateExercises(d);
+  expect(out.chapters[0].exercises.map((e) => e.title)).toEqual(["Jumlah"]);
+  expect(out.chapters[1].exercises.map((e) => e.title)).toEqual(["Web"]);
+  expect(out.chapters[2].exercises).toEqual([]);
+});
+
+test("a broken exercise is dropped, not the whole draft", () => {
+  const broken = { kind: "python", title: "x" };
+  const out = draftSchema.safeParse(repairDraft({ ...valid, chapters: valid.chapters.map((c) => ({ ...c, exercises: [broken] })) }));
+  expect(out.success).toBe(true);
+  expect(out.data?.chapters[0].exercises).toEqual([]);
 });

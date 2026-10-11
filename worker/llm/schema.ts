@@ -3,7 +3,8 @@
 // pattern, ...) is a 400. minItems/maxItems are dropped too: minItems 40 on
 // an array of objects is rejected. Counts are asked in the prompt and zod
 // still checks the full schema afterwards. Objects get
-// additionalProperties: false, which strict mode requires.
+// additionalProperties: false and every property required, which strict
+// mode requires (optional fields are then sent empty, e.g. "" or []).
 const SUPPORTED = new Set([
   "type", "title", "description", "properties", "required", "additionalProperties",
   "enum", "format", "minimum", "maximum", "items", "prefixItems", "anyOf", "$ref",
@@ -21,5 +22,9 @@ export function simpleSchema(node: unknown): unknown {
           : [k, simpleSchema(v)]
       )
   );
-  return out.type === "object" ? { ...out, additionalProperties: false } : out;
+  return out.type === "object" && out.properties
+    ? { ...out, required: Object.keys(out.properties), additionalProperties: false }
+    : out.type === "object"
+      ? { ...out, additionalProperties: false }
+      : out;
 }

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { expressShim } from "./express-shim";
+import { expressShim } from "./express-shim.ts";
 
 export type Check = { name: string; check: string };
 export type CheckResult = { name: string; pass: boolean; error?: string };
