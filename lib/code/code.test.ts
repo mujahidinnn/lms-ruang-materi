@@ -47,4 +47,5 @@ test("drafted code cannot reach the worker's process, env or files", async () =>
   ];
   const r = await runChecksNode({ kind: "js", code: "", setup: "", tests });
   expect(r.results.map((x) => x.pass)).toEqual([false, false]);
+  expect(r.results[0].error).toMatch(/code generation from strings/i);
 });

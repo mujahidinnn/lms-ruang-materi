@@ -7,16 +7,17 @@ type Outcome = { results: CheckResult[]; error?: string };
 
 const TOO_LONG = "Kode berjalan terlalu lama";
 
-// Runs inside the child. vm only gives the drafted code its own globals;
-// the process boundary (no env, Node permission model: no fs, no child
-// processes, no workers) is what keeps it away from the worker's secrets.
+// Runs inside the child. The context gets no host objects and no code
+// generation from strings, which closes the usual constructor.constructor
+// escape to `process`; the process itself has no env and, under the Node
+// permission model, no fs, child processes or workers.
 const CHILD = (shim: string) => `
 const vm = require("node:vm");
 let raw = "";
 process.stdin.on("data", (d) => (raw += d)).on("end", async () => {
   const { kind, code, setup, tests } = JSON.parse(raw);
   const msg = (e) => String((e && e.message) || e);
-  const ctx = vm.createContext({});
+  const ctx = vm.createContext({}, { codeGeneration: { strings: false, wasm: false } });
   vm.runInContext("globalThis.console = { log() {}, info() {}, warn() {}, error() {} };" +
     (kind === "express" ? "Object.assign(globalThis, (" + ${JSON.stringify(shim)} + ")());" : ""), ctx);
   const out = { results: [] };
@@ -40,7 +41,7 @@ process.stdin.on("data", (d) => (raw += d)).on("end", async () => {
 // never reaches this; it runs only in the browser sandbox.
 export function runChecksNode(input: { kind: "js" | "express"; code: string; setup: string; tests: Check[] }): Promise<Outcome> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, ["--permission", "-e", CHILD(expressShim.toString())], { env: {} as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "ignore"] });
+    const child = spawn(process.execPath, ["--permission", "--disallow-code-generation-from-strings", "-e", CHILD(expressShim.toString())], { env: {} as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "ignore"] });
     let stdout = "";
     const timer = setTimeout(() => child.kill("SIGKILL"), 3000 * (input.tests.length + 2));
     child.stdout.on("data", (d) => (stdout += d));
