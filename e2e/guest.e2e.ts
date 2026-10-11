@@ -37,6 +37,7 @@ test("roadmap opens a track and a topic panel", async ({ page }) => {
   await page.goto("/roadmap");
   await page.locator('main a[href^="/roadmap/"]').first().click();
   await expect(page).toHaveURL(/\/roadmap\/[a-z0-9-]+$/);
+  await page.waitForLoadState("networkidle"); // a click before hydration opens nothing
   await page.locator("main ol button").first().click();
   await expect(page.getByRole("link", { name: "Belajar" })).toBeVisible();
 });
@@ -87,13 +88,16 @@ test("phones get the floating bottom nav", async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/\/roadmap$/);
 });
 
-test("a course lists chapters and a chapter quiz gives feedback", async ({ page }) => {
-  await page.goto("/belajar/git");
-  const syllabus = page.getByRole("heading", { name: "Silabus" });
-  test.skip(!(await syllabus.isVisible()), "no chapters published yet");
-  await page.locator('ol a[href^="/belajar/git/"]').first().click();
+test("a course lists chapters, a chapter quiz gives feedback, next chapter opens", async ({ page }) => {
+  await page.goto("/belajar/nodejs");
+  await expect(page.getByRole("heading", { name: "Silabus" })).toBeVisible();
+  await page.locator('ol a[href^="/belajar/nodejs/"]').first().click();
   await expect(page.getByRole("heading", { name: "Cek pemahaman" })).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.getByRole("group").first().getByRole("button").first().click();
   await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();
+  const heading = await page.getByRole("heading", { level: 1 }).textContent();
+  await page.getByRole("navigation", { name: "Bab lain" }).getByRole("link").last().click();
+  await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(heading ?? "");
+  await expect(page.getByText(/^Bab 2 dari/)).toBeVisible();
 });
