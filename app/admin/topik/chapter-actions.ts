@@ -2,6 +2,7 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { z } from "zod";
+import { newChapterStatus } from "@/lib/chapters";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,8 +34,7 @@ export async function simpanBab(form: FormData) {
   done(topic);
 }
 
-// New chapters join the set an admin sees: drafts when the topic has draft
-// chapters (published with the next Terbitkan), else live right away.
+// See newChapterStatus: drafts unless the topic already has live chapters.
 export async function tambahBab(form: FormData) {
   await requireAdmin();
   const { topic } = z.object({ topic: z.string() }).parse(Object.fromEntries(form));
@@ -42,7 +42,7 @@ export async function tambahBab(form: FormData) {
   const { data: t } = await db.from("topics").select("id, chapters(status, position)").eq("slug", topic).single();
   if (!t) throw new Error("topik tidak ditemukan");
   const rows = t.chapters as { status: string; position: number }[];
-  const status = rows.some((c) => c.status === "draft") ? "draft" : "published";
+  const status = newChapterStatus(rows);
   const position = Math.max(-1, ...rows.filter((c) => c.status === status).map((c) => c.position)) + 1;
   const { error } = await db.from("chapters").insert({
     topic_id: t.id, status, position, slug: `bab-${position + 1}`, title: `Bab ${position + 1}`, body: "Tulis isi bab di sini.",

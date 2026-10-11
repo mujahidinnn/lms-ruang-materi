@@ -78,6 +78,12 @@ export function repairDraft(output: unknown, slideCount = 80): unknown {
         const from = clamp(r.slide_from);
         return { ...r, slide_from: from, slide_to: Math.max(from, clamp(r.slide_to)), quiz: fix(r.quiz, 4) };
       })
+      // Drop a chapter that is still broken rather than fail the whole draft;
+      // the 4-chapter minimum still applies.
+      .filter((c) => {
+        const r = c as { quiz?: unknown[]; body?: unknown };
+        return Array.isArray(r.quiz) && r.quiz.length >= 2 && typeof r.body === "string" && r.body.length >= 200;
+      })
     : o.chapters;
   return { ...o, chapters, practice_questions: fix(o.practice_questions, 15), exam_questions: fix(o.exam_questions, 60) };
 }

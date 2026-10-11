@@ -1,5 +1,5 @@
 begin;
-select plan(95);
+select plan(98);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -734,6 +734,27 @@ set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", 
 select public.swap_chapters('60000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000011');
 reset role;
 select is((select position from public.chapters where id = '60000000-0000-0000-0000-000000000003'), 0, 'an admin swaps two chapter positions');
+
+-- Final review fixes (2026-10-11).
+insert into public.topics (id, slug, title, status) values
+  ('10000000-0000-0000-0000-000000000009', 'uji-tanpa-ujian', 'Tanpa ujian', 'published');
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-000000000090', '10000000-0000-0000-0000-000000000009', 0, 'satu', 'Satu', 'Isi', 'published');
+delete from public.learning_days where user_id = '00000000-0000-0000-0000-000000000001';
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select public.complete_chapter('60000000-0000-0000-0000-000000000090');
+select is(
+  (select state::text from public.progress where user_id = auth.uid() and topic_id = '10000000-0000-0000-0000-000000000009'),
+  'selesai', 'a topic without an exam is selesai once all its chapters are done');
+select is(
+  (select count(*)::int from public.learning_days where user_id = auth.uid()),
+  1, 'finishing a chapter counts as a learning day');
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000004", "role": "authenticated"}';
+select is((select count(*)::int from public.chapter_progress), 0, 'a learner sees only their own chapter progress');
+reset role;
 
 select * from finish();
 rollback;

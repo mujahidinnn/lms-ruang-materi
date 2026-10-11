@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { neighbors, parseSlideRef, quizDone, resolveSlideRef, totalMinutes } from "./chapters";
+import { neighbors, newChapterStatus, parseSlideRef, quizDone, resolveSlideRef, totalMinutes } from "./chapters";
 
 const slides = [1, 2, 3].map((index) => ({ index, src: `https://x/s/slide-0${index}.avif`, width: 3200, height: 1800 }));
 
@@ -29,4 +29,10 @@ test("neighbors and totalMinutes", () => {
   expect(neighbors(list, "a").prev).toBeNull();
   expect(neighbors(list, "c").next).toBeNull();
   expect(totalMinutes(list)).toBe(15);
+});
+
+test("a new chapter is a draft unless it joins live chapters", () => {
+  expect(newChapterStatus([])).toBe("draft");
+  expect(newChapterStatus([{ status: "draft" }, { status: "published" }])).toBe("draft");
+  expect(newChapterStatus([{ status: "published" }])).toBe("published");
 });

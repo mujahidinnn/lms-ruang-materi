@@ -106,3 +106,12 @@ test("repairDraft clamps slide ranges and drops broken chapter questions", () =>
   expect(out.chapters[0].slide_to).toBe(30);
   expect(out.chapters[1].quiz).toHaveLength(2);
 });
+
+test("repairDraft drops a chapter left with one question or a short body", () => {
+  const broken = {
+    ...valid,
+    chapters: [chapter(1), { ...chapter(2), quiz: [q(1), { ...q(2), answer: 9 }] }, { ...chapter(3), body: "pendek" }, chapter(4), chapter(5), chapter(6)],
+  };
+  const out = draftSchema.parse(repairDraft(broken, 30));
+  expect(out.chapters.map((c) => c.slug)).toEqual(["bab-1", "bab-4", "bab-5", "bab-6"]);
+});

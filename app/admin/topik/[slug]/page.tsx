@@ -151,6 +151,7 @@ async function Topik({ params, searchParams }: PageProps<"/admin/topik/[slug]">)
           <form action={tambahBab} className="mt-4">
             <input type="hidden" name="topic" value={slug} />
             <button className={smallButton}>Tambah bab</button>
+            <p className="mt-2 text-xs text-zinc-500">Bab baru jadi draf. Kalau topik sudah punya bab terbit dan tidak ada draf, bab baru langsung tampil.</p>
           </form>
         </Section>
 

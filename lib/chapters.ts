@@ -28,3 +28,11 @@ export function neighbors<T extends { slug: string }>(list: T[], slug: string): 
 export function totalMinutes(list: { estMinutes: number }[]): number {
   return list.reduce((sum, c) => sum + c.estMinutes, 0);
 }
+
+// Status for a chapter an admin adds. A topic without chapters, or one with
+// drafts, gets a draft (Terbitkan publishes it). Only when live chapters
+// already exist does it go live too: a lone draft next to them would make
+// publish_topic replace the whole published set with it.
+export function newChapterStatus(rows: { status: string }[]): "draft" | "published" {
+  return rows.length > 0 && rows.every((c) => c.status !== "draft") ? "published" : "draft";
+}
