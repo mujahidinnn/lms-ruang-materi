@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { nilaiKartu } from "@/app/flashcard/actions";
 import { primaryButton } from "@/components/ui/styles";
 import { daysFor, nextBox, RATINGS, type Rating } from "@/lib/leitner";
+import { rpc } from "@/lib/rpc";
+
+const nilaiKartu = rpc("nilaiKartu");
 
 export type Card = { id: string; front: string; back: string; topic?: string; box?: number | null };
 
@@ -32,7 +33,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
     const res = await nilaiKartu(card.id, rating).catch(() => ({ saved: false, error: "Koneksi terputus, nilai kartu tadi tidak tersimpan." }) as const);
     if ("guest" in res && res.guest && !guestShown) {
       setGuestShown(true);
-      setNote(<Link href={masukHref} className="text-accent hover:underline">Masuk untuk menyimpan progres</Link>);
+      setNote(<a href={masukHref} className="text-accent hover:underline">Masuk untuk menyimpan progres</a>);
     } else if (res.error) {
       setNote(res.error);
     }

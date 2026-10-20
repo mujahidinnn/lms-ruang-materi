@@ -1,6 +1,5 @@
-"use server";
-
-import { revalidatePath, updateTag } from "next/cache";
+import { invalidateContent } from "@/lib/cache";
+import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { newChapterStatus } from "@/lib/chapters";
 import { requireAdmin } from "@/lib/dal";
@@ -10,8 +9,8 @@ const slug = z.string().regex(/^[a-z0-9-]+$/).refine((s) => s !== "slide", "slug
 const optionalSlide = z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(1).nullable());
 
 function done(topicSlug: string) {
-  updateTag("content");
-  revalidatePath(`/admin/topik/${topicSlug}`);
+  invalidateContent();
+  refresh();
 }
 
 export async function simpanBab(form: FormData) {

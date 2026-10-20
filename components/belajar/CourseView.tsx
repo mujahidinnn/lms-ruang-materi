@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, Clock, Layers, ListChecks, ClipboardCheck, Presentation, Play, Target } from "lucide-react";
-import Link from "next/link";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, chip, primaryButton, tile } from "@/components/ui/styles";
 import { totalMinutes } from "@/lib/chapters";
@@ -25,10 +24,10 @@ export default function CourseView({ topic }: { topic: Topic }) {
             <li className={`${chip} bg-zinc-900/70 tabular-nums`}><Clock aria-hidden className="size-3.5" />{totalMinutes(chapters)} menit</li>
             <li className={`${chip} bg-zinc-900/70 tabular-nums`}>{topic.slideCount} slide</li>
           </ul>
-          <Link href={`/belajar/${topic.slug}/${resume.slug}`} className={`${primaryButton} mt-7`}>
+          <a href={`/belajar/${topic.slug}/${resume.slug}`} className={`${primaryButton} mt-7`}>
             <Play aria-hidden className="size-4" />
             {started ? `Lanjutkan: ${resume.title}` : "Mulai bab 1"}
-          </Link>
+          </a>
         </header>
 
         <section aria-labelledby="silabus" className={`mt-4 p-6 sm:p-8 ${card}`}>
@@ -44,7 +43,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
           <ol className="mt-5 space-y-2">
             {chapters.map((c, i) => (
               <li key={c.id}>
-                <Link href={`/belajar/${topic.slug}/${c.slug}`} className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-800/50 py-2 pr-2 pl-3 hover:bg-zinc-800">
+                <a href={`/belajar/${topic.slug}/${c.slug}`} className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-800/50 py-2 pr-2 pl-3 hover:bg-zinc-800">
                   <span className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${done.has(c.id) ? "bg-tile-mint" : tile(i)}`}>
                     {done.has(c.id) ? <Check aria-label="selesai" className="size-4" /> : i + 1}
                   </span>
@@ -53,7 +52,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                     <span className="text-sm text-zinc-400 tabular-nums">{c.estMinutes} menit</span>
                   </span>
                   <ArrowBadge className="size-10" />
-                </Link>
+                </a>
               </li>
             ))}
           </ol>
@@ -74,11 +73,11 @@ export default function CourseView({ topic }: { topic: Topic }) {
 function Extra({ href, icon, title, text, color }: { href: string; icon: React.ReactNode; title: string; text: string; color: string }) {
   return (
     <li>
-      <Link href={href} className={`group flex items-center gap-4 rounded-[28px] p-5 ${color}`}>
+      <a href={href} className={`group flex items-center gap-4 rounded-[28px] p-5 ${color}`}>
         <span className="grid size-11 place-items-center rounded-full bg-zinc-900/70">{icon}</span>
         <span className="flex-1"><span className="block font-bold">{title}</span><span className="text-sm text-zinc-300">{text}</span></span>
         <ArrowBadge />
-      </Link>
+      </a>
     </li>
   );
 }

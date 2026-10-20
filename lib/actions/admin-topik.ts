@@ -1,7 +1,5 @@
-"use server";
-
-import { revalidatePath, updateTag } from "next/cache";
-import { redirect } from "next/navigation";
+import { invalidateContent } from "@/lib/cache";
+import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -27,8 +25,8 @@ const schemas = {
 type Table = keyof typeof schemas;
 
 function done(slug: string) {
-  updateTag("content");
-  revalidatePath(`/admin/topik/${slug}`);
+  invalidateContent();
+  refresh();
 }
 
 export async function simpanBaris(formData: FormData) {
@@ -94,6 +92,6 @@ export async function hapusTopik(slug: string): Promise<TopikState> {
   await requireAdmin();
   const { error } = await (await createClient()).from("topics").delete().eq("slug", slug);
   if (error) return { error: "Gagal menghapus topik." };
-  updateTag("content");
+  invalidateContent();
   redirect("/admin/topik");
 }

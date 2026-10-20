@@ -1,8 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { masuk, type MasukState } from "@/app/masuk/actions";
+import type { MasukState } from "@/lib/actions/masuk";
 import { primaryButton } from "@/components/ui/styles";
+import { rpc } from "@/lib/rpc";
+
+const masuk = rpc("masuk");
 
 export default function MasukForm({ next, galat }: { next: string; galat: boolean }) {
   const [state, action, pending] = useActionState<MasukState, FormData>(

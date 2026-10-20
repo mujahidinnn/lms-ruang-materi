@@ -18,7 +18,7 @@ export type Presentation = {
 };
 
 export function slideUrl(path: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/slides/${path}`;
+  return `${import.meta.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/slides/${path}`;
 }
 
 export function thumbSrc(slide: Slide): string {

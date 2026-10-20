@@ -1,0 +1,72 @@
+---
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/geist-mono";
+import "@fontsource/babylonica";
+import "../styles/globals.css";
+import Analytics from "@vercel/analytics/astro";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+
+// The document shell for every page (was app/layout.tsx and Next metadata).
+// title: the page's own name, shown as "<title> · Ruang Materi"; leave it
+// out on the landing. noindex for signed-in and admin screens.
+type Props = {
+  title?: string;
+  description?: string;
+  noindex?: boolean;
+  canonical?: string;
+  ogType?: "website" | "article";
+};
+const { title, description = SITE_DESCRIPTION, noindex = false, canonical, ogType = "website" } = Astro.props;
+const fullTitle = title ? `${title} · ${SITE_NAME}` : `${SITE_NAME} · Ruang Belajar Interaktif`;
+const ogImage = new URL("/opengraph-image.png", SITE_URL).href;
+---
+
+<!doctype html>
+<html lang="id" class="h-full antialiased">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f3f3f9" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content={noindex ? "noindex, follow" : "index, follow"} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <meta name="author" content="Mujahidin" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical ?? new URL(Astro.url.pathname, SITE_URL).href} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    {/* Applies a saved theme before first paint, so there is no flash. Also
+        read by components/ThemeButton.tsx; keep the key in step. */}
+    <script is:inline>
+      try{var t=localStorage.getItem("ruang-materi:tema");if(t==="dark")document.documentElement.dataset.theme=t}catch(e){}
+    </script>
+    <slot name="head" />
+  </head>
+  {/* At least one screen tall and the full width, so short pages still fill
+      the canvas. min-w-full, not 100dvw: viewport units include the
+      scrollbar and would add a sideways scroll on desktop. */}
+  <body class="flex min-h-dvh w-full min-w-full flex-col overflow-x-clip bg-zinc-950 text-zinc-50">
+    <slot />
+    {/* Production only: in dev a cached page would hide fresh changes. */}
+    {import.meta.env.PROD && (
+      <script is:inline>
+        if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
+      </script>
+    )}
+    {/* Cookieless page views (GUIDELINE, Privacy); no-op outside Vercel. */}
+    <Analytics />
+  </body>
+</html>

@@ -1,14 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { mulaiImpor } from "@/app/admin/impor/actions";
 import { smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const mulaiImpor = rpc("mulaiImpor");
 
 // Decks migrated in phase 3 that have no AI draft yet. Their pptx sits in
 // imports/migrasi/<slug>.pptx.
 export default function MigrasiList({ slugs, models }: { slugs: string[]; models: string[] }) {
-  const router = useRouter();
   const [model, setModel] = useState(models[0]);
   const [message, setMessage] = useState("");
   const [pending, start] = useTransition();
@@ -40,7 +40,7 @@ export default function MigrasiList({ slugs, models }: { slugs: string[]; models
                 start(async () => {
                   const res = await mulaiImpor({ filePath: `migrasi/${slug}.pptx`, originalName: `${slug}.pptx`, slug, model });
                   setMessage(res.error ?? `Draf ${slug} sedang dibuat.`);
-                  router.refresh();
+                  location.reload();
                 })
               }
               className={`${smallButton} font-mono`}

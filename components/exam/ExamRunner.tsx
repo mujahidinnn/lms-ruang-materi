@@ -1,10 +1,11 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Send, WifiOff } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { kumpulkanUjian } from "@/app/ujian/actions";
 import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import { rpc } from "@/lib/rpc";
+
+const kumpulkanUjian = rpc("kumpulkanUjian");
 
 export type ExamQuestion = { id: string; prompt: string; code: string | null; options: string[] };
 type Saved = { answers: Record<string, number>; doubts: string[] };
@@ -14,7 +15,6 @@ type Saved = { answers: Record<string, number>; doubts: string[] };
 // leaving asks first, and the clock submits on its own at zero. The timer is
 // text; its live region speaks only the 5 and 1 minute warnings.
 export default function ExamRunner({ attemptId, secondsLeft, questions }: { attemptId: string; secondsLeft: number; questions: ExamQuestion[] }) {
-  const router = useRouter();
   const key = `ruang-materi:ujian:${attemptId}`;
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -57,7 +57,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
     try {
       localStorage.removeItem(key);
     } catch {}
-    router.refresh();
+    location.reload();
   }
 
   // Restore, then keep saving.

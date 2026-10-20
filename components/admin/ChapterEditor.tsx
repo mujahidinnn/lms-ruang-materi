@@ -2,11 +2,15 @@
 
 import { ArrowDown, ArrowUp, Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { geserBab, hapusBab, simpanBab } from "@/app/admin/topik/chapter-actions";
 import MarkdownBase from "@/components/belajar/MarkdownBase";
 import type { Slide } from "@/lib/slides";
 import StatusBadge from "./StatusBadge";
 import { dangerButton, field, smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const geserBab = rpc("geserBab");
+const hapusBab = rpc("hapusBab");
+const simpanBab = rpc("simpanBab");
 
 export type ChapterRow = { id: string; status: string; position: number; slug: string; title: string; body: string; est_minutes: number; slide_from: number | null; slide_to: number | null };
 

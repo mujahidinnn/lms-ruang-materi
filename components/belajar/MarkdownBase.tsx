@@ -28,7 +28,6 @@ export default function MarkdownBase({
             if (!slide) return null;
             return (
               <a href={slide.src} target="_blank" rel="noopener" className="my-5 block overflow-hidden rounded-2xl shadow-soft">
-                {/* eslint-disable-next-line @next/next/no-img-element -- pre-encoded AVIF, see next.config.ts */}
                 <img src={mediumSrc(slide)} width={slide.width} height={slide.height} alt={alt || `Slide ${slide.index}`} loading="lazy" className="h-auto w-full" />
               </a>
             );

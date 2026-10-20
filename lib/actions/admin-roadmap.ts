@@ -1,7 +1,5 @@
-"use server";
-
-import { revalidatePath, updateTag } from "next/cache";
-import { redirect } from "next/navigation";
+import { invalidateContent } from "@/lib/cache";
+import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -19,8 +17,8 @@ function fail(error: { code?: string; message: string }, fallback: string): Road
 }
 
 function done(track: string) {
-  updateTag("content");
-  revalidatePath(`/admin/roadmap/${track}`);
+  invalidateContent();
+  refresh();
 }
 
 export async function buatTrack(_: RoadmapState, form: FormData): Promise<RoadmapState> {
@@ -127,6 +125,6 @@ export async function hapusTrack(track: string): Promise<RoadmapState> {
   await requireAdmin();
   const { error } = await (await createClient()).from("tracks").delete().eq("slug", slug.parse(track));
   if (error) return fail(error, "Gagal menghapus roadmap.");
-  updateTag("content");
+  invalidateContent();
   redirect("/admin/roadmap");
 }

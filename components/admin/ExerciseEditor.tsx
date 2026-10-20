@@ -2,10 +2,13 @@
 
 import { FlaskConical, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { hapusLatihanKode, simpanLatihanKode } from "@/app/admin/topik/exercise-actions";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
 import type { CodeExerciseData } from "@/lib/content";
 import { dangerButton, field, smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const hapusLatihanKode = rpc("hapusLatihanKode");
+const simpanLatihanKode = rpc("simpanLatihanKode");
 
 export type ExerciseRow = Omit<CodeExerciseData, "kind"> & { kind: string; chapter_id: string };
 

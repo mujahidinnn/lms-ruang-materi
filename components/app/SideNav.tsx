@@ -1,11 +1,6 @@
-"use client";
-
 import { BookOpen, ClipboardCheck, FileUp, Layers, LayoutDashboard, Medal, Route, UserRound } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
-// Icons are components, which cannot cross from a server layout to here, so
-// the two link sets live in this file and the shell picks one by name.
+// The two link sets; the shell picks one by name.
 const SETS = {
   akun: [
     { href: "/dasbor", label: "Dasbor", Icon: LayoutDashboard },
@@ -24,19 +19,15 @@ const SETS = {
 };
 export type NavSet = keyof typeof SETS;
 
-export default function SideNav({ set }: { set: NavSet }) {
-  return <NavLinks set={set} path={usePathname()} />;
-}
-
-// Also the Suspense fallback (no active item) while the path is unknown.
-// A row on mobile, a column in the sidebar from lg.
-export function NavLinks({ set, path }: { set: NavSet; path: string }) {
+// Server-rendered: the shell passes the path. A row on mobile, a column in
+// the sidebar from lg.
+export default function SideNav({ set, path }: { set: NavSet; path: string }) {
   return (
     <nav aria-label={set === "admin" ? "Admin" : "Akun"} className="scrollbar-thin -mx-1 flex gap-1 overflow-x-auto px-1 lg:flex-col">
       {SETS[set].map(({ href, label, Icon }) => {
         const current = href === "/admin" ? path === href : path.startsWith(href);
         return (
-          <Link
+          <a
             key={href}
             href={href}
             aria-current={current ? "page" : undefined}
@@ -46,7 +37,7 @@ export function NavLinks({ set, path }: { set: NavSet; path: string }) {
           >
             <Icon aria-hidden className="size-4.5" />
             {label}
-          </Link>
+          </a>
         );
       })}
     </nav>

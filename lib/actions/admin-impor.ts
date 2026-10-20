@@ -1,7 +1,5 @@
-"use server";
-
+import { refresh } from "@/lib/request";
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
 import { enabledModels } from "@/lib/llm";
@@ -69,6 +67,6 @@ export async function mulaiImpor(raw: z.input<typeof input>): Promise<ImporState
     return { error: `Gagal memicu GitHub Actions (${res.status}).` };
   }
 
-  revalidatePath("/admin/impor");
+  refresh();
   return { ok: true };
 }

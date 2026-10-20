@@ -1,20 +1,23 @@
 "use client";
 
 import { EyeOff, Globe, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { hapusTopik, tarik, terbitkan, type TopikState } from "@/app/admin/topik/actions";
+import type { TopikState } from "@/lib/actions/admin-topik";
 import { dangerButton, primaryButton, smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const hapusTopik = rpc("hapusTopik");
+const tarik = rpc("tarik");
+const terbitkan = rpc("terbitkan");
 
 export default function TopicActions({ slug, published, hasDraft }: { slug: string; published: boolean; hasDraft: boolean }) {
-  const router = useRouter();
   const [state, setState] = useState<TopikState>({});
   const [pending, start] = useTransition();
   const run = (fn: (s: string) => Promise<TopikState>) =>
     start(async () => {
       const res = await fn(slug);
       setState(res);
-      if (res.ok) router.refresh();
+      if (res.ok) location.reload();
     });
 
   return (

@@ -1,9 +1,7 @@
 "use client";
 
 import { Check, Eye, Play, RotateCcw, X } from "lucide-react";
-import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { EditorLanguage } from "@/components/code/CodeEditor";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
 import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -12,10 +10,9 @@ import type { CodeExerciseData } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWrong } from "@/lib/feedback";
 import { createClient } from "@/lib/supabase/client";
 
-const CodeEditor = dynamic(() => import("@/components/code/CodeEditor"), {
-  ssr: false,
-  loading: () => <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />,
-});
+// CodeMirror needs the DOM: loaded in the browser only, after mount.
+const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
+const editorSkeleton = <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
 const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"] };
@@ -47,6 +44,9 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
   // Bumped whenever files change from outside the editor, to remount it.
   const [version, setVersion] = useState(0);
   const [part, setPart] = useState<Part>(parts[0]);
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only editor, see CodeEditor above
+  useEffect(() => setMounted(true), []);
   const [out, setOut] = useState<RunResult | null>(null);
   const [fails, setFails] = useState(0);
   const [passed, setPassed] = useState(false);
@@ -135,7 +135,11 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
         </div>
       )}
       <div className="mt-3">
-        <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={LANG[part]} label={`Editor ${LABEL[part]}`} />
+        {mounted ? (
+          <Suspense fallback={editorSkeleton}>
+            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={LANG[part]} label={`Editor ${LABEL[part]}`} />
+          </Suspense>
+        ) : editorSkeleton}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -172,10 +176,10 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
           </ul>
         )}
         {note === "guest" && (
-          <p className="text-sm text-zinc-400"><Link href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</Link></p>
+          <p className="text-sm text-zinc-400"><a href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</a></p>
         )}
         {note === "error" && (
-          <p className="text-sm text-zinc-400">Lolos, tapi belum tersimpan. <Link href="/profil" className="text-accent underline">Cek persetujuan di Profil</Link>, lalu periksa lagi.</p>
+          <p className="text-sm text-zinc-400">Lolos, tapi belum tersimpan. <a href="/profil" className="text-accent underline">Cek persetujuan di Profil</a>, lalu periksa lagi.</p>
         )}
       </div>
     </section>

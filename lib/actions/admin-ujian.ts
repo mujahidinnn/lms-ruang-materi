@@ -1,6 +1,5 @@
-"use server";
-
-import { revalidatePath, updateTag } from "next/cache";
+import { invalidateContent } from "@/lib/cache";
+import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +20,7 @@ export async function simpanUjian(_: { error?: string; ok?: string }, form: Form
   const { id, ...fields } = parsed.data;
   const { error } = await (await createClient()).from("exams").update(fields).eq("id", id);
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal menyimpan." };
-  updateTag("content");
-  revalidatePath("/admin/ujian");
+  invalidateContent();
+  refresh();
   return { ok: "Tersimpan." };
 }

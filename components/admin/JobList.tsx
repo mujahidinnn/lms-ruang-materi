@@ -1,13 +1,13 @@
 "use client";
 
 import { CheckCircle2, Clock, LoaderCircle, RotateCcw, XCircle } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { mulaiImpor } from "@/app/admin/impor/actions";
 import { importErrorText } from "@/lib/import-errors";
 import { createClient } from "@/lib/supabase/client";
 import { smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const mulaiImpor = rpc("mulaiImpor");
 
 export type Job = {
   id: string;
@@ -33,7 +33,6 @@ const active = (j: Job) => j.status === "queued" || j.status === "rendering" || 
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 export default function JobList({ initial, models }: { initial: Job[]; models: string[] }) {
-  const router = useRouter();
   const [jobs, setJobs] = useState(initial);
   const [message, setMessage] = useState("");
   const [pending, start] = useTransition();
@@ -54,7 +53,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
     start(async () => {
       const res = await mulaiImpor({ filePath: job.file_path, originalName: job.original_name, slug: job.slug, model });
       setMessage(res.error ?? "Impor diulang.");
-      router.refresh();
+      location.reload();
     });
   }
 
@@ -92,7 +91,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
                   )}
                 </div>
                 <div className="flex items-start gap-2">
-                  {j.status === "done" && <Link href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</Link>}
+                  {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</a>}
                   {j.status === "failed" && (
                     <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={pending || running} onRetry={(m) => ulang(j, m)} />
                   )}

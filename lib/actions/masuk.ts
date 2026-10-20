@@ -1,7 +1,4 @@
-"use server";
-
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { currentRequest, redirect } from "@/lib/request";
 import { z } from "zod";
 import { safeNext } from "@/lib/safe-next";
 import { SITE_URL } from "@/lib/site";
@@ -41,7 +38,7 @@ export async function masuk(
 
   // Only this site or a local dev server may receive the link; a spoofed
   // Origin falls back to SITE_URL even if the Supabase allowlist is loose.
-  const sent = (await headers()).get("origin") ?? "";
+  const sent = currentRequest().request.headers.get("origin") ?? "";
   const origin = sent === SITE_URL || /^http:\/\/localhost:\d+$/.test(sent) ? sent : SITE_URL;
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,

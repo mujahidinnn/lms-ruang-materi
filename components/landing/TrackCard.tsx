@@ -1,4 +1,3 @@
-import Link from "next/link";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, mutedChip } from "@/components/ui/styles";
 import type { TrackSummary } from "@/lib/content";
@@ -8,7 +7,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
   const dots = Math.min(track.nodeCount, 12);
   return (
     <li>
-      <Link
+      <a
         href={`/roadmap/${track.slug}`}
         className={`group flex h-full flex-col p-6 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${card}`}
       >
@@ -24,7 +23,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
             <span key={i} className={`relative size-3 rounded-full ring-4 ring-zinc-900 ${i === 0 ? "bg-brand" : "bg-zinc-700"}`} />
           ))}
         </span>
-      </Link>
+      </a>
     </li>
   );
 }

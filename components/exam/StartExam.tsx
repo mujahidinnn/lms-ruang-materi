@@ -2,8 +2,10 @@
 
 import { ClipboardCheck } from "lucide-react";
 import { useActionState } from "react";
-import { mulaiUjian } from "@/app/ujian/actions";
 import { primaryButton } from "@/components/ui/styles";
+import { rpc } from "@/lib/rpc";
+
+const mulaiUjian = rpc("mulaiUjian");
 
 export default function StartExam({ examId, slug, label }: { examId: string; slug: string; label: string }) {
   const [state, run, pending] = useActionState(mulaiUjian, {});

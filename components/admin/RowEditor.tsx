@@ -1,7 +1,10 @@
 import { Trash2 } from "lucide-react";
-import { hapusBaris, simpanBaris } from "@/app/admin/topik/actions";
 import StatusBadge from "./StatusBadge";
 import { dangerButton, field, smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const hapusBaris = rpc("hapusBaris");
+const simpanBaris = rpc("simpanBaris");
 
 // A tip or flashcard: readable first, the form opens on Edit.
 export default function RowEditor({

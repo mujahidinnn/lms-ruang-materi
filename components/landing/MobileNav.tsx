@@ -1,14 +1,11 @@
 "use client";
 
 import { Home, Layers, LayoutDashboard, LogIn, Route } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useSignedIn } from "@/components/auth/useSignedIn";
 
 // Phones: the main links as a floating pill at the bottom, within thumb reach.
 // globals.css pads the body while it is on screen.
-export default function MobileNav() {
-  const path = usePathname();
+export default function MobileNav({ path }: { path: string }) {
   const signedIn = useSignedIn();
   const items = [
     { href: "/", label: "Beranda", icon: Home, on: path === "/" },
@@ -25,7 +22,7 @@ export default function MobileNav() {
       className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto flex w-fit gap-2 rounded-full bg-zinc-900/90 p-2 shadow-soft backdrop-blur sm:hidden"
     >
       {items.map(({ href, label, icon: Icon, on }) => (
-        <Link
+        <a
           key={href}
           href={href}
           aria-label={label}
@@ -35,7 +32,7 @@ export default function MobileNav() {
           }`}
         >
           <Icon aria-hidden className="size-5" />
-        </Link>
+        </a>
       ))}
     </nav>
   );

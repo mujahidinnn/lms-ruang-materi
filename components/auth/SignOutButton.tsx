@@ -1,7 +1,9 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { keluar } from "@/app/masuk/actions";
+import { rpc } from "@/lib/rpc";
+
+const keluar = rpc("keluar");
 
 // Clears the service worker's page cache before signing out, so the next
 // person on a shared phone sees nothing of this learner.

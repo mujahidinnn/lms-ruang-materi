@@ -1,14 +1,15 @@
 "use client";
 
 import { Check, ClipboardCheck, Layers, PartyPopper, Play, RotateCcw, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { simpanLatihan } from "@/app/latihan/actions";
 import SoundToggle from "@/components/quiz/SoundToggle";
 import { card, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import type { Question } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import { sampleQuestions, setResult, shuffleOptions } from "@/lib/quiz";
+import { rpc } from "@/lib/rpc";
+
+const simpanLatihan = rpc("simpanLatihan");
 
 const HINT_KEY = "ruang-materi:hint-masuk";
 
@@ -135,24 +136,24 @@ export default function PracticeQuiz({
         {consent && (
           <p className="mt-4 text-sm text-zinc-400">
             Hasil ini belum tersimpan.{" "}
-            <Link href="/profil" className="text-accent hover:underline">Konfirmasi persetujuan di Profil</Link> agar progresmu tersimpan.
+            <a href="/profil" className="text-accent hover:underline">Konfirmasi persetujuan di Profil</a> agar progresmu tersimpan.
           </p>
         )}
         {hint && (
           <p className="mt-4 text-sm text-zinc-400">
-            <Link href={`/masuk?next=/latihan/${slug}`} className="text-accent hover:underline">Masuk untuk menyimpan progres</Link>
+            <a href={`/masuk?next=/latihan/${slug}`} className="text-accent hover:underline">Masuk untuk menyimpan progres</a>
           </p>
         )}
         <div className="mt-8 flex flex-wrap items-center gap-3">
           {hasExam && (prep ? win : wrong.length === 0) ? (
-            <Link href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Mulai ujian</Link>
+            <a href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Mulai ujian</a>
           ) : wrong.length > 0 ? (
             <button onClick={() => restart(wrong)} className={primaryButton}><RotateCcw aria-hidden className="size-4" />Ulangi yang salah</button>
           ) : (
-            <Link href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</Link>
+            <a href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</a>
           )}
           {hasExam && !prep && (
-            <Link href={`/latihan/${slug}/persiapan`} className={secondaryButton}>Simulasi ujian</Link>
+            <a href={`/latihan/${slug}/persiapan`} className={secondaryButton}>Simulasi ujian</a>
           )}
           <button onClick={() => (prep ? startPrep() : restart(questions))} className={secondaryButton}>
             {prep ? "Simulasi baru" : "Ulangi semua soal"}

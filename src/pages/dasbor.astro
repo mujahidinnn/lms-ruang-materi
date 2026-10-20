@@ -1,0 +1,218 @@
+---
+import { Flame, Layers, Play, Route } from "lucide-react";
+import MonthCalendar from "@/components/dashboard/MonthCalendar";
+import { Welcome } from "@/components/illustrations";
+import ArrowBadge from "@/components/ui/ArrowBadge";
+import Ring from "@/components/ui/Ring";
+import { card, chip, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import { levelFor } from "@/lib/level";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../components/AppShell.astro";
+import Base from "../layouts/Base.astro";
+import { signedIn } from "../lib/guard";
+
+const user = await signedIn(Astro);
+if (user instanceof Response) return user;
+
+type Recent = {
+  state: string;
+  last_slide: number;
+  topics: { id: string; slug: string; title: string; slides: { count: number }[] } | null;
+  last_chapter: { slug: string; title: string } | null;
+};
+type ExamRow = { id: string; topics: { slug: string; title: string } | null };
+type TrackRow = { slug: string; title: string; track_nodes: { topic_id: string }[] };
+
+const db = await createClient();
+const { data: me } = await db.from("profiles").select("display_name, timezone, guardian_consent").eq("user_id", user.id).single();
+const consent = user.role === "admin" || !!me?.guardian_consent;
+const name = me?.display_name?.trim() || user.email.split("@")[0];
+// en-CA formats as YYYY-MM-DD, the same shape as learning_days.day.
+const today = new Intl.DateTimeFormat("en-CA", { timeZone: me?.timezone ?? "Asia/Jakarta" }).format(new Date());
+
+const [{ data: progress }, { data: streak }, { data: queue }, { data: levels }, { data: tracks }, { data: passed }, { data: days }] = await Promise.all([
+  db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count)), last_chapter:chapters!progress_last_chapter_id_fkey(slug, title)").eq("user_id", user.id).order("updated_at", { ascending: false }),
+  db.from("learning_streaks").select("current_days, best_days").eq("user_id", user.id).maybeSingle(),
+  db.rpc("flashcard_queue"),
+  db.from("track_levels").select("slug, core_passed, core_total"),
+  db.from("tracks").select("slug, title, track_nodes(topic_id)").order("created_at"),
+  db.from("exam_attempts").select("exam_id").eq("user_id", user.id).eq("passed", true),
+  db.from("learning_days").select("day").eq("user_id", user.id).gte("day", `${today.slice(0, 8)}01`),
+]);
+
+// A topic pulled from publication comes back as a null embed; skip it.
+const rows = ((progress ?? []) as unknown as Recent[]).filter((r): r is Recent & { topics: NonNullable<Recent["topics"]> } => !!r.topics);
+const streakDays = streak?.current_days ?? 0;
+const latest = rows[0];
+const slideTotal = latest?.topics.slides[0]?.count ?? 0;
+const slideAt = latest ? Math.min(latest.last_slide + 1, slideTotal) : 0;
+const due = (queue ?? []) as { box: number | null }[];
+const done = rows.filter((r) => r.state === "selesai").length;
+const open = rows.filter((r) => r.state === "sedang").map((r) => r.topics.id);
+const passedIds = new Set((passed ?? []).map((p) => p.exam_id));
+const { data: exams } = open.length ? await db.from("exams").select("id, topics(slug, title)").in("topic_id", open) : { data: [] };
+const openExams = ((exams ?? []) as unknown as ExamRow[]).filter((e): e is ExamRow & { topics: NonNullable<ExamRow["topics"]> } => !!e.topics && !passedIds.has(e.id));
+const touched = new Set(rows.map((r) => r.topics.id));
+const levelBySlug = new Map((levels ?? []).map((l) => [l.slug, l]));
+const myTracks = ((tracks ?? []) as TrackRow[])
+  .filter((t) => t.track_nodes.some((n) => touched.has(n.topic_id)))
+  .map((t) => {
+    const l = levelBySlug.get(t.slug);
+    const passedCount = l?.core_passed ?? 0;
+    const total = l?.core_total ?? 0;
+    return { ...t, passedCount, total, pct: total ? Math.round((passedCount / total) * 100) : 0 };
+  });
+const donePct = rows.length ? Math.round((done / rows.length) * 100) : 0;
+---
+
+<Base title="Dasbor" description="Lanjutkan belajar, ulangi kartu yang jatuh tempo, dan lihat kemajuan roadmap kamu." noindex>
+  <AppShell set="akun" email={user.email}>
+    <div class="mx-auto max-w-6xl">
+      {!consent && (
+        <form method="post" action="/rpc/setujuiWali" class="mb-5 flex flex-col gap-4 rounded-[28px] bg-tile-butter p-6 sm:flex-row sm:items-center">
+          <p class="flex-1 text-sm text-zinc-300">
+            Sebelum progres belajarmu disimpan, konfirmasi dulu: kamu berusia 18 tahun ke atas, atau orang tua atau wali sudah setuju kamu memakai Ruang Materi.
+          </p>
+          <button class={primaryButton}>Saya konfirmasi</button>
+        </form>
+      )}
+
+      <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div class="grid min-w-0 content-start gap-5">
+          <section aria-labelledby="sapa" class="relative flex overflow-hidden rounded-[32px] bg-tile-lavender p-6 sm:p-8">
+            <div class="min-w-0 flex-1">
+              <h1 id="sapa" class="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+                Halo, <span class="text-accent">{name}</span>!
+              </h1>
+              {latest ? (
+                <>
+                  <p class="mt-2 text-zinc-300">
+                    Kamu sudah menyelesaikan <strong class="text-accent-warm">{donePct}%</strong> topik yang kamu buka.
+                  </p>
+                  <div class="mt-6 max-w-md rounded-2xl bg-zinc-900/70 p-4">
+                    <p class="text-xs text-zinc-400">Lanjutkan belajar</p>
+                    <p class="mt-0.5 font-semibold">{latest.topics.title}</p>
+                    {latest.last_chapter ? (
+                      <p class="mt-0.5 text-sm text-zinc-400">Bab terakhir: {latest.last_chapter.title}</p>
+                    ) : slideTotal > 0 && (
+                      <>
+                        <p class="mt-0.5 text-sm text-zinc-400 tabular-nums">Slide {slideAt} dari {slideTotal}</p>
+                        <div aria-hidden="true" class="mt-2 h-2 rounded-full bg-zinc-800">
+                          <div class="h-full rounded-full bg-brand" style={{ width: `${(slideAt / slideTotal) * 100}%` }} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <a href={latest.last_chapter ? `/belajar/${latest.topics.slug}/${latest.last_chapter.slug}` : `/belajar/${latest.topics.slug}`} class={`${primaryButton} mt-5`}>
+                    <Play aria-hidden className="size-4" />Lanjutkan
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p class="mt-2 max-w-md text-zinc-300">Pilih jalur belajar, lalu buka topik pertamanya. Kemajuanmu tersimpan otomatis.</p>
+                  <a href="/roadmap" class={`${primaryButton} mt-6`}><Route aria-hidden className="size-4" />Pilih roadmap pertama</a>
+                </>
+              )}
+            </div>
+            <Welcome className="ml-6 hidden size-44 shrink-0 self-center sm:block" />
+          </section>
+
+          {latest && (
+            <div class="grid gap-5 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+              <section aria-labelledby="track" class={`p-6 ${card}`}>
+                <div class="flex items-center justify-between gap-3">
+                  <h2 id="track" class="text-lg font-bold tracking-tight">Kemajuan roadmap</h2>
+                  <a href="/nilai" class="rounded-full bg-tile-lavender px-3 py-1 text-xs font-medium text-accent hover:underline">Lihat nilai</a>
+                </div>
+                {myTracks.length ? (
+                  <ul class="mt-5 space-y-5">
+                    {myTracks.map((t, i) => (
+                      <li class="flex items-center gap-4">
+                        <span aria-hidden="true" class={`grid size-11 shrink-0 place-items-center rounded-2xl text-sm font-bold ${tile(i)}`}>{t.title.slice(0, 2)}</span>
+                        <div class="min-w-0 flex-1">
+                          <a href={`/roadmap/${t.slug}`} class="block truncate font-semibold hover:text-accent">{t.title}</a>
+                          <p class="text-xs text-zinc-500 tabular-nums">{levelFor(t.passedCount, t.total)}, {t.passedCount} dari {t.total} topik lulus</p>
+                          <div aria-hidden="true" class="mt-2 h-2 rounded-full bg-zinc-800">
+                            <div class="h-full rounded-full bg-brand" style={{ width: `${t.pct}%` }} />
+                          </div>
+                        </div>
+                        <span class="rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-on-primary tabular-nums">{t.pct}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="mt-3 text-sm text-zinc-400">Topik yang kamu buka belum masuk roadmap mana pun.</p>
+                )}
+              </section>
+
+              <section aria-labelledby="topik" class={`flex flex-col p-6 ${card}`}>
+                <h2 id="topik" class="text-lg font-bold tracking-tight">Topik kamu</h2>
+                <Ring value={done} max={rows.length} stroke={4} className="mx-auto mt-5 size-40">
+                  <span class="text-center">
+                    <span class="block text-3xl font-bold tabular-nums">{donePct}%</span>
+                    <span class="text-xs text-zinc-500">selesai</span>
+                  </span>
+                </Ring>
+                <ul class="mt-5 flex justify-center gap-5 text-sm tabular-nums">
+                  <li class="flex items-center gap-2"><span aria-hidden="true" class="size-2.5 rounded-full bg-brand" />{done} selesai</li>
+                  <li class="flex items-center gap-2"><span aria-hidden="true" class="size-2.5 rounded-full bg-zinc-700" />{open.length} sedang</li>
+                </ul>
+              </section>
+            </div>
+          )}
+        </div>
+
+        <div class="grid content-start gap-5">
+          <section aria-labelledby="kalender" class={`p-6 ${card}`}>
+            <div class="flex items-center justify-between gap-3">
+              <h2 id="kalender" class="text-lg font-bold tracking-tight">Hari belajar</h2>
+              <span class={`${chip} ${streakDays ? "bg-tile-butter" : "bg-zinc-800"}`}>
+                <Flame aria-hidden className={`size-3.5 ${streakDays ? "text-accent-warm" : ""}`} />
+                {streakDays ? `Streak ${streakDays} hari` : "Mulai lagi hari ini"}
+              </span>
+            </div>
+            <div class="mt-4"><MonthCalendar today={today} studied={new Set((days ?? []).map((d) => d.day))} /></div>
+            {!!streak?.best_days && <p class="mt-3 text-xs text-zinc-500">Streak terbaikmu {streak.best_days} hari.</p>}
+          </section>
+
+          {latest && (
+            <>
+              <section aria-labelledby="kartu" class="rounded-[28px] bg-tile-mint p-6">
+                <h2 id="kartu" class="text-lg font-bold tracking-tight">
+                  {due.length ? `${due.length} kartu siap diulang` : "Belum ada kartu jatuh tempo"}
+                </h2>
+                <p class="mt-1 text-sm text-zinc-300">
+                  {due.length ? `${due.filter((c) => c.box === null).length} di antaranya kartu baru.` : "Kartu dari topik yang kamu buka muncul di sini sesuai jadwalnya."}
+                </p>
+                {due.length > 0 && (
+                  <a href="/flashcard" class={`${secondaryButton} mt-5`}>
+                    <Layers aria-hidden className="size-4" />
+                    Mulai review
+                  </a>
+                )}
+              </section>
+
+              <section aria-labelledby="ujian" class={`p-6 ${card}`}>
+                <h2 id="ujian" class="text-lg font-bold tracking-tight">Ujian terbuka</h2>
+                {openExams.length ? (
+                  <ul class="mt-3 space-y-2">
+                    {openExams.map((e) => (
+                      <li>
+                        <a href={`/ujian/${e.topics.slug}`} class="group flex min-h-14 items-center justify-between gap-3 rounded-2xl bg-zinc-800/60 py-1.5 pr-1.5 pl-4 font-medium hover:bg-zinc-800">
+                          {e.topics.title}
+                          <ArrowBadge className="size-10" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="mt-1 text-sm text-zinc-400">Tidak ada ujian untuk topik yang sedang kamu pelajari.</p>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </AppShell>
+</Base>

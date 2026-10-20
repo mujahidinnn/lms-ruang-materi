@@ -41,3 +41,23 @@ export function Missing(props: Props) {
     </Room>
   );
 }
+
+// Masuk: a single slide waiting in the room.
+export function SignIn(props: Props) {
+  return (
+    <Room {...props}>
+      <rect x="24" y="40" width="36" height="27" rx="5" className="fill-zinc-50" />
+    </Room>
+  );
+}
+
+// Dasbor greeting: a screen with a play mark.
+export function Welcome(props: Props) {
+  return (
+    <Room {...props}>
+      <rect x="22" y="30" width="44" height="32" rx="6" className="fill-zinc-900" />
+      <path d="M40 39v14l11-7z" className="fill-brand" />
+      <rect x="30" y="68" width="28" height="5" rx="2.5" className="fill-brand" />
+    </Room>
+  );
+}

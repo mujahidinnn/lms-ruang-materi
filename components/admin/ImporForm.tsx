@@ -1,12 +1,13 @@
 "use client";
 
 import { FileUp } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { mulaiImpor } from "@/app/admin/impor/actions";
 import { MAX_PPTX_BYTES, MAX_SLIDES, countSlides, estimateTokens, isZip } from "@/lib/pptx";
 import { createClient } from "@/lib/supabase/client";
 import { field, primaryButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const mulaiImpor = rpc("mulaiImpor");
 
 type Picked = { file: File; slides: number };
 
@@ -14,7 +15,6 @@ const toSlug = (name: string) =>
   name.replace(/\.pptx$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export default function ImporForm({ models }: { models: string[] }) {
-  const router = useRouter();
   const [picked, setPicked] = useState<Picked | null>(null);
   const [slug, setSlug] = useState("");
   const [model, setModel] = useState(models[0] ?? "");
@@ -50,7 +50,7 @@ export default function ImporForm({ models }: { models: string[] }) {
       if (res.error) return setMessage({ text: res.error, error: true });
       setPicked(null);
       setMessage({ text: "Impor dimulai. Statusnya muncul di riwayat di bawah." });
-      router.refresh();
+      location.reload();
     });
   }
 

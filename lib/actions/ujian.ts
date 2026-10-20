@@ -1,6 +1,4 @@
-"use server";
-
-import { redirect } from "next/navigation";
+import { redirect } from "@/lib/request";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 

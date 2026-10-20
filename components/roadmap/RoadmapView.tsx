@@ -1,7 +1,6 @@
 "use client";
 
 import { BookOpen, Check, ChevronRight, SkipForward, Undo2, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { primaryButton } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/client";
@@ -120,26 +119,26 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                 <p className="mt-4 text-sm text-zinc-400">Disarankan setelah {open.join(", ")}.</p>
               )}
               {node.summary && <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-zinc-300">{node.summary}</p>}
-              <Link href={`/belajar/${node.slug}`} className={`${primaryButton} mt-6 w-full`}>
+              <a href={`/belajar/${node.slug}`} className={`${primaryButton} mt-6 w-full`}>
                 <BookOpen aria-hidden className="size-4" />
                 Belajar
-              </Link>
+              </a>
               {node.hasExam && states[node.id] !== "selesai" && (
-                <Link href={`/ujian/${node.slug}`} className="mt-3 block text-center text-sm text-accent hover:underline">
+                <a href={`/ujian/${node.slug}`} className="mt-3 block text-center text-sm text-accent hover:underline">
                   Sudah paham? Langsung ujian
-                </Link>
+                </a>
               )}
               {(node.practiceCount > 0 || node.cardCount > 0) && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   {node.practiceCount > 0 && (
-                    <Link href={`/latihan/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-mint text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
+                    <a href={`/latihan/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-mint text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
                       Latihan
-                    </Link>
+                    </a>
                   )}
                   {node.cardCount > 0 && (
-                    <Link href={`/flashcard/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-lavender text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
+                    <a href={`/flashcard/${node.slug}`} className="flex min-h-12 items-center justify-center rounded-full bg-tile-lavender text-sm font-medium hover:brightness-95 focus-visible:outline-2 focus-visible:outline-accent">
                       Flashcard
-                    </Link>
+                    </a>
                   )}
                 </div>
               )}

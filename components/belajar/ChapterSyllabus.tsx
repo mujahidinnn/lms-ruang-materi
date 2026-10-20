@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, ListOrdered, X } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import type { ChapterSummary } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
@@ -15,14 +14,14 @@ export default function ChapterSyllabus({ topicId, topicSlug, chapters, current 
     <ol className="space-y-1">
       {chapters.map((c, i) => (
         <li key={c.id}>
-          <Link
+          <a
             href={`/belajar/${topicSlug}/${c.slug}`}
             aria-current={c.slug === current ? "page" : undefined}
             className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm ${c.slug === current ? "bg-primary text-on-primary" : "text-zinc-300 hover:bg-zinc-800"}`}
           >
             <span className="w-5 shrink-0 text-center tabular-nums">{done.has(c.id) ? <Check aria-label="selesai" className="size-4" /> : i + 1}</span>
             <span className="line-clamp-2">{c.title}</span>
-          </Link>
+          </a>
         </li>
       ))}
     </ol>

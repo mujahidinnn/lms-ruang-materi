@@ -1,5 +1,4 @@
 import { Check, X } from "lucide-react";
-import Link from "next/link";
 import { Passed, TryAgain } from "@/components/illustrations";
 import Celebrate from "./Celebrate";
 
@@ -23,8 +22,8 @@ export default function ExamReview({ review, slug }: { review: Review; slug: str
       <p className="mt-2 text-zinc-400">Nilai lulus {review.pass_score}.</p>
       {!review.passed && (
         <p className="mt-4 text-zinc-300">
-          Pelajari lagi <Link href={`/belajar/${slug}`} className="text-accent hover:underline">materinya</Link> dan ulangi{" "}
-          <Link href={`/latihan/${slug}`} className="text-accent hover:underline">latihannya</Link>, lalu coba lagi.
+          Pelajari lagi <a href={`/belajar/${slug}`} className="text-accent hover:underline">materinya</a> dan ulangi{" "}
+          <a href={`/latihan/${slug}`} className="text-accent hover:underline">latihannya</a>, lalu coba lagi.
         </p>
       )}
       {!review.show_keys && (

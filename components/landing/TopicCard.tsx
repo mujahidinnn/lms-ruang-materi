@@ -1,5 +1,3 @@
-import Image from "next/image";
-import Link from "next/link";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { chip, tile } from "@/components/ui/styles";
 import { coverSrc, type Presentation } from "@/lib/slides";
@@ -8,7 +6,7 @@ import { coverSrc, type Presentation } from "@/lib/slides";
 export default function TopicCard({ topic, index }: { topic: Presentation; index: number }) {
   return (
     <li>
-      <Link
+      <a
         href={`/belajar/${topic.slug}`}
         className={`group flex h-full flex-col gap-4 rounded-[28px] p-5 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${tile(index)}`}
       >
@@ -21,9 +19,9 @@ export default function TopicCard({ topic, index }: { topic: Presentation; index
           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-300">{topic.description}</p>
         </div>
         <div className="relative aspect-video overflow-hidden rounded-2xl">
-          <Image src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} fill sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+          <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
         </div>
-      </Link>
+      </a>
     </li>
   );
 }

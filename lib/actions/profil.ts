@@ -1,7 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +23,7 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
     })
     .eq("user_id", user.id);
   if (error) return { error: "Gagal menyimpan. Periksa zona waktunya." };
-  revalidatePath("/profil");
+  refresh();
   return { ok: "Tersimpan." };
 }
 
@@ -59,7 +56,7 @@ export async function hapusAkun(_: State, form: FormData): Promise<State> {
 export async function setujuiWali() {
   const user = await requireUser("/dasbor");
   await (await createClient()).from("profiles").update({ guardian_consent: true }).eq("user_id", user.id);
-  revalidatePath("/dasbor");
+  refresh();
 }
 
 // Sets or changes the password. The learner is signed in already (also

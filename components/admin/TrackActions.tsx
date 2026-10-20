@@ -1,20 +1,23 @@
 "use client";
 
 import { EyeOff, Globe, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { hapusTrack, tarikTrack, terbitkanTrack, type RoadmapState } from "@/app/admin/roadmap/actions";
+import type { RoadmapState } from "@/lib/actions/admin-roadmap";
 import { dangerButton, primaryButton, smallButton } from "./editor";
+import { rpc } from "@/lib/rpc";
+
+const hapusTrack = rpc("hapusTrack");
+const tarikTrack = rpc("tarikTrack");
+const terbitkanTrack = rpc("terbitkanTrack");
 
 export default function TrackActions({ slug, published, hasDraft }: { slug: string; published: boolean; hasDraft: boolean }) {
-  const router = useRouter();
   const [state, setState] = useState<RoadmapState>({});
   const [pending, start] = useTransition();
   const run = (fn: (s: string) => Promise<RoadmapState>) =>
     start(async () => {
       const res = await fn(slug);
       setState(res);
-      if (res.ok) router.refresh();
+      if (res.ok) location.reload();
     });
 
   return (

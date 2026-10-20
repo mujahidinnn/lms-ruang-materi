@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, PartyPopper, X } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import CodeExercise from "@/components/code/CodeExercise";
 import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
@@ -144,10 +143,10 @@ export default function ChapterQuiz({
             <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><PartyPopper aria-hidden className="size-5" />Bab selesai</p>
           )}
           {status === "guest" && (
-            <p className="mt-2 text-sm text-zinc-400"><Link href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</Link></p>
+            <p className="mt-2 text-sm text-zinc-400"><a href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</a></p>
           )}
           {status === "error" && (
-            <p className="mt-2 text-sm text-zinc-400">Progres belum tersimpan. <Link href="/profil" className="text-accent underline">Cek persetujuan di Profil</Link>, lalu <button type="button" onClick={complete} className={secondaryButton}>coba lagi</button></p>
+            <p className="mt-2 text-sm text-zinc-400">Progres belum tersimpan. <a href="/profil" className="text-accent underline">Cek persetujuan di Profil</a>, lalu <button type="button" onClick={complete} className={secondaryButton}>coba lagi</button></p>
           )}
         </div>
       </section>

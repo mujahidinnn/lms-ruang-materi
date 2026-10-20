@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { coverSrc, type Presentation } from "@/lib/slides";
 
@@ -137,12 +135,12 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
           const isFront = slot === 0;
           const base = `absolute block aspect-video overflow-hidden rounded-2xl ${SLOTS[slot] ?? HIDDEN}`;
           const motion = dragging && isFront ? "" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
-          const img = <Image src={coverSrc(t)} alt="" fill sizes="(min-width: 1024px) 450px, 90vw" draggable={false} className="object-cover" priority={isFront} />;
+          const img = <img src={coverSrc(t)} alt="" draggable={false} decoding="async" loading={isFront ? "eager" : "lazy"} fetchPriority={isFront ? "high" : "auto"} className="absolute inset-0 size-full object-cover" />;
 
           if (!isFront) return <div key={t.slug} aria-hidden className={`${base} ${motion}`}>{img}</div>;
 
           return (
-            <Link
+            <a
               key={t.slug}
               href={`/belajar/${t.slug}`}
               aria-label={`Buka materi ${t.title}`}
@@ -174,7 +172,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
               }}
             >
               {img}
-            </Link>
+            </a>
           );
         })}
 

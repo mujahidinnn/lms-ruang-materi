@@ -1,6 +1,5 @@
-"use server";
-
-import { revalidatePath, updateTag } from "next/cache";
+import { invalidateContent } from "@/lib/cache";
+import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -19,8 +18,8 @@ const files = z.object({ html: z.string().optional(), css: z.string().optional()
 const tests = z.array(z.object({ name: z.string().min(1), check: z.string().min(1) }));
 
 function done(topic: string) {
-  updateTag("content");
-  revalidatePath(`/admin/topik/${topic}`);
+  invalidateContent();
+  refresh();
 }
 
 export async function simpanLatihanKode(form: FormData) {

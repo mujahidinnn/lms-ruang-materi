@@ -4,7 +4,9 @@ import { secondaryButton } from "@/components/ui/styles";
 
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { eksporData } from "@/app/profil/actions";
+import { rpc } from "@/lib/rpc";
+
+const eksporData = rpc("eksporData");
 
 export default function ExportButton() {
   const [busy, setBusy] = useState(false);
