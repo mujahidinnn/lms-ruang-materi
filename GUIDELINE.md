@@ -518,6 +518,11 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
   `const user = await signedIn(Astro); if (user instanceof Response) return user;`
   (`adminOnly` for admin). Public, user-independent pages call
   `publicPage(Astro)` so the CDN caches them for a minute.
+- **No island for small things**: a toggle, a link that depends on sign-in,
+  a form post: plain `.astro` with a `<script>` (see `ThemeButton.astro`,
+  `AccountLink.astro`, `SignOutButton.astro`). Pages without real
+  interactivity then ship no React at all. One UI framework (React) for
+  islands; do not add a second.
 - **Islands**: a React component with state or handlers needs `client:load`
   (or `client:visible`). Its props must be plain data; JSX goes through
   slots (`<p slot="end">` arrives as the `end` prop). A React component
@@ -546,7 +551,7 @@ owner chose on 2026-10-10: a lavender canvas, white cards, pastel tiles, ink
 pill buttons, big bold headings. Every new screen follows it.
 
 - **Light first.** Light is the design; dark is a choice made with the theme
-  button in the header (`components/ThemeButton.tsx`, saved in localStorage,
+  button in the header (`src/components/ThemeButton.astro`, saved in localStorage,
   applied as `<html data-theme="dark">` by an inline script in
   `src/layouts/Base.astro` before first paint). The OS setting does not switch it.
 - **Neutrals through the zinc scale.** `src/styles/globals.css` maps zinc onto the
@@ -879,9 +884,10 @@ UI. The UI only hides actions the database would refuse.
   only land on this site; the learner arrives on `/` and is sent on to
   Dasbor. Paste them into Authentication -> Email Templates with the
   subjects from `supabase/config.toml`.
-- **Sessions**: `src/middleware.ts` refreshes the access token on every request; the
-  browser client refreshes on its own and `useSignedIn()` follows sign-in
-  and sign-out across tabs.
+- **Sessions**: `src/middleware.ts` refreshes the access token on every
+  request. Cached public pages learn "signed in" only from the presence of
+  the session cookie (`data-auth`, set in `Base.astro`), which picks Masuk
+  or Dasbor links and nothing else.
 - **Rate limits**: magic link, OTP and password sign-in limits are set in
   Supabase Auth.
   `start_exam_attempt` is limited by `max_attempts` in the database; Server
