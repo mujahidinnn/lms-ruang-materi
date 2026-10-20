@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import FlashcardDeck, { type Card } from "@/components/flashcard/FlashcardDeck";
-import AccountNav from "@/components/dashboard/AccountNav";
 import { NothingDue } from "@/components/illustrations";
-import SiteHeader from "@/components/landing/SiteHeader";
+import AppShell from "@/components/app/AppShell";
+import { UserFoot } from "@/components/app/AccountFoot";
 import { requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,18 +16,14 @@ export const metadata: Metadata = {
 
 export default function FlashcardPage() {
   return (
-    <div className="relative flex flex-1 flex-col">
-      <SiteHeader />
-      <main className="flex-1 px-5 pb-20 sm:px-10">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Flashcard</h1>
-          <div className="mb-8 mt-5"><AccountNav current="/flashcard" /></div>
-          <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
-            <Queue />
-          </Suspense>
-        </div>
-      </main>
-    </div>
+    <AppShell set="akun" account={<UserFoot next="/flashcard" />}>
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-8 text-4xl font-bold tracking-tight sm:text-5xl">Flashcard</h1>
+        <Suspense fallback={<p className="text-sm text-zinc-500">Memuat...</p>}>
+          <Queue />
+        </Suspense>
+      </div>
+    </AppShell>
   );
 }
 

@@ -2,9 +2,9 @@
 
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
-// The one main action on a screen: an ink pill.
+// The one main action on a screen: an indigo pill.
 export const primaryButton =
-  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-zinc-50 px-6 font-semibold text-zinc-950 transition-colors hover:bg-zinc-300 disabled:opacity-50 ${focus}`;
+  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50 ${focus}`;
 
 // Everything else: a white pill on the canvas.
 export const secondaryButton =

@@ -169,7 +169,7 @@ export default function PracticeQuiz({
         <SoundToggle />
       </div>
       <div aria-hidden className="mt-2 h-2.5 rounded-full bg-zinc-800">
-        <div className="h-full rounded-full bg-zinc-50 transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
+        <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
       </div>
 
       <h2 className="mt-8 text-2xl leading-snug font-bold tracking-tight text-balance">{q.prompt}</h2>

@@ -14,7 +14,7 @@ export default function PracticeTabs({ slug, current }: { slug: string; current:
           key={t.key}
           href={t.href}
           aria-current={t.key === current ? "page" : undefined}
-          className={`flex min-h-11 items-center rounded-full px-5 text-sm font-medium ${t.key === current ? "bg-zinc-50 text-zinc-950" : "bg-zinc-900 text-zinc-400 shadow-soft hover:text-zinc-50"}`}
+          className={`flex min-h-11 items-center rounded-full px-5 text-sm font-medium ${t.key === current ? "bg-primary text-on-primary" : "bg-zinc-900 text-zinc-400 shadow-soft hover:text-zinc-50"}`}
         >
           {t.label}
         </Link>

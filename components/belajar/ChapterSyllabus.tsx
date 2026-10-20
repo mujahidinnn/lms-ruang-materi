@@ -18,7 +18,7 @@ export default function ChapterSyllabus({ topicId, topicSlug, chapters, current 
           <Link
             href={`/belajar/${topicSlug}/${c.slug}`}
             aria-current={c.slug === current ? "page" : undefined}
-            className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm ${c.slug === current ? "bg-zinc-50 text-zinc-950" : "text-zinc-300 hover:bg-zinc-800"}`}
+            className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm ${c.slug === current ? "bg-primary text-on-primary" : "text-zinc-300 hover:bg-zinc-800"}`}
           >
             <span className="w-5 shrink-0 text-center tabular-nums">{done.has(c.id) ? <Check aria-label="selesai" className="size-4" /> : i + 1}</span>
             <span className="line-clamp-2">{c.title}</span>

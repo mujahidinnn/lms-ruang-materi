@@ -209,7 +209,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
                   aria-current={n === i ? "step" : undefined}
                   aria-label={`Soal ${n + 1}${done ? ", dijawab" : ""}${isDoubt ? ", ragu-ragu" : ""}`}
                   className={`relative grid size-11 place-items-center rounded-full text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                    n === i ? "bg-zinc-50 text-zinc-950" : isDoubt ? "bg-tile-butter" : done ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"
+                    n === i ? "bg-primary text-on-primary" : isDoubt ? "bg-tile-butter" : done ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"
                   }`}
                 >
                   {n + 1}

@@ -64,7 +64,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
           <div className={`mb-5 ${node ? "lg:hidden" : ""}`}>
             <p className="text-sm text-zinc-400 tabular-nums">{coreDone} dari {core.length} topik inti selesai</p>
             <div aria-hidden className="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800">
-              <div className="h-full rounded-full bg-zinc-50" style={{ width: `${(coreDone / core.length) * 100}%` }} />
+              <div className="h-full rounded-full bg-brand" style={{ width: `${(coreDone / core.length) * 100}%` }} />
             </div>
           </div>
         )}

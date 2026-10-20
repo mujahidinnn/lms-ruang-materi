@@ -4,9 +4,9 @@ import { Suspense } from "react";
 import { aturSandi, hapusAkun, simpanProfil } from "@/app/profil/actions";
 import ActionForm from "@/components/admin/ActionForm";
 import { field } from "@/components/admin/editor";
-import AccountNav from "@/components/dashboard/AccountNav";
 import ExportButton from "@/components/dashboard/ExportButton";
-import SiteHeader from "@/components/landing/SiteHeader";
+import AppShell from "@/components/app/AppShell";
+import { UserFoot } from "@/components/app/AccountFoot";
 import { primaryButton } from "@/components/ui/styles";
 import { requireUser } from "@/lib/dal";
 import { card } from "@/components/ui/styles";
@@ -23,18 +23,14 @@ const ZONES = [...INDONESIA, ...Intl.supportedValuesOf("timeZone").filter((z) =>
 
 export default function ProfilPage() {
   return (
-    <div className="relative flex flex-1 flex-col">
-      <SiteHeader />
-      <main className="flex-1 px-5 pb-20 sm:px-10">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Profil</h1>
-          <div className="mt-5"><AccountNav current="/profil" /></div>
-          <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
-            <Profil />
-          </Suspense>
-        </div>
-      </main>
-    </div>
+    <AppShell set="akun" account={<UserFoot next="/profil" />}>
+      <div className="mx-auto max-w-2xl">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Profil</h1>
+        <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
+          <Profil />
+        </Suspense>
+      </div>
+    </AppShell>
   );
 }
 

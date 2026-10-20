@@ -127,7 +127,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
               role="tab"
               aria-selected={part === p}
               onClick={() => setPart(p)}
-              className={`min-h-10 rounded-full px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-accent ${part === p ? "bg-zinc-50 text-zinc-950" : "bg-zinc-800 text-zinc-300"}`}
+              className={`min-h-10 rounded-full px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-accent ${part === p ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-300"}`}
             >
               {LABEL[p]}
             </button>

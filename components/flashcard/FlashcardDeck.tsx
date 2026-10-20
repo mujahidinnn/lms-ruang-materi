@@ -83,7 +83,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
               key={rating}
               onClick={() => rate(rating)}
               className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                rating === 3 ? "bg-zinc-50 text-zinc-950 hover:bg-zinc-300" : rating === 2 ? "bg-tile-butter hover:brightness-95" : "bg-tile-pink hover:brightness-95"
+                rating === 3 ? "bg-primary text-on-primary hover:bg-primary-hover" : rating === 2 ? "bg-tile-butter hover:brightness-95" : "bg-tile-pink hover:brightness-95"
               }`}
             >
               <span className="font-mono text-xs opacity-60">{rating}</span>

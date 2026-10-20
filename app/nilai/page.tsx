@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Award } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import SiteHeader from "@/components/landing/SiteHeader";
-import AccountNav from "@/components/dashboard/AccountNav";
+import AppShell from "@/components/app/AppShell";
+import { UserFoot } from "@/components/app/AccountFoot";
 import TrackProgress from "@/components/dashboard/TrackProgress";
 import { requireUser } from "@/lib/dal";
 import { card, chip } from "@/components/ui/styles";
@@ -17,18 +17,14 @@ export const metadata: Metadata = {
 
 export default function NilaiPage() {
   return (
-    <div className="relative flex flex-1 flex-col">
-      <SiteHeader />
-      <main className="flex-1 px-5 pb-20 sm:px-10">
-        <div className="mx-auto max-w-3xl">
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Nilai</h1>
-          <div className="mt-5"><AccountNav current="/nilai" /></div>
-          <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
-            <Report />
-          </Suspense>
-        </div>
-      </main>
-    </div>
+    <AppShell set="akun" account={<UserFoot next="/nilai" />}>
+      <div className="mx-auto max-w-3xl">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Nilai</h1>
+        <Suspense fallback={<p className="mt-6 text-sm text-zinc-500">Memuat...</p>}>
+          <Report />
+        </Suspense>
+      </div>
+    </AppShell>
   );
 }
 

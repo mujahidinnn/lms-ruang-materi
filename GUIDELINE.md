@@ -553,18 +553,23 @@ pill buttons, big bold headings. Every new screen follows it.
   differ. Fixed meanings where there is one: mint = done or correct, pink =
   wrong or danger, butter = streak, warning, ragu-ragu, lavender = the
   current or featured item.
-- **Brand teal** comes from the mint tile's family (hue 168): `accent`
-  (`#1d7c69`, 4.5:1 on the canvas) for links and teal text, `brand`
-  (`#23957e`, 3.3:1) for the logo, progress fills, dots and other graphics;
-  both `#45d6b8` in dark. Not for buttons. **Orange**
+- **Brand indigo** (reference shots of 2026-10-20): `primary` (`#4f46e5`,
+  text `on-primary`) fills the main button, active tabs and the hero panel
+  (gradient to `primary-2`); `accent` (`#4f46e5`) for links and indigo text,
+  `brand` (`#6159f0`) for the logo, progress fills, rings and dots; lighter
+  indigo in dark. **Orange**
   (`accent-warm`) stays for the logo's spark, streak icons and timer urgency.
 - **Buttons**, all `rounded-full`, from `components/ui/styles.ts`:
-  - `primaryButton`: the one main action on a screen, an ink pill with light
-    text (`bg-zinc-50 text-zinc-950`).
+  - `primaryButton`: the one main action on a screen, an indigo pill
+    (`bg-primary text-on-primary`).
   - `secondaryButton`: a white pill with `shadow-soft`.
   - `iconButton`: a 44px white circle.
-  - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the ink circle with an
+  - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the indigo circle with an
     up-right arrow in the corner of a tile or card that opens something.
+- **Signed-in shell**: `/dasbor`, `/flashcard`, `/nilai`, `/profil` and
+  `/admin/*` sit in `components/app/AppShell.tsx`, a white sidebar from lg
+  and a top bar with a scrolling link row on phones. Public pages keep
+  `SiteHeader`.
 - **Cards and tiles**: `card` = `rounded-[28px] bg-zinc-900 shadow-soft`, no
   borders. Tiles use the same radius with a pastel background. Sheets,
   folders and big panels go to `rounded-[32px]`; inner items to

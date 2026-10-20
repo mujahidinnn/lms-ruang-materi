@@ -6,9 +6,11 @@ import SignedInRedirect from "@/components/landing/SignedInRedirect";
 import SiteHeader from "@/components/landing/SiteHeader";
 import TopicCard from "@/components/landing/TopicCard";
 import TrackCard from "@/components/landing/TrackCard";
-import { card, chip, primaryButton, secondaryButton } from "@/components/ui/styles";
+import { card, secondaryButton } from "@/components/ui/styles";
 import { getTopics, getTracks } from "@/lib/content";
 import Link from "next/link";
+
+const heroChip = "inline-flex min-h-8 items-center rounded-full bg-on-primary/15 px-3 text-xs font-medium";
 
 export default async function Home() {
   const [topics, tracks] = await Promise.all([getTopics(), getTracks()]);
@@ -19,35 +21,38 @@ export default async function Home() {
       <SiteHeader />
       <SignedInRedirect />
 
-      <main className="flex-1 px-5 sm:px-10">
+      <main className="flex-1 px-3 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <section className="grid grid-cols-1 items-center gap-12 py-10 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
-            <div>
+          {/* The one loud surface: an indigo-to-violet panel, like the reference hero. */}
+          <section className="relative grid grid-cols-1 items-center gap-10 overflow-hidden rounded-[40px] bg-linear-135 from-primary to-primary-2 px-6 py-10 text-on-primary sm:px-12 sm:py-16 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
+            <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 size-80 rounded-full bg-on-primary/10" />
+            <div aria-hidden className="pointer-events-none absolute -bottom-32 left-1/3 size-72 rounded-full bg-on-primary/5" />
+            <div className="relative">
               <h1 className="max-w-xl text-[2.6rem] leading-[1.04] font-bold tracking-tight text-balance sm:text-6xl lg:text-7xl">
                 Ruang untuk belajar, satu slide setiap langkah
               </h1>
-              <p className="mt-6 max-w-lg text-lg leading-relaxed text-zinc-400">
+              <p className="mt-6 max-w-lg text-lg leading-relaxed opacity-85">
                 Materi pemrograman dari deck presentasi, bisa kamu buka dan
                 telusuri langsung di browser. Tanpa unduh, tanpa daftar.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a href="#roadmap" className={primaryButton}>
+                <a href="#roadmap" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-on-primary px-6 font-semibold text-primary transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-primary">
                   <Route aria-hidden className="size-4" />
                   Pilih roadmap
                 </a>
-                <a href="#materi" className={`${secondaryButton} min-h-12`}>
+                <a href="#materi" className="inline-flex min-h-12 items-center rounded-full px-6 font-medium ring-1 ring-on-primary/40 transition-colors hover:bg-on-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-primary">
                   Lihat semua materi
                 </a>
               </div>
               <ul aria-label="Isi Ruang Materi" className="mt-10 flex flex-wrap gap-2">
-                <li className={`${chip} bg-tile-lavender tabular-nums`}>{tracks.length} roadmap</li>
-                <li className={`${chip} bg-tile-mint tabular-nums`}>{topics.length} materi</li>
-                <li className={`${chip} bg-tile-butter tabular-nums`}>{totalSlides} slide</li>
-                <li className={`${chip} bg-tile-pink`}>gratis</li>
+                <li className={`${heroChip} tabular-nums`}>{tracks.length} roadmap</li>
+                <li className={`${heroChip} tabular-nums`}>{topics.length} materi</li>
+                <li className={`${heroChip} tabular-nums`}>{totalSlides} slide</li>
+                <li className={heroChip}>gratis</li>
               </ul>
             </div>
             {/* Only the cover slide crosses to the client, not every slide of every deck. */}
-            <HeroRoom topics={topics.slice(0, 5).map((t) => ({ ...t, slides: t.slides.slice(0, 1) }))} />
+            <div className="relative"><HeroRoom topics={topics.slice(0, 5).map((t) => ({ ...t, slides: t.slides.slice(0, 1) }))} /></div>
           </section>
 
           <section id="roadmap" aria-labelledby="roadmap-judul" className="scroll-mt-6 py-12 sm:py-16">

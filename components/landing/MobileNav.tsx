@@ -31,7 +31,7 @@ export default function MobileNav() {
           aria-label={label}
           aria-current={on ? "page" : undefined}
           className={`grid size-12 place-items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
-            on ? "bg-zinc-50 text-zinc-950" : "bg-zinc-800 text-zinc-400 hover:text-zinc-50"
+            on ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-400 hover:text-zinc-50"
           }`}
         >
           <Icon aria-hidden className="size-5" />
