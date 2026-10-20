@@ -1,0 +1,42 @@
+---
+import ImporForm from "@/components/admin/ImporForm";
+import JobList, { type Job } from "@/components/admin/JobList";
+import MigrasiList from "@/components/admin/MigrasiList";
+import { enabledModels } from "@/lib/llm";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../../components/AppShell.astro";
+import Base from "../../../layouts/Base.astro";
+import { adminOnly } from "../../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+const supabase = await createClient();
+const [{ data: jobs }, { data: topics }] = await Promise.all([
+  supabase.from("import_jobs").select("*").order("created_at", { ascending: false }).limit(20),
+  supabase.from("topics").select("slug"),
+]);
+const { data: done } = await supabase.from("import_jobs").select("slug").eq("status", "done");
+const drafted = new Set((done ?? []).map((j) => j.slug));
+const models = enabledModels();
+---
+
+<Base title="Impor materi" description="Unggah deck .pptx dan pantau proses impor." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto flex max-w-3xl flex-col gap-10">
+      <div>
+        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Impor materi</h1>
+        <p class="mt-2 text-zinc-400">Unggah deck. Slide dirender dan draf disusun otomatis, lalu kamu tinjau sebelum terbit.</p>
+      </div>
+      {models.length === 0 ? (
+        <p class="text-sm text-red-500">Belum ada model aktif. Isi LLM_PROVIDERS di env server.</p>
+      ) : (
+        <>
+          <ImporForm client:load models={models} />
+          <JobList client:load initial={(jobs ?? []) as Job[]} models={models} />
+          <MigrasiList client:load slugs={(topics ?? []).map((t) => t.slug).filter((s) => !drafted.has(s))} models={models} />
+        </>
+      )}
+    </div>
+  </AppShell>
+</Base>

@@ -13,7 +13,7 @@ old single-page layout.
 - **No AI slop design**: no generic, bloated or repetitive UI. Minimal, tailored Tailwind components over copy-pasted UI kits.
 - **No AI writer tone**: commits, PRs, comments and docs in plain human tone. No em-dashes, no fluff, no robotic transitions.
 - **Token efficiency**: minimal diffs, never rewrite unchanged files. YAGNI. Reuse existing helpers before writing new ones.
-- **Next.js 16**: APIs differ from older versions. Check `node_modules/next/dist/docs/` before using a Next API (see `AGENTS.md`). Middleware is now `proxy.ts`.
+- **Astro 7 + React islands**: pages are `.astro` files rendered on request; React components are static HTML unless given a `client:*` directive. See Adding Code before writing a page.
 - **Follow the Build Order**: one phase per change, end to end (route, data, RLS, test), before starting the next.
 
 ## Product and UX Flow
@@ -292,45 +292,46 @@ result (lulus / belum lulus), login page, 404. Not on every card.
 ## Layout
 
 ```
-app/
-  page.tsx               landing: tracks, featured topics
-  roadmap/               track list, roadmap/[track] graph
-  belajar/[slug]/        course page: syllabus, progress, extras (old slide page when a topic has no chapters)
-  belajar/[slug]/[bab]/  chapter: markdown lesson, slide embeds, quiz
-  belajar/[slug]/slide/  full slide viewer
-  latihan/[slug]/        practice quiz
-  flashcard/             due review, flashcard/[slug] one topic
-  ujian/[slug]/          exam intro, attempt, result
-  nilai/                 learner report, levels, lencana (auth)
-  dasbor/                signed-in home (auth)
-  masuk/                 login (magic link or password), magic link callback
-  profil/                account settings (auth)
-  template/              portfolio template gallery
-  privasi/               privacy page (UU PDP)
-  manifest.ts            PWA manifest
-  admin/                 content management (admin role)
-    impor/               upload pptx, start and watch import jobs
-    topik/[slug]/        review and edit drafts, publish
-    roadmap/             edit tracks and node prerequisites
-    ujian/               exam bank, answer keys
+src/
+  pages/                 one file per URL (Astro routing)
+    index.astro          landing: tracks, featured topics
+    roadmap/             track list, roadmap/[track] graph
+    belajar/[slug]/      course page (index), [bab] chapter, slide viewer
+    latihan/[slug]/      practice quiz, persiapan (exam-prep simulation)
+    flashcard/           due review, flashcard/[slug] one topic
+    ujian/[slug]/        exam intro, [attempt] runner and result
+    nilai, dasbor, profil   signed-in pages (AppShell)
+    masuk/               login (magic link or password), callback.ts
+    template, privasi    portfolio template gallery, privacy page (UU PDP)
+    admin/               content management (admin role): impor, topik, roadmap, ujian
+    rpc/[name].ts        the one endpoint for server functions (lib/actions)
+    sitemap.xml.ts, robots.txt.ts, manifest.webmanifest.ts, 404.astro, 500.astro
+  layouts/Base.astro     <html>, fonts, meta and Open Graph, theme script, SW, analytics
+  components/            .astro composition: SiteHeader, AppShell, CopyCode
+  lib/                   page-only helpers: guard.ts (signedIn, adminOnly), cdn.ts
+  styles/globals.css     theme tokens and shared CSS
+  middleware.ts          opens the request store, refreshes the Supabase session
 components/
-  <feature>/             one folder per feature: roadmap/, quiz/, flashcard/, admin/ ...
+  <feature>/             React, one folder per feature: roadmap/, quiz/, flashcard/, admin/ ...
   illustrations/         inline SVG illustrations (see Illustrations)
   ui/                    shared primitives used by 2+ features
 data/
   templates.ts           portfolio template list (static, stays in git)
-lib/                     pure helpers, no React
-  content.ts             cached reads of published content ('use cache' + cacheTag), async only
-  slides.ts              thumbSrc, coverSrc: pure, sync, safe in client components
+lib/                     helpers, no Astro imports
+  actions/               server functions the browser calls (former Server Actions); index.ts lists them
+  rpc.ts, rpc-wire.ts    browser side of /rpc: rpc("name") has the server function's signature
+  request.ts             per-request store (cookies, memo), redirect(), notFound(), refresh()
+  cache.ts               cached(): published content in memory for a minute
+  content.ts             cached reads of published content, async only
+  slides.ts              thumbSrc, coverSrc: pure, sync, safe in islands
   roadmap.ts             node state from progress, unlocking by prerequisites
   leitner.ts             next box and due date for a rating
-  site.ts                site name, URL, description, OG image
+  site.ts                site name, URL, description
   supabase/              the only Supabase entry points:
     public.ts            cookie-less anon client, used only by lib/content.ts
-    server.ts            cookie client (@supabase/ssr), for dal.ts and Server Actions
-    client.ts            browser client for per-user client components
-  dal.ts                 server-only data access, checks the user first
-proxy.ts                 refreshes the Supabase session cookie, nothing else
+    server.ts            cookie client (@supabase/ssr) over the request store
+    client.ts            browser client for per-user islands
+  dal.ts                 getCurrentUser, requireUser, requireAdmin
 worker/
   import-deck.ts         pptx -> slides + AI draft, runs in GitHub Actions only
   prompt.ts              system prompt and the zod schema for drafts
@@ -340,7 +341,7 @@ worker/
 supabase/
   migrations/            schema, RLS policies, functions
   tests/security_smoke.sql
-public/                  templates/, template-previews/, icons/, sw.js, offline.html
+public/                  templates/, template-previews/, icons/, sw.js, offline.html, opengraph-image.png
 scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 ```
 
@@ -348,25 +349,25 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
-| Landing | `app/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
-| Belajar | `app/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
-| Kelas and bab | `app/belajar/[slug]`, `app/belajar/[slug]/[bab]`, `app/belajar/[slug]/slide` | `chapters`, `chapter_questions`, `chapter_progress` | `components/belajar/` (`CourseView`, `ChapterMarkdown`/`MarkdownBase`, `ChapterQuiz`, `ChapterSyllabus`) | built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-chapters-design.md`); a topic with published chapters is a course, chapters open in any order, a chapter is done when its quiz is all correct |
-| Simulasi ujian and feedback | `app/latihan/[slug]/persiapan`, `components/quiz/PracticeQuiz.tsx` | `practice_questions`, `chapter_questions`, `exams.pass_score` | `lib/feedback.ts` (Web Audio sounds, canvas-confetti), `components/quiz/SoundToggle.tsx` | built 2026-10-11; latihan checks each answer the moment it is tapped; simulasi draws 20 random questions and scores them against the pass score; confetti and a fanfare on a win, a finished chapter and a passed exam, off under reduced motion, sound mutable |
-| Latihan kode | `app/belajar/[slug]/[bab]`, admin `app/admin/topik/[slug]` | `code_exercises`, `code_progress` | `components/code/` (`CodeExercise`, `CodeEditor`, `useSandbox`), `lib/code/` (`sandbox-doc`, `express-shim`, `check-node`) | phase 2a built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-code-practice-design.md`): kinds `web`, `js`, `express`; learner code and checks run only in a `sandbox="allow-scripts"` iframe with a 3 s limit; a chapter with exercises completes only when every exercise has passed; the worker drafts 0 to 2 per chapter and runs js/express solutions in a locked-down child process (`node --permission`, empty env, no string code generation), dropping ones that fail; `sql` and `git` kinds come in phases 2b and 2c |
-| Template gallery | `app/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
-| Roadmap | `app/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
-| Latihan | `app/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" when the topic has a published exam (phase 7) |
-| Flashcard | `app/flashcard` | `flashcards`, `flashcard_reviews`, `flashcard_queue()` | `components/flashcard/` | built (phase 6) |
-| Ujian | `app/ujian/[slug]`, `[slug]/[attempt]` | `exams`, `exam_questions`, `exam_attempts` | `components/exam/` | built (phase 7): intro, timed runner, review; `/admin/ujian` for settings |
-| Tips | inside `app/belajar/[slug]` | `tips` | - | built (phase 5, `/tips` page deferred) |
-| Nilai, Dasbor | `app/nilai`, `app/dasbor` | `progress`, `exam_attempts` | `components/dashboard/` | `/nilai` (phase 7) and `/dasbor` built (phase 8); signed-in visitors of `/` go to `/dasbor` |
-| Level, streak, lencana | `app/nilai`, `app/dasbor` | `track_levels`, `learning_streaks`, `learning_days`, `badges` | `components/dashboard/`, `lib/level.ts` | built (phase 8); level counts core topics passed by exam; public lencana deferred |
-| Auth, Profil | `app/masuk`, `app/profil` | Supabase Auth, `profiles` | `components/auth/` | login, roles, `/admin` gate built (phase 1); `/profil` with ekspor data and hapus akun (phase 8) |
-| Admin, impor AI | `app/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4), `/admin/roadmap` (phase 5); regenerate one section planned |
-| Privasi | `app/privasi` | - | - | built |
+| Landing | `src/pages/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
+| Belajar | `src/pages/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
+| Kelas and bab | `src/pages/belajar/[slug]`, `src/pages/belajar/[slug]/[bab]`, `src/pages/belajar/[slug]/slide` | `chapters`, `chapter_questions`, `chapter_progress` | `components/belajar/` (`CourseView`, `ChapterMarkdown`/`MarkdownBase`, `ChapterQuiz`, `ChapterSyllabus`) | built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-chapters-design.md`); a topic with published chapters is a course, chapters open in any order, a chapter is done when its quiz is all correct |
+| Simulasi ujian and feedback | `src/pages/latihan/[slug]/persiapan`, `components/quiz/PracticeQuiz.tsx` | `practice_questions`, `chapter_questions`, `exams.pass_score` | `lib/feedback.ts` (Web Audio sounds, canvas-confetti), `components/quiz/SoundToggle.tsx` | built 2026-10-11; latihan checks each answer the moment it is tapped; simulasi draws 20 random questions and scores them against the pass score; confetti and a fanfare on a win, a finished chapter and a passed exam, off under reduced motion, sound mutable |
+| Latihan kode | `src/pages/belajar/[slug]/[bab]`, admin `src/pages/admin/topik/[slug]` | `code_exercises`, `code_progress` | `components/code/` (`CodeExercise`, `CodeEditor`, `useSandbox`), `lib/code/` (`sandbox-doc`, `express-shim`, `check-node`) | phase 2a built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-code-practice-design.md`): kinds `web`, `js`, `express`; learner code and checks run only in a `sandbox="allow-scripts"` iframe with a 3 s limit; a chapter with exercises completes only when every exercise has passed; the worker drafts 0 to 2 per chapter and runs js/express solutions in a locked-down child process (`node --permission`, empty env, no string code generation), dropping ones that fail; `sql` and `git` kinds come in phases 2b and 2c |
+| Template gallery | `src/pages/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
+| Roadmap | `src/pages/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
+| Latihan | `src/pages/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" when the topic has a published exam (phase 7) |
+| Flashcard | `src/pages/flashcard` | `flashcards`, `flashcard_reviews`, `flashcard_queue()` | `components/flashcard/` | built (phase 6) |
+| Ujian | `src/pages/ujian/[slug]`, `[slug]/[attempt]` | `exams`, `exam_questions`, `exam_attempts` | `components/exam/` | built (phase 7): intro, timed runner, review; `/admin/ujian` for settings |
+| Tips | inside `src/pages/belajar/[slug]` | `tips` | - | built (phase 5, `/tips` page deferred) |
+| Nilai, Dasbor | `src/pages/nilai`, `src/pages/dasbor` | `progress`, `exam_attempts` | `components/dashboard/` | `/nilai` (phase 7) and `/dasbor` built (phase 8); signed-in visitors of `/` go to `/dasbor` |
+| Level, streak, lencana | `src/pages/nilai`, `src/pages/dasbor` | `track_levels`, `learning_streaks`, `learning_days`, `badges` | `components/dashboard/`, `lib/level.ts` | built (phase 8); level counts core topics passed by exam; public lencana deferred |
+| Auth, Profil | `src/pages/masuk`, `src/pages/profil` | Supabase Auth, `profiles` | `components/auth/` | login, roles, `/admin` gate built (phase 1); `/profil` with ekspor data and hapus akun (phase 8) |
+| Admin, impor AI | `src/pages/admin` | `import_jobs`, all content tables | `components/admin/` | `/admin/impor`, `/admin/topik` built (phase 4), `/admin/roadmap` (phase 5); regenerate one section planned |
+| Privasi | `src/pages/privasi` | - | - | built |
 | SEO | `opengraph-image.tsx`, `robots.ts`, `sitemap.ts` | `lib/site` | - | built |
-| PWA | `app/manifest.ts`, `public/sw.js`, `public/offline.html` | - | `ServiceWorker`, `SignOutButton` | built (phase 9): installable, visited decks and roadmaps open offline |
-| Illustrations | `app/not-found.tsx`, empty states, exam result | - | `components/illustrations/` | built (phase 9); login page has none yet |
+| PWA | `src/pages/manifest.webmanifest.ts`, `public/sw.js`, `public/offline.html` | - | `Base.astro` (registers `sw.js`), `SignOutButton` | built (phase 9): installable, visited decks and roadmaps open offline |
+| Illustrations | `src/pages/404.astro`, empty states, exam result | - | `components/illustrations/` | built (phase 9); login page has none yet |
 
 Helpers worth knowing before writing a new one: `thumbSrc`, `coverSrc` and
 `slideUrl` in `lib/slides.ts` (slide, thumb and cover file naming; never in
@@ -409,7 +410,7 @@ content row has `status`: `draft` or `published`. Public pages only ever see
 /admin/impor                 GitHub Actions (worker/)              Supabase
 ------------                 ------------------------              --------
 upload .pptx  ------------------------------------------------>   Storage: imports/
-Server Action: insert import_job, workflow_dispatch(job_id) --->
+mulaiImpor (lib/actions): insert import_job, workflow_dispatch(job_id) --->
                              soffice pptx -> pdf -> AVIF slides -> Storage: slides/<slug>/<job_id>/
                              pdf -> LLM (structured output)    -> topics, tips, flashcards,
                                                                   practice_questions,
@@ -417,11 +418,11 @@ Server Action: insert import_job, workflow_dispatch(job_id) --->
                              job status: rendering, drafting,
                              done or failed + error  ---------->   import_jobs
 /admin/topik/[slug]  <---- review, edit, approve ------------------
-Publish (Server Action): publish_topic(slug) swaps drafts in per table,
-                         updateTag('content')
+Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
+                         invalidateContent()
 ```
 
-- **Trigger**: the Server Action checks the admin role, inserts an
+- **Trigger**: the server function checks the admin role, inserts an
   `import_jobs` row, then calls the GitHub API `workflow_dispatch` with only
   the `job_id`. The worker reads everything else from the row.
 - **Claim**: the worker starts with `update import_jobs set status =
@@ -489,7 +490,7 @@ Publish (Server Action): publish_topic(slug) swaps drafts in per table,
 - **Re-import** of an existing slug writes slides to a new
   `slides/<slug>/<job_id>/` folder and creates a new draft set. Live slides
   and published content stay untouched until the new draft is published.
-- **Unpublish and delete** also call `updateTag('content')`.
+- **Unpublish and delete** also call `invalidateContent()`.
 - **Existing decks**: phase 3 uploaded the 13 decks' AVIF slides to
   `slides/<slug>/migrasi/` and inserted them as published topics and slides.
   Their pptx files are in the private `imports` bucket under
@@ -510,20 +511,30 @@ Publish (Server Action): publish_topic(slug) swaps drafts in per table,
 
 ## Adding Code
 
-- **Route**: a folder under `app/`. Dynamic segments read through
-  `lib/content.ts` and call `notFound()` for unknown or unpublished slugs.
-  Auth pages render the part that calls `lib/dal.ts` inside `<Suspense>`
-  (required with `cacheComponents`); `dal.ts` redirects to `/masuk` when
-  there is no user. Never add `generateStaticParams` to per-user routes.
-- **Time and randomness** in a Server Component (`new Date()`,
-  `Math.random()`) break prerendering under `cacheComponents`. Put them in a
-  client component or behind `connection()`.
+- **Route**: a file under `src/pages/`. The frontmatter loads the data and
+  wraps the page in `Base.astro` (title, description, `noindex`,
+  `canonical`). Unknown or unpublished slugs `return Astro.rewrite("/404")`.
+  Signed-in pages start with
+  `const user = await signedIn(Astro); if (user instanceof Response) return user;`
+  (`adminOnly` for admin). Public, user-independent pages call
+  `publicPage(Astro)` so the CDN caches them for a minute.
+- **Islands**: a React component with state or handlers needs `client:load`
+  (or `client:visible`). Its props must be plain data; JSX goes through
+  slots (`<p slot="end">` arrives as the `end` prop). A React component
+  without a directive is static HTML, and an island nested inside it does
+  not hydrate: compose islands in `.astro`. Do not pass SVG children from
+  `.astro` into React (the slot wrapper breaks SVG); add a React wrapper.
 - **Component**: in its feature folder under `components/`, or `ui/` once two
   features use it. One responsibility per file, under 150 lines where
   practical. `PresentationViewer` is over; split it when you touch it.
 - **Utility**: `lib/`, pure functions, no React imports.
-- **Server writes**: Server Actions that call a Supabase RPC or an
-  RLS-protected table. No API route unless a third party calls it.
+- **Server writes**: a function in `lib/actions/` that checks the caller
+  (`requireUser`, `requireAdmin`) and calls a Supabase RPC or an
+  RLS-protected table; list it in `lib/actions/index.ts`. Islands call it
+  with `const x = rpc("x")`; a plain `.astro` form posts to `/rpc/x` and
+  gets a 303 back. `redirect()` navigates the browser, `refresh()` reloads
+  the page after the call, `invalidateContent()` drops cached content. No
+  other endpoint unless a third party calls it.
 
 Naming: `PascalCase` for components, `camelCase` for helpers, kebab-case for
 slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
@@ -537,8 +548,8 @@ pill buttons, big bold headings. Every new screen follows it.
 - **Light first.** Light is the design; dark is a choice made with the theme
   button in the header (`components/ThemeButton.tsx`, saved in localStorage,
   applied as `<html data-theme="dark">` by an inline script in
-  `app/layout.tsx` before first paint). The OS setting does not switch it.
-- **Neutrals through the zinc scale.** `app/globals.css` maps zinc onto the
+  `src/layouts/Base.astro` before first paint). The OS setting does not switch it.
+- **Neutrals through the zinc scale.** `src/styles/globals.css` maps zinc onto the
   theme, so components write zinc classes and never `white`, `black` or hex:
   - `zinc-950`: the lavender canvas (`#f2f1f7`), the page background.
   - `zinc-900`: white surfaces (cards, inputs, pills on the canvas).
@@ -567,7 +578,7 @@ pill buttons, big bold headings. Every new screen follows it.
   - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the indigo circle with an
     up-right arrow in the corner of a tile or card that opens something.
 - **Signed-in shell**: `/dasbor`, `/flashcard`, `/nilai`, `/profil` and
-  `/admin/*` sit in `components/app/AppShell.tsx`, a white sidebar from lg
+  `/admin/*` sit in `src/components/AppShell.astro`, a white sidebar from lg
   and a top bar with a scrolling link row on phones. Public pages keep
   `SiteHeader`.
 - **Cards and tiles**: `card` = `rounded-[28px] bg-zinc-900 shadow-soft`, no
@@ -597,12 +608,12 @@ pill buttons, big bold headings. Every new screen follows it.
 - **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
   rounded square open at its top right corner, holding two stacked slides,
   marked by a small spark dot at the gap. Room and slides teal, spark
-  orange. `app/icon.svg` and `app/opengraph-image.tsx` repeat it with hex
+  orange. `public/icon.svg` and `public/opengraph-image.png` repeat it with hex
   colors. Never recolor the room, never close the corner.
 - **Motion**: only in answer to the learner (hover lift on tiles, the arrow
   badge turning, the hero cover drag, card flips). Every animation has a
   `motion-reduce` fallback.
-- **Shared CSS** lives in `app/globals.css`: theme tokens, `scrollbar-thin`,
+- **Shared CSS** lives in `src/styles/globals.css`: theme tokens, `scrollbar-thin`,
   `animate-word-in`, the `short:` variant for landscape phones. Reuse these
   and `components/ui/styles.ts` before adding new utilities.
 - **Language**: UI text and README in Bahasa Indonesia, code comments in
@@ -611,67 +622,63 @@ pill buttons, big bold headings. Every new screen follows it.
 ## SEO Rules
 
 Every public page must be findable and render a proper share card. The
-setup lives in `app/layout.tsx` (defaults), `lib/site.ts` (name, URL,
-description, OG image), `app/sitemap.ts`, `app/robots.ts` and
-`app/opengraph-image.tsx`.
+setup lives in `src/layouts/Base.astro` (meta, Open Graph, Twitter),
+`lib/site.ts` (name, URL, description), `src/pages/sitemap.xml.ts`,
+`src/pages/robots.txt.ts` and `public/opengraph-image.png`.
 
 - **Indexed**: landing, `roadmap`, `belajar`, `latihan`, `template`,
   `privasi`.
   **Not indexed**: `admin`, `offline`, `flashcard`, `ujian`, `nilai`,
   `dasbor`, `masuk`, `profil`.
-  Set `robots: { index: false }` on those and keep them out of the sitemap.
-- **Metadata on every route.** Export `metadata` or `generateMetadata` with a
-  `title` and `description` in Bahasa Indonesia. The title is the page name
-  only; the layout template appends ` · Ruang Materi`. Keep titles under 60
+  Pass `noindex` to `Base` on those and keep them out of the sitemap.
+- **Metadata on every route.** `Base` gets a `title` and `description` in
+  Bahasa Indonesia. The title is the page name only; `Base` appends
+  ` · Ruang Materi`. Keep titles under 60
   characters and descriptions around 120 to 155.
-- **Canonical URL** via `alternates.canonical`, built from `SITE_URL`. Never
+- **Canonical URL** via `Base`'s `canonical`, built from `SITE_URL`. Never
   hardcode the domain.
-- **Open Graph and Twitter.** A route that sets its own `openGraph` or
-  `twitter` must also pass `images: [SITE_OG_IMAGE]` (Twitter:
-  `SITE_OG_IMAGE.url`), because a child's `openGraph` replaces the parent's
-  instead of merging. Copy the pattern in `app/belajar/[slug]/page.tsx`.
-- **Sitemap.** Every indexed route is in `app/sitemap.ts`, generated from
+- **Open Graph and Twitter** come from `Base` with the shared image; a page
+  sets `ogType="article"` where it fits.
+- **Sitemap.** Every indexed route is in `src/pages/sitemap.xml.ts`, generated from
   published rows (tracks, topics) through `lib/content.ts`.
-- **Static first.** Public pages render statically from published content
-  (`lib/content.ts`, `'use cache'` + `cacheTag('content')`) with
-  `generateStaticParams`. Publishing calls `updateTag('content')`, so pages
-  refresh without a redeploy.
-  - `lib/content.ts` uses only `lib/supabase/public.ts`. Calling `cookies()`
-    inside `'use cache'` is a build error, and a cookie client could cache an
-    admin's draft for everyone. It never reads drafts or `exam_questions`.
-  - The build needs `NEXT_PUBLIC_SUPABASE_*` and at least one published topic
-    and track, because `generateStaticParams` must return one param under
-    `cacheComponents`. Fail with a clear message otherwise. Per-user bits (node states, "selesai" badges) load
-  in a small client component on top; never make a public page dynamic just
-  to read the session.
+- **Cached, not static.** Public pages render on request from published
+  content (`lib/content.ts` through `cached()` in `lib/cache.ts`, one minute
+  per server instance) and send `s-maxage=60, stale-while-revalidate`
+  (`publicPage`). Publishing calls `invalidateContent()`; other instances
+  and the CDN catch up within a minute.
+  - `lib/content.ts` uses only `lib/supabase/public.ts`, so a cached read
+    never depends on who is signed in. It never reads drafts or
+    `exam_questions`.
+  - Per-user bits (node states, "selesai" badges) load in a small island on
+    top; never read the session in a page that calls `publicPage`.
 - **Headings.** One `<h1>` per page, then `<h2>` in order.
-- **Images.** Use `next/image` with `fill` and `sizes` inside an
-  aspect-ratio box, as the existing cards and viewer do (no layout shift).
+- **Images.** A plain `<img loading="lazy" decoding="async">` filling an
+  aspect-ratio box (`absolute inset-0 size-full object-cover`), as the cards
+  do (no layout shift). Slides are pre-encoded AVIF and served as they are.
   Content images get an Indonesian `alt` (`Sampul materi ...`,
   `..., slide 3 dari 20`); decorative ones get `alt=""`.
 - **Language.** `lang="id"` and `locale: "id_ID"` stay as set in the layout.
-- **OG image** is 1200x630 and drawn with inline hex colors, since
-  `ImageResponse` cannot read CSS variables. Keep it in sync with the Style
-  rules: lavender canvas `#f2f1f7`, ink `#141318`, brand teal `#23957e`.
+- **OG image** is the static 1200x630 `public/opengraph-image.png`. Redraw
+  it when the Style colors change.
 
 ## PWA
 
 The mobile experience is an installable PWA, not a native app.
 
-- `app/manifest.ts` (Next file convention): name, short name, `id` `/`,
+- `src/pages/manifest.webmanifest.ts`: name, short name, `id` `/`,
   `start_url` `/` (the landing sends signed-in users on to `/dasbor`),
   `display: standalone`, theme and background
   `#09090b`, icons 192, 512 and a maskable 512 in `public/icons/`.
 - One hand-written `public/sw.js`, no PWA library. It caches an allowlist
   only; anything not listed goes straight to the network:
-  - cache first: `/_next/static/*`, fonts, icons, slide images
+  - cache first: `/_astro/*`, fonts, icons, slide images
   - network first with cache fallback: HTML for `/`, `/belajar/*`,
     `/roadmap/*`, so a deck opened once can be read offline
-  - never: any request with `?_rsc=`, Server Actions (POST), Supabase, and
+  - never: `/rpc` calls (POST), Supabase, and
     every route not listed above
   - offline fallback `public/offline.html` for navigations that fail: plain
-    HTML with inline styles, because the Next.js chunks of an unvisited
-    route are not cached and a Next page would fail to hydrate offline
+    HTML with inline styles, because the island chunks of an unvisited
+    route are not cached and its islands would fail to hydrate offline
 - On sign-out the app tells the service worker to clear its page caches, so
   a shared phone keeps nothing from the previous learner.
 - Serve `sw.js` with `Cache-Control: no-cache` and register it from a small
@@ -817,13 +824,12 @@ UI. The UI only hides actions the database would refuse.
 
 ## Security Rules
 
-- **Auth checks sit next to the data.** `lib/dal.ts` imports `server-only`,
-  gets the user with `supabase.auth.getClaims()`, which verifies the JWT
+- **Auth checks sit next to the data.** `lib/dal.ts` gets the user with `supabase.auth.getClaims()`, which verifies the JWT
   signature (never `getSession()` on the server), with the role from
-  `is_admin()` in parallel. It is the only way pages and Server Actions read
-  user data.
-  `proxy.ts` only refreshes the session; it is not the gate.
-- **Server Actions re-check the user** and validate input shape before calling
+  `is_admin()` in parallel. It is the only way pages and server functions read
+  user data (pages through `src/lib/guard.ts`).
+  `src/middleware.ts` only refreshes the session; it is not the gate.
+- **Server functions in `lib/actions/` re-check the user** and validate input shape before calling
   Supabase. Never take `user_id` from the form, use `auth.uid()`.
 - **Keys**: only `NEXT_PUBLIC_SUPABASE_URL` and
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` reach the browser. The service role
@@ -834,8 +840,10 @@ UI. The UI only hides actions the database would refuse.
   `GITHUB_DISPATCH_TOKEN`: a fine-grained token for this repo with
   `actions: write` and nothing else. A replayed dispatch is harmless because
   the worker claims only `queued` jobs.
-- **Admin routes** check `role = 'admin'` in `lib/dal.ts` on every page and
-  Server Action, not only in the layout.
+- **Admin routes** check `role = 'admin'` on every page (`adminOnly`) and
+  in every admin server function (`requireAdmin`). `/rpc` runs only the
+  functions listed in `lib/actions/index.ts` and rejects a JSON call whose
+  `Origin` is not the site; Astro's `checkOrigin` covers form posts.
 - **Uploads**: `.pptx` only, checked by extension and the zip magic bytes,
   max 50 MB, stored under a generated name. The original file name is
   display text, never a path.
@@ -871,7 +879,7 @@ UI. The UI only hides actions the database would refuse.
   only land on this site; the learner arrives on `/` and is sent on to
   Dasbor. Paste them into Authentication -> Email Templates with the
   subjects from `supabase/config.toml`.
-- **Sessions**: `proxy.ts` refreshes the access token on every request; the
+- **Sessions**: `src/middleware.ts` refreshes the access token on every request; the
   browser client refreshes on its own and `useSignedIn()` follows sign-in
   and sign-out across tabs.
 - **Rate limits**: magic link, OTP and password sign-in limits are set in
@@ -879,7 +887,7 @@ UI. The UI only hides actions the database would refuse.
   `start_exam_attempt` is limited by `max_attempts` in the database; Server
   Actions that write (progress, reviews) are idempotent, so a double click
   writes once.
-- **Security headers** in `next.config.ts`: `X-Content-Type-Options: nosniff`,
+- **Security headers** in `vercel.json`: `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, and
   `Content-Security-Policy: frame-ancestors 'self'`. Not `X-Frame-Options:
   DENY`, it would break the template preview iframe.
@@ -940,12 +948,9 @@ Vitest.
 - Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
   (needed at build time too), `GITHUB_DISPATCH_TOKEN`, `GITHUB_REPO`
   (`owner/name`), `LLM_PROVIDERS`.
-- `'use cache'` needs `cacheComponents: true` in `next.config.ts`. Before
-  turning it on, move the footer year (`new Date().getFullYear()` in
-  `app/page.tsx`) into a client component, then confirm `npm run build`
-  passes.
-- `images.unoptimized` is on in `next.config.ts` on purpose: slides are
-  already AVIF, a second pass by the Next optimizer softens them.
+- Astro reads `NEXT_PUBLIC_*` in the browser too (`envPrefix` in
+  `astro.config.mjs`), so the Vercel variables keep their old names.
+  `vercel.json` sets the security headers and `Cache-Control` for `sw.js`.
 - `NEXT_PUBLIC_SITE_URL` sets canonical and OG URLs. Without it they fall back
   to `https://lms-ruang-materi.vercel.app`; set it on Vercel if the domain changes.
 - Add the site URL to Supabase Auth redirect URLs for the magic link, and

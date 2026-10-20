@@ -1,0 +1,66 @@
+---
+import { ListChecks } from "lucide-react";
+import BelajarViewer from "@/components/belajar/BelajarViewer";
+import CourseView from "@/components/belajar/CourseView";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
+import { getTopic } from "@/lib/content";
+import { SITE_URL } from "@/lib/site";
+import SiteHeader from "../../../components/SiteHeader.astro";
+import Base from "../../../layouts/Base.astro";
+import { publicPage } from "../../../lib/cdn";
+
+const slug = Astro.params.slug!;
+const presentation = await getTopic(slug);
+if (!presentation) return Astro.rewrite("/404");
+publicPage(Astro);
+const { title, description } = presentation;
+---
+
+<Base title={title} description={description} canonical={`${SITE_URL}/belajar/${slug}`} ogType="article">
+  {presentation.chapters.length > 0 ? (
+    <div class="relative flex flex-1 flex-col">
+      <SiteHeader />
+      <CourseView client:load topic={presentation} />
+    </div>
+  ) : (
+    <main>
+      <BelajarViewer client:load presentation={presentation} />
+      {(presentation.summary || presentation.tips.length > 0 || presentation.practiceCount > 0) && (
+        <section aria-label="Ringkasan dan tips" class="px-5 py-12 sm:px-10">
+          <div class="mx-auto grid max-w-5xl gap-4 md:grid-cols-[3fr_2fr]">
+            {presentation.summary && (
+              <div class="rounded-[28px] bg-zinc-900 p-6 shadow-soft sm:p-8">
+                <h2 class="text-2xl font-bold tracking-tight">Ringkasan</h2>
+                <div class="mt-4 space-y-4 leading-relaxed text-zinc-300">
+                  {presentation.summary.split(/\n\s*\n/).map((p) => <p>{p}</p>)}
+                </div>
+              </div>
+            )}
+            {presentation.tips.length > 0 && (
+              <div class="rounded-[28px] bg-tile-butter p-6 sm:p-8">
+                <h2 class="text-2xl font-bold tracking-tight">Tips</h2>
+                <ul class="mt-4 space-y-3">
+                  {presentation.tips.map((tip) => (
+                    <li class="flex gap-3 rounded-2xl bg-zinc-900/70 p-4 text-sm leading-relaxed text-zinc-200"><span aria-hidden="true" class="mt-1.5 size-2 shrink-0 rounded-full bg-accent-warm" />{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          {(presentation.practiceCount > 0 || presentation.cardCount > 0) && (
+            <div class="mx-auto mt-6 flex max-w-5xl flex-wrap items-center justify-end gap-3">
+              {presentation.cardCount > 0 && (
+                <a href={`/flashcard/${slug}`} class={secondaryButton}>
+                  Flashcard {presentation.cardCount} kartu
+                </a>
+              )}
+              {presentation.practiceCount > 0 && (
+                <a href={`/latihan/${slug}`} class={primaryButton}><ListChecks aria-hidden className="size-4" />Mulai latihan</a>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+    </main>
+  )}
+</Base>

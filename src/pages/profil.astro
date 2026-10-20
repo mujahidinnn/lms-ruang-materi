@@ -1,0 +1,92 @@
+---
+import { Trash2 } from "lucide-react";
+import ActionForm from "@/components/admin/ActionForm";
+import { field } from "@/components/admin/editor";
+import ExportButton from "@/components/dashboard/ExportButton";
+import { card, primaryButton } from "@/components/ui/styles";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../components/AppShell.astro";
+import Base from "../layouts/Base.astro";
+import { signedIn } from "../lib/guard";
+
+const INDONESIA = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura"];
+const ZONES = [...INDONESIA, ...Intl.supportedValuesOf("timeZone").filter((z) => !INDONESIA.includes(z))];
+
+const user = await signedIn(Astro);
+if (user instanceof Response) return user;
+const { data: p } = await (await createClient())
+  .from("profiles")
+  .select("display_name, timezone, guardian_consent")
+  .eq("user_id", user.id)
+  .single();
+const zone = p?.timezone ?? "Asia/Jakarta";
+---
+
+<Base title="Profil" description="Ubah nama dan zona waktu, unduh data belajarmu, atau hapus akun." noindex>
+  <AppShell set="akun" email={user.email}>
+    <div class="mx-auto max-w-2xl">
+      <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Profil</h1>
+
+      <section aria-labelledby="data" class={`mt-8 p-6 sm:p-8 ${card}`}>
+        <h2 id="data" class="text-xl font-bold tracking-tight">Data diri</h2>
+        <p class="mt-1 text-sm text-zinc-400">{user.email}</p>
+        <ActionForm client:load action="simpanProfil" className="mt-4 grid gap-4">
+          <label class="text-sm text-zinc-400">
+            Nama tampilan
+            <input name="display_name" maxlength={80} value={p?.display_name ?? ""} class={`${field} mt-1`} />
+          </label>
+          <label class="text-sm text-zinc-400">
+            Zona waktu, untuk menghitung streak harian
+            <select name="timezone" class={`${field} mt-1`}>
+              {ZONES.map((z) => <option selected={z === zone}>{z}</option>)}
+            </select>
+          </label>
+          <label class="flex min-h-11 items-start gap-3 text-sm text-zinc-300">
+            <input type="checkbox" name="guardian_consent" checked={!!p?.guardian_consent} class="mt-0.5 size-4 accent-(--accent)" />
+            Saya berusia 18 tahun ke atas, atau orang tua atau wali saya sudah setuju saya memakai Ruang Materi.
+          </label>
+          <button class={`${primaryButton} justify-self-start`}>Simpan</button>
+        </ActionForm>
+      </section>
+
+      <section id="sandi" aria-labelledby="sandi-judul" class={`mt-4 scroll-mt-6 p-6 sm:p-8 ${card}`}>
+        <h2 id="sandi-judul" class="text-xl font-bold tracking-tight">Kata sandi</h2>
+        <p class="mt-1 text-sm text-zinc-400">
+          Opsional. Dengan kata sandi kamu bisa masuk tanpa menunggu email. Lupa? Masuk lewat tautan email, lalu buat yang baru di sini.
+        </p>
+        <ActionForm client:load action="aturSandi" className="mt-4 grid gap-4">
+          <input type="email" name="username" autocomplete="username" value={user.email} readonly hidden />
+          <label class="text-sm text-zinc-400">
+            Kata sandi baru
+            <input name="password" type="password" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
+          </label>
+          <label class="text-sm text-zinc-400">
+            Ulangi kata sandi
+            <input name="confirm" type="password" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
+          </label>
+          <button class={`${primaryButton} justify-self-start`}>Simpan kata sandi</button>
+        </ActionForm>
+      </section>
+
+      <section aria-labelledby="ekspor" class="mt-4 rounded-[28px] bg-tile-sky p-6 sm:p-8">
+        <h2 id="ekspor" class="text-xl font-bold tracking-tight">Ekspor data</h2>
+        <p class="mt-1 mb-4 text-sm text-zinc-300">Semua data belajarmu dalam satu file JSON: progres, latihan, flashcard, ujian, dan lencana.</p>
+        <ExportButton client:load />
+      </section>
+
+      <section aria-labelledby="hapus" class="mt-4 rounded-[28px] bg-tile-pink p-6 sm:p-8">
+        <h2 id="hapus" class="text-xl font-bold tracking-tight">Hapus akun</h2>
+        <p class="mt-1 text-sm text-zinc-400">
+          Semua data belajarmu ikut terhapus dan tidak bisa dikembalikan. Ketik email akunmu untuk memastikan.
+        </p>
+        <ActionForm client:load action="hapusAkun" className="mt-4 flex flex-wrap gap-2">
+          <input name="email" type="email" required autocomplete="off" aria-label="Email akun" placeholder={user.email} class={`${field} flex-1`} />
+          <button class="inline-flex min-h-12 items-center gap-2 rounded-full bg-red-600 px-6 font-semibold text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
+            <Trash2 aria-hidden className="size-4" />
+            Hapus akun
+          </button>
+        </ActionForm>
+      </section>
+    </div>
+  </AppShell>
+</Base>

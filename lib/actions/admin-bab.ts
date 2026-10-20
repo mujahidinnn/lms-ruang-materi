@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 const slug = z.string().regex(/^[a-z0-9-]+$/).refine((s) => s !== "slide", "slug slide dipakai halaman slide");
 const optionalSlide = z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(1).nullable());
 
-function done(topicSlug: string) {
+function done() {
   invalidateContent();
   refresh();
 }
@@ -27,10 +27,10 @@ export async function simpanBab(form: FormData) {
       slide_to: optionalSlide,
     })
     .parse(Object.fromEntries(form));
-  const { id, topic, ...row } = f;
+  const { id, topic: _topic, ...row } = f;
   const { error } = await (await createClient()).from("chapters").update(row).eq("id", id);
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }
 
 // See newChapterStatus: drafts unless the topic already has live chapters.
@@ -47,21 +47,21 @@ export async function tambahBab(form: FormData) {
     topic_id: t.id, status, position, slug: `bab-${position + 1}`, title: `Bab ${position + 1}`, body: "Tulis isi bab di sini.",
   });
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }
 
 export async function hapusBab(form: FormData) {
   await requireAdmin();
-  const { id, topic } = z.object({ id: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
+  const { id, topic: _topic } = z.object({ id: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
   const { error } = await (await createClient()).from("chapters").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }
 
 // Swaps positions with the neighbour; the unique key is deferred.
 export async function geserBab(form: FormData) {
   await requireAdmin();
-  const { id, topic, arah } = z.object({ id: z.uuid(), topic: z.string(), arah: z.enum(["naik", "turun"]) }).parse(Object.fromEntries(form));
+  const { id, topic: _topic, arah } = z.object({ id: z.uuid(), topic: z.string(), arah: z.enum(["naik", "turun"]) }).parse(Object.fromEntries(form));
   const db = await createClient();
   const { data: c } = await db.from("chapters").select("topic_id, status, position").eq("id", id).single();
   if (!c) throw new Error("bab tidak ditemukan");
@@ -77,5 +77,5 @@ export async function geserBab(form: FormData) {
   if (!other) return;
   const { error } = await db.rpc("swap_chapters", { a: id, b: other.id });
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }

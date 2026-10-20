@@ -17,14 +17,14 @@ const json = <T extends z.ZodType>(schema: T) =>
 const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
 const tests = z.array(z.object({ name: z.string().min(1), check: z.string().min(1) }));
 
-function done(topic: string) {
+function done() {
   invalidateContent();
   refresh();
 }
 
 export async function simpanLatihanKode(form: FormData) {
   await requireAdmin();
-  const { id, topic, ...row } = z
+  const { id, topic: _topic, ...row } = z
     .object({
       id: z.uuid(),
       topic: z.string(),
@@ -39,12 +39,12 @@ export async function simpanLatihanKode(form: FormData) {
     .parse(Object.fromEntries(form));
   const { error } = await (await createClient()).from("code_exercises").update(row).eq("id", id);
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }
 
 export async function tambahLatihanKode(form: FormData) {
   await requireAdmin();
-  const { chapter, topic } = z.object({ chapter: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
+  const { chapter, topic: _topic } = z.object({ chapter: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
   const { error } = await (await createClient()).from("code_exercises").insert({
     chapter_id: chapter,
     kind: "js",
@@ -55,13 +55,13 @@ export async function tambahLatihanKode(form: FormData) {
     tests: [],
   });
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }
 
 export async function hapusLatihanKode(form: FormData) {
   await requireAdmin();
-  const { id, topic } = z.object({ id: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
+  const { id, topic: _topic } = z.object({ id: z.uuid(), topic: z.string() }).parse(Object.fromEntries(form));
   const { error } = await (await createClient()).from("code_exercises").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  done(topic);
+  done();
 }

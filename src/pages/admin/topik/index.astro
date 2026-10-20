@@ -1,0 +1,137 @@
+---
+import { FileUp, Search } from "lucide-react";
+import StatusBadge from "@/components/admin/StatusBadge";
+import Ring from "@/components/ui/Ring";
+import { card, chip, primaryButton, tile } from "@/components/ui/styles";
+import { slideUrl } from "@/lib/slides";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../../components/AppShell.astro";
+import Base from "../../../layouts/Base.astro";
+import { adminOnly } from "../../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+const TABS = [
+  { key: "", label: "Semua" },
+  { key: "tinjau", label: "Menunggu tinjauan" },
+  { key: "terbit", label: "Terbit" },
+  { key: "draf", label: "Draf" },
+] as const;
+
+type Row = {
+  slug: string;
+  title: string;
+  status: string;
+  draft_summary: string | null;
+  slides: { index: number; path: string }[];
+  chapters: { status: string }[];
+};
+
+const tab = Astro.url.searchParams.get("tab") ?? "";
+const q = Astro.url.searchParams.get("q")?.trim() ?? "";
+const { data } = await (await createClient())
+  .from("topics")
+  .select("slug, title, status, draft_summary, slides(index, path), chapters(status)")
+  .order("created_at");
+const all = (data ?? []) as Row[];
+
+const inTab = (t: Row, key: string) =>
+  key === "tinjau" ? !!t.draft_summary : key === "terbit" ? t.status === "published" : key === "draf" ? t.status === "draft" : true;
+const needle = q.toLowerCase();
+const topics = all.filter((t) => inTab(t, tab) && (!needle || t.title.toLowerCase().includes(needle) || t.slug.includes(needle)));
+const href = (key: string) => `/admin/topik?${new URLSearchParams({ ...(key && { tab: key }), ...(q && { q }) })}`;
+---
+
+<Base title="Topik" description="Daftar topik dan draf yang menunggu tinjauan." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto max-w-6xl">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Topik</h1>
+        <a href="/admin/impor" class={primaryButton}><FileUp aria-hidden className="size-4" />Impor deck</a>
+      </div>
+
+      {!all.length ? (
+        <p class="mt-6 text-zinc-400">
+          Belum ada topik. <a href="/admin/impor" class="text-accent hover:underline">Impor deck</a> untuk membuat yang pertama.
+        </p>
+      ) : (
+        <>
+          <nav aria-label="Saring topik" class="scrollbar-thin mt-6 flex gap-6 overflow-x-auto border-b border-zinc-800">
+            {TABS.map((t) => {
+              const on = t.key === tab;
+              return (
+                <a
+                  href={href(t.key)}
+                  aria-current={on ? "page" : undefined}
+                  class={`-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 text-sm ${on ? "border-accent font-semibold text-zinc-50" : "border-transparent text-zinc-400 hover:text-zinc-50"}`}
+                >
+                  {t.label}
+                  <span class="rounded-full bg-zinc-800 px-2 text-xs tabular-nums">{all.filter((x) => inTab(x, t.key)).length}</span>
+                </a>
+              );
+            })}
+          </nav>
+
+          <form class="mt-5 flex flex-wrap items-center gap-3">
+            {tab && <input type="hidden" name="tab" value={tab} />}
+            <p class="text-sm font-semibold tabular-nums">{topics.length} topik</p>
+            <label class="flex min-h-11 flex-1 items-center gap-2 rounded-full bg-zinc-900 px-4 shadow-soft focus-within:ring-2 focus-within:ring-accent sm:max-w-xs">
+              <Search aria-hidden className="size-4 text-zinc-500" />
+              <span class="sr-only">Cari topik</span>
+              <input name="q" type="search" value={q} placeholder="Cari judul atau slug" class="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
+            </label>
+          </form>
+
+          {topics.length === 0 ? (
+            <p class="mt-8 text-zinc-400">Tidak ada topik yang cocok. <a href="/admin/topik" class="text-accent hover:underline">Tampilkan semua</a></p>
+          ) : (
+            <ul class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {topics.map((t, i) => {
+                const first = t.slides.toSorted((a, b) => a.index - b.index)[0];
+                const live = t.chapters.filter((c) => c.status === "published").length;
+                const total = t.chapters.filter((c) => c.status !== "archived").length;
+                return (
+                  <li>
+                    <a
+                      href={`/admin/topik/${t.slug}`}
+                      class={`group flex h-full flex-col p-2 transition-shadow hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${card}`}
+                    >
+                      <div class={`relative aspect-[2/1] overflow-hidden rounded-[22px] ${tile(i)}`}>
+                        {first && (
+                          <img
+                            src={slideUrl(first.path).replace(/slide-\d+\.avif$/, "cover.avif")}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            class="absolute inset-0 size-full object-cover"
+                          />
+                        )}
+                        <span class={`${chip} absolute top-3 left-3 bg-zinc-900/90 tabular-nums`}>{t.slides.length} slide</span>
+                        {t.draft_summary && <span class={`${chip} absolute top-3 right-3 bg-tile-butter`}>Menunggu tinjauan</span>}
+                      </div>
+                      <div class="flex flex-1 flex-col px-3 pt-4 pb-3">
+                        <h2 class="text-lg leading-snug font-bold tracking-tight group-hover:text-accent">{t.title}</h2>
+                        <div class="mt-4 mb-4 flex items-center gap-3">
+                          <Ring value={live} max={total} className="size-10" />
+                          <p class="text-sm">
+                            <span class="block text-xs text-zinc-500">Bab terbit</span>
+                            <span class="font-semibold tabular-nums">{total ? `${live} dari ${total}` : "Belum ada bab"}</span>
+                          </p>
+                        </div>
+                        <div class="mt-auto flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
+                          <span class="truncate text-xs text-zinc-500">{t.slug}</span>
+                          <StatusBadge status={t.status} />
+                        </div>
+                      </div>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  </AppShell>
+</Base>

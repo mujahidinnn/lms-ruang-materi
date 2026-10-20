@@ -1,18 +1,15 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
+// TypeScript and React hooks rules for .ts/.tsx; `astro check` covers .astro.
+export default defineConfig([
+  globalIgnores([".astro/**", "dist/**", "imports/**", "supabase/**", "docs/**", ".vercel/**", "public/**", "test-results/**", "playwright-report/**"]),
+  ...tseslint.configs.recommended,
+  reactHooks.configs.flat["recommended-latest"] ?? reactHooks.configs["recommended-latest"],
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
 ]);
-
-export default eslintConfig;

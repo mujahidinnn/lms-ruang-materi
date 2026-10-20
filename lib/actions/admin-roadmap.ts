@@ -16,7 +16,7 @@ function fail(error: { code?: string; message: string }, fallback: string): Road
   return { error: fallback };
 }
 
-function done(track: string) {
+function done() {
   invalidateContent();
   refresh();
 }
@@ -43,7 +43,7 @@ export async function simpanTrack(_: RoadmapState, form: FormData): Promise<Road
 
   const { error } = await (await createClient()).from("tracks").update(parsed.data).eq("slug", track);
   if (error) return fail(error, "Gagal menyimpan.");
-  done(track);
+  done();
   return { ok: "Tersimpan." };
 }
 
@@ -61,13 +61,12 @@ export async function tambahNode(_: RoadmapState, form: FormData): Promise<Roadm
     position: Math.max(-1, ...t.track_nodes.map((n) => n.position)) + 1,
   });
   if (error) return fail(error, "Gagal menambah topik.");
-  done(track);
+  done();
   return {};
 }
 
 export async function simpanNode(_: RoadmapState, form: FormData): Promise<RoadmapState> {
   await requireAdmin();
-  const track = slug.parse(form.get("track"));
   const { error } = await (await createClient())
     .from("track_nodes")
     .update({
@@ -78,30 +77,28 @@ export async function simpanNode(_: RoadmapState, form: FormData): Promise<Roadm
     })
     .eq("id", id.parse(form.get("id")));
   if (error) return fail(error, "Gagal menyimpan topik.");
-  done(track);
+  done();
   return {};
 }
 
 export async function tambahEdge(_: RoadmapState, form: FormData): Promise<RoadmapState> {
   await requireAdmin();
-  const track = slug.parse(form.get("track"));
   const { error } = await (await createClient()).from("track_edges").insert({
     from_node_id: id.parse(form.get("from")),
     to_node_id: id.parse(form.get("to")),
   });
   if (error) return fail(error, "Gagal menambah prasyarat.");
-  done(track);
+  done();
   return {};
 }
 
 // Deletes take effect right away, also on the published roadmap.
 export async function hapus(_: RoadmapState, form: FormData): Promise<RoadmapState> {
   await requireAdmin();
-  const track = slug.parse(form.get("track"));
   const table = z.enum(["track_nodes", "track_edges"]).parse(form.get("table"));
   const { error } = await (await createClient()).from(table).delete().eq("id", id.parse(form.get("id")));
   if (error) return fail(error, "Gagal menghapus.");
-  done(track);
+  done();
   return {};
 }
 
@@ -109,7 +106,7 @@ export async function terbitkanTrack(track: string): Promise<RoadmapState> {
   await requireAdmin();
   const { error } = await (await createClient()).rpc("publish_track", { p_slug: slug.parse(track) });
   if (error) return fail(error, "Gagal menerbitkan.");
-  done(track);
+  done();
   return { ok: "Roadmap diterbitkan." };
 }
 
@@ -117,7 +114,7 @@ export async function tarikTrack(track: string): Promise<RoadmapState> {
   await requireAdmin();
   const { error } = await (await createClient()).from("tracks").update({ status: "draft" }).eq("slug", slug.parse(track));
   if (error) return fail(error, "Gagal menarik roadmap.");
-  done(track);
+  done();
   return { ok: "Roadmap ditarik, tidak tampil di publik." };
 }
 

@@ -13,7 +13,8 @@ export type Card = { id: string; front: string; back: string; topic?: string; bo
 // logged out the deck still flips and rates, it just keeps nothing.
 // box is known only in the scheduled queue, so only there the buttons say
 // when the card comes back.
-export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]; masukHref: string; end: ReactNode }) {
+// end arrives from the page's slot="end".
+export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]; masukHref: string; end?: ReactNode }) {
   const [i, setI] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [note, setNote] = useState<ReactNode>(null);

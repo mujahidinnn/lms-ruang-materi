@@ -1,6 +1,6 @@
 // Hand-written service worker. Caches an allowlist only; everything else
 // goes straight to the network. Bump VERSION on every change to this file.
-const VERSION = "rm-4";
+const VERSION = "rm-5";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE = "/offline.html";
@@ -54,7 +54,6 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.searchParams.has("_rsc") || request.headers.has("RSC")) return;
 
   if (url.origin !== self.location.origin) {
     // Slide images in Supabase Storage. Nothing else from Supabase.
@@ -63,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const path = url.pathname;
-  if (path.startsWith("/_next/static/") || path.startsWith("/icons/")) {
+  if (path.startsWith("/_astro/") || path.startsWith("/icons/")) {
     event.respondWith(cacheFirst(request));
   } else if (request.mode === "navigate") {
     if (path === "/" || path.startsWith("/belajar/") || path.startsWith("/roadmap")) {

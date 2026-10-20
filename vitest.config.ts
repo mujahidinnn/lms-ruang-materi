@@ -4,5 +4,5 @@ import { defineConfig } from "vitest/config";
 // The app's "@/..." import alias, so tests can import app modules.
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
-  test: { exclude: ["node_modules", "e2e", ".next"] },
+  test: { exclude: ["node_modules", "e2e", "dist", ".astro"] },
 });

@@ -1,0 +1,166 @@
+---
+import { Plus, Trash2 } from "lucide-react";
+import ActionForm from "@/components/admin/ActionForm";
+import StatusBadge from "@/components/admin/StatusBadge";
+import TrackActions from "@/components/admin/TrackActions";
+import { field, primaryButton, smallButton } from "@/components/admin/editor";
+import RoadmapGraph from "@/components/roadmap/RoadmapGraph";
+import { layout } from "@/lib/roadmap";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../../components/AppShell.astro";
+import Base from "../../../layouts/Base.astro";
+import { adminOnly } from "../../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+type Node = { id: string; position: number; optional: boolean; status: string; topics: { slug: string; title: string; status: string } };
+type Edge = { id: string; from_node_id: string; to_node_id: string; status: string };
+
+const slug = Astro.params.slug!;
+const db = await createClient();
+const { data: track } = await db
+  .from("tracks")
+  .select("id, slug, title, description, status, track_nodes(id, position, optional, status, topics(slug, title, status))")
+  .eq("slug", slug)
+  .maybeSingle();
+if (!track) return Astro.rewrite("/404");
+
+const nodes = (track.track_nodes as unknown as Node[]).toSorted((a, b) => a.position - b.position);
+const [{ data: edgeRows }, { data: topics }] = await Promise.all([
+  db.from("track_edges").select("id, from_node_id, to_node_id, status").in("from_node_id", nodes.map((n) => n.id)),
+  db.from("topics").select("id, slug, title, status").order("title"),
+]);
+const edges = (edgeRows ?? []) as Edge[];
+const title = new Map(nodes.map((n) => [n.id, n.topics.title]));
+const used = new Set(nodes.map((n) => n.topics.slug));
+const hasDraft = [...nodes, ...edges].some((r) => r.status === "draft");
+const graphEdges = edges.map((e) => ({ from: e.from_node_id, to: e.to_node_id }));
+const placed = layout(
+  nodes.map((n) => ({ id: n.id, topicId: "", slug: n.topics.slug, title: n.topics.title, summary: "", optional: n.optional, position: n.position, practiceCount: 0, cardCount: 0, hasExam: false })),
+  graphEdges
+);
+---
+
+<Base title="Edit roadmap" description="Atur topik dan prasyarat sebuah track." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="grid gap-10 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <aside class="flex flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
+        <a href="/admin/roadmap" class="text-sm text-zinc-400 hover:text-zinc-50">Semua roadmap</a>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">{track.title}</h1>
+          <p class="mt-1 flex items-center gap-3 font-mono text-xs text-zinc-500">
+            {slug} <StatusBadge status={track.status} />
+          </p>
+          {track.status === "published" && (
+            <a href={`/roadmap/${slug}`} class="mt-2 inline-block text-sm text-accent hover:underline">Lihat halaman publik</a>
+          )}
+        </div>
+        <TrackActions client:load slug={slug} published={track.status === "published"} hasDraft={hasDraft} />
+        <p class="text-xs leading-relaxed text-zinc-500">
+          Topik dan prasyarat baru tampil di publik setelah diterbitkan. Hapus langsung berlaku.
+        </p>
+      </aside>
+
+      <div class="flex min-w-0 flex-col gap-12">
+        <section aria-labelledby="info">
+          <h2 id="info" class="text-xl font-bold tracking-tight">Info track</h2>
+          <ActionForm client:load action="simpanTrack" className="mt-4 grid gap-3">
+            <input type="hidden" name="track" value={slug} />
+            <input name="title" value={track.title} aria-label="Judul" required class={field} />
+            <textarea name="description" aria-label="Deskripsi" rows={2} class={field}>{track.description}</textarea>
+            <button class={`${smallButton} justify-self-start`}>Simpan info</button>
+          </ActionForm>
+        </section>
+
+        {placed.length > 0 && (
+          <section aria-labelledby="pratinjau">
+            <h2 id="pratinjau" class="text-xl font-bold tracking-tight">Pratinjau</h2>
+            <div class="mt-4">
+              <RoadmapGraph nodes={placed} edges={graphEdges} states={{}} selected={null} />
+            </div>
+          </section>
+        )}
+
+        <section aria-labelledby="topik">
+          <h2 id="topik" class="text-xl font-bold tracking-tight">Topik <span class="text-zinc-500">{nodes.length}</span></h2>
+          <p class="mt-1 text-sm text-zinc-500">Urutan menentukan posisi atas ke bawah dalam satu kolom.</p>
+          <ul class="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
+            {nodes.map((n) => (
+              <li class="flex flex-wrap items-center gap-3 py-3">
+                <span class="min-w-0 flex-1">
+                  <span class="block font-medium">{n.topics.title}</span>
+                  <span class="flex gap-3 text-xs">
+                    <StatusBadge status={n.status} />
+                    {n.topics.status !== "published" && <span class="text-red-500">topik belum terbit</span>}
+                  </span>
+                </span>
+                <ActionForm client:load action="simpanNode" className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="track" value={slug} />
+                  <input type="hidden" name="id" value={n.id} />
+                  <input name="position" type="number" min={0} value={n.position} aria-label={`Urutan ${n.topics.title}`} class={`${field} max-w-20`} />
+                  <label class="flex min-h-11 items-center gap-2 px-1 text-sm text-zinc-400">
+                    <input type="checkbox" name="optional" checked={n.optional} class="size-4 accent-(--accent)" />
+                    Opsional
+                  </label>
+                  <button class={smallButton}>Simpan</button>
+                </ActionForm>
+                <ActionForm client:load action="hapus">
+                  <input type="hidden" name="track" value={slug} />
+                  <input type="hidden" name="table" value="track_nodes" />
+                  <input type="hidden" name="id" value={n.id} />
+                  <button aria-label={`Hapus ${n.topics.title}`} class={`${smallButton} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus</button>
+                </ActionForm>
+              </li>
+            ))}
+          </ul>
+          <ActionForm client:load action="tambahNode" className="mt-4 flex flex-wrap gap-2">
+            <input type="hidden" name="track" value={slug} />
+            <select name="topic_id" required aria-label="Topik" class={`${field} w-auto flex-1`}>
+              {(topics ?? []).filter((t) => !used.has(t.slug)).map((t) => (
+                <option value={t.id}>
+                  {t.title}{t.status !== "published" ? " (draf)" : ""}
+                </option>
+              ))}
+            </select>
+            <button class={primaryButton}><Plus aria-hidden className="size-4" />Tambah topik</button>
+          </ActionForm>
+        </section>
+
+        {nodes.length > 1 && (
+          <section aria-labelledby="prasyarat">
+            <h2 id="prasyarat" class="text-xl font-bold tracking-tight">Prasyarat <span class="text-zinc-500">{edges.length}</span></h2>
+            <p class="mt-1 text-sm text-zinc-500">Saran urutan, bukan kunci. Lingkaran ditolak.</p>
+            <ul class="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
+              {edges.map((e) => (
+                <li class="flex items-center gap-3 py-2">
+                  <span class="min-w-0 flex-1 text-sm">
+                    {title.get(e.from_node_id)} <span class="text-zinc-500">sebelum</span> {title.get(e.to_node_id)}
+                  </span>
+                  <StatusBadge status={e.status} />
+                  <ActionForm client:load action="hapus">
+                    <input type="hidden" name="track" value={slug} />
+                    <input type="hidden" name="table" value="track_edges" />
+                    <input type="hidden" name="id" value={e.id} />
+                    <button class={`${smallButton} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus</button>
+                  </ActionForm>
+                </li>
+              ))}
+            </ul>
+            <ActionForm client:load action="tambahEdge" className="mt-4 flex flex-wrap items-center gap-2">
+              <input type="hidden" name="track" value={slug} />
+              <select name="from" required aria-label="Prasyarat" class={`${field} w-auto flex-1`}>
+                {nodes.map((n) => <option value={n.id}>{n.topics.title}</option>)}
+              </select>
+              <span class="text-sm text-zinc-500">sebelum</span>
+              <select name="to" required aria-label="Topik lanjutan" class={`${field} w-auto flex-1`}>
+                {nodes.map((n) => <option value={n.id}>{n.topics.title}</option>)}
+              </select>
+              <button class={primaryButton}><Plus aria-hidden className="size-4" />Tambah</button>
+            </ActionForm>
+          </section>
+        )}
+      </div>
+    </div>
+  </AppShell>
+</Base>

@@ -27,7 +27,7 @@ npm install
 npm run dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000). Build butuh minimal satu topik published di Supabase.
+Buka [http://localhost:4321](http://localhost:4321).
 
 Database lokal untuk mengetes migrasi:
 
@@ -39,8 +39,9 @@ npx supabase test db
 
 ## Struktur Proyek
 
-- `app/`: halaman Next.js 16 (App Router, Cache Components).
-- `components/`: komponen UI.
+- `src/pages/`: halaman Astro 7 (dirender per request di Vercel), `src/layouts/`, `src/middleware.ts`.
+- `components/`: komponen React; yang interaktif dipasang sebagai island.
+- `lib/actions/`: fungsi server yang dipanggil browser lewat `/rpc/<nama>`.
 - `lib/`: helper tanpa React (`content.ts`, `dal.ts`, `exam.ts`, `leitner.ts`, `level.ts`, `roadmap.ts`, `supabase/`).
 - `supabase/migrations/`: skema, RLS, fungsi. `supabase/tests/`: smoke test keamanan (pgTAP).
 - `worker/`: worker impor deck yang dijalankan GitHub Actions.
@@ -51,11 +52,12 @@ npx supabase test db
 
 | Perintah | Keterangan |
 | --- | --- |
-| `npm run dev` | Jalankan server pengembangan Next.js |
+| `npm run dev` | Jalankan server pengembangan Astro |
+| `npm run check` | Typecheck `.ts`, `.tsx`, dan `.astro` |
 | `npm run build` | Build untuk produksi |
 | `npm run lint` | Jalankan ESLint |
 | `npm run test:run` | Jalankan Vitest sekali |
-| `npm run test:e2e` | Test end-to-end Playwright sebagai tamu (`E2E_BASE_URL`, default localhost:3000) |
+| `npm run test:e2e` | Test end-to-end Playwright sebagai tamu (`E2E_BASE_URL`, default localhost:4321) |
 | `npm run db:push` | Kirim migrasi ke database produksi lewat session pooler |
 | `npm run draft:decks -- <slug>...` | Buat draf materi dari deck migrasi |
 

@@ -23,7 +23,6 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
     })
     .eq("user_id", user.id);
   if (error) return { error: "Gagal menyimpan. Periksa zona waktunya." };
-  refresh();
   return { ok: "Tersimpan." };
 }
 

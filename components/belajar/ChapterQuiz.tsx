@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, PartyPopper, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CodeExercise from "@/components/code/CodeExercise";
 import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import { quizDone } from "@/lib/chapters";
@@ -24,7 +24,8 @@ export default function ChapterQuiz({
   slug: string;
   questions: ChapterQuestion[];
   exercises?: CodeExerciseData[];
-  prompts?: ReactNode[];
+  // Exercise prompts as HTML, rendered on the server (ChapterMarkdown).
+  prompts?: string[];
 }) {
   const questions = useMemo(() => raw.map(shuffleOptions), [raw]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -91,7 +92,7 @@ export default function ChapterQuiz({
   return (
     <>
       {exercises.map((ex, i) => (
-        <CodeExercise key={ex.id} ex={ex} prompt={prompts[i]} slug={slug} onPassed={exercisePassed} />
+        <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} slug={slug} onPassed={exercisePassed} />
       ))}
       <section aria-labelledby="kuis" className="mt-12 rounded-[28px] bg-zinc-800/50 p-5 sm:p-8">
         <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>

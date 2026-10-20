@@ -24,7 +24,7 @@ const schemas = {
 
 type Table = keyof typeof schemas;
 
-function done(slug: string) {
+function done() {
   invalidateContent();
   refresh();
 }
@@ -35,12 +35,11 @@ export async function simpanBaris(formData: FormData) {
   const schema = schemas[table];
   if (!schema) throw new Error("tabel tidak dikenal");
   const id = z.uuid().parse(formData.get("id"));
-  const slug = String(formData.get("slug"));
   const fields = schema.parse({ ...Object.fromEntries(formData), options: formData.getAll("options") });
 
   const { error } = await (await createClient()).from(table).update(fields).eq("id", id);
   if (error) throw new Error(error.message);
-  done(slug);
+  done();
 }
 
 export async function hapusBaris(formData: FormData) {
@@ -54,7 +53,7 @@ export async function hapusBaris(formData: FormData) {
   // A rule the database enforces (the 2x exam bank): say which, on the page.
   if (error?.code === "P0001") redirect(`/admin/topik/${slug}?galat=${encodeURIComponent(error.message)}`);
   if (error) throw new Error(error.message);
-  done(slug);
+  done();
 }
 
 export async function simpanRingkasan(formData: FormData) {
@@ -65,7 +64,7 @@ export async function simpanRingkasan(formData: FormData) {
     .update({ draft_summary: text.parse(formData.get("summary")) })
     .eq("slug", slug);
   if (error) throw new Error(error.message);
-  done(slug);
+  done();
 }
 
 export type TopikState = { error?: string; ok?: string };
@@ -74,7 +73,7 @@ export async function terbitkan(slug: string): Promise<TopikState> {
   await requireAdmin();
   const { error } = await (await createClient()).rpc("publish_topic", { p_slug: slug });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal menerbitkan." };
-  done(slug);
+  done();
   return { ok: "Topik diterbitkan." };
 }
 
@@ -82,7 +81,7 @@ export async function tarik(slug: string): Promise<TopikState> {
   await requireAdmin();
   const { error } = await (await createClient()).from("topics").update({ status: "draft" }).eq("slug", slug);
   if (error) return { error: "Gagal menarik topik." };
-  done(slug);
+  done();
   return { ok: "Topik ditarik, tidak tampil di publik." };
 }
 

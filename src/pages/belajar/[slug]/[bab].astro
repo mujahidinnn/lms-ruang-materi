@@ -1,0 +1,61 @@
+---
+import { ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import ChapterMarkdown from "@/components/belajar/markdown";
+import ChapterQuiz from "@/components/belajar/ChapterQuiz";
+import ChapterSyllabus from "@/components/belajar/ChapterSyllabus";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
+import { neighbors } from "@/lib/chapters";
+import { getChapter, getTopic } from "@/lib/content";
+import { SITE_URL } from "@/lib/site";
+import CopyCode from "../../../components/CopyCode.astro";
+import SiteHeader from "../../../components/SiteHeader.astro";
+import Base from "../../../layouts/Base.astro";
+import { publicPage } from "../../../lib/cdn";
+
+const { slug, bab } = Astro.params as { slug: string; bab: string };
+const [topic, chapter] = await Promise.all([getTopic(slug), getChapter(slug, bab)]);
+if (!topic || !chapter) return Astro.rewrite("/404");
+publicPage(Astro);
+const { prev, next } = neighbors(topic.chapters, bab);
+const index = topic.chapters.findIndex((c) => c.slug === bab);
+// Exercise prompts go into the quiz island as plain HTML, rendered here so
+// shiki stays on the server.
+const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement(ChapterMarkdown, { body: ex.prompt, slides: topic.slides })));
+---
+
+<Base
+  title={`${chapter.title} · ${topic.title}`}
+  description={chapter.body.replace(/[#*`>!\[\]()]/g, "").slice(0, 155)}
+  canonical={`${SITE_URL}/belajar/${slug}/${bab}`}
+>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
+        <aside class="lg:pt-4">
+          <a href={`/belajar/${slug}`} class="text-sm text-zinc-400 hover:text-zinc-50">{topic.title}</a>
+          <div class="mt-3"><ChapterSyllabus client:load topicId={topic.id} topicSlug={slug} chapters={topic.chapters} current={bab} /></div>
+        </aside>
+        <article class="min-w-0 lg:pt-4">
+          <p class="text-sm text-zinc-400 tabular-nums">Bab {index + 1} dari {topic.chapters.length} · {chapter.estMinutes} menit</p>
+          <h1 class="mt-2 text-4xl font-bold tracking-tight text-balance sm:text-5xl">{chapter.title}</h1>
+          <div class="mt-8"><ChapterMarkdown body={chapter.body} slides={topic.slides} /></div>
+          <ChapterQuiz client:load chapterId={chapter.id} slug={slug} questions={chapter.questions} exercises={chapter.exercises} prompts={prompts} />
+          <nav aria-label="Bab lain" class="mt-8 flex flex-wrap justify-between gap-3">
+            {prev ? <a href={`/belajar/${slug}/${prev.slug}`} class={secondaryButton}><ChevronLeft aria-hidden className="size-4" />{prev.title}</a> : <span />}
+            {next ? (
+              <a href={`/belajar/${slug}/${next.slug}`} class={primaryButton}>{next.title}<ChevronRight aria-hidden className="size-4" /></a>
+            ) : topic.practiceCount > 0 ? (
+              <a href={`/latihan/${slug}`} class={primaryButton}><ListChecks aria-hidden className="size-4" />Lanjut ke latihan akhir</a>
+            ) : (
+              <a href={`/belajar/${slug}`} class={primaryButton}>Kembali ke silabus</a>
+            )}
+          </nav>
+        </article>
+      </div>
+    </main>
+  </div>
+  <CopyCode />
+</Base>

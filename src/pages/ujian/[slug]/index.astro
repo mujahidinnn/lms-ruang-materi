@@ -1,0 +1,110 @@
+---
+import { Play } from "lucide-react";
+import StartExam from "@/components/exam/StartExam";
+import { card, chip, primaryButton, tile } from "@/components/ui/styles";
+import { standing, type AttemptRow } from "@/lib/exam";
+import { createClient } from "@/lib/supabase/server";
+import SiteHeader from "../../../components/SiteHeader.astro";
+import Base from "../../../layouts/Base.astro";
+import { signedIn } from "../../../lib/guard";
+
+type ExamRow = { id: string; duration_minutes: number; max_attempts: number; pass_score: number; question_count: number };
+
+const time = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" });
+
+const slug = Astro.params.slug!;
+const user = await signedIn(Astro);
+if (user instanceof Response) return user;
+const db = await createClient();
+
+const { data: topic } = await db
+  .from("topics")
+  .select("title, exams(id, duration_minutes, max_attempts, pass_score, question_count)")
+  .eq("slug", slug)
+  .maybeSingle();
+// exams.topic_id is unique, so PostgREST embeds one object, not a list.
+const e = topic?.exams as unknown as ExamRow | null;
+if (!topic || !e) return Astro.rewrite("/404");
+
+const { data: attempts } = await db
+  .from("exam_attempts")
+  .select("id, deadline, submitted_at, score, passed")
+  .eq("user_id", user.id) // RLS lets an admin read everyone's attempts
+  .eq("exam_id", e.id)
+  .order("created_at");
+const s = standing((attempts ?? []) as AttemptRow[], e.max_attempts, new Date());
+const last = attempts?.findLast((a) => a.submitted_at);
+---
+
+<Base title="Ujian" description="Ujian bertimer dengan nilai dari server. Lulus menandai topik selesai di roadmap." noindex>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-2xl">
+        <a href={`/belajar/${slug}`} class="text-sm text-zinc-400 hover:text-zinc-50">{topic.title}</a>
+        <h1 class="mt-2 text-4xl font-bold tracking-tight sm:text-5xl">Ujian</h1>
+
+        <dl class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ["Soal", e.question_count],
+            ["Waktu", `${e.duration_minutes} menit`],
+            ["Nilai lulus", e.pass_score],
+            ["Sisa percobaan", s.passed ? "-" : `${s.left} dari ${e.max_attempts}`],
+          ].map(([k, v], n) => (
+            <div class={`rounded-3xl p-4 ${tile(n)}`}>
+              <dt class="text-xs font-medium text-zinc-300">{k}</dt>
+              <dd class="mt-1 text-xl font-bold tabular-nums">{v}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div class="mt-8">
+          {s.passed ? (
+            <p class="text-zinc-300">
+              Kamu sudah lulus dengan nilai terbaik <span class="font-semibold tabular-nums">{s.best}</span>.{" "}
+              {last && <a href={`/ujian/${slug}/${last.id}`} class="text-accent hover:underline">Lihat pembahasan</a>}
+            </p>
+          ) : s.openId ? (
+            <a href={`/ujian/${slug}/${s.openId}`} class={primaryButton}>
+              <Play aria-hidden className="size-4" />
+              Lanjutkan ujian
+            </a>
+          ) : s.nextSetAt ? (
+            <p class="text-zinc-300">
+              Percobaan di set ini sudah habis. Set baru dibuka {time.format(s.nextSetAt)}. Sambil menunggu, ulangi{" "}
+              <a href={`/latihan/${slug}`} class="text-accent hover:underline">latihannya</a>.
+            </p>
+          ) : (
+            <>
+              <p class="mb-6 text-sm text-zinc-400">
+                Waktu berjalan sejak kamu mulai. Jawaban tersimpan otomatis di perangkat ini, dan terkumpul sendiri saat waktu habis.
+              </p>
+              <StartExam client:load examId={e.id} slug={slug} label={attempts?.length ? "Coba lagi" : "Mulai ujian"} />
+              <p class="mt-4 text-sm text-zinc-400">
+                Belum yakin? <a href={`/latihan/${slug}/persiapan`} class="text-accent hover:underline">Coba simulasi ujian dulu</a>, kuncinya langsung terlihat.
+              </p>
+            </>
+          )}
+        </div>
+
+        {(attempts?.length ?? 0) > 0 && (
+          <section aria-labelledby="riwayat" class={`mt-10 p-6 ${card}`}>
+            <h2 id="riwayat" class="text-xl font-bold tracking-tight">Riwayat</h2>
+            <ol class="mt-3 space-y-2">
+              {/* Numbered over every attempt, timed-out ones included, as the set counts them. */}
+              {attempts!.map((a, n) => ({ a, n })).filter(({ a }) => a.submitted_at).map(({ a, n }) => (
+                <li>
+                  <a href={`/ujian/${slug}/${a.id}`} class="flex min-h-14 items-center gap-4 rounded-2xl bg-zinc-800/60 px-4 py-2 hover:bg-zinc-800">
+                    <span class="flex-1">Percobaan {n + 1}</span>
+                    <span class={`${chip} ${a.passed ? "bg-tile-mint" : "bg-zinc-900"}`}>{a.passed ? "lulus" : "belum lulus"}</span>
+                    <span class="w-10 text-right font-semibold tabular-nums">{a.score}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+      </div>
+    </main>
+  </div>
+</Base>
