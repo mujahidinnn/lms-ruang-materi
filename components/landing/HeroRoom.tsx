@@ -17,7 +17,8 @@ const SLOTS = [
 ];
 const HIDDEN = `${SLOTS[2]} z-0 opacity-0`;
 const PULL_OUT = 80; // px dragged before release files the cover away
-const FLY = 700; // px the cover travels on its way out
+const FLY = 1600; // px the cover travels on its way out, well past the hero
+const OUT_MS = 450; // how long the throw takes before the cover is refiled
 const tilt = (dx: number) => Math.max(-15, Math.min(15, dx / 12));
 const HOLD_MS = 200; // touch: hold this long before a drag, so a swipe scrolls
 
@@ -107,7 +108,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
       setOrder(([first, ...rest]) => [...rest, first]);
       setLeaving(false);
       moveTo({ x: 0, y: 0 });
-    }, 250);
+    }, OUT_MS);
   }
 
   function release() {
@@ -135,7 +136,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
           const base = `absolute block aspect-video overflow-hidden rounded-2xl ${SLOTS[slot] ?? HIDDEN}`;
-          const motion = dragging && isFront ? "" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
+          const motion = dragging && isFront ? "" : leaving && isFront ? "transition-[transform,opacity] duration-[450ms] ease-in motion-reduce:transition-none" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
           const img = <img src={coverSrc(t)} alt="" draggable={false} decoding="async" loading={isFront ? "eager" : "lazy"} fetchPriority={isFront ? "high" : "auto"} className="absolute inset-0 size-full object-cover" />;
 
           if (!isFront) return <div key={t.slug} aria-hidden className={`${base} ${motion}`}>{img}</div>;
@@ -149,8 +150,11 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
               draggable={false}
               className={`${base} ${motion} cursor-grab touch-pan-y shadow-lg select-none [-webkit-touch-callout:none] hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
               style={{
-                transform: `translate(${drag.x}px, ${drag.y}px) rotate(${tilt(drag.x)}deg)`,
-                opacity: leaving ? 0 : undefined,
+                transform: `translate(${drag.x}px, ${drag.y}px) rotate(${leaving ? tilt(drag.x) * 3 : tilt(drag.x)}deg)`,
+                // Out of the pocket it sits above everything, so the throw is
+                // not cut off by the hero panel.
+                zIndex: dragging || leaving ? 60 : undefined,
+                opacity: leaving ? 0.15 : undefined,
               }}
               data-front
               onPointerDown={(e) => {
@@ -180,7 +184,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         {/* Front pocket, holding the label. */}
         <div className={`pointer-events-none absolute -inset-x-1 -bottom-1 z-40 flex h-[40%] items-end rounded-[28px] p-6 sm:p-7 ${POCKET}`}>
           <span aria-hidden className="absolute -top-4 right-6 -rotate-6 rounded-full border-2 border-noir bg-matcha-700 px-3 py-1 font-(family-name:--font-bricolage) text-xs font-extrabold tracking-tight text-matcha-50 uppercase">
-            geser ke atas ↑
+            tarik ↑
           </span>
           <p className="flex w-full items-end justify-between gap-4">
             <span>
