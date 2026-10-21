@@ -28,6 +28,7 @@ import {
   repairChapter,
   repairClass,
   validateExercises,
+  draftSchema,
   type ChapterOut,
   type Draft,
 } from "./prompt.ts";
@@ -81,53 +82,59 @@ try {
   maybe(await db.from("import_jobs").update({ status: "drafting" }).eq("id", jobId), "status drafting");
   const pdf = await readFile(path.join(work, "deck.pdf"));
   const known = must(await db.from("topics").select("slug"), "slugs").map((t) => t.slug).filter((s) => s !== job.slug);
-  const generate = await providers[job.provider]();
-  const current = maybe(await db.from("chapters").select("slug, title, topics!inner(slug)").eq("topics.slug", job.slug).eq("status", "published").order("position"), "current chapters") ?? [];
+  // claude:manual reads a class written by hand (content/drafts/<slug>.json,
+  // checked with npm run draft:check); every other provider drafts it.
   const tokens = { in: 0, out: 0 };
-  const call = async (prompt: Parameters<typeof generate>[1], schema: unknown) => {
-    const r = await generate(pdf, prompt, job.model, schema);
-    tokens.in += r.inputTokens;
-    tokens.out += r.outputTokens;
-    return r.output;
-  };
+  // An arrow function after the null check, so `job` stays narrowed inside.
+  const llmDraft = async (): Promise<Draft> => {
+    const generate = await providers[job.provider]();
+    const current = maybe(await db.from("chapters").select("slug, title, topics!inner(slug)").eq("topics.slug", job.slug).eq("status", "published").order("position"), "current chapters") ?? [];
+      const call = async (prompt: Parameters<typeof generate>[1], schema: unknown) => {
+      const r = await generate(pdf, prompt, job.model, schema);
+      tokens.in += r.inputTokens;
+      tokens.out += r.outputTokens;
+      return r.output;
+    };
 
-  // Stage 1: the class and its outline, one retry like the chapters.
-  const stage1 = async () => classSchema.safeParse(repairClass(await call(buildClassPrompt(known, current), classJsonSchema), slides.length));
-  let cls = await stage1().catch((e) => {
-    if (e instanceof ProviderError) return null;
-    throw e;
-  });
-  if (!cls?.success) cls = await stage1();
-  if (!cls.success) {
-    // Paths and codes only, no values.
-    const where = cls.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
-    throw Object.assign(new Error(`output tidak valid (${where})`), { name: "SchemaError" });
-  }
-  log(`outline: ${cls.data.outline.length} chapters`);
-
-  // Stage 2: each chapter on its own, one retry; a chapter that still fails
-  // is left out (assembleDraft needs at least 4).
-  const chapters: (ChapterOut | null)[] = [];
-  for (const i of cls.data.outline.keys()) {
-    let got: ChapterOut | null = null;
-    for (let attempt = 0; attempt < 2 && !got; attempt++) {
-      try {
-        const r = chapterSchema.safeParse(repairChapter(await call(buildChapterPrompt(cls.data.title, cls.data.outline, i), chapterJsonSchema)));
-        if (r.success) got = r.data;
-      } catch (e) {
-        if (!(e instanceof ProviderError)) throw e;
-      }
+    // Stage 1: the class and its outline, one retry like the chapters.
+    const stage1 = async () => classSchema.safeParse(repairClass(await call(buildClassPrompt(known, current), classJsonSchema), slides.length));
+    let cls = await stage1().catch((e) => {
+      if (e instanceof ProviderError) return null;
+      throw e;
+    });
+    if (!cls?.success) cls = await stage1();
+    if (!cls.success) {
+      // Paths and codes only, no values.
+      const where = cls.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
+      throw Object.assign(new Error(`output tidak valid (${where})`), { name: "SchemaError" });
     }
-    log(`chapter ${i + 1}/${cls.data.outline.length}: ${got ? "ok" : "dropped"}`);
-    chapters.push(got);
-  }
+    log(`outline: ${cls.data.outline.length} chapters`);
 
-  // One repair call for an exercise whose solution fails its own checks.
-  const fix = async (e: Parameters<typeof buildFixPrompt>[0], failing: string[]) => {
-    const r = exerciseSchema.safeParse(await call(buildFixPrompt(e, failing), exerciseJsonSchema).catch(() => null));
-    return r.success ? r.data : null;
+    // Stage 2: each chapter on its own, one retry; a chapter that still fails
+    // is left out (assembleDraft needs at least 4).
+    const chapters: (ChapterOut | null)[] = [];
+    for (const i of cls.data.outline.keys()) {
+      let got: ChapterOut | null = null;
+      for (let attempt = 0; attempt < 2 && !got; attempt++) {
+        try {
+          const r = chapterSchema.safeParse(repairChapter(await call(buildChapterPrompt(cls.data.title, cls.data.outline, i), chapterJsonSchema)));
+          if (r.success) got = r.data;
+        } catch (e) {
+          if (!(e instanceof ProviderError)) throw e;
+        }
+      }
+      log(`chapter ${i + 1}/${cls.data.outline.length}: ${got ? "ok" : "dropped"}`);
+      chapters.push(got);
+    }
+
+    // One repair call for an exercise whose solution fails its own checks.
+    const fix = async (e: Parameters<typeof buildFixPrompt>[0], failing: string[]) => {
+      const r = exerciseSchema.safeParse(await call(buildFixPrompt(e, failing), exerciseJsonSchema).catch(() => null));
+      return r.success ? r.data : null;
+    };
+    return validateExercises(assembleDraft(cls.data, chapters), fix);
   };
-  const draft = await validateExercises(assembleDraft(cls.data, chapters), fix);
+  const draft = job.provider === "claude" ? await manualDraft(job.slug) : await llmDraft();
   const projectVerified = !!draft.project && draft.project.kind !== "web" && !(await failingChecks(draft.project)).length;
 
   await writeDraft(job.slug, draft, slides, projectVerified);
@@ -194,6 +201,16 @@ async function render(dir: string, folder: string): Promise<RenderedSlide[]> {
 // ponytail: several writes without a transaction. A crash leaves partial
 // drafts, which the next import of the same slug replaces. Move into one
 // RPC if that ever bites.
+async function manualDraft(slug: string): Promise<Draft> {
+  const raw = JSON.parse(await readFile(path.join(process.cwd(), "content", "drafts", `${slug}.json`), "utf8"));
+  const parsed = draftSchema.safeParse(raw);
+  if (!parsed.success) {
+    const where = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
+    throw Object.assign(new Error(`draf tidak valid (${where})`), { name: "SchemaError" });
+  }
+  return validateExercises(parsed.data);
+}
+
 async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[], projectVerified: boolean) {
   let topic = maybe<{ id: string }>(await db.from("topics").select("id").eq("slug", slug).maybeSingle(), "topic");
   if (topic) {

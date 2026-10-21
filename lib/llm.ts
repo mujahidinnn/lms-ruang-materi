@@ -8,6 +8,9 @@ export const LLM_MODELS: Record<string, string[]> = {
   // owner's machine. Not in LLM_PROVIDERS on Vercel, so /admin/impor never
   // offers it.
   "gemini-web": ["web"],
+  // A class written by hand in content/drafts/<slug>.json; the worker only
+  // renders the slides and checks the exercises.
+  claude: ["manual"],
 };
 
 export function isAllowedModel(provider: string, model: string): boolean {
