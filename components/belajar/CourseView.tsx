@@ -127,7 +127,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
           <aside className="lg:sticky lg:top-6">
             <section aria-labelledby="jalur" className="mt-10 lg:mt-0">
               <h2 id="jalur" className="text-2xl font-bold tracking-tight">
-                Setelah semua bab
+                Menuju sertifikat
               </h2>
               <ClassPath topic={topic} signedIn={!!signedIn} />
             </section>

@@ -104,10 +104,10 @@ ${c.sample ? `<g transform="translate(470 170) rotate(-12)"><rect x="-130" y="-4
 
 // One lookup for the page and the image: /sertifikat/contoh is a labelled
 // sample, any other code is read from the database.
-export async function loadCertificate(kode: string, kelas: string | null, getCertificate: (code: string) => Promise<{ code: string; name: string; topicTitle: string; issuedAt: string } | null>, site: string) {
+export async function loadCertificate(kode: string, kelas: string | null, nama: string | null, getCertificate: (code: string) => Promise<{ code: string; name: string; topicTitle: string; issuedAt: string } | null>, site: string) {
   const sample = kode === "contoh";
   const cert = sample
-    ? { code: "CONTOH", name: "Nama Kamu", topicTitle: kelas?.slice(0, 80) || "Pemrograman Python: Dari Nol sampai Proyek Mini", issuedAt: new Date().toISOString() }
+    ? { code: "CONTOH", name: nama?.trim().slice(0, 60) || "Nama Kamu", topicTitle: kelas?.slice(0, 80) || "Pemrograman Python: Dari Nol sampai Proyek Mini", issuedAt: new Date().toISOString() }
     : await getCertificate(kode);
   if (!cert) return null;
   const date = new Date(cert.issuedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });

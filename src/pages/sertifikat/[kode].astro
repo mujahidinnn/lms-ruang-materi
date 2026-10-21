@@ -1,6 +1,6 @@
 ---
 import { BadgeCheck, Download, Printer } from "lucide-react";
-import { secondaryButton } from "@/components/ui/styles";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { loadCertificate } from "@/lib/certificate-svg";
 import { getCertificate } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
@@ -8,9 +8,11 @@ import Base from "../../layouts/Base.astro";
 
 // The verify page: the certificate image (drawn on the server, so it looks
 // the same everywhere and is not page text) and the record it comes from.
-const c = await loadCertificate(Astro.params.kode ?? "", Astro.url.searchParams.get("kelas"), getCertificate, SITE_URL);
+const c = await loadCertificate(Astro.params.kode ?? "", Astro.url.searchParams.get("kelas"), Astro.url.searchParams.get("nama"), getCertificate, SITE_URL);
 if (!c) return Astro.rewrite("/404");
-const src = `/sertifikat/${c.sample ? "contoh" : c.code}.svg${c.sample ? `?kelas=${encodeURIComponent(c.topicTitle)}` : ""}`;
+const src = `/sertifikat/${c.sample ? "contoh" : c.code}.svg${c.sample ? `?kelas=${encodeURIComponent(c.topicTitle)}&nama=${encodeURIComponent(c.name)}` : ""}`;
+// The class the sample was opened from, for the way back to it.
+const slug = c.sample ? Astro.url.searchParams.get("slug")?.match(/^[a-z0-9-]{1,60}$/)?.[0] : undefined;
 const file = `sertifikat-${c.sample ? "contoh" : c.code}`;
 ---
 
@@ -37,7 +39,10 @@ const file = `sertifikat-${c.sample ? "contoh" : c.code}`;
     <section class={`no-print mt-6 flex w-full max-w-5xl items-start gap-3 rounded-[24px] p-5 ${c.sample ? "bg-tile-butter" : "bg-matcha-100 text-noir"}`}>
       <BadgeCheck aria-hidden className="mt-0.5 size-5 shrink-0" />
       {c.sample ? (
-        <p class="text-sm">Ini contoh. Sertifikat asli memakai namamu dan kode unik, dan halaman ini menjadi bukti keasliannya.</p>
+        <div class="flex flex-1 flex-wrap items-center justify-between gap-3">
+          <p class="text-sm">Ini contoh. Sertifikat asli menjadi bukti kamu menguasai kelasnya: memakai namamu, punya kode unik, dan halaman ini yang membuktikan keasliannya.</p>
+          {slug && <a href={`/belajar/${slug}#jalur`} class={primaryButton}>Lanjutkan kelasnya</a>}
+        </div>
       ) : (
         <p class="text-sm"><strong>Sertifikat asli.</strong> Diterbitkan Ruang Materi untuk <strong>{c.name}</strong> pada {c.date}, kelas {c.topicTitle}, kode <span class="font-mono font-semibold">{c.code}</span>. Data ini dibaca langsung dari server, bukan dari gambar.</p>
       )}

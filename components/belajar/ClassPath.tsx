@@ -21,12 +21,17 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [nama, setNama] = useState("");
 
   useEffect(() => {
     if (!signedIn) return;
-    createClient()
-      .rpc("certificate_status", { p_topic: topic.id })
-      .then(({ data }) => data && setStatus(data as Status));
+    const db = createClient();
+    db.rpc("certificate_status", { p_topic: topic.id }).then(({ data }) => data && setStatus(data as Status));
+    // The sample certificate carries the learner's own name.
+    db.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user.id;
+      if (uid) db.from("profiles").select("display_name").eq("user_id", uid).maybeSingle().then(({ data: p }) => setNama(p?.display_name?.trim() ?? ""));
+    });
   }, [signedIn, topic.id]);
 
   async function terbitkan() {
@@ -46,8 +51,33 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
     status?.project_required && !status.project_passed ? "proyek akhir" : "",
   ].filter(Boolean);
 
+  // Steps to the certificate, the first already done: opening the class
+  // counts (a head start lifts completion, see the research note in the
+  // class path design). Guests see the same steps with only that one ticked.
+  const chaptersDone = !!status && status.chapters_total > 0 && status.chapters_done >= status.chapters_total;
+  const steps = [
+    { label: "Buka kelas", done: true },
+    { label: status ? `Bab ${status.chapters_done}/${status.chapters_total}` : `${topic.chapters.length} bab`, done: chaptersDone },
+    ...(topic.hasExam ? [{ label: "Ujian akhir", done: !!status?.exam_passed }] : []),
+    ...(topic.project ? [{ label: "Proyek akhir", done: !!status?.project_passed }] : []),
+  ];
+  const doneCount = steps.filter((x) => x.done).length;
+  const contoh = `/sertifikat/contoh?kelas=${encodeURIComponent(topic.title)}&slug=${topic.slug}${nama ? `&nama=${encodeURIComponent(nama)}` : ""}`;
+
   return (
     <ol className="mt-4 grid gap-3">
+      <li className="rounded-[28px] bg-zinc-900 p-5 shadow-soft">
+        <p className="text-sm font-bold">Langkah menuju sertifikat</p>
+        <p className="mt-0.5 text-sm text-zinc-400 tabular-nums">{status?.code ? "Semua langkah selesai." : `Kamu sudah ${doneCount} dari ${steps.length} langkah.`}{!signedIn && " Masuk supaya langkahmu tercatat."}</p>
+        <div aria-hidden className="mt-3 h-2 rounded-full bg-zinc-800"><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
+        <ul className="mt-3 flex flex-wrap gap-1.5 text-xs font-semibold tabular-nums">
+          {steps.map((x) => (
+            <li key={x.label} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 ${x.done ? "bg-matcha-300 text-noir" : "bg-zinc-800 text-zinc-400"}`}>
+              {x.done && <Check aria-hidden className="size-3.5" />}{x.label}
+            </li>
+          ))}
+        </ul>
+      </li>
       {(topic.practiceCount > 0 || topic.hasExam) && (
         <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan ujian" text="Soal latihan dan try out 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
       )}
@@ -61,6 +91,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
         <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-2xl bg-matcha-300 text-noir"><Award aria-hidden className="size-5" /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Sertifikat</span>
+          <span className="block text-sm text-on-noir/80">Bukti kamu menguasai {topic.title}, dengan kode yang bisa dicek siapa saja.</span>
           <span className="text-sm text-on-noir/70">
             {!signedIn
               ? "Masuk untuk menyimpan progres dan mendapat sertifikat."
@@ -72,7 +103,12 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
                     ? `Selesaikan ${needs.join(", ")}.`
                     : "Memeriksa syarat..."}
           </span>
-          {!status?.code && <a href={`/sertifikat/contoh?kelas=${encodeURIComponent(topic.title)}`} className="mt-1 block text-sm font-semibold text-matcha-300 hover:underline">Lihat contoh sertifikat</a>}
+          {!status?.code && (
+            <a href={contoh} className="group mt-3 block w-full max-w-64">
+              <img src={`${contoh.replace("/sertifikat/contoh?", "/sertifikat/contoh.svg?")}`} alt="" width={1123} height={794} loading="lazy" className="aspect-[1123/794] w-full rounded-md ring-1 ring-on-noir/20 transition-transform group-hover:-translate-y-0.5" />
+              <span className="mt-1.5 block text-sm font-semibold text-matcha-300 group-hover:underline">Lihat contoh sertifikat{nama ? " dengan namamu" : ""}</span>
+            </a>
+          )}
           {error && <span role="alert" className="mt-1 block text-sm text-tile-pink">{error}</span>}
         </span>
         {status?.code ? (

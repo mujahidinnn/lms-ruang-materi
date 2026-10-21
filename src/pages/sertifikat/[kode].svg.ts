@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/site";
 
 // The certificate image itself (see lib/certificate-svg.ts).
 export const GET: APIRoute = async ({ params, url }) => {
-  const c = await loadCertificate(params.kode ?? "", url.searchParams.get("kelas"), getCertificate, SITE_URL);
+  const c = await loadCertificate(params.kode ?? "", url.searchParams.get("kelas"), url.searchParams.get("nama"), getCertificate, SITE_URL);
   if (!c) return new Response("Tidak ditemukan", { status: 404 });
   return new Response(await certificateSvg(c), {
     headers: {
