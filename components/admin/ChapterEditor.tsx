@@ -50,7 +50,7 @@ export default function ChapterEditor({ topic, c, n, slides }: { topic: string; 
           <button className={smallButton}>Simpan bab</button>
         </div>
       </form>
-      <form action={hapusBab} className="mt-2" onSubmit={(e) => { if (!confirm(`Hapus bab "${c.title}" beserta kuisnya?`)) e.preventDefault(); }}>
+      <form action={hapusBab} className="mt-2" data-confirm={`Hapus bab "${c.title}" beserta kuisnya?`} data-confirm-action="Hapus" data-confirm-danger>
         <input type="hidden" name="id" value={c.id} />
         <input type="hidden" name="topic" value={topic} />
         <button className={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus bab</button>

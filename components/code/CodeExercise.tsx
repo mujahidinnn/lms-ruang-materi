@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/lib/confirm";
 import { Check, Eye, Play, RotateCcw, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { EditorLanguage } from "@/components/code/CodeEditor";
@@ -151,7 +152,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={() => go(true)} disabled={busy} className={primaryButton}><Check aria-hidden className="size-4" />Periksa</button>
         <button type="button" onClick={() => go(false)} disabled={busy} className={secondaryButton}><Play aria-hidden className="size-4" />Jalankan</button>
-        <button type="button" onClick={() => { load(ex.starter); saveDraft(key, null); }} className={secondaryButton}><RotateCcw aria-hidden className="size-4" />Reset kode</button>
+        <button type="button" onClick={async () => { if (!(await confirmDialog({ title: "Reset kode?", text: "Kodemu diganti kode awal. Perubahan yang belum lolos hilang.", action: "Reset", danger: true }))) return; load(ex.starter); saveDraft(key, null); }} className={secondaryButton}><RotateCcw aria-hidden className="size-4" />Reset kode</button>
         {fails >= 2 && !project && (
           <button type="button" onClick={() => load(ex.solution)} className={secondaryButton}><Eye aria-hidden className="size-4" />Lihat solusi</button>
         )}

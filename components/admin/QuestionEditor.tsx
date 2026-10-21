@@ -74,7 +74,7 @@ export default function QuestionEditor({
           <textarea name="explanation" aria-label="Pembahasan" defaultValue={q.explanation} rows={2} required className={field} />
           <div className="flex gap-2">
             <button className={smallButton}>Simpan</button>
-            <button formAction={hapusBaris} formNoValidate className={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus</button>
+            <button formAction={hapusBaris} formNoValidate className={dangerButton} data-confirm="Hapus baris ini?" data-confirm-action="Hapus" data-confirm-danger><Trash2 aria-hidden className="size-4" />Hapus</button>
           </div>
         </form>
       </details>

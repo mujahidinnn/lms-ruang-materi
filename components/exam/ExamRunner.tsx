@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/lib/confirm";
 import { ChevronLeft, ChevronRight, Send, WifiOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -37,7 +38,8 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
     if (!auto) {
       const open = questions.length - answered;
       const msg = [open && `${open} soal belum dijawab`, doubts.length && `${doubts.length} soal ditandai ragu-ragu`].filter(Boolean).join(", ");
-      if (!confirm(msg ? `${msg}. Kumpulkan sekarang?` : "Kumpulkan jawaban sekarang?")) return;
+      const ok = await confirmDialog({ title: "Kumpulkan jawaban?", text: msg ? `${msg}. Setelah dikumpulkan, jawaban tidak bisa diubah.` : "Setelah dikumpulkan, jawaban tidak bisa diubah.", action: "Kumpulkan" });
+      if (!ok) return;
     }
     sent.current = true;
     setSending(true);

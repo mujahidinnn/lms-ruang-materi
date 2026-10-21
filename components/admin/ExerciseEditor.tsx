@@ -76,9 +76,7 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
       <form
         action={hapusLatihanKode}
         className="mt-3"
-        onSubmit={(e) => {
-          if (!confirm(`Hapus latihan "${ex.title}"?`)) e.preventDefault();
-        }}
+        data-confirm={`Hapus latihan "${ex.title}"?`} data-confirm-action="Hapus" data-confirm-danger
       >
         <input type="hidden" name="id" value={ex.id} />
         <input type="hidden" name="topic" value={topic} />

@@ -93,7 +93,7 @@ export default function ProjectEditor({ p }: { p: ProjectRow }) {
           ))}
         </ul>
       )}
-      <form action={hapusProyek} className="mt-3" onSubmit={(e) => { if (!confirm(`Hapus proyek "${p.title}"?`)) e.preventDefault(); }}>
+      <form action={hapusProyek} className="mt-3" data-confirm={`Hapus proyek "${p.title}"?`} data-confirm-action="Hapus" data-confirm-danger>
         <input type="hidden" name="id" value={p.id} />
         <button className={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus proyek</button>
       </form>
