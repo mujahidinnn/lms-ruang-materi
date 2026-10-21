@@ -16,3 +16,8 @@ test("the first of two blocks wins", () => {
 test("a cut answer throws", () => {
   expect(() => extractJson('```json\n{"a": [1, 2')).toThrow();
 });
+
+test("Gemini's citation markers are stripped from every string", async () => {
+  const { stripCitations } = await import("./json");
+  expect(stripCitations({ a: "Routing itu penting[cite: 11]. [cite_start]Lanjut [cite: 3, 4]", b: ["x [cite: 2]"], n: 1 })).toEqual({ a: "Routing itu penting. Lanjut", b: ["x"], n: 1 });
+});

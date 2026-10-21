@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import type { Prompt } from "../prompt.ts";
-import { extractJson } from "./json.ts";
+import { extractJson, stripCitations } from "./json.ts";
 import { simpleSchema } from "./schema.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
@@ -126,5 +126,5 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, _model: string,
       stableSince = Date.now();
     } else if (!busy && now && Date.now() - stableSince > 5000) break;
   }
-  return { output: extractJson(last), inputTokens: 0, outputTokens: 0 };
+  return { output: stripCitations(extractJson(last)), inputTokens: 0, outputTokens: 0 };
 }

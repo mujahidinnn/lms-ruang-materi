@@ -30,3 +30,15 @@ function balanced(text: string): string | null {
   }
   return null;
 }
+
+// Gemini on the web marks sources inline ("[cite: 11]", "[cite_start]");
+// they mean nothing to a learner, so every string loses them.
+export function stripCitations<T>(value: T): T {
+  // "[cite: n]" trails a sentence (drop the space before it); "[cite_start]"
+  // leads one (drop the space after it).
+  if (typeof value === "string")
+    return value.replace(/\s*\[cite(?:_end)?(?::[^\]]*)?\]/g, "").replace(/\[cite_start\]\s*/g, "").replace(/[ \t]+$/gm, "") as T;
+  if (Array.isArray(value)) return value.map(stripCitations) as T;
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripCitations(v)])) as T;
+  return value;
+}
