@@ -70,6 +70,7 @@ test("private pages send a guest to the login page", async ({ page }) => {
 test("a wrong password is refused with a clear message", async ({ page }) => {
   await page.goto("/masuk");
   await page.getByLabel("Email").fill("tidak-ada@contoh.id");
+  await page.getByRole("tab", { name: "Kata sandi" }).click();
   await page.getByLabel(/Kata sandi/).fill("salah-sekali-123");
   await page.getByRole("button", { name: "Masuk" }).click();
   await expect(page.getByText("Email atau kata sandi salah.")).toBeVisible();
