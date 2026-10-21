@@ -6,7 +6,7 @@ test("landing shows the hero and topic lists", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Belajar ngoding");
   await expect(page.getByRole("heading", { name: "Bingung mulai dari mana?" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mulai dari kelas lengkap" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kelas populer untuk pemula" })).toBeVisible();
 });
 
 test("pulling the front cover brings the next one forward", async ({ page, isMobile }) => {
