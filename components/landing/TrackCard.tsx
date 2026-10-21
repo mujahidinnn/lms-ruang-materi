@@ -11,9 +11,11 @@ const ICONS = [
   [/python|program|dasar/, Code2],
 ] as const;
 
+const SHOWN = 4;
+const STEP_TONES = ["bg-matcha-100", "bg-matcha-200", "bg-matcha-300", "bg-matcha-50"];
+
 // A track as its path: one dot per topic on a line, up to twelve.
 export default function TrackCard({ track }: { track: TrackSummary }) {
-  const dots = Math.min(track.nodeCount, 12);
   const Icon = ICONS.find(([re]) => re.test(track.slug))?.[1] ?? Route;
   return (
     <li>
@@ -30,12 +32,16 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         <span className={`${mutedChip} mt-5 self-start tabular-nums`}>{track.nodeCount} kelas</span>
         <h3 className="mt-3 text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>
         <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-zinc-400">{track.description}</p>
-        <span aria-hidden className="relative mt-6 flex items-center justify-between">
-          <span className="absolute inset-x-1 top-1/2 h-1 -translate-y-1/2 rounded-full bg-zinc-800" />
-          {Array.from({ length: dots }, (_, i) => (
-            <span key={i} className={`relative size-3 rounded-full ring-4 ring-zinc-900 ${i === 0 ? "bg-brand" : "bg-zinc-700"}`} />
+        {/* The path itself: the first classes in order, each a sticker. */}
+        <ol aria-label="Urutan kelas" className="mt-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs font-bold text-noir">
+          {track.steps.slice(0, SHOWN).map((title, i) => (
+            <li key={title} className="flex items-center gap-1.5">
+              {i > 0 && <span aria-hidden className="text-zinc-500">→</span>}
+              <span className={`rounded-full border-2 border-noir px-2.5 py-1 ${STEP_TONES[i % STEP_TONES.length]} ${i % 2 ? "rotate-2" : "-rotate-2"}`}>{title}</span>
+            </li>
           ))}
-        </span>
+          {track.steps.length > SHOWN && <li className="rounded-full bg-zinc-800 px-2.5 py-1 text-zinc-300">+{track.steps.length - SHOWN} lagi</li>}
+        </ol>
       </a>
     </li>
   );
