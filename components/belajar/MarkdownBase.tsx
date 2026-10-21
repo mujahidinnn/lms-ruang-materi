@@ -2,7 +2,15 @@ import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { resolveSlideRef } from "@/lib/chapters";
 import { mediumSrc, type Slide } from "@/lib/slides";
-import type { ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
+import { headingId } from "@/lib/toc";
+
+// Plain text of rendered children, for heading ids.
+function textOf(node: ReactNode): string {
+  return Children.toArray(node)
+    .map((c) => (typeof c === "string" || typeof c === "number" ? String(c) : isValidElement<{ children?: ReactNode }>(c) ? textOf(c.props.children) : ""))
+    .join("");
+}
 
 // Chapter bodies are markdown from AI drafts or admins: raw HTML is never
 // rendered (no rehype-raw). `slide:N` image sources become slide embeds.
@@ -32,6 +40,8 @@ export default function MarkdownBase({
               </a>
             );
           },
+          // Ids match lib/toc.ts, so "Di bab ini" can link to each section.
+          h2: ({ children }) => <h2 id={headingId(textOf(children).replace(/[`*_]/g, ""))} className="scroll-mt-24">{children}</h2>,
           pre: ({ children }) => <>{children}</>,
           code: ({ className, children }) => {
             const text = String(children ?? "");
