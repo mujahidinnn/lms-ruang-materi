@@ -116,7 +116,8 @@ test("exam prep draws a set and checks each answer at once", async ({ page }) =>
 test("a code exercise fails the starter, then passes with the solution", async ({ page }) => {
   await page.goto("/belajar/nodejs/membangun-aplikasi-web-dan-rest-api");
   const card = page.locator('section[aria-labelledby^="kode-"]').first();
-  await expect(card.locator(".cm-content")).toBeVisible();
+  // CodeMirror loads as its own chunk after the island hydrates.
+  await expect(card.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
   await page.waitForLoadState("networkidle");
   const check = card.getByRole("button", { name: "Periksa" });
   await check.click();
