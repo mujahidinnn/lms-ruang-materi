@@ -1,5 +1,5 @@
 begin;
-select plan(107);
+select plan(122);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -795,6 +795,73 @@ select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-00
   '22023', null, 'passing code must be an object');
 select throws_ok($$ select public.pass_code_exercise('70000000-0000-0000-0000-000000000001', jsonb_build_object('code', repeat('x', 70000))) $$,
   '22023', null, 'passing code is size-limited');
+reset role;
+
+-- Final projects and certificates (2026-10-21).
+insert into public.topics (id, slug, title, status) values
+  ('10000000-0000-0000-0000-0000000000c1', 'uji-sertifikat', 'Sertifikat', 'published'),
+  ('10000000-0000-0000-0000-0000000000c2', 'uji-proyek-belum', 'Belum diuji', 'draft');
+insert into public.slides (topic_id, index, path, width, height, status) values
+  ('10000000-0000-0000-0000-0000000000c2', 1, 'x/y/slide-01.avif', 16, 9, 'published');
+insert into public.chapters (id, topic_id, position, slug, title, body, status) values
+  ('60000000-0000-0000-0000-0000000000c1', '10000000-0000-0000-0000-0000000000c1', 0, 'satu', 'Satu', 'Isi', 'published');
+insert into public.exams (id, topic_id, status, question_count) values
+  ('20000000-0000-0000-0000-0000000000c1', '10000000-0000-0000-0000-0000000000c1', 'published', 1);
+insert into public.projects (id, topic_id, status, kind, title, tests, verified_at) values
+  ('80000000-0000-0000-0000-0000000000c1', '10000000-0000-0000-0000-0000000000c1', 'published', 'js', 'Proyek', '[{"name": "a", "check": "true"}]', now()),
+  ('80000000-0000-0000-0000-0000000000c2', '10000000-0000-0000-0000-0000000000c1', 'draft', 'js', 'Draf', '[]', null),
+  ('80000000-0000-0000-0000-0000000000c3', '10000000-0000-0000-0000-0000000000c2', 'draft', 'js', 'Belum', '[]', null);
+
+update public.profiles set display_name = null where user_id = '00000000-0000-0000-0000-000000000001';
+set local role anon;
+select is((select count(*)::int from public.projects where topic_id = '10000000-0000-0000-0000-0000000000c1'), 1,
+  'a guest sees only the published project');
+select is((select count(*)::int from public.certificate_by_code('TIDAK-ADA')), 0, 'an unknown certificate code finds nothing');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select throws_ok($$ select public.pass_project('80000000-0000-0000-0000-0000000000c2', '{}') $$,
+  'P0002', null, 'a draft project cannot be passed');
+select lives_ok($$ select public.pass_project('80000000-0000-0000-0000-0000000000c1', '{"code": "x"}') $$, 'a learner passes the project');
+select is((public.certificate_status('10000000-0000-0000-0000-0000000000c1') ->> 'eligible')::boolean, false,
+  'not eligible before the chapters and the exam');
+select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1') $$,
+  'P0001', 'Isi nama tampilan di Profil dulu', 'a certificate needs a display name');
+update public.profiles set display_name = 'Murid Uji' where user_id = auth.uid();
+select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1') $$,
+  'P0001', 'Belum memenuhi syarat sertifikat', 'a named learner still needs the full path');
+select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000c1') $$, 'the chapter completes');
+reset role;
+-- A passed exam, written as postgres the way submit_exam_attempt would.
+insert into public.exam_attempts (user_id, exam_id, question_ids, option_orders, deadline, submitted_at, score, passed)
+values ('00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-0000000000c1', '{}', '[]', now(), now(), 100, true);
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+select is((public.certificate_status('10000000-0000-0000-0000-0000000000c1') ->> 'eligible')::boolean, true,
+  'eligible after chapters, exam and project');
+select matches(public.issue_certificate('10000000-0000-0000-0000-0000000000c1'), '^[0-9A-F]{5}-[0-9A-F]{5}$', 'issuing returns a code');
+select is(public.issue_certificate('10000000-0000-0000-0000-0000000000c1'),
+  (select code from public.certificates where user_id = auth.uid()), 'issuing again returns the same certificate');
+select throws_ok($$ insert into public.certificates (code, user_id, topic_id, name) values ('X', auth.uid(), '10000000-0000-0000-0000-000000000001', 'x') $$,
+  '42501', null, 'learners cannot write certificates directly');
+reset role;
+
+-- Anon cannot read certificates, so hand the code over in a setting.
+select set_config('uji.kode', (select code from public.certificates where user_id = '00000000-0000-0000-0000-000000000001'), true);
+set local role anon;
+select is((select name from public.certificate_by_code(current_setting('uji.kode'))), 'Murid Uji',
+  'the public page finds a certificate by code');
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000002", "role": "authenticated"}';
+select is((select count(*)::int from public.certificates), 0, 'another learner cannot read the certificate row');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", "role": "authenticated"}';
+select throws_ok($$ select public.publish_topic('uji-proyek-belum') $$,
+  'P0001', 'Proyek akhir belum lolos uji solusi', 'a topic with an unverified project cannot be published');
 reset role;
 
 select * from finish();
