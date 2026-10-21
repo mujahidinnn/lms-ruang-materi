@@ -64,8 +64,8 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
 
           {chapterSlides.length > 0 && (
             <div role="tablist" aria-label="Cara belajar" class="mt-6 inline-flex rounded-full border-2 border-noir bg-zinc-900 p-1 text-sm font-bold">
-              <button type="button" role="tab" data-mode="baca" aria-selected="true" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Baca</button>
-              <button type="button" role="tab" data-mode="slide" aria-selected="false" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Slide ({chapterSlides.length})</button>
+              <button type="button" role="tab" data-mode="baca" aria-selected="true" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Bacaan</button>
+              <button type="button" role="tab" data-mode="slide" aria-selected="false" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Versi slide ({chapterSlides.length})</button>
             </div>
           )}
 
@@ -97,7 +97,7 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
           </div>
           {chapterSlides.length > 0 && (
             <div data-mode-panel="slide" hidden class="mt-8">
-              <p class="mb-3 text-sm text-zinc-400">Slide {chapter.slideFrom} sampai {chapter.slideTo} dari deck {topic.title}. Penjelasan lengkapnya ada di mode Baca.</p>
+              <p class="mb-3 text-sm text-zinc-400">Slide {chapter.slideFrom} sampai {chapter.slideTo} dari deck {topic.title}. Penjelasan lengkapnya ada di Bacaan.</p>
               <div class="overflow-hidden rounded-[28px] bg-zinc-900 shadow-soft">
                 <PresentationViewer client:visible embedded presentation={{ slug, title: chapter.title, description: "", slideCount: chapterSlides.length, slides: chapterSlides }} />
               </div>
@@ -160,21 +160,14 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
   <CopyCode />
   <ReaderScripts />
   <script>
-    // Baca or Slide; the choice is remembered on this device.
-    const KEY = "ruang-materi:mode-bab";
+    // Every chapter opens on the written text; the slides are a second
+    // view for this visit only, so the text is never hidden by an old choice.
+    try { localStorage.removeItem("ruang-materi:mode-bab"); } catch {}
     const tabs = [...document.querySelectorAll<HTMLButtonElement>("[data-mode]")];
     function show(mode: string) {
       for (const t of tabs) t.setAttribute("aria-selected", String(t.dataset.mode === mode));
       for (const p of document.querySelectorAll<HTMLElement>("[data-mode-panel]")) p.hidden = p.dataset.modePanel !== mode;
     }
-    if (tabs.length) {
-      let saved = "baca";
-      try { saved = localStorage.getItem(KEY) ?? "baca"; } catch {}
-      show(saved);
-      for (const t of tabs) t.addEventListener("click", () => {
-        show(t.dataset.mode!);
-        try { localStorage.setItem(KEY, t.dataset.mode!); } catch {}
-      });
-    }
+    for (const t of tabs) t.addEventListener("click", () => show(t.dataset.mode!));
   </script>
 </Base>
