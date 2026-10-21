@@ -1,8 +1,8 @@
 ---
 import { Printer } from "lucide-react";
+import QRCode from "qrcode";
 import { LogoMark } from "@/components/brand/Logo";
-import { Passed } from "@/components/illustrations";
-import { secondaryButton, sticker } from "@/components/ui/styles";
+import { secondaryButton } from "@/components/ui/styles";
 import { getCertificate } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import Base from "../../layouts/Base.astro";
@@ -16,6 +16,13 @@ const cert = sample
 if (!cert) return Astro.rewrite("/404");
 const date = new Date(cert.issuedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
 const verify = `${SITE_URL}/sertifikat/${sample ? "contoh" : cert.code}`;
+// Scanning opens this same page, the proof that the certificate is real.
+const qr = await QRCode.toString(verify, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#0f100d", light: "#0000" } });
+
+// The paper keeps its own colours in both themes and in print.
+const INK = "#0f100d";
+const PAPER = "#fbfbf6";
+const RING = "RUANG MATERI · SERTIFIKAT KELAS · BELAJAR NGODING · ";
 ---
 
 {/* Public and shareable, but not indexed: it carries a learner's name. */}
@@ -27,7 +34,7 @@ const verify = `${SITE_URL}/sertifikat/${sample ? "contoh" : cert.code}`;
       main { padding: 0 !important; display: block !important; }
       .no-print { display: none !important; }
       /* Exactly one A4 page, nothing around it. */
-      .sheet { box-shadow: none; margin: 0; width: 297mm; max-width: none; height: 209.5mm; aspect-ratio: auto; border-radius: 0; break-inside: avoid; }
+      .sheet { box-shadow: none !important; margin: 0; width: 297mm; max-width: none; height: 209.5mm; aspect-ratio: auto; border-radius: 0; break-inside: avoid; }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
@@ -36,25 +43,73 @@ const verify = `${SITE_URL}/sertifikat/${sample ? "contoh" : cert.code}`;
       <a href="/" class="font-(family-name:--font-bricolage) text-lg font-extrabold">Ruang Materi</a>
       <button type="button" onclick="window.print()" class={secondaryButton}><Printer aria-hidden className="size-4" />Cetak atau simpan PDF</button>
     </div>
-    <article class="sheet relative w-full max-w-5xl overflow-hidden rounded-[32px] bg-noir p-6 text-on-noir shadow-soft sm:aspect-[297/210] sm:p-[5%]">
-      {sample && <span class="absolute bottom-[7%] right-[5%] z-10 rotate-[-8deg] rounded-xl border-4 border-matcha-300 px-4 py-1 font-(family-name:--font-bricolage) text-xl font-extrabold tracking-widest text-matcha-300 uppercase sm:text-3xl">Contoh</span>}
-      <div aria-hidden="true" class="pointer-events-none select-none">
-        <span class={`${sticker} absolute top-[7%] right-[24%] hidden rotate-6 bg-matcha-300 text-noir sm:inline-flex`}>lulus</span>
-        <Passed className="absolute top-4 right-4 size-16 rotate-12 sm:top-[5%] sm:right-[5%] sm:size-[16%]" />
+
+    <article class="sheet relative w-full max-w-5xl overflow-hidden shadow-soft sm:aspect-[297/210]" style={`background:${PAPER};color:${INK}`}>
+      {/* Double frame. */}
+      <div aria-hidden="true" class="pointer-events-none absolute inset-[2.2%] border" style={`border-color:${INK}22`}></div>
+      <div aria-hidden="true" class="pointer-events-none absolute inset-[3%] border-2" style="border-color:#b5d36f"></div>
+
+      <div class="relative grid h-full grid-cols-1 sm:grid-cols-[1fr_27%]">
+        {/* Left: who, what, when. */}
+        <div class="flex flex-col px-7 py-8 sm:py-[6.5%] sm:pr-[4%] sm:pl-[7.5%]">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <LogoMark className="size-10 -rotate-6" />
+              <span class="font-(family-name:--font-bricolage) text-xl font-extrabold tracking-tight">Ruang Materi</span>
+            </div>
+            <p class="text-sm" style={`color:${INK}99`}>{date}</p>
+          </div>
+
+          <p class="mt-[7%] text-xs font-semibold tracking-[0.3em] uppercase sm:text-sm" style="color:#46681c">Sertifikat kelas</p>
+          <p class="mt-4 text-sm sm:text-base" style={`color:${INK}aa`}>Diberikan kepada</p>
+          <h1 class="mt-1 font-(family-name:--font-bricolage) text-3xl leading-tight font-extrabold tracking-tight text-balance sm:text-[3.4rem]">{cert.name}</h1>
+          <div aria-hidden="true" class="mt-3 h-[3px] w-24 rounded-full" style="background:#b5d36f"></div>
+          <p class="mt-5 text-sm sm:text-base" style={`color:${INK}aa`}>telah menyelesaikan kelas</p>
+          <p class="mt-1 max-w-[95%] text-xl leading-snug font-bold text-balance sm:text-[1.7rem]">{cert.topicTitle}</p>
+          <p class="mt-3 max-w-[90%] text-xs leading-relaxed sm:text-sm" style={`color:${INK}88`}>
+            dengan menyelesaikan semua bab, lulus ujian akhir, dan menyelesaikan proyek akhir bila kelasnya punya.
+          </p>
+
+          <div class="mt-8 flex flex-wrap items-end justify-between gap-6 sm:mt-auto">
+            <div class="min-w-44">
+              <p class="font-(family-name:--font-signature) text-4xl leading-none sm:text-5xl">Ruang Materi</p>
+              <div class="mt-2 h-px w-52" style={`background:${INK}55`}></div>
+              <p class="mt-1.5 text-xs font-semibold">Tim Ruang Materi</p>
+              <p class="text-xs" style={`color:${INK}88`}>Penerbit sertifikat</p>
+            </div>
+            <div class="flex items-end gap-3">
+              <div class="text-right text-[11px] leading-snug sm:text-xs" style={`color:${INK}aa`}>
+                <p class="font-semibold" style={`color:${INK}`}>Pindai untuk cek keaslian</p>
+                <p class="mt-0.5 break-all">{verify.replace(/^https?:\/\//, "")}</p>
+                <p class="mt-0.5">Kode <span class="font-mono font-semibold" style={`color:${INK}`}>{cert.code}</span></p>
+              </div>
+              <a href={verify} aria-label="Buka halaman cek keaslian" class="block size-20 shrink-0 rounded-lg border bg-white p-1.5 sm:size-24 [&_svg]:size-full" style={`border-color:${INK}22`} set:html={qr} />
+            </div>
+          </div>
+        </div>
+
+        {/* Right: the ribbon band with the seal. */}
+        <div aria-hidden="true" class="relative hidden sm:block">
+          <div class="absolute inset-x-[14%] top-0 bottom-[16%]" style="background:linear-gradient(180deg,#b5d36f,#8fb447);clip-path:polygon(0 0,100% 0,100% 100%,50% 88%,0 100%)"></div>
+          <p class="absolute inset-x-0 top-[12%] text-center font-(family-name:--font-bricolage) text-sm font-extrabold tracking-[0.25em] uppercase" style={`color:${INK}`}>Sertifikat<br />kelas</p>
+          <svg viewBox="0 0 200 200" class="absolute top-[34%] left-1/2 w-[72%] -translate-x-1/2">
+            <defs><path id="ring" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0" /></defs>
+            <circle cx="100" cy="100" r="94" fill={PAPER} stroke={INK} stroke-width="3" />
+            <circle cx="100" cy="100" r="86" fill="none" stroke={INK} stroke-width="1" stroke-dasharray="2 4" />
+            <circle cx="100" cy="100" r="58" fill="none" stroke={INK} stroke-width="1.5" />
+            <text font-size="11.5" font-weight="800" letter-spacing="2.2" fill={INK} font-family="var(--font-bricolage)"><textPath href="#ring">{RING}</textPath></text>
+            <g transform="translate(70 70) scale(1.875)">
+              <rect width="32" height="32" rx="9" fill={INK} />
+              <path d="M15 5c.8 5.4 3.7 8.6 9.5 10-5.8 1.4-8.7 4.6-9.5 10-.8-5.4-3.7-8.6-9.5-10C11.3 13.6 14.2 10.4 15 5Z" fill="#b5d36f" />
+              <circle cx="24.5" cy="24.5" r="2.5" fill="#e3edc8" />
+            </g>
+          </svg>
+        </div>
       </div>
-      <div class="relative flex h-full flex-col">
-        <div class="flex items-center gap-3"><LogoMark className="size-10 -rotate-6" /><span class="font-(family-name:--font-bricolage) text-xl font-extrabold">Ruang Materi</span></div>
-        <p class="mt-[6%] text-sm font-semibold tracking-wide text-matcha-200 sm:text-base">Sertifikat kelas</p>
-        <h1 class="mt-2 max-w-[85%] text-3xl leading-[1.02] font-extrabold text-balance sm:text-6xl">{cert.topicTitle}</h1>
-        <p class="mt-[4%] text-sm text-on-noir/70 sm:text-base">diberikan kepada</p>
-        <p class="mt-1 font-(family-name:--font-bricolage) text-2xl font-extrabold sm:text-5xl"><span class="inline-block -rotate-1 rounded-2xl bg-matcha-300 px-3 text-noir">{cert.name}</span></p>
-        <p class="mt-[3%] max-w-[60%] text-xs text-on-noir/70 sm:text-sm">karena menyelesaikan semua bab, lulus ujian akhir, dan menyelesaikan proyek akhir bila kelasnya punya.</p>
-        <dl class="mt-8 flex flex-wrap gap-x-10 gap-y-2 text-xs sm:mt-auto sm:text-sm">
-          <div><dt class="text-on-noir/60">Tanggal</dt><dd class="font-semibold">{date}</dd></div>
-          <div><dt class="text-on-noir/60">Kode</dt><dd class="font-mono font-semibold">{cert.code}</dd></div>
-          <div><dt class="text-on-noir/60">Cek keaslian</dt><dd class="font-semibold break-all">{verify.replace(/^https?:\/\//, "")}</dd></div>
-        </dl>
-      </div>
+
+      {sample && (
+        <span class="absolute top-[16%] right-[33%] z-10 -rotate-12 rounded-xl border-4 px-5 py-1 font-(family-name:--font-bricolage) text-3xl font-extrabold tracking-[0.3em] uppercase opacity-80 sm:text-5xl" style="border-color:#c62828;color:#c62828">Contoh</span>
+      )}
     </article>
   </main>
 </Base>
