@@ -104,10 +104,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
                     : "Memeriksa syarat..."}
           </span>
           {!status?.code && (
-            <a href={contoh} className="group mt-3 block w-full max-w-64">
-              <img src={`${contoh.replace("/sertifikat/contoh?", "/sertifikat/contoh.svg?")}`} alt="" width={1123} height={794} loading="lazy" className="aspect-[1123/794] w-full rounded-md ring-1 ring-on-noir/20 transition-transform group-hover:-translate-y-0.5" />
-              <span className="mt-1.5 block text-sm font-semibold text-matcha-300 group-hover:underline">Lihat contoh sertifikat{nama ? " dengan namamu" : ""}</span>
-            </a>
+            <a href={contoh} className="mt-1.5 block text-sm font-semibold text-matcha-300 hover:underline">Lihat contoh sertifikat{nama ? " dengan namamu" : ""}</a>
           )}
           {error && <span role="alert" className="mt-1 block text-sm text-tile-pink">{error}</span>}
         </span>
