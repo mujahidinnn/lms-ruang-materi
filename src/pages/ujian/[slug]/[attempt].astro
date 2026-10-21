@@ -3,6 +3,8 @@ import Celebrate from "@/components/exam/Celebrate";
 import ExamReview, { type Review } from "@/components/exam/ExamReview";
 import ExamRunner, { type ExamQuestion } from "@/components/exam/ExamRunner";
 import { secondsLeft, timedOut } from "@/lib/exam";
+import { getTopic } from "@/lib/content";
+import { primaryButton } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import Base from "../../../layouts/Base.astro";
 import { signedIn } from "../../../lib/guard";
@@ -19,6 +21,7 @@ if (!a) return Astro.rewrite("/404");
 
 const review = a.submitted_at ? ((await db.rpc("exam_attempt_review", { p_attempt: a.id })).data as Review) : null;
 const late = !review && timedOut(a.deadline);
+const topic = review?.passed ? await getTopic(slug) : null;
 const questions = review || late ? null : ((await db.rpc("exam_attempt_questions", { p_attempt: a.id })).data as ExamQuestion[]);
 ---
 
@@ -30,6 +33,11 @@ const questions = review || late ? null : ((await db.rpc("exam_attempt_questions
           <a href={`/ujian/${slug}`} class="text-sm text-zinc-400 hover:text-zinc-50">Kembali ke ujian</a>
           <h1 class="sr-only">Hasil ujian</h1>
           {review.passed && <Celebrate client:load />}
+          {topic && (
+            <a href={topic.project ? `/belajar/${slug}/proyek` : `/belajar/${slug}#jalur`} class={`${primaryButton} mt-6 w-full sm:w-auto`}>
+              {topic.project ? "Lanjut ke proyek akhir" : "Lihat sertifikat di halaman kelas"}
+            </a>
+          )}
           <div class="mt-6"><ExamReview review={review} slug={slug} /></div>
         </div>
       ) : late ? (

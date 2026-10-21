@@ -1,0 +1,37 @@
+---
+import { ChevronRight } from "lucide-react";
+import { getTopic } from "@/lib/content";
+
+// Where this page sits on the class path, so practice, the exam and the
+// project never feel like detached pages. Static: no learner state here.
+type Props = { slug: string; current: "bab" | "latihan" | "ujian" | "proyek" };
+const { slug, current } = Astro.props;
+const topic = await getTopic(slug);
+const steps = topic
+  ? [
+      topic.chapters.length ? { key: "bab", label: `Bab (${topic.chapters.length})`, href: `/belajar/${slug}` } : { key: "bab", label: "Slide", href: `/belajar/${slug}` },
+      { key: "latihan", label: "Latihan ujian", href: `/latihan/${slug}` },
+      topic.hasExam && { key: "ujian", label: "Ujian akhir", href: `/ujian/${slug}` },
+      topic.project && { key: "proyek", label: "Proyek akhir", href: `/belajar/${slug}/proyek` },
+      { key: "sertifikat", label: "Sertifikat", href: `/belajar/${slug}#jalur` },
+    ].filter((s) => !!s)
+  : [];
+---
+
+{topic && (
+  <nav aria-label={`Jalur kelas ${topic.title}`}>
+    <a href={`/belajar/${slug}`} class="text-sm font-semibold text-zinc-400 hover:text-zinc-50">{topic.title}</a>
+    <ol class="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+      {steps.map((s, i) => (
+        <li class="flex items-center gap-1.5">
+          {i > 0 && <ChevronRight aria-hidden className="size-3.5 text-zinc-600" />}
+          <a
+            href={s.href}
+            aria-current={s.key === current ? "step" : undefined}
+            class:list={["inline-flex min-h-9 items-center rounded-full px-3", s.key === current ? "border-2 border-noir bg-matcha-300 text-noir" : "bg-zinc-900 text-zinc-300 shadow-soft hover:text-zinc-50"]}
+          >{s.label}</a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}

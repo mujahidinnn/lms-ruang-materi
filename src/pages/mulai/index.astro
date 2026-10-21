@@ -1,0 +1,51 @@
+---
+import { Welcome } from "@/components/illustrations";
+import { field } from "@/components/admin/editor";
+import { primaryButton, sticker } from "@/components/ui/styles";
+import { safeNext } from "@/lib/safe-next";
+import { createClient } from "@/lib/supabase/server";
+import SiteHeader from "../../components/SiteHeader.astro";
+import Base from "../../layouts/Base.astro";
+import { signedIn } from "../../lib/guard";
+
+// Once after the first sign-in: the name certificates show and the guardian
+// consent progress saving needs (require_consent), on one screen, so
+// progress is never dropped silently. Beranda saya sends learners here.
+const user = await signedIn(Astro);
+if (user instanceof Response) return user;
+const next = safeNext(Astro.url.searchParams.get("next"), "/dasbor");
+const { data: me } = await (await createClient()).from("profiles").select("display_name, guardian_consent").eq("user_id", user.id).single();
+if (me?.display_name?.trim() && me.guardian_consent) return Astro.redirect(next);
+const galat = Astro.url.searchParams.get("galat") === "1";
+---
+
+<Base title="Mulai" description="Isi nama dan persetujuan supaya progres belajarmu tersimpan." noindex>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-xl">
+        <div class="relative overflow-hidden rounded-[32px] bg-noir p-6 pt-16 text-on-noir ring-1 ring-zinc-800 sm:p-8 sm:pt-20">
+          <span aria-hidden="true" class={`${sticker} absolute top-5 left-6 inline-flex -rotate-3 bg-matcha-300 text-noir`}>satu langkah lagi</span>
+          <Welcome className="absolute -top-2 -right-3 size-24 rotate-12" />
+          <h1 class="relative text-4xl font-extrabold">Sebelum mulai</h1>
+          <p class="relative mt-2 text-on-noir/75">Isi nama dan persetujuan ini sekali saja. Setelah itu semua progres, kuis, dan latihan kodemu tersimpan.</p>
+        </div>
+        <form method="post" action="/rpc/mulai" class="mt-4 grid gap-5 rounded-[32px] bg-zinc-900 p-6 shadow-soft sm:p-8">
+          <input type="hidden" name="next" value={next} />
+          {galat && <p role="alert" class="rounded-2xl bg-tile-pink px-4 py-3 text-sm text-noir">Isi nama dan centang persetujuannya dulu.</p>}
+          <label class="text-sm font-medium text-zinc-300">
+            Nama tampilan
+            <span class="block text-xs font-normal text-zinc-500">Dipakai di sertifikat. Boleh nama panggilan.</span>
+            <input name="display_name" required maxlength="80" value={me?.display_name ?? ""} class={`${field} mt-2`} />
+          </label>
+          <label class="flex items-start gap-3 rounded-2xl bg-zinc-800/60 p-4 text-sm text-zinc-300">
+            <input type="checkbox" name="guardian_consent" required checked={!!me?.guardian_consent} class="mt-0.5 size-5 shrink-0 accent-(--accent)" />
+            Saya berusia 18 tahun ke atas, atau orang tua atau wali saya sudah setuju saya memakai Ruang Materi.
+          </label>
+          <button class={primaryButton}>Simpan dan mulai belajar</button>
+          <p class="text-xs text-zinc-500">Bisa diubah kapan saja di Profil. Data yang disimpan dijelaskan di <a href="/privasi" class="text-accent underline">Privasi</a>.</p>
+        </form>
+      </div>
+    </main>
+  </div>
+</Base>
