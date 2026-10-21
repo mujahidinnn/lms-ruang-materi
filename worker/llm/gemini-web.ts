@@ -110,13 +110,15 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, _model: string,
   if (await send.isEnabled().catch(() => false)) await send.click();
   else await p.keyboard.press("Enter");
 
-  // Done when the stop button is gone and the answer has not changed for 5 s.
+  // Done when the stop button is gone, the answer holds complete JSON, and it
+  // has not changed for 5 s. Pro pauses while thinking, so a quiet answer
+  // without JSON is still in progress.
   const answer = p.locator(SEL.response).last();
   await answer.waitFor({ timeout: 120_000 }).catch(() => {
     throw new ProviderError("Gemini did not answer");
   });
-  const deadline = Date.now() + 10 * 60_000;
-  let last = "", stableSince = Date.now();
+  const deadline = Date.now() + 15 * 60_000;
+  let last = "", stableSince = Date.now(), parsed: unknown = undefined;
   while (Date.now() < deadline) {
     await sleep(1000);
     const now = await answer.innerText().catch(() => "");
@@ -124,7 +126,21 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, _model: string,
     if (now !== last) {
       last = now;
       stableSince = Date.now();
-    } else if (!busy && now && Date.now() - stableSince > 5000) break;
+      parsed = undefined;
+      continue;
+    }
+    if (busy || Date.now() - stableSince < 5000) continue;
+    try {
+      parsed ??= extractJson(now);
+      break;
+    } catch {
+      // Not there yet.
+    }
   }
-  return { output: stripCitations(extractJson(last)), inputTokens: 0, outputTokens: 0 };
+  if (parsed === undefined) {
+    // On the owner's machine only, for a look at what Gemini showed.
+    await p.screenshot({ path: join(PROFILE, `gagal-${Date.now()}.png`), fullPage: true }).catch(() => {});
+    parsed = extractJson(last);
+  }
+  return { output: stripCitations(parsed), inputTokens: 0, outputTokens: 0 };
 }

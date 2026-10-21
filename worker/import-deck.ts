@@ -91,8 +91,13 @@ try {
     return r.output;
   };
 
-  // Stage 1: the class and its outline.
-  const cls = classSchema.safeParse(repairClass(await call(buildClassPrompt(known, current), classJsonSchema), slides.length));
+  // Stage 1: the class and its outline, one retry like the chapters.
+  const stage1 = async () => classSchema.safeParse(repairClass(await call(buildClassPrompt(known, current), classJsonSchema), slides.length));
+  let cls = await stage1().catch((e) => {
+    if (e instanceof ProviderError) return null;
+    throw e;
+  });
+  if (!cls?.success) cls = await stage1();
   if (!cls.success) {
     // Paths and codes only, no values.
     const where = cls.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
