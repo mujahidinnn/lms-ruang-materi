@@ -322,7 +322,7 @@ src/
     ujian/[slug]/        exam intro, [attempt] runner and result
     nilai, dasbor, profil   signed-in pages (AppShell)
     masuk/               login (magic link or password), callback.ts
-    template, privasi    portfolio template gallery, privacy page (UU PDP)
+    privasi              privacy page (UU PDP)
     admin/               content management (admin role): impor, topik, roadmap, ujian
     rpc/[name].ts        the one endpoint for server functions (lib/actions)
     sitemap.xml.ts, robots.txt.ts, manifest.webmanifest.ts, 404.astro, 500.astro
@@ -335,8 +335,6 @@ components/
   <feature>/             React, one folder per feature: roadmap/, quiz/, flashcard/, admin/ ...
   illustrations/         inline SVG illustrations (see Illustrations)
   ui/                    shared primitives used by 2+ features
-data/
-  templates.ts           portfolio template list (static, stays in git)
 lib/                     helpers, no Astro imports
   actions/               server functions the browser calls (former Server Actions); index.ts lists them
   rpc.ts, rpc-wire.ts    browser side of /rpc: rpc("name") has the server function's signature
@@ -361,7 +359,7 @@ worker/
 supabase/
   migrations/            schema, RLS policies, functions
   tests/security_smoke.sql
-public/                  templates/, template-previews/, icons/, sw.js, offline.html, opengraph-image.png
+public/                  icons/, sw.js, offline.html, opengraph-image.png
 scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 ```
 
@@ -369,12 +367,11 @@ scripts/                 one-off: migrate the 13 existing decks to Storage + DB
 
 | Feature | Route | Data | Components | Status |
 | --- | --- | --- | --- | --- |
-| Landing | `src/pages/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser (phase 9) |
+| Landing | `src/pages/page.tsx` | `tracks`, `topics` | `components/landing/` | hero folder, roadmap cards, all topics, template teaser removed 2026-10-21 (phase 9) |
 | Belajar | `src/pages/belajar/[slug]` | `topics`, `slides`, `tips` | `PresentationViewer` | slides from DB and Storage (phase 3); summary and tips under the viewer (phase 5); opening it writes `progress` `sedang`, "Mulai latihan" (phase 6) |
 | Kelas and bab | `src/pages/belajar/[slug]`, `src/pages/belajar/[slug]/[bab]`, `src/pages/belajar/[slug]/slide` | `chapters`, `chapter_questions`, `chapter_progress` | `components/belajar/` (`CourseView`, `ChapterMarkdown`/`MarkdownBase`, `ChapterQuiz`, `ChapterSyllabus`) | built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-chapters-design.md`); a topic with published chapters is a course, chapters open in any order, a chapter is done when its quiz is all correct |
 | Simulasi ujian and feedback | `src/pages/latihan/[slug]/persiapan`, `components/quiz/PracticeQuiz.tsx` | `practice_questions`, `chapter_questions`, `exams.pass_score` | `lib/feedback.ts` (Web Audio sounds, canvas-confetti), `components/quiz/SoundToggle.tsx` | built 2026-10-11; latihan checks each answer the moment it is tapped; simulasi draws 20 random questions and scores them against the pass score; confetti and a fanfare on a win, a finished chapter and a passed exam, off under reduced motion, sound mutable |
 | Latihan kode | `src/pages/belajar/[slug]/[bab]`, admin `src/pages/admin/topik/[slug]` | `code_exercises`, `code_progress` | `components/code/` (`CodeExercise`, `CodeEditor`, `useSandbox`), `lib/code/` (`sandbox-doc`, `express-shim`, `check-node`) | phase 2a built 2026-10-11 (spec `docs/superpowers/specs/2026-10-11-code-practice-design.md`): kinds `web`, `js`, `express`; learner code and checks run only in a `sandbox="allow-scripts"` iframe with a 3 s limit; a chapter with exercises completes only when every exercise has passed; the worker drafts 0 to 2 per chapter and runs js/express solutions in a locked-down child process (`node --permission`, empty env, no string code generation), dropping ones that fail; `sql` and `git` kinds come in phases 2b and 2c |
-| Template gallery | `src/pages/template` | `data/templates.ts` | `TemplateGallery` | built on `/template` (phase 9) |
 | Roadmap | `src/pages/roadmap` | `tracks`, `track_nodes`, `track_edges` | `components/roadmap/` | graph, list and panel built (phase 5); node states from `progress` and Latihan/Flashcard links (phase 6); "Sudah paham? Langsung ujian" (phase 7) |
 | Latihan | `src/pages/latihan/[slug]` | `practice_questions`, `practice_sessions` | `components/quiz/` | built (phase 6); "Coba ujian" when the topic has a published exam (phase 7) |
 | Flashcard | `src/pages/flashcard` | `flashcards`, `flashcard_reviews`, `flashcard_queue()` | `components/flashcard/` | built (phase 6) |
@@ -537,8 +534,6 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
   database.
 - **Exam**: drafted by the import, edited in `/admin/ujian`. Answer keys live
   only in `exam_questions` and never leave the database except to admins.
-- **Template**: `.html` in `public/templates/`, a 16:9 AVIF in
-  `public/template-previews/`, an entry in `data/templates.ts`.
 
 ## Adding Code
 
@@ -676,7 +671,7 @@ setup lives in `src/layouts/Base.astro` (meta, Open Graph, Twitter),
 `lib/site.ts` (name, URL, description), `src/pages/sitemap.xml.ts`,
 `src/pages/robots.txt.ts` and `public/opengraph-image.png`.
 
-- **Indexed**: landing, `roadmap`, `belajar`, `latihan`, `template`,
+- **Indexed**: landing, `roadmap`, `belajar`, `latihan`,
   `privasi`.
   **Not indexed**: `admin`, `offline`, `flashcard`, `ujian`, `nilai`,
   `dasbor`, `masuk`, `profil`, `sertifikat`.
@@ -912,10 +907,6 @@ UI. The UI only hides actions the database would refuse.
   `import` from a raw route param.
 - **No `dangerouslySetInnerHTML`** for content, questions or answers. Code in
   questions renders in `<pre><code>` as text.
-- **Templates run in a sandbox.** The preview `<iframe>` uses
-  `sandbox="allow-scripts allow-popups"`. Never add `allow-same-origin` next
-  to `allow-scripts`. Review any new template `.html` for external scripts
-  and trackers before adding it.
 - **Scripts use `execFile`, never `exec`.** File names are passed as
   arguments, not interpolated into a shell string.
 - **Redirects after login** only go to a relative path starting with `/`, so
@@ -944,8 +935,8 @@ UI. The UI only hides actions the database would refuse.
   writes once.
 - **Security headers** in `vercel.json`: `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, and
-  `Content-Security-Policy: frame-ancestors 'self'`. Not `X-Frame-Options:
-  DENY`, it would break the template preview iframe.
+  `Content-Security-Policy: frame-ancestors 'none'`: no page of the site is
+  framed (the code sandbox is a `srcdoc` iframe, not a site URL).
 
 ## Privacy (UU PDP)
 

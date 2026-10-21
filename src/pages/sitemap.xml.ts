@@ -10,7 +10,6 @@ export const GET: APIRoute = async () => {
   const entries: Entry[] = [
     { url: SITE_URL, changeFrequency: "monthly", priority: 1 },
     { url: `${SITE_URL}/privasi`, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${SITE_URL}/template`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/roadmap`, changeFrequency: "weekly", priority: 0.9 },
     ...tracks.map((track) => ({ url: `${SITE_URL}/roadmap/${track.slug}`, changeFrequency: "weekly", priority: 0.9 })),
     ...presentations
