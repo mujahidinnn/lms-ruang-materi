@@ -43,7 +43,7 @@ test("a learning path opens a track and a class panel", async ({ page }) => {
 });
 
 test("the slide viewer moves to the next slide", async ({ page, isMobile }) => {
-  await page.goto("/belajar/github");
+  await page.goto("/belajar/github/slide");
   await page.waitForLoadState("networkidle"); // a key press before hydration is lost
   const stage = page.locator("img[srcset]").first();
   await expect(stage).toHaveAttribute("alt", /slide 1 dari/);
