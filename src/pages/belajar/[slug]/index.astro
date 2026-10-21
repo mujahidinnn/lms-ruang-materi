@@ -1,5 +1,5 @@
 ---
-import { ChevronLeft, Layers, ListChecks } from "lucide-react";
+import { ChevronLeft, Layers, ListChecks, PanelRight } from "lucide-react";
 import BelajarViewer from "@/components/belajar/BelajarViewer";
 import CourseView from "@/components/belajar/CourseView";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -38,18 +38,24 @@ const { title, description } = presentation;
               <li class="rounded-full bg-zinc-900 px-3 py-1 text-zinc-300 shadow-soft tabular-nums">{presentation.slideCount} slide</li>
             </ul>
           </header>
-          {/* Wide screens: the deck left, what to take from it beside it. */}
-          <div class="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          {/* The deck takes the full width; Ringkasan and Tips open beside it
+              on demand (a checkbox, so no script). */}
+          <div class="group">
+          <div class="mt-6 flex flex-wrap items-center gap-2">
+            {presentation.practiceCount > 0 && <a href={`/latihan/${slug}`} class={primaryButton}><ListChecks aria-hidden className="size-4" />Latihan ujian</a>}
+            {presentation.cardCount > 0 && <a href={`/flashcard/${slug}`} class={secondaryButton}><Layers aria-hidden className="size-4" />Flashcard ({presentation.cardCount})</a>}
+            {(presentation.summary || presentation.tips.length > 0) && (
+              <label class={`${secondaryButton} cursor-pointer has-checked:bg-noir has-checked:text-on-noir has-focus-visible:outline-2 has-focus-visible:outline-accent`}>
+                <input id="info" type="checkbox" class="sr-only" />
+                <PanelRight aria-hidden className="size-4" />Ringkasan dan tips
+              </label>
+            )}
+          </div>
+          <div class="mt-4 grid items-start gap-6 lg:group-has-[#info:checked]:grid-cols-[minmax(0,1fr)_340px]">
             <div class="overflow-hidden rounded-[28px] shadow-soft"><BelajarViewer client:load embedded presentation={presentation} /></div>
-            <aside class="grid gap-4 lg:sticky lg:top-6">
-              {(presentation.practiceCount > 0 || presentation.cardCount > 0) && (
-                <div class="flex flex-wrap gap-2">
-                  {presentation.practiceCount > 0 && <a href={`/latihan/${slug}`} class={primaryButton}><ListChecks aria-hidden className="size-4" />Latihan ujian</a>}
-                  {presentation.cardCount > 0 && <a href={`/flashcard/${slug}`} class={secondaryButton}><Layers aria-hidden className="size-4" />Flashcard ({presentation.cardCount})</a>}
-                </div>
-              )}
+            <aside class="hidden gap-4 group-has-[#info:checked]:grid lg:sticky lg:top-6">
               {presentation.summary && (
-                <details open class="group rounded-[28px] bg-zinc-900 p-6 shadow-soft">
+                <details open class="rounded-[28px] bg-zinc-900 p-6 shadow-soft">
                   <summary class="cursor-pointer list-none text-xl font-bold tracking-tight">Ringkasan</summary>
                   <div class="mt-3 max-h-80 space-y-3 overflow-y-auto pr-1 text-sm leading-relaxed text-zinc-300 scrollbar-thin">
                     {presentation.summary.split(/\n\s*\n/).map((p) => <p>{p}</p>)}
@@ -67,6 +73,7 @@ const { title, description } = presentation;
                 </div>
               )}
             </aside>
+          </div>
           </div>
         </div>
       </main>
