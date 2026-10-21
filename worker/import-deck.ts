@@ -12,7 +12,7 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { isAllowedModel } from "../lib/llm.ts";
 import { providers } from "./llm/index.ts";
-import { buildPrompt, draftSchema, repairDraft, validateExercises, type Draft } from "./prompt.ts";
+import { buildPrompt, draftJsonSchema, draftSchema, repairDraft, validateExercises, type Draft } from "./prompt.ts";
 
 const run = promisify(execFile);
 const jobId = process.argv[process.argv.indexOf("--job-id") + 1] ?? "";
@@ -64,7 +64,7 @@ try {
   const pdf = await readFile(path.join(work, "deck.pdf"));
   const known = must(await db.from("topics").select("slug"), "slugs").map((t) => t.slug).filter((s) => s !== job.slug);
   const generate = await providers[job.provider]();
-  const result = await generate(pdf, buildPrompt(known), job.model);
+  const result = await generate(pdf, buildPrompt(known), job.model, draftJsonSchema);
 
   const parsed = draftSchema.safeParse(repairDraft(result.output, slides.length));
   if (!parsed.success) {

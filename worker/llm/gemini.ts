@@ -1,9 +1,9 @@
 import { FinishReason, GoogleGenAI, createPartFromUri } from "@google/genai";
-import { draftJsonSchema, type Prompt } from "../prompt.ts";
+import type { Prompt } from "../prompt.ts";
 import { simpleSchema } from "./schema.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
-export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult> {
+export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string, jsonSchema: unknown): Promise<DraftResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
   // Files API instead of inline data: decks can pass the 20 MB inline limit.
@@ -19,7 +19,7 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
       config: {
         systemInstruction: prompt.system,
         responseMimeType: "application/json",
-        responseJsonSchema: simpleSchema(draftJsonSchema),
+        responseJsonSchema: simpleSchema(jsonSchema),
         maxOutputTokens: 32768,
         // Free tier often answers 503 (busy). Every retry counts against the daily
         // quota (20 requests per model on the free tier), so keep it short.

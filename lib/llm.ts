@@ -4,6 +4,10 @@ export const LLM_MODELS: Record<string, string[]> = {
   gemini: ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"],
   // Free variants with structured_outputs, from openrouter.ai/api/v1/models.
   openrouter: ["nvidia/nemotron-3-super-120b-a12b:free", "dots-studio/dots-3-note-preview:free"],
+  // Gemini in a signed-in Chrome, driven by worker/llm/gemini-web.ts on the
+  // owner's machine. Not in LLM_PROVIDERS on Vercel, so /admin/impor never
+  // offers it.
+  "gemini-web": ["web"],
 };
 
 export function isAllowedModel(provider: string, model: string): boolean {

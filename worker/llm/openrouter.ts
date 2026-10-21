@@ -1,10 +1,10 @@
-import { draftJsonSchema, type Prompt } from "../prompt.ts";
+import type { Prompt } from "../prompt.ts";
 import { simpleSchema } from "./schema.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
 // OpenAI-compatible chat API, plain fetch. The free cloudflare-ai parser
 // turns the PDF into text, so slide images are not read.
-export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult> {
+export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string, jsonSchema: unknown): Promise<DraftResult> {
   const body = JSON.stringify({
     model,
     messages: [
@@ -20,7 +20,7 @@ export async function generateDraft(pdf: Buffer, prompt: Prompt, model: string):
     plugins: [{ id: "file-parser", pdf: { engine: "cloudflare-ai" } }],
     response_format: {
       type: "json_schema",
-      json_schema: { name: "draft", strict: true, schema: simpleSchema(draftJsonSchema) },
+      json_schema: { name: "draft", strict: true, schema: simpleSchema(jsonSchema) },
     },
     provider: { require_parameters: true },
     max_tokens: 32000,
