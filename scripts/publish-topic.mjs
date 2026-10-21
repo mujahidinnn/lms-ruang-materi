@@ -6,6 +6,7 @@
 // The placement adds a node right after --after (later nodes shift by one),
 // an edge from that node, and republishes the track.
 import { createClient } from "@supabase/supabase-js";
+import { steadyFetch } from "../lib/steady-fetch.ts";
 
 const env = process.env;
 const args = process.argv.slice(2);
@@ -13,7 +14,7 @@ const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : unde
 const slug = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 if (!slug) throw new Error("usage: publish:topic -- <slug> [--track <slug> --after <slug>]");
 
-const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } });
+const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false }, global: { fetch: steadyFetch } });
 const { error: loginError } = await db.auth.signInWithPassword({ email: env.DEV_ADMIN_EMAIL, password: env.DEV_ADMIN_PASSWORD });
 if (loginError) throw new Error(`login: ${loginError.message}`);
 // A failed sign-in would otherwise run every call below as anon.

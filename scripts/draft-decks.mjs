@@ -14,13 +14,14 @@
 import { spawn } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { countSlides } from "../lib/pptx.ts";
+import { steadyFetch } from "../lib/steady-fetch.ts";
 
 const env = process.env;
 const [provider, model] = (env.IMPORT_MODEL ?? `${env.LLM_PROVIDER}:${env.LLM_MODEL}`).split(/:(.*)/);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
-const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } });
+const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false }, global: { fetch: steadyFetch } });
 const { error: loginError } = await db.auth.signInWithPassword({ email: env.DEV_ADMIN_EMAIL, password: env.DEV_ADMIN_PASSWORD });
 if (loginError) throw new Error(`login: ${loginError.message}`);
 

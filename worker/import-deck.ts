@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { isAllowedModel } from "../lib/llm.ts";
+import { steadyFetch } from "../lib/steady-fetch.ts";
 import { providers } from "./llm/index.ts";
 import { ProviderError } from "./llm/types.ts";
 import {
@@ -42,6 +43,7 @@ if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(jobId
 
 const db = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
+  global: { fetch: steadyFetch },
 });
 const t0 = Date.now();
 const log = (msg: string) => console.log(`[${jobId}] ${msg} +${Math.round((Date.now() - t0) / 1000)}s`);
