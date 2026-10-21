@@ -72,6 +72,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
                     ? `Selesaikan ${needs.join(", ")}.`
                     : "Memeriksa syarat..."}
           </span>
+          {!status?.code && <a href={`/sertifikat/contoh?kelas=${encodeURIComponent(topic.title)}`} className="mt-1 block text-sm font-semibold text-matcha-300 hover:underline">Lihat contoh sertifikat</a>}
           {error && <span role="alert" className="mt-1 block text-sm text-tile-pink">{error}</span>}
         </span>
         {status?.code ? (

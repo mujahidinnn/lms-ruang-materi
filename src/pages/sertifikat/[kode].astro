@@ -7,14 +7,19 @@ import { getCertificate } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import Base from "../../layouts/Base.astro";
 
-const cert = await getCertificate(Astro.params.kode ?? "");
+// /sertifikat/contoh: what learners earn, with sample data and a clear label.
+const sample = Astro.params.kode === "contoh";
+const kelas = Astro.url.searchParams.get("kelas")?.slice(0, 80);
+const cert = sample
+  ? { code: "CONTOH", name: "Nama Kamu", topicTitle: kelas || "Pemrograman Python: Dari Nol sampai Proyek Mini", issuedAt: new Date().toISOString() }
+  : await getCertificate(Astro.params.kode ?? "");
 if (!cert) return Astro.rewrite("/404");
 const date = new Date(cert.issuedAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
 const verify = `${SITE_URL}/sertifikat/${cert.code}`;
 ---
 
 {/* Public and shareable, but not indexed: it carries a learner's name. */}
-<Base title={`Sertifikat ${cert.topicTitle}`} description={`Sertifikat kelas ${cert.topicTitle} di Ruang Materi atas nama ${cert.name}.`} noindex>
+<Base title={sample ? "Contoh sertifikat" : `Sertifikat ${cert.topicTitle}`} description={`Sertifikat kelas ${cert.topicTitle} di Ruang Materi atas nama ${cert.name}.`} noindex>
   <style is:global>
     @page { size: A4 landscape; margin: 0; }
     @media print {
@@ -32,6 +37,7 @@ const verify = `${SITE_URL}/sertifikat/${cert.code}`;
       <button type="button" onclick="window.print()" class={secondaryButton}><Printer aria-hidden className="size-4" />Cetak atau simpan PDF</button>
     </div>
     <article class="sheet relative w-full max-w-5xl overflow-hidden rounded-[32px] bg-noir p-6 text-on-noir shadow-soft sm:aspect-[297/210] sm:p-[5%]">
+      {sample && <span class="absolute bottom-[7%] right-[5%] z-10 rotate-[-8deg] rounded-xl border-4 border-matcha-300 px-4 py-1 font-(family-name:--font-bricolage) text-xl font-extrabold tracking-widest text-matcha-300 uppercase sm:text-3xl">Contoh</span>}
       <div aria-hidden="true" class="pointer-events-none select-none">
         <span class={`${sticker} absolute top-[7%] right-[24%] hidden rotate-6 bg-matcha-300 text-noir sm:inline-flex`}>lulus</span>
         <Passed className="absolute top-4 right-4 size-16 rotate-12 sm:top-[5%] sm:right-[5%] sm:size-[16%]" />
