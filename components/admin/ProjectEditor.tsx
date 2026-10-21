@@ -44,7 +44,7 @@ export default function ProjectEditor({ p }: { p: ProjectRow }) {
     } catch {
       return setOut({ logs: [], results: [], error: "JSON tidak valid" });
     }
-    if (kind !== "web" && kind !== "js" && kind !== "express") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
+    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
     const r = await run({ kind, setup, ...input });
     setOut(r);
     // Only the saved version can be marked; unsaved edits would not match.
@@ -67,6 +67,7 @@ export default function ProjectEditor({ p }: { p: ProjectRow }) {
               <option value="web">Web</option>
               <option value="js">JavaScript</option>
               <option value="express">Express</option>
+              <option value="python">Python</option>
             </select>
           </label>
         </div>

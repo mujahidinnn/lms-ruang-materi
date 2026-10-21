@@ -9,7 +9,8 @@ export type RunInput = { kind: SandboxKind; files: ExerciseFiles; setup: string;
 
 // Runs one exercise in a sandboxed iframe (scripts only, no same-origin).
 // Web exercises reuse the visible preview iframe; the rest get a hidden one
-// that is removed afterwards. A run over 3 s is cut off.
+// that is removed afterwards. A run over 3 s is cut off; Python gets 60 s to
+// load, then the same 3 s once it reports ready.
 export function useSandbox() {
   const run = useCallback(
     (input: RunInput) =>
@@ -30,13 +31,19 @@ export function useSandbox() {
         };
         const onMessage = (e: MessageEvent) => {
           if (e.source !== frame.contentWindow || e.data?.nonce !== nonce) return;
+          if (e.data.ready) return arm(3000);
           finish({ logs: e.data.logs ?? [], results: e.data.results ?? [], error: e.data.error });
         };
-        const timer = setTimeout(() => {
-          // Replacing the document stops a runaway loop in the old one.
-          frame.srcdoc = "";
-          finish({ logs: [], results: [], error: "Kode berjalan terlalu lama" });
-        }, 3000);
+        let timer: ReturnType<typeof setTimeout>;
+        const arm = (ms: number) => {
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            // Replacing the document stops a runaway loop in the old one.
+            frame.srcdoc = "";
+            finish({ logs: [], results: [], error: "Kode berjalan terlalu lama" });
+          }, ms);
+        };
+        arm(input.kind === "python" ? 60_000 : 3000);
         window.addEventListener("message", onMessage);
         frame.srcdoc = buildSandboxDoc({ ...input, nonce });
       }),

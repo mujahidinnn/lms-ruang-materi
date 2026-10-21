@@ -15,7 +15,7 @@ const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
 const editorSkeleton = <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
-const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"] };
+const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"] };
 const LANG: Record<Part, EditorLanguage> = { html: "html", css: "css", js: "javascript", code: "javascript" };
 const LABEL: Record<Part, string> = { html: "HTML", css: "CSS", js: "JS", code: "Kode" };
 
@@ -92,6 +92,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
 
   async function go(withChecks: boolean) {
     setBusy(true);
+    if (ex.kind === "python" && !out) setOut({ logs: ["Menyiapkan Python (sekali per kunjungan, beberapa detik)..."], results: [] });
     const r = await run({ kind: ex.kind, files, setup: ex.setup, tests: withChecks ? ex.tests : [], previewEl: ex.kind === "web" ? preview.current : null });
     setOut(r);
     setBusy(false);
@@ -142,7 +143,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
       <div className="mt-3">
         {mounted ? (
           <Suspense fallback={editorSkeleton}>
-            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={LANG[part]} label={`Editor ${LABEL[part]}`} />
+            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={ex.kind === "python" ? "python" : LANG[part]} label={`Editor ${LABEL[part]}`} />
           </Suspense>
         ) : editorSkeleton}
       </div>

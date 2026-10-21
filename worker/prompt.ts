@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { runChecksNode } from "../lib/code/check-node.ts";
+import { runChecksPython } from "../lib/code/check-python.ts";
 
 // One schema for every provider. Whatever a provider returns is parsed with
 // it before anything reaches the database.
@@ -20,7 +21,7 @@ const question = z
 const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
 
 const exercise = z.object({
-  kind: z.enum(["web", "js", "express"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express"),
+  kind: z.enum(["web", "js", "express", "python"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express, python untuk Python 3"),
   title: z.string().min(1).max(120),
   prompt: z.string().min(1).describe("Instruksi markdown singkat: apa yang dibuat dan hasil yang diharapkan"),
   starter: files.describe("Kode awal untuk murid: html, css, js untuk web; code untuk js dan express"),
@@ -33,7 +34,7 @@ const exercise = z.object({
         check: z
           .string()
           .min(1)
-          .describe("Satu ekspresi JavaScript yang bernilai true bila benar. web: periksa document. express: boleh (await request('GET', '/path')).status"),
+          .describe("Satu ekspresi yang bernilai true bila benar, JavaScript (python: ekspresi Python). web: periksa document. express: boleh (await request('GET', '/path')).status"),
       })
     )
     .min(1)
@@ -91,7 +92,7 @@ const outlineItem = z.object({
   slide_from: z.int().min(1),
   slide_to: z.int().min(1),
   goals: z.array(z.string().min(1)).min(2).max(4).describe("Tujuan belajar bab, kalimat pendek"),
-  code_kind: z.enum(["web", "js", "express", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
+  code_kind: z.enum(["web", "js", "express", "python", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
 });
 export type Outline = z.infer<typeof outlineItem>;
 
@@ -170,7 +171,8 @@ export function repairChapter(output: unknown): unknown {
 // exercises cannot run here and are left for admin review ("Uji solusi").
 export async function failingChecks(e: Exercise): Promise<string[]> {
   if (e.kind === "web") return [];
-  const r = await runChecksNode({ kind: e.kind, code: e.solution.code ?? "", setup: e.setup, tests: e.tests });
+  const input = { code: e.solution.code ?? "", setup: e.setup, tests: e.tests };
+  const r = e.kind === "python" ? await runChecksPython(input) : await runChecksNode({ ...input, kind: e.kind });
   return r.error ? e.tests.map((t) => t.name) : r.results.filter((x) => !x.pass).map((x) => x.name);
 }
 

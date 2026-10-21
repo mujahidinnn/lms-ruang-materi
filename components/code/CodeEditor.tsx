@@ -3,12 +3,13 @@
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
 import { EditorView, basicSetup } from "codemirror";
 import { useEffect, useRef } from "react";
 
-const LANG = { html, css, javascript };
+const LANG = { html, css, javascript, python };
 
 // Token colors are CSS variables (globals.css) so they follow the theme;
 // basicSetup's default style is only a fallback.

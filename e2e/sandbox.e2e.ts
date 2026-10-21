@@ -3,20 +3,20 @@ import type { Check } from "../lib/code/check-node";
 import { buildSandboxDoc, type ExerciseFiles, type SandboxKind } from "../lib/code/sandbox-doc";
 
 // The sandbox document on a blank page, run the way useSandbox runs it.
-async function run(page: Page, kind: SandboxKind, files: ExerciseFiles, tests: Check[], setup = "") {
+async function run(page: Page, kind: SandboxKind, files: ExerciseFiles, tests: Check[], setup = "", ms = 3000) {
   await page.setContent("<button id='b' onclick=\"this.textContent='ok'\">tes</button>");
   const doc = buildSandboxDoc({ kind, files, setup, tests, nonce: "n" });
   return page.evaluate(
-    (doc) =>
+    ([doc, ms]) =>
       new Promise<{ logs: string[]; results: { name: string; pass: boolean; error?: string }[]; error?: string }>((resolve) => {
         const f = document.createElement("iframe");
         f.setAttribute("sandbox", "allow-scripts");
-        const t = setTimeout(() => (f.remove(), resolve({ logs: [], results: [], error: "Kode berjalan terlalu lama" })), 3000);
-        addEventListener("message", (e) => e.data?.nonce === "n" && (clearTimeout(t), f.remove(), resolve(e.data)));
+        const t = setTimeout(() => (f.remove(), resolve({ logs: [], results: [], error: "Kode berjalan terlalu lama" })), ms);
+        addEventListener("message", (e) => e.data?.nonce === "n" && !e.data.ready && (clearTimeout(t), f.remove(), resolve(e.data)));
         f.srcdoc = doc;
         document.body.append(f);
       }),
-    doc
+    [doc, ms] as const
   );
 }
 
@@ -57,4 +57,13 @@ test("a throwing check fails with its error; express still works", async ({ page
   expect(r.results[0].pass).toBe(true);
   expect(r.results[1]).toMatchObject({ pass: false });
   expect(r.results[1].error).toMatch(/tidakAda/);
+});
+
+test("python runs on Pyodide: prints, checks, and the last traceback line as the error", async ({ page }) => {
+  test.setTimeout(90_000);
+  const ok = await run(page, "python", { code: "def kuadrat(x):\n    return x * x\nprint('halo')" }, [{ name: "4", check: "kuadrat(2) == 4" }, { name: "salah", check: "kuadrat(3) == 10" }], "", 60_000);
+  expect(ok.logs).toContain("halo");
+  expect(ok.results).toEqual([{ name: "4", pass: true }, { name: "salah", pass: false }]);
+  const bad = await run(page, "python", { code: "print(belum_ada)" }, [], "", 60_000);
+  expect(bad.error).toMatch(/^NameError/);
 });

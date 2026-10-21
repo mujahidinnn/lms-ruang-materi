@@ -132,7 +132,7 @@ type ChapterRow = {
 
 // Kinds this build can run (sql and git arrive in later phases); an
 // exercise without checks is unfinished. Same rule as counted_exercise().
-const RUNNABLE = new Set<string>(["web", "js", "express"]);
+const RUNNABLE = new Set<string>(["web", "js", "express", "python"]);
 
 export function getChapter(topicSlug: string, chapterSlug: string): Promise<Chapter | null> {
   return cached(`getChapter:${JSON.stringify([topicSlug, chapterSlug])}`, async () => {

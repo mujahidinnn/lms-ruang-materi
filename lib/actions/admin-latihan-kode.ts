@@ -17,7 +17,7 @@ export async function simpanLatihanKode(form: FormData) {
       id: z.uuid(),
       topic: z.string(),
       title: z.string().trim().min(1).max(120),
-      kind: z.enum(["web", "js", "express"]),
+      kind: z.enum(["web", "js", "express", "python"]),
       prompt: z.string().min(1),
       starter: json(files),
       solution: json(files),

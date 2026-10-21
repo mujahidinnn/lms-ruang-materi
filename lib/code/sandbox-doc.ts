@@ -4,7 +4,7 @@ import { expressShim } from "./express-shim";
 import { guardLoops } from "./loop-guard";
 
 export type ExerciseFiles = { html?: string; css?: string; js?: string; code?: string };
-export type SandboxKind = "web" | "js" | "express";
+export type SandboxKind = "web" | "js" | "express" | "python";
 
 // Loop guards end a runaway loop before the parent's 3 s cut-off.
 const LIMIT = 2500;
@@ -30,8 +30,49 @@ const LOAD_WORKER = `(src) => {
   try { importScripts(u); } catch (e) { return e; } finally { URL.revokeObjectURL(u); }
 }`;
 
+// Python runs on Pyodide in a Worker. It posts { ready } once loaded, so the
+// parent's time limit counts the learner's code, not the download.
+// ponytail: Pyodide loads afresh on every run (HTTP-cached); keep one iframe alive if runs feel slow.
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/";
+const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, base: string) => {
+  const g = globalThis as unknown as { importScripts(u: string): void; loadPyodide(o: object): Promise<any>; postMessage(m: unknown): void };
+  g.importScripts(base + "pyodide.js");
+  const py = await g.loadPyodide({ indexURL: base });
+  g.postMessage({ ready: true });
+  const logs: string[] = [];
+  py.setStdout({ batched: (s: string) => logs.push(s) });
+  py.setStderr({ batched: (s: string) => logs.push(s) });
+  // The last traceback line, "NameError: name 'x' is not defined".
+  const last = (e: unknown) => String((e as Error)?.message ?? e).trim().split("\n").filter(Boolean).pop();
+  const ns = py.globals.get("dict")();
+  try {
+    py.runPython("import builtins\ndef _tanpa_input(*a):\n    raise RuntimeError('input() tidak tersedia di latihan ini, pakai nilai langsung')\nbuiltins.input = _tanpa_input", { globals: ns });
+    py.runPython(p.setup + "\n" + p.code, { globals: ns });
+  } catch (e) {
+    return { logs, results: [], error: last(e) };
+  }
+  const results = p.tests.map((t) => {
+    try {
+      return { name: t.name, pass: py.runPython(t.check, { globals: ns }) === true };
+    } catch (e) {
+      return { name: t.name, pass: false, error: last(e) };
+    }
+  });
+  return { logs, results };
+};
+
 export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; nonce: string }): string {
   const { kind, files, setup, tests, nonce } = input;
+  const head = '<!doctype html><html><head><meta charset="utf-8">';
+  const post = `const post = (m) => parent.postMessage({ nonce: ${embed(nonce)}, ...m }, "*");`;
+  if (kind === "python") {
+    const worker = `(${PY_ENGINE.toString()})(${JSON.stringify({ setup, code: files.code ?? "", tests })}, ${JSON.stringify(PYODIDE)}).then((r) => postMessage(r), (e) => postMessage({ logs: [], results: [], error: "Python gagal dimuat: " + (e && e.message || e) }));`;
+    return `${head}<script>${post}
+const w = new Worker(URL.createObjectURL(new Blob([${embed(worker)}], { type: "text/javascript" })));
+w.onmessage = (e) => post(e.data);
+w.onerror = (e) => { e.preventDefault(); post({ logs: [], results: [], error: e.message }); };
+</script></head><body></body></html>`;
+  }
   const payload: EnginePayload = {
     setup: guardLoops(setup),
     code: guardLoops((kind === "web" ? files.js : files.code) ?? ""),
@@ -41,9 +82,7 @@ export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles
     limit: LIMIT,
   };
   const engine = sandboxEngine.toString();
-  const post = `const post = (m) => parent.postMessage({ nonce: ${embed(nonce)}, ...m }, "*");`;
   const onPage = `(${engine})(${embed(payload)}, ${LOAD_PAGE}).then(post)`;
-  const head = '<!doctype html><html><head><meta charset="utf-8">';
 
   if (kind === "web") {
     // The harness sits in <head> and waits for load, so broken learner
