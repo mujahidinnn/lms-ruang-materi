@@ -8,7 +8,7 @@ import type { ExerciseFiles, SandboxKind } from "@/lib/code/sandbox-doc";
 // Cached reads of published content (lib/cache.ts). RLS on the anon client
 // hides drafts and exam_questions; publishing calls invalidateContent().
 
-export type ChapterSummary = { id: string; slug: string; title: string; position: number; estMinutes: number };
+export type ChapterSummary = { id: string; slug: string; title: string; position: number; estMinutes: number; quizCount: number; exerciseCount: number };
 export type ChapterQuestion = {
   id: string;
   type: "pilihan_ganda" | "benar_salah" | "baca_kode";
@@ -28,7 +28,7 @@ export type CodeExerciseData = {
   setup: string;
   tests: Check[];
 };
-export type Chapter = ChapterSummary & {
+export type Chapter = Omit<ChapterSummary, "quizCount" | "exerciseCount"> & {
   body: string;
   slideFrom: number | null;
   slideTo: number | null;
@@ -44,6 +44,8 @@ export type Topic = Presentation & {
   cardCount: number;
   chapters: ChapterSummary[];
   hasExam: boolean;
+  // The final project, once published and verified (RLS hides the rest).
+  project: { id: string; title: string } | null;
 };
 
 type Row = {
@@ -56,14 +58,15 @@ type Row = {
   tips: { body: string; position: number }[];
   practice_questions: { count: number }[];
   flashcards: { count: number }[];
-  chapters: { id: string; slug: string; title: string; position: number; est_minutes: number }[];
+  chapters: { id: string; slug: string; title: string; position: number; est_minutes: number; chapter_questions: { count: number }[]; code_exercises: { count: number }[] }[];
+  projects: { id: string; title: string }[];
   // exams.topic_id is unique, so PostgREST embeds one object; RLS returns
   // it only when the exam is published.
   exams: { id: string } | null;
 };
 
 const SELECT =
-  "id, slug, title, description, summary, slides(index, path, width, height), tips(body, position), practice_questions(count), flashcards(count), chapters(id, slug, title, position, est_minutes), exams(id)";
+  "id, slug, title, description, summary, slides(index, path, width, height), tips(body, position), practice_questions(count), flashcards(count), chapters(id, slug, title, position, est_minutes, chapter_questions(count), code_exercises(count)), projects(id, title), exams(id)";
 
 function toTopic(row: Row): Topic {
   const slides = row.slides
@@ -82,8 +85,17 @@ function toTopic(row: Row): Topic {
     cardCount: row.flashcards[0]?.count ?? 0,
     chapters: row.chapters
       .toSorted((a, b) => a.position - b.position)
-      .map((c) => ({ id: c.id, slug: c.slug, title: c.title, position: c.position, estMinutes: c.est_minutes })),
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        title: c.title,
+        position: c.position,
+        estMinutes: c.est_minutes,
+        quizCount: c.chapter_questions[0]?.count ?? 0,
+        exerciseCount: c.code_exercises[0]?.count ?? 0,
+      })),
     hasExam: row.exams !== null,
+    project: row.projects[0] ?? null,
   };
 }
 

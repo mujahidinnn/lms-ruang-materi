@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, Clock, Layers, ListChecks, ClipboardCheck, Presentation, Play, Target } from "lucide-react";
+import { Check, Clock, Layers, Presentation, Play } from "lucide-react";
 import ArrowBadge from "@/components/ui/ArrowBadge";
+import ClassPath from "./ClassPath";
 import { card, chip, primaryButton, tile } from "@/components/ui/styles";
 import { totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
@@ -49,7 +50,12 @@ export default function CourseView({ topic }: { topic: Topic }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold">{c.title}</span>
-                    <span className="text-sm text-zinc-400 tabular-nums">{c.estMinutes} menit</span>
+                    <span className="mt-1 flex flex-wrap gap-1.5 text-xs font-semibold tabular-nums">
+                      <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-zinc-400">{c.estMinutes} menit</span>
+                      <span className="rounded-full bg-matcha-100 px-2 py-0.5 text-noir">Materi</span>
+                      {c.exerciseCount > 0 && <span className="rounded-full bg-matcha-200 px-2 py-0.5 text-noir">Kode {c.exerciseCount}</span>}
+                      {c.quizCount > 0 && <span className="rounded-full bg-matcha-300 px-2 py-0.5 text-noir">Kuis {c.quizCount}</span>}
+                    </span>
                   </span>
                   <ArrowBadge className="size-10" />
                 </a>
@@ -58,13 +64,18 @@ export default function CourseView({ topic }: { topic: Topic }) {
           </ol>
         </section>
 
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-          {topic.practiceCount > 0 && <Extra href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan akhir" text={`${topic.practiceCount} soal dengan pembahasan`} color="bg-tile-mint" />}
-          {topic.cardCount > 0 && <Extra href={`/flashcard/${topic.slug}`} icon={<Layers aria-hidden className="size-5" />} title="Flashcard" text={`${topic.cardCount} kartu`} color="bg-tile-butter" />}
-          {topic.hasExam && <Extra href={`/latihan/${topic.slug}/persiapan`} icon={<Target aria-hidden className="size-5" />} title="Simulasi ujian" text="20 soal acak, kunci langsung terlihat" color="bg-tile-peach" />}
-          {topic.hasExam && <Extra href={`/ujian/${topic.slug}`} icon={<ClipboardCheck aria-hidden className="size-5" />} title="Ujian akhir" text="Lulus untuk naik level" color="bg-tile-pink" />}
-          <Extra href={`/belajar/${topic.slug}/slide`} icon={<Presentation aria-hidden className="size-5" />} title="Semua slide" text={`${topic.slideCount} slide`} color="bg-tile-sky" />
-        </ul>
+        <section aria-labelledby="jalur" className="mt-10">
+          <h2 id="jalur" className="text-2xl font-bold tracking-tight">Setelah semua bab</h2>
+          <ClassPath topic={topic} signedIn={!!signedIn} />
+        </section>
+
+        <section aria-labelledby="pendukung" className="mt-10">
+          <h2 id="pendukung" className="text-2xl font-bold tracking-tight">Bahan pendukung</h2>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+            {topic.cardCount > 0 && <Extra href={`/flashcard/${topic.slug}`} icon={<Layers aria-hidden className="size-5" />} title="Flashcard" text={`${topic.cardCount} kartu`} color="bg-tile-sky" />}
+            <Extra href={`/belajar/${topic.slug}/slide`} icon={<Presentation aria-hidden className="size-5" />} title="Semua slide" text={`${topic.slideCount} slide`} color="bg-tile-sky" />
+          </ul>
+        </section>
       </div>
     </main>
   );
