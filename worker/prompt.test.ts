@@ -169,3 +169,17 @@ test("the chapter prompt names the chapter, its goals, slides and length", () =>
   expect(p).toContain("7 sampai 12");
   expect(p).toContain("900 sampai 1500 kata");
 });
+
+const { assembleDraft } = await import("./prompt");
+const cls = { ...classBase, outline: [1, 2, 3, 4, 5].map(outline), project: null };
+const written = { body: "Isi bab. ".repeat(400), quiz: [q(901), q(902), q(903), q(904), q(905)], exercises: [] };
+
+test("assembleDraft merges the outline with the chapters that came back", () => {
+  const d = assembleDraft(cls, [written, written, null, written, written]);
+  expect(d.chapters.map((c) => c.slug)).toEqual(["bab-1", "bab-2", "bab-4", "bab-5"]);
+  expect(d.chapters[0].quiz).toHaveLength(5);
+});
+
+test("assembleDraft fails under four chapters", () => {
+  expect(() => assembleDraft(cls, [written, null, null, written, written])).toThrow(/bab/);
+});

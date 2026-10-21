@@ -61,7 +61,7 @@ const chapter = z.object({
     .string()
     .min(200)
     .describe("Markdown 400 sampai 800 kata, contoh kode di blok ```bahasa, sisipkan 1 sampai 3 slide dengan ![keterangan](slide:N) dalam rentang bab"),
-  quiz: z.array(question).min(2).max(4),
+  quiz: z.array(question).min(2).max(5),
   exercises: z.array(exercise).max(2).default([]),
 });
 
@@ -190,21 +190,42 @@ export function repairChapter(output: unknown): unknown {
   return { ...o, quiz: fixQuestions(o.quiz, 5), exercises: validExercises(o.exercises) };
 }
 
-// Runs js/express solutions against their own tests and drops the ones that
-// fail; web exercises are left for admin review ("Uji solusi").
-export async function validateExercises(d: Draft): Promise<Draft> {
+// Names of the checks a js/express solution fails (empty = passes); web
+// exercises cannot run here and are left for admin review ("Uji solusi").
+export async function failingChecks(e: Exercise): Promise<string[]> {
+  if (e.kind === "web") return [];
+  const r = await runChecksNode({ kind: e.kind, code: e.solution.code ?? "", setup: e.setup, tests: e.tests });
+  return r.error ? e.tests.map((t) => t.name) : r.results.filter((x) => !x.pass).map((x) => x.name);
+}
+
+// Drops exercises whose solution fails its own tests. fix, when given, gets
+// one chance to repair a failing exercise first.
+export async function validateExercises(d: Draft, fix?: (e: Exercise, failing: string[]) => Promise<Exercise | null>): Promise<Draft> {
   for (const c of d.chapters) {
     const kept = [];
     for (const e of c.exercises) {
-      if (e.kind !== "web") {
-        const r = await runChecksNode({ kind: e.kind, code: e.solution.code ?? "", setup: e.setup, tests: e.tests });
-        if (r.error || !r.results.every((x) => x.pass)) continue;
+      const failing = await failingChecks(e);
+      if (!failing.length) {
+        kept.push(e);
+        continue;
       }
-      kept.push(e);
+      const fixed = fix ? await fix(e, failing) : null;
+      if (fixed && !(await failingChecks(fixed)).length) kept.push(fixed);
     }
     c.exercises = kept;
   }
   return d;
+}
+
+// Stage 1 plus the stage 2 chapters that came back (null = gave up on it).
+export function assembleDraft(cls: ClassOut, chapters: (ChapterOut | null)[]): Draft {
+  const { outline, project, ...rest } = cls;
+  const kept = outline.flatMap((o, i) => {
+    const c = chapters[i];
+    return c ? [{ slug: o.slug, title: o.title, est_minutes: o.est_minutes, slide_from: o.slide_from, slide_to: o.slide_to, ...c }] : [];
+  });
+  if (kept.length < 4) throw Object.assign(new Error(`hanya ${kept.length} bab yang valid, minimal 4`), { name: "SchemaError" });
+  return draftSchema.parse({ ...rest, chapters: kept, project });
 }
 
 export const draftJsonSchema = z.toJSONSchema(draftSchema, { io: "input" });
