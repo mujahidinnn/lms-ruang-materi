@@ -5,8 +5,8 @@ const front = (page: import("@playwright/test").Page) => page.getByRole("link", 
 test("landing shows the hero and topic lists", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Belajar ngoding");
-  await expect(page.getByRole("heading", { name: "Belajar lewat roadmap" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Semua materi" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Jalur belajar" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Semua kelas" })).toBeVisible();
 });
 
 test("pulling the front cover brings the next one forward", async ({ page, isMobile }) => {
@@ -33,13 +33,13 @@ test("dark theme is a choice that survives a reload", async ({ page }) => {
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", "dark");
 });
 
-test("roadmap opens a track and a topic panel", async ({ page }) => {
+test("a learning path opens a track and a class panel", async ({ page }) => {
   await page.goto("/roadmap");
   await page.locator('main a[href^="/roadmap/"]').first().click();
   await expect(page).toHaveURL(/\/roadmap\/[a-z0-9-]+$/);
   await page.waitForLoadState("networkidle"); // a click before hydration opens nothing
   await page.locator("main ol button").first().click();
-  await expect(page.getByRole("link", { name: "Belajar" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Buka kelas" })).toBeVisible();
 });
 
 test("the slide viewer moves to the next slide", async ({ page, isMobile }) => {
@@ -86,7 +86,7 @@ test("phones get the floating bottom nav", async ({ page, isMobile }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Navigasi utama" });
   await expect(nav.getByRole("link", { name: "Beranda" })).toHaveAttribute("aria-current", "page");
-  await nav.getByRole("link", { name: "Roadmap" }).click();
+  await nav.getByRole("link", { name: "Jalur" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
 });
 

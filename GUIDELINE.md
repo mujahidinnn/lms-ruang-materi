@@ -711,7 +711,7 @@ setup lives in `src/layouts/Base.astro` (meta, Open Graph, Twitter),
 The mobile experience is an installable PWA, not a native app.
 
 - `src/pages/manifest.webmanifest.ts`: name, short name, `id` `/`,
-  `start_url` `/` (the landing sends signed-in users on to `/dasbor`),
+  `start_url` `/` (signed-in learners see a strip back to `/dasbor`),
   `display: standalone`, theme and background
   `#09090b`, icons 192, 512 and a maskable 512 in `public/icons/`.
 - One hand-written `public/sw.js`, no PWA library. It caches an allowlist

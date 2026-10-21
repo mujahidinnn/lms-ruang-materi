@@ -3,8 +3,8 @@
 // the current one ink.
 export default function PracticeTabs({ slug, current }: { slug: string; current: "latihan" | "persiapan" }) {
   const tabs = [
-    { key: "latihan", href: `/latihan/${slug}`, label: "Latihan" },
-    { key: "persiapan", href: `/latihan/${slug}/persiapan`, label: "Simulasi ujian" },
+    { key: "latihan", href: `/latihan/${slug}`, label: "Latihan soal" },
+    { key: "persiapan", href: `/latihan/${slug}/persiapan`, label: "Simulasi 20 soal" },
   ] as const;
   return (
     <nav aria-label="Jenis latihan" className="mb-8 flex gap-2">

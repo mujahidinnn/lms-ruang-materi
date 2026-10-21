@@ -1,15 +1,7 @@
-import { BookOpen, ClipboardCheck, FileUp, Layers, LayoutDashboard, Medal, Route, UserRound } from "lucide-react";
+import { BookOpen, ClipboardCheck, FileUp, LayoutDashboard, Route } from "lucide-react";
 
-// The two link sets; the shell picks one by name.
+// Admin links (learners use SiteHeader, GUIDELINE Navigation).
 const SETS = {
-  akun: [
-    { href: "/dasbor", label: "Dasbor", Icon: LayoutDashboard },
-    { href: "/kelas", label: "Kelas", Icon: BookOpen },
-    { href: "/roadmap", label: "Roadmap", Icon: Route },
-    { href: "/flashcard", label: "Flashcard", Icon: Layers },
-    { href: "/nilai", label: "Nilai", Icon: Medal },
-    { href: "/profil", label: "Profil", Icon: UserRound },
-  ],
   admin: [
     { href: "/admin", label: "Ringkasan", Icon: LayoutDashboard },
     { href: "/admin/impor", label: "Impor", Icon: FileUp },
@@ -24,7 +16,7 @@ export type NavSet = keyof typeof SETS;
 // the sidebar from lg.
 export default function SideNav({ set, path }: { set: NavSet; path: string }) {
   return (
-    <nav aria-label={set === "admin" ? "Admin" : "Akun"} className="scrollbar-thin -mx-1 flex gap-1 overflow-x-auto px-1 lg:flex-col">
+    <nav aria-label="Admin" className="scrollbar-thin -mx-1 flex gap-1 overflow-x-auto px-1 lg:flex-col">
       {SETS[set].map(({ href, label, Icon }) => {
         const current = href === "/admin" ? path === href : path.startsWith(href);
         return (

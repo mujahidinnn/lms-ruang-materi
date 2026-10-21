@@ -1,29 +1,46 @@
 ---
 import Logo from "@/components/brand/Logo";
 import AccountLink from "./AccountLink.astro";
+import GuestNotice from "./GuestNotice.astro";
 import MobileNav from "./MobileNav.astro";
 import ThemeButton from "./ThemeButton.astro";
 
+// The one header for learners, signed in or not (GUIDELINE, Navigation).
+// focus: a quiz or exam page, no phone nav competing with the answers.
+// learning: a page where guests lose progress, so they get GuestNotice.
+type Props = { focus?: boolean; learning?: boolean };
+const { focus = false, learning = false } = Astro.props;
+const path = Astro.url.pathname;
 const LINKS = [
-  { href: "/kelas", label: "Kelas" },
-  { href: "/roadmap", label: "Roadmap" },
+  { href: "/kelas", label: "Kelas", on: path.startsWith("/kelas") || path.startsWith("/belajar") },
+  { href: "/roadmap", label: "Jalur belajar", on: path.startsWith("/roadmap") },
+  { href: "/dasbor", label: "Beranda saya", on: ["/dasbor", "/nilai", "/profil", "/flashcard"].some((p) => path.startsWith(p)), signedIn: true },
 ];
 ---
 
+{learning && <GuestNotice />}
 <header class="px-5 sm:px-10">
   <div class="mx-auto flex max-w-7xl items-center gap-3 py-5">
     <a href="/" aria-label="Ruang Materi, beranda" class="rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
       <Logo />
     </a>
-    <nav aria-label="Utama" class="ml-auto hidden items-center gap-1 rounded-full bg-zinc-900 p-1.5 text-sm shadow-soft sm:flex">
+    <nav aria-label="Utama" class="ml-auto hidden items-center gap-1 rounded-full bg-zinc-900 p-1.5 text-sm shadow-soft md:flex">
       {LINKS.map((l) => (
-        <a href={l.href} class="flex min-h-10 items-center rounded-full px-4 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50">{l.label}</a>
+        <a
+          href={l.href}
+          aria-current={l.on ? "page" : undefined}
+          class:list={[
+            "min-h-10 items-center rounded-full px-4 font-medium",
+            l.signedIn ? "hidden signed-in:flex" : "flex",
+            l.on ? "bg-primary text-on-primary" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50",
+          ]}
+        >{l.label}</a>
       ))}
     </nav>
-    <div class="ml-auto flex items-center gap-2 sm:ml-0">
+    <div class="ml-auto flex items-center gap-2 md:ml-0">
       <ThemeButton />
       <AccountLink />
     </div>
   </div>
-  <MobileNav />
+  {!focus && <MobileNav />}
 </header>

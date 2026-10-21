@@ -75,7 +75,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <section aria-labelledby="pendukung" className="mt-10">
           <h2 id="pendukung" className="text-2xl font-bold tracking-tight">Bahan pendukung</h2>
           <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-            {topic.cardCount > 0 && <Extra href={`/flashcard/${topic.slug}`} icon={<Layers aria-hidden className="size-5" />} title="Flashcard" text={`${topic.cardCount} kartu`} color="bg-tile-sky" />}
+            {topic.cardCount > 0 && <Extra href={`/flashcard/${topic.slug}`} icon={<Layers aria-hidden className="size-5" />} title="Kartu hafalan" text={`${topic.cardCount} kartu`} color="bg-tile-sky" />}
             <Extra href={`/belajar/${topic.slug}/slide`} icon={<Presentation aria-hidden className="size-5" />} title="Semua slide" text={`${topic.slideCount} slide`} color="bg-tile-sky" />
           </ul>
         </section>

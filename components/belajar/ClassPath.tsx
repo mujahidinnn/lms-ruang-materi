@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Check, ClipboardCheck, Code2, ListChecks, Lock, Target } from "lucide-react";
+import { Award, Check, ClipboardCheck, Code2, ListChecks, Lock } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Topic } from "@/lib/content";
@@ -48,11 +48,8 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
 
   return (
     <ol className="mt-4 grid gap-3">
-      {topic.practiceCount > 0 && (
-        <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan soal" text={`${topic.practiceCount} soal dengan pembahasan`} tone="bg-matcha-50" />
-      )}
-      {topic.hasExam && (
-        <Step href={`/latihan/${topic.slug}/persiapan`} icon={<Target aria-hidden className="size-5" />} title="Simulasi ujian" text="20 soal acak, kunci langsung terlihat" tone="bg-matcha-100" />
+      {(topic.practiceCount > 0 || topic.hasExam) && (
+        <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan ujian" text="Soal latihan dan simulasi 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
       )}
       {topic.hasExam && (
         <Step href={`/ujian/${topic.slug}`} icon={<ClipboardCheck aria-hidden className="size-5" />} title="Ujian akhir" text="Lulus untuk naik level" tone="bg-matcha-200" done={status?.exam_passed} />

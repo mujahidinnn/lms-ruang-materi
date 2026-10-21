@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Send, WifiOff } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { rpc } from "@/lib/rpc";
 
 const kumpulkanUjian = rpc("kumpulkanUjian");
@@ -161,7 +161,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
               answers[q.id] === n ? "border-zinc-50" : "border-transparent hover:border-zinc-700"
             }`}
           >
-            <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-zinc-200 ${tile(n)}`}>{n + 1}</span>
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">{"ABCD"[n]}</span>
             <span className="flex-1">{opt}</span>
           </button>
         ))}

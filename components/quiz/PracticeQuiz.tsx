@@ -3,7 +3,7 @@
 import { Check, ClipboardCheck, Layers, PartyPopper, Play, RotateCcw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SoundToggle from "@/components/quiz/SoundToggle";
-import { card, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
 import type { Question } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import { sampleQuestions, setResult, shuffleOptions } from "@/lib/quiz";
@@ -200,7 +200,7 @@ export default function PracticeQuiz({
                     : "border-transparent bg-zinc-900 hover:border-zinc-700 disabled:opacity-60 disabled:hover:border-transparent"
               }`}
             >
-              <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-zinc-200 ${tile(n)}`}>{n + 1}</span>
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">{"ABCD"[n]}</span>
               <span className="flex-1">{opt}</span>
               {isAnswer && <Check aria-label="benar" className="size-5" />}
               {isWrong && <X aria-label="salah" className="size-5" />}
