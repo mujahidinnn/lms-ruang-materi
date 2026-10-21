@@ -6,7 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 
 type State = { error?: string; ok?: string };
 
-// The column grant on profiles allows only these three fields; the
+// usia: "dewasa" (18+, agrees to the privacy policy) or "anak" (under 18,
+// a parent or guardian allows it); either records consent, "" withdraws it.
+const usia = (form: FormData) => {
+  const v = form.get("usia");
+  return v === "dewasa" || v === "anak" ? v : null;
+};
+
+// The column grant on profiles allows only these fields; the
 // timezone is checked against pg_timezone_names by the table.
 export async function simpanProfil(_: State, form: FormData): Promise<State> {
   const user = await requireUser("/profil");
@@ -20,7 +27,8 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
     .update({
       display_name: parsed.data.display_name || null,
       timezone: parsed.data.timezone,
-      guardian_consent: form.get("guardian_consent") === "on",
+      age_group: usia(form),
+      guardian_consent: usia(form) !== null,
     })
     .eq("user_id", user.id);
   if (error) return { error: "Gagal menyimpan. Periksa zona waktunya." };
@@ -54,16 +62,17 @@ export async function hapusAkun(_: State, form: FormData): Promise<State> {
 
 // One click from the Dasbor notice; the same consent as the Profil checkbox.
 // The one-time start screen (/mulai): a display name for certificates and
-// the guardian consent that progress saving needs, then back to where the
+// the consent that progress saving needs, then back to where the
 // learner was going.
 export async function mulai(form: FormData) {
   const user = await requireUser("/mulai");
   const parsed = z
     .object({ display_name: z.string().trim().min(1).max(80), next: z.string().optional() })
     .safeParse(Object.fromEntries(form));
-  if (!parsed.success || form.get("guardian_consent") !== "on") redirect(`/mulai?galat=1&next=${encodeURIComponent(safeNext(form.get("next")))}`);
-  await (await createClient()).from("profiles").update({ display_name: parsed.data.display_name, guardian_consent: true }).eq("user_id", user.id);
-  redirect(safeNext(parsed.data.next, "/dasbor"));
+  const age = usia(form);
+  if (!parsed.success || !age) redirect(`/mulai?galat=1&next=${encodeURIComponent(safeNext(form.get("next")))}`);
+  await (await createClient()).from("profiles").update({ display_name: parsed.data!.display_name, age_group: age, guardian_consent: true }).eq("user_id", user.id);
+  redirect(safeNext(parsed.data!.next, "/dasbor"));
 }
 
 export async function setujuiWali() {

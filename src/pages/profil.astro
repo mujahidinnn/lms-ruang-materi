@@ -16,7 +16,7 @@ const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 const { data: p } = await (await createClient())
   .from("profiles")
-  .select("display_name, timezone, guardian_consent")
+  .select("display_name, timezone, guardian_consent, age_group")
   .eq("user_id", user.id)
   .single();
 const zone = p?.timezone ?? "Asia/Jakarta";
@@ -43,10 +43,19 @@ const zone = p?.timezone ?? "Asia/Jakarta";
               {ZONES.map((z) => <option selected={z === zone}>{z}</option>)}
             </select>
           </label>
-          <label class="flex min-h-11 items-start gap-3 text-sm text-zinc-300">
-            <input type="checkbox" name="guardian_consent" checked={!!p?.guardian_consent} class="mt-0.5 size-4 accent-(--accent)" />
-            Saya berusia 18 tahun ke atas, atau orang tua atau wali saya sudah setuju saya memakai Ruang Materi.
-          </label>
+          <fieldset class="grid gap-2 text-sm text-zinc-300">
+            <legend class="mb-1 text-zinc-400">Usia dan persetujuan</legend>
+            {[
+              { value: "dewasa", label: "18 tahun ke atas, setuju dengan Kebijakan Privasi" },
+              { value: "anak", label: "Di bawah 18 tahun, orang tua atau wali sudah mengizinkan" },
+              { value: "", label: "Cabut persetujuan (progres berhenti tersimpan)" },
+            ].map((c) => (
+              <label class="flex min-h-11 items-start gap-3">
+                <input type="radio" name="usia" value={c.value} checked={p?.guardian_consent ? (p?.age_group ?? "dewasa") === c.value : c.value === ""} class="mt-0.5 size-4 accent-(--accent)" />
+                {c.label}
+              </label>
+            ))}
+          </fieldset>
           <button class={`${primaryButton} justify-self-start`}>Simpan</button>
         </ActionForm>
       </section>
