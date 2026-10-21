@@ -37,7 +37,12 @@ function saveDraft(key: string, files: ExerciseFiles | null) {
 
 // One exercise: prompt, editor, Jalankan (output only) and Periksa (checks).
 // The draft stays in localStorage; a pass is recorded for signed-in learners.
-export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeExerciseData; prompt: ReactNode; slug: string; onPassed: (id: string) => void }) {
+// project: the topic's final project, saved in project_progress, with no
+// solution to show (learners cannot read it).
+export default function CodeExercise({ ex, prompt, slug, onPassed, project = false }: { ex: CodeExerciseData; prompt?: ReactNode; slug: string; onPassed?: (id: string) => void; project?: boolean }) {
+  const store = project
+    ? { table: "project_progress", column: "project_id", rpc: "pass_project", param: "p_project" }
+    : { table: "code_progress", column: "exercise_id", rpc: "pass_code_exercise", param: "p_exercise" };
   const key = `ruang-materi:kode:${ex.id}`;
   const parts = PARTS[ex.kind];
   const [files, setFiles] = useState<ExerciseFiles>(() => readDraft(key) ?? ex.starter);
@@ -61,10 +66,10 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
     const db = createClient();
     db.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const { data: row } = await db.from("code_progress").select("code").eq("user_id", data.session.user.id).eq("exercise_id", ex.id).maybeSingle();
+      const { data: row } = await db.from(store.table).select("code").eq("user_id", data.session.user.id).eq(store.column, ex.id).maybeSingle();
       if (!row) return;
       setPassed(true);
-      onPassed(ex.id);
+      onPassed?.(ex.id);
       if (!readDraft(key)) {
         setFiles(row.code as ExerciseFiles);
         setVersion((v) => v + 1);
@@ -100,11 +105,11 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
     burstFrom(box.current);
     if (!passed) celebrate();
     setPassed(true);
-    onPassed(ex.id);
+    onPassed?.(ex.id);
     const db = createClient();
     const { data } = await db.auth.getSession();
     if (!data.session) return setNote("guest");
-    const { error } = await db.rpc("pass_code_exercise", { p_exercise: ex.id, p_code: files });
+    const { error } = await db.rpc(store.rpc, { [store.param]: ex.id, p_code: files });
     setNote(error ? "error" : null);
   }
 
@@ -146,7 +151,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed }: { ex: CodeE
         <button type="button" onClick={() => go(true)} disabled={busy} className={primaryButton}><Check aria-hidden className="size-4" />Periksa</button>
         <button type="button" onClick={() => go(false)} disabled={busy} className={secondaryButton}><Play aria-hidden className="size-4" />Jalankan</button>
         <button type="button" onClick={() => { load(ex.starter); saveDraft(key, null); }} className={secondaryButton}><RotateCcw aria-hidden className="size-4" />Reset kode</button>
-        {fails >= 2 && (
+        {fails >= 2 && !project && (
           <button type="button" onClick={() => load(ex.solution)} className={secondaryButton}><Eye aria-hidden className="size-4" />Lihat solusi</button>
         )}
       </div>

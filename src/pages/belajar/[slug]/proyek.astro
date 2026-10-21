@@ -1,0 +1,43 @@
+---
+import { ChevronLeft } from "lucide-react";
+import ChapterMarkdown from "@/components/belajar/markdown";
+import CodeExercise from "@/components/code/CodeExercise";
+import { Passed } from "@/components/illustrations";
+import { secondaryButton, sticker } from "@/components/ui/styles";
+import { getProject, getTopic } from "@/lib/content";
+import { SITE_URL } from "@/lib/site";
+import CopyCode from "../../../components/CopyCode.astro";
+import SiteHeader from "../../../components/SiteHeader.astro";
+import Base from "../../../layouts/Base.astro";
+import { publicPage } from "../../../lib/cdn";
+
+const slug = Astro.params.slug!;
+const [topic, project] = await Promise.all([getTopic(slug), getProject(slug)]);
+if (!topic || !project) return Astro.rewrite("/404");
+publicPage(Astro);
+---
+
+<Base title={`Proyek akhir · ${topic.title}`} description={`Proyek akhir kelas ${topic.title}: ${project.title}.`} canonical={`${SITE_URL}/belajar/${slug}/proyek`}>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-4xl">
+        <a href={`/belajar/${slug}`} class={secondaryButton}><ChevronLeft aria-hidden className="size-4" />{topic.title}</a>
+        <header class="relative mt-6 overflow-hidden rounded-[32px] bg-noir p-6 pt-16 text-on-noir ring-1 ring-zinc-800 sm:p-10 sm:pt-20">
+          <span aria-hidden="true" class={`${sticker} absolute top-5 left-6 inline-flex -rotate-3 bg-matcha-300 text-noir`}>proyek akhir</span>
+          <Passed className="absolute -top-3 -right-3 size-28 rotate-12" />
+          <h1 class="relative text-4xl font-extrabold text-balance sm:text-5xl">{project.title}</h1>
+          <p class="relative mt-3 max-w-xl text-on-noir/70">Bangun sendiri dari brief di bawah. Semua pemeriksaan lolos berarti proyekmu selesai, salah satu syarat sertifikat {topic.title}.</p>
+        </header>
+        <section aria-labelledby="brief" class="mt-8">
+          <h2 id="brief" class="text-2xl font-bold">Brief</h2>
+          <div class="mt-4"><ChapterMarkdown body={project.brief} slides={topic.slides} /></div>
+        </section>
+        <CodeExercise client:load project ex={{ ...project, solution: {} }} slug={slug}>
+          <div slot="prompt"><ChapterMarkdown body={project.prompt || "Tulis kodenya, lalu tekan Periksa."} slides={topic.slides} /></div>
+        </CodeExercise>
+      </div>
+    </main>
+  </div>
+  <CopyCode />
+</Base>

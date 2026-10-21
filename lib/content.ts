@@ -288,3 +288,32 @@ export function getDeck(slug: string): Promise<(TopicRef & { cards: Flashcard[] 
     return { ...topic, cards };
   });
 }
+
+export type ProjectData = Omit<CodeExerciseData, "solution"> & { brief: string; topicTitle: string };
+
+// The published, verified project of a published topic (RLS), without its
+// solution: learners never read it.
+export function getProject(topicSlug: string): Promise<ProjectData | null> {
+  return cached(`getProject:${topicSlug}`, async () => {
+    const { data, error } = await publicClient
+      .from("projects")
+      .select("id, kind, title, brief, prompt, starter, setup, tests, topics!inner(slug, title)")
+      .eq("topics.slug", topicSlug)
+      .maybeSingle();
+    if (error) throw new Error(`getProject: ${error.message}`);
+    if (!data || !RUNNABLE.has(data.kind)) return null;
+    const { topics, ...p } = data as unknown as Omit<ProjectData, "topicTitle"> & { topics: { title: string } };
+    return { ...p, topicTitle: topics.title };
+  });
+}
+
+export type Certificate = { code: string; name: string; topicTitle: string; topicSlug: string; issuedAt: string };
+
+// Public by code, through certificate_by_code(); not cached, a learner may
+// delete theirs.
+export async function getCertificate(code: string): Promise<Certificate | null> {
+  const { data, error } = await publicClient.rpc("certificate_by_code", { p_code: code });
+  if (error) throw new Error(`getCertificate: ${error.message}`);
+  const row = (data as { code: string; name: string; topic_title: string; topic_slug: string; issued_at: string }[])[0];
+  return row ? { code: row.code, name: row.name, topicTitle: row.topic_title, topicSlug: row.topic_slug, issuedAt: row.issued_at } : null;
+}

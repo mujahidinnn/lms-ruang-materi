@@ -50,6 +50,22 @@ Roadmap -> Topik -> Belajar -> Latihan -> Ujian -> Nilai
   - Due cards across topics in `/flashcard`, one topic's deck in
     `/flashcard/[slug]`.
   - Logged-out learners can flip `/flashcard/[slug]` without scheduling.
+- **Kelas** (spec 2026-10-21-kelas-ala-dicoding, like a Dicoding class):
+  chapters are the lesson, slides are supporting material. A chapter reads
+  as a tutorial (`## Tujuan`, explanation, worked code, `## Rangkuman`),
+  then its code exercises and quiz. The course page shows each chapter's
+  parts, then the path: Latihan soal, Simulasi ujian, Ujian akhir, Proyek
+  akhir (when the topic has one), Sertifikat. Order is advice, not a lock;
+  only the certificate needs the whole path.
+- **Proyek akhir**: one auto-checked code project per topic whose code runs
+  here (web, js, express), at `/belajar/[slug]/proyek`. Learners see it only
+  once its solution passed "Uji solusi" (`verified_at`); its solution is
+  admin-only.
+- **Sertifikat**: opt-in. When every published chapter is done, the exam is
+  passed and the project (if any) is passed, the class page offers
+  "Terbitkan sertifikat"; it needs a display name, copied onto the
+  certificate. `/sertifikat/[kode]` is public, printable on one A4 page,
+  not indexed; the learner can delete it.
 - **Ujian**: timed, graded on the server, limited attempts. No feedback until
   submit. Passing (default 70) marks the roadmap node `selesai`.
   - Each attempt draws `question_count` questions at random from a bank of at
@@ -121,7 +137,8 @@ Do not build these, even partly, unless this section changes first:
 - Forums, comments, chat between learners
 - Email or push notifications, reminders
 - Free-text or manually graded questions
-- Certificates beyond lencana
+- Certificates reviewed by people (the final project is checked by its
+  tests only)
 - Multi-language UI (Bahasa Indonesia only)
 
 **Deferred after v1** (designed, not built yet):
@@ -415,9 +432,10 @@ content row has `status`: `draft` or `published`. Public pages only ever see
 upload .pptx  ------------------------------------------------>   Storage: imports/
 mulaiImpor (lib/actions): insert import_job, workflow_dispatch(job_id) --->
                              soffice pptx -> pdf -> AVIF slides -> Storage: slides/<slug>/<job_id>/
-                             pdf -> LLM (structured output)    -> topics, tips, flashcards,
-                                                                  practice_questions,
-                                                                  exam_questions (draft)
+                             pdf -> LLM stage 1: class + outline -> topics, tips, flashcards,
+                                    stage 2: one call per chapter    practice_questions, exam_questions,
+                                    (+1 repair call per failing      chapters, code_exercises,
+                                    exercise)                        projects (draft)
                              job status: rendering, drafting,
                              done or failed + error  ---------->   import_jobs
 /admin/topik/[slug]  <---- review, edit, approve ------------------
@@ -435,8 +453,18 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
   counts, timings and error class. Actions logs are public on a public repo.
 - **Progress**: `/admin/impor` polls `import_jobs.status` every few seconds
   while a job runs. No websockets.
+- **Two stages** (`worker/prompt.ts`): `buildClassPrompt` returns the class,
+  an outline of 4-12 chapters (reusing current chapter slugs so progress
+  carries over) and an optional project; `buildChapterPrompt` writes one
+  chapter of 900-1500 words (schema floor 2500 characters), retried once
+  and dropped after that; `assembleDraft` needs 4 survivors.
+- **Local runs**: `npm run draft:local -- <slug>...` runs the worker on the
+  owner's machine with `gemini-web` (`worker/llm/gemini-web.ts`), which
+  drives Gemini in the owner's signed-in Chrome profile (`~/.sopi-gemini`,
+  shared with porto/sopi) instead of an API key. It is not offered in
+  `/admin/impor`.
 - **LLM provider is pluggable.** Each file in `worker/llm/` exports the same
-  function, `generateDraft(pdf: Buffer, prompt: Prompt, model: string): Promise<DraftResult>`
+  function, `generateDraft(pdf: Buffer, prompt: Prompt, model: string, jsonSchema: unknown): Promise<DraftResult>`
   (`output: unknown` plus token counts),
   using that provider's official SDK. The worker picks the file from
   `import_jobs.provider` and `import_jobs.model`, chosen in a dropdown on
@@ -651,7 +679,7 @@ setup lives in `src/layouts/Base.astro` (meta, Open Graph, Twitter),
 - **Indexed**: landing, `roadmap`, `belajar`, `latihan`, `template`,
   `privasi`.
   **Not indexed**: `admin`, `offline`, `flashcard`, `ujian`, `nilai`,
-  `dasbor`, `masuk`, `profil`.
+  `dasbor`, `masuk`, `profil`, `sertifikat`.
   Pass `noindex` to `Base` on those and keep them out of the sitemap.
 - **Metadata on every route.** `Base` gets a `title` and `description` in
   Bahasa Indonesia. The title is the page name only; `Base` appends
@@ -740,6 +768,10 @@ has `id uuid`, `created_at`, and content tables have `status`
 | `chapter_progress` | `user_id`, `chapter_id`, `completed_at` | written only by `complete_chapter()`, which also requires every `code_exercises` row of the chapter passed; a topic without an exam is selesai when all its chapters are |
 | `code_exercises` | `chapter_id`, `position`, `kind` (`web`, `js`, `express`, `sql`, `git`), `title`, `prompt` (markdown), `starter`/`solution` jsonb (`{html, css, js}` or `{code}`), `setup`, `tests` jsonb (`[{name, check}]`) | visible when its chapter is; tests and solutions are public, like practice keys |
 | `code_progress` | `user_id`, `exercise_id`, `passed_at`, `code` jsonb | written only by `pass_code_exercise()`; consent required; counts as a learning day; republishing a topic deletes its old exercises and their progress |
+| `projects` | `topic_id`, `status`, `kind`, `title`, `brief`, `prompt`, `starter`, `setup`, `tests`, `verified_at` | one per topic and status; learners see it only when published and verified; `publish_topic` refuses an unverified one; saving in admin clears `verified_at` |
+| `project_solutions` | `project_id`, `solution` | admin-only (RLS); written by the worker and the admin editor |
+| `project_progress` | `user_id`, `project_id`, `passed_at`, `code` | written only by `pass_project()`; consent required; counts as a learning day |
+| `certificates` | `code` (`XXXXX-XXXXX`), `user_id`, `topic_id`, `name`, `issued_at` | one per learner and topic, created only by `issue_certificate()` after `certificate_status()` says eligible; owner reads and deletes; public read through `certificate_by_code()` |
 | `flashcard_reviews` | `user_id`, `flashcard_id`, `box`, `due_on`, `reviewed_at`, `added_on` | Leitner box 1 to 5, written by `review_flashcard()` |
 | `practice_sessions` | `user_id`, `topic_id`, `correct`, `total`, `finished_at` | `finished_at` stamped by the database |
 | `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `option_orders`, `started_at`, `deadline`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |
@@ -956,9 +988,10 @@ Vitest.
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint over the repo |
 | `npm run test:run` | Vitest, single pass (added in phase 1) |
-| `npm run test:e2e` | Playwright guest tests in `e2e/*.e2e.ts`, against `E2E_BASE_URL` (default localhost:3000); CI runs them on each production deploy |
+| `npm run test:e2e` | Playwright guest tests in `e2e/*.e2e.ts`, against `E2E_BASE_URL` (default localhost:4321); CI runs them on each production deploy |
 | `npm run db:push` | Apply `supabase/migrations` to the remote project through the session pooler (`SUPABASE_POOLER_HOST`, `SUPABASE_DB_PW`) |
 | `npm run draft:decks -- <slug>...` | Draft migrated decks one at a time through the import workflow, as the dev admin; `IMPORT_MODEL=provider:model` overrides the default |
+| `npm run draft:local -- <slug>...` | Same, but runs the worker on this machine with Gemini on the web (no API key); needs soffice, pdftoppm and the signed-in `~/.sopi-gemini` Chrome profile |
 
 ## Deployment Notes
 

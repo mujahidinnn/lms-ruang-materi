@@ -127,3 +127,8 @@ test("a code exercise fails the starter, then passes with the solution", async (
   await expect(card.getByText("Lolos", { exact: true })).toBeVisible();
   await expect(card.getByLabel("gagal")).toHaveCount(0);
 });
+
+test("an unknown certificate code shows the 404 page", async ({ page }) => {
+  const res = await page.goto("/sertifikat/TIDAK-ADA");
+  expect(res?.status()).toBe(404);
+});

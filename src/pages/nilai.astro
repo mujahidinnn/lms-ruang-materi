@@ -13,13 +13,15 @@ type TrackRow = { id: string; slug: string; title: string };
 const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 const db = await createClient();
-const [{ data: attempts }, { data: tracks }, { data: levels }, { data: badges }, { data: streak }] = await Promise.all([
+const [{ data: attempts }, { data: tracks }, { data: levels }, { data: badges }, { data: streak }, { data: certs }] = await Promise.all([
   db.from("exam_attempts").select("score, passed, exam_id, exams(max_attempts, topics(slug, title))").eq("user_id", user.id).order("created_at"),
   db.from("tracks").select("id, slug, title").order("created_at"),
   db.from("track_levels").select("slug, core_passed, core_total"),
   db.from("badges").select("track_id").eq("user_id", user.id),
   db.from("learning_streaks").select("best_days").eq("user_id", user.id).maybeSingle(),
+  db.from("certificates").select("code, issued_at, topics(title)").eq("user_id", user.id).order("issued_at"),
 ]);
+const certificates = (certs ?? []) as unknown as { code: string; issued_at: string; topics: { title: string } | null }[];
 
 const levelBySlug = new Map((levels ?? []).map((l) => [l.slug, l]));
 const earned = new Set((badges ?? []).map((b) => b.track_id));
@@ -78,6 +80,22 @@ for (const a of (attempts ?? []) as unknown as AttemptRow[]) {
           <p class="mt-2 text-5xl font-bold tracking-tight tabular-nums">{streak?.best_days ?? 0}<span class="ml-1.5 text-base font-medium text-zinc-300">hari</span></p>
         </div>
       </section>
+
+      {certificates.length > 0 && (
+        <section aria-labelledby="sertifikat" class="mt-4 rounded-[28px] bg-noir p-6 text-on-noir ring-1 ring-zinc-800">
+          <h2 id="sertifikat" class="text-xl font-bold tracking-tight">Sertifikat</h2>
+          <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+            {certificates.map((c) => (
+              <li>
+                <a href={`/sertifikat/${c.code}`} class="flex min-h-14 items-center justify-between gap-3 rounded-2xl border-2 border-on-noir/20 px-4 py-2 hover:border-matcha-300">
+                  <span class="font-semibold">{c.topics?.title ?? "Kelas"}</span>
+                  <span class="rounded-full bg-matcha-300 px-2.5 py-0.5 font-mono text-xs font-bold text-noir">{c.code}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="ujian" class={`mt-4 p-6 ${card}`}>
         <h2 id="ujian" class="text-xl font-bold tracking-tight">Ujian</h2>
