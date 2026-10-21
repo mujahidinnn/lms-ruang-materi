@@ -22,7 +22,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
 
   return (
     <main className="flex-1 px-5 pb-20 sm:px-10">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         <header className="mt-4 rounded-[32px] bg-tile-lavender p-6 sm:p-10">
           <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
