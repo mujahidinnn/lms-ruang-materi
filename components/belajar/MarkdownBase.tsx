@@ -20,13 +20,15 @@ export default function MarkdownBase({
   body,
   slides,
   renderCode,
+  className = "",
 }: {
   body: string;
   slides: Slide[];
   renderCode?: (code: string, lang: string) => ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="prose-chapter">
+    <div className={`prose-chapter ${className}`}>
       <Markdown
         remarkPlugins={[remarkGfm]}
         urlTransform={(url) => (url.startsWith("slide:") ? url : defaultUrlTransform(url))}

@@ -20,3 +20,13 @@ test("toc skips ## lines inside code fences", () => {
 test("headingId is kebab-case ASCII", () => {
   expect(headingId("Apa Itu Middleware? (Bagian 2)")).toBe("apa-itu-middleware-bagian-2");
 });
+
+test("sections split the body at ## headings, outside code fences", async () => {
+  const { sections } = await import("./toc");
+  const body = "Pembuka.\n\n## Tujuan\n\n- a\n\n## Isi `kode`\n\n```md\n## bukan\n```\n\n### Sub\n\nx\n\n## Rangkuman\n\n- b";
+  const out = sections(body);
+  expect(out.map((s) => [s.id, s.title])).toEqual([["", ""], ["tujuan", "Tujuan"], ["isi-kode", "Isi kode"], ["rangkuman", "Rangkuman"]]);
+  expect(out[0].body.trim()).toBe("Pembuka.");
+  expect(out[2].body).toContain("## bukan");
+  expect(out[2].body).toContain("### Sub");
+});

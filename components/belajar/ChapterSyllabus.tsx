@@ -5,9 +5,10 @@ import { useState } from "react";
 import type { ChapterSummary } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
 
-// Desktop: a sticky list. Phones: a button that opens the same list as a
-// bottom sheet. Opening a chapter records it as the resume point.
-export default function ChapterSyllabus({ topicId, topicSlug, chapters, current }: { topicId: string; topicSlug: string; chapters: ChapterSummary[]; current: string }) {
+// variant "sidebar": the sticky list beside the article (lg and up).
+// variant "button": a button that opens the same list as a bottom sheet,
+// for the reader's bottom bar on phones.
+export default function ChapterSyllabus({ topicId, topicSlug, chapters, current, variant = "sidebar" }: { topicId: string; topicSlug: string; chapters: ChapterSummary[]; current: string; variant?: "sidebar" | "button" }) {
   const { done } = useChapterProgress(topicId, chapters.map((c) => c.id));
   const [open, setOpen] = useState(false);
   const list = (
@@ -28,10 +29,13 @@ export default function ChapterSyllabus({ topicId, topicSlug, chapters, current 
   );
   return (
     <>
-      <nav aria-label="Daftar bab" className="sticky top-4 hidden max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[28px] bg-zinc-900 p-3 shadow-soft lg:block">{list}</nav>
-      <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-zinc-900 px-4 text-sm font-medium shadow-soft lg:hidden">
-        <ListOrdered aria-hidden className="size-4" /> Daftar bab
-      </button>
+      {variant === "sidebar" ? (
+        <nav aria-label="Daftar bab" className="scrollbar-thin sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[28px] bg-zinc-900 p-3 shadow-soft">{list}</nav>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-noir bg-matcha-100 px-4 text-sm font-bold text-noir">
+          <ListOrdered aria-hidden className="size-4" /> Bab {chapters.findIndex((c) => c.slug === current) + 1}/{chapters.length}
+        </button>
+      )}
       {open && (
         <>
           <div aria-hidden className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOpen(false)} />

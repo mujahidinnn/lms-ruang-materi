@@ -3,7 +3,7 @@
 import { Check, PartyPopper, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeExercise from "@/components/code/CodeExercise";
-import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { quizDone } from "@/lib/chapters";
 import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import type { ChapterQuestion, CodeExerciseData } from "@/lib/content";
@@ -94,20 +94,23 @@ export default function ChapterQuiz({
       {exercises.map((ex, i) => (
         <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} slug={slug} onPassed={exercisePassed} />
       ))}
-      <section aria-labelledby="kuis" className="mt-12 rounded-[28px] bg-zinc-800/50 p-5 sm:p-8">
+      <section aria-labelledby="kuis" className="mt-10 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-8">
         <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>
         {questions.length === 0 ? (
           <button type="button" onClick={() => { playWin(); celebrate(); complete(); }} disabled={status === "saved" || !allPassed} className={`${primaryButton} mt-5`}>
             <Check aria-hidden className="size-4" />Tandai bab selesai
           </button>
         ) : (
-          <ol className="mt-5 space-y-6">
+          <ol className="mt-5 space-y-8">
             {questions.map((q, qi) => {
               const picked = answers[q.id];
               return (
                 <li key={q.id}>
-                  <p className="font-semibold">{qi + 1}. {q.prompt}</p>
-                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-900 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
+                  <p className="flex gap-3 font-semibold leading-snug">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-noir text-xs text-on-noir tabular-nums">{qi + 1}</span>
+                    <span className="pt-0.5">{q.prompt}</span>
+                  </p>
+                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
                   <div role="group" aria-label={`Pilihan jawaban soal ${qi + 1}`} className="mt-3 grid gap-2">
                     {q.options.map((opt, n) => {
                       const chosen = picked === n;
@@ -119,9 +122,10 @@ export default function ChapterQuiz({
                           type="button"
                           aria-pressed={chosen}
                           onClick={(e) => pick(q.id, n, e.currentTarget)}
-                          className={`flex min-h-12 items-center gap-3 rounded-2xl px-3 py-2 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-accent ${right ? "bg-tile-mint" : wrong ? "bg-tile-pink" : "bg-zinc-900 hover:bg-zinc-800"}`}
+                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "border-noir bg-tile-pink" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
                         >
-                          <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold ${tile(n)}`}>{n + 1}</span>
+                          {/* Letters, all alike: color appears only once answered. */}
+                          <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${right || wrong ? "bg-noir text-on-noir" : "bg-zinc-800 text-zinc-300"}`}>{"ABCD"[n]}</span>
                           <span className="flex-1">{opt}</span>
                           {right && <Check aria-label="benar" className="size-5" />}
                           {wrong && <X aria-label="salah" className="size-5" />}
@@ -129,7 +133,11 @@ export default function ChapterQuiz({
                       );
                     })}
                   </div>
-                  {picked !== undefined && <p className="mt-2 text-sm text-zinc-300">{q.explanation}</p>}
+                  {picked !== undefined && (
+                    <p className={`mt-3 rounded-2xl px-4 py-3 text-sm leading-relaxed ${picked === q.answer ? "bg-matcha-50 text-noir" : "bg-zinc-900 text-zinc-300"}`}>
+                      <strong>{picked === q.answer ? "Tepat. " : "Belum tepat. "}</strong>{q.explanation}
+                    </p>
+                  )}
                 </li>
               );
             })}
