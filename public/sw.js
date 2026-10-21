@@ -1,6 +1,6 @@
 // Hand-written service worker. Caches an allowlist only; everything else
 // goes straight to the network. Bump VERSION on every change to this file.
-const VERSION = "rm-5";
+const VERSION = "rm-6";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE = "/offline.html";

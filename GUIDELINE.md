@@ -546,9 +546,10 @@ slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 
 ## Style
 
-The visual direction comes from the soft pastel learning-app references the
-owner chose on 2026-10-10: a lavender canvas, white cards, pastel tiles, ink
-pill buttons, big bold headings. Every new screen follows it.
+The visual direction is a Gen Z learning app in black, white and matcha
+(owner's reference shots of 2026-10-21): an off-white canvas, white cards,
+black panels for the loudest moment, matcha pills, heavy display headings,
+tilted sticker labels and four-point sparkles. Every new screen follows it.
 
 - **Light first.** Light is the design; dark is a choice made with the theme
   button in the header (`src/components/ThemeButton.astro`, saved in localStorage,
@@ -556,31 +557,39 @@ pill buttons, big bold headings. Every new screen follows it.
   `src/layouts/Base.astro` before first paint). The OS setting does not switch it.
 - **Neutrals through the zinc scale.** `src/styles/globals.css` maps zinc onto the
   theme, so components write zinc classes and never `white`, `black` or hex:
-  - `zinc-950`: the lavender canvas (`#f2f1f7`), the page background.
+  - `zinc-950`: the off-white canvas (`#f4f4ee`), the page background.
   - `zinc-900`: white surfaces (cards, inputs, pills on the canvas).
   - `zinc-800`: soft lines, track of progress bars, quiet fills.
   - `zinc-500` to `zinc-300`: muted to secondary text. `zinc-50`: ink
-    (`#141318`), for text and the primary pill.
-  - Dark mode redefines the same names (canvas `#131217`, surfaces
-    `#1d1c23`), so no `dark:` variants are needed.
-- **Pastel tiles** carry color: `bg-tile-lavender`, `-mint`, `-butter`,
-  `-pink`, `-sky`, `-peach`. Text on a tile stays ink. Lists hand them out
-  in turn with `tile(i)` from `components/ui/styles.ts`, so neighbours
-  differ. Fixed meanings where there is one: mint = done or correct, pink =
+    (`#0f100d`).
+  - Dark mode redefines the same names (canvas `#0d0e0b`, surfaces
+    `#191a16`), so no `dark:` variants are needed.
+  - `bg-noir` / `text-on-noir`: black panels that stay black in dark mode
+    (landing hero, the dasbor greeting). One per screen.
+- **Tiles** carry color, all in the matcha family except two:
+  `bg-tile-lavender`, `-mint`, `-sky`, `-peach` (light matcha, matcha,
+  sage grey, pale matcha), plus `-pink` and `-butter` for their meanings
+  only. Text on a tile stays ink. Lists hand out the four matcha ones in
+  turn with `tile(i)` from `components/ui/styles.ts`. Fixed meanings where there is one: mint = done or correct, pink =
   wrong or danger, butter = streak, warning, ragu-ragu, lavender = the
   current or featured item.
-- **Brand indigo** (reference shots of 2026-10-20): `primary` (`#4f46e5`,
-  text `on-primary`) fills the main button, active tabs and the hero panel
-  (gradient to `primary-2`); `accent` (`#4f46e5`) for links and indigo text,
-  `brand` (`#6159f0`) for the logo, progress fills, rings and dots; lighter
-  indigo in dark. **Orange**
-  (`accent-warm`) stays for the logo's spark, streak icons and timer urgency.
+- **Matcha** (`#c6e59a`): `primary` fills the main button, the active nav
+  item, selected tabs and stickers, always with ink text (`on-primary`).
+  `accent` (`#46681c`, 6:1 on white) is matcha dark enough for links, text
+  and focus rings; `brand` (`#7fae3a`) for progress fills, rings and the
+  logo's sparkle. No other hues: `accent-warm` is ink now.
+- **Type**: headings (`h1`-`h3`) and the wordmark in Bricolage Grotesque,
+  extrabold, tight; body in Plus Jakarta Sans.
+- **Stickers**: short uppercase labels in rounded pills, `border-2
+  border-noir`, rotated 2-6 degrees, with a hard offset shadow; a key word
+  in a heading may sit on a tilted matcha block. Decoration only
+  (`aria-hidden`), never the only place a fact appears.
 - **Buttons**, all `rounded-full`, from `components/ui/styles.ts`:
-  - `primaryButton`: the one main action on a screen, an indigo pill
-    (`bg-primary text-on-primary`).
+  - `primaryButton`: the one main action on a screen, a matcha pill with
+    ink text (`bg-primary text-on-primary`).
   - `secondaryButton`: a white pill with `shadow-soft`.
   - `iconButton`: a 44px white circle.
-  - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the indigo circle with an
+  - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the matcha circle with an
     up-right arrow in the corner of a tile or card that opens something.
 - **Signed-in shell**: `/dasbor`, `/flashcard`, `/nilai`, `/profil` and
   `/admin/*` sit in `src/components/AppShell.astro`, a white sidebar from lg
@@ -612,9 +621,10 @@ pill buttons, big bold headings. Every new screen follows it.
   pink. Progress bars are `h-2.5 rounded-full` with an ink fill.
 - **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
   rounded square open at its top right corner, holding two stacked slides,
-  marked by a small spark dot at the gap. Room and slides teal, spark
-  orange. `public/icon.svg` and `public/opengraph-image.png` repeat it with hex
-  colors. Never recolor the room, never close the corner.
+  marked by a four-point sparkle at the gap. Room and slides in ink, the
+  front slide matcha, the sparkle `brand`. `public/icon.svg` puts it on a
+  black tile; the PNG icons and `public/opengraph-image.png` are rendered
+  from it, so redraw them when it changes. Never recolor the room, never close the corner.
 - **Motion**: only in answer to the learner (hover lift on tiles, the arrow
   badge turning, the hero cover drag, card flips). Every animation has a
   `motion-reduce` fallback.

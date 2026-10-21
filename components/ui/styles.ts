@@ -22,6 +22,7 @@ export const card = "rounded-[28px] bg-zinc-900 shadow-soft";
 export const chip = "inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-zinc-300";
 export const mutedChip = `${chip} bg-zinc-800`;
 
-// Pastel tiles, handed out in turn so neighbours differ.
-const TILES = ["bg-tile-lavender", "bg-tile-mint", "bg-tile-butter", "bg-tile-pink", "bg-tile-sky", "bg-tile-peach"];
+// Matcha-family tiles, handed out in turn so neighbours differ. Pink and
+// butter keep their meanings (wrong, warning) and stay out of the rotation.
+const TILES = ["bg-tile-lavender", "bg-tile-mint", "bg-tile-sky", "bg-tile-peach"];
 export const tile = (i: number) => TILES[i % TILES.length];

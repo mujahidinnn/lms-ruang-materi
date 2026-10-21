@@ -32,7 +32,7 @@ export default function SideNav({ set, path }: { set: NavSet; path: string }) {
             href={href}
             aria-current={current ? "page" : undefined}
             className={`flex min-h-11 shrink-0 items-center gap-3 rounded-2xl px-4 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-accent ${
-              current ? "bg-tile-lavender font-semibold text-accent" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
+              current ? "bg-primary font-semibold text-on-primary" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
             }`}
           >
             <Icon aria-hidden className="size-4.5" />

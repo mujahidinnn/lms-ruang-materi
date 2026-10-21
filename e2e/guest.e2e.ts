@@ -4,7 +4,7 @@ const front = (page: import("@playwright/test").Page) => page.getByRole("link", 
 
 test("landing shows the hero and topic lists", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Ruang untuk belajar");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Belajar ngoding");
   await expect(page.getByRole("heading", { name: "Belajar lewat roadmap" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Semua materi" })).toBeVisible();
 });

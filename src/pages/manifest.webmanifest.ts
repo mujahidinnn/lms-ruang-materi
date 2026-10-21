@@ -12,8 +12,8 @@ export const GET: APIRoute = () =>
       // The landing sends signed-in learners on to /dasbor.
       start_url: "/",
       display: "standalone",
-      background_color: "#f2f1f7",
-      theme_color: "#f2f1f7",
+      background_color: "#f4f4ee",
+      theme_color: "#f4f4ee",
       icons: [
         { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
         { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
