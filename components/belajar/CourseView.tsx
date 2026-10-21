@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Layers, Presentation, Play } from "lucide-react";
+import { Check, ChevronLeft, Clock, Layers, Presentation, Play } from "lucide-react";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
 import { card, chip, primaryButton, tile } from "@/components/ui/styles";
@@ -23,7 +23,10 @@ export default function CourseView({ topic }: { topic: Topic }) {
   return (
     <main className="flex-1 px-5 pb-20 sm:px-10">
       <div className="mx-auto max-w-7xl">
-        <header className="mt-4 rounded-[32px] bg-tile-lavender p-6 sm:p-10">
+        <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
+          <ChevronLeft aria-hidden className="size-4" />Semua kelas
+        </a>
+        <header className="mt-2 rounded-[32px] bg-tile-lavender p-6 sm:p-10">
           <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
           </h1>
