@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ChapterMarkdown from "@/components/belajar/markdown";
 import ChapterQuiz from "@/components/belajar/ChapterQuiz";
 import ChapterSyllabus from "@/components/belajar/ChapterSyllabus";
+import PresentationViewer from "@/components/PresentationViewer";
 import { primaryButton } from "@/components/ui/styles";
 import { neighbors } from "@/lib/chapters";
 import { sections as splitSections } from "@/lib/toc";
@@ -26,6 +27,8 @@ const index = topic.chapters.findIndex((c) => c.slug === bab);
 // shiki stays on the server.
 const parts = splitSections(chapter.body);
 const toc = parts.filter((p) => p.id);
+// The deck slides this chapter covers, for the "Slide" mode.
+const chapterSlides = chapter.slideFrom && chapter.slideTo ? topic.slides.filter((s) => s.index >= chapter.slideFrom! && s.index <= chapter.slideTo!) : [];
 const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement(ChapterMarkdown, { body: ex.prompt, slides: topic.slides })));
 ---
 
@@ -59,30 +62,47 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
             </details>
           )}
 
+          {chapterSlides.length > 0 && (
+            <div role="tablist" aria-label="Cara belajar" class="mt-6 inline-flex rounded-full border-2 border-noir bg-zinc-900 p-1 text-sm font-bold">
+              <button type="button" role="tab" data-mode="baca" aria-selected="true" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Baca</button>
+              <button type="button" role="tab" data-mode="slide" aria-selected="false" class="min-h-10 rounded-full px-4 aria-selected:bg-noir aria-selected:text-on-noir">Slide ({chapterSlides.length})</button>
+            </div>
+          )}
+
+          <div data-mode-panel="baca">
           <div class="mt-8">
-            {parts.map((p) =>
-              !p.id ? (
-                p.body.trim() && <ChapterMarkdown body={p.body} slides={topic.slides} />
-              ) : p.title === "Tujuan" ? (
-                <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mb-10 scroll-mt-24 rounded-[28px] border-2 border-noir bg-matcha-100 p-6 text-noir">
-                  <h2 id={`${p.id}-judul`} class="flex items-center gap-2 text-xl font-extrabold"><Target aria-hidden className="size-5" />Tujuan bab ini</h2>
-                  <div class="mt-3 [&_.prose-chapter]:text-noir"><ChapterMarkdown body={p.body} slides={topic.slides} /></div>
-                </section>
-              ) : p.title === "Rangkuman" ? (
-                <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mt-12 scroll-mt-24 rounded-[28px] bg-noir p-6 text-on-noir ring-1 ring-zinc-800 sm:p-8">
-                  <h2 id={`${p.id}-judul`} class="text-2xl font-extrabold"><span class="inline-block -rotate-2 rounded-xl bg-matcha-300 px-2 text-noir">Rangkuman</span></h2>
-                  <div class="mt-4"><ChapterMarkdown body={p.body} slides={topic.slides} className="prose-on-noir" /></div>
-                </section>
-              ) : (
-                <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mt-12 scroll-mt-24">
-                  <h2 id={`${p.id}-judul`} class="flex items-start gap-3 text-2xl leading-tight font-extrabold sm:text-[1.75rem]">
-                    <span aria-hidden="true" class="mt-1 h-6 w-1.5 shrink-0 rounded-full bg-matcha-400"></span>{p.title}
-                  </h2>
-                  <div class="mt-4"><ChapterMarkdown body={p.body} slides={topic.slides} /></div>
-                </section>
-              ),
-            )}
+              {parts.map((p) =>
+                !p.id ? (
+                  p.body.trim() && <ChapterMarkdown body={p.body} slides={topic.slides} />
+                ) : p.title === "Tujuan" ? (
+                  <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mb-10 scroll-mt-24 rounded-[28px] border-2 border-noir bg-matcha-100 p-6 text-noir">
+                    <h2 id={`${p.id}-judul`} class="flex items-center gap-2 text-xl font-extrabold"><Target aria-hidden className="size-5" />Tujuan bab ini</h2>
+                    <div class="mt-3 [&_.prose-chapter]:text-noir"><ChapterMarkdown body={p.body} slides={topic.slides} /></div>
+                  </section>
+                ) : p.title === "Rangkuman" ? (
+                  <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mt-12 scroll-mt-24 rounded-[28px] bg-noir p-6 text-on-noir ring-1 ring-zinc-800 sm:p-8">
+                    <h2 id={`${p.id}-judul`} class="text-2xl font-extrabold"><span class="inline-block -rotate-2 rounded-xl bg-matcha-300 px-2 text-noir">Rangkuman</span></h2>
+                    <div class="mt-4"><ChapterMarkdown body={p.body} slides={topic.slides} className="prose-on-noir" /></div>
+                  </section>
+                ) : (
+                  <section id={p.id} aria-labelledby={`${p.id}-judul`} class="mt-12 scroll-mt-24">
+                    <h2 id={`${p.id}-judul`} class="flex items-start gap-3 text-2xl leading-tight font-extrabold sm:text-[1.75rem]">
+                      <span aria-hidden="true" class="mt-1 h-6 w-1.5 shrink-0 rounded-full bg-matcha-400"></span>{p.title}
+                    </h2>
+                    <div class="mt-4"><ChapterMarkdown body={p.body} slides={topic.slides} /></div>
+                  </section>
+                ),
+              )}
+            </div>
           </div>
+          {chapterSlides.length > 0 && (
+            <div data-mode-panel="slide" hidden class="mt-8">
+              <p class="mb-3 text-sm text-zinc-400">Slide {chapter.slideFrom} sampai {chapter.slideTo} dari deck {topic.title}. Penjelasan lengkapnya ada di mode Baca.</p>
+              <div class="overflow-hidden rounded-[28px] bg-zinc-900 shadow-soft">
+                <PresentationViewer client:visible presentation={{ slug, title: chapter.title, description: "", slideCount: chapterSlides.length, slides: chapterSlides }} />
+              </div>
+            </div>
+          )}
 
           {/* What finishing this chapter takes, before the quiz island does it. */}
           <section aria-labelledby="ceklis" class="mt-14 rounded-[28px] border-2 border-noir bg-matcha-50 p-6 text-noir">
@@ -139,4 +159,22 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
   </div>
   <CopyCode />
   <ReaderScripts />
+  <script>
+    // Baca or Slide; the choice is remembered on this device.
+    const KEY = "ruang-materi:mode-bab";
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>("[data-mode]")];
+    function show(mode: string) {
+      for (const t of tabs) t.setAttribute("aria-selected", String(t.dataset.mode === mode));
+      for (const p of document.querySelectorAll<HTMLElement>("[data-mode-panel]")) p.hidden = p.dataset.modePanel !== mode;
+    }
+    if (tabs.length) {
+      let saved = "baca";
+      try { saved = localStorage.getItem(KEY) ?? "baca"; } catch {}
+      show(saved);
+      for (const t of tabs) t.addEventListener("click", () => {
+        show(t.dataset.mode!);
+        try { localStorage.setItem(KEY, t.dataset.mode!); } catch {}
+      });
+    }
+  </script>
 </Base>

@@ -9,7 +9,12 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   site: "https://lms-ruang-materi.vercel.app",
   output: "server",
-  adapter: vercel(),
+  // Skew protection: a page from one deploy keeps loading its own JS chunks
+  // after the next deploy goes live.
+  adapter: vercel({ skewProtection: true }),
+  // CSS inside each page: a cached page can never point at a stylesheet the
+  // next deploy removed (pages showed up unstyled right after a deploy).
+  build: { inlineStylesheets: "always" },
   integrations: [react()],
   // Hover prefetch, like next/link did.
   prefetch: { defaultStrategy: "hover", prefetchAll: true },

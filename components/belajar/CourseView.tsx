@@ -29,6 +29,9 @@ export default function CourseView({ topic }: { topic: Topic }) {
             <Play aria-hidden className="size-4" />
             {started ? `Lanjutkan: ${resume.title}` : "Mulai bab 1"}
           </a>
+          <a href={`/belajar/${topic.slug}/slide`} className="mt-7 ml-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-zinc-900 px-5 font-semibold shadow-soft hover:bg-zinc-800">
+            <Presentation aria-hidden className="size-4" />Versi slide
+          </a>
         </header>
 
         <section aria-labelledby="silabus" className={`mt-4 p-6 sm:p-8 ${card}`}>
