@@ -12,7 +12,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         className={`group flex h-full flex-col p-6 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${card}`}
       >
         <div className="flex items-start justify-between gap-3">
-          <span className={`${mutedChip} tabular-nums`}>{track.nodeCount} topik</span>
+          <span className={`${mutedChip} tabular-nums`}>{track.nodeCount} kelas</span>
           <ArrowBadge />
         </div>
         <h3 className="mt-5 text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>

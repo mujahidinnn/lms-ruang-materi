@@ -5,8 +5,8 @@ const front = (page: import("@playwright/test").Page) => page.getByRole("link", 
 test("landing shows the hero and topic lists", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Belajar ngoding");
-  await expect(page.getByRole("heading", { name: "Jalur belajar" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Semua kelas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bingung mulai dari mana?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mulai dari kelas lengkap" })).toBeVisible();
 });
 
 test("pulling the front cover brings the next one forward", async ({ page, isMobile }) => {
@@ -85,8 +85,8 @@ test("phones get the floating bottom nav", async ({ page, isMobile }) => {
   test.skip(!isMobile, "phone only");
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Navigasi utama" });
-  await expect(nav.getByRole("link", { name: "Beranda" })).toHaveAttribute("aria-current", "page");
-  await nav.getByRole("link", { name: "Jalur" }).click();
+  await expect(nav.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("link", { name: "Roadmap" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
 });
 

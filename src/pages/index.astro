@@ -4,7 +4,7 @@ import { LogoMark } from "@/components/brand/Logo";
 import HeroRoom from "@/components/landing/HeroRoom";
 import TopicCard from "@/components/landing/TopicCard";
 import TrackCard from "@/components/landing/TrackCard";
-import { primaryButton } from "@/components/ui/styles";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { getTopics, getTracks } from "@/lib/content";
 import SiteHeader from "../components/SiteHeader.astro";
 import Base from "../layouts/Base.astro";
@@ -25,6 +25,15 @@ const stickers = [
 ];
 
 const [topics, tracks] = await Promise.all([getTopics(), getTracks()]);
+// Full classes first (chapters, quizzes, exam), the ones with most chapters
+// on top; slides-only topics wait in /kelas until they are rewritten.
+const featured = topics.filter((t) => t.chapters.length > 0).toSorted((a, b) => Number(!!b.project) - Number(!!a.project) || b.chapters.length - a.chapters.length).slice(0, 6);
+const STEPS = [
+  { title: "Baca bab", text: "Penjelasan bertahap dengan contoh kode. Lebih suka slide? Ganti ke mode Slide.", tone: "bg-matcha-50" },
+  { title: "Kuis dan latihan kode", text: "Cek pemahaman di akhir bab dan tulis kodenya langsung di browser.", tone: "bg-matcha-100" },
+  { title: "Ujian dan proyek akhir", text: "Ujian dinilai server, proyek diperiksa otomatis.", tone: "bg-matcha-200" },
+  { title: "Sertifikat", text: "Terbitkan sertifikat dengan namamu dan tautan untuk cek keasliannya.", tone: "bg-matcha-300" },
+];
 const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
 ---
 
@@ -34,7 +43,7 @@ const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
     {/* Signed-in learners see the same landing, plus a way back to their work. */}
     <div class="hidden px-3 pb-3 signed-in:block sm:px-6">
       <a href="/dasbor" class="mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-2xl border-2 border-noir bg-matcha-200 px-5 py-3 font-semibold text-noir hover:bg-matcha-300">
-        <span>Lanjutkan belajar di Beranda saya</span><ArrowRight aria-hidden className="size-5" />
+        <span>Lanjutkan belajar di Dashboard</span><ArrowRight aria-hidden className="size-5" />
       </a>
     </div>
 
@@ -67,11 +76,11 @@ const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
               </a>
               <a href="#roadmap" class="inline-flex min-h-12 items-center gap-2 rounded-full px-6 font-semibold ring-2 ring-on-noir/30 transition-colors hover:bg-on-noir/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <Route aria-hidden className="size-4" />
-                Atau ikuti jalur belajar
+                Atau ikuti roadmap
               </a>
             </div>
             <ul aria-label="Isi Ruang Materi" class="mt-10 flex flex-wrap gap-2">
-              <li class={`${heroChip} tabular-nums`}>{tracks.length} jalur belajar</li>
+              <li class={`${heroChip} tabular-nums`}>{tracks.length} roadmap</li>
               <li class={`${heroChip} tabular-nums`}>{topics.length} kelas</li>
               <li class={`${heroChip} tabular-nums`}>{totalSlides} slide</li>
               <li class={`${heroChip} bg-primary text-on-primary`}>gratis</li>
@@ -81,22 +90,40 @@ const totalSlides = topics.reduce((sum, t) => sum + t.slideCount, 0);
           <div class="relative text-zinc-50"><HeroRoom client:load topics={topics.map((t) => ({ slug: t.slug, title: t.title, description: "", slideCount: t.slideCount, slides: t.slides.slice(0, 1) }))} /></div>
         </section>
 
-        <section id="roadmap" aria-labelledby="roadmap-judul" class="scroll-mt-6 py-12 sm:py-16">
-          <h2 id="roadmap-judul" class="text-3xl font-bold tracking-tight sm:text-4xl">Jalur belajar</h2>
-          <p class="mt-2 max-w-xl text-zinc-400">Urutan kelas yang disarankan, dari dasar sampai mahir. Lulus ujian akhir tiap kelas untuk naik level.</p>
+        <section id="kelas" aria-labelledby="kelas-judul" class="scroll-mt-6 pt-14 sm:pt-20">
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 id="kelas-judul" class="text-3xl font-extrabold sm:text-4xl">Mulai dari kelas lengkap</h2>
+              <p class="mt-2 max-w-xl text-zinc-400">Bacaan per bab, kuis, latihan kode, ujian akhir, proyek, dan sertifikat.</p>
+            </div>
+            <a href="/kelas" class={secondaryButton}><BookOpen aria-hidden className="size-4" />Lihat semua {topics.length} kelas</a>
+          </div>
+          <ul class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((t, i) => <TopicCard topic={t} index={i} />)}
+          </ul>
+        </section>
+
+        <section aria-labelledby="cara-judul" class="pt-14 sm:pt-20">
+          <h2 id="cara-judul" class="text-3xl font-extrabold sm:text-4xl">Cara belajarnya</h2>
+          <p class="mt-2 max-w-xl text-zinc-400">Setiap kelas punya jalur yang sama, dari bab pertama sampai sertifikat.</p>
+          <ol class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((st, i) => (
+              <li class={`relative rounded-[28px] p-6 ${st.tone}`}>
+                <span class="grid size-10 -rotate-6 place-items-center rounded-2xl border-2 border-noir bg-noir font-(family-name:--font-bricolage) text-lg font-extrabold text-on-noir">{i + 1}</span>
+                <p class="mt-4 text-lg font-extrabold text-noir">{st.title}</p>
+                <p class="mt-1 text-sm leading-relaxed text-zinc-300">{st.text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section id="roadmap" aria-labelledby="roadmap-judul" class="scroll-mt-6 py-14 sm:py-20">
+          <h2 id="roadmap-judul" class="text-3xl font-extrabold sm:text-4xl">Bingung mulai dari mana?</h2>
+          <p class="mt-2 max-w-xl text-zinc-400">Ikuti roadmap: urutan kelas yang disarankan, dari dasar sampai mahir. Saran, bukan syarat.</p>
           <ul class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {tracks.map((t) => <TrackCard track={t} />)}
           </ul>
         </section>
-
-        <section id="materi" aria-labelledby="materi-judul" class="scroll-mt-6 py-12 sm:py-16">
-          <h2 id="materi-judul" class="text-3xl font-bold tracking-tight sm:text-4xl">Semua kelas</h2>
-          <p class="mt-2 max-w-xl text-zinc-400">Mulai dari mana saja. Setiap kelas berdiri sendiri.</p>
-          <ul class="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {topics.map((t, i) => <TopicCard topic={t} index={i} />)}
-          </ul>
-        </section>
-
       </div>
     </main>
 

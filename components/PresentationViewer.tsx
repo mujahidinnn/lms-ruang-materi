@@ -28,10 +28,14 @@ export default function PresentationViewer({
   presentation,
   resumeAt = null,
   onSlide,
+  embedded = false,
 }: {
   presentation: Presentation;
   resumeAt?: number | null;
   onSlide?: (index: number) => void;
+  // Inside a page with its own header: no back link or title, and a height
+  // that leaves room for the page around it.
+  embedded?: boolean;
 }) {
   const { title, slides } = presentation;
   const [index, setIndex] = useState(0);
@@ -97,11 +101,13 @@ export default function PresentationViewer({
   }, [index, goTo, slides.length]);
 
   useEffect(() => {
-    thumbRefs.current[index]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    // Scroll the thumbnail strip only; scrollIntoView would also move the
+    // page when the viewer sits inside one.
+    const el = thumbRefs.current[index];
+    const strip = el?.closest("nav");
+    if (!el || !strip) return;
+    const a = el.getBoundingClientRect(), b = strip.getBoundingClientRect();
+    strip.scrollBy({ left: a.left - b.left - (b.width - a.width) / 2, top: a.top - b.top - (b.height - a.height) / 2, behavior: "smooth" });
   }, [index]);
 
   // Warm the cache for the neighbouring slides, picking the same file from
@@ -301,9 +307,9 @@ export default function PresentationViewer({
   );
 
   return (
-    <div className="flex h-dvh flex-col bg-zinc-950 text-zinc-50">
+    <div className={`flex flex-col bg-zinc-950 text-zinc-50 ${embedded ? "h-[min(calc(100dvh-9rem),48rem,calc(56vw+11rem))] min-h-80" : "h-dvh"}`}>
       <header className="flex shrink-0 items-center justify-between gap-4 px-4 py-3 short:py-1.5! sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className={`min-w-0 items-center gap-3 ${embedded ? "hidden" : "flex"}`}>
           <a
             href="/"
             aria-label="Kembali ke beranda"
@@ -315,7 +321,7 @@ export default function PresentationViewer({
             {title}
           </h1>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           <span className="font-mono text-xs tabular-nums text-zinc-500">
             {String(index + 1).padStart(2, "0")} /{" "}
             {String(slides.length).padStart(2, "0")}

@@ -57,6 +57,8 @@ export default function ChapterQuiz({
       return setStatus("blocked");
     }
     setStatus(error ? "error" : "saved");
+    // The chapter list beside the article ticks this chapter off.
+    if (!error) window.dispatchEvent(new CustomEvent("bab-selesai", { detail: chapterId }));
   }
 
   function tryComplete() {

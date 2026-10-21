@@ -66,13 +66,13 @@ export default function RoadmapGraph({
               style={{ left: x(n), top: y(n), width: W, height: H }}
               className={`absolute flex items-center gap-2 rounded-2xl border-2 px-3 text-left text-sm transition-colors ${
                 selected === n.id
-                  ? "border-zinc-50 bg-zinc-900 text-zinc-50"
+                  ? "border-zinc-50 bg-zinc-900 text-zinc-50 ring-4 ring-primary"
                   : state === "selesai"
                     ? "border-transparent bg-tile-mint text-zinc-50"
                     : state === "sedang"
                       ? "border-transparent bg-tile-lavender text-zinc-50"
                       : "border-transparent bg-zinc-900 text-zinc-300 shadow-soft hover:text-zinc-50"
-              } ${n.optional ? "border-dashed !border-zinc-700" : ""}`}
+              } ${n.optional ? `border-dashed ${selected === n.id ? "" : "!border-zinc-700"}` : ""}`}
             >
               <StateIcon state={state} />
               <span className="line-clamp-2 leading-tight font-medium">{n.title}</span>

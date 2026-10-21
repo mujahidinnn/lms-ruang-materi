@@ -9,7 +9,7 @@ import type { Topic } from "@/lib/content";
 // marks it "sedang" (so its flashcards join the schedule), the viewer resumes
 // at the last slide, and moving through slides saves it. getSession() reads
 // the local cookie, so logged-out visits make no request.
-export default function BelajarViewer({ presentation }: { presentation: Topic }) {
+export default function BelajarViewer({ presentation, embedded = false }: { presentation: Topic; embedded?: boolean }) {
   const topic = presentation.id;
   const [resumeAt, setResumeAt] = useState<number | null>(null);
   const ready = useRef(false);
@@ -36,5 +36,5 @@ export default function BelajarViewer({ presentation }: { presentation: Topic })
     [topic]
   );
 
-  return <PresentationViewer presentation={presentation} resumeAt={resumeAt} onSlide={onSlide} />;
+  return <PresentationViewer presentation={presentation} resumeAt={resumeAt} onSlide={onSlide} embedded={embedded} />;
 }
