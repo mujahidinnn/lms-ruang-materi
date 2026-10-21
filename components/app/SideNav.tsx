@@ -4,6 +4,7 @@ import { BookOpen, ClipboardCheck, FileUp, Layers, LayoutDashboard, Medal, Route
 const SETS = {
   akun: [
     { href: "/dasbor", label: "Dasbor", Icon: LayoutDashboard },
+    { href: "/kelas", label: "Kelas", Icon: BookOpen },
     { href: "/roadmap", label: "Roadmap", Icon: Route },
     { href: "/flashcard", label: "Flashcard", Icon: Layers },
     { href: "/nilai", label: "Nilai", Icon: Medal },

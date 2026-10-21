@@ -1,0 +1,10 @@
+import { createClient } from "@supabase/supabase-js";
+const e = process.env;
+const db = createClient(e.NEXT_PUBLIC_SUPABASE_URL, e.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const slug = process.argv[2];
+const { data: t } = await db.from("topics").select("id, title, status").eq("slug", slug).single();
+const { data: ch } = await db.from("chapters").select("title, body, chapter_questions(count), code_exercises(count)").eq("topic_id", t.id).eq("status", "draft").order("position");
+console.log(t.title, t.status, "| bab", ch.length, "| kata", ch.map((c) => c.body.split(/\s+/).length).join(","), "| kuis", ch.map((c) => c.chapter_questions[0].count).join(","), "| kode", ch.reduce((n, c) => n + c.code_exercises[0].count, 0));
+const { data: pr } = await db.from("projects").select("title, kind, status, verified_at").eq("topic_id", t.id);
+console.log("proyek", JSON.stringify(pr.map((p) => [p.title, p.kind, p.status, !!p.verified_at])));
+console.log("cite", ch.some((c) => /\[cite/.test(c.body)));

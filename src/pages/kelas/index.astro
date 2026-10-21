@@ -1,0 +1,92 @@
+---
+import { Route, Search } from "lucide-react";
+import TopicCard from "@/components/landing/TopicCard";
+import { secondaryButton } from "@/components/ui/styles";
+import { getTopics, getTrack, getTracks } from "@/lib/content";
+import { SITE_URL } from "@/lib/site";
+import SiteHeader from "../../components/SiteHeader.astro";
+import Base from "../../layouts/Base.astro";
+import { publicPage } from "../../lib/cdn";
+
+// Every class, open to start in any order. Roadmaps only suggest an order;
+// here they are filters. Filtering runs in the browser over data attributes.
+publicPage(Astro);
+const [topics, summaries] = await Promise.all([getTopics(), getTracks()]);
+const tracks = (await Promise.all(summaries.map((t) => getTrack(t.slug)))).filter((t) => t !== null);
+const inTrack = new Map<string, string[]>();
+for (const t of tracks) for (const n of t.nodes) inTrack.set(n.slug, [...(inTrack.get(n.slug) ?? []), t.slug]);
+const filters = [
+  { key: "", label: "Semua" },
+  ...tracks.map((t) => ({ key: t.slug, label: t.title })),
+  { key: "lainnya", label: "Di luar roadmap" },
+];
+---
+
+<Base title="Semua kelas" description="Semua kelas pemrograman dan teknologi di Ruang Materi. Mulai dari mana saja, tanpa harus mengikuti roadmap." canonical={`${SITE_URL}/kelas`}>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-7xl">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 class="text-4xl font-extrabold sm:text-5xl">Semua kelas</h1>
+            <p class="mt-2 max-w-xl text-zinc-400">Mulai dari kelas mana saja. Roadmap hanya saran urutan, bukan syarat.</p>
+          </div>
+          <a href="/roadmap" class={secondaryButton}><Route aria-hidden className="size-4" />Lihat roadmap</a>
+        </div>
+
+        <div class="mt-8 flex flex-col gap-4 lg:flex-row lg:items-center">
+          <label class="flex min-h-12 items-center gap-2 rounded-full bg-zinc-900 px-5 shadow-soft focus-within:ring-2 focus-within:ring-accent lg:w-80">
+            <Search aria-hidden className="size-4 text-zinc-500" />
+            <span class="sr-only">Cari kelas</span>
+            <input data-cari type="search" placeholder="Cari kelas, misalnya git" class="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
+          </label>
+          <div role="group" aria-label="Saring kelas" class="scrollbar-thin -mx-5 flex gap-2 overflow-x-auto px-5 pb-1 lg:mx-0 lg:px-0">
+            {filters.map((f) => (
+              <button type="button" data-saring={f.key} aria-pressed={f.key === "" ? "true" : "false"} class="min-h-10 shrink-0 rounded-full border-2 border-zinc-800 bg-zinc-900 px-4 text-sm font-semibold text-zinc-300 aria-pressed:border-noir aria-pressed:bg-matcha-300 aria-pressed:text-noir">
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p data-jumlah aria-live="polite" class="mt-6 text-sm font-semibold tabular-nums">{topics.length} kelas</p>
+        <ul class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {topics.map((t, i) => (
+            <div class="contents" data-kelas data-judul={`${t.title} ${t.description}`.toLowerCase()} data-roadmap={(inTrack.get(t.slug) ?? ["lainnya"]).join(" ")}>
+              <TopicCard topic={t} index={i} />
+            </div>
+          ))}
+        </ul>
+        <p data-kosong hidden class="mt-8 text-zinc-400">Tidak ada kelas yang cocok. Coba kata lain atau pilih "Semua".</p>
+      </div>
+    </main>
+  </div>
+</Base>
+
+<script>
+  const items = [...document.querySelectorAll<HTMLElement>("[data-kelas]")];
+  const search = document.querySelector<HTMLInputElement>("[data-cari]")!;
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-saring]")];
+  const count = document.querySelector("[data-jumlah]")!;
+  const empty = document.querySelector<HTMLElement>("[data-kosong]")!;
+  let filter = "";
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    for (const el of items) {
+      const ok = (!filter || el.dataset.roadmap!.split(" ").includes(filter)) && (!q || el.dataset.judul!.includes(q));
+      el.hidden = !ok;
+      if (ok) shown++;
+    }
+    count.textContent = `${shown} kelas`;
+    empty.hidden = shown > 0;
+  }
+  search.addEventListener("input", apply);
+  for (const b of buttons)
+    b.addEventListener("click", () => {
+      filter = b.dataset.saring!;
+      for (const x of buttons) x.setAttribute("aria-pressed", String(x === b));
+      apply();
+    });
+</script>

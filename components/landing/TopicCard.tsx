@@ -1,9 +1,15 @@
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { chip, tile } from "@/components/ui/styles";
-import { coverSrc, type Presentation } from "@/lib/slides";
+import { totalMinutes } from "@/lib/chapters";
+import type { Topic } from "@/lib/content";
+import { coverSrc } from "@/lib/slides";
 
-// A topic as a pastel tile; the hue comes from its place in the list.
-export default function TopicCard({ topic, index }: { topic: Presentation; index: number }) {
+type CardTopic = Pick<Topic, "slug" | "title" | "description" | "slideCount" | "slides" | "chapters">;
+
+// A topic as a tile; the hue comes from its place in the list. A class with
+// chapters shows its chapters and minutes, a slides-only topic its slides.
+export default function TopicCard({ topic, index }: { topic: CardTopic; index: number }) {
+  const n = topic.chapters.length;
   return (
     <li>
       <a
@@ -11,7 +17,7 @@ export default function TopicCard({ topic, index }: { topic: Presentation; index
         className={`group flex h-full flex-col gap-4 rounded-[28px] p-5 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${tile(index)}`}
       >
         <div className="flex items-start justify-between gap-3">
-          <span className={`${chip} bg-zinc-900/70 tabular-nums`}>{topic.slideCount} slide</span>
+          <span className={`${chip} bg-zinc-900/70 tabular-nums`}>{n ? `${n} bab · ${totalMinutes(topic.chapters)} menit` : `${topic.slideCount} slide`}</span>
           <ArrowBadge />
         </div>
         <div className="flex-1">
