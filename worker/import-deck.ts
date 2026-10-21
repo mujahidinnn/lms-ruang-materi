@@ -146,6 +146,7 @@ try {
   process.exitCode = 1;
 } finally {
   await rm(work, { recursive: true, force: true });
+  if (job.provider === "gemini-web") await (await import("./llm/gemini-web.ts")).closeGeminiWeb();
 }
 
 type RenderedSlide = { index: number; path: string; width: number; height: number };

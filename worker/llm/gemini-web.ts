@@ -12,10 +12,12 @@ import { simpleSchema } from "./schema.ts";
 import { ProviderError, type DraftResult } from "./types.ts";
 
 const SEL = {
-  input: 'rich-textarea div[contenteditable="true"], div[contenteditable="true"][role="textbox"]',
+  // By its label: extensions (Grammarly) add contenteditable boxes of their own.
+  input: '[aria-label="Masukkan perintah untuk Gemini"], [aria-label="Enter a prompt for Gemini" i], div[contenteditable="true"][role="textbox"]',
   send: 'button[aria-label*="Send" i], button[aria-label*="Kirim" i]',
   stop: 'button[aria-label*="Stop" i], button[aria-label*="Hentikan" i]',
-  temporary: 'button[aria-label*="Temporary chat" i], button[aria-label*="Percakapan sementara" i]',
+  temporary: '[aria-label*="Temporary chat" i], [aria-label*="Percakapan sementara" i]',
+  modePicker: '[aria-label*="pemilih mode" i], [aria-label*="mode picker" i]',
   response: "model-response",
   attached: 'uploader-file-preview, [data-test-id*="preview" i], [data-test-id*="file" i]',
 };
@@ -24,6 +26,8 @@ const PROFILE = join(homedir(), ".sopi-gemini");
 const PORT = 9334;
 const GEMINI = `https://gemini.google.com/u/${process.env.GEMINI_WEB_ACCOUNT ?? 0}/app`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// The mode to pick in Gemini's picker, by a word in its name.
+const MODE = process.env.GEMINI_WEB_MODE ?? "Pro";
 
 let page: Page | null = null;
 
@@ -43,15 +47,37 @@ async function open(): Promise<Page> {
   return page;
 }
 
+// Lets the worker exit: an open CDP connection keeps Node running.
+export async function closeGeminiWeb() {
+  await page?.context().browser()?.close().catch(() => {});
+  page = null;
+}
+
 export async function generateDraft(pdf: Buffer, prompt: Prompt, _model: string, jsonSchema: unknown): Promise<DraftResult> {
   const p = await open();
   await p.goto(GEMINI, { waitUntil: "commit", timeout: 60_000 }).catch(() => {});
-  // A temporary chat keeps decks out of the owner's Gemini history.
+  // A temporary chat keeps decks out of the owner's Gemini history; without
+  // one, stop rather than save the deck there.
   const temp = p.locator(SEL.temporary).first();
-  if (await temp.waitFor({ timeout: 15_000 }).then(() => true, () => false)) await temp.click();
+  if (!(await temp.waitFor({ timeout: 20_000 }).then(() => true, () => false))) throw new ProviderError("Gemini temporary chat button not found");
+  await temp.click();
+  await sleep(1500);
+  // Pick the strongest mode (the default can be Flash-Lite); the picker's
+  // label names the current one, so check it took.
+  const picker = p.locator(SEL.modePicker).first();
+  for (let i = 0; i < 2; i++) {
+    if (!(await picker.waitFor({ timeout: 10_000 }).then(() => true, () => false))) break;
+    if ((await picker.getAttribute("aria-label"))?.includes(MODE)) break;
+    await picker.click();
+    const item = p.locator('[role="menuitem"], [role="menuitemradio"], [role="option"]').filter({ hasText: MODE }).first();
+    if (await item.waitFor({ timeout: 5000 }).then(() => true, () => false)) await item.click();
+    else await p.keyboard.press("Escape");
+    await sleep(1200);
+  }
+
   const input = p.locator(SEL.input).first();
   await input.waitFor({ timeout: 30_000 }).catch(() => {
-    throw new ProviderError("Gemini prompt box not found (signed out? run: npm run draft:local -- --login)");
+    throw new ProviderError("Gemini prompt box not found (signed out? sign in to Google in the ~/.sopi-gemini Chrome profile)");
   });
   await input.click();
 
