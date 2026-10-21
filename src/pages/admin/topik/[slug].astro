@@ -1,6 +1,7 @@
 ---
 import ChapterEditor, { type ChapterRow } from "@/components/admin/ChapterEditor";
 import ExerciseEditor, { type ExerciseRow } from "@/components/admin/ExerciseEditor";
+import ProjectEditor, { type ProjectRow } from "@/components/admin/ProjectEditor";
 import QuestionEditor, { type Question } from "@/components/admin/QuestionEditor";
 import RowEditor from "@/components/admin/RowEditor";
 import StatusBadge from "@/components/admin/StatusBadge";
@@ -33,7 +34,7 @@ const { data: topic } = await db.from("topics").select("*").eq("slug", slug).may
 if (!topic) return Astro.rewrite("/404");
 
 const by = (t: string) => db.from(t).select("*").eq("topic_id", topic.id);
-const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions, exercises] = await Promise.all([
+const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions, exercises, projects] = await Promise.all([
   by("slides").order("index"),
   by("tips").order("position"),
   by("flashcards").order("position"),
@@ -44,7 +45,12 @@ const [slides, tips, cards, practice, exam, job, chapters, chapterQuestions, exe
   by("chapters").order("position"),
   db.from("chapter_questions").select("*, chapters!inner(topic_id)").eq("chapters.topic_id", topic.id).order("position"),
   db.from("code_exercises").select("*, chapters!inner(topic_id)").eq("chapters.topic_id", topic.id).order("position"),
+  db.from("projects").select("*, project_solutions(solution)").eq("topic_id", topic.id),
 ]);
+// The draft project when there is one (it replaces the live one on publish).
+const projectRows = (projects.data ?? []) as (Omit<ProjectRow, "solution"> & { status: string; project_solutions: { solution: ProjectRow["solution"] } | null })[];
+const projectRow = projectRows.find((p) => p.status === "draft") ?? projectRows[0];
+const project: ProjectRow | null = projectRow ? { ...projectRow, solution: projectRow.project_solutions?.solution ?? {} } : null;
 
 const shownChapters = pending(chapters.data as ChapterRow[] | null);
 const shownSlides = pending(slides.data);
@@ -56,7 +62,7 @@ const prereq: string[] = job.data?.prerequisites ?? [];
 const slidesForPreview = shownSlides.map((s) => ({ index: s.index, src: slideUrl(s.path), width: s.width, height: s.height }));
 const hasDraft =
   !!topic.draft_summary ||
-  [chapters.data as Row[] | null, slides.data, tips.data, cards.data, practice.data, exam.data?.exam_questions as Row[] | undefined].some((rows) =>
+  [chapters.data as Row[] | null, slides.data, tips.data, cards.data, practice.data, exam.data?.exam_questions as Row[] | undefined, projects.data as Row[] | null].some((rows) =>
     rows?.some((x) => x.status === "draft")
   );
 const allChapterQuestions = (chapterQuestions.data ?? []) as (Question & { chapter_id: string })[];
@@ -155,6 +161,18 @@ const sections = [
             <button class={smallButton}>Tambah bab</button>
             <p class="mt-2 text-xs text-zinc-500">Bab baru jadi draf. Kalau topik sudah punya bab terbit dan tidak ada draf, bab baru langsung tampil.</p>
           </form>
+        </AdminSection>
+
+        <AdminSection id="proyek" title="Proyek akhir" note="Syarat sertifikat, diperiksa otomatis di browser">
+          {project ? (
+            <ProjectEditor client:load p={project} />
+          ) : (
+            <form method="post" action="/rpc/tambahProyek" class="py-4">
+              <input type="hidden" name="topic" value={slug} />
+              <button class={smallButton}>Tambah proyek akhir</button>
+              <p class="mt-2 text-xs text-zinc-500">Proyek tampil untuk murid setelah solusinya lolos uji.</p>
+            </form>
+          )}
         </AdminSection>
 
         <AdminSection id="slide" title="Slide" note={`${shownSlides.length} slide${shownSlides[0]?.status === "draft" ? ", hasil render baru" : ""}`}>

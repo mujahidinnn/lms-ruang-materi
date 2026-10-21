@@ -2,20 +2,8 @@ import { invalidateContent } from "@/lib/cache";
 import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
+import { files, json, tests } from "@/lib/admin-forms";
 import { createClient } from "@/lib/supabase/server";
-
-// A textarea holding JSON, parsed and validated against the given schema.
-const json = <T extends z.ZodType>(schema: T) =>
-  z.string().transform((s, ctx) => {
-    try {
-      return schema.parse(JSON.parse(s)) as z.infer<T>;
-    } catch {
-      ctx.addIssue({ code: "custom", message: "JSON tidak valid" });
-      return z.NEVER;
-    }
-  });
-const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
-const tests = z.array(z.object({ name: z.string().min(1), check: z.string().min(1) }));
 
 function done() {
   invalidateContent();

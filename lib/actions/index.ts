@@ -1,6 +1,7 @@
 import * as adminBab from "./admin-bab";
 import * as adminImpor from "./admin-impor";
 import * as adminLatihanKode from "./admin-latihan-kode";
+import * as adminProyek from "./admin-proyek";
 import * as adminRoadmap from "./admin-roadmap";
 import * as adminTopik from "./admin-topik";
 import * as adminUjian from "./admin-ujian";
@@ -22,6 +23,7 @@ export const ACTIONS = {
   ...pick(adminBab),
   ...pick(adminImpor),
   ...pick(adminLatihanKode),
+  ...pick(adminProyek),
   ...pick(adminRoadmap),
   ...pick(adminTopik),
   ...pick(adminUjian),

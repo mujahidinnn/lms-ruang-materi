@@ -1,5 +1,5 @@
 begin;
-select plan(123);
+select plan(124);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -811,6 +811,9 @@ insert into public.projects (id, topic_id, status, kind, title, tests, verified_
   ('80000000-0000-0000-0000-0000000000c1', '10000000-0000-0000-0000-0000000000c1', 'published', 'js', 'Proyek', '[{"name": "a", "check": "true"}]', now()),
   ('80000000-0000-0000-0000-0000000000c2', '10000000-0000-0000-0000-0000000000c1', 'draft', 'js', 'Draf', '[]', null),
   ('80000000-0000-0000-0000-0000000000c3', '10000000-0000-0000-0000-0000000000c2', 'draft', 'js', 'Belum', '[]', null);
+insert into public.topics (id, slug, title, status) values ('10000000-0000-0000-0000-0000000000c3', 'uji-proyek-baru', 'Baru', 'published');
+insert into public.projects (id, topic_id, status, kind, title, tests) values
+  ('80000000-0000-0000-0000-0000000000c4', '10000000-0000-0000-0000-0000000000c3', 'published', 'js', 'Baru', '[]');
 insert into public.project_solutions (project_id, solution) values ('80000000-0000-0000-0000-0000000000c1', '{"code": "rahasia"}');
 
 update public.profiles set display_name = null where user_id = '00000000-0000-0000-0000-000000000001';
@@ -819,6 +822,8 @@ select is((select count(*)::int from public.projects where topic_id = '10000000-
   'a guest sees only the published project');
 select is((select count(*)::int from public.certificate_by_code('TIDAK-ADA')), 0, 'an unknown certificate code finds nothing');
 select is((select count(*)::int from public.project_solutions), 0, 'a guest cannot read project solutions');
+select is((select count(*)::int from public.projects where id = '80000000-0000-0000-0000-0000000000c4'), 0,
+  'an unverified published project stays hidden');
 reset role;
 
 set local role authenticated;
