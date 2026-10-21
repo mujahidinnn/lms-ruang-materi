@@ -86,7 +86,7 @@ test("repair trims too many practice questions", () => {
   expect(draftSchema.parse(repairDraft(many)).practice_questions).toHaveLength(15);
 });
 
-test("a draft needs 4 to 8 chapters", () => {
+test("a draft needs 4 to 12 chapters", () => {
   expect(draftSchema.safeParse(valid).success).toBe(true);
   expect(draftSchema.safeParse({ ...valid, chapters: valid.chapters.slice(0, 3) }).success).toBe(false);
 });
@@ -132,4 +132,40 @@ test("a broken exercise is dropped, not the whole draft", () => {
   const out = draftSchema.safeParse(repairDraft({ ...valid, chapters: valid.chapters.map((c) => ({ ...c, exercises: [broken] })) }));
   expect(out.success).toBe(true);
   expect(out.data?.chapters[0].exercises).toEqual([]);
+});
+
+// Two-stage drafting (spec 2026-10-21-kelas-ala-dicoding).
+const outline = (i: number) => ({ slug: `bab-${i}`, title: `Bab ${i}`, est_minutes: 15, slide_from: 1, slide_to: 3, goals: ["paham a", "bisa b"], code_kind: "js" });
+const { classSchema, chapterSchema, repairChapter, buildClassPrompt, buildChapterPrompt } = await import("./prompt");
+const { chapters: _c, ...classBase } = valid;
+
+test("a class outline has 4 to 12 chapters", () => {
+  const ok = { ...classBase, outline: Array.from({ length: 12 }, (_, i) => outline(i)), project: null };
+  expect(classSchema.safeParse(ok).success).toBe(true);
+  expect(classSchema.safeParse({ ...ok, outline: Array.from({ length: 13 }, (_, i) => outline(i)) }).success).toBe(false);
+});
+
+test("a stage-2 chapter needs a real body", () => {
+  const quiz = [q(1), q(2), q(3)];
+  expect(chapterSchema.safeParse({ body: "x".repeat(2000), quiz, exercises: [] }).success).toBe(false);
+  expect(chapterSchema.safeParse({ body: "x".repeat(2600), quiz, exercises: [] }).success).toBe(true);
+});
+
+test("repairChapter trims the quiz to 5 and drops broken exercises", () => {
+  const out = repairChapter({ body: "x".repeat(2600), quiz: [1, 2, 3, 4, 5, 6].map((i) => q(i)), exercises: [{ kind: "python" }] }) as { quiz: unknown[]; exercises: unknown[] };
+  expect(out.quiz).toHaveLength(5);
+  expect(out.exercises).toEqual([]);
+});
+
+test("the class prompt offers the current chapter slugs for reuse", () => {
+  expect(buildClassPrompt([], [{ slug: "pengenalan", title: "Pengenalan" }]).user).toContain("pengenalan");
+});
+
+test("the chapter prompt names the chapter, its goals, slides and length", () => {
+  const list = [outline(1), { ...outline(2), title: "Routing Express", goals: ["membuat route GET"], slide_from: 7, slide_to: 12 }];
+  const p = buildChapterPrompt("Express.js", list, 1).user;
+  expect(p).toContain("Routing Express");
+  expect(p).toContain("membuat route GET");
+  expect(p).toContain("7 sampai 12");
+  expect(p).toContain("900 sampai 1500 kata");
 });
