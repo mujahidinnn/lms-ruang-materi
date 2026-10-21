@@ -12,7 +12,25 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { isAllowedModel } from "../lib/llm.ts";
 import { providers } from "./llm/index.ts";
-import { buildPrompt, draftJsonSchema, draftSchema, repairDraft, validateExercises, type Draft } from "./prompt.ts";
+import { ProviderError } from "./llm/types.ts";
+import {
+  assembleDraft,
+  buildChapterPrompt,
+  buildClassPrompt,
+  buildFixPrompt,
+  chapterJsonSchema,
+  chapterSchema,
+  classJsonSchema,
+  classSchema,
+  exerciseJsonSchema,
+  exerciseSchema,
+  failingChecks,
+  repairChapter,
+  repairClass,
+  validateExercises,
+  type ChapterOut,
+  type Draft,
+} from "./prompt.ts";
 
 const run = promisify(execFile);
 const jobId = process.argv[process.argv.indexOf("--job-id") + 1] ?? "";
@@ -64,29 +82,63 @@ try {
   const pdf = await readFile(path.join(work, "deck.pdf"));
   const known = must(await db.from("topics").select("slug"), "slugs").map((t) => t.slug).filter((s) => s !== job.slug);
   const generate = await providers[job.provider]();
-  const result = await generate(pdf, buildPrompt(known), job.model, draftJsonSchema);
+  const current = maybe(await db.from("chapters").select("slug, title, topics!inner(slug)").eq("topics.slug", job.slug).eq("status", "published").order("position"), "current chapters") ?? [];
+  const tokens = { in: 0, out: 0 };
+  const call = async (prompt: Parameters<typeof generate>[1], schema: unknown) => {
+    const r = await generate(pdf, prompt, job.model, schema);
+    tokens.in += r.inputTokens;
+    tokens.out += r.outputTokens;
+    return r.output;
+  };
 
-  const parsed = draftSchema.safeParse(repairDraft(result.output, slides.length));
-  if (!parsed.success) {
+  // Stage 1: the class and its outline.
+  const cls = classSchema.safeParse(repairClass(await call(buildClassPrompt(known, current), classJsonSchema), slides.length));
+  if (!cls.success) {
     // Paths and codes only, no values.
-    const where = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
+    const where = cls.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}:${i.code}`).join(", ");
     throw Object.assign(new Error(`output tidak valid (${where})`), { name: "SchemaError" });
   }
+  log(`outline: ${cls.data.outline.length} chapters`);
 
-  await writeDraft(job.slug, await validateExercises(parsed.data), slides);
+  // Stage 2: each chapter on its own, one retry; a chapter that still fails
+  // is left out (assembleDraft needs at least 4).
+  const chapters: (ChapterOut | null)[] = [];
+  for (const i of cls.data.outline.keys()) {
+    let got: ChapterOut | null = null;
+    for (let attempt = 0; attempt < 2 && !got; attempt++) {
+      try {
+        const r = chapterSchema.safeParse(repairChapter(await call(buildChapterPrompt(cls.data.title, cls.data.outline, i), chapterJsonSchema)));
+        if (r.success) got = r.data;
+      } catch (e) {
+        if (!(e instanceof ProviderError)) throw e;
+      }
+    }
+    log(`chapter ${i + 1}/${cls.data.outline.length}: ${got ? "ok" : "dropped"}`);
+    chapters.push(got);
+  }
+
+  // One repair call for an exercise whose solution fails its own checks.
+  const fix = async (e: Parameters<typeof buildFixPrompt>[0], failing: string[]) => {
+    const r = exerciseSchema.safeParse(await call(buildFixPrompt(e, failing), exerciseJsonSchema).catch(() => null));
+    return r.success ? r.data : null;
+  };
+  const draft = await validateExercises(assembleDraft(cls.data, chapters), fix);
+  const projectVerified = !!draft.project && draft.project.kind !== "web" && !(await failingChecks(draft.project)).length;
+
+  await writeDraft(job.slug, draft, slides, projectVerified);
   maybe(
     await db
       .from("import_jobs")
       .update({
         status: "done",
-        input_tokens: result.inputTokens,
-        output_tokens: result.outputTokens,
-        prerequisites: parsed.data.prerequisites.filter((s) => known.includes(s)),
+        input_tokens: tokens.in,
+        output_tokens: tokens.out,
+        prerequisites: draft.prerequisites.filter((s) => known.includes(s)),
       })
       .eq("id", jobId),
     "status done"
   );
-  log(`done, ${result.inputTokens} in / ${result.outputTokens} out tokens`);
+  log(`done, ${draft.chapters.length} chapters, ${tokens.in} in / ${tokens.out} out tokens`);
 } catch (err) {
   const e = err as Error;
   log(`failed: ${e.name}`);
@@ -136,7 +188,7 @@ async function render(dir: string, folder: string): Promise<RenderedSlide[]> {
 // ponytail: several writes without a transaction. A crash leaves partial
 // drafts, which the next import of the same slug replaces. Move into one
 // RPC if that ever bites.
-async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
+async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[], projectVerified: boolean) {
   let topic = maybe<{ id: string }>(await db.from("topics").select("id").eq("slug", slug).maybeSingle(), "topic");
   if (topic) {
     maybe(await db.from("topics").update({ draft_summary: d.summary }).eq("id", topic.id), "topic update");
@@ -152,7 +204,7 @@ async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
   }
   const topic_id = topic.id;
 
-  for (const table of ["slides", "tips", "flashcards", "practice_questions", "chapters"]) {
+  for (const table of ["slides", "tips", "flashcards", "practice_questions", "chapters", "projects"]) {
     maybe(await db.from(table).delete().eq("topic_id", topic_id).eq("status", "draft"), `clear ${table}`);
   }
   let exam = maybe<{ id: string }>(await db.from("exams").select("id").eq("topic_id", topic_id).maybeSingle(), "exam");
@@ -197,5 +249,17 @@ async function writeDraft(slug: string, d: Draft, slides: RenderedSlide[]) {
         `chapter ${slug} exercises`
       );
     }
+  }
+  if (d.project) {
+    const { solution, ...rest } = d.project;
+    const row = must<{ id: string }>(
+      await db
+        .from("projects")
+        .insert({ topic_id, status: "draft", ...rest, verified_at: projectVerified ? new Date().toISOString() : null })
+        .select("id")
+        .single(),
+      "project"
+    );
+    maybe(await db.from("project_solutions").insert({ project_id: row.id, solution }), "project solution");
   }
 }

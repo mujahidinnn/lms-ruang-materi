@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { draftSchema, repairDraft, validateExercises } from "./prompt";
+import { classSchema as cs, draftSchema, repairClass, validateExercises } from "./prompt";
 
 const q = (i: number, type = "pilihan_ganda") => ({
   type,
@@ -31,6 +31,20 @@ const valid = {
   prerequisites: ["html5"],
   chapters: [1, 2, 3, 4].map(chapter),
 };
+
+// The stage 1 shape of the same fixture.
+const { chapters: _ch, ...klassBase } = valid;
+const klass = { ...klassBase, outline: [1, 2, 3, 4].map((i) => ({ slug: `bab-${i}`, title: `Bab ${i}`, est_minutes: 10, slide_from: 0, slide_to: 99, goals: ["a", "b"], code_kind: "none" as const })), project: null };
+
+test("repairClass clamps outline slide ranges into the deck", () => {
+  const out = cs.parse(repairClass(klass, 30));
+  expect(out.outline[0].slide_from).toBe(1);
+  expect(out.outline[0].slide_to).toBe(30);
+});
+
+test("repairClass turns a broken project into no project", () => {
+  expect(cs.parse(repairClass({ ...klass, project: { kind: "python" } })).project).toBeNull();
+});
 
 test("gemini: valid draft parses", () => {
   expect(draftSchema.safeParse(valid).success).toBe(true);
@@ -69,21 +83,21 @@ test("repair fixes the type to match the code, then drops what is still broken",
     { ...q(201), code: "x = 1" },
     { ...q(202, "benar_salah"), options: ["a", "b", "c", "d"] },
   ];
-  const out = repairDraft({ ...valid, exam_questions: exam }) as typeof valid;
+  const out = repairClass({ ...klass, exam_questions: exam }) as typeof klass;
   expect(out.exam_questions).toHaveLength(42);
   expect(out.exam_questions[40].type).toBe("pilihan_ganda");
   expect(out.exam_questions[41].type).toBe("baca_kode");
-  expect(draftSchema.safeParse(out).success).toBe(true);
+  expect(cs.safeParse(out).success).toBe(true);
 });
 
 test("repair cannot rescue a draft below the minimums", () => {
-  const short = { ...valid, practice_questions: [{ ...q(1), answer: 4 }, ...valid.practice_questions.slice(1)] };
-  expect(draftSchema.safeParse(repairDraft(short)).success).toBe(false);
+  const short = { ...klass, practice_questions: [{ ...q(1), answer: 4 }, ...klass.practice_questions.slice(1)] };
+  expect(cs.safeParse(repairClass(short)).success).toBe(false);
 });
 
 test("repair trims too many practice questions", () => {
-  const many = { ...valid, practice_questions: Array.from({ length: 33 }, (_, i) => q(i)) };
-  expect(draftSchema.parse(repairDraft(many)).practice_questions).toHaveLength(15);
+  const many = { ...klass, practice_questions: Array.from({ length: 33 }, (_, i) => q(i)) };
+  expect(cs.parse(repairClass(many)).practice_questions).toHaveLength(15);
 });
 
 test("a draft needs 4 to 12 chapters", () => {
@@ -91,30 +105,7 @@ test("a draft needs 4 to 12 chapters", () => {
   expect(draftSchema.safeParse({ ...valid, chapters: valid.chapters.slice(0, 3) }).success).toBe(false);
 });
 
-test("repairDraft clamps slide ranges and drops broken chapter questions", () => {
-  const broken = {
-    ...valid,
-    chapters: [
-      { ...chapter(1), slide_from: 0, slide_to: 99 },
-      { ...chapter(2), quiz: [q(1), q(2), { ...q(3), answer: 9 }] },
-      chapter(3),
-      chapter(4),
-    ],
-  };
-  const out = draftSchema.parse(repairDraft(broken, 30));
-  expect(out.chapters[0].slide_from).toBe(1);
-  expect(out.chapters[0].slide_to).toBe(30);
-  expect(out.chapters[1].quiz).toHaveLength(2);
-});
 
-test("repairDraft drops a chapter left with one question or a short body", () => {
-  const broken = {
-    ...valid,
-    chapters: [chapter(1), { ...chapter(2), quiz: [q(1), { ...q(2), answer: 9 }] }, { ...chapter(3), body: "pendek" }, chapter(4), chapter(5), chapter(6)],
-  };
-  const out = draftSchema.parse(repairDraft(broken, 30));
-  expect(out.chapters.map((c) => c.slug)).toEqual(["bab-1", "bab-4", "bab-5", "bab-6"]);
-});
 
 test("validateExercises drops an exercise whose solution fails its own tests", async () => {
   const ok = { kind: "js", title: "Jumlah", prompt: "p", starter: { code: "" }, solution: { code: "function jumlah(a, b) { return a + b }" }, setup: "", tests: [{ name: "2+3", check: "jumlah(2, 3) === 5" }] };
@@ -127,12 +118,6 @@ test("validateExercises drops an exercise whose solution fails its own tests", a
   expect(out.chapters[2].exercises).toEqual([]);
 });
 
-test("a broken exercise is dropped, not the whole draft", () => {
-  const broken = { kind: "python", title: "x" };
-  const out = draftSchema.safeParse(repairDraft({ ...valid, chapters: valid.chapters.map((c) => ({ ...c, exercises: [broken] })) }));
-  expect(out.success).toBe(true);
-  expect(out.data?.chapters[0].exercises).toEqual([]);
-});
 
 // Two-stage drafting (spec 2026-10-21-kelas-ala-dicoding).
 const outline = (i: number) => ({ slug: `bab-${i}`, title: `Bab ${i}`, est_minutes: 15, slide_from: 1, slide_to: 3, goals: ["paham a", "bisa b"], code_kind: "js" as const });
@@ -172,14 +157,14 @@ test("the chapter prompt names the chapter, its goals, slides and length", () =>
 
 const { assembleDraft } = await import("./prompt");
 const cls = { ...classBase, outline: [1, 2, 3, 4, 5].map(outline), project: null };
-const written = { body: "Isi bab. ".repeat(400), quiz: [q(901), q(902), q(903), q(904), q(905)], exercises: [] };
+const written = { body: "Isi bab. ".repeat(400), quiz: [q(901), q(902), q(903), q(904), q(905)], exercises: [] } as never;
 
 test("assembleDraft merges the outline with the chapters that came back", () => {
-  const d = assembleDraft(cls, [written, written, null, written, written]);
+  const d = assembleDraft(cls as never, [written, written, null, written, written]);
   expect(d.chapters.map((c) => c.slug)).toEqual(["bab-1", "bab-2", "bab-4", "bab-5"]);
   expect(d.chapters[0].quiz).toHaveLength(5);
 });
 
 test("assembleDraft fails under four chapters", () => {
-  expect(() => assembleDraft(cls, [written, null, null, written, written])).toThrow(/bab/);
+  expect(() => assembleDraft(cls as never, [written, null, null, written, written])).toThrow(/bab/);
 });

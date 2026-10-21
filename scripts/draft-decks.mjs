@@ -7,6 +7,11 @@
 //   IMPORT_MODEL=openrouter:nvidia/nemotron-3-super-120b-a12b:free npm run draft:decks -- sql
 //
 // The database allows 10 jobs per 24 hours, failed ones included.
+//
+// --local runs the worker on this machine instead of GitHub Actions (needs
+// soffice and pdftoppm); npm run draft:local uses it with Gemini on the web:
+//   npm run draft:local -- expressjs sdlc
+import { spawn } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { countSlides } from "../lib/pptx.ts";
 
@@ -32,7 +37,20 @@ async function dispatch(jobId) {
   return false;
 }
 
-for (const slug of process.argv.slice(2)) {
+const LOCAL = process.argv.includes("--local");
+
+// The worker as a child process, with the env it gets in GitHub Actions.
+function runLocal(jobId) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, ["worker/import-deck.ts", "--job-id", jobId], {
+      stdio: "inherit",
+      env: { ...env, SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL },
+    });
+    child.on("exit", resolve);
+  });
+}
+
+for (const slug of process.argv.slice(2).filter((a) => !a.startsWith("--"))) {
   const filePath = `migrasi/${slug}.pptx`;
   const { data: file, error: dlError } = await db.storage.from("imports").download(filePath);
   if (dlError) {
@@ -45,6 +63,13 @@ for (const slug of process.argv.slice(2)) {
   if (error) {
     log(slug, "job ditolak:", error.message);
     break;
+  }
+  if (LOCAL) {
+    log(slug, `mulai lokal, ${slides} slide, ${provider}:${model}`);
+    await runLocal(id);
+    const { data } = await db.from("import_jobs").select("status, error").eq("id", id).single();
+    log(slug, data?.status, (data?.error ?? "").slice(0, 160));
+    continue;
   }
   // A job left queued would block the next import for 30 minutes.
   if (!(await dispatch(id))) {
