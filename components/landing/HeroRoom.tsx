@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { coverSrc, type Presentation } from "@/lib/slides";
 
-// A lavender folder with a white front pocket.
-const FOLDER = "bg-tile-lavender";
-const POCKET = "bg-zinc-900";
+// A bright matcha folder with a foam pocket, ink-outlined like a sticker.
+// Fixed colors: the folder always sits on the black hero panel.
+const FOLDER = "bg-matcha-300";
+const POCKET = "bg-matcha-50 text-noir border-2 border-noir shadow-[5px_5px_0_0_var(--color-noir)]";
 
 // Where each cover sits in the folder, front first. Covers past the last slot
 // wait, hidden, behind it.
@@ -126,7 +127,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
       {/* Tab, sitting on the panel's top edge; it covers the panel border
           beneath it so the two read as one sheet. */}
       <span aria-hidden className={`absolute top-0 left-0 z-10 h-[calc(2rem+1px)] w-2/5 rounded-t-[22px] ${FOLDER}`}>
-        <span className="absolute top-3 right-5 size-2.5 rounded-full bg-accent-warm" />
+        <svg viewBox="0 0 24 24" className="absolute top-2 right-4 size-4 fill-noir"><path d="M12 0c.9 6.4 4.7 10.6 12 12-7.3 1.4-11.1 5.6-12 12-.9-6.4-4.7-10.6-12-12C7.3 10.6 11.1 6.4 12 0Z" /></svg>
       </span>
 
       <div ref={box} className={`relative aspect-4/3 rounded-[32px] rounded-tl-none ${FOLDER}`}>
@@ -177,13 +178,16 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         })}
 
         {/* Front pocket, holding the label. */}
-        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-40 flex h-[40%] items-end rounded-[32px] p-6 shadow-[0_-16px_32px_-20px_rgb(20_19_24/0.35)] sm:p-7 ${POCKET}`}>
+        <div className={`pointer-events-none absolute -inset-x-1 -bottom-1 z-40 flex h-[40%] items-end rounded-[28px] p-6 sm:p-7 ${POCKET}`}>
+          <span aria-hidden className="absolute -top-4 right-6 -rotate-6 rounded-full border-2 border-noir bg-matcha-700 px-3 py-1 font-(family-name:--font-bricolage) text-xs font-extrabold tracking-tight text-matcha-50 uppercase">
+            geser ke atas ↑
+          </span>
           <p className="flex w-full items-end justify-between gap-4">
             <span>
-              <span className="block text-sm text-zinc-400">Mulai dari sini</span>
-              <span className="text-2xl font-bold tracking-tight">{front.title}</span>
+              <span className="block text-sm text-matcha-700">Mulai dari sini</span>
+              <span className="font-(family-name:--font-bricolage) text-3xl font-extrabold tracking-tight">{front.title}</span>
             </span>
-            <span className="inline-flex min-h-8 items-center rounded-full bg-tile-mint px-3 text-xs font-semibold text-zinc-200 tabular-nums">{front.slideCount} slide</span>
+            <span className="inline-flex min-h-8 items-center rounded-full border-2 border-noir bg-matcha-200 px-3 text-xs font-bold tabular-nums">{front.slideCount} slide</span>
           </p>
         </div>
       </div>

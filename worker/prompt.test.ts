@@ -135,7 +135,7 @@ test("a broken exercise is dropped, not the whole draft", () => {
 });
 
 // Two-stage drafting (spec 2026-10-21-kelas-ala-dicoding).
-const outline = (i: number) => ({ slug: `bab-${i}`, title: `Bab ${i}`, est_minutes: 15, slide_from: 1, slide_to: 3, goals: ["paham a", "bisa b"], code_kind: "js" });
+const outline = (i: number) => ({ slug: `bab-${i}`, title: `Bab ${i}`, est_minutes: 15, slide_from: 1, slide_to: 3, goals: ["paham a", "bisa b"], code_kind: "js" as const });
 const { classSchema, chapterSchema, repairChapter, buildClassPrompt, buildChapterPrompt } = await import("./prompt");
 const { chapters: _c, ...classBase } = valid;
 

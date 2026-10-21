@@ -2,9 +2,10 @@
 
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
-// The one main action on a screen: an indigo pill.
+// The one main action on a screen: a matcha pill with an ink outline and a
+// hard shadow, like a sticker; it presses down on click.
 export const primaryButton =
-  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:opacity-50 ${focus}`;
+  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-noir bg-primary px-6 font-bold text-on-primary shadow-[3px_3px_0_0_var(--color-noir)] transition-[background-color,translate,box-shadow] hover:bg-primary-hover active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-50 motion-reduce:transition-none ${focus}`;
 
 // Everything else: a white pill on the canvas.
 export const secondaryButton =
@@ -26,3 +27,8 @@ export const mutedChip = `${chip} bg-zinc-800`;
 // butter keep their meanings (wrong, warning) and stay out of the rotation.
 const TILES = ["bg-tile-lavender", "bg-tile-mint", "bg-tile-sky", "bg-tile-peach"];
 export const tile = (i: number) => TILES[i % TILES.length];
+
+// A tilted sticker label (GUIDELINE, Style): pass the rotation, position and
+// a matcha shade. Decoration only, so render it aria-hidden.
+export const sticker =
+  "items-center rounded-full border-2 border-noir px-4 py-1.5 font-(family-name:--font-bricolage) text-sm font-extrabold tracking-tight uppercase";

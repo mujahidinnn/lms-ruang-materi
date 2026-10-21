@@ -279,12 +279,15 @@ Use them where a screen would otherwise feel empty or where they explain
 something: landing hero, empty states (no due cards, no exams yet), exam
 result (lulus / belum lulus), login page, 404. Not on every card.
 
-- Inline SVG components in `components/illustrations/`, same visual language
-  as the logo (`components/brand/Logo.tsx`): simple shapes, `rounded`
-  corners, thick round strokes, no gradients or people, no stock or
-  AI-generated images.
-- Colors only through classes (`fill-zinc-800/60`, `fill-accent`,
-  `stroke-accent/40`) so they flip with light and dark. No hex in SVG.
+- Inline SVG components in `components/illustrations/`, each drawn in ink
+  on a scalloped matcha sticker badge (`Badge.tsx`, tone `foam`, `light`
+  or `bright`) with a hard ink shadow and a sparkle: thick round strokes,
+  simple shapes, smiley faces welcome, no gradients.
+- Photos or richer art, when a screen needs them, are generated through
+  Gemini on the web (the logged-in Chrome script approach of the owner's
+  `porto/sopi` project), never with an API key.
+- Colors only through classes (`fill-matcha-200`, `fill-noir`,
+  `stroke-noir`). No hex in SVG.
 - `role="img"` with an Indonesian `aria-label`, or `aria-hidden` when the
   text next to it already says the same.
 - Keep each under about 2 KB and 60 lines; no illustration library.
@@ -566,10 +569,13 @@ tilted sticker labels and four-point sparkles. Every new screen follows it.
     `#191a16`), so no `dark:` variants are needed.
   - `bg-noir` / `text-on-noir`: black panels that stay black in dark mode
     (landing hero, the dasbor greeting). One per screen.
+- **Matcha is a range, not one color**: `matcha-50` (foam) to `matcha-900`
+  (koicha), fixed in both themes. Mix shades on one screen: bright
+  `matcha-300` for stickers and the hero folder, `matcha-700` panels with
+  `matcha-50` text, light `matcha-100/200` chips.
 - **Tiles** carry color, all in the matcha family except two:
-  `bg-tile-lavender`, `-mint`, `-sky`, `-peach` (light matcha, matcha,
-  sage grey, pale matcha), plus `-pink` and `-butter` for their meanings
-  only. Text on a tile stays ink. Lists hand out the four matcha ones in
+  `bg-tile-lavender`, `-mint`, `-sky`, `-peach` (matcha 100, 200, 50, 300),
+  plus `-pink` and `-butter` for their meanings only. Text on a tile stays ink. Lists hand out the four matcha ones in
   turn with `tile(i)` from `components/ui/styles.ts`. Fixed meanings where there is one: mint = done or correct, pink =
   wrong or danger, butter = streak, warning, ragu-ragu, lavender = the
   current or featured item.
@@ -580,13 +586,15 @@ tilted sticker labels and four-point sparkles. Every new screen follows it.
   logo's sparkle. No other hues: `accent-warm` is ink now.
 - **Type**: headings (`h1`-`h3`) and the wordmark in Bricolage Grotesque,
   extrabold, tight; body in Plus Jakarta Sans.
-- **Stickers**: short uppercase labels in rounded pills, `border-2
-  border-noir`, rotated 2-6 degrees, with a hard offset shadow; a key word
+- **Stickers**: short uppercase labels in rounded pills (`sticker` in
+  `components/ui/styles.ts`), `border-2 border-noir`, rotated 2-6 degrees,
+  with a hard offset shadow; a key word
   in a heading may sit on a tilted matcha block. Decoration only
   (`aria-hidden`), never the only place a fact appears.
 - **Buttons**, all `rounded-full`, from `components/ui/styles.ts`:
   - `primaryButton`: the one main action on a screen, a matcha pill with
-    ink text (`bg-primary text-on-primary`).
+    ink text, a 2px ink outline and a hard 3px shadow that presses down on
+    click.
   - `secondaryButton`: a white pill with `shadow-soft`.
   - `iconButton`: a 44px white circle.
   - `ArrowBadge` (`components/ui/ArrowBadge.tsx`): the matcha circle with an
@@ -619,12 +627,11 @@ tilted sticker labels and four-point sparkles. Every new screen follows it.
 - **Quiz and exam options** are white rounded-2xl rows with a pastel number
   circle; the picked one gets an ink border, checked answers turn mint or
   pink. Progress bars are `h-2.5 rounded-full` with an ink fill.
-- **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A room, a
-  rounded square open at its top right corner, holding two stacked slides,
-  marked by a four-point sparkle at the gap. Room and slides in ink, the
-  front slide matcha, the sparkle `brand`. `public/icon.svg` puts it on a
-  black tile; the PNG icons and `public/opengraph-image.png` are rendered
-  from it, so redraw them when it changes. Never recolor the room, never close the corner.
+- **Logo**: `components/brand/Logo.tsx` (`Logo`, `LogoMark`). A black app
+  tile holding a four-point `matcha-300` sparkle and a `matcha-100` dot,
+  tilted -6 degrees next to the Bricolage wordmark. `public/icon.svg` is the
+  same mark in hex; the PNG icons and `public/opengraph-image.png` are
+  rendered from it, so redraw them when it changes. Never recolor the room, never close the corner.
 - **Motion**: only in answer to the learner (hover lift on tiles, the arrow
   badge turning, the hero cover drag, card flips). Every animation has a
   `motion-reduce` fallback.
