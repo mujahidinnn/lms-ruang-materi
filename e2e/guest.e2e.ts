@@ -70,8 +70,8 @@ test("private pages send a guest to the login page", async ({ page }) => {
 test("a wrong password is refused with a clear message", async ({ page }) => {
   await page.goto("/masuk");
   await page.getByLabel("Email").fill("tidak-ada@contoh.id");
-  await page.getByRole("tab", { name: "Kata sandi" }).click();
-  await page.getByLabel(/Kata sandi/).fill("salah-sekali-123");
+  await page.getByRole("tab", { name: "Password" }).click();
+  await page.getByLabel(/Password/).fill("salah-sekali-123");
   await page.getByRole("button", { name: "Masuk" }).click();
   await expect(page.getByText("Email atau kata sandi salah.")).toBeVisible();
 });
@@ -93,7 +93,7 @@ test("phones get the floating bottom nav", async ({ page, isMobile }) => {
 
 test("a course lists chapters, a chapter quiz gives feedback, next chapter opens", async ({ page }) => {
   await page.goto("/belajar/nodejs");
-  await expect(page.getByRole("heading", { name: "Silabus" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Daftar bab" })).toBeVisible();
   await page.locator('ol a[href^="/belajar/nodejs/"]').first().click();
   await expect(page.getByRole("heading", { name: "Cek pemahaman" })).toBeVisible();
   await page.waitForLoadState("networkidle");
@@ -108,7 +108,7 @@ test("a course lists chapters, a chapter quiz gives feedback, next chapter opens
 test("exam prep draws a set and checks each answer at once", async ({ page }) => {
   await page.goto("/latihan/nodejs/persiapan");
   await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: "Mulai simulasi" }).click();
+  await page.getByRole("button", { name: "Mulai try out" }).click();
   await expect(page.getByText(/^Soal 1 dari \d+/)).toBeVisible();
   await page.getByRole("group", { name: "Pilihan jawaban" }).getByRole("button").first().click();
   await expect(page.getByLabel(/^(benar|salah)$/).first()).toBeVisible();

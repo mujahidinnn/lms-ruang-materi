@@ -11,7 +11,7 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
   const [state, action, pending] = useActionState<MasukState, FormData>(
     masuk,
     galat
-      ? { status: "error", message: "Tautan sudah kedaluwarsa atau tidak valid. Minta tautan baru." }
+      ? { status: "error", message: "Link sudah kedaluwarsa atau tidak valid. Minta link baru." }
       : { status: "idle" }
   );
 
@@ -23,8 +23,8 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
     <form action={action} className="flex flex-col gap-3">
       <div role="tablist" aria-label="Cara masuk" className="mb-2 grid grid-cols-2 gap-1 rounded-full bg-zinc-800 p-1">
         {[
-          [false, "Tautan email"],
-          [true, "Kata sandi"],
+          [false, "Link email"],
+          [true, "Password"],
         ].map(([pw, label]) => (
           <button
             key={String(label)}
@@ -53,7 +53,7 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
       {withPassword ? (
         <>
           <label htmlFor="password" className="mt-1 text-sm font-medium text-zinc-300">
-            Kata sandi
+            Password
           </label>
           <input
             id="password"
@@ -65,12 +65,12 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
             className="min-h-12 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 text-zinc-50 outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
           <p id="password-hint" className="text-xs text-zinc-500">
-            Lupa kata sandi? Pilih Tautan email, lalu buat yang baru di Profil.
+            Lupa password? Pilih Link email, lalu buat yang baru di Profil.
           </p>
         </>
       ) : (
         <p className="text-xs text-zinc-500">
-          Kami kirim tautan ke emailmu. Klik tautannya dan kamu langsung masuk. Belum punya akun? Akun dibuat otomatis.
+          Kami kirim link ke emailmu. Klik link-nya dan kamu langsung masuk. Belum punya akun? Akun dibuat otomatis.
         </p>
       )}
       <button
@@ -78,11 +78,11 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
         disabled={pending}
         className={`${primaryButton} mt-2 w-full`}
       >
-        {pending ? "Memproses..." : withPassword ? "Masuk" : "Kirim tautan masuk"}
+        {pending ? "Memproses..." : withPassword ? "Masuk" : "Kirim link masuk"}
       </button>
       <p aria-live="polite" className="min-h-5 text-sm">
         {state.status === "sent" && (
-          <span className="text-accent">Tautan sudah dikirim. Cek email kamu.</span>
+          <span className="text-accent">Link sudah dikirim. Cek email kamu.</span>
         )}
         {state.status === "error" && <span className="text-red-500">{state.message}</span>}
       </p>

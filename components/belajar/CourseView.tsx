@@ -61,7 +61,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
           <section aria-labelledby="silabus" className={`p-6 sm:p-8 ${card}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 id="silabus" className="text-2xl font-bold tracking-tight">
-                Silabus
+                Daftar bab
               </h2>
               {signedIn && (
                 <p className="text-sm text-zinc-400 tabular-nums">
@@ -131,7 +131,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
 
             <section aria-labelledby="pendukung" className="mt-10">
               <h2 id="pendukung" className="text-2xl font-bold tracking-tight">
-                Bahan pendukung
+                Materi tambahan
               </h2>
               <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                 {topic.cardCount > 0 && (

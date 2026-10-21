@@ -24,7 +24,7 @@ export default function ExportButton() {
   return (
     <button onClick={download} disabled={busy} className={secondaryButton}>
       <Download aria-hidden className="size-4" />
-      {busy ? "Menyiapkan..." : "Unduh data saya (JSON)"}
+      {busy ? "Menyiapkan..." : "Download data saya (JSON)"}
     </button>
   );
 }

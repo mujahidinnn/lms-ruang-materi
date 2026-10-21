@@ -106,11 +106,11 @@ export default function PracticeQuiz({
   if (prep && set.length === 0) {
     return (
       <div className="rounded-[32px] bg-tile-butter p-6 sm:p-8">
-        <p className="text-2xl font-bold tracking-tight">Simulasi sebelum ujian</p>
+        <p className="text-2xl font-bold tracking-tight">Try out sebelum ujian</p>
         <p className="mt-2 max-w-xl text-zinc-300">
           {Math.min(prep.size, questions.length)} soal acak dari latihan dan kuis tiap bab. Kunci dan pembahasan langsung muncul setelah kamu menjawab. Lulus di nilai {prep.passScore}, sama seperti ujian.
         </p>
-        <button onClick={startPrep} className={`${primaryButton} mt-6`}><Play aria-hidden className="size-4" />Mulai simulasi</button>
+        <button onClick={startPrep} className={`${primaryButton} mt-6`}><Play aria-hidden className="size-4" />Mulai try out</button>
       </div>
     );
   }
@@ -153,10 +153,10 @@ export default function PracticeQuiz({
             <a href={`/flashcard/${slug}`} className={primaryButton}><Layers aria-hidden className="size-4" />Lanjut ke flashcard</a>
           )}
           {hasExam && !prep && (
-            <a href={`/latihan/${slug}/persiapan`} className={secondaryButton}>Simulasi ujian</a>
+            <a href={`/latihan/${slug}/persiapan`} className={secondaryButton}>Try out</a>
           )}
           <button onClick={() => (prep ? startPrep() : restart(questions))} className={secondaryButton}>
-            {prep ? "Simulasi baru" : "Ulangi semua soal"}
+            {prep ? "Try out baru" : "Ulangi semua soal"}
           </button>
         </div>
       </div>

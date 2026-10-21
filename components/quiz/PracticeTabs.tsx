@@ -1,10 +1,10 @@
 
-// Latihan and Simulasi ujian are two views of the same topic; pill tabs,
+// Latihan and Try out are two views of the same topic; pill tabs,
 // the current one ink.
 export default function PracticeTabs({ slug, current }: { slug: string; current: "latihan" | "persiapan" }) {
   const tabs = [
     { key: "latihan", href: `/latihan/${slug}`, label: "Latihan soal" },
-    { key: "persiapan", href: `/latihan/${slug}/persiapan`, label: "Simulasi 20 soal" },
+    { key: "persiapan", href: `/latihan/${slug}/persiapan`, label: "Try out 20 soal" },
   ] as const;
   return (
     <nav aria-label="Jenis latihan" className="mb-8 flex gap-2">

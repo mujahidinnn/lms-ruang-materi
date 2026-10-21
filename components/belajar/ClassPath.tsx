@@ -49,7 +49,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
   return (
     <ol className="mt-4 grid gap-3">
       {(topic.practiceCount > 0 || topic.hasExam) && (
-        <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan ujian" text="Soal latihan dan simulasi 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
+        <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan ujian" text="Soal latihan dan try out 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
       )}
       {topic.hasExam && (
         <Step href={`/ujian/${topic.slug}`} icon={<ClipboardCheck aria-hidden className="size-5" />} title="Ujian akhir" text="Lulus untuk naik level" tone="bg-matcha-200" done={status?.exam_passed} />
@@ -78,7 +78,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
           <a href={`/sertifikat/${status.code}`} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir">Lihat sertifikat</a>
         ) : status?.eligible ? (
           <button type="button" onClick={terbitkan} disabled={busy} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir disabled:opacity-50">
-            {busy ? "Menerbitkan..." : "Terbitkan sertifikat"}
+            {busy ? "Mengklaim..." : "Klaim sertifikat"}
           </button>
         ) : (
           <Lock aria-hidden className="size-5 text-on-noir/50" />

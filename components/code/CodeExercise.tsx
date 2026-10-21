@@ -159,12 +159,12 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
       </div>
 
       {ex.kind === "web" && (
-        <iframe ref={preview} title={`Pratinjau ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-2xl border-0 bg-white" />
+        <iframe ref={preview} title={`Preview ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-2xl border-0 bg-white" />
       )}
 
       <div aria-live="polite" className="mt-4 space-y-3 empty:hidden">
         {out?.error && (
-          <p className="rounded-2xl bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Galat:</span> {out.error}</p>
+          <p className="rounded-2xl bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Error:</span> {out.error}</p>
         )}
         {out && out.logs.length > 0 && (
           <pre className="scrollbar-thin max-h-48 overflow-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
