@@ -1,0 +1,1551 @@
+{
+ "title": "Git: Version Control dari Nol sampai Kolaborasi",
+ "description": "Belajar Git dari nol: kenapa version control penting, konfigurasi, empat area kerja, siklus add-commit-push, membaca riwayat dan membatalkan perubahan, branch dan konflik, sampai remote, pull request, dan praktik terbaik tim.",
+ "summary": "Git adalah sistem kontrol versi terdistribusi yang dipakai hampir semua tim software. Kelas ini dimulai dari masalah yang dipecahkannya, yaitu file bernama laporan_FINAL_beneran_v2, lalu membahas tiga generasi VCS, sejarah Git sejak 2005, cara memasang Git di Windows, macOS, dan Linux, serta konfigurasi awal seperti identitas, editor, nama cabang default, dan alias.\n\nSetelah itu kamu memahami empat area kerja (working directory, staging area, local repository, remote), cara Git menyimpan data sebagai blob, tree, dan commit, dan siklus harian git status, add, commit, push. Kamu juga belajar membaca riwayat dengan git log, git diff, git show, dan git blame, membatalkan perubahan dengan restore, reset, dan revert, lalu bekerja di banyak cabang dengan switch, merge, rebase, dan menyelesaikan merge conflict.\n\nBagian akhir membahas kolaborasi: remote dan upstream, beda fetch dan pull, GitHub, GitLab, dan Bitbucket, alur fork dan pull request, serta workflow tim seperti GitHub Flow dan Git Flow. Ditutup dengan stash, cherry-pick, tag, bisect, .gitignore, pesan commit ala Conventional Commits, kebiasaan baik, dan lembar contekan perintah. Setiap bab punya langkah Coba sendiri yang bisa langsung kamu jalankan di terminal.",
+ "tips": [
+  "Jalankan git status sebelum dan sesudah setiap perintah; outputnya hampir selalu memberi tahu langkah berikutnya.",
+  "Latihan di folder percobaan dulu: git init, buat beberapa commit, lalu coba reset, revert, dan merge tanpa takut merusak proyek asli.",
+  "Buat commit kecil dengan pesan tipe(cakupan): ringkasan, supaya riwayatmu mudah dibaca dan mudah dibatalkan.",
+  "Pasang .gitignore sejak commit pertama dan jangan pernah commit file .env atau kunci API.",
+  "Biasakan git pull sebelum git push, dan kerjakan fitur di cabang sendiri lalu gabungkan lewat pull request."
+ ],
+ "flashcards": [
+  {
+   "front": "Version control",
+   "back": "Sistem yang mencatat setiap perubahan file beserta siapa yang mengubah dan kapan, sehingga kamu bisa kembali ke versi mana pun."
+  },
+  {
+   "front": "Tiga generasi VCS",
+   "back": "Local VCS (RCS), Centralized VCS (CVS, SVN), dan Distributed VCS (Git, Mercurial)."
+  },
+  {
+   "front": "Distributed VCS",
+   "back": "Setiap clone menyimpan repositori lengkap beserta seluruh riwayat, jadi bisa offline dan jadi cadangan otomatis."
+  },
+  {
+   "front": "Asal-usul Git",
+   "back": "Dibuat Linus Torvalds pada April 2005 setelah komunitas Linux kehilangan akses gratis ke BitKeeper; dipelihara Junio C. Hamano."
+  },
+  {
+   "front": "git config --global user.name / user.email",
+   "back": "Identitas wajib yang melekat permanen pada setiap commit."
+  },
+  {
+   "front": "Tiga tingkat konfigurasi",
+   "back": "--system (semua pengguna), --global (satu pengguna, ~/.gitconfig), --local (satu repo, .git/config). Yang lebih spesifik menang."
+  },
+  {
+   "front": "init.defaultBranch",
+   "back": "Menentukan nama cabang awal saat git init, misalnya main."
+  },
+  {
+   "front": "Empat area kerja",
+   "back": "Working directory, staging area (index), local repository, dan remote repository."
+  },
+  {
+   "front": "Blob, tree, commit, tag",
+   "back": "Blob = isi file, tree = struktur folder, commit = snapshot plus metadata dan induk, tag = penanda permanen ke commit."
+  },
+  {
+   "front": "Snapshot, bukan selisih",
+   "back": "Setiap commit adalah potret utuh proyek; file yang tidak berubah cukup ditautkan ke objek sebelumnya."
+  },
+  {
+   "front": "Status ?? , A, M",
+   "back": "?? = untracked, A = file baru di staging, M = dimodifikasi. Kolom kiri staging, kolom kanan working directory."
+  },
+  {
+   "front": "Siklus kerja harian",
+   "back": "Ubah file, git status, git add, git commit -m \"pesan\", git push."
+  },
+  {
+   "front": "git diff vs git diff --staged",
+   "back": "git diff menampilkan perubahan yang belum di-stage; --staged menampilkan isi staging area."
+  },
+  {
+   "front": "git restore",
+   "back": "Mengembalikan file di working directory ke versi terakhir; dengan --staged mengeluarkan file dari staging."
+  },
+  {
+   "front": "git reset --soft vs --hard",
+   "back": "--soft memundurkan HEAD dan menyimpan perubahan di staging; --hard membuang perubahan secara permanen."
+  },
+  {
+   "front": "git revert",
+   "back": "Membuat commit baru yang membatalkan commit lama tanpa menulis ulang riwayat, aman untuk cabang publik."
+  },
+  {
+   "front": "Branch dan HEAD",
+   "back": "Branch adalah penunjuk ringan ke commit terbaru; HEAD menunjuk ke cabang yang sedang aktif."
+  },
+  {
+   "front": "Fast-forward merge",
+   "back": "Bila cabang tujuan tidak berubah sejak percabangan, Git cukup menggeser penunjuk tanpa merge commit."
+  },
+  {
+   "front": "Merge vs rebase",
+   "back": "Merge membuat merge commit dan menjaga riwayat asli; rebase membuat riwayat lurus tapi menulis ulang hash commit."
+  },
+  {
+   "front": "Penanda konflik",
+   "back": "<<<<<<< HEAD (versi cabang aktif), ======= (pemisah), >>>>>>> nama-cabang (versi yang digabung). git merge --abort membatalkan."
+  },
+  {
+   "front": "git fetch vs git pull",
+   "back": "fetch hanya mengunduh dan memperbarui origin/main; pull = fetch + merge ke cabang aktif."
+  },
+  {
+   "front": "git push -u origin main",
+   "back": "Mengirim cabang main sekaligus menetapkan origin/main sebagai upstream."
+  },
+  {
+   "front": "Fork dan pull request",
+   "back": "Fork, clone, branch, commit dan push ke fork, ajukan PR (MR di GitLab), lalu review dan merge."
+  },
+  {
+   "front": "Git Flow, GitHub Flow, trunk-based",
+   "back": "Git Flow untuk rilis terjadwal, GitHub Flow untuk deploy berkelanjutan, trunk-based untuk tim dengan CI/CD kuat."
+  },
+  {
+   "front": "git stash dan git cherry-pick",
+   "back": "stash menyimpan perubahan sementara (pop untuk mengembalikan); cherry-pick menyalin satu commit sebagai commit baru."
+  },
+  {
+   "front": ".gitignore dan git rm --cached",
+   "back": ".gitignore hanya berlaku untuk file untracked; git rm --cached berhenti melacak file tanpa menghapusnya dari disk."
+  }
+ ],
+ "practice_questions": [
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Apa masalah utama yang dipecahkan version control dibanding menyimpan file laporan_FIX_FINAL_v2.docx?",
+   "code": "",
+   "options": [
+    "File proyek otomatis menjadi lebih kecil ukurannya",
+    "Kode otomatis bebas bug sebelum dikirim ke tim",
+    "Riwayat siapa mengubah apa dan kapan tercatat rapi",
+    "Semua anggota tim tidak perlu lagi berkomunikasi"
+   ],
+   "answer": 2,
+   "explanation": "Version control mencatat setiap perubahan beserta pembuat dan waktunya, sehingga kamu bisa kembali ke versi mana pun."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Pada Distributed VCS seperti Git, setiap clone menyimpan seluruh riwayat commit proyek.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "Salinan di laptopmu sama lengkapnya dengan yang ada di server, termasuk riwayat sejak commit pertama."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git config user.name di dalam repositori ini?",
+   "code": "$ git config --global user.name \"Ani\"\n$ git config --local user.name \"Budi\"\n$ git config user.name",
+   "options": [
+    "Ani",
+    "Ani dan Budi",
+    "Kosong, karena nilainya bentrok",
+    "Budi"
+   ],
+   "answer": 3,
+   "explanation": "Konfigurasi yang lebih spesifik menimpa yang umum, jadi --local mengalahkan --global."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Di mana konfigurasi --global milik seorang pengguna disimpan?",
+   "code": "",
+   "options": [
+    ".git/config di setiap proyek",
+    "/etc/gitconfig di folder sistem",
+    ".gitignore di akar repo",
+    "~/.gitconfig"
+   ],
+   "answer": 3,
+   "explanation": "Konfigurasi global ada di ~/.gitconfig, sedangkan konfigurasi lokal ada di .git/config pada folder proyek."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git status --short setelah a.txt diubah lagi?",
+   "code": "$ echo a > a.txt\n$ git add a.txt\n$ echo b >> a.txt\n$ git status --short",
+   "options": [
+    "A  a.txt",
+    "AM a.txt",
+    "?? a.txt",
+    " M a.txt"
+   ],
+   "answer": 1,
+   "explanation": "Kolom pertama A berarti versi pertama sudah di staging, kolom kedua M berarti ada perubahan lagi yang belum di-add."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Objek Git mana yang menyimpan isi sebuah file tanpa nama file-nya?",
+   "code": "",
+   "options": [
+    "Tree",
+    "Commit",
+    "Blob",
+    "Tag"
+   ],
+   "answer": 2,
+   "explanation": "Blob hanya menyimpan konten; nama file dan struktur folder disimpan oleh tree."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Urutan siklus kerja harian yang benar adalah",
+   "code": "",
+   "options": [
+    "Ubah file, git add, git commit, git push",
+    "git commit, ubah file, git add, git push",
+    "git push, git add, ubah file, git commit",
+    "git add, git push, ubah file, git commit"
+   ],
+   "answer": 0,
+   "explanation": "Perubahan dipilih ke staging dengan add, disimpan sebagai snapshot dengan commit, lalu dibagikan dengan push."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "git commit -m \"pesan\" ikut menyimpan perubahan yang belum di-add ke staging area.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 1,
+   "explanation": "commit hanya menyimpan isi staging area; perubahan yang belum di-add tetap tinggal di working directory."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Setelah git diff menampilkan output ini, baris apa yang sekarang ada di file app.js?",
+   "code": "$ git diff\n@@ -1,2 +1,2 @@\n-const nama = \"lama\";\n+const nama = \"baru\";\n console.log(nama);",
+   "options": [
+    "const nama = \"baru\";",
+    "const nama = \"lama\";",
+    "Kedua baris, lama dan baru",
+    "Tidak ada, baris itu terhapus"
+   ],
+   "answer": 0,
+   "explanation": "Tanda + berarti baris yang ditambahkan dan kini ada di file, tanda - berarti baris yang dihapus."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Commit yang salah sudah di-push ke repositori bersama. Cara membatalkan yang aman adalah",
+   "code": "",
+   "options": [
+    "git reset --hard HEAD~1",
+    "git revert <hash>",
+    "git commit --amend lalu push",
+    "git restore --staged ."
+   ],
+   "answer": 1,
+   "explanation": "revert membuat commit baru yang membatalkan efek commit lama tanpa menulis ulang riwayat yang sudah dibagikan."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git branch?",
+   "code": "$ git switch -c feature/login\nSwitched to a new branch 'feature/login'\n$ git branch",
+   "options": [
+    "* main\n  feature/login",
+    "  feature/login\n* main",
+    "* feature/login\n  main",
+    "* feature/login"
+   ],
+   "answer": 2,
+   "explanation": "switch -c membuat cabang baru sekaligus pindah ke sana, jadi tanda * ada di feature/login dan main tetap ada."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Kapan merge bisa berjalan secara fast-forward?",
+   "code": "",
+   "options": [
+    "Saat kedua cabang mengubah baris yang sama",
+    "Saat cabang fitur sudah dihapus lebih dulu",
+    "Saat merge dijalankan dengan git merge --abort",
+    "Saat cabang tujuan tidak berubah sejak cabang dibuat"
+   ],
+   "answer": 3,
+   "explanation": "Bila main tidak punya commit baru, Git cukup menggeser penunjuk main ke depan tanpa membuat merge commit."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Apa beda git fetch dan git pull?",
+   "code": "",
+   "options": [
+    "fetch hanya mengunduh, pull mengunduh lalu menggabungkan",
+    "fetch mengirim commit, pull mengambil commit",
+    "fetch menghapus cabang remote, pull membuatnya",
+    "Keduanya sama, hanya beda nama perintah"
+   ],
+   "answer": 0,
+   "explanation": "git pull setara git fetch diikuti git merge pada cabang aktif."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Pola .gitignore mana yang membuat penting.log tetap dilacak walau ada aturan *.log?",
+   "code": "",
+   "options": [
+    "/penting.log",
+    "penting.log/",
+    "!penting.log",
+    "#penting.log"
+   ],
+   "answer": 2,
+   "explanation": "Tanda ! adalah negasi: file yang cocok pola itu dikecualikan dari aturan abaikan sebelumnya."
+  }
+ ],
+ "exam_questions": [
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Siapa yang membuat Git pada tahun 2005?",
+   "code": "",
+   "options": [
+    "Junio C. Hamano",
+    "Komunitas Mercurial",
+    "Linus Torvalds",
+    "Tim BitKeeper"
+   ],
+   "answer": 2,
+   "explanation": "Linus Torvalds membuat Git setelah komunitas Linux kehilangan akses gratis ke BitKeeper; Junio Hamano kemudian menjadi pemelihara."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Pengaturan core.autocrlf yang disarankan untuk pengguna Windows adalah",
+   "code": "",
+   "options": [
+    "input",
+    "false",
+    "crlf",
+    "true"
+   ],
+   "answer": 3,
+   "explanation": "Di Windows dipakai true, sedangkan di macOS dan Linux dipakai input."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Area kerja Git yang berisi perubahan pilihan untuk commit berikutnya adalah",
+   "code": "",
+   "options": [
+    "Working directory",
+    "Local repository",
+    "Staging area (index)",
+    "Remote repository"
+   ],
+   "answer": 2,
+   "explanation": "git add memindahkan perubahan ke staging area, lalu git commit menyimpan isinya."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah untuk memasukkan semua perubahan di folder saat ini ke staging area adalah",
+   "code": "",
+   "options": [
+    "git commit .",
+    "git push .",
+    "git stage --all-remote",
+    "git add ."
+   ],
+   "answer": 3,
+   "explanation": "git add . memindahkan semua perubahan di folder saat ini ke staging area."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah untuk melihat siapa yang terakhir mengubah setiap baris sebuah file adalah",
+   "code": "",
+   "options": [
+    "git show <file>",
+    "git log --author",
+    "git blame <file>",
+    "git diff --staged"
+   ],
+   "answer": 2,
+   "explanation": "git blame menampilkan penulis dan commit terakhir untuk tiap baris."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Setelah memperbaiki file yang berkonflik, langkah berikutnya adalah",
+   "code": "",
+   "options": [
+    "git merge --abort lalu git push",
+    "git restore <file> lalu git pull",
+    "git branch -d lalu git commit",
+    "git add <file> lalu git commit"
+   ],
+   "answer": 3,
+   "explanation": "add menandai konflik selesai, lalu commit menutup proses merge."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Platform yang paling cocok untuk perusahaan yang ingin memasang server Git sendiri (self-hosted) menurut materi adalah",
+   "code": "",
+   "options": [
+    "GitHub",
+    "Bitbucket",
+    "GitLab",
+    "SourceForge"
+   ],
+   "answer": 2,
+   "explanation": "GitLab adalah platform DevOps menyeluruh yang bisa dipasang di server sendiri."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Kapan git bisect paling berguna?",
+   "code": "",
+   "options": [
+    "Menggabungkan dua cabang tanpa konflik",
+    "Menyimpan pekerjaan setengah jadi",
+    "Menandai commit sebagai versi rilis",
+    "Mencari commit yang pertama kali memunculkan bug"
+   ],
+   "answer": 3,
+   "explanation": "bisect melakukan pencarian biner pada riwayat: kamu menandai good atau bad sampai Git menemukan commit penyebabnya."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Git butuh koneksi internet untuk membuat commit dan melihat riwayat.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 1,
+   "explanation": "Hampir semua operasi Git berjalan lokal, jadi commit, log, dan pindah cabang bisa dilakukan offline."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git branch --show-current di repositori baru ini?",
+   "code": "$ git config --global init.defaultBranch main\n$ git init proyek\n$ cd proyek\n$ git branch --show-current",
+   "options": [
+    "master",
+    "main",
+    "Kosong, belum ada commit",
+    "origin/main"
+   ],
+   "answer": 1,
+   "explanation": "init.defaultBranch menentukan nama cabang awal setiap git init, jadi cabangnya main walau belum ada commit."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa arti tanda ?? pada output berikut?",
+   "code": "$ echo a > a.txt\n$ git status --short\n?? a.txt",
+   "options": [
+    "a.txt sudah di staging area",
+    "a.txt berkonflik saat merge",
+    "a.txt belum dilacak (untracked)",
+    "a.txt diabaikan oleh .gitignore"
+   ],
+   "answer": 2,
+   "explanation": "?? berarti file baru yang belum pernah di-add, jadi Git belum melacaknya."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa arti (root-commit) pada output berikut?",
+   "code": "$ git add .\n$ git commit -m \"feat: awal\"\n[main (root-commit) 431429b] feat: awal\n 1 file changed, 2 insertions(+)\n create mode 100644 a.txt",
+   "options": [
+    "Commit dibuat oleh user root",
+    "Commit langsung di-push ke server",
+    "Commit berisi folder akar saja",
+    "Ini commit pertama di repositori"
+   ],
+   "answer": 3,
+   "explanation": "root-commit adalah commit pertama yang tidak punya induk."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git status --short setelah reset ini?",
+   "code": "$ git add y.txt\n$ git commit -m \"feat: y\"\n$ git reset --soft HEAD~1\n$ git status --short",
+   "options": [
+    "A  y.txt",
+    "?? y.txt",
+    "Kosong, y.txt ikut terhapus",
+    " M y.txt"
+   ],
+   "answer": 0,
+   "explanation": "--soft memundurkan HEAD tapi menyimpan perubahannya di staging area."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa yang terjadi pada merge ini?",
+   "code": "$ git switch main\n$ git merge feature/login\nUpdating 7224a7d..8679c4d\nFast-forward\n z.txt | 1 +\n 1 file changed, 1 insertion(+)",
+   "options": [
+    "Git membuat merge commit dengan dua induk",
+    "Terjadi konflik di file z.txt",
+    "main digeser ke depan tanpa merge commit",
+    "feature/login otomatis ikut terhapus"
+   ],
+   "answer": 2,
+   "explanation": "Fast-forward berarti main tidak berubah sejak percabangan, jadi penunjuknya cukup digeser."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa langkah yang tepat setelah melihat pesan ini?",
+   "code": "$ git push\n ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs to '../server.git'",
+   "options": [
+    "Hapus folder .git lalu clone ulang",
+    "Jalankan git pull, bereskan konflik, lalu push lagi",
+    "Ganti nama remote origin",
+    "Jalankan git stash lalu push lagi"
+   ],
+   "answer": 1,
+   "explanation": "Server sudah punya commit yang belum ada di lokal, jadi gabungkan dulu dengan pull sebelum push."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git status --short di repositori baru ini?",
+   "code": "$ cat .gitignore\nnode_modules/\n*.log\n!penting.log\n.env\n$ ls -A\n.env\n.git\n.gitignore\napp.log\nkode.js\nnode_modules\npenting.log\n$ git status --short",
+   "options": [
+    "?? .gitignore\n?? kode.js",
+    "?? .gitignore\n?? app.log\n?? kode.js",
+    "?? .env\n?? .gitignore\n?? kode.js\n?? penting.log",
+    "?? .gitignore\n?? kode.js\n?? penting.log"
+   ],
+   "answer": 3,
+   "explanation": "*.log mengabaikan app.log, tapi !penting.log mengecualikan penting.log; .env dan node_modules/ diabaikan."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Subversion (SVN) termasuk generasi sistem kontrol versi yang mana?",
+   "code": "",
+   "options": [
+    "Centralized VCS",
+    "Local VCS",
+    "Distributed VCS",
+    "Cloud VCS"
+   ],
+   "answer": 0,
+   "explanation": "SVN dan CVS memakai satu server pusat yang menyimpan seluruh riwayat."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah untuk mengecek apakah Git sudah terpasang adalah",
+   "code": "",
+   "options": [
+    "git init --check",
+    "git status --install",
+    "git config --version",
+    "git --version"
+   ],
+   "answer": 3,
+   "explanation": "Bila muncul nomor versi, misalnya git version 2.45.2, Git siap dipakai."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Objek Git yang menyimpan struktur folder, yaitu daftar nama file beserta blob-nya, adalah",
+   "code": "",
+   "options": [
+    "Blob",
+    "Tree",
+    "Tag",
+    "Index"
+   ],
+   "answer": 1,
+   "explanation": "Tree mencatat nama file dan menautkannya ke blob berisi kontennya."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Kapan sebaiknya kamu memakai git clone alih-alih git init?",
+   "code": "",
+   "options": [
+    "Saat membuat proyek baru yang masih kosong",
+    "Saat ingin menghapus riwayat lama proyek",
+    "Saat proyeknya sudah ada di server remote",
+    "Saat ingin pindah ke cabang lain"
+   ],
+   "answer": 2,
+   "explanation": "clone menyalin repositori remote beserta seluruh riwayatnya; init membuat repositori baru."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Untuk melihat isi staging area yang akan masuk ke commit berikutnya, kamu menjalankan",
+   "code": "",
+   "options": [
+    "git diff --staged",
+    "git diff",
+    "git log -n 1",
+    "git status --ignored"
+   ],
+   "answer": 0,
+   "explanation": "git diff tanpa opsi membandingkan perubahan yang belum di-stage; --staged menampilkan isi staging area."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah lama yang setara dengan git switch -c feature/login adalah",
+   "code": "",
+   "options": [
+    "git branch -m feature/login",
+    "git checkout -b feature/login",
+    "git merge -b feature/login",
+    "git restore -c feature/login"
+   ],
+   "answer": 1,
+   "explanation": "Sejak Git 2.23, switch dipakai untuk berpindah cabang dan restore untuk memulihkan file, memecah peran checkout."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Langkah pertama berkontribusi ke proyek open source milik orang lain adalah",
+   "code": "",
+   "options": [
+    "Push langsung ke main proyek",
+    "Membuat tag rilis di proyek",
+    "Fork repositori ke akunmu",
+    "Menghapus cabang lama proyek"
+   ],
+   "answer": 2,
+   "explanation": "Urutannya fork, clone, branch, commit dan push, pull request, lalu review dan merge."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah untuk mengirim semua tag ke remote adalah",
+   "code": "",
+   "options": [
+    "git push -u origin main",
+    "git tag --push all",
+    "git fetch --tags",
+    "git push --tags"
+   ],
+   "answer": 3,
+   "explanation": "Tag tidak ikut terkirim pada git push biasa, jadi kirim dengan git push --tags atau git push origin <tag>."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Risiko utama Centralized VCS dibanding Distributed VCS adalah",
+   "code": "",
+   "options": [
+    "Server mati membuat seluruh tim berhenti bekerja",
+    "Tidak bisa menyimpan file teks berukuran besar",
+    "Setiap anggota tim menyimpan riwayat lengkap",
+    "Branch tidak bisa dibuat sama sekali"
+   ],
+   "answer": 0,
+   "explanation": "Pada sistem terpusat hanya server yang menyimpan riwayat penuh, sehingga server menjadi satu titik kegagalan."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Nama dan email dari git config tersimpan di dalam setiap commit dan ikut terkirim ke server.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "Identitas melekat permanen pada commit, jadi gunakan data yang memang ingin kamu publikasikan."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Git menyimpan setiap commit sebagai potret utuh proyek (snapshot), bukan sekadar daftar selisih per file.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "File yang tidak berubah cukup ditautkan ke objek sebelumnya, sehingga snapshot tetap hemat."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output perintah terakhir?",
+   "code": "$ git add x.txt y.txt\n$ git restore --staged y.txt\n$ git status --short",
+   "options": [
+    "A  x.txt\nA  y.txt",
+    "A  x.txt\n?? y.txt",
+    "?? x.txt\n?? y.txt",
+    "A  x.txt"
+   ],
+   "answer": 1,
+   "explanation": "y.txt keluar dari staging dan karena belum pernah di-commit, statusnya kembali untracked."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "git reset --hard HEAD~1 menghapus perubahan yang belum di-commit secara permanen.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "Mode --hard membuang perubahan di staging dan working directory, jadi pakai dengan hati-hati."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Baris mana yang berasal dari cabang aktif (main)?",
+   "code": "$ git merge feature/judul\nCONFLICT (content): Merge conflict in index.html\n$ cat index.html\n<<<<<<< HEAD\n<h1>Selamat Pagi</h1>\n=======\n<h1>Halo Dunia</h1>\n>>>>>>> feature/judul",
+   "options": [
+    "<h1>Halo Dunia</h1>",
+    "Keduanya dari feature/judul",
+    "Tidak bisa diketahui dari penanda",
+    "<h1>Selamat Pagi</h1>"
+   ],
+   "answer": 3,
+   "explanation": "Bagian antara <<<<<<< HEAD dan ======= adalah versi cabang aktif; bagian bawah dari cabang yang digabung."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Git dan GitHub adalah hal yang sama.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 1,
+   "explanation": "Git adalah perangkat lunak di komputermu; GitHub adalah layanan hosting repositori Git dengan fitur kolaborasi."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Pernyataan mana yang benar tentang hasil cherry-pick ini?",
+   "code": "$ git log --oneline fitur -n 1\nbfdea42 fix: perbaiki typo judul\n$ git switch main\n$ git cherry-pick bfdea42\n[main ebc1e27] fix: perbaiki typo judul",
+   "options": [
+    "Commit bfdea42 dipindah dan hilang dari fitur",
+    "Seluruh cabang fitur ikut tergabung ke main",
+    "main mendapat commit baru dengan hash berbeda",
+    "main kini punya commit dengan hash bfdea42"
+   ],
+   "answer": 2,
+   "explanation": "cherry-pick membuat commit baru berisi perubahan yang sama, sehingga hash-nya berbeda dan cabang fitur tidak berubah."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Mekanisme apa yang membuat perubahan diam-diam pada data Git hampir mustahil?",
+   "code": "",
+   "options": [
+    "Checksum SHA-1 pada setiap objek",
+    "Enkripsi password di setiap commit",
+    "Salinan cadangan di server GitHub",
+    "Kompresi zip pada folder .git"
+   ],
+   "answer": 0,
+   "explanation": "Setiap objek diberi hash SHA-1 dari isinya, sehingga perubahan sekecil apa pun mengubah hash."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Cara tercepat memasang Git di macOS menurut materi adalah",
+   "code": "",
+   "options": [
+    "winget install Git.Git",
+    "brew install git",
+    "sudo apt install git",
+    "npm install git"
+   ],
+   "answer": 1,
+   "explanation": "Homebrew adalah cara tercepat di macOS; winget untuk Windows dan apt untuk Debian/Ubuntu."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Berapa panjang penuh hash SHA-1 sebuah commit?",
+   "code": "",
+   "options": [
+    "7 karakter",
+    "16 karakter",
+    "40 karakter",
+    "64 karakter"
+   ],
+   "answer": 2,
+   "explanation": "git log --oneline menampilkan 7 karakter awal dari hash yang panjangnya 40 karakter."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Ukuran commit yang dianjurkan dalam siklus kerja harian adalah",
+   "code": "",
+   "options": [
+    "Satu commit besar untuk seluruh pekerjaan seminggu",
+    "Satu commit untuk setiap file yang diubah",
+    "Sebanyak mungkin perubahan sekaligus",
+    "Kecil dan fokus pada satu perubahan logis"
+   ],
+   "answer": 3,
+   "explanation": "Commit kecil membuat riwayat mudah dibaca dan mudah dibatalkan."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Opsi git log mana yang menampilkan riwayat semua cabang sebagai grafik ringkas?",
+   "code": "",
+   "options": [
+    "--oneline --graph --all",
+    "--stat --since --author",
+    "-n 5 --reverse",
+    "--staged --graph"
+   ],
+   "answer": 0,
+   "explanation": "Gabungan --oneline --graph --all adalah cara tercepat memahami struktur cabang."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Rebase aman dipakai pada commit yang sudah dibagikan ke repositori publik.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 1,
+   "explanation": "Rebase menulis ulang hash commit, jadi aturan emasnya hanya untuk merapikan cabang lokal yang belum dibagikan."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Model workflow dengan cabang main, develop, feature/*, release/*, dan hotfix/* adalah",
+   "code": "",
+   "options": [
+    "GitHub Flow",
+    "Trunk-based",
+    "Fork flow",
+    "Git Flow"
+   ],
+   "answer": 3,
+   "explanation": "Git Flow paling lengkap dan formal, cocok untuk produk dengan versi rilis terjadwal."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Tipe Conventional Commits untuk perubahan yang hanya menata ulang kode tanpa mengubah perilaku adalah",
+   "code": "",
+   "options": [
+    "feat",
+    "fix",
+    "refactor",
+    "perf"
+   ],
+   "answer": 2,
+   "explanation": "refactor untuk penataan ulang, feat untuk fitur baru, fix untuk perbaikan bug, perf untuk performa."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Contoh Local VCS yang menyimpan riwayat hanya di satu komputer adalah",
+   "code": "",
+   "options": [
+    "Git",
+    "RCS",
+    "Subversion",
+    "Bitbucket"
+   ],
+   "answer": 1,
+   "explanation": "RCS dan SCCS adalah Local VCS; riwayat tersimpan di basis data lokal sederhana."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah untuk melihat semua konfigurasi Git yang berlaku adalah",
+   "code": "",
+   "options": [
+    "git config --show-all",
+    "git config --list",
+    "git status --config",
+    "git log --config"
+   ],
+   "answer": 1,
+   "explanation": "git config --list menampilkan semua pasangan kunci dan nilai konfigurasi."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah yang mengeluarkan file dari staging area kembali ke working directory adalah",
+   "code": "",
+   "options": [
+    "git restore --staged <file>",
+    "git restore <file>",
+    "git commit --amend",
+    "git pull <file>"
+   ],
+   "answer": 0,
+   "explanation": "--staged mengeluarkan file dari staging tanpa membuang perubahannya; git reset HEAD <file> adalah cara lama."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah git init melakukan apa?",
+   "code": "",
+   "options": [
+    "Mengunduh repositori dari GitHub",
+    "Mengirim commit pertama ke server",
+    "Mengatur nama dan email pengguna",
+    "Membuat repositori Git baru di folder saat ini"
+   ],
+   "answer": 3,
+   "explanation": "git init membuat folder .git yang menyimpan seluruh riwayat."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Perintah git show <hash> menampilkan apa?",
+   "code": "",
+   "options": [
+    "Daftar semua cabang yang memuat commit",
+    "Isi staging area saat commit dibuat",
+    "Detail satu commit beserta perubahan file-nya",
+    "Status file di working directory"
+   ],
+   "answer": 2,
+   "explanation": "git show menampilkan penulis, pesan, dan diff dari satu commit."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Ciri merge commit yang dibuat git merge adalah",
+   "code": "",
+   "options": [
+    "Tidak memiliki induk sama sekali",
+    "Memiliki dua commit induk",
+    "Menghapus commit di cabang fitur",
+    "Mengubah hash semua commit lama"
+   ],
+   "answer": 1,
+   "explanation": "Merge commit menyatukan dua cabang, sehingga punya dua induk dan riwayat asli tetap utuh."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Apa yang terjadi saat kamu menjalankan git clone <url>?",
+   "code": "",
+   "options": [
+    "Hanya commit terakhir yang diunduh ke laptop",
+    "Repositori remote dipindah ke laptopmu",
+    "Seluruh riwayat disalin dan origin diatur otomatis",
+    "Remote harus ditambahkan manual setelahnya"
+   ],
+   "answer": 2,
+   "explanation": "clone menyalin repositori lengkap dan langsung membuat remote bernama origin."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Kenapa force push ke main sebaiknya dihindari?",
+   "code": "",
+   "options": [
+    "Membuat repositori menjadi read-only",
+    "Menghapus semua tag di repositori lokal",
+    "Mematikan fitur pull request di GitHub",
+    "Bisa menimpa dan menghapus commit milik teman"
+   ],
+   "answer": 3,
+   "explanation": "git push --force menulis ulang riwayat remote; lindungi main dan biasakan lewat pull request."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Kenapa membuat branch di Git terasa sangat ringan?",
+   "code": "",
+   "options": [
+    "Branch hanya penunjuk ke sebuah commit",
+    "Branch menyalin seluruh folder proyek",
+    "Branch disimpan di server, bukan di laptop",
+    "Branch hanya bisa berisi satu commit"
+   ],
+   "answer": 0,
+   "explanation": "Membuat branch hanya menulis penunjuk kecil, jadi selesai dalam hitungan milidetik."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Apa fungsi git config --global core.editor \"code --wait\"?",
+   "code": "",
+   "options": [
+    "Membuka semua file proyek di VS Code",
+    "Memakai VS Code untuk menulis pesan commit",
+    "Menunda commit sampai editor ditutup",
+    "Memasang ekstensi Git di VS Code"
+   ],
+   "answer": 1,
+   "explanation": "core.editor menentukan editor default yang dibuka Git saat kamu menulis pesan commit."
+  },
+  {
+   "type": "pilihan_ganda",
+   "prompt": "Selain tree, penulis, waktu, dan pesan, apa lagi yang disimpan objek commit?",
+   "code": "",
+   "options": [
+    "Isi file .gitignore",
+    "Daftar cabang remote",
+    "Password pengguna",
+    "Commit induknya"
+   ],
+   "answer": 3,
+   "explanation": "Setiap commit menunjuk ke commit induk, sehingga riwayat membentuk rantai."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git status --short sekarang?",
+   "code": "$ git commit -m \"feat: awal\"\n$ echo b >> a.txt\n$ git status --short",
+   "options": [
+    "M  a.txt",
+    "?? a.txt",
+    " M a.txt",
+    "A  a.txt"
+   ],
+   "answer": 2,
+   "explanation": "a.txt sudah dilacak lalu diubah tanpa di-add, jadi M berada di kolom kedua (working directory)."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Repositori punya 3 commit. Berapa jumlah baris output perintah terakhir?",
+   "code": "$ git revert --no-edit HEAD\n[main 7224a7d] Revert \"feat: y lagi\"\n$ git log --oneline | wc -l",
+   "options": [
+    "4",
+    "2",
+    "3",
+    "1"
+   ],
+   "answer": 0,
+   "explanation": "revert tidak menghapus commit lama, melainkan menambah satu commit baru yang membatalkannya."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa hasil perintah terakhir?",
+   "code": "$ git switch -c eksperimen\n$ echo e > e.txt\n$ git add e.txt\n$ git commit -m \"feat: e\"\n$ git switch main\n$ git branch -d eksperimen",
+   "options": [
+    "Cabang eksperimen terhapus beserta e.txt",
+    "Ditolak karena eksperimen belum di-merge",
+    "Commit feat: e pindah ke main",
+    "Git otomatis menjalankan merge dulu"
+   ],
+   "answer": 1,
+   "explanation": "-d menolak menghapus cabang yang belum digabung (not fully merged); -D memaksanya."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa arti informasi dalam kurung siku pada cabang main?",
+   "code": "$ git fetch\n$ git branch -vv\n* main 8cc6975 [origin/main: ahead 1, behind 1] a",
+   "options": [
+    "Lokal dan remote sama-sama punya satu commit baru",
+    "main sudah sama persis dengan origin/main",
+    "main belum punya upstream sama sekali",
+    "Satu commit lokal gagal dikirim ke server"
+   ],
+   "answer": 0,
+   "explanation": "ahead 1 berarti ada satu commit lokal yang belum di-push, behind 1 berarti ada satu commit remote yang belum digabung."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Menambahkan .env ke .gitignore otomatis menghapusnya dari riwayat bila file itu sudah pernah di-commit.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 1,
+   "explanation": ".gitignore hanya berlaku untuk file untracked; file yang sudah dilacak perlu git rm --cached, dan riwayat lama tetap menyimpannya."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "Mercurial termasuk Distributed VCS, sama seperti Git.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "Deck menyebut Git dan Mercurial sebagai contoh Distributed VCS."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa yang terjadi saat perintah terakhir dijalankan?",
+   "code": "$ git config --global alias.st status\n$ git st",
+   "options": [
+    "Git menolak karena st bukan perintah",
+    "Git membuat stash baru",
+    "Git menampilkan isi alias saja",
+    "Git menjalankan git status"
+   ],
+   "answer": 3,
+   "explanation": "alias.st membuat st menjadi singkatan dari status."
+  },
+  {
+   "type": "baca_kode",
+   "prompt": "Apa output git cat-file -t HEAD setelah commit pertama?",
+   "code": "$ git commit -m \"feat: awal\"\n[main (root-commit) 431429b] feat: awal\n$ git cat-file -t HEAD",
+   "options": [
+    "blob",
+    "tree",
+    "commit",
+    "tag"
+   ],
+   "answer": 2,
+   "explanation": "HEAD menunjuk ke sebuah commit, jadi jenis objeknya commit."
+  },
+  {
+   "type": "benar_salah",
+   "prompt": "git status sebaiknya sering dijalankan karena menunjukkan file yang berubah, ter-stage, atau belum terlacak.",
+   "code": "",
+   "options": [
+    "Benar",
+    "Salah"
+   ],
+   "answer": 0,
+   "explanation": "Materi menyebut git status sebagai kompas dalam siklus kerja harian."
+  }
+ ],
+ "prerequisites": [],
+ "project": null,
+ "chapters": [
+  {
+   "slug": "kenapa-version-control-dan-git",
+   "title": "Kenapa Version Control dan Git",
+   "est_minutes": 20,
+   "slide_from": 1,
+   "slide_to": 7,
+   "body": "## Tujuan\n\n- Menjelaskan masalah nyata yang muncul kalau proyek dikelola tanpa version control.\n- Membedakan tiga generasi VCS: lokal, terpusat, dan terdistribusi.\n- Menceritakan asal-usul Git dan alasan Git jadi standar industri.\n- Membedakan Git (alat) dengan GitHub (layanan hosting).\n\n## Folder penuh \"final_revisi_2\"\n\nCoba buka folder tugas kuliah atau proyek lamamu. Ada yang mirip begini?\n\n```text\nproyek/\n  laporan.docx\n  laporan_revisi.docx\n  laporan_revisi_FIX.docx\n  laporan_FIX_FINAL.docx\n  laporan_FINAL_beneran_v2.docx\n```\n\nKelihatannya rapi, padahal ini cara menyimpan versi yang paling rapuh. Kamu tidak tahu persis apa beda `revisi_FIX` dengan `FIX_FINAL`, siapa yang mengubahnya, dan kapan. Masalahnya makin parah untuk kode program:\n\n- **Riwayat hilang.** Tidak ada catatan siapa mengubah baris mana dan kenapa.\n- **Sulit kembali.** Fitur baru bikin aplikasi error, tapi kamu tidak punya cara aman untuk balik ke versi kemarin yang masih jalan.\n- **Kolaborasi kacau.** Kamu dan temanmu mengedit file yang sama, lalu saling kirim lewat chat. Ujungnya ada pekerjaan yang tertimpa.\n- **Rawan kehilangan.** Laptop rusak atau kena ransomware, semua salinan dan riwayat ikut lenyap.\n\n**Version control system (VCS)** adalah perangkat lunak yang mencatat setiap perubahan pada sekumpulan file. Dengan VCS, kamu cukup punya satu folder `proyek/`, dan seluruh riwayatnya tersimpan rapi di belakang layar. Mau lihat versi minggu lalu, membandingkan dua versi, atau tahu siapa yang menulis sebuah baris? Tinggal tanya VCS.\n\n## Tiga generasi VCS\n\n![Perbandingan Local VCS, Centralized VCS, dan Distributed VCS](slide:5)\n\nVCS berkembang dalam tiga generasi. Memahami urutannya membantu kamu paham kenapa Git didesain seperti sekarang.\n\n| Generasi | Cara kerja | Contoh | Kelemahan / keunggulan |\n|---|---|---|---|\n| Local VCS | Riwayat versi disimpan di satu komputer saja | RCS, SCCS | Satu titik kegagalan, tidak bisa kolaborasi |\n| Centralized VCS | Satu server pusat menyimpan semua riwayat, klien hanya mengambil versi terbaru | CVS, Subversion (SVN) | Server mati, tim berhenti bekerja |\n| Distributed VCS | Setiap orang meng-clone repositori lengkap beserta seluruh riwayatnya | Git, Mercurial | Bisa offline, tiap anggota jadi cadangan |\n\nBayangkan versi terpusat seperti Google Docs yang hanya bisa dibuka saat online: kalau servernya down, semua orang bengong. Versi terdistribusi lebih mirip setiap anggota tim memegang fotokopi lengkap seluruh arsip, termasuk semua catatan revisinya sejak hari pertama. Kalau server hilang, repositori bisa dipulihkan dari laptop siapa saja.\n\n**Git termasuk Distributed VCS.** Repositori di laptopmu sama lengkapnya dengan yang ada di server. Ini kunci untuk memahami hampir semua perilaku Git yang akan kamu pelajari nanti.\n\n## Sejarah singkat Git\n\nGit lahir dari kebutuhan yang sangat nyata. Komunitas kernel Linux, proyek dengan ribuan kontributor di seluruh dunia, dulu memakai VCS komersial bernama BitKeeper secara gratis. Pada 2005 izin gratis itu dicabut. Linus Torvalds, pencipta Linux, lalu menulis VCS sendiri dengan beberapa target: cepat, desain sederhana, mendukung pengembangan paralel dengan ribuan cabang, terdistribusi penuh, dan sanggup menangani proyek sebesar kernel Linux.\n\n- **April 2005:** Linus mulai menulis Git. Hanya dalam hitungan hari Git sudah bisa mengelola source code-nya sendiri.\n- **Juni 2005:** Git dipakai untuk mengelola kernel Linux.\n- **Juli 2005:** Junio C. Hamano ditunjuk sebagai pemelihara utama, dan ia masih memegang peran itu sampai sekarang.\n- **Kini:** Git adalah standar de facto industri, dirilis dengan lisensi open source GPL-2.0, dan jadi fondasi GitHub, GitLab, serta Bitbucket.\n\n## Kenapa Git jadi standar\n\nAda banyak VCS, tapi Git menang telak. Alasannya:\n\n- **Sangat cepat.** Hampir semua operasi (commit, melihat log, membandingkan versi) berjalan lokal di laptopmu, tanpa menunggu jaringan.\n- **Branching murah.** Membuat cabang baru hanya butuh hitungan milidetik, karena cabang di Git cuma penunjuk kecil ke sebuah commit. Kamu bisa bereksperimen tanpa takut merusak kode utama.\n- **Bisa offline.** Commit, melihat riwayat, dan pindah cabang tetap jalan di kereta tanpa sinyal. Koneksi baru dibutuhkan saat mengirim atau mengambil perubahan dari server.\n- **Integritas data.** Setiap objek di Git diberi checksum berupa hash SHA-1. Kalau ada satu byte yang berubah diam-diam (disk rusak atau sengaja dimanipulasi), Git akan tahu.\n- **Ekosistem luas.** Didukung penuh oleh VS Code, IDE lain, pipeline CI/CD, dan semua platform hosting populer.\n\n## Git vs GitHub\n\nIni salah kaprah paling sering di kalangan pemula, jadi kita luruskan sekarang.\n\n| | Git | GitHub |\n|---|---|---|\n| Jenis | Perangkat lunak (alat baris perintah) | Layanan web (hosting) |\n| Dipasang di | Laptopmu | Server milik GitHub di internet |\n| Fungsi | Mencatat riwayat, membuat cabang, menggabungkan perubahan | Menyimpan repositori remote, pull request, issue, review kode |\n| Butuh internet? | Tidak, untuk sebagian besar operasi | Ya |\n\nAnaloginya: Git itu kamera, GitHub itu Instagram. Kamu bisa memotret dan menyimpan foto tanpa Instagram, tapi Instagram memudahkanmu membagikan dan berdiskusi tentang foto itu. Alternatif GitHub antara lain GitLab dan Bitbucket, dan semuanya memakai Git yang sama di belakangnya.\n\n## Coba sendiri\n\nBelum perlu membuat repositori. Cek dulu apakah laptopmu sudah punya Git (instalasinya dibahas di bab berikutnya):\n\n```bash\ngit --version\n```\n\nKalau Git sudah terpasang, output-nya berupa nomor versi, misalnya:\n\n```text\ngit version 2.43.0\n```\n\nKalau muncul `command not found` (macOS/Linux) atau `'git' is not recognized` (Windows), berarti Git belum terpasang. Santai, bab berikutnya membahas caranya.\n\nLalu, lihat sekilas daftar perintah yang paling sering dipakai:\n\n```bash\ngit help\n```\n\nOutput-nya diawali baris `usage: git [-v | --version] [-h | --help] ...`, lalu daftar perintah per kelompok seperti `start a working area`, `work on the current change`, dan `grow, mark and tweak your common history`. Kamu akan mengenal perintah-perintah itu satu per satu di kelas ini.\n\n## Kesalahan umum\n\n- **Menganggap Git dan GitHub sama.** Git bisa dipakai penuh tanpa akun GitHub. GitHub hanya salah satu tempat menyimpan repositori remote.\n- **Mengira Git butuh internet terus.** Commit dan melihat riwayat sepenuhnya lokal. Internet hanya untuk push, pull, fetch, dan clone.\n- **Tetap menyimpan file berakhiran `_final_v2`.** Begitu memakai Git, cukup satu nama file. Versi lama tersimpan di riwayat commit, bukan di nama file.\n- **Mengira Git hanya untuk tim besar.** Proyek pribadi pun untung: kamu bisa kembali ke versi yang masih jalan kapan saja.\n\n## Rangkuman\n\n- Tanpa version control, riwayat hilang, sulit kembali ke versi stabil, kolaborasi kacau, dan data rawan lenyap.\n- VCS berkembang dari lokal (RCS), terpusat (SVN), hingga terdistribusi (Git), di mana setiap clone memuat riwayat lengkap.\n- Git dibuat Linus Torvalds pada 2005 untuk mengelola kernel Linux setelah akses gratis BitKeeper dicabut.\n- Git unggul karena cepat, branching murah, bisa offline, dan menjaga integritas data dengan hash SHA-1.\n- Git adalah alat di laptopmu, sedangkan GitHub adalah layanan hosting repositori Git di internet.",
+   "quiz": [
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Git termasuk generasi VCS yang mana?",
+     "code": "",
+     "options": [
+      "Local VCS",
+      "Centralized VCS",
+      "Distributed VCS",
+      "Cloud-only VCS"
+     ],
+     "answer": 2,
+     "explanation": "Git adalah Distributed VCS: setiap clone memuat repositori lengkap beserta seluruh riwayatnya."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Git membutuhkan koneksi internet setiap kali kamu membuat commit.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 1,
+     "explanation": "Commit dan melihat riwayat berjalan lokal; internet hanya perlu untuk push, pull, fetch, dan clone."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "Apa arti output terminal berikut?",
+     "code": "$ git --version\nbash: git: command not found",
+     "options": [
+      "Git belum terpasang di laptop",
+      "Akun GitHub belum dibuat",
+      "Repositori belum di-init",
+      "Koneksi internet sedang terputus"
+     ],
+     "answer": 0,
+     "explanation": "Shell tidak menemukan program git, artinya Git belum terpasang atau belum masuk PATH."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Siapa yang mulai menulis Git pada April 2005?",
+     "code": "",
+     "options": [
+      "Junio C. Hamano",
+      "Tim pengembang SVN",
+      "Pendiri GitHub",
+      "Linus Torvalds"
+     ],
+     "answer": 3,
+     "explanation": "Linus Torvalds membuat Git untuk kernel Linux setelah akses gratis BitKeeper dicabut; Junio Hamano kemudian jadi pemeliharanya."
+    }
+   ],
+   "exercises": []
+  },
+  {
+   "slug": "instalasi-dan-konfigurasi",
+   "title": "Instalasi dan Konfigurasi Awal Git",
+   "est_minutes": 25,
+   "slide_from": 8,
+   "slide_to": 9,
+   "body": "## Tujuan\n\n- Memasang Git di Windows, macOS, atau Linux lalu memverifikasinya.\n- Mengatur identitas, nama branch default, dan editor dengan `git config`.\n- Memahami tiga level konfigurasi (system, global, local) dan urutan prioritasnya.\n- Menyiapkan SSH key sebagai bekal terhubung ke GitHub nanti.\n\n## Instalasi Git\n\nGit gratis dan tersedia untuk semua sistem operasi utama. Pilih sesuai laptopmu.\n\n**Windows.** Unduh Git for Windows dari `git-scm.com`, lalu jalankan installer. Pilihan default sudah aman untuk pemula. Paketnya menyertakan **Git Bash**, terminal ala Linux yang membuat perintah di kelas ini bisa kamu ketik persis sama. Kalau suka cara cepat, pakai winget:\n\n```bash\nwinget install Git.Git\n```\n\n**macOS.** Ada dua jalan. Pertama, ketik `git --version` di Terminal. Kalau Git belum ada, macOS akan menawarkan pemasangan **Xcode Command Line Tools** yang sudah berisi Git. Kedua, lewat Homebrew untuk versi yang lebih baru:\n\n```bash\nbrew install git\n```\n\n**Linux.** Pakai package manager bawaan distribusimu. Untuk Debian/Ubuntu:\n\n```bash\nsudo apt update\nsudo apt install git\n```\n\nFedora memakai `sudo dnf install git`.\n\nSetelah selesai, buka terminal baru (di Windows: Git Bash) dan verifikasi:\n\n```bash\ngit --version\n```\n\n```text\ngit version 2.43.0\n```\n\nAngkanya boleh beda. Selama muncul nomor versi, Git siap dipakai.\n\n## Konfigurasi awal: identitas\n\nSetiap commit menyimpan nama dan email pembuatnya. Jadi sebelum commit pertama, kenalkan dirimu ke Git:\n\n```bash\ngit config --global user.name \"Rani Putri\"\ngit config --global user.email \"rani@contoh.com\"\n```\n\nKalau langkah ini dilewati, saat commit Git akan menolak dengan pesan `Author identity unknown` dan `*** Please tell me who you are.`\n\nIngat, identitas ini **permanen** di dalam setiap commit dan ikut terkirim ke server saat push. Pakai nama dan email yang memang boleh dilihat publik. Kalau nanti memakai GitHub, sebaiknya email ini sama dengan email akun GitHub-mu supaya commit tersambung ke profilmu.\n\n## Branch default dan editor\n\nSecara bawaan, Git 2.43 masih menamai branch pertama `master` dan menampilkan petunjuk `hint: Using 'master' as the name for the initial branch.` setiap kali `git init`. GitHub dan kebanyakan tim kini memakai `main`, jadi samakan sejak awal:\n\n```bash\ngit config --global init.defaultBranch main\n```\n\nGit juga membuka editor saat kamu commit tanpa `-m` atau saat merge. Defaultnya sering Vim, yang membingungkan pemula. Kalau kamu pakai VS Code:\n\n```bash\ngit config --global core.editor \"code --wait\"\n```\n\nOpsi `--wait` membuat Git menunggu sampai tab editor ditutup. Pilihan lain: `\"nano\"` yang ramah terminal.\n\nAda juga pengaturan akhir baris. Windows memakai CRLF, macOS/Linux memakai LF. Supaya tidak berantakan saat kolaborasi lintas OS:\n\n```bash\ngit config --global core.autocrlf true    # di Windows\ngit config --global core.autocrlf input   # di macOS/Linux\n```\n\nTerakhir, alias untuk menyingkat perintah yang sering dipakai:\n\n```bash\ngit config --global alias.st status\n```\n\nSekarang `git st` sama dengan `git status`.\n\n## Mengecek konfigurasi\n\nLihat semua pengaturan yang aktif:\n\n```bash\ngit config --list\n```\n\n```text\nuser.name=Rani Putri\nuser.email=rani@contoh.com\ninit.defaultbranch=main\ncore.editor=code --wait\n```\n\nPerhatikan nama kunci ditampilkan dengan huruf kecil (`init.defaultbranch`). Itu normal, karena nama kunci di Git tidak peka huruf besar-kecil. Untuk satu nilai saja, sebut kuncinya:\n\n```bash\ngit config user.name\n```\n\n```text\nRani Putri\n```\n\nMau tahu nilai itu datang dari file mana? Tambahkan `--show-origin`, misalnya `git config --list --show-origin`.\n\n## Tiga level konfigurasi\n\n| Level | Opsi | Berlaku untuk | Lokasi file |\n|---|---|---|---|\n| System | `--system` | Semua pengguna di komputer | `/etc/gitconfig` (Linux/macOS) |\n| Global | `--global` | Satu pengguna, semua repositori | `~/.gitconfig` |\n| Local | `--local` (default di dalam repo) | Satu repositori saja | `.git/config` di folder proyek |\n\nAturannya: **yang lebih spesifik menimpa yang umum**. Local menang atas global, global menang atas system. Contoh berguna: email global kamu email pribadi, tapi untuk repositori kantor kamu ingin email kerja.\n\n```bash\ncd proyek-kantor\ngit config --local user.email \"kerja@kantor.com\"\ngit config user.email\n```\n\n```text\nkerja@kantor.com\n```\n\nDi repositori lain, `git config user.email` tetap menampilkan `rani@contoh.com`.\n\n## SSH key sebagai persiapan\n\nNanti saat push ke GitHub, kamu perlu membuktikan bahwa kamu pemilik akun. Salah satu cara paling nyaman adalah SSH key: sepasang kunci, privat (rahasia, tetap di laptop) dan publik (boleh dibagikan, ditempel ke GitHub). Buat sekarang supaya siap:\n\n```bash\nssh-keygen -t ed25519 -C \"rani@contoh.com\"\n```\n\nTekan Enter untuk lokasi default, lalu isi passphrase (atau kosongkan). Output-nya diawali:\n\n```text\nGenerating public/private ed25519 key pair.\n```\n\nDua file tercipta di `~/.ssh/`: `id_ed25519` (privat) dan `id_ed25519.pub` (publik). Tampilkan kunci publik dengan `cat ~/.ssh/id_ed25519.pub`. Isinya satu baris yang diawali `ssh-ed25519 AAAA...`. Cara menempelkannya ke GitHub dibahas di bab remote.\n\n## Coba sendiri\n\nIkuti di terminal (Git Bash untuk Windows). Ganti nama dan email dengan milikmu.\n\n```bash\ngit --version\ngit config --global user.name \"Nama Kamu\"\ngit config --global user.email \"kamu@contoh.com\"\ngit config --global init.defaultBranch main\ngit config --global alias.st status\ngit config --list\n```\n\nOutput terakhir minimal memuat baris:\n\n```text\nuser.name=Nama Kamu\nuser.email=kamu@contoh.com\ninit.defaultbranch=main\nalias.st=status\n```\n\nLalu buka file konfigurasi globalmu untuk melihat bentuk aslinya:\n\n```bash\ncat ~/.gitconfig\n```\n\n```text\n[user]\n\tname = Nama Kamu\n\temail = kamu@contoh.com\n[init]\n\tdefaultBranch = main\n[alias]\n\tst = status\n```\n\n## Kesalahan umum\n\n- **Lupa `--global` saat setup pertama di luar repo.** Di luar repositori, `git config user.name \"...\"` tanpa opsi level akan gagal dengan `fatal: not in a git directory`.\n- **Salah ketik email.** Commit yang sudah terkirim tetap membawa email salah itu. Cek dengan `git config user.email` sebelum commit pertama.\n- **Menutup editor tanpa menyimpan.** Kalau core.editor belum diatur dan Vim terbuka, ketik `:wq` lalu Enter untuk menyimpan dan keluar.\n- **Membagikan kunci privat.** Yang ditempel ke GitHub hanya file berakhiran `.pub`.\n\n## Rangkuman\n\n- Pasang Git lewat Git for Windows (dengan Git Bash), Xcode CLT atau Homebrew di macOS, dan `apt` di Linux, lalu cek dengan `git --version`.\n- Atur `user.name` dan `user.email` sebelum commit pertama, karena keduanya tertanam permanen di setiap commit.\n- `init.defaultBranch main` dan `core.editor` membuat Git lebih nyaman, dan `git config --list` menampilkan semua pengaturan.\n- Konfigurasi punya tiga level: system, global (`~/.gitconfig`), dan local (`.git/config`), dengan yang lebih spesifik menang.\n- SSH key `ed25519` disiapkan sekarang untuk autentikasi ke GitHub nanti.",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "Perintah dijalankan berurutan di dalam repositori proyek-kantor. Apa output perintah terakhir?",
+     "code": "$ git config --global user.email \"rani@contoh.com\"\n$ cd proyek-kantor\n$ git config --local user.email \"kerja@kantor.com\"\n$ git config user.email",
+     "options": [
+      "rani@contoh.com",
+      "kerja@kantor.com",
+      "Keduanya, satu per baris",
+      "Pesan error konflik"
+     ],
+     "answer": 1,
+     "explanation": "Konfigurasi local lebih spesifik sehingga menimpa nilai global di repositori itu."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Di file mana pengaturan `git config --global` disimpan?",
+     "code": "",
+     "options": [
+      ".git/config",
+      "/etc/gitconfig",
+      "~/.gitconfig",
+      "~/.ssh/config"
+     ],
+     "answer": 2,
+     "explanation": "Level global tersimpan di ~/.gitconfig milik pengguna; .git/config untuk local dan /etc/gitconfig untuk system."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Untuk kunci yang sama, nilai --local menimpa nilai --global di repositori tersebut.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 0,
+     "explanation": "Aturannya yang lebih spesifik menang: local menimpa global, global menimpa system."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Perintah mana yang membuat `git init` memakai nama branch main?",
+     "code": "",
+     "options": [
+      "git branch --default main",
+      "git config --global core.branch main",
+      "git init --main-branch",
+      "git config --global init.defaultBranch main"
+     ],
+     "answer": 3,
+     "explanation": "Kunci init.defaultBranch menentukan nama branch pertama setiap kali git init dijalankan."
+    }
+   ],
+   "exercises": []
+  },
+  {
+   "slug": "empat-area-kerja-dan-cara-git-menyimpan",
+   "title": "Empat Area Kerja dan Cara Git Menyimpan Data",
+   "est_minutes": 30,
+   "slide_from": 10,
+   "slide_to": 12,
+   "body": "## Tujuan\n\n- Menjelaskan empat area kerja Git: working directory, staging area, local repository, dan remote repository.\n- Mengenali status file (untracked, modified, staged, committed) dari output `git status`.\n- Memahami objek blob, tree, dan commit serta peran hash SHA-1.\n- Menjelaskan kenapa Git menyimpan snapshot, bukan diff, dan apa isi folder `.git`.\n\n## Empat area kerja\n\n![Diagram empat area kerja Git dan perintah yang memindahkan perubahan](slide:11)\n\nHampir semua kebingungan pemula soal Git hilang begitu kamu paham bahwa perubahan berpindah melewati empat \"ruangan\":\n\n| Area | Isinya | Pindah ke area berikutnya dengan |\n|---|---|---|\n| Working directory | Folder proyek tempat kamu benar-benar mengedit file | `git add` |\n| Staging area (index) | Perubahan yang sudah kamu pilih untuk commit berikutnya | `git commit` |\n| Local repository | Database `.git` berisi seluruh riwayat commit di laptopmu | `git push` |\n| Remote repository | Salinan repositori di server, misalnya GitHub | (diambil kembali dengan `git pull` / `git fetch`) |\n\nAnalogi gampangnya: kamu mau kirim paket. **Working directory** itu meja kerjamu, tempat barang berserakan. **Staging area** itu kardus, tempat kamu memilih barang mana yang ikut dikirim. **Commit** itu menyegel kardus dan memberi label. **Push** itu mengirim kardus ke gudang pusat (remote).\n\nKenapa perlu staging, tidak langsung commit saja? Karena kamu sering mengubah banyak file sekaligus, padahal idealnya satu commit berisi satu perubahan logis. Dengan staging, kamu bisa memilih: commit perbaikan bug dulu, lalu fitur baru di commit terpisah.\n\nAda juga arah sebaliknya:\n\n- `git restore <file>`: membuang perubahan di working directory, kembali ke versi terakhir.\n- `git restore --staged <file>`: mengeluarkan file dari staging area (cara lama: `git reset HEAD <file>`).\n- `git fetch` / `git pull`: mengambil commit terbaru dari remote.\n\n## Status file\n\nDari sudut pandang Git, setiap file di working directory punya status:\n\n- **Untracked**: file baru yang belum pernah dikenal Git.\n- **Modified**: file yang sudah dilacak, isinya berubah, tapi belum di-stage.\n- **Staged**: perubahan sudah masuk staging area, siap ikut commit berikutnya.\n- **Committed** (unmodified): isi file sama dengan versi di commit terakhir.\n\n`git status` adalah kompasmu. Versi singkatnya, `git status -s`, memakai dua kolom kode: kolom kiri untuk staging, kolom kanan untuk working directory.\n\n| Kode | Arti |\n|---|---|\n| `??` | Untracked |\n| `A ` | File baru yang sudah di-stage |\n| ` M` | Modified, belum di-stage |\n| `M ` | Modified dan sudah di-stage |\n| `MM` | Sudah di-stage, lalu diubah lagi setelahnya |\n\nKode `MM` menarik: staging menyimpan isi file **saat kamu menjalankan `git add`**. Kalau setelah itu kamu mengedit lagi, edit terbaru belum ikut, jadi kamu perlu `git add` sekali lagi.\n\n## Cara Git menyimpan data\n\nDi dalam folder `.git/objects`, Git menyimpan tiga jenis objek utama:\n\n- **Blob**: isi sebuah file, hanya kontennya, tanpa nama file.\n- **Tree**: struktur direktori, berisi daftar nama file beserta blob-nya (dan tree lain untuk subfolder).\n- **Commit**: menunjuk ke satu tree (potret proyek), plus penulis, waktu, pesan, dan commit induk.\n\nAda juga **tag**, penanda permanen ke sebuah commit yang biasanya dipakai untuk rilis.\n\nSetiap objek diberi nama berupa **hash SHA-1** sepanjang 40 karakter heksadesimal yang dihitung dari isinya. Isi sama, hash pasti sama. Isi beda satu byte saja, hash berubah total. Inilah sumber integritas data Git. Biasanya kamu cukup melihat 7 karakter awalnya, seperti di `git log --oneline`.\n\n## Snapshot, bukan diff\n\nVCS lama menyimpan daftar perubahan (diff) per file: versi 2 = versi 1 + perubahan. Git berpikir lain. Setiap commit adalah **snapshot utuh** seluruh proyek. File yang tidak berubah tidak disalin ulang, melainkan cukup ditautkan ke blob yang sama. Karena itu Git bisa langsung melompat ke commit mana pun tanpa harus \"memutar ulang\" semua perubahan dari awal.\n\nFolder `.git` di akar proyek adalah repositorimu yang sebenarnya. Isinya antara lain `HEAD` (penunjuk branch aktif), `config` (konfigurasi local), `index` (staging area), `objects/` (semua blob, tree, commit), dan `refs/` (branch serta tag). Hapus `.git`, dan seluruh riwayat ikut hilang, sementara file proyekmu tetap ada sebagai folder biasa.\n\n## Coba sendiri\n\nBuat repositori latihan dan amati statusnya berubah:\n\n```bash\nmkdir latihan-git && cd latihan-git\ngit init\necho \"# Halo Git\" > README.md\ngit status -s\n```\n\n```text\n?? README.md\n```\n\n```bash\ngit add README.md\ngit status -s\ngit commit -m \"Tambah README\"\n```\n\n```text\nA  README.md\n[main (root-commit) 348e2d6] Tambah README\n 1 file changed, 1 insertion(+)\n create mode 100644 README.md\n```\n\nHash commitmu pasti berbeda, karena bergantung pada nama, email, dan waktu. Sekarang intip objeknya:\n\n```bash\ngit cat-file -p HEAD\n```\n\n```text\ntree 7aed22714180b9b54db8ef7d3bfbdd5fb81baabb\nauthor Rani Putri <rani@contoh.com> 1792586550 +0700\ncommitter Rani Putri <rani@contoh.com> 1792586550 +0700\n\nTambah README\n```\n\n```bash\ngit cat-file -p 7aed227\n```\n\n```text\n100644 blob c79f97b548aa7452add2b3d9938286850db8693e\tREADME.md\n```\n\nHash tree dan blob ini akan **sama persis** di laptopmu, karena hanya bergantung pada isi. Buktikan juga snapshot berbagi blob:\n\n```bash\ncp README.md salinan.md\ngit add salinan.md\ngit commit -m \"Tambah salinan\"\ngit cat-file -p HEAD^{tree}\n```\n\n```text\n100644 blob c79f97b548aa7452add2b3d9938286850db8693e\tREADME.md\n100644 blob c79f97b548aa7452add2b3d9938286850db8693e\tsalinan.md\n```\n\nDua nama file, satu blob. Terakhir, ubah file lalu cek kodenya:\n\n```bash\necho \"baris dua\" >> README.md\ngit status -s\n```\n\n```text\n M README.md\n```\n\n## Kesalahan umum\n\n- **Mengira `git add` sudah menyimpan ke riwayat.** `add` hanya memasukkan ke staging. Riwayat baru tercatat setelah `git commit`.\n- **Mengira commit langsung sampai ke GitHub.** Commit tersimpan di local repository. Perlu `git push` untuk mengirimnya ke remote.\n- **Mengedit lagi setelah `git add` lalu langsung commit.** Edit terakhir tertinggal, terlihat sebagai `MM` di `git status -s`.\n- **Menghapus atau mengedit isi `.git` secara manual.** Biarkan Git yang mengurus folder itu.\n\n## Rangkuman\n\n- Perubahan bergerak dari working directory ke staging area (`git add`), ke local repository (`git commit`), lalu ke remote (`git push`).\n- Status file ada empat: untracked, modified, staged, dan committed, yang terbaca jelas lewat `git status -s`.\n- Git menyimpan objek blob (isi file), tree (struktur folder), dan commit (snapshot plus metadata), masing-masing bernama hash SHA-1 dari isinya.\n- Setiap commit adalah snapshot utuh, dan file yang sama cukup memakai blob yang sama.\n- Folder `.git` adalah repositori sebenarnya: menghapusnya berarti menghapus seluruh riwayat.",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "Di repositori baru tanpa commit, apa output perintah terakhir?",
+     "code": "$ echo \"# Halo Git\" > README.md\n$ git add README.md\n$ echo \"baris dua\" >> README.md\n$ git status -s",
+     "options": [
+      "AM README.md",
+      "A  README.md",
+      "?? README.md",
+      " M README.md"
+     ],
+     "answer": 0,
+     "explanation": "A berarti file baru sudah di-stage, dan M di kolom kanan berarti ada edit lagi setelah git add."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Objek Git yang menyimpan isi file tanpa nama file disebut apa?",
+     "code": "",
+     "options": [
+      "Tree",
+      "Commit",
+      "Blob",
+      "Tag"
+     ],
+     "answer": 2,
+     "explanation": "Blob hanya menyimpan konten; nama file dicatat oleh tree."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Git menyimpan setiap commit sebagai diff terhadap commit sebelumnya.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 1,
+     "explanation": "Setiap commit adalah snapshot utuh; file yang tidak berubah cukup menunjuk ke blob yang sama."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "Apa yang bisa disimpulkan dari output berikut?",
+     "code": "$ git cat-file -p HEAD^{tree}\n100644 blob c79f97b548aa7452add2b3d9938286850db8693e\tREADME.md\n100644 blob c79f97b548aa7452add2b3d9938286850db8693e\tsalinan.md",
+     "options": [
+      "salinan.md belum di-commit",
+      "Kedua file ada di folder berbeda",
+      "Git menyimpan isinya dua kali",
+      "Isi kedua file sama persis"
+     ],
+     "answer": 3,
+     "explanation": "Hash blob dihitung dari isi, jadi dua file dengan hash blob sama pasti berisi konten identik dan disimpan sekali."
+    }
+   ],
+   "exercises": []
+  },
+  {
+   "slug": "siklus-kerja-harian",
+   "title": "Siklus Kerja Harian: init, status, add, commit, log",
+   "est_minutes": 25,
+   "slide_from": 13,
+   "slide_to": 14,
+   "body": "## Tujuan\n\n- Membuat repositori baru dengan `git init` dan membaca keadaannya lewat `git status`.\n- Memindahkan perubahan ke staging area dengan `git add` (per file, `.`, dan sekilas `-p`).\n- Menyimpan snapshot dengan `git commit -m` lalu melihat riwayatnya dengan `git log --oneline`.\n- Hafal peta enam perintah dasar: clone, status, add, commit, push, pull.\n\n## Siklus yang terus berulang\n\nKerja harian dengan Git itu sebenarnya cuma satu lingkaran yang kamu putari berkali-kali dalam sehari:\n\n1. **Siapkan repositori**: `git init` untuk proyek baru, atau `git clone <url>` untuk proyek yang sudah ada di GitHub.\n2. **Ubah berkas** seperti biasa di editor.\n3. **Periksa dan pilih**: `git status`, lalu `git add` untuk berkas yang mau disimpan.\n4. **Simpan snapshot**: `git commit -m \"pesan\"`.\n5. **Bagikan ke tim**: `git push`.\n\n![Lima langkah siklus kerja harian Git dari init sampai push](slide:13)\n\nIngat tiga \"tempat\" yang sudah kamu kenal: **working directory** (berkas yang kamu edit), **staging area** (daftar perubahan yang siap disimpan), dan **repositori** (riwayat commit di folder `.git`). Hampir semua perintah di bab ini hanya memindahkan perubahan dari satu tempat ke tempat berikutnya.\n\n## git init: mulai dari nol\n\nMasuk ke folder proyek, lalu jalankan:\n\n```bash\ngit init\n```\n\n```text\nInitialized empty Git repository in /home/rina/profil-rina/.git/\n```\n\nGit membuat folder tersembunyi `.git` yang menyimpan seluruh riwayat. Jangan dihapus, karena itu sama saja dengan menghapus semua commit. Kalau di laptopmu sudah diatur `git config --global init.defaultBranch main`, cabang pertama otomatis bernama `main`. Tanpa pengaturan itu, Git 2.43 masih memakai nama `master` dan menampilkan petunjuk tentang cara menggantinya.\n\n## git status: kompas kamu\n\n`git status` tidak mengubah apa pun, jadi aman dijalankan kapan saja. Biasakan menjalankannya sebelum dan sesudah setiap perintah lain. Setelah membuat `README.md` dan `index.html` di repositori baru:\n\n```text\nOn branch main\n\nNo commits yet\n\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\tREADME.md\n\tindex.html\n\nnothing added to commit but untracked files present (use \"git add\" to track)\n```\n\n**Untracked** artinya Git melihat berkas itu, tapi belum pernah menyimpannya. Perhatikan juga bahwa Git selalu memberi petunjuk perintah berikutnya di dalam tanda kurung. Baca petunjuk itu, karena sering kali jawabannya ada di sana.\n\nMau versi singkat? Pakai `git status -s`. Kolom kiri menunjukkan isi staging area, kolom kanan menunjukkan working directory:\n\n| Kode | Arti |\n|---|---|\n| `??` | untracked, belum pernah di-add |\n| `A ` | berkas baru, sudah di staging |\n| ` M` | diubah, belum di staging |\n| `M ` | diubah, sudah di staging |\n| `MM` | sudah di staging, lalu diubah lagi |\n\n## git add: memilih apa yang disimpan\n\n```bash\ngit add README.md   # satu berkas\ngit add .           # semua perubahan di folder ini dan subfoldernya\n```\n\nSetelah `git add README.md`, status berubah menjadi:\n\n```text\nChanges to be committed:\n  (use \"git rm --cached <file>...\" to unstage)\n\tnew file:   README.md\n\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\tindex.html\n```\n\nStaging area membuat kamu bisa memilih. Misalnya kamu mengubah tiga berkas, tapi baru satu yang benar-benar selesai. Cukup add berkas yang selesai itu, commit, lalu lanjutkan sisanya.\n\n`git add -p` (patch) bahkan bisa memilih **sebagian isi** sebuah berkas. Git menampilkan potongan perubahan satu per satu lalu bertanya:\n\n```text\n(1/1) Stage this hunk [y,n,q,a,d,s,e,?]?\n```\n\nJawab `y` untuk memasukkan potongan itu, `n` untuk melewatinya, `s` untuk memecahnya jadi lebih kecil, dan `q` untuk berhenti. Untuk sekarang cukup tahu bahwa fitur ini ada. Nanti saat commit-mu mulai rapi, fitur ini akan sering kepakai.\n\n## git commit -m: simpan snapshot\n\n```bash\ngit commit -m \"Tambah README dan halaman awal\"\n```\n\n```text\n[main (root-commit) 16416d0] Tambah README dan halaman awal\n 2 files changed, 2 insertions(+)\n create mode 100644 README.md\n create mode 100644 index.html\n```\n\n`16416d0` adalah 7 karakter awal hash commit. Hash di laptopmu pasti berbeda, karena hash dihitung dari isi, nama penulis, dan waktu. `root-commit` menandai commit pertama di repositori. Yang ikut tersimpan hanya isi staging area, bukan semua berkas yang sedang kamu edit.\n\nPesan commit yang baik itu pendek, jelas, dan menjelaskan *apa* yang berubah: \"Tambah form login\", \"Perbaiki validasi email\". Hindari pesan seperti \"update\" atau \"asdf\", karena kamu sendiri yang akan bingung membacanya bulan depan.\n\n## git log --oneline: lihat riwayat\n\n```bash\ngit log --oneline\n```\n\n```text\n8094310 (HEAD -> main) Tambah paragraf perkenalan\n16416d0 Tambah README dan halaman awal\n```\n\nSatu commit satu baris, yang terbaru di atas. `(HEAD -> main)` artinya kamu sedang berada di cabang `main`, tepat di commit tersebut. Tanpa `--oneline`, Git menampilkan hash lengkap, penulis, dan tanggal. Kalau daftarnya panjang, Git membuka pager: gulir dengan panah, keluar dengan `q`.\n\n## Peta perintah dasar\n\nEnam perintah ini sudah cukup untuk 90% kerja harian:\n\n| Perintah | Fungsi |\n|---|---|\n| `git clone <url>` | menyalin repositori remote beserta seluruh riwayatnya |\n| `git status` | melihat berkas yang berubah, ter-stage, atau untracked |\n| `git add <file>` / `.` | memindahkan perubahan ke staging area |\n| `git commit -m \"pesan\"` | menyimpan snapshot dari staging area |\n| `git push` | mengirim commit lokal ke remote |\n| `git pull` | mengambil perubahan dari remote lalu menggabungkannya |\n\n`clone`, `push`, dan `pull` butuh repositori remote seperti GitHub, dan akan kita bahas di bab remote. Empat perintah sisanya bisa kamu latih sekarang juga, sepenuhnya offline.\n\n## Kesalahan umum\n\n- **Lupa `git add` sebelum commit.** Git akan menjawab `no changes added to commit`. Cek `git status` dan add berkasnya dulu.\n- **Mengedit lagi setelah add.** Status `MM` berarti versi yang ada di staging adalah versi lama. Jalankan `git add` sekali lagi supaya perubahan terbaru ikut tersimpan.\n- **`git init` di folder yang salah**, misalnya di home folder. Seluruh isi home jadi untracked. Hapus folder `.git` yang salah itu, lalu jalankan init di folder proyek.\n- **Commit raksasa.** Satu commit berisi sepuluh perubahan yang tidak saling berhubungan susah dibaca dan susah dibatalkan. Commit kecil dan fokus jauh lebih enak.\n- **Ikut meng-commit berkas rahasia** seperti `.env` gara-gara `git add .`. Selalu lihat `git status` sebelum commit.\n\n## Coba sendiri\n\nIkuti di terminal. Hash yang muncul di laptopmu akan berbeda, dan itu normal.\n\n```bash\nmkdir profil-rina && cd profil-rina\ngit init\necho \"# Profil Rina\" > README.md\ngit status -s\n```\n\n```text\n?? README.md\n```\n\n```bash\ngit add README.md\ngit status -s\ngit commit -m \"Tambah README\"\n```\n\n```text\nA  README.md\n[main (root-commit) da9730f] Tambah README\n 1 file changed, 1 insertion(+)\n create mode 100644 README.md\n```\n\nSekarang ubah berkasnya, lalu ulangi siklusnya:\n\n```bash\necho \"Halo, aku Rina.\" >> README.md\ngit status -s\ngit add .\ngit commit -m \"Tambah perkenalan\"\ngit log --oneline\n```\n\n```text\n M README.md\n[main 95a54f9] Tambah perkenalan\n 1 file changed, 1 insertion(+)\n95a54f9 (HEAD -> main) Tambah perkenalan\nda9730f Tambah README\n```\n\nCoba juga: edit README, jalankan `git add`, edit lagi, lalu lihat `git status -s` dan cari kode `MM`.\n\n## Rangkuman\n\n- Siklus harian: edit, `git status`, `git add`, `git commit`, ulangi, lalu `git push` untuk berbagi.\n- `git status` adalah kompas: aman dijalankan kapan saja dan selalu memberi petunjuk perintah berikutnya.\n- `git add` memilih apa yang masuk commit, bisa per berkas, `.` untuk semua, atau `-p` untuk sebagian isi berkas.\n- `git commit -m` hanya menyimpan isi staging area, dan `git log --oneline` menampilkan riwayatnya per baris.",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "Apa output baris terakhir rangkaian perintah berikut?",
+     "code": "git init\necho halo > a.txt\ngit add a.txt\necho lagi >> a.txt\ngit status -s",
+     "options": [
+      "A  a.txt",
+      "AM a.txt",
+      "?? a.txt",
+      " M a.txt"
+     ],
+     "answer": 1,
+     "explanation": "a.txt sudah di-stage sebagai berkas baru (A), lalu diubah lagi di working directory (M) sehingga statusnya AM."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Perintah mana yang menyimpan isi staging area sebagai snapshot baru?",
+     "code": "",
+     "options": [
+      "git add .",
+      "git status",
+      "git commit -m \"pesan\"",
+      "git push"
+     ],
+     "answer": 2,
+     "explanation": "git commit menyimpan snapshot dari staging area ke repositori lokal; push baru mengirimnya ke remote."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "git add -p bisa memasukkan sebagian perubahan dalam satu berkas ke staging area.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 0,
+     "explanation": "Mode patch menampilkan setiap potongan (hunk) dan menanyakan apakah potongan itu ikut di-stage."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "Berapa baris yang dicetak oleh git log --oneline di akhir?",
+     "code": "git init\necho a > a.txt\ngit add a.txt\ngit commit -m \"Satu\"\necho b > b.txt\ngit commit -m \"Dua\"\ngit log --oneline",
+     "options": [
+      "0",
+      "2",
+      "3",
+      "1"
+     ],
+     "answer": 3,
+     "explanation": "Commit \"Dua\" gagal karena b.txt belum di-add, jadi hanya commit \"Satu\" yang ada."
+    }
+   ]
+  },
+  {
+   "slug": "riwayat-diff-dan-membatalkan",
+   "title": "Riwayat, Diff, dan Membatalkan Perubahan",
+   "est_minutes": 30,
+   "slide_from": 15,
+   "slide_to": 16,
+   "body": "## Tujuan\n\n- Menelusuri riwayat dengan `git log`, `git show`, dan `git blame`.\n- Membaca `git diff` untuk working directory, staging area, dan antar commit.\n- Memilih cara membatalkan yang tepat: `restore`, `commit --amend`, `revert`, atau `reset`.\n- Memakai `git reflog` untuk menyelamatkan commit yang \"hilang\".\n\n## Menelusuri riwayat dengan git log\n\nKamu sudah kenal `git log --oneline`. Ada beberapa opsi lain yang sering dipakai:\n\n```bash\ngit log --oneline -n 5          # 5 commit terakhir saja\ngit log --oneline --graph --all # gambar cabang, semua branch\ngit log -p -1                   # commit terakhir beserta isi perubahannya\ngit log --author=\"Budi\"         # hanya commit milik Budi\ngit log --since=\"2 weeks ago\"   # hanya commit dua minggu terakhir\n```\n\nContoh nyata dari repositori dengan tiga commit:\n\n```text\n$ git log --oneline\n9cc0d10 (HEAD -> main) Tambah README\na3c728e Cetak nama ke konsol\n861fa62 Tambah app.js\n\n$ git log --oneline --author=Budi\n9cc0d10 (HEAD -> main) Tambah README\n```\n\nFilter bisa digabung, misalnya `--author` dengan `--since`. `--graph --oneline --all` adalah cara tercepat memahami bentuk cabang sebuah proyek, dan akan sering kamu pakai di bab berikutnya.\n\n## git show dan git blame\n\n`git show <hash>` menampilkan satu commit lengkap: penulis, tanggal, pesan, dan diff-nya. Tanpa hash, yang ditampilkan adalah commit terakhir (HEAD).\n\n```text\n$ git show --stat a3c728e\ncommit a3c728e7883c0fb4ae649a588e4276f653dafe59\nAuthor: Rina <rina@contoh.id>\nDate:   Fri Oct 2 09:00:00 2026 +0700\n\n    Cetak nama ke konsol\n\n app.js | 1 +\n 1 file changed, 1 insertion(+)\n```\n\n`git blame <file>` menunjukkan siapa yang terakhir mengubah setiap baris, dan di commit mana:\n\n```text\n$ git blame app.js\n^861fa62 (Rina 2026-10-01 09:00:00 +0700 1) const nama = \"lama\";\na3c728e7 (Rina 2026-10-02 09:00:00 +0700 2) console.log(nama);\n```\n\nTanda `^` berarti baris itu berasal dari commit pertama. Blame bukan untuk mencari kambing hitam, tapi untuk menemukan commit yang tepat lalu membaca alasannya lewat `git show`.\n\n## git diff: apa bedanya?\n\n`git diff` membandingkan baris demi baris. Yang dibandingkan tergantung opsinya:\n\n| Perintah | Membandingkan |\n|---|---|\n| `git diff` | working directory vs staging area (yang belum di-add) |\n| `git diff --staged` | staging area vs commit terakhir (yang akan masuk commit) |\n| `git diff HEAD~2 HEAD` | dua commit |\n\n```text\n$ git diff\ndiff --git a/app.js b/app.js\nindex 9e97e3b..e07cd71 100644\n--- a/app.js\n+++ b/app.js\n@@ -1,2 +1,2 @@\n-const nama = \"lama\";\n+const nama = \"baru\";\n console.log(nama);\n```\n\nBaris berawalan `-` dihapus, `+` ditambahkan, dan baris tanpa tanda hanyalah konteks. Ini yang sering bikin bingung: setelah `git add app.js`, perintah `git diff` mendadak kosong. Perubahannya tidak hilang, tapi sudah pindah ke staging. Lihat dengan `git diff --staged`.\n\n`HEAD~1` artinya satu commit sebelum HEAD, `HEAD~2` dua commit sebelumnya, dan seterusnya.\n\n## Membatalkan perubahan\n\nPilih alat sesuai *di mana* kesalahanmu berada:\n\n| Situasi | Perintah | Tingkat bahaya |\n|---|---|---|\n| Edit berkas ngawur, belum di-add | `git restore <file>` | edit yang belum di-commit hilang |\n| Salah add | `git restore --staged <file>` | aman, isi berkas tetap |\n| Typo pesan, atau ada berkas tertinggal di commit terakhir | `git commit --amend` | menulis ulang commit terakhir |\n| Commit lama yang sudah di-push ternyata salah | `git revert <hash>` | aman untuk publik |\n| Mundur beberapa commit di branch lokal | `git reset` | hati-hati |\n\n**git restore** mengembalikan berkas di working directory ke versi staging (atau commit terakhir). Perubahan yang belum di-commit benar-benar dibuang, jadi pastikan memang tidak dibutuhkan. Dengan `--staged`, yang dibatalkan hanya status add-nya, sementara isi berkas tetap utuh.\n\n**git commit --amend** mengganti commit terakhir dengan versi baru:\n\n```bash\ngit add berkas-tertinggal.txt\ngit commit --amend -m \"Tambah catatan belajar\"\n```\n\nHash commit berubah, karena secara teknis itu commit baru. Aman dipakai selama commit tersebut belum di-push.\n\n**git revert** membuat commit **baru** yang membalik efek commit lama. Riwayat tidak diubah, hanya ditambah:\n\n```text\n$ git revert --no-edit a3c728e\n$ git log --oneline\nce05367 (HEAD -> main) Revert \"Cetak nama ke konsol\"\nac3fad4 Tambah catatan belajar\n9cc0d10 Tambah README\na3c728e Cetak nama ke konsol\n861fa62 Tambah app.js\n```\n\nKarena tidak ada commit yang hilang, rekan setim yang sudah menarik riwayat lama tidak akan bermasalah.\n\n**git reset** memindahkan penunjuk branch ke commit lain. Ada tiga mode:\n\n| Mode | Commit setelahnya | Staging | Working directory |\n|---|---|---|---|\n| `--soft` | dibatalkan | perubahan tetap ter-stage | utuh |\n| `--mixed` (default) | dibatalkan | dikosongkan | utuh, perubahan jadi unstaged |\n| `--hard` | dibatalkan | dikosongkan | **ditimpa**, perubahan hilang |\n\n```bash\ngit reset --soft HEAD~1   # batalkan commit, isinya masih di staging\ngit reset HEAD~1          # batalkan commit, isinya jadi unstaged\ngit reset --hard HEAD~1   # batalkan commit DAN buang isinya\n```\n\n> **Peringatan:** `git reset --hard` menghapus perubahan yang belum di-commit secara permanen. Jangan pakai `reset` (atau `amend`) pada commit yang sudah di-push ke repositori bersama. Gunakan `git revert` sebagai gantinya.\n\n## git reflog: jaring pengaman\n\nCommit yang \"hilang\" karena `reset --hard` sebenarnya masih ada untuk sementara. `git reflog` mencatat setiap pergerakan HEAD di laptopmu:\n\n```text\n$ git reflog -3\na64578a (HEAD -> main) HEAD@{0}: reset: moving to HEAD~1\n0cd0bd1 HEAD@{1}: revert: Revert \"Cetak nama\"\na64578a (HEAD -> main) HEAD@{2}: commit: Cetak nama\n```\n\nUntuk kembali ke posisi sebelum reset, cukup `git reset --hard HEAD@{1}` (atau pakai hash-nya). Reflog hanya ada di repositori lokal dan entri lama dibersihkan setelah beberapa waktu (umumnya 90 hari). Perubahan yang belum pernah di-commit tidak tercatat sama sekali, jadi reflog tidak bisa menyelamatkannya.\n\n## Kesalahan umum\n\n- **Panik karena `git diff` kosong** padahal sudah ada perubahan. Kemungkinan besar perubahannya sudah di-add. Cek dengan `git diff --staged`.\n- **Memakai `reset --hard` untuk membatalkan add.** Yang benar `git restore --staged`. `--hard` ikut membuang hasil editanmu.\n- **Amend atau reset commit yang sudah di-push**, lalu terpaksa force push. Rekan setim jadi punya riwayat yang berbeda. Untuk commit publik, pakai revert.\n- **Mengira revert menghapus commit.** Commit lama tetap ada di log, dan revert menambah satu commit baru di atasnya.\n- **Lupa reflog.** Sebelum menyerah karena commit \"hilang\", jalankan `git reflog` dulu.\n\n## Coba sendiri\n\n```bash\nmkdir latihan-undo && cd latihan-undo && git init\necho 'const nama = \"lama\";' > app.js\ngit add app.js && git commit -m \"Tambah app.js\"\necho 'console.log(nama);' >> app.js\ngit commit -am \"Cetak nama\"\n```\n\n**1. Buang editan yang belum di-add.**\n\n```bash\necho \"// typo\" >> app.js\ngit diff\ngit restore app.js\ngit status -s\n```\n\n`git diff` menampilkan `+// typo`. Setelah restore, `git status -s` tidak mencetak apa pun.\n\n**2. Batalkan add tanpa kehilangan isi.**\n\n```bash\necho \"// catatan\" >> app.js\ngit add app.js\ngit restore --staged app.js\ngit status -s\n```\n\n```text\n M app.js\n```\n\nBuang lagi dengan `git restore app.js`.\n\n**3. Revert, lalu reset, lalu selamatkan dengan reflog.**\n\n```bash\ngit revert --no-edit HEAD\ngit reset --hard HEAD~1\ngit log --oneline\ngit reflog -3\n```\n\nOutput dari `reset`, `log`, dan `reflog` (hash di laptopmu akan berbeda):\n\n```text\nHEAD is now at a64578a Cetak nama\na64578a (HEAD -> main) Cetak nama\n2c633dd Tambah app.js\na64578a (HEAD -> main) HEAD@{0}: reset: moving to HEAD~1\n0cd0bd1 HEAD@{1}: revert: Revert \"Cetak nama\"\na64578a (HEAD -> main) HEAD@{2}: commit: Cetak nama\n```\n\nCommit revert hilang dari log, tapi masih tercatat di `HEAD@{1}`. Selamatkan:\n\n```bash\ngit reset --hard HEAD@{1}\ngit log --oneline\n```\n\n```text\nHEAD is now at 0cd0bd1 Revert \"Cetak nama\"\n0cd0bd1 (HEAD -> main) Revert \"Cetak nama\"\na64578a Cetak nama\n2c633dd Tambah app.js\n```\n\nCommit revert kembali lagi.\n\n## Rangkuman\n\n- `git log` (dengan `--oneline`, `--graph`, `-p`, `--author`, `--since`), `git show`, dan `git blame` dipakai untuk menelusuri riwayat.\n- `git diff` melihat perubahan yang belum di-add, `--staged` melihat isi staging, dan dua hash membandingkan antar commit.\n- `restore` untuk berkas, `restore --staged` untuk membatalkan add, `amend` untuk commit terakhir yang belum di-push, dan `revert` untuk commit publik.\n- `reset --hard` bisa membuang kerjaan, dan `git reflog` adalah jalan pulang untuk commit yang terlanjur hilang.",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "app.js sudah punya satu commit. Apa yang dicetak oleh git diff terakhir?",
+     "code": "echo 'let x = 2;' > app.js\ngit add app.js\ngit diff",
+     "options": [
+      "Diff app.js dengan baris -/+",
+      "Tidak mencetak apa pun",
+      "Error: no changes found",
+      "Seluruh isi app.js saja"
+     ],
+     "answer": 1,
+     "explanation": "Perubahan sudah dipindah ke staging oleh git add, sedangkan git diff tanpa opsi hanya melihat yang belum di-stage."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Commit lama yang sudah di-push ke repositori tim ternyata salah. Cara membatalkan yang aman adalah...",
+     "code": "",
+     "options": [
+      "git reset --hard <hash>",
+      "git commit --amend",
+      "git restore --staged .",
+      "git revert <hash>"
+     ],
+     "answer": 3,
+     "explanation": "revert menambah commit baru yang membalik perubahan tanpa menulis ulang riwayat yang sudah dipakai orang lain."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Commit yang terbuang oleh git reset --hard HEAD~1 masih bisa ditemukan lewat git reflog.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 0,
+     "explanation": "reflog mencatat setiap pergerakan HEAD di repositori lokal, jadi hash commit tersebut masih bisa dipakai untuk kembali."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "Apa output git status -s di akhir?",
+     "code": "git commit -am \"Ubah x\"   # mengubah app.js\ngit reset --soft HEAD~1\ngit status -s",
+     "options": [
+      " M app.js",
+      "(tidak ada output)",
+      "M  app.js",
+      "?? app.js"
+     ],
+     "answer": 2,
+     "explanation": "reset --soft membatalkan commit tetapi menyimpan perubahannya di staging, sehingga kolom kiri berisi M."
+    }
+   ]
+  },
+  {
+   "slug": "branch-merge-rebase-dan-konflik",
+   "title": "Branch, Merge, Rebase, dan Merge Conflict",
+   "est_minutes": 35,
+   "slide_from": 17,
+   "slide_to": 21,
+   "body": "## Tujuan\n\n- Menjelaskan branch sebagai penunjuk ringan dan HEAD sebagai penanda posisi kamu sekarang.\n- Membuat dan berpindah branch dengan `git branch` dan `git switch -c`.\n- Membedakan fast-forward merge, merge commit, dan rebase, serta tahu kapan memakai masing-masing.\n- Menyelesaikan merge conflict, atau membatalkannya dengan `git merge --abort`.\n\n## Branch itu cuma penunjuk\n\nBranch sering dibayangkan sebagai salinan seluruh proyek. Kenyataannya jauh lebih ringan: branch hanyalah **penunjuk ke satu commit**. Isinya cuma hash 40 karakter. Coba intip:\n\n```text\n$ cat .git/HEAD\nref: refs/heads/main\n$ cat .git/refs/heads/main\ndb292be8a86c29b4b6bc4205610e2a753ed14e5b\n```\n\nSetiap kali kamu commit, penunjuk branch yang aktif ikut maju ke commit baru. Karena itu membuat branch terasa instan, bahkan di proyek raksasa.\n\n**HEAD** adalah penunjuk ke branch yang sedang aktif. Di `git log` kamu melihatnya sebagai `(HEAD -> main)`, yang artinya \"kamu sedang di branch main\". Pindah branch berarti memindahkan HEAD, lalu Git menyesuaikan isi working directory dengan commit yang ditunjuk branch tersebut.\n\nBeberapa istilah yang akan sering kamu dengar:\n\n- **main** (dulu sering bernama **master**): branch utama yang berisi kode stabil.\n- **feature branch**: branch untuk mengerjakan satu fitur, misalnya `feature/login`.\n- **merge**: menyatukan dua branch.\n\nPakai awalan yang konsisten seperti `feature/`, `bugfix/`, `hotfix/`, atau `release/` supaya seluruh tim langsung paham isi setiap branch.\n\n## Membuat dan berpindah branch\n\n```bash\ngit branch                    # daftar branch lokal, * = yang aktif\ngit branch feature/login      # buat branch (belum pindah)\ngit switch feature/login      # pindah ke branch itu\ngit switch -c feature/daftar  # buat + pindah sekaligus\ngit branch -d feature/login   # hapus branch yang sudah di-merge\n```\n\n```text\n$ git branch\n  feature/login\n* main\n```\n\n`git switch` hadir sejak Git 2.23 untuk menggantikan peran `git checkout` yang terlalu banyak tugas. `git checkout -b feature/login` masih berfungsi dan hasilnya setara dengan `git switch -c`, jadi jangan kaget kalau menemukannya di tutorial lama.\n\nPastikan working directory bersih (sudah di-commit) sebelum pindah branch. Kalau perubahanmu bentrok dengan branch tujuan, Git akan menolak pindah demi melindungi editanmu.\n\n## Merge: fast-forward vs merge commit\n\nSelesai mengerjakan fitur? Pindah ke branch tujuan, lalu merge:\n\n```bash\ngit switch main\ngit merge feature/login\n```\n\nAda dua kemungkinan hasil.\n\n**1. Fast-forward.** Kalau `main` tidak bertambah commit sejak `feature/login` dibuat, Git cukup menggeser penunjuk `main` ke depan. Tidak ada commit baru yang dibuat:\n\n```text\nUpdating e67d43d..a89c589\nFast-forward\n login.html | 1 +\n 1 file changed, 1 insertion(+)\n create mode 100644 login.html\n```\n\n**2. Merge commit.** Kalau kedua branch sama-sama punya commit baru, Git membuat satu **merge commit** dengan dua induk:\n\n```text\n$ git merge feature/daftar\nMerge made by the 'ort' strategy.\n daftar.html | 1 +\n 1 file changed, 1 insertion(+)\n create mode 100644 daftar.html\n\n$ git log --oneline --graph\n*   db292be (HEAD -> main) Merge branch 'feature/daftar'\n|\\\n| * 53911ae Form daftar\n* | d24acff Tambah footer\n|/\n* a89c589 Form login\n```\n\nGrafiknya menunjukkan dua jalur yang bertemu kembali. Riwayat asli tetap utuh dan jujur: kamu bisa melihat kapan fitur dikerjakan terpisah.\n\n## Rebase: riwayat yang lurus\n\n`git rebase` memindahkan commit branch-mu supaya seolah dibuat di atas commit terbaru branch lain:\n\n```bash\ngit switch feature/profil\ngit rebase main\n```\n\nSebelum rebase, `feature/profil` bercabang dari commit lama. Sesudahnya:\n\n```text\n* 24dbcc8 (HEAD -> feature/profil) Halaman profil\n* 4191493 (main) Tambah gaya.css\n```\n\nCommit \"Halaman profil\" sekarang duduk tepat di atas `main`, dan hash-nya berubah (sebelumnya `92ab476`). Merge ke `main` setelah itu menjadi fast-forward, sehingga riwayatnya lurus tanpa merge commit.\n\nHash yang berubah itulah sumber bahayanya. Rebase **menulis ulang commit**. Kalau commit tersebut sudah di-push dan dipakai orang lain, riwayat mereka dan riwayatmu jadi tidak cocok.\n\n## Kapan merge, kapan rebase?\n\n| | merge | rebase |\n|---|---|---|\n| Riwayat | asli, bercabang | lurus, ditulis ulang |\n| Commit tambahan | merge commit | tidak ada |\n| Aman untuk branch bersama | ya | tidak |\n\nAturan praktis yang dipegang banyak tim:\n\n- Pakai **rebase** untuk merapikan branch lokal milikmu sendiri sebelum dibagikan, misalnya untuk mengejar `main` terbaru.\n- Pakai **merge** untuk menyatukan branch ke `main` atau branch yang dipakai bersama.\n- **Jangan pernah rebase branch publik** yang sudah di-push dan dipakai orang lain.\n\n## Merge conflict\n\nConflict terjadi kalau dua branch mengubah **baris yang sama** di berkas yang sama. Git tidak bisa menebak versi mana yang benar, jadi keputusannya diserahkan ke kamu. Ini normal dan bukan tanda kamu berbuat salah.\n\n```text\n$ git merge feature/judul\nAuto-merging index.html\nCONFLICT (content): Merge conflict in index.html\nAutomatic merge failed; fix conflicts and then commit the result.\n```\n\nBuka berkasnya dan kamu akan menemukan penanda konflik:\n\n```text\n<<<<<<< HEAD\n<h1>Selamat Datang di Ruang Materi</h1>\n=======\n<h1>Halo Dunia</h1>\n>>>>>>> feature/judul\n```\n\n- Di antara `<<<<<<< HEAD` dan `=======` ada versi branch aktif (yang sedang menerima merge).\n- Di antara `=======` dan `>>>>>>> feature/judul` ada versi dari branch yang digabung.\n\nEmpat langkah menyelesaikannya:\n\n1. **Identifikasi**: `git status` menampilkan `both modified: index.html` (atau `UU` di `git status -s`).\n2. **Perbaiki**: edit berkas, pilih salah satu versi atau gabungkan keduanya, lalu **hapus semua penanda** `<<<<<<<`, `=======`, dan `>>>>>>>`.\n3. **Tandai selesai**: `git add index.html`.\n4. **Tutup merge**: `git commit` (atau `git rebase --continue` kalau konflik muncul saat rebase).\n\nBelum siap memutuskan? `git merge --abort` membatalkan merge dan mengembalikan semuanya ke kondisi sebelum merge. Ada juga `git mergetool` yang membuka alat bantu visual, dan editor seperti VS Code menyediakan tombol \"Accept Current / Incoming / Both\" untuk hal yang sama.\n\n## Kesalahan umum\n\n- **Commit di branch yang salah.** Selalu cek `git status` atau `git branch` sebelum mulai bekerja.\n- **Merge dari arah terbalik.** `git merge X` menarik X **ke** branch aktif. Pindah dulu ke branch tujuan.\n- **Penanda konflik ikut ter-commit.** Cari `<<<<<<<` di berkas sebelum `git add`.\n- **Rebase branch yang sudah di-push bersama**, lalu force push. Rekan setim akan menemukan commit ganda dan konflik aneh.\n- **Menimbun branch selama berminggu-minggu.** Makin lama terpisah, makin besar konfliknya. Merge atau rebase dari `main` secara rutin.\n\n## Coba sendiri\n\nBuat konflik dengan sengaja, lalu selesaikan:\n\n```bash\nmkdir latihan-branch && cd latihan-branch && git init\necho \"<h1>Selamat Datang</h1>\" > index.html\ngit add . && git commit -m \"Halaman awal\"\ngit switch -c feature/judul\necho \"<h1>Halo Dunia</h1>\" > index.html\ngit commit -am \"Ganti judul\"\ngit switch main\necho \"<h1>Selamat Datang di Ruang Materi</h1>\" > index.html\ngit commit -am \"Perjelas judul\"\ngit log --oneline --graph --all\n```\n\n```text\n* c259e2b (feature/judul) Ganti judul\n| * df3688f (HEAD -> main) Perjelas judul\n|/\n* 4152a15 Halaman awal\n```\n\n```bash\ngit merge feature/judul\ngit status -s\n```\n\n```text\nAuto-merging index.html\nCONFLICT (content): Merge conflict in index.html\nAutomatic merge failed; fix conflicts and then commit the result.\nUU index.html\n```\n\nCoba `git merge --abort` dulu, lalu cek bahwa `git status -s` bersih. Jalankan merge lagi, kemudian selesaikan konfliknya:\n\n```bash\necho \"<h1>Halo, Selamat Datang di Ruang Materi</h1>\" > index.html\ngit add index.html\ngit commit --no-edit\ngit log --oneline --graph\n```\n\n```text\n*   121921b (HEAD -> main) Merge branch 'feature/judul'\n|\\\n| * c259e2b (feature/judul) Ganti judul\n* | df3688f Perjelas judul\n|/\n* 4152a15 Halaman awal\n```\n\n## Rangkuman\n\n- Branch adalah penunjuk ringan ke sebuah commit, dan HEAD menunjuk ke branch yang aktif.\n- `git switch -c` membuat sekaligus pindah branch, dan `git merge` menyatukan branch lain ke branch aktif, lewat fast-forward atau merge commit.\n- Rebase membuat riwayat lurus dengan menulis ulang commit, jadi pakai hanya di branch lokal, jangan di branch publik.\n- Conflict diselesaikan dengan mengedit berkas, menghapus penanda, `git add`, lalu `git commit`, atau dibatalkan dengan `git merge --abort`.",
+   "quiz": [
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Secara teknis, branch di Git adalah...",
+     "code": "",
+     "options": [
+      "Penunjuk ringan ke sebuah commit",
+      "Salinan penuh seluruh folder proyek",
+      "Server tempat menyimpan kode",
+      "Cadangan otomatis tiap hari"
+     ],
+     "answer": 0,
+     "explanation": "Branch hanya berisi hash satu commit dan maju otomatis setiap kali kamu commit."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "Setelah perintah berikut, branch mana yang aktif?",
+     "code": "git switch -c fitur/a\ngit switch -c fitur/b\ngit branch",
+     "options": [
+      "main",
+      "fitur/a",
+      "fitur/b",
+      "Tidak ada yang aktif"
+     ],
+     "answer": 2,
+     "explanation": "switch -c membuat branch lalu langsung pindah ke sana, jadi perintah terakhir membuat fitur/b aktif."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Rebase aman dipakai pada branch publik yang sudah di-push dan dipakai banyak orang.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 1,
+     "explanation": "Rebase menulis ulang hash commit, sehingga riwayat rekan setim tidak lagi cocok dengan riwayatmu."
+    },
+    {
+     "type": "baca_kode",
+     "prompt": "main tidak bertambah commit sejak branch fitur dibuat. Apa yang dilakukan git merge?",
+     "code": "git switch -c fitur\necho b >> a.txt\ngit commit -am \"Ubah a\"\ngit switch main\ngit merge fitur",
+     "options": [
+      "Membuat merge commit dua induk",
+      "Berhenti dengan CONFLICT",
+      "Menolak karena branch beda",
+      "Fast-forward, main digeser maju"
+     ],
+     "answer": 3,
+     "explanation": "Karena main tidak punya commit baru, Git cukup menggeser penunjuk main ke commit terakhir fitur."
+    }
+   ]
+  },
+  {
+   "slug": "remote-dan-kolaborasi",
+   "title": "Remote dan Kolaborasi: Push, Pull, dan Workflow Tim",
+   "est_minutes": 30,
+   "slide_from": 22,
+   "slide_to": 26,
+   "body": "## Tujuan\n\n- Menautkan repositori lokal ke remote dengan `git remote add`, lalu mengirim cabang pertama memakai `git push -u`.\n- Membedakan `git fetch` (hanya mengunduh) dan `git pull` (mengunduh lalu menggabungkan), serta membaca status upstream.\n- Menjelaskan beda Git dengan GitHub, GitLab, dan Bitbucket, plus alur fork dan pull request.\n- Memilih workflow tim (GitHub Flow, Git Flow, trunk-based) sesuai ukuran tim dan cara rilisnya.\n\n## Lokal dan remote\n\nSampai bab sebelumnya, semua yang kamu lakukan terjadi di laptop sendiri: commit, branch, merge, semuanya tersimpan di folder `.git`. Itu sudah cukup buat kerja sendirian, tapi begitu ada teman satu tim, kalian butuh satu tempat bersama untuk bertukar commit. Tempat itu namanya **repositori remote**, yaitu salinan repositori yang tinggal di server, biasanya di GitHub, GitLab, atau Bitbucket.\n\nIngat, Git itu terdistribusi. Remote bukan \"pusat\" yang wajib ada; ia hanya salinan lain yang kebetulan disepakati sebagai titik temu. Alurnya sederhana:\n\n- `git push` mengirim commit lokal ke server.\n- `git fetch` dan `git pull` mengambil pembaruan dari server.\n\n![Diagram repositori lokal dan remote beserta perintah push, pull, dan fetch](slide:23)\n\n## Menautkan remote: git remote\n\nRepositori baru hasil `git init` belum kenal server mana pun. Cek dulu dengan `git remote -v`; kalau tidak keluar apa-apa, berarti belum ada remote. Tautkan dengan:\n\n```bash\ngit remote add origin https://github.com/kamu/catatan.git\ngit remote -v\n```\n\n```text\norigin\thttps://github.com/kamu/catatan.git (fetch)\norigin\thttps://github.com/kamu/catatan.git (push)\n```\n\n`origin` cuma nama panggilan (alias) untuk URL tadi. Namanya bebas, tapi `origin` adalah nama baku untuk remote utama, jadi hampir semua tutorial dan tim memakainya. Opsi `-v` (verbose) menampilkan URL untuk fetch dan push.\n\nKalau kamu memulai dari repositori yang sudah ada di server, pakai `git clone <url>`. Clone menyalin seluruh riwayat sekaligus mengatur `origin` secara otomatis, jadi kamu tidak perlu `git remote add` lagi.\n\n## Push pertama dan upstream\n\nKirim cabang `main` ke server untuk pertama kalinya:\n\n```bash\ngit push -u origin main\n```\n\n```text\nTo https://github.com/kamu/catatan.git\n * [new branch]      main -> main\nbranch 'main' set up to track 'origin/main'.\n```\n\nOpsi `-u` (kependekan dari `--set-upstream`) menetapkan **upstream**, yaitu cabang remote yang \"dipasangkan\" dengan cabang lokalmu. Setelah itu kamu cukup mengetik `git push` atau `git pull` tanpa menyebut `origin main` lagi. Tanpa upstream, Git akan menolak `git push` polos:\n\n```text\nfatal: The current branch feature/login has no upstream branch.\nTo push the current branch and set the remote as upstream, use\n\n    git push --set-upstream origin feature/login\n```\n\nCabang remote yang dilacak muncul sebagai `origin/main`. Ini bukan cabang tempat kamu bekerja, melainkan catatan lokal tentang posisi `main` di server pada saat terakhir kamu berkomunikasi dengannya. Lihat pasangan upstream tiap cabang dengan `git branch -vv`:\n\n```text\n* main 376941b [origin/main] docs: tambah README\n```\n\n## fetch vs pull\n\nIni bagian yang paling sering tertukar.\n\n- `git fetch origin` **hanya mengunduh** commit baru dari server dan memperbarui `origin/main`. Cabang `main` milikmu dan isi folder kerjamu tidak disentuh sama sekali.\n- `git pull origin main` setara dengan `git fetch` diikuti `git merge origin/main` ke cabang yang sedang aktif.\n\nMisalnya teman kamu, Dina, baru saja push satu commit. Setelah `git fetch`, `git status` memberi tahu bahwa kamu tertinggal:\n\n```text\nOn branch main\nYour branch is behind 'origin/main' by 1 commit, and can be fast-forwarded.\n  (use \"git pull\" to update your local branch)\n```\n\nFile di folder kerjamu masih versi lama. Baru setelah `git pull`, commit Dina masuk ke `main`:\n\n```text\nUpdating 376941b..e316705\nFast-forward\n README.md | 1 +\n 1 file changed, 1 insertion(+)\n```\n\nKapan pakai fetch? Saat kamu ingin mengintip dulu apa yang berubah (`git log main..origin/main`) sebelum memutuskan menggabung. Pull lebih praktis untuk sehari-hari, fetch lebih aman saat kamu sedang di tengah pekerjaan.\n\nKalau kamu dan teman sama-sama sudah commit, cabangnya **diverged**. Push-mu akan ditolak dengan pesan `! [rejected] main -> main (fetch first)`, dan solusinya adalah pull dulu, bereskan konflik kalau ada, lalu push lagi. Di Git versi baru, pull pada cabang yang diverged bisa berhenti dengan pesan `You have divergent branches`; pilih sekali caranya, misalnya `git config --global pull.rebase false` untuk merge atau `true` untuk rebase.\n\n## Git bukan GitHub\n\nKesalahpahaman paling umum: menganggap Git dan GitHub itu sama. **Git** adalah perangkat lunak kontrol versi yang berjalan di komputermu. **GitHub, GitLab, dan Bitbucket** adalah layanan yang menyimpan repositori Git di internet lalu menambahkan fitur kolaborasi di atasnya.\n\n| Platform | Ciri khas | Cocok untuk |\n|---|---|---|\n| GitHub | Komunitas open source terbesar; Pull Request, Issues, Actions (CI/CD), Projects | Proyek publik, portofolio, komunitas |\n| GitLab | Platform DevOps menyeluruh, bisa self-hosted; istilahnya Merge Request | Perusahaan yang ingin kontrol penuh atas server |\n| Bitbucket | Terintegrasi dengan Jira dan Confluence, punya Bitbucket Pipelines | Tim yang sudah memakai Jira |\n\n## Alur fork dan pull request\n\nKamu tidak punya izin push ke repositori orang lain. Cara standar berkontribusi ke proyek open source adalah:\n\n1. **Fork**: salin repositori itu ke akunmu lewat antarmuka web.\n2. **Clone**: unduh hasil fork ke laptop dengan `git clone`.\n3. **Branch**: buat cabang khusus, misalnya `git switch -c fix/typo-readme`.\n4. **Commit & push**: simpan perubahan, lalu `git push -u origin fix/typo-readme` ke fork-mu.\n5. **Pull request**: ajukan permintaan penggabungan ke repositori asal.\n6. **Review & merge**: pemelihara meninjau, memberi masukan, lalu menggabungkan.\n\nGitHub dan Bitbucket menyebutnya **Pull Request (PR)**, sedangkan GitLab menyebutnya **Merge Request (MR)**. Konsep dan tujuannya sama persis. Di tim sendiri, kamu biasanya tidak perlu fork: cukup buat cabang di repositori bersama, push, lalu buka PR.\n\n## Workflow tim\n\nSemua anggota tim perlu sepakat cara memakai cabang. Ada beberapa model populer:\n\n- **Feature branch**: dasar dari semua model di bawah. Setiap fitur atau perbaikan dikerjakan di cabang sendiri (`feature/login`, `bugfix/email-kosong`), lalu digabung lewat PR.\n- **Git Flow**: cabang `main`, `develop`, `feature/*`, `release/*`, dan `hotfix/*`. Paling lengkap dan formal. Cocok untuk produk dengan versi rilis terjadwal, misalnya aplikasi mobile yang rilis tiap bulan.\n- **GitHub Flow**: hanya `main` plus `feature/*`. Setiap fitur dibuat cabang, di-review lewat PR, lalu langsung dirilis. Cocok untuk aplikasi web dengan deploy berkelanjutan.\n- **Trunk-based**: semua orang mengintegrasikan ke `main` minimal sekali sehari, dengan cabang yang umurnya sangat pendek, dijaga pengujian otomatis. Cocok untuk tim matang dengan CI/CD kuat.\n\nTidak ada model yang paling benar. Tim kecil yang baru belajar biasanya paling nyaman dengan GitHub Flow karena aturannya sedikit.\n\n## Kesalahan umum\n\n- **Mengira `git fetch` sudah memperbarui file.** Fetch hanya memperbarui `origin/main`; jalankan `git merge` atau `git pull` agar cabangmu ikut maju.\n- **Lupa `-u` pada push pertama.** Akibatnya `git push` polos ditolak karena belum ada upstream.\n- **Push tanpa pull.** Kalau teman sudah push duluan, push-mu ditolak. Biasakan pull sebelum push.\n- **Langsung push ke `main` di tim.** Lewat PR, perubahan sempat di-review dulu.\n- **Menyamakan Git dengan GitHub.** Git tetap jalan tanpa internet dan tanpa akun apa pun.\n\n## Coba sendiri\n\nKamu bisa mensimulasikan server tanpa akun GitHub: repositori *bare* di folder lokal bisa jadi remote.\n\n```bash\nmkdir lab-remote && cd lab-remote\ngit init --bare -b main server.git\ngit init -b main proyek && cd proyek\necho \"# Catatan\" > README.md\ngit add . && git commit -m \"docs: tambah README\"\ngit remote add origin ../server.git\ngit push -u origin main\ngit branch -vv\n```\n\nOutput terakhir kira-kira (hash-mu akan berbeda):\n\n```text\n* main 376941b [origin/main] docs: tambah README\n```\n\nSekarang jadi \"teman\" yang meng-clone dan push:\n\n```bash\ncd .. && git clone server.git laptop-dina && cd laptop-dina\necho \"baris dina\" >> README.md\ngit commit -am \"docs: catatan dina\" && git push\ncd ../proyek\ngit fetch\ngit status\n```\n\n`git status` akan bilang `Your branch is behind 'origin/main' by 1 commit`. Cek `cat README.md`, isinya masih satu baris. Jalankan `git pull`, lalu `cat README.md` lagi: baris Dina sudah muncul.\n\n## Rangkuman\n\n- `git remote add origin <url>` menautkan remote; `git remote -v` menampilkannya; `git clone` mengatur `origin` otomatis.\n- `git push -u origin main` mengirim cabang sekaligus menetapkan upstream, sehingga push dan pull berikutnya cukup tanpa argumen.\n- `git fetch` hanya mengunduh dan memperbarui `origin/main`; `git pull` = fetch + merge ke cabang aktif.\n- Git adalah alatnya; GitHub, GitLab, dan Bitbucket adalah layanan hosting dengan fitur kolaborasi.\n- Kontribusi ke proyek orang: fork, clone, branch, commit dan push, pull request, review dan merge.\n- Pilih workflow sesuai tim: Git Flow untuk rilis terjadwal, GitHub Flow untuk deploy berkelanjutan, trunk-based untuk tim dengan CI/CD kuat.\n",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "Kamu menjalankan perintah berikut. Pernyataan mana yang benar tentang repositori lokalmu?",
+     "code": "$ git fetch\n$ git status\nOn branch main\nYour branch is behind 'origin/main' by 1 commit, and can be fast-forwarded.\n  (use \"git pull\" to update your local branch)",
+     "options": [
+      "main lokal sudah berisi commit baru dan file kerja ikut diperbarui",
+      "Push terakhirmu ditolak karena server punya commit yang belum kamu punya",
+      "origin/main sudah maju, tapi main lokal dan file kerja belum berubah",
+      "Ada konflik yang harus diselesaikan dulu sebelum bisa lanjut bekerja"
+     ],
+     "answer": 2,
+     "explanation": "fetch hanya mengunduh dan memperbarui origin/main. main lokal baru maju setelah git pull atau git merge."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Apa fungsi opsi -u pada perintah git push -u origin main?",
+     "code": "",
+     "options": [
+      "Memperbarui semua cabang remote sebelum mengirim",
+      "Mengirim seluruh tag bersama cabang main ke server",
+      "Memaksa push walau riwayat remote berbeda",
+      "Menetapkan origin/main sebagai upstream cabang main"
+     ],
+     "answer": 3,
+     "explanation": "-u (--set-upstream) memasangkan main dengan origin/main, sehingga push dan pull berikutnya cukup tanpa argumen."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "GitLab menyebut pengajuan penggabungan sebagai Merge Request, sedangkan GitHub menyebutnya Pull Request.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 0,
+     "explanation": "Namanya berbeda, tapi konsep dan tujuannya sama persis."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Tim web kamu deploy beberapa kali sehari dan hanya ingin satu cabang utama plus cabang fitur yang di-review lewat PR. Model workflow yang paling pas adalah",
+     "code": "",
+     "options": [
+      "Git Flow",
+      "Local VCS",
+      "Centralized VCS",
+      "GitHub Flow"
+     ],
+     "answer": 3,
+     "explanation": "GitHub Flow hanya memakai main dan cabang fitur yang langsung dirilis setelah PR, cocok untuk deploy berkelanjutan."
+    }
+   ],
+   "exercises": []
+  },
+  {
+   "slug": "lanjutan-dan-praktik-terbaik",
+   "title": "Perintah Lanjutan dan Praktik Terbaik",
+   "est_minutes": 35,
+   "slide_from": 27,
+   "slide_to": 33,
+   "body": "## Tujuan\n\n- Menyimpan pekerjaan setengah jadi dengan `git stash`, menyalin satu commit dengan `git cherry-pick`, dan menandai rilis dengan `git tag`.\n- Mencari commit penyebab bug dengan `git bisect`.\n- Menulis `.gitignore` yang benar dan berhenti melacak file yang terlanjur di-commit.\n- Menulis pesan commit ala Conventional Commits dan menghindari kesalahan yang paling sering bikin repo berantakan.\n\n## git stash: laci sementara\n\nBayangkan kamu sedang mengedit `index.html`, belum siap commit, lalu tiba-tiba diminta memperbaiki bug di cabang lain. `git stash` menyimpan perubahan itu ke \"laci\" sementara dan mengembalikan folder kerjamu ke kondisi commit terakhir.\n\n```bash\ngit status --short\ngit stash\ngit stash list\n```\n\n```text\n M index.html\nSaved working directory and index state WIP on main: f907659 feat: halaman awal\nstash@{0}: WIP on main: f907659 feat: halaman awal\n```\n\nBeri nama supaya tidak bingung saat stash menumpuk: `git stash push -m \"gaya setengah jadi\"`. Stash disusun seperti tumpukan: yang terbaru selalu `stash@{0}`. Untuk mengembalikan, pakai `git stash pop`: perubahan teratas diterapkan lagi lalu dihapus dari daftar (`Dropped refs/stash@{0}`). Kalau ingin menerapkan tanpa menghapus, pakai `git stash apply`.\n\nSatu jebakan: secara default stash hanya membawa file yang sudah dilacak. File baru yang belum pernah di-`add` tetap tertinggal, dan kalau hanya ada file seperti itu, Git menjawab `No local changes to save`. Tambahkan `-u` (`git stash -u`) agar file untracked ikut disimpan.\n\n## git cherry-pick: ambil satu commit saja\n\nKadang kamu butuh satu commit dari cabang lain, misalnya perbaikan typo di cabang `fitur`, tanpa ikut menggabungkan fitur yang belum selesai. `git cherry-pick` menyalin commit itu ke cabang aktif.\n\n```bash\ngit switch main\ngit cherry-pick bfdea42\n```\n\n```text\n[main ebc1e27] fix: perbaiki typo judul\n 1 file changed, 1 insertion(+)\n```\n\nPerhatikan hash-nya berubah dari `bfdea42` menjadi `ebc1e27`. Cherry-pick membuat **commit baru** dengan isi perubahan yang sama, bukan memindahkan commit lama. Gunakan secukupnya; kalau kamu butuh banyak commit dari satu cabang, biasanya merge lebih tepat.\n\n## git tag: menandai rilis\n\nTag adalah penanda permanen ke satu commit, umumnya untuk versi rilis seperti `v1.0.0`. Berbeda dengan branch, tag tidak bergerak saat ada commit baru. Ada dua jenis:\n\n- **Lightweight**: `git tag v1.0.0`. Hanya nama yang menunjuk ke commit, tanpa info tambahan.\n- **Annotated**: `git tag -a v1.1.0 -m \"rilis 1.1\"`. Disimpan sebagai objek tag tersendiri lengkap dengan nama pembuat, tanggal, dan pesan. Ini yang disarankan untuk rilis resmi.\n\n```bash\ngit tag\ngit cat-file -t v1.0.0\ngit cat-file -t v1.1.0\n```\n\n```text\nv1.0.0\nv1.1.0\ncommit\ntag\n```\n\nTag lightweight langsung menunjuk ke objek `commit`, sedangkan annotated punya objek `tag` sendiri. `git show v1.1.0` menampilkan baris `Tagger:` dan pesannya. Tag tidak ikut terkirim dengan `git push` biasa; kirim dengan `git push origin v1.1.0` atau semuanya sekaligus dengan `git push --tags`.\n\n## git bisect: mencari commit biang bug\n\nFitur kemarin masih jalan, hari ini rusak, dan di antaranya ada puluhan commit. `git bisect` melakukan pencarian biner: Git memilih commit di tengah, kamu bilang bagus atau rusak, lalu rentangnya dibelah dua lagi.\n\n```bash\ngit bisect start\ngit bisect bad              # commit sekarang rusak\ngit bisect good HEAD~5      # lima commit lalu masih benar\n# Git checkout commit tengah, kamu uji, lalu jawab:\ngit bisect good             # atau git bisect bad\n```\n\nSetelah beberapa langkah Git menyimpulkan, misalnya `090012b... is the first bad commit`. Tutup sesi dengan `git bisect reset` untuk kembali ke cabang semula. Dengan 6 commit cukup 3 langkah, dengan 1000 commit sekitar 10 langkah.\n\nMasih satu keluarga dengan perintah penolong ini: `git reflog` mencatat semua pergerakan HEAD, sehingga commit yang \"hilang\" setelah reset biasanya masih bisa dikejar.\n\n## .gitignore: yang tidak perlu dilacak\n\nFile `.gitignore` di akar repo memberi tahu Git file mana yang diabaikan: dependensi, hasil build, file editor, dan yang paling penting, file rahasia.\n\n```text\n# Dependensi dan hasil build\nnode_modules/\ndist/\n\n# Rahasia, jangan pernah di-commit\n.env\n*.pem\n\n# Log, kecuali satu\n*.log\n!penting.log\n```\n\nPolanya:\n\n| Pola | Arti |\n|---|---|\n| `node_modules/` | abaikan seluruh folder itu |\n| `*.log` | abaikan semua file berakhiran `.log` |\n| `!penting.log` | negasi: file ini tetap dilacak walau cocok pola sebelumnya |\n| `/rahasia.env` | hanya file di akar repo, bukan di subfolder |\n\nCek file mana yang kena aturan dengan `git status --short --ignored` (ditandai `!!`) atau `git check-ignore -v app.log`, yang menunjukkan baris aturan penyebabnya.\n\n**Penting:** `.gitignore` hanya berlaku untuk file yang belum pernah dilacak. Kalau `.env` terlanjur di-commit, menambahkannya ke `.gitignore` tidak berpengaruh; `git status` tetap menampilkan ` M .env` saat isinya berubah. Hentikan pelacakannya dengan:\n\n```bash\ngit rm --cached .env\ngit commit -m \"chore: berhenti lacak .env\"\n```\n\n`--cached` menghapus file dari index saja; file di disk tetap ada. Tapi riwayat lama masih menyimpan isinya, jadi kunci yang sudah ter-push harus dianggap bocor dan segera diganti.\n\n## Pesan commit yang baik\n\nPesan commit dibaca berkali-kali, termasuk oleh dirimu enam bulan lagi. Banyak tim memakai **Conventional Commits**:\n\n```text\n<tipe>(<cakupan>): <ringkasan singkat>\n\nfeat(auth): tambah login dengan Google\nfix(api): perbaiki validasi email kosong\ndocs(readme): perbarui panduan instalasi\n```\n\nTipe yang umum: `feat` (fitur baru), `fix` (perbaikan bug), `docs` (dokumentasi), `style` (format kode), `refactor` (penataan ulang tanpa ubah perilaku), `test` (pengujian), `chore` (tugas rutin), dan `perf` (peningkatan performa).\n\nAturan praktisnya: kalimat perintah (\"tambah\", bukan \"menambahkan\"), ringkasan maksimal sekitar 50 karakter, satu commit untuk satu perubahan logis, dan alasan perubahan ditulis di badan pesan. Hindari pesan seperti `update`, `fix bug`, `asdf`, atau `.`.\n\n## Praktik terbaik\n\n- **Commit kecil dan sering.** Mudah ditinjau, mudah di-revert.\n- **Pull sebelum push.** Konflik ketahuan lebih awal.\n- **Satu cabang satu tujuan.** Jangan campur perbaikan bug dengan fitur baru.\n- **Tulis README dan .gitignore** sejak awal.\n- **Review sebelum merge.** Pull request adalah mekanisme menjaga kualitas, bukan formalitas.\n\n## Kesalahan umum\n\n- **Commit file rahasia.** Password dan API key yang sudah di-push dianggap bocor selamanya.\n- **Push atau force push langsung ke `main`.** `git push --force` bisa menghapus commit teman; lindungi cabang utama dan lewat PR.\n- **Rebase riwayat publik.** Menulis ulang commit bersama mengacaukan kerja tim.\n- **Commit file biner besar.** Repo membengkak; pakai Git LFS bila memang perlu.\n- **Menumpuk perubahan berhari-hari.** Makin lama ditunda, makin besar konfliknya.\n\n## Lembar contekan\n\n| Kelompok | Perintah |\n|---|---|\n| Dasar | `git config --global user.name`, `git init`, `git clone <url>`, `git status`, `git add .`, `git commit -m \"pesan\"`, `git log --oneline --graph` |\n| Cabang | `git branch`, `git switch -c <cabang>`, `git switch <cabang>`, `git merge <cabang>`, `git rebase <cabang>`, `git branch -d <cabang>`, `git merge --abort` |\n| Remote | `git remote -v`, `git push -u origin main`, `git fetch`, `git pull` |\n| Lanjutan | `git stash`, `git stash pop`, `git tag -a v1.0.0`, `git revert <hash>`, `git reflog` |\n\n## Coba sendiri\n\n```bash\nmkdir lab-lanjut && cd lab-lanjut && git init -b main\necho \"<h1>Toko</h1>\" > index.html\ngit add . && git commit -m \"feat: halaman awal\"\necho \"<p>promo</p>\" >> index.html\ngit stash\ngit status --short          # kosong\ngit stash pop\ngit status --short          # \" M index.html\" kembali\ngit commit -am \"feat: tambah promo\"\ngit tag -a v1.0.0 -m \"rilis pertama\"\ngit log --oneline --decorate -n 1\n```\n\nBaris terakhir kira-kira `81880e5 (HEAD -> main, tag: v1.0.0) feat: tambah promo` (hash-mu akan berbeda). Lanjutkan dengan `.gitignore`:\n\n```bash\necho \"RAHASIA=123\" > .env\necho \"x\" > app.log\nprintf '.env\\n*.log\\n' > .gitignore\ngit status --short --ignored\n```\n\n```text\n?? .gitignore\n!! .env\n!! app.log\n```\n\n## Rangkuman\n\n- `git stash` menyimpan perubahan sementara, `git stash pop` mengembalikan dan menghapusnya, `-u` ikut membawa file untracked.\n- `git cherry-pick <hash>` menyalin satu commit sebagai commit baru di cabang aktif.\n- Tag lightweight hanya penunjuk; tag annotated (`-a -m`) menyimpan pembuat, tanggal, dan pesan. Kirim dengan `git push --tags`.\n- `git bisect` mencari commit penyebab bug lewat pencarian biner; akhiri dengan `git bisect reset`.\n- `.gitignore` hanya berlaku untuk file untracked; pakai `git rm --cached` untuk berhenti melacak, dan ganti kunci yang bocor.\n- Tulis pesan commit `tipe(cakupan): ringkasan`, commit kecil, jangan commit rahasia, dan jangan force push ke `main`.\n",
+   "quiz": [
+    {
+     "type": "baca_kode",
+     "prompt": "Apa output git stash list yang terakhir?",
+     "code": "$ git stash list\nstash@{0}: On main: gaya setengah jadi\nstash@{1}: WIP on main: f907659 feat: halaman awal\n$ git stash pop\n$ git stash list",
+     "options": [
+      "stash@{0}: On main: gaya setengah jadi",
+      "stash@{0}: WIP on main: f907659 feat: halaman awal",
+      "stash@{1}: WIP on main: f907659 feat: halaman awal",
+      "Tidak ada output karena semua stash sudah terhapus"
+     ],
+     "answer": 1,
+     "explanation": "pop menerapkan dan menghapus stash teratas (gaya setengah jadi), sehingga stash yang tersisa naik menjadi stash@{0}."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "File .env terlanjur di-commit. Perintah apa yang menghentikan pelacakannya tanpa menghapus file dari disk?",
+     "code": "",
+     "options": [
+      "git restore --staged .env",
+      "git rm -f .env",
+      "git rm --cached .env",
+      "git clean -f .env"
+     ],
+     "answer": 2,
+     "explanation": "--cached hanya menghapus file dari index; file di disk tetap ada dan berikutnya diabaikan oleh .gitignore."
+    },
+    {
+     "type": "benar_salah",
+     "prompt": "Tag lightweight menyimpan nama pembuat, tanggal, dan pesan, sama seperti tag annotated.",
+     "code": "",
+     "options": [
+      "Benar",
+      "Salah"
+     ],
+     "answer": 1,
+     "explanation": "Tag lightweight hanya nama yang menunjuk ke commit; info pembuat dan pesan hanya ada pada tag annotated (-a)."
+    },
+    {
+     "type": "pilihan_ganda",
+     "prompt": "Pesan commit mana yang paling sesuai dengan Conventional Commits?",
+     "code": "",
+     "options": [
+      "fix(api): perbaiki validasi email kosong",
+      "Memperbaiki bug validasi email kosong di API",
+      "update",
+      "api: fixed bug email kosong dan lain-lain"
+     ],
+     "answer": 0,
+     "explanation": "Formatnya tipe(cakupan): ringkasan dengan kalimat perintah, misalnya fix(api): perbaiki ..."
+    }
+   ],
+   "exercises": []
+  }
+ ]
+}
