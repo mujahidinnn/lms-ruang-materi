@@ -139,7 +139,7 @@ test("sign-up asks for name, email, password and age, and links back to sign-in"
   await page.goto("/daftar");
   await expect(page.getByRole("heading", { name: "Buat akun gratis" })).toBeVisible();
   for (const n of ["nama", "email", "password"]) await expect(page.locator(`input[name=${n}]`)).toBeVisible();
-  await expect(page.getByText("18 tahun ke atas")).toBeVisible();
+  await expect(page.getByText("18+ tahun")).toBeVisible();
   await page.getByRole("button", { name: "Daftar tanpa password, lewat link email" }).click();
   await expect(page.getByRole("button", { name: "Kirim link pendaftaran" })).toBeVisible();
   await page.getByRole("navigation", { name: "Masuk atau daftar" }).getByRole("link", { name: "Masuk" }).click();

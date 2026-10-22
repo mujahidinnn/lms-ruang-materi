@@ -4,6 +4,7 @@ import { startTransition, useActionState, useRef, useState } from "react";
 import type { MasukState } from "@/lib/actions/masuk";
 import { primaryButton } from "@/components/ui/styles";
 import { rpc } from "@/lib/rpc";
+import PasswordInput from "./PasswordInput";
 import Terkirim from "./Terkirim";
 
 const ACTION = { password: rpc("masuk"), link: rpc("kirimLink"), lupa: rpc("lupaPassword") };
@@ -42,12 +43,12 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
       {mode === "link" && <p className="-mt-2 text-sm text-zinc-400">Tanpa password: kami kirim link masuk ke emailmu.</p>}
       <label className={label}>
         Email
-        <input name="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
+        <input name="email" type="email" required autoComplete="email" placeholder="kamu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
       </label>
       {mode === "password" && (
         <label className={label}>
           <span className="flex items-center justify-between">Password<button type="button" onClick={() => setMode("lupa")} className={quiet}>Lupa password?</button></span>
-          <input name="password" type="password" required autoComplete="current-password" className={field} />
+          <PasswordInput name="password" required autoComplete="current-password" className={field} />
         </label>
       )}
       {state.status === "error" && (
