@@ -29,8 +29,8 @@ export default function ChapterQuiz({
 }) {
   const questions = useMemo(() => raw.map(shuffleOptions), [raw]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  // Wrong options already tried per question: they stay struck out after
-  // Coba lagi, so the retry narrows down instead of starting over.
+  // Wrong answers per question, counted for Lihat pembahasan and the
+  // first-try summary; Coba lagi opens every option again.
   const [tried, setTried] = useState<Record<string, number[]>>({});
   const [status, setStatus] = useState<"idle" | "saved" | "guest" | "error" | "blocked">("idle");
   const [blocked, setBlocked] = useState("");
@@ -85,7 +85,7 @@ export default function ChapterQuiz({
   // The answer that makes the quiz all-correct completes the chapter. An
   // answered question is locked; a wrong one opens again only via Coba lagi.
   function pick(id: string, n: number, el: HTMLElement) {
-    if (answers[id] !== undefined || tried[id]?.includes(n)) return;
+    if (answers[id] !== undefined) return;
     const next = { ...answers, [id]: n };
     setAnswers(next);
     const right = questions.find((x) => x.id === id)?.answer === n;
@@ -117,7 +117,7 @@ export default function ChapterQuiz({
             {questions.map((q, qi) => {
               const picked = answers[q.id];
               return (
-                <li key={q.id}>
+                <li key={q.id} id={`soal-${qi + 1}`} className="scroll-mt-24">
                   <p className="flex gap-3 font-semibold leading-snug">
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-noir text-xs text-on-noir tabular-nums">{qi + 1}</span>
                     <span className="pt-0.5">{q.prompt}</span>
@@ -128,20 +128,18 @@ export default function ChapterQuiz({
                       const chosen = picked === n;
                       const right = chosen && n === q.answer;
                       const wrong = chosen && n !== q.answer;
-                      const out = !chosen && tried[q.id]?.includes(n);
                       return (
                         <button
                           key={n}
                           type="button"
                           aria-pressed={chosen}
-                          aria-disabled={picked !== undefined || out}
+                          aria-disabled={picked !== undefined}
                           onClick={(e) => pick(q.id, n, e.currentTarget)}
-                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "answer-shake border-noir bg-tile-pink" : out ? "cursor-default border-zinc-800 bg-zinc-900 line-through opacity-40" : picked !== undefined ? "cursor-default border-zinc-800 bg-zinc-900 opacity-50" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
+                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "answer-shake border-noir bg-tile-pink" : picked !== undefined ? "cursor-default border-zinc-800 bg-zinc-900 opacity-50" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
                         >
                           {/* Letters, all alike: color appears only once answered. */}
                           <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${right || wrong ? "bg-noir text-on-noir" : "bg-zinc-800 text-zinc-300"}`}>{"ABCD"[n]}</span>
                           <span className="flex-1">{opt}</span>
-                          {out && <span className="sr-only">(sudah dicoba, salah)</span>}
                           {right && <Check aria-label="benar" className="size-5" />}
                           {wrong && <X aria-label="salah" className="size-5" />}
                         </button>
@@ -160,10 +158,7 @@ export default function ChapterQuiz({
                       <button
                         type="button"
                         onClick={(e) => {
-                          // Focus the first option still open.
-                          const gone = [...(tried[q.id] ?? []), picked];
-                          const open = q.options.findIndex((_, n) => !gone.includes(n));
-                          const group = e.currentTarget.closest("li")?.querySelectorAll<HTMLButtonElement>("[role=group] button")[open];
+                          const group = e.currentTarget.closest("li")?.querySelector<HTMLButtonElement>("[role=group] button");
                           setTried((t) => ({ ...t, [q.id]: [...(t[q.id] ?? []), picked] }));
                           setAnswers(({ [q.id]: _, ...rest }) => rest);
                           group?.focus();
@@ -172,6 +167,13 @@ export default function ChapterQuiz({
                       >
                         <RotateCcw aria-hidden className="size-4" />Coba lagi
                       </button>
+                      {/* From the second wrong answer on, the explanation is one tap away. */}
+                      {(tried[q.id]?.length ?? 0) >= 1 && (
+                        <details className="w-full">
+                          <summary className="min-h-11 cursor-pointer content-center font-semibold underline">Lihat pembahasan</summary>
+                          <p className="mt-1 leading-relaxed">{q.explanation}</p>
+                        </details>
+                      )}
                     </div>
                   )}
                 </li>
@@ -187,6 +189,21 @@ export default function ChapterQuiz({
           {((finished && allPassed) || status === "saved") && (
             <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><PartyPopper aria-hidden className="size-5" />Bab selesai</p>
           )}
+          {/* How it went: first-try score, and which questions are worth a re-read. */}
+          {finished && (() => {
+            const retried = questions.map((q, i) => (tried[q.id]?.length ? i + 1 : 0)).filter(Boolean);
+            const first = questions.length - retried.length;
+            return (
+              <div className="mt-3 rounded-2xl bg-zinc-950 px-4 py-3 text-sm">
+                <p className="font-semibold">{first} dari {questions.length} soal benar di percobaan pertama.</p>
+                <p className="mt-1 text-zinc-400">
+                  {retried.length === 0
+                    ? "Semua langsung tepat. Materi bab ini sudah kamu kuasai."
+                    : <>Soal {retried.map((n, i) => <span key={n}>{i > 0 && (i === retried.length - 1 ? " dan " : ", ")}<a href={`#soal-${n}`} className="text-accent underline">{n}</a></span>)} butuh lebih dari sekali coba. Baca lagi bagian materinya supaya makin paham.</>}
+                </p>
+              </div>
+            );
+          })()}
           {status === "guest" && (
             <p className="mt-2 text-sm text-zinc-400"><a href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</a></p>
           )}
