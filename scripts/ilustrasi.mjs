@@ -48,7 +48,7 @@ const PROPS = {
 const PEOPLE = {
   baca: { body: "Turtleneck", face: "Calm", hair: "MediumBangs", accessory: "GlassRound" },
   kode: { body: "Hoodie", face: "Driven", hair: "ShortVolumed" },
-  ujian: { body: "SweaterDots", face: "Concerned", hair: "Hijab", accessory: "GlassRoundThick" },
+  ujian: { body: "BlazerBlackTee", face: "Smile", hair: "Hijab", accessory: "GlassRoundThick" },
   hilang: { body: "Sweater", face: "Suspicious", hair: "ShortMessy", accessory: "GlassRoundThick" },
   sertifikat: { body: "ButtonShirt", face: "SmileBig", hair: "Afro" },
 };
