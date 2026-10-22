@@ -13,11 +13,12 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const supabase = await createClient();
 
-  // Google (via Supabase) reports a refused sign-in as ?error_description=.
+  // Google (via Supabase) reports a refused sign-in as ?error_description=;
+  // the reason goes to the log only, never back into the page.
   const refused = url.searchParams.get("error_description") ?? url.searchParams.get("error");
   if (refused) {
     console.error("auth callback refused", refused);
-    return redirect(`/masuk?galat=google&alasan=${encodeURIComponent(refused.slice(0, 200))}`);
+    return redirect("/masuk?galat=google");
   }
 
   const { error } = tokenHash && type
@@ -28,7 +29,7 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   if (error) {
     console.error("auth callback failed", code ? "code" : "token", error.message);
     // A Google sign-in comes back with ?code=; an email link with a token.
-    return redirect(code ? `/masuk?galat=google&alasan=${encodeURIComponent(error.message.slice(0, 200))}` : "/masuk?galat=1");
+    return redirect(code ? "/masuk?galat=google" : "/masuk?galat=1");
   }
 
   // A recovery link signs the learner in to set a new password.
