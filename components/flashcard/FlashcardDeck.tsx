@@ -88,10 +88,10 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
                 rating === 3 ? "bg-primary text-on-primary hover:bg-primary-hover" : rating === 2 ? "bg-tile-butter hover:brightness-95" : "bg-tile-pink hover:brightness-95"
               }`}
             >
-              <span className="font-mono text-xs opacity-60">{rating}</span>
+              <span className="font-mono text-xs opacity-75">{rating}</span>
               {label}
               {card.box !== undefined && (
-                <span className="text-xs font-normal opacity-60">{daysFor(nextBox(card.box, rating))} hari</span>
+                <span className="text-xs font-normal opacity-75">{daysFor(nextBox(card.box, rating))} hari</span>
               )}
             </button>
           ))
@@ -100,7 +100,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
             onClick={() => setFlipped(true)}
             className={`${primaryButton} flex-1`}
           >
-            Balik kartu <span className="font-mono text-xs opacity-60">Space</span>
+            Balik kartu <span className="font-mono text-xs opacity-75">Space</span>
           </button>
         )}
       </div>
