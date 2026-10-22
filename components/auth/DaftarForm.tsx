@@ -10,9 +10,11 @@ import Terkirim from "./Terkirim";
 
 const daftar = rpc("daftar");
 const label = "grid content-start gap-1.5 text-sm font-medium text-zinc-300";
+// No default: the learner states their age. The note under the choice says
+// what picking it means (choosing "anak" records the guardian's consent).
 const USIA = [
-  { value: "dewasa", title: "18+ tahun" },
-  { value: "anak", title: "Di bawah 18" },
+  { value: "dewasa", title: "18+ tahun", note: "Kamu menyetujui Kebijakan Privasi untuk dirimu sendiri." },
+  { value: "anak", title: "Di bawah 18", note: "Dengan memilih ini, kamu menyatakan orang tua atau wali sudah mengizinkan kamu memakai Ruang Materi." },
 ];
 const hint = "text-xs font-normal text-zinc-500";
 
@@ -20,6 +22,7 @@ const hint = "text-xs font-normal text-zinc-500";
 // the account is ready in one step.
 export default function DaftarForm({ next }: { next: string }) {
   const [tanpaPassword, setTanpaPassword] = useState(false);
+  const [usia, setUsia] = useState("");
   const last = useRef<FormData | null>(null);
   const [state, action, pending] = useActionState<MasukState, FormData>((s, form) => {
     if (form.get("reset")) return Promise.resolve<MasukState>({ status: "idle" });
@@ -64,12 +67,12 @@ export default function DaftarForm({ next }: { next: string }) {
         <div className="grid grid-cols-2 gap-2">
           {USIA.map((u) => (
             <label key={u.value} className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-2xl border-2 border-transparent bg-zinc-800/60 px-3.5 text-sm font-semibold text-zinc-300 has-checked:border-noir has-checked:bg-matcha-100 has-checked:text-noir">
-              <input type="radio" name="usia" value={u.value} required defaultChecked={last.current?.get("usia") === u.value} className="size-4 shrink-0 accent-(--accent)" />
+              <input type="radio" name="usia" value={u.value} required defaultChecked={last.current?.get("usia") === u.value} onChange={() => setUsia(u.value)} className="size-4 shrink-0 accent-(--accent)" />
               {u.title}
             </label>
           ))}
         </div>
-        <span className={hint}>Di bawah 18 tahun? Pastikan orang tua atau wali sudah mengizinkan.</span>
+        <span aria-live="polite" className={hint}>{USIA.find((u) => u.value === usia)?.note ?? "Pilih sesuai usiamu. Pendaftar di bawah 18 tahun perlu izin orang tua atau wali."}</span>
       </fieldset>
       {state.status === "error" && (
         <p role="alert" className="rounded-2xl bg-tile-pink px-4 py-3 text-sm">
