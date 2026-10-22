@@ -73,6 +73,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
 </Base>
 
 <script>
+  import { confirmDialog } from "@/lib/confirm";
   import { musicEmbed } from "@/lib/music";
 
   type Token = { access: string; refresh?: string; expires: number };
@@ -321,7 +322,18 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   for (const key of Object.keys(SERVICES) as (keyof typeof SERVICES)[]) {
     const section = document.querySelector(`[data-service="${key}"]`);
     section?.querySelector("[data-connect]")!.addEventListener("click", () => SERVICES[key].connect());
-    section?.querySelector("[data-disconnect]")!.addEventListener("click", () => { setToken(key, null); render(key); });
+    section?.querySelector("[data-disconnect]")!.addEventListener("click", async () => {
+      const name = section.querySelector("h2")!.textContent;
+      const ok = await confirmDialog({
+        title: `Putuskan ${name}?`,
+        text: "Playlist-mu tidak tampil lagi di sini sampai kamu menghubungkannya lagi. Musik yang sedang diputar tetap jalan.",
+        action: "Putuskan",
+        danger: true,
+      });
+      if (!ok) return;
+      setToken(key, null);
+      render(key);
+    });
   }
 
   // Back from Spotify's consent screen with ?code= (or ?error= when refused).
