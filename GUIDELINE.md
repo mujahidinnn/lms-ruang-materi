@@ -766,7 +766,7 @@ has `id uuid`, `created_at`, and content tables have `status`
 | `projects` | `topic_id`, `status`, `kind`, `title`, `brief`, `prompt`, `starter`, `setup`, `tests`, `verified_at` | one per topic and status; learners see it only when published and verified; `publish_topic` refuses an unverified one; saving in admin clears `verified_at` |
 | `project_solutions` | `project_id`, `solution` | admin-only (RLS); written by the worker and the admin editor |
 | `project_progress` | `user_id`, `project_id`, `passed_at`, `code` | written only by `pass_project()`; consent required; counts as a learning day |
-| `certificates` | `code` (`XXXXX-XXXXX`), `user_id`, `topic_id`, `name`, `issued_at` | one per learner and topic, created only by `issue_certificate()` after `certificate_status()` says eligible; owner reads and deletes; public read through `certificate_by_code()` |
+| `certificates` | `code` (`XXXXX-XXXXX`), `user_id`, `topic_id`, `name`, `issued_at` | one per learner and topic, created only by `issue_certificate(topic, name)` after `certificate_status()` says eligible, with the name typed at claim time (not the display name); permanent, owner reads only; public read through `certificate_by_code()` |
 | `flashcard_reviews` | `user_id`, `flashcard_id`, `box`, `due_on`, `reviewed_at`, `added_on` | Leitner box 1 to 5, written by `review_flashcard()` |
 | `practice_sessions` | `user_id`, `topic_id`, `correct`, `total`, `finished_at` | `finished_at` stamped by the database |
 | `exam_attempts` | `user_id`, `exam_id`, `question_ids`, `option_orders`, `started_at`, `deadline`, `submitted_at`, `answers`, `score`, `passed` | written by functions only |

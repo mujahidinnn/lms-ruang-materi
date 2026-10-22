@@ -1,7 +1,8 @@
 "use client";
 
 import { Award, Check, ClipboardCheck, Code2, ListChecks, Lock } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { confirmDialog } from "@/lib/confirm";
 import { createClient } from "@/lib/supabase/client";
 import type { Topic } from "@/lib/content";
 
@@ -22,6 +23,9 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [nama, setNama] = useState("");
+  const [klaim, setKlaim] = useState(false);
+  const [namaSertifikat, setNamaSertifikat] = useState("");
+  const [yakin, setYakin] = useState(false);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -34,12 +38,21 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
     });
   }, [signedIn, topic.id]);
 
-  async function terbitkan() {
+  // Check one is the checkbox on the form, check two this dialog.
+  async function terbitkan(e: FormEvent) {
+    e.preventDefault();
+    const name = namaSertifikat.trim().replace(/\s+/g, " ");
+    const ok = await confirmDialog({
+      title: "Terbitkan sertifikat?",
+      text: `Tercetak atas nama "${name}" untuk kelas ${topic.title}. Nama ini permanen: tidak bisa diubah, dihapus, atau diterbitkan ulang.`,
+      action: "Ya, terbitkan",
+      cancel: "Cek lagi",
+    });
+    if (!ok) return;
     setBusy(true);
     setError("");
-    const { data, error } = await createClient().rpc("issue_certificate", { p_topic: topic.id });
+    const { data, error } = await createClient().rpc("issue_certificate", { p_topic: topic.id, p_name: name });
     setBusy(false);
-    if (error?.message.includes("nama tampilan")) return location.assign("/profil#data");
     if (error) return setError(error.message);
     setStatus((s) => (s ? { ...s, code: data as string } : s));
   }
@@ -98,7 +111,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
               : status?.code
                 ? `Kode ${status.code}`
                 : status?.eligible
-                  ? "Semua syarat terpenuhi. Sertifikat menampilkan nama tampilanmu."
+                  ? "Semua syarat terpenuhi. Tulis nama yang akan tercetak di sertifikat."
                   : needs.length
                     ? `Selesaikan ${needs.join(", ")}.`
                     : "Memeriksa syarat..."}
@@ -111,16 +124,54 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
         {status?.code ? (
           <a href={`/sertifikat/${status.code}`} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir">Lihat sertifikat</a>
         ) : status?.eligible ? (
-          <button type="button" onClick={terbitkan} disabled={busy} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir disabled:opacity-50">
-            {busy ? "Mengklaim..." : "Klaim sertifikat"}
-          </button>
+          !klaim && (
+            <button type="button" onClick={() => { setNamaSertifikat(nama); setKlaim(true); }} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir">
+              Klaim sertifikat
+            </button>
+          )
         ) : (
           <Lock aria-hidden className="size-5 text-on-noir/50" />
+        )}
+        {klaim && !status?.code && (
+          <form onSubmit={terbitkan} className="grid w-full gap-4 rounded-2xl bg-on-noir/10 p-4">
+            <label className="grid gap-1.5 text-sm font-semibold">
+              Nama di sertifikat
+              <input
+                value={namaSertifikat}
+                onChange={(e) => { setNamaSertifikat(e.target.value); setYakin(false); }}
+                required
+                minLength={3}
+                maxLength={80}
+                autoComplete="name"
+                className="min-h-11 rounded-xl border-2 border-on-noir/20 bg-on-noir px-4 text-base font-normal text-noir focus-visible:border-matcha-300 focus-visible:outline-none"
+              />
+            </label>
+            <ul className="grid gap-1 text-sm text-on-noir/80">
+              {TIPS.map((t) => <li key={t} className="flex gap-2"><Check aria-hidden className="mt-0.5 size-4 shrink-0 text-matcha-300" />{t}</li>)}
+            </ul>
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input type="checkbox" checked={yakin} onChange={(e) => setYakin(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-matcha-300" />
+              <span>Nama <strong>{namaSertifikat.trim() || "..."}</strong> sudah benar dan saya paham nama ini tidak bisa diubah.</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" disabled={!yakin || busy || namaSertifikat.trim().length < 3} className="inline-flex min-h-11 items-center rounded-full border-2 border-on-noir bg-matcha-300 px-5 font-bold text-noir disabled:opacity-50">
+                {busy ? "Menerbitkan..." : "Terbitkan sertifikat"}
+              </button>
+              <button type="button" onClick={() => setKlaim(false)} className="inline-flex min-h-11 items-center rounded-full px-4 font-semibold text-on-noir/80 hover:text-on-noir">Batal</button>
+            </div>
+          </form>
         )}
       </li>
     </ol>
   );
 }
+
+const TIPS = [
+  "Tulis nama lengkap sesuai KTP atau ijazah, tanpa singkatan.",
+  "Pakai huruf kapital yang wajar: Siti Rahmawati, bukan SITI RAHMAWATI.",
+  "Gelar boleh ditambahkan kalau memang resmi kamu sandang.",
+  "Hindari nama panggilan, emoji, atau nama akun.",
+];
 
 function Step({ href, icon, title, text, tone, done }: { href: string; icon: ReactNode; title: string; text: string; tone: string; done?: boolean }) {
   return (

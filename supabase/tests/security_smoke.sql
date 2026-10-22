@@ -1,5 +1,5 @@
 begin;
-select plan(124);
+select plan(125);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -833,10 +833,9 @@ select throws_ok($$ select public.pass_project('80000000-0000-0000-0000-00000000
 select lives_ok($$ select public.pass_project('80000000-0000-0000-0000-0000000000c1', '{"code": "x"}') $$, 'a learner passes the project');
 select is((public.certificate_status('10000000-0000-0000-0000-0000000000c1') ->> 'eligible')::boolean, false,
   'not eligible before the chapters and the exam');
-select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1') $$,
-  'P0001', 'Isi nama tampilan di Profil dulu', 'a certificate needs a display name');
-update public.profiles set display_name = 'Murid Uji' where user_id = auth.uid();
-select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1') $$,
+select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1', '  M ') $$,
+  '22023', 'Nama sertifikat 3 sampai 80 huruf', 'a certificate needs a real name');
+select throws_ok($$ select public.issue_certificate('10000000-0000-0000-0000-0000000000c1', 'Murid Uji') $$,
   'P0001', 'Belum memenuhi syarat sertifikat', 'a named learner still needs the full path');
 select lives_ok($$ select public.complete_chapter('60000000-0000-0000-0000-0000000000c1') $$, 'the chapter completes');
 reset role;
@@ -847,11 +846,13 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
 select is((public.certificate_status('10000000-0000-0000-0000-0000000000c1') ->> 'eligible')::boolean, true,
   'eligible after chapters, exam and project');
-select matches(public.issue_certificate('10000000-0000-0000-0000-0000000000c1'), '^[0-9A-F]{5}-[0-9A-F]{5}$', 'issuing returns a code');
-select is(public.issue_certificate('10000000-0000-0000-0000-0000000000c1'),
+select matches(public.issue_certificate('10000000-0000-0000-0000-0000000000c1', '  Murid   Uji '), '^[0-9A-F]{5}-[0-9A-F]{5}$', 'issuing returns a code');
+select is(public.issue_certificate('10000000-0000-0000-0000-0000000000c1', 'Nama Lain'),
   (select code from public.certificates where user_id = auth.uid()), 'issuing again returns the same certificate');
 select throws_ok($$ insert into public.certificates (code, user_id, topic_id, name) values ('X', auth.uid(), '10000000-0000-0000-0000-000000000001', 'x') $$,
   '42501', null, 'learners cannot write certificates directly');
+delete from public.certificates where user_id = auth.uid();
+select is((select count(*)::int from public.certificates where user_id = auth.uid()), 1, 'learners cannot delete a certificate to reissue it');
 reset role;
 
 -- Anon cannot read certificates, so hand the code over in a setting.
