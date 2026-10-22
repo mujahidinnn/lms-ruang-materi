@@ -1,0 +1,60 @@
+---
+import { primaryButton } from "@/components/ui/styles";
+import Base from "../layouts/Base.astro";
+import { publicPage } from "../lib/cdn";
+
+publicPage(Astro);
+
+// The music player, opened as its own small window by MusicButton.astro so
+// it keeps playing while the learner moves between pages. Spotify and YouTube
+// load only after a link is played (GUIDELINE, Privacy: no third party by default).
+---
+
+<Base title="Musik belajar" noindex>
+  <main class="flex flex-1 flex-col gap-4 p-4">
+    <form data-music-form class="flex flex-col gap-3">
+      <label for="music-link" class="text-sm font-semibold">Link Spotify atau YouTube Music</label>
+      <input
+        id="music-link"
+        name="link"
+        type="url"
+        required
+        placeholder="https://open.spotify.com/playlist/..."
+        class="min-h-11 rounded-2xl bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent"
+      />
+      <button class={primaryButton}>Putar</button>
+      <p data-music-error aria-live="polite" class="text-sm text-red-400"></p>
+    </form>
+    <p class="text-xs text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain. Spotify dan YouTube baru dimuat setelah kamu menekan Putar.</p>
+    <div data-music-player class="flex-1"></div>
+  </main>
+</Base>
+
+<script>
+  import { musicEmbed } from "@/lib/music";
+
+  const KEY = "ruang-materi:musik";
+  const form = document.querySelector<HTMLFormElement>("[data-music-form]")!;
+  const input = form.querySelector<HTMLInputElement>("input")!;
+  const error = document.querySelector<HTMLElement>("[data-music-error]")!;
+  const player = document.querySelector<HTMLElement>("[data-music-player]")!;
+
+  try { input.value = localStorage.getItem(KEY) ?? ""; } catch {}
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const src = musicEmbed(input.value);
+    if (!src) {
+      error.textContent = "Link belum dikenali. Salin link lagu atau playlist dari Spotify atau YouTube Music.";
+      return;
+    }
+    error.textContent = "";
+    try { localStorage.setItem(KEY, input.value.trim()); } catch {}
+    const frame = document.createElement("iframe");
+    frame.src = src;
+    frame.title = "Pemutar musik";
+    frame.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    frame.className = "h-full min-h-80 w-full rounded-2xl border-0";
+    player.replaceChildren(frame);
+  });
+</script>
