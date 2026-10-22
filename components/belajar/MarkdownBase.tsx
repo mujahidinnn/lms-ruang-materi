@@ -12,6 +12,23 @@ function textOf(node: ReactNode): string {
     .join("");
 }
 
+// Gives every table cell its column heading as data-label, so on phones a
+// row can stack as a card of "heading: value" lines (globals.css).
+type HastNode = { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: HastNode[] };
+const hastText = (n: HastNode): string => (n.type === "text" ? n.value ?? "" : (n.children ?? []).map(hastText).join(""));
+const byTag = (n: HastNode, tag: string): HastNode[] => (n.children ?? []).flatMap((c) => (c.tagName === tag ? [c] : byTag(c, tag)));
+function rehypeCellLabels() {
+  return (tree: HastNode) => {
+    for (const table of byTag(tree, "table")) {
+      const labels = byTag(table, "th").map(hastText);
+      for (const tr of byTag(table, "tr"))
+        byTag(tr, "td").forEach((td, i) => {
+          if (labels[i]) td.properties = { ...td.properties, dataLabel: labels[i] };
+        });
+    }
+  };
+}
+
 // Chapter bodies are markdown from AI drafts or admins: raw HTML is never
 // rendered (no rehype-raw). `slide:N` image sources become slide embeds.
 // No shiki here, so the admin editor can use it in the browser; the public
@@ -31,6 +48,7 @@ export default function MarkdownBase({
     <div className={`prose-chapter ${className}`}>
       <Markdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeCellLabels]}
         urlTransform={(url) => (url.startsWith("slide:") ? url : defaultUrlTransform(url))}
         components={{
           img: ({ src, alt }) => {
