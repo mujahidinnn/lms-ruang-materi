@@ -19,12 +19,19 @@ const SERVICES = [
   { key: "spotify", name: "Spotify", dot: "bg-[#1DB954]", on: !!spotify },
   { key: "youtube", name: "YouTube Music", dot: "bg-[#FF0033]", on: !!google },
 ];
+// One tap searches YouTube for these (each still spends search quota).
+const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan", "musik klasik fokus", "akustik indonesia"];
 ---
 
 <Base title="Musik belajar" noindex>
   <main data-music data-spotify={spotify} data-google={google} class="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4">
     <div data-music-player class="sticky top-0 z-10 -mx-4 -mt-4 bg-zinc-950 px-4 pt-4 empty:hidden"></div>
     <p data-music-error aria-live="polite" class="text-sm text-red-400 empty:hidden"></p>
+
+    <section data-history-section hidden class="flex flex-col gap-3">
+      <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Terakhir diputar</h2>
+      <ul data-playlists data-history class="flex flex-col gap-1"></ul>
+    </section>
 
     {SERVICES.filter((s) => s.on).map((s) => (
       <section data-service={s.key} class="flex flex-col gap-3">
@@ -35,11 +42,18 @@ const SERVICES = [
         </div>
         <button type="button" data-connect class={secondaryButton}>Hubungkan {s.name}</button>
         {s.key === "youtube" && (
-          <form data-search hidden role="search" class="flex gap-2">
-            <label for="music-search" class="sr-only">Cari lagu atau playlist</label>
-            <input id="music-search" name="q" type="search" placeholder="Cari lagu atau playlist, misal lofi" class="min-h-11 min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
-            <button class={secondaryButton}>Cari</button>
-          </form>
+          <div data-search hidden class="flex flex-col gap-2">
+            <form role="search" class="flex gap-2">
+              <label for="music-search" class="sr-only">Cari lagu atau playlist</label>
+              <input id="music-search" name="q" type="search" placeholder="Cari lagu atau playlist, misal lofi" class="min-h-11 min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+              <button class={secondaryButton}>Cari</button>
+            </form>
+            <div class="flex flex-wrap gap-1.5">
+              {SUGGESTIONS.map((q) => (
+                <button type="button" data-suggest={q} class="min-h-9 rounded-full border-2 border-noir bg-matcha-200 px-3 text-xs font-semibold text-noir hover:bg-matcha-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">{q}</button>
+              ))}
+            </div>
+          </div>
         )}
         <ul data-playlists class="flex flex-col gap-1 empty:hidden"></ul>
       </section>
@@ -218,7 +232,7 @@ const SERVICES = [
     if (!section) return;
     const connect = section.querySelector<HTMLButtonElement>("[data-connect]")!;
     const disconnect = section.querySelector<HTMLButtonElement>("[data-disconnect]")!;
-    const search = section.querySelector<HTMLFormElement>("[data-search]");
+    const search = section.querySelector<HTMLElement>("[data-search]");
     const list = section.querySelector<HTMLElement>("[data-playlists]")!;
     const token = tokens()[key];
     const playlists = token ? await SERVICES[key].playlists(token) : null;
@@ -253,6 +267,7 @@ const SERVICES = [
           document.querySelectorAll("[data-playlists] button").forEach((b) => b.removeAttribute("aria-pressed"));
           button.setAttribute("aria-pressed", "true");
           play(p.src);
+          remember(p);
         });
         row.append(button);
         return row;
@@ -266,18 +281,42 @@ const SERVICES = [
     }
   }
 
+  // The last few things played, newest first, kept in this browser only. They
+  // replay straight from the embed, so no login or search quota is needed.
+  const HISTORY = "ruang-materi:musik-riwayat";
+  function played(): Playlist[] {
+    try { return JSON.parse(localStorage.getItem(HISTORY) ?? "[]"); } catch { return []; }
+  }
+  function remember(p: Playlist) {
+    const items = [p, ...played().filter((h) => h.src !== p.src)].slice(0, 6);
+    try { localStorage.setItem(HISTORY, JSON.stringify(items)); } catch {}
+  }
+  function renderHistory() {
+    const items = played();
+    document.querySelector<HTMLElement>("[data-history-section]")!.hidden = !items.length;
+    fill(document.querySelector<HTMLElement>("[data-history]")!, items, "");
+  }
+  renderHistory();
+
   // Searching shows results in place of the playlists; an empty query brings
   // the playlists back.
-  document.querySelector<HTMLFormElement>("[data-search]")?.addEventListener("submit", async (e) => {
+  const searchForm = document.querySelector<HTMLFormElement>("[data-search] form");
+  searchForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const form = e.currentTarget as HTMLFormElement;
-    const q = new FormData(form).get("q")?.toString().trim();
+    const q = new FormData(searchForm).get("q")?.toString().trim();
     if (!q) return render("youtube");
     error.textContent = "";
     const results = await youtubeSearch(q);
     if (!results) return render("youtube");
-    fill(form.parentElement!.querySelector("[data-playlists]")!, results, "Tidak ada hasil. Coba kata lain.");
+    fill(searchForm.closest("section")!.querySelector("[data-playlists]")!, results, "Tidak ada hasil. Coba kata lain.");
   });
+  // A suggestion fills the box and searches it.
+  document.querySelectorAll<HTMLButtonElement>("[data-suggest]").forEach((b) =>
+    b.addEventListener("click", () => {
+      searchForm!.q.value = b.dataset.suggest;
+      searchForm!.requestSubmit();
+    }),
+  );
 
   for (const key of Object.keys(SERVICES) as (keyof typeof SERVICES)[]) {
     const section = document.querySelector(`[data-service="${key}"]`);
