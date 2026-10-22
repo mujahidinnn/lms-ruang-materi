@@ -53,6 +53,15 @@ const PEOPLE = {
   sertifikat: { body: "ButtonShirt", face: "SmileBig", hair: "Afro" },
 };
 
+// Standing figure for /mulai: no prop, long sleeves (blazer) with the hijab.
+{
+  const peep = renderToStaticMarkup(h(Peep, { body: "BlazerPantsWB", face: "Cute", hair: "Hijab", strokeColor: INK, backgroundColor: "#ffffff" }))
+    .replace(/<svg[^>]*>/, "")
+    .replace(/<\/svg>$/, "");
+  writeFileSync("public/ilustrasi/mulai.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-95 17 1086 2892">${peep}</svg>`);
+  console.log("mulai");
+}
+
 for (const n of Object.keys(PROPS)) {
   const peep = renderToStaticMarkup(h(Peep, { ...PEOPLE[n], strokeColor: INK, backgroundColor: "#ffffff" }))
     .replace(/<svg[^>]*>/, "")
