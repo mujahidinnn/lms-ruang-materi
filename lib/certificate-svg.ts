@@ -98,7 +98,7 @@ ${desc.map((l, i) => `<text class="j" x="${LEFT}" y="${descY + i * 22}" font-siz
 <rect x="693" y="626" width="112" height="112" rx="10" fill="#ffffff" stroke="${INK}" stroke-opacity=".14"/>
 ${qrInner}
 
-${c.sample ? `<g transform="translate(470 170) rotate(-12)"><rect x="-130" y="-42" width="260" height="70" rx="12" fill="none" stroke="#c62828" stroke-width="5" opacity=".85"/><text class="b" x="0" y="12" text-anchor="middle" font-size="40" font-weight="800" letter-spacing="10" fill="#c62828" opacity=".85">CONTOH</text></g>` : ""}
+${c.sample ? `<g transform="translate(561.5 397) rotate(-22)" opacity=".13" fill="#c62828" pointer-events="none"><text class="b" x="0" y="58" text-anchor="middle" font-size="170" font-weight="800" letter-spacing="18">CONTOH</text><rect x="-450" y="-115" width="900" height="220" rx="36" fill="none" stroke="#c62828" stroke-width="14"/></g>` : ""}
 </svg>`;
 }
 
