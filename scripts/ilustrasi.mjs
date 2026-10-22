@@ -43,6 +43,18 @@ const PROPS = {
     <path d="M585 1060l-30 110 40-25 30 40 20-115zM655 1060l30 110-40-25-30 40-20-115z" fill="${INK}" ${sw(6)}/>
     <circle cx="620" cy="1040" r="62" fill="${M3}" ${st}/><path d="M620 1005l10 22 24 3-18 16 5 24-21-12-21 12 5-24-18-16 24-3z" fill="${INK}" stroke="none"/>
     ${spark(140, 790, 1)}${spark(740, 790, 1)}`,
+  // /masuk: a key, coming back in.
+  masuk: `<circle cx="270" cy="980" r="140" fill="${M3}" ${st}/><circle cx="270" cy="980" r="46" ${W} ${st}/>
+    <path d="M405 948h360v64H405z" ${W} ${st}/>
+    <path d="M650 1012v76h48v-76M716 1012v48h40v-48" ${W} ${st}/>
+    ${spark(740, 880, 1)}`,
+  // /daftar: a new member card with a plus.
+  daftar: `<rect x="150" y="780" width="550" height="370" rx="30" ${W} ${st}/>
+    <rect x="180" y="810" width="490" height="70" rx="18" fill="${M3}" ${st}/>
+    <circle cx="270" cy="990" r="58" fill="${M1}" ${st}/>
+    <g ${st} fill="none"><path d="M370 965h240M370 1025h170"/></g>
+    <circle cx="690" cy="1130" r="66" fill="${INK}" ${st}/><path d="M690 1098v64M658 1130h64" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+    ${spark(140, 780, 0.9)}`,
 };
 // Long sleeves for the figure in a hijab.
 const PEOPLE = {
@@ -51,6 +63,8 @@ const PEOPLE = {
   ujian: { body: "BlazerBlackTee", face: "Smile", hair: "Hijab", accessory: "GlassRoundThick" },
   hilang: { body: "Sweater", face: "Suspicious", hair: "ShortMessy", accessory: "GlassRoundThick" },
   sertifikat: { body: "ButtonShirt", face: "SmileBig", hair: "Afro" },
+  masuk: { body: "Shirt", face: "Smile", hair: "MediumLong" },
+  daftar: { body: "SportyShirt", face: "Cute", hair: "ShortWavy", accessory: "GlassRound" },
 };
 
 // Standing figure for /mulai: no prop, long sleeves (blazer) with the hijab.
