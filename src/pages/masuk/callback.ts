@@ -13,12 +13,23 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   const type = url.searchParams.get("type") as EmailOtpType | null;
   const supabase = await createClient();
 
+  // Google (via Supabase) reports a refused sign-in as ?error_description=.
+  const refused = url.searchParams.get("error_description") ?? url.searchParams.get("error");
+  if (refused) {
+    console.error("auth callback refused", refused);
+    return redirect(`/masuk?galat=google&alasan=${encodeURIComponent(refused.slice(0, 200))}`);
+  }
+
   const { error } = tokenHash && type
     ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
     : code
       ? await supabase.auth.exchangeCodeForSession(code)
-      : { error: true };
-  if (error) return redirect("/masuk?galat=1");
+      : { error: { message: "tanpa kode" } };
+  if (error) {
+    console.error("auth callback failed", code ? "code" : "token", error.message);
+    // A Google sign-in comes back with ?code=; an email link with a token.
+    return redirect(code ? `/masuk?galat=google&alasan=${encodeURIComponent(error.message.slice(0, 200))}` : "/masuk?galat=1");
+  }
 
   // A recovery link signs the learner in to set a new password.
   if (type === "recovery") return redirect("/profil#sandi");
