@@ -141,7 +141,11 @@ const SERVICES = [
         client_id: root.dataset.google,
         scope: "https://www.googleapis.com/auth/youtube.readonly",
         callback: (t: any) => {
-          if (t.error) return;
+          if (t.error) {
+            error.textContent = `Google menolak: ${t.error_description ?? t.error}`;
+            return;
+          }
+          error.textContent = "";
           setToken("youtube", { access: t.access_token, expires: Date.now() + t.expires_in * 1000 });
           render("youtube");
         },
@@ -155,9 +159,12 @@ const SERVICES = [
     const res = await fetch("https://www.googleapis.com/youtube/v3/playlists?mine=true&part=snippet,contentDetails&maxResults=50", {
       headers: { Authorization: `Bearer ${token.access}` },
     });
-    if (!res.ok) return null;
-    const { items } = await res.json();
-    return items.map((p: any) => ({
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      error.textContent = `YouTube menolak: ${body.error?.message ?? res.status}`;
+      return null;
+    }
+    return (body.items ?? []).map((p: any) => ({
       name: p.snippet.title,
       cover: p.snippet.thumbnails?.default?.url,
       count: `${p.contentDetails.itemCount} lagu`,
