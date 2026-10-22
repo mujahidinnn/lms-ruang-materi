@@ -11,7 +11,7 @@ const ACTION = { password: rpc("masuk"), link: rpc("kirimLink"), lupa: rpc("lupa
 type Mode = keyof typeof ACTION;
 export const field = "min-h-12 w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 text-zinc-50 outline-none focus-visible:ring-2 focus-visible:ring-accent";
 const label = "grid gap-1.5 text-sm font-medium text-zinc-300";
-const quiet = "text-sm font-semibold text-accent hover:underline";
+const quiet = "-my-3 py-3 text-sm font-semibold text-accent hover:underline";
 
 // Masuk: email + password first; a sign-in link or a password reset are one
 // click away. Each mode posts to its own action.

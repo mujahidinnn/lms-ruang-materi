@@ -117,7 +117,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
                     : "Memeriksa syarat..."}
           </span>
           {!status?.code && (
-            <a href={contoh} className="mt-1.5 block text-sm font-semibold text-matcha-300 hover:underline">Lihat contoh sertifikat{nama ? " dengan namamu" : ""}</a>
+            <a href={contoh} className="inline-flex min-h-11 items-center text-sm font-semibold text-matcha-300 hover:underline">Lihat contoh sertifikat{nama ? " dengan namamu" : ""}</a>
           )}
           {error && <span role="alert" className="mt-1 block text-sm text-tile-pink">{error}</span>}
         </span>

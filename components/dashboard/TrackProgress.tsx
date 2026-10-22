@@ -6,7 +6,7 @@ export default function TrackProgress({ slug, title, passed, total }: { slug: st
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <a href={`/roadmap/${slug}`} className="font-semibold hover:text-accent">{title}</a>
+        <a href={`/roadmap/${slug}`} className="inline-flex min-h-11 items-center font-semibold hover:text-accent">{title}</a>
         <span className="text-sm text-zinc-400 tabular-nums">
           <span className="text-zinc-50">{levelFor(passed, total)}</span>, {passed} dari {total} kelas lulus
         </span>
