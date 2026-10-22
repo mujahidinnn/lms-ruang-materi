@@ -9,6 +9,8 @@ import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
 import type { ExerciseFiles } from "@/lib/code/sandbox-doc";
 import type { CodeExerciseData } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWrong } from "@/lib/feedback";
+import SimpanProgres from "@/components/belajar/SimpanProgres";
+import { keepCode } from "@/lib/pending";
 import { createClient } from "@/lib/supabase/client";
 
 // CodeMirror needs the DOM: loaded in the browser only, after mount.
@@ -40,7 +42,7 @@ function saveDraft(key: string, files: ExerciseFiles | null) {
 // The draft stays in localStorage; a pass is recorded for signed-in learners.
 // project: the topic's final project, saved in project_progress, with no
 // solution to show (learners cannot read it).
-export default function CodeExercise({ ex, prompt, slug, onPassed, project = false }: { ex: CodeExerciseData; prompt?: ReactNode; slug: string; onPassed?: (id: string) => void; project?: boolean }) {
+export default function CodeExercise({ ex, prompt, onPassed, project = false }: { ex: CodeExerciseData; prompt?: ReactNode; onPassed?: (id: string) => void; project?: boolean }) {
   const store = project
     ? { table: "project_progress", column: "project_id", rpc: "pass_project", param: "p_project" }
     : { table: "code_progress", column: "exercise_id", rpc: "pass_code_exercise", param: "p_exercise" };
@@ -110,7 +112,10 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
     onPassed?.(ex.id);
     const db = createClient();
     const { data } = await db.auth.getSession();
-    if (!data.session) return setNote("guest");
+    if (!data.session) {
+      keepCode({ rpc: store.rpc, param: store.param, id: ex.id, code: files } as Parameters<typeof keepCode>[0]);
+      return setNote("guest");
+    }
     const { error } = await db.rpc(store.rpc, { [store.param]: ex.id, p_code: files });
     setNote(error ? "error" : null);
   }
@@ -182,9 +187,7 @@ export default function CodeExercise({ ex, prompt, slug, onPassed, project = fal
             ))}
           </ul>
         )}
-        {note === "guest" && (
-          <p className="text-sm text-zinc-400"><a href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</a></p>
-        )}
+        {note === "guest" && <SimpanProgres text="Masuk, dan latihan ini langsung tercatat lolos tanpa mengulang." />}
         {note === "error" && (
           <p className="text-sm text-zinc-400">Lolos, tapi belum tersimpan. <a href="/profil" className="text-accent underline">Cek persetujuan di Profil</a>, lalu periksa lagi.</p>
         )}

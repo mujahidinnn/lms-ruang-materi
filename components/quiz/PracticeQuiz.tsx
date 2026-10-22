@@ -7,11 +7,12 @@ import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
 import type { Question } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import { sampleQuestions, setResult, shuffleOptions } from "@/lib/quiz";
+import SimpanProgres from "@/components/belajar/SimpanProgres";
+import { keepPractice } from "@/lib/pending";
 import { rpc } from "@/lib/rpc";
 
 const simpanLatihan = rpc("simpanLatihan");
 
-const HINT_KEY = "ruang-materi:hint-masuk";
 
 export type Prep = { passScore: number; size: number };
 
@@ -72,12 +73,11 @@ export default function PracticeQuiz({
     }
     const { saved, needsConsent } = await simpanLatihan(topicId, correct, set.length);
     if (needsConsent) return setConsent(true);
-    try {
-      if (!saved && !localStorage.getItem(HINT_KEY)) {
-        localStorage.setItem(HINT_KEY, "1");
-        setHint(true);
-      }
-    } catch {}
+    // A guest's result waits in this browser until they sign in.
+    if (!saved) {
+      keepPractice({ topicId, correct, total: set.length });
+      setHint(true);
+    }
   }
 
   function restart(qs: Question[]) {
@@ -139,11 +139,7 @@ export default function PracticeQuiz({
             <a href="/profil" className="text-accent hover:underline">Konfirmasi persetujuan di Profil</a> agar progresmu tersimpan.
           </p>
         )}
-        {hint && (
-          <p className="mt-4 text-sm text-zinc-400">
-            <a href={`/masuk?next=/latihan/${slug}`} className="text-accent hover:underline">Masuk untuk menyimpan progres</a>
-          </p>
-        )}
+        {hint && <SimpanProgres text="Masuk, dan hasil latihan ini langsung tercatat." />}
         <div className="mt-8 flex flex-wrap items-center gap-3">
           {hasExam && (prep ? win : wrong.length === 0) ? (
             <a href={`/ujian/${slug}`} className={primaryButton}><ClipboardCheck aria-hidden className="size-4" />Mulai ujian</a>

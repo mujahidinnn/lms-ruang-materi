@@ -8,20 +8,20 @@ import { quizDone } from "@/lib/chapters";
 import { burstFrom, celebrate, playCorrect, playWin, playWrong } from "@/lib/feedback";
 import type { ChapterQuestion, CodeExerciseData } from "@/lib/content";
 import { shuffleOptions } from "@/lib/quiz";
+import { keepChapter } from "@/lib/pending";
 import { createClient } from "@/lib/supabase/client";
+import SimpanProgres from "./SimpanProgres";
 
 // Code exercises, then the quiz. Instant feedback, retry allowed. The quiz
 // all correct (or the button, for a chapter without questions) plus every
 // exercise passed completes the chapter for a signed-in learner.
 export default function ChapterQuiz({
   chapterId,
-  slug,
   questions: raw,
   exercises = [],
   prompts = [],
 }: {
   chapterId: string;
-  slug: string;
   questions: ChapterQuestion[];
   exercises?: CodeExerciseData[];
   // Exercise prompts as HTML, rendered on the server (ChapterMarkdown).
@@ -52,7 +52,10 @@ export default function ChapterQuiz({
     completing.current = true;
     const db = createClient();
     const { data } = await db.auth.getSession();
-    if (!data.session) return setStatus("guest");
+    if (!data.session) {
+      keepChapter(chapterId);
+      return setStatus("guest");
+    }
     const { error } = await db.rpc("complete_chapter", { p_chapter: chapterId });
     if (error) completing.current = false;
     if (error && error.hint !== "consent" && error.code === "P0001") {
@@ -104,7 +107,7 @@ export default function ChapterQuiz({
   return (
     <>
       {exercises.map((ex, i) => (
-        <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} slug={slug} onPassed={exercisePassed} />
+        <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} onPassed={exercisePassed} />
       ))}
       <section aria-labelledby="kuis" className="mt-10 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-8">
         <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>
@@ -204,9 +207,7 @@ export default function ChapterQuiz({
               </div>
             );
           })()}
-          {status === "guest" && (
-            <p className="mt-2 text-sm text-zinc-400"><a href={`/masuk?next=/belajar/${slug}`} className="text-accent underline">Masuk untuk menyimpan progres</a></p>
-          )}
+          {status === "guest" && <SimpanProgres text="Masuk, dan bab ini langsung tercatat selesai tanpa mengulang kuisnya." />}
           {status === "error" && (
             <p className="mt-2 text-sm text-zinc-400">Progres belum tersimpan. <a href="/profil" className="text-accent underline">Cek persetujuan di Profil</a>, lalu <button type="button" onClick={complete} className={secondaryButton}>coba lagi</button></p>
           )}
