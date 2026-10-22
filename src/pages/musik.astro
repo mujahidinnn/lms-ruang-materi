@@ -1,46 +1,245 @@
 ---
-import { primaryButton } from "@/components/ui/styles";
+import { secondaryButton } from "@/components/ui/styles";
 import Base from "../layouts/Base.astro";
 import { publicPage } from "../lib/cdn";
 
 publicPage(Astro);
 
 // The music player, opened as its own small window by MusicButton.astro so
-// it keeps playing while the learner moves between pages. Spotify and YouTube
-// load only after a link is played (GUIDELINE, Privacy: no third party by default).
+// it keeps playing while the learner moves between pages. The learner
+// connects Spotify (OAuth PKCE) or YouTube (Google token client), picks one of
+// their playlists, and it plays in that service's embed. Tokens stay in this
+// browser's localStorage, never on our server; nothing from Spotify or Google
+// loads until the learner presses Hubungkan (GUIDELINE, Privacy).
+// Spotify's dashboard needs <origin>/musik as a redirect URI; Google's client
+// needs <origin> as an authorized JavaScript origin.
+const spotify = import.meta.env.SPOTIFY_CLIENT_ID ?? "";
+const google = import.meta.env.GOOGLE_CLIENT_ID ?? "";
+const SERVICES = [
+  { key: "spotify", name: "Spotify", dot: "bg-[#1DB954]", on: !!spotify },
+  { key: "youtube", name: "YouTube Music", dot: "bg-[#FF0033]", on: !!google },
+];
 ---
 
 <Base title="Musik belajar" noindex>
-  <main class="flex flex-1 flex-col gap-4 p-4">
-    <form data-music-form class="flex flex-col gap-3">
-      <label for="music-link" class="text-sm font-semibold">Link Spotify atau YouTube Music</label>
-      <input
-        id="music-link"
-        name="link"
-        type="url"
-        required
-        placeholder="https://open.spotify.com/playlist/..."
-        class="min-h-11 rounded-2xl bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent"
-      />
-      <button class={primaryButton}>Putar</button>
-      <p data-music-error aria-live="polite" class="text-sm text-red-400"></p>
-    </form>
-    <p class="text-xs text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain. Spotify dan YouTube baru dimuat setelah kamu menekan Putar.</p>
-    <div data-music-player class="flex-1"></div>
+  <main data-music data-spotify={spotify} data-google={google} class="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4">
+    <div data-music-player class="sticky top-0 z-10 -mx-4 -mt-4 bg-zinc-950 px-4 pt-4 empty:hidden"></div>
+    <p data-music-error aria-live="polite" class="text-sm text-red-400 empty:hidden"></p>
+
+    {SERVICES.filter((s) => s.on).map((s) => (
+      <section data-service={s.key} class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <span aria-hidden="true" class:list={["size-3 rounded-full border-2 border-noir", s.dot]}></span>
+          <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">{s.name}</h2>
+          <button type="button" data-disconnect hidden class="ml-auto min-h-11 px-2 text-sm text-zinc-400 hover:text-zinc-50">Putuskan</button>
+        </div>
+        <button type="button" data-connect class={secondaryButton}>Hubungkan {s.name}</button>
+        <ul data-playlists class="flex flex-col gap-1 empty:hidden"></ul>
+      </section>
+    ))}
+
+    <details class="text-sm">
+      <summary class="min-h-11 cursor-pointer content-center text-zinc-400 hover:text-zinc-50">Putar dari link</summary>
+      <form data-music-form class="mt-2 flex gap-2">
+        <label for="music-link" class="sr-only">Link Spotify atau YouTube Music</label>
+        <input id="music-link" name="link" type="url" required placeholder="https://open.spotify.com/..." class="min-h-11 min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+        <button class={secondaryButton}>Putar</button>
+      </form>
+    </details>
+
+    <p class="mt-auto text-xs text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain.</p>
   </main>
 </Base>
 
 <script>
   import { musicEmbed } from "@/lib/music";
 
-  const KEY = "ruang-materi:musik";
-  const form = document.querySelector<HTMLFormElement>("[data-music-form]")!;
-  const input = form.querySelector<HTMLInputElement>("input")!;
-  const error = document.querySelector<HTMLElement>("[data-music-error]")!;
+  type Token = { access: string; refresh?: string; expires: number };
+  type Playlist = { name: string; cover?: string; count: string; src: string };
+
+  const LINK = "ruang-materi:musik";
+  const TOKENS = "ruang-materi:musik-token";
+  const root = document.querySelector<HTMLElement>("[data-music]")!;
   const player = document.querySelector<HTMLElement>("[data-music-player]")!;
+  const error = document.querySelector<HTMLElement>("[data-music-error]")!;
+  const redirect = `${location.origin}/musik`;
 
-  try { input.value = localStorage.getItem(KEY) ?? ""; } catch {}
+  function tokens(): Record<string, Token> {
+    try { return JSON.parse(localStorage.getItem(TOKENS) ?? "{}"); } catch { return {}; }
+  }
+  function setToken(service: string, token: Token | null) {
+    const all = tokens();
+    if (token) all[service] = token;
+    else delete all[service];
+    try { localStorage.setItem(TOKENS, JSON.stringify(all)); } catch {}
+  }
 
+  function play(src: string) {
+    const frame = document.createElement("iframe");
+    frame.src = src;
+    frame.title = "Pemutar musik";
+    frame.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+    frame.className = `w-full rounded-2xl border-0 ${src.includes("spotify") ? "h-[152px]" : "aspect-video"}`;
+    player.replaceChildren(frame);
+  }
+
+  // Spotify: authorization code with PKCE, so no client secret is needed.
+  const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+  async function spotifyConnect() {
+    const verifier = b64url(crypto.getRandomValues(new Uint8Array(48)));
+    const challenge = b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+    sessionStorage.setItem("spotify-verifier", verifier);
+    location.href = `https://accounts.spotify.com/authorize?${new URLSearchParams({
+      response_type: "code",
+      client_id: root.dataset.spotify!,
+      scope: "playlist-read-private playlist-read-collaborative",
+      redirect_uri: redirect,
+      code_challenge_method: "S256",
+      code_challenge: challenge,
+    })}`;
+  }
+
+  async function spotifyGrant(body: Record<string, string>) {
+    const res = await fetch("https://accounts.spotify.com/api/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: root.dataset.spotify!, ...body }),
+    });
+    if (!res.ok) return null;
+    const t = await res.json();
+    const token = { access: t.access_token, refresh: t.refresh_token ?? body.refresh_token, expires: Date.now() + t.expires_in * 1000 };
+    setToken("spotify", token);
+    return token;
+  }
+
+  async function spotifyPlaylists(token: Token): Promise<Playlist[] | null> {
+    if (token.expires < Date.now() + 60_000) {
+      const fresh = token.refresh ? await spotifyGrant({ grant_type: "refresh_token", refresh_token: token.refresh }) : null;
+      if (!fresh) return null;
+      token = fresh;
+    }
+    const res = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${token.access}` } });
+    if (!res.ok) return null;
+    const { items } = await res.json();
+    return items.filter(Boolean).map((p: any) => ({
+      name: p.name,
+      cover: p.images?.at(-1)?.url,
+      count: `${(p.items ?? p.tracks)?.total ?? 0} lagu`,
+      src: `https://open.spotify.com/embed/playlist/${p.id}`,
+    }));
+  }
+
+  // YouTube: Google's token client, a one-hour token and no refresh, so an
+  // expired one just shows Hubungkan again.
+  function youtubeConnect() {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.onload = () => {
+      const { oauth2 } = (window as any).google.accounts;
+      oauth2.initTokenClient({
+        client_id: root.dataset.google,
+        scope: "https://www.googleapis.com/auth/youtube.readonly",
+        callback: (t: any) => {
+          if (t.error) return;
+          setToken("youtube", { access: t.access_token, expires: Date.now() + t.expires_in * 1000 });
+          render("youtube");
+        },
+      }).requestAccessToken();
+    };
+    document.head.append(script);
+  }
+
+  async function youtubePlaylists(token: Token): Promise<Playlist[] | null> {
+    if (token.expires < Date.now()) return null;
+    const res = await fetch("https://www.googleapis.com/youtube/v3/playlists?mine=true&part=snippet,contentDetails&maxResults=50", {
+      headers: { Authorization: `Bearer ${token.access}` },
+    });
+    if (!res.ok) return null;
+    const { items } = await res.json();
+    return items.map((p: any) => ({
+      name: p.snippet.title,
+      cover: p.snippet.thumbnails?.default?.url,
+      count: `${p.contentDetails.itemCount} lagu`,
+      src: `https://www.youtube-nocookie.com/embed/videoseries?list=${p.id}`,
+    }));
+  }
+
+  const SERVICES = {
+    spotify: { connect: spotifyConnect, playlists: spotifyPlaylists, empty: "Belum ada playlist di Spotify-mu." },
+    youtube: { connect: youtubeConnect, playlists: youtubePlaylists, empty: "Belum ada playlist di YouTube-mu." },
+  };
+
+  async function render(key: keyof typeof SERVICES) {
+    const section = document.querySelector<HTMLElement>(`[data-service="${key}"]`);
+    if (!section) return;
+    const connect = section.querySelector<HTMLButtonElement>("[data-connect]")!;
+    const disconnect = section.querySelector<HTMLButtonElement>("[data-disconnect]")!;
+    const list = section.querySelector<HTMLElement>("[data-playlists]")!;
+    const token = tokens()[key];
+    const playlists = token ? await SERVICES[key].playlists(token) : null;
+    if (token && !playlists) setToken(key, null);
+    connect.hidden = !!playlists;
+    disconnect.hidden = !playlists;
+    list.replaceChildren(
+      ...(playlists ?? []).map((p) => {
+        const row = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "flex min-h-14 w-full items-center gap-3 rounded-2xl p-1.5 text-left hover:bg-zinc-900 focus-visible:outline-2 focus-visible:outline-accent aria-pressed:bg-matcha-200 aria-pressed:text-noir";
+        const cover = document.createElement(p.cover ? "img" : "span");
+        cover.className = "size-11 shrink-0 rounded-xl border-2 border-noir bg-matcha-200 object-cover";
+        if (p.cover) Object.assign(cover, { src: p.cover, alt: "", loading: "lazy", referrerPolicy: "no-referrer" });
+        const text = document.createElement("span");
+        text.className = "min-w-0";
+        const name = document.createElement("span");
+        name.className = "block truncate text-sm font-semibold";
+        name.textContent = p.name;
+        const count = document.createElement("span");
+        count.className = "block text-xs opacity-70";
+        count.textContent = p.count;
+        text.append(name, count);
+        button.append(cover, text);
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-playlists] button").forEach((b) => b.removeAttribute("aria-pressed"));
+          button.setAttribute("aria-pressed", "true");
+          play(p.src);
+        });
+        row.append(button);
+        return row;
+      }),
+    );
+    if (playlists?.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "text-sm text-zinc-400";
+      empty.textContent = SERVICES[key].empty;
+      list.append(empty);
+    }
+  }
+
+  for (const key of Object.keys(SERVICES) as (keyof typeof SERVICES)[]) {
+    const section = document.querySelector(`[data-service="${key}"]`);
+    section?.querySelector("[data-connect]")!.addEventListener("click", () => SERVICES[key].connect());
+    section?.querySelector("[data-disconnect]")!.addEventListener("click", () => { setToken(key, null); render(key); });
+  }
+
+  // Back from Spotify's consent screen with ?code= (or ?error= when refused).
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  const verifier = sessionStorage.getItem("spotify-verifier");
+  history.replaceState(null, "", "/musik");
+  if (params.get("error")) error.textContent = "Spotify tidak jadi dihubungkan.";
+  if (code && verifier) {
+    sessionStorage.removeItem("spotify-verifier");
+    const ok = await spotifyGrant({ grant_type: "authorization_code", code, redirect_uri: redirect, code_verifier: verifier });
+    if (!ok) error.textContent = "Gagal menghubungkan Spotify. Coba lagi.";
+  }
+  render("spotify");
+  render("youtube");
+
+  const form = document.querySelector<HTMLFormElement>("[data-music-form]")!;
+  const input = form.querySelector("input")!;
+  try { input.value = localStorage.getItem(LINK) ?? ""; } catch {}
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const src = musicEmbed(input.value);
@@ -49,12 +248,7 @@ publicPage(Astro);
       return;
     }
     error.textContent = "";
-    try { localStorage.setItem(KEY, input.value.trim()); } catch {}
-    const frame = document.createElement("iframe");
-    frame.src = src;
-    frame.title = "Pemutar musik";
-    frame.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-    frame.className = "h-full min-h-80 w-full rounded-2xl border-0";
-    player.replaceChildren(frame);
+    try { localStorage.setItem(LINK, input.value.trim()); } catch {}
+    play(src);
   });
 </script>
