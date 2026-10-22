@@ -1,0 +1,47 @@
+---
+import { Download, Ellipsis, Moon, Music } from "lucide-react";
+
+// Phones: install, music and theme folded into one "⋯" menu, so the header
+// fits with the full "Ruang Materi" name. Each row presses the matching
+// header button (hidden on phones), so the behavior stays in InstallApp,
+// MusicButton and ThemeButton.
+const item = "flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50";
+---
+
+<details class="relative sm:hidden" data-more>
+  <summary aria-label="Menu lainnya" class="grid size-11 cursor-pointer list-none place-items-center rounded-full bg-zinc-900 text-zinc-300 shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+    <Ellipsis aria-hidden className="size-5" />
+  </summary>
+  <div class="absolute right-0 z-50 mt-2 w-56 rounded-2xl bg-zinc-900 p-2 shadow-soft ring-1 ring-zinc-800">
+    <button type="button" data-more-for="[data-install]" hidden class={item}><Download aria-hidden className="size-4" />Pasang aplikasi</button>
+    <button type="button" data-more-for="[data-music-open]" class={item}><Music aria-hidden className="size-4" />Musik belajar</button>
+    <button type="button" data-more-for="[data-theme-toggle]" class={item}><Moon aria-hidden className="size-4" /><span data-more-theme>Tema gelap</span></button>
+  </div>
+</details>
+
+<script>
+  const menu = document.querySelector<HTMLDetailsElement>("[data-more]");
+  const root = document.documentElement;
+  const themeLabel = () => {
+    const el = menu?.querySelector("[data-more-theme]");
+    if (el) el.textContent = root.dataset.theme === "dark" ? "Tema terang" : "Tema gelap";
+  };
+  themeLabel();
+  new MutationObserver(themeLabel).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  menu?.querySelectorAll<HTMLButtonElement>("[data-more-for]").forEach((row) => {
+    const target = document.querySelector<HTMLElement>(row.dataset.moreFor!);
+    if (!target) return row.remove();
+    // Install shows only when the browser can install (InstallApp sets hidden).
+    if (row.dataset.moreFor === "[data-install]") {
+      const sync = () => (row.hidden = target.hidden);
+      sync();
+      new MutationObserver(sync).observe(target, { attributes: true, attributeFilter: ["hidden"] });
+    }
+    row.addEventListener("click", () => {
+      menu.open = false;
+      target.click();
+    });
+  });
+  document.addEventListener("click", (e) => { if (menu?.open && !menu.contains(e.target as Node)) menu.open = false; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && menu) menu.open = false; });
+</script>

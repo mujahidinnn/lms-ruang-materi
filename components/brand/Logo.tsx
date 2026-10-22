@@ -17,8 +17,7 @@ export default function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2.5 font-(family-name:--font-bricolage) text-xl whitespace-nowrap font-extrabold tracking-tight text-zinc-50 ${className}`}>
       <LogoMark className="size-9 -rotate-6" />
-      {/* Phones show the mark alone, so the header's buttons fit the width. */}
-      <span className="max-sm:sr-only">Ruang Materi</span>
+      Ruang Materi
     </span>
   );
 }
