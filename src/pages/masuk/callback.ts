@@ -1,12 +1,13 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import type { APIRoute } from "astro";
+import { NEXT_COOKIE } from "@/lib/actions/masuk";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
 // Two kinds of email link land here. ?code= (PKCE) works only in the browser
 // that asked for it; ?token_hash=&type= works on any device, so the email
 // template sends that one (GUIDELINE, Auth).
-export const GET: APIRoute = async ({ url, redirect }) => {
+export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
@@ -17,8 +18,25 @@ export const GET: APIRoute = async ({ url, redirect }) => {
     : code
       ? await supabase.auth.exchangeCodeForSession(code)
       : { error: true };
+  if (error) return redirect("/masuk?galat=1");
 
   // A recovery link signs the learner in to set a new password.
-  if (!error) return redirect(type === "recovery" ? "/profil#sandi" : safeNext(url.searchParams.get("next")));
-  return redirect("/masuk?galat=1");
+  if (type === "recovery") return redirect("/profil#sandi");
+
+  // Name and age given at sign-up (user metadata) fill an empty profile, so
+  // a new learner skips /mulai.
+  const { data } = await supabase.auth.getUser();
+  const meta = data.user?.user_metadata as { display_name?: string; age_group?: string } | undefined;
+  if (data.user && meta?.display_name && (meta.age_group === "dewasa" || meta.age_group === "anak")) {
+    const { data: p } = await supabase.from("profiles").select("display_name").eq("user_id", data.user.id).maybeSingle();
+    if (!p?.display_name?.trim()) {
+      await supabase.from("profiles").update({ display_name: meta.display_name.slice(0, 80), age_group: meta.age_group, guardian_consent: true }).eq("user_id", data.user.id);
+    }
+  }
+
+  // Where they were going: the link's own ?next=, else the cookie set when
+  // the email was sent (same browser), else the dashboard.
+  const next = safeNext(url.searchParams.get("next") ?? cookies.get(NEXT_COOKIE)?.value, "/dasbor");
+  cookies.delete(NEXT_COOKIE, { path: "/" });
+  return redirect(next);
 };

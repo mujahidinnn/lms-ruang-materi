@@ -64,16 +64,16 @@ test("practice gives instant feedback to a guest", async ({ page }) => {
 test("private pages send a guest to the login page", async ({ page }) => {
   await page.goto("/dasbor");
   await expect(page).toHaveURL(/\/masuk\?next=%2Fdasbor/);
-  await expect(page.getByRole("heading", { name: "Masuk" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Masuk ke akunmu" })).toBeVisible();
 });
 
 test("a wrong password is refused with a clear message", async ({ page }) => {
   await page.goto("/masuk");
-  await page.getByLabel("Email").fill("tidak-ada@contoh.id");
-  await page.getByRole("tab", { name: "Password" }).click();
-  await page.getByLabel(/Password/).fill("salah-sekali-123");
-  await page.getByRole("button", { name: "Masuk" }).click();
-  await expect(page.getByText("Email atau kata sandi salah.")).toBeVisible();
+  await page.locator("input[name=email]").fill("tidak-ada@contoh.id");
+  await page.locator("input[name=password]").fill("salah-sekali-123");
+  await page.locator("main form").getByRole("button", { name: "Masuk", exact: true }).click();
+  await expect(page.getByText("Email atau password salah.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Belum punya akun? Daftar" })).toBeVisible();
 });
 
 test("unknown pages show the 404 page", async ({ page }) => {
@@ -133,4 +133,15 @@ test("a code exercise fails the starter, then passes with the solution", async (
 test("an unknown certificate code shows the 404 page", async ({ page }) => {
   const res = await page.goto("/sertifikat/TIDAK-ADA");
   expect(res?.status()).toBe(404);
+});
+
+test("sign-up asks for name, email, password and age, and links back to sign-in", async ({ page }) => {
+  await page.goto("/daftar");
+  await expect(page.getByRole("heading", { name: "Buat akun gratis" })).toBeVisible();
+  for (const n of ["nama", "email", "password"]) await expect(page.locator(`input[name=${n}]`)).toBeVisible();
+  await expect(page.getByText("18 tahun ke atas")).toBeVisible();
+  await page.getByRole("button", { name: "Daftar tanpa password, lewat link email" }).click();
+  await expect(page.getByRole("button", { name: "Kirim link pendaftaran" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Masuk atau daftar" }).getByRole("link", { name: "Masuk" }).click();
+  await expect(page).toHaveURL(/\/masuk/);
 });
