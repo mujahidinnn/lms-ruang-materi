@@ -73,6 +73,11 @@ export default function ChapterQuiz({
   }
 
   const finished = quizDone(questions, answers);
+  // Tells the chapter page's next link not to ask "skip the quiz?".
+  const tuntas = (finished && allPassed) || status === "saved";
+  useEffect(() => {
+    if (tuntas) document.documentElement.dataset.babTuntas = "";
+  }, [tuntas]);
 
   // The answer that makes the quiz all-correct completes the chapter.
   function pick(id: string, n: number, el: HTMLElement) {

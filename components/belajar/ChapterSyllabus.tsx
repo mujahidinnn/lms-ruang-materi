@@ -31,6 +31,11 @@ export default function ChapterSyllabus({
     window.addEventListener("bab-selesai", on);
     return () => window.removeEventListener("bab-selesai", on);
   }, [markDone]);
+  // A chapter finished on an earlier visit needs no "skip the quiz?" prompt.
+  const currentId = chapters.find((c) => c.slug === current)?.id;
+  useEffect(() => {
+    if (currentId && done.has(currentId)) document.documentElement.dataset.babTuntas = "";
+  }, [done, currentId]);
   const list = (
     <>
       <div className="mb-3 px-3 pt-2">

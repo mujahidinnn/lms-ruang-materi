@@ -123,12 +123,12 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
               </a>
             ) : <span class="hidden sm:block" />}
             {next ? (
-              <a href={`/belajar/${slug}/${next.slug}`} class="group flex min-h-20 flex-col justify-center rounded-[24px] border-2 border-noir bg-noir px-5 py-3 text-right text-on-noir">
+              <a href={`/belajar/${slug}/${next.slug}`} data-lanjut class="group flex min-h-20 flex-col justify-center rounded-[24px] border-2 border-noir bg-noir px-5 py-3 text-right text-on-noir">
                 <span class="flex items-center justify-end gap-1 text-xs text-matcha-200">Bab berikutnya<ChevronRight aria-hidden className="size-3.5" /></span>
                 <span class="mt-1 font-bold">{next.title}</span>
               </a>
             ) : topic.practiceCount > 0 ? (
-              <a href={`/latihan/${slug}`} class={`${primaryButton} min-h-20 rounded-[24px]`}><ListChecks aria-hidden className="size-4" />Lanjut ke latihan akhir</a>
+              <a href={`/latihan/${slug}`} data-lanjut class={`${primaryButton} min-h-20 rounded-[24px]`}><ListChecks aria-hidden className="size-4" />Lanjut ke latihan akhir</a>
             ) : (
               <a href={`/belajar/${slug}`} class={`${primaryButton} min-h-20 rounded-[24px]`}>Kembali ke silabus</a>
             )}
@@ -154,9 +154,31 @@ const prompts = chapter.exercises.map((ex) => renderToStaticMarkup(createElement
     <nav aria-label="Pindah bab" class="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex items-center justify-between gap-2 rounded-full bg-zinc-900/95 p-2 shadow-soft backdrop-blur lg:hidden">
       {prev ? <a href={`/belajar/${slug}/${prev.slug}`} aria-label={`Sebelumnya: ${prev.title}`} class="grid size-11 place-items-center rounded-full bg-zinc-800"><ChevronLeft aria-hidden className="size-5" /></a> : <span class="size-11" />}
       <ChapterSyllabus client:load topicId={topic.id} topicSlug={slug} chapters={topic.chapters} current={bab} variant="button" />
-      {next ? <a href={`/belajar/${slug}/${next.slug}`} aria-label={`Berikutnya: ${next.title}`} class="grid size-11 place-items-center rounded-full border-2 border-noir bg-matcha-300 text-noir"><ChevronRight aria-hidden className="size-5" /></a> : <span class="size-11" />}
+      {next ? <a href={`/belajar/${slug}/${next.slug}`} data-lanjut aria-label={`Berikutnya: ${next.title}`} class="grid size-11 place-items-center rounded-full border-2 border-noir bg-matcha-300 text-noir"><ChevronRight aria-hidden className="size-5" /></a> : <span class="size-11" />}
     </nav>
   </div>
+  <script>
+    import { confirmDialog } from "@/lib/confirm";
+
+    // Moving on before the quiz and exercises are done asks once, and says
+    // why they help; Lewati saja still goes. ChapterQuiz and ChapterSyllabus
+    // set data-bab-tuntas when there is nothing left to do.
+    for (const link of document.querySelectorAll<HTMLAnchorElement>("[data-lanjut]")) {
+      link.addEventListener("click", async (e) => {
+        if ("babTuntas" in document.documentElement.dataset || e.metaKey || e.ctrlKey || e.shiftKey) return;
+        e.preventDefault();
+        const skip = await confirmDialog({
+          title: "Cek pemahamanmu belum selesai",
+          text: "Menjawab kuis dan latihan di akhir bab bikin materinya lebih nempel, dan langsung kelihatan bagian mana yang belum paham sebelum lanjut. Bab ini juga baru tercatat selesai setelah semuanya beres.",
+          action: "Lewati saja",
+          cancel: "Coba dulu",
+          nudge: true,
+        });
+        if (skip) location.href = link.href;
+        else document.getElementById("ceklis")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  </script>
   <CopyCode />
   <ReaderScripts />
   <script>

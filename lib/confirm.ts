@@ -6,9 +6,11 @@
 //   data-confirm="Judul" data-confirm-text="..." data-confirm-action="Hapus" data-confirm-danger
 //   data-confirm-if="usia=" asks only when field usia has that value.
 
-export type ConfirmOptions = { title: string; text?: string; action?: string; cancel?: string; danger?: boolean };
+// nudge: the cancel button is the one we hope for (styled and focused as the
+// main action), as in "Coba kuis dulu" against "Lewati saja".
+export type ConfirmOptions = { title: string; text?: string; action?: string; cancel?: string; danger?: boolean; nudge?: boolean };
 
-export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Batal", danger = false }: ConfirmOptions): Promise<boolean> {
+export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Batal", danger = false, nudge = false }: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
     const d = document.createElement("dialog");
     d.className =
@@ -33,13 +35,15 @@ export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Bat
     const no = document.createElement("button");
     no.value = "";
     no.textContent = cancel;
-    no.className = "inline-flex min-h-11 items-center rounded-full bg-zinc-800 px-5 font-semibold hover:bg-zinc-700";
+    const plain = "inline-flex min-h-11 items-center rounded-full bg-zinc-800 px-5 font-semibold hover:bg-zinc-700";
+    const main = "inline-flex min-h-11 items-center rounded-full border-2 border-noir bg-primary px-5 font-bold text-on-primary";
+    no.className = nudge ? main : plain;
     const yes = document.createElement("button");
     yes.value = "ya";
     yes.textContent = action;
     yes.className = danger
       ? "inline-flex min-h-11 items-center rounded-full bg-red-600 px-5 font-semibold text-white hover:bg-red-700"
-      : "inline-flex min-h-11 items-center rounded-full border-2 border-noir bg-primary px-5 font-bold text-on-primary";
+      : nudge ? plain : main;
     row.append(no, yes);
     form.append(row);
     d.append(form);
@@ -52,7 +56,7 @@ export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Bat
     document.body.append(d);
     d.showModal();
     // A destructive action starts on Batal, so Enter does no harm.
-    (danger ? no : yes).focus();
+    (danger || nudge ? no : yes).focus();
   });
 }
 
