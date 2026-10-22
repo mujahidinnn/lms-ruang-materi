@@ -118,7 +118,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
               {open.length > 0 && (
                 <p className="mt-4 text-sm text-zinc-400">Disarankan setelah {open.join(", ")}.</p>
               )}
-              {node.summary && <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-zinc-300">{node.summary}</p>}
+              {node.summary && <p className="mt-4 line-clamp-4 text-sm leading-relaxed text-zinc-200">{node.summary}</p>}
               <a href={`/belajar/${node.slug}`} className={`${primaryButton} mt-6 w-full`}>
                 <BookOpen aria-hidden className="size-4" />
                 Buka kelas
