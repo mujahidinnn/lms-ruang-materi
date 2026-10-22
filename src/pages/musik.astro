@@ -100,6 +100,17 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
       </section>
     ))}
 
+    {/* Files from this device play from memory and never leave it. They are
+        gone when the window closes, so they stay out of Terakhir diputar. */}
+    <section class="flex flex-col gap-3">
+      <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Dari perangkatmu</h2>
+      <label class={`${secondaryButton} cursor-pointer has-focus-visible:outline-2 has-focus-visible:outline-accent`}>
+        Pilih file musik
+        <input data-local type="file" accept="audio/*" multiple class="sr-only" />
+      </label>
+      <ul data-playlists data-local-list class="flex flex-col gap-1 empty:hidden"></ul>
+    </section>
+
     <details class="text-sm">
       <summary class="min-h-11 cursor-pointer content-center text-zinc-400 hover:text-zinc-50">Putar dari link</summary>
       <form data-music-form class="mt-2 flex gap-2">
@@ -327,7 +338,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     fill(list, playlists, SERVICES[key].empty);
   }
 
-  function fill(list: HTMLElement, items: Playlist[] | null, empty: string) {
+  function fill(list: HTMLElement, items: Playlist[] | null, empty: string, pick = (p: Playlist) => { play(p.src); remember(p); }) {
     list.replaceChildren(
       ...(items ?? []).map((p) => {
         const row = document.createElement("li");
@@ -350,8 +361,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
         button.addEventListener("click", () => {
           document.querySelectorAll("[data-playlists] button").forEach((b) => b.removeAttribute("aria-pressed"));
           button.setAttribute("aria-pressed", "true");
-          play(p.src);
-          remember(p);
+          pick(p);
         });
         row.append(button);
         return row;
@@ -383,6 +393,36 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
   fill(picks, JSON.parse(picks.dataset.picks!), "");
+
+  // Local files: an <audio> player that moves on to the next file by itself.
+  const localInput = document.querySelector<HTMLInputElement>("[data-local]")!;
+  const localList = document.querySelector<HTMLElement>("[data-local-list]")!;
+  let localUrl = "";
+  function playLocal(files: File[], i: number) {
+    URL.revokeObjectURL(localUrl);
+    localUrl = URL.createObjectURL(files[i]);
+    const title = document.createElement("p");
+    title.className = "truncate text-sm font-semibold";
+    title.textContent = files[i].name.replace(/\.[^.]+$/, "");
+    const audio = document.createElement("audio");
+    audio.src = localUrl;
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.className = "mt-1 w-full";
+    audio.addEventListener("ended", () => {
+      if (i + 1 >= files.length) return;
+      localList.querySelectorAll("button").forEach((b, n) => (n === i + 1 ? b.setAttribute("aria-pressed", "true") : b.removeAttribute("aria-pressed")));
+      playLocal(files, i + 1);
+    });
+    player.replaceChildren(title, audio);
+  }
+  localInput.addEventListener("change", () => {
+    const files = [...(localInput.files ?? [])];
+    if (!files.length) return;
+    const items = files.map((f, i) => ({ name: f.name.replace(/\.[^.]+$/, ""), count: `${(f.size / 1048576).toFixed(1)} MB`, src: String(i) }));
+    fill(localList, items, "", (p) => playLocal(files, Number(p.src)));
+    (localList.querySelector("button") as HTMLButtonElement).click();
+  });
 
   // Searching shows results in place of the playlists; an empty query brings
   // the playlists back.
