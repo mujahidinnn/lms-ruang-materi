@@ -7,7 +7,7 @@ import { defineConfig } from "astro/config";
 // Every page renders on request (auth, drafts). Public pages set their own
 // CDN Cache-Control instead of a build-time prerender.
 export default defineConfig({
-  site: "https://lms-ruang-materi.vercel.app",
+  site: "https://ruang-materi.mujahidin.my.id",
   output: "server",
   // Skew protection: a page from one deploy keeps loading its own JS chunks
   // after the next deploy goes live.
