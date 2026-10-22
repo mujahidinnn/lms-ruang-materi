@@ -7,7 +7,7 @@ test("keeps relative paths", () => {
 });
 
 test("rejects off-site and junk", () => {
-  for (const bad of ["https://evil.com", "//evil.com", "/\\evil.com", "admin", "", null, undefined, ["/a"]]) {
+  for (const bad of ["https://evil.com", "//evil.com", "/\\evil.com", "/\t/evil.com", "/\n/evil.com", "/\t\\evil.com", "admin", "", null, undefined, ["/a"]]) {
     expect(safeNext(bad)).toBe("/");
   }
 });
