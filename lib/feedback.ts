@@ -50,9 +50,10 @@ export function playCorrect() {
   notes([[784, 0, 0.12], [1319, 0.08, 0.22]], "triangle");
 }
 
-// A soft low "dum", never harsh.
+// A short falling "bwom-bwom": mid notes on a square wave, so small laptop
+// and phone speakers carry it, at a low volume so it never stings.
 export function playWrong() {
-  notes([[196, 0, 0.22], [165, 0.1, 0.28]], "sine", 0.1);
+  notes([[330, 0, 0.14], [247, 0.14, 0.26]], "square", 0.05);
 }
 
 // A short fanfare: C E G up to a held high C.

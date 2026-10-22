@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, PartyPopper, X } from "lucide-react";
+import { Check, PartyPopper, RotateCcw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeExercise from "@/components/code/CodeExercise";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -29,6 +29,9 @@ export default function ChapterQuiz({
 }) {
   const questions = useMemo(() => raw.map(shuffleOptions), [raw]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  // Wrong options already tried per question: they stay struck out after
+  // Coba lagi, so the retry narrows down instead of starting over.
+  const [tried, setTried] = useState<Record<string, number[]>>({});
   const [status, setStatus] = useState<"idle" | "saved" | "guest" | "error" | "blocked">("idle");
   const [blocked, setBlocked] = useState("");
   const [passedEx, setPassedEx] = useState<ReadonlySet<string>>(new Set());
@@ -79,8 +82,10 @@ export default function ChapterQuiz({
     if (tuntas) document.documentElement.dataset.babTuntas = "";
   }, [tuntas]);
 
-  // The answer that makes the quiz all-correct completes the chapter.
+  // The answer that makes the quiz all-correct completes the chapter. An
+  // answered question is locked; a wrong one opens again only via Coba lagi.
   function pick(id: string, n: number, el: HTMLElement) {
+    if (answers[id] !== undefined || tried[id]?.includes(n)) return;
     const next = { ...answers, [id]: n };
     setAnswers(next);
     const right = questions.find((x) => x.id === id)?.answer === n;
@@ -123,27 +128,51 @@ export default function ChapterQuiz({
                       const chosen = picked === n;
                       const right = chosen && n === q.answer;
                       const wrong = chosen && n !== q.answer;
+                      const out = !chosen && tried[q.id]?.includes(n);
                       return (
                         <button
                           key={n}
                           type="button"
                           aria-pressed={chosen}
+                          aria-disabled={picked !== undefined || out}
                           onClick={(e) => pick(q.id, n, e.currentTarget)}
-                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "border-noir bg-tile-pink" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
+                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "answer-shake border-noir bg-tile-pink" : out ? "cursor-default border-zinc-800 bg-zinc-900 line-through opacity-40" : picked !== undefined ? "cursor-default border-zinc-800 bg-zinc-900 opacity-50" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
                         >
                           {/* Letters, all alike: color appears only once answered. */}
                           <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${right || wrong ? "bg-noir text-on-noir" : "bg-zinc-800 text-zinc-300"}`}>{"ABCD"[n]}</span>
                           <span className="flex-1">{opt}</span>
+                          {out && <span className="sr-only">(sudah dicoba, salah)</span>}
                           {right && <Check aria-label="benar" className="size-5" />}
                           {wrong && <X aria-label="salah" className="size-5" />}
                         </button>
                       );
                     })}
                   </div>
-                  {picked !== undefined && (
-                    <p className={`mt-3 rounded-2xl px-4 py-3 text-sm leading-relaxed ${picked === q.answer ? "bg-matcha-50 text-noir" : "bg-zinc-900 text-zinc-300"}`}>
-                      <strong>{picked === q.answer ? "Tepat. " : "Belum tepat. "}</strong>{q.explanation}
+                  {picked === q.answer && (
+                    <p className="mt-3 rounded-2xl bg-matcha-50 px-4 py-3 text-sm leading-relaxed text-noir">
+                      <strong>Tepat. </strong>{q.explanation}
                     </p>
+                  )}
+                  {/* Wrong: no explanation yet (it would give the answer away), just a retry. */}
+                  {picked !== undefined && picked !== q.answer && (
+                    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl bg-tile-pink px-4 py-3 text-sm text-noir">
+                      <p className="flex-1"><strong>Belum tepat.</strong> Baca lagi soalnya, lalu pilih jawaban lain.</p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          // Focus the first option still open.
+                          const gone = [...(tried[q.id] ?? []), picked];
+                          const open = q.options.findIndex((_, n) => !gone.includes(n));
+                          const group = e.currentTarget.closest("li")?.querySelectorAll<HTMLButtonElement>("[role=group] button")[open];
+                          setTried((t) => ({ ...t, [q.id]: [...(t[q.id] ?? []), picked] }));
+                          setAnswers(({ [q.id]: _, ...rest }) => rest);
+                          group?.focus();
+                        }}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-noir bg-white px-4 font-semibold text-noir hover:bg-matcha-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <RotateCcw aria-hidden className="size-4" />Coba lagi
+                      </button>
+                    </div>
                   )}
                 </li>
               );
