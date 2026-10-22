@@ -3,7 +3,7 @@
 import { Check, ChevronLeft, Clock, Layers, Presentation, Play } from "lucide-react";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
-import { chip, primaryButton, tile } from "@/components/ui/styles";
+import { chip, primaryButton } from "@/components/ui/styles";
 import { totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
@@ -90,7 +90,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                     className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-900 py-2 pr-2 pl-3 shadow-soft hover:bg-zinc-800 sm:bg-zinc-800/50 sm:shadow-none"
                   >
                     <span
-                      className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${done.has(c.id) ? "bg-tile-mint" : tile(i)}`}
+                      className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums ${done.has(c.id) ? "border-2 border-noir bg-matcha-300 text-noir" : "bg-zinc-800 text-zinc-300 sm:bg-zinc-900"}`}
                     >
                       {done.has(c.id) ? (
                         <Check aria-label="selesai" className="size-4" />
