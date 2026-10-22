@@ -34,6 +34,13 @@ const SERVICES = [
           <button type="button" data-disconnect hidden class="ml-auto min-h-11 px-2 text-sm text-zinc-400 hover:text-zinc-50">Putuskan</button>
         </div>
         <button type="button" data-connect class={secondaryButton}>Hubungkan {s.name}</button>
+        {s.key === "youtube" && (
+          <form data-search hidden role="search" class="flex gap-2">
+            <label for="music-search" class="sr-only">Cari lagu atau playlist</label>
+            <input id="music-search" name="q" type="search" placeholder="Cari lagu atau playlist, misal lofi" class="min-h-11 min-w-0 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+            <button class={secondaryButton}>Cari</button>
+          </form>
+        )}
         <ul data-playlists class="flex flex-col gap-1 empty:hidden"></ul>
       </section>
     ))}
@@ -160,6 +167,8 @@ const SERVICES = [
       headers: { Authorization: `Bearer ${token.access}` },
     });
     const body = await res.json().catch(() => ({}));
+    // An account without a YouTube channel has no playlists, not an error.
+    if (body.error?.errors?.[0]?.reason === "channelNotFound") return [];
     if (!res.ok) {
       error.textContent = `YouTube menolak: ${body.error?.message ?? res.status}`;
       return null;
@@ -172,9 +181,36 @@ const SERVICES = [
     }));
   }
 
+  // ponytail: each search costs 100 of the project's 10,000 daily YouTube
+  // quota units, so about 100 searches a day across all learners; ask Google
+  // for more quota if it runs out.
+  async function youtubeSearch(q: string): Promise<Playlist[] | null> {
+    const token = tokens().youtube;
+    if (!token || token.expires < Date.now()) return null;
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${new URLSearchParams({ part: "snippet", type: "video,playlist", maxResults: "15", q })}`, {
+      headers: { Authorization: `Bearer ${token.access}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      error.textContent = `YouTube menolak: ${body.error?.message ?? res.status}`;
+      return [];
+    }
+    // Search titles come HTML-escaped (&amp;, &#39;).
+    const text = (s: string) => new DOMParser().parseFromString(s, "text/html").documentElement.textContent ?? s;
+    return (body.items ?? []).map((r: any) => {
+      const list = r.id.kind === "youtube#playlist";
+      return {
+        name: text(r.snippet.title),
+        cover: r.snippet.thumbnails?.default?.url,
+        count: `${list ? "Playlist dari " : ""}${text(r.snippet.channelTitle)}`,
+        src: list ? `https://www.youtube-nocookie.com/embed/videoseries?list=${r.id.playlistId}` : `https://www.youtube-nocookie.com/embed/${r.id.videoId}?autoplay=1`,
+      };
+    });
+  }
+
   const SERVICES = {
     spotify: { connect: spotifyConnect, playlists: spotifyPlaylists, empty: "Belum ada playlist di Spotify-mu." },
-    youtube: { connect: youtubeConnect, playlists: youtubePlaylists, empty: "Belum ada playlist di YouTube-mu." },
+    youtube: { connect: youtubeConnect, playlists: youtubePlaylists, empty: "Belum ada playlist di YouTube-mu. Cari lagu di atas." },
   };
 
   async function render(key: keyof typeof SERVICES) {
@@ -182,14 +218,20 @@ const SERVICES = [
     if (!section) return;
     const connect = section.querySelector<HTMLButtonElement>("[data-connect]")!;
     const disconnect = section.querySelector<HTMLButtonElement>("[data-disconnect]")!;
+    const search = section.querySelector<HTMLFormElement>("[data-search]");
     const list = section.querySelector<HTMLElement>("[data-playlists]")!;
     const token = tokens()[key];
     const playlists = token ? await SERVICES[key].playlists(token) : null;
     if (token && !playlists) setToken(key, null);
     connect.hidden = !!playlists;
     disconnect.hidden = !playlists;
+    if (search) search.hidden = !playlists;
+    fill(list, playlists, SERVICES[key].empty);
+  }
+
+  function fill(list: HTMLElement, items: Playlist[] | null, empty: string) {
     list.replaceChildren(
-      ...(playlists ?? []).map((p) => {
+      ...(items ?? []).map((p) => {
         const row = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
@@ -216,13 +258,26 @@ const SERVICES = [
         return row;
       }),
     );
-    if (playlists?.length === 0) {
-      const empty = document.createElement("li");
-      empty.className = "text-sm text-zinc-400";
-      empty.textContent = SERVICES[key].empty;
-      list.append(empty);
+    if (items?.length === 0) {
+      const note = document.createElement("li");
+      note.className = "text-sm text-zinc-400";
+      note.textContent = empty;
+      list.append(note);
     }
   }
+
+  // Searching shows results in place of the playlists; an empty query brings
+  // the playlists back.
+  document.querySelector<HTMLFormElement>("[data-search]")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const q = new FormData(form).get("q")?.toString().trim();
+    if (!q) return render("youtube");
+    error.textContent = "";
+    const results = await youtubeSearch(q);
+    if (!results) return render("youtube");
+    fill(form.parentElement!.querySelector("[data-playlists]")!, results, "Tidak ada hasil. Coba kata lain.");
+  });
 
   for (const key of Object.keys(SERVICES) as (keyof typeof SERVICES)[]) {
     const section = document.querySelector(`[data-service="${key}"]`);
