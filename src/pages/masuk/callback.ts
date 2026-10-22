@@ -35,13 +35,16 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   if (type === "recovery") return redirect("/profil#sandi");
 
   // Name and age given at sign-up (user metadata) fill an empty profile, so
-  // a new learner skips /mulai.
+  // a new learner skips /mulai. A Google account brings its name (full_name)
+  // but no age, so /mulai then asks only for the age, the name filled in.
   const { data } = await supabase.auth.getUser();
-  const meta = data.user?.user_metadata as { display_name?: string; age_group?: string } | undefined;
-  if (data.user && meta?.display_name && (meta.age_group === "dewasa" || meta.age_group === "anak")) {
+  const meta = data.user?.user_metadata as { display_name?: string; age_group?: string; full_name?: string; name?: string } | undefined;
+  const name = (meta?.display_name ?? meta?.full_name ?? meta?.name)?.trim().slice(0, 80);
+  if (data.user && name) {
     const { data: p } = await supabase.from("profiles").select("display_name").eq("user_id", data.user.id).maybeSingle();
     if (!p?.display_name?.trim()) {
-      await supabase.from("profiles").update({ display_name: meta.display_name.slice(0, 80), age_group: meta.age_group, guardian_consent: true }).eq("user_id", data.user.id);
+      const age = meta?.age_group === "dewasa" || meta?.age_group === "anak" ? meta.age_group : null;
+      await supabase.from("profiles").update(age ? { display_name: name, age_group: age, guardian_consent: true } : { display_name: name }).eq("user_id", data.user.id);
     }
   }
 

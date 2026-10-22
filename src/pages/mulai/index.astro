@@ -13,9 +13,14 @@ import { signedIn } from "../../lib/guard";
 const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 const next = safeNext(Astro.url.searchParams.get("next"), "/dasbor");
-const { data: me } = await (await createClient()).from("profiles").select("display_name, guardian_consent, age_group").eq("user_id", user.id).single();
+const db = await createClient();
+const { data: me } = await db.from("profiles").select("display_name, guardian_consent, age_group").eq("user_id", user.id).single();
 if (me?.display_name?.trim() && me.guardian_consent && me.age_group) return Astro.redirect(next);
 const galat = Astro.url.searchParams.get("galat") === "1";
+// A Google account already has a name: offer it, editable.
+const { data: au } = await db.auth.getUser();
+const fromGoogle = ((au.user?.user_metadata?.full_name ?? au.user?.user_metadata?.name) as string | undefined)?.trim().slice(0, 80);
+const nama = me?.display_name?.trim() || fromGoogle || "";
 ---
 
 <Base title="Mulai" description="Isi nama dan persetujuan supaya progres belajarmu tersimpan." noindex>
@@ -27,15 +32,15 @@ const galat = Astro.url.searchParams.get("galat") === "1";
           <span aria-hidden="true" class={`${sticker} absolute top-5 left-6 inline-flex -rotate-3 bg-matcha-300 text-noir`}>satu langkah lagi</span>
           <div class="absolute right-6 bottom-0 hidden h-56 w-36 lg:h-72 lg:w-44 items-end justify-center overflow-hidden rounded-t-full bg-matcha-300 pt-3 sm:flex"><img src="/ilustrasi/mulai.svg" alt="" width="1115" height="2949" loading="lazy" decoding="async" class="h-full w-auto" /></div>
           <h1 class="relative text-4xl font-extrabold sm:pr-28">Sebelum mulai</h1>
-          <p class="relative mt-2 text-on-noir/75 sm:pr-28">Isi nama dan pilih usiamu, sekali saja. Setelah itu semua progres, kuis, dan latihan kodemu tersimpan.</p>
+          <p class="relative mt-2 text-on-noir/75 sm:pr-28">{nama ? "Tinggal pilih usiamu, sekali saja." : "Isi nama dan pilih usiamu, sekali saja."} Setelah itu semua progres, kuis, dan latihan kodemu tersimpan.</p>
         </div>
         <form method="post" action="/rpc/mulai" class="grid content-center gap-5 rounded-[32px] bg-zinc-900 p-6 shadow-soft sm:p-8">
           <input type="hidden" name="next" value={next} />
           {galat && <p role="alert" class="rounded-2xl bg-tile-pink px-4 py-3 text-sm text-noir">Isi nama dan pilih salah satu pilihan usia dulu.</p>}
           <label class="text-sm font-medium text-zinc-300">
             Nama tampilan
-            <span class="block text-xs font-normal text-zinc-500">Dipakai di sertifikat. Boleh nama panggilan.</span>
-            <input name="display_name" required maxlength="80" value={me?.display_name ?? ""} class={`${field} mt-2`} />
+            <span class="block text-xs font-normal text-zinc-500">{nama && !me?.display_name?.trim() ? "Dari akun Google-mu. Boleh diubah, misalnya ke nama panggilan." : "Dipakai di sertifikat. Boleh nama panggilan."}</span>
+            <input name="display_name" required maxlength="80" value={nama} class={`${field} mt-2`} />
           </label>
           <fieldset class="grid gap-2">
             <legend class="mb-2 text-sm font-medium text-zinc-300">Usia</legend>
