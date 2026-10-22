@@ -3,7 +3,7 @@
 import { Check, ChevronLeft, Clock, Layers, Presentation, Play } from "lucide-react";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
-import { card, chip, primaryButton, tile } from "@/components/ui/styles";
+import { chip, primaryButton, tile } from "@/components/ui/styles";
 import { totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
@@ -61,7 +61,9 @@ export default function CourseView({ topic }: { topic: Topic }) {
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}
         <div className="mt-4 grid items-start gap-x-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section aria-labelledby="silabus" className={`p-6 sm:p-8 ${card}`}>
+          {/* Phones: the list sits on the page, each chapter its own card,
+              instead of cards inside a card. */}
+          <section aria-labelledby="silabus" className="sm:rounded-[28px] sm:bg-zinc-900 sm:p-8 sm:shadow-soft">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 id="silabus" className="text-2xl font-bold tracking-tight">
                 Daftar bab
@@ -85,7 +87,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                 <li key={c.id}>
                   <a
                     href={`/belajar/${topic.slug}/${c.slug}`}
-                    className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-800/50 py-2 pr-2 pl-3 hover:bg-zinc-800"
+                    className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-900 py-2 pr-2 pl-3 shadow-soft hover:bg-zinc-800 sm:bg-zinc-800/50 sm:shadow-none"
                   >
                     <span
                       className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${done.has(c.id) ? "bg-tile-mint" : tile(i)}`}
