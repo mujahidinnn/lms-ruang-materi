@@ -244,6 +244,90 @@ function gambarNat() {
   return frame("NAT mengganti alamat dan port sumber paket dari jaringan lokal menjadi alamat publik router", 860, b, AH);
 }
 
+// ---- Hardware ----
+const squares = (x, y, n, w, gap, h = w, fill = "#ffffff") => Array.from({ length: n }, (_, i) => `<rect x="${x + i * (w + gap)}" y="${y}" width="${w}" height="${h}" rx="3" fill="${fill}" stroke="${INK}" stroke-width="2.5"/>`).join("");
+const led = (x, y, fill = M3) => circle(x, y, 6, { fill, sw: 2 });
+
+function gambarRak() {
+  const U = 68, top = 130, x = 215, w = 450;
+  const ru = (n) => top + (10 - n) * U; // top edge of unit n (10 = top)
+  let b = text(600, 62, "Rak jaringan (rack 19 inci)", { size: 42, weight: 800, anchor: "middle" });
+  b += box(180, top - 20, 520, 10 * U + 40, { fill: "#f1f1ec", r: 18 });
+  for (let n = 1; n <= 10; n++) b += text(160, ru(n) + U / 2 + 8, `U${n}`, { size: 20, anchor: "end", weight: 500 });
+  for (const rx of [195, 676]) for (let n = 0; n < 10; n++) b += circle(rx, top + n * U + U / 2, 5, { sw: 2 });
+  // U10 patch panel, U9 switch, U8 cable manager, U7 router, U6-U5 server, U4 empty, U3-U1 UPS
+  const dev = (n, units, fill, inner) => box(x, ru(n) + 4, w, units * U - 8, { fill, r: 8, sw: 3 }) + inner;
+  b += dev(10, 1, "#ffffff", squares(x + 16, ru(10) + 24, 24, 13, 4, 18));
+  b += dev(9, 1, M1, squares(x + 14, ru(9) + 16, 12, 22, 6, 16) + squares(x + 14, ru(9) + 38, 12, 22, 6, 16) + squares(x + 378, ru(9) + 16, 2, 26, 6, 38, M3));
+  b += `<rect x="${x}" y="${ru(8) + 10}" width="${w}" height="${U - 20}" rx="6" fill="#ffffff" stroke="${INK}" stroke-width="2.5" stroke-dasharray="8 6"/>` + text(x + w / 2, ru(8) + 42, "pengatur kabel", { size: 20, anchor: "middle", weight: 500 });
+  b += dev(7, 1, M3, squares(x + 24, ru(7) + 22, 5, 36, 10, 26) + led(x + 330, ru(7) + 34) + led(x + 360, ru(7) + 34) + text(x + 410, ru(7) + 42, "router", { size: 22, anchor: "middle" }));
+  b += dev(6, 2, "#ffffff", squares(x + 24, ru(6) + 22, 4, 80, 10, 40) + squares(x + 24, ru(6) + 76, 4, 80, 10, 40) + led(x + 410, ru(6) + 40) + led(x + 410, ru(6) + 70, "#ffffff"));
+  b += dev(3, 3, INK, text(x + w / 2, ru(3) + 112, "UPS", { size: 40, anchor: "middle", fill: "#ffffff", weight: 800 }) + squares(x + 150, ru(3) + 140, 5, 30, 8, 12, M3));
+  // labels
+  const lab = (n, units, head, lines) => {
+    const yy = ru(n) + (units * U) / 2;
+    return line(666, yy, 745, yy, { sw: 3 }) + text(760, yy - 6, head, { size: 27, weight: 800 }) + lines.map((l, i) => text(760, yy + 24 + i * 28, l, { size: 22, weight: 500 })).join("");
+  };
+  b += lab(10, 1, "Patch panel", ["Ujung kabel dari dinding dan lantai"]);
+  b += lab(9, 1, "Switch", ["Hubungkan perangkat satu jaringan"]);
+  b += lab(7, 1, "Router", ["Ke jaringan lain dan ISP"]);
+  b += lab(6, 2, "Server", ["Berat, ditaruh rendah"]);
+  b += lab(3, 3, "UPS", ["Listrik cadangan, paling berat,", "paling bawah"]);
+  b += text(600, 905, "Perangkat jaringan di atas, yang berat di bawah. 1U = 4,45 cm tinggi.", { size: 24, anchor: "middle", weight: 500 });
+  b += text(600, 941, "Kabel patch pendek dari patch panel ke switch menjaga rak tetap rapi.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Rak jaringan 10U tampak depan: patch panel, switch, router, server, dan UPS dari atas ke bawah", 985, b);
+}
+
+function gambarRouter() {
+  let b = text(600, 62, "Router 5 port (contoh umum)", { size: 42, weight: 800, anchor: "middle" });
+  b += box(50, 230, 1100, 170, { fill: "#e9e9e2", r: 26 });
+  // power jack, five ports, USB, reset
+  b += circle(130, 315, 32, { fill: "#ffffff" }) + circle(130, 315, 12, { fill: INK });
+  const ports = [["ether1", M3], ["ether2", "#ffffff"], ["ether3", "#ffffff"], ["ether4", "#ffffff"], ["ether5", "#ffffff"]];
+  ports.forEach(([name, fill], i) => {
+    const px = 240 + i * 135;
+    b += box(px, 270, 90, 90, { fill, r: 8, sw: 4 }) + squares(px + 12, 346, 8, 6, 2.5, 8, INK) + led(px + 20, 288) + led(px + 70, 288, "#ffffff") + text(px + 45, 427 + 0, name, { size: 24, anchor: "middle", weight: 800 });
+  });
+  b += box(930, 280, 90, 50, { r: 6, sw: 4 }) + text(975, 360, "USB", { size: 22, anchor: "middle", weight: 500 });
+  b += circle(1085, 300, 14, { fill: INK }) + text(1085, 345, "reset", { size: 20, anchor: "middle", weight: 500 });
+  // callouts above
+  const call = (x1, x2, y, label) => line(x1, 232, x1, y, { sw: 3 }) + line(x1, y, x2, y, { sw: 3 }) + text((x1 + x2) / 2, y - 14, label, { size: 24, anchor: "middle", weight: 800 });
+  b += line(130, 232, 130, 150, { sw: 3 }) + text(130, 132, "Daya", { size: 24, anchor: "middle", weight: 800 });
+  b += line(285, 232, 285, 200, { sw: 3 }) + text(285, 150, "WAN", { size: 24, anchor: "middle", weight: 800 }) + text(285, 182, "ke ISP / modem", { size: 21, anchor: "middle", weight: 500 });
+  b += line(420, 232, 420, 175, { sw: 3 }) + line(420, 175, 825, 175, { sw: 3 }) + line(825, 175, 825, 232, { sw: 3 });
+  b += text(622, 160, "LAN (ether2 sampai ether5)", { size: 24, anchor: "middle", weight: 800 }) + text(622, 205, "ke switch, PC, atau access point", { size: 21, anchor: "middle", weight: 500 });
+  b += text(60, 500, "Konfigurasi bawaan MikroTik yang umum:", { size: 26, weight: 800 });
+  b += text(60, 545, "ether1 = WAN (meminta IP lewat DHCP dari ISP, dengan NAT masquerade)", { size: 24, weight: 500 });
+  b += text(60, 580, "ether2 sampai ether5 = LAN, alamat router 192.168.88.1/24, DHCP aktif", { size: 24, weight: 500 });
+  b += text(60, 615, "Tombol reset mengembalikan ke konfigurasi awal. Lampu hijau menyala saat kabel terhubung.", { size: 24, weight: 500 });
+  return frame("Router 5 port tampak panel: port daya, ether1 sebagai WAN, ether2 sampai ether5 sebagai LAN, USB, dan tombol reset", 665, b);
+}
+
+function gambarKantor() {
+  const cx = 330;
+  const node = (x, y, w, h, title, sub, fill = "#ffffff") => box(x - w / 2, y, w, h, { fill, r: 16 }) + text(x, y + (sub ? 34 : h / 2 + 9), title, { size: 26, weight: 800, anchor: "middle" }) + (sub ? text(x, y + 63, sub, { size: 20, weight: 500, anchor: "middle", mono: true }) : "");
+  let b = text(600, 62, "Jaringan kantor kecil dengan MikroTik", { size: 42, weight: 800, anchor: "middle" });
+  b += `<path d="M240 178 C195 178 195 126 240 126 C240 84 300 78 322 110 C345 78 412 94 410 132 C456 132 456 178 410 178 Z" fill="#ffffff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>` + text(cx, 160, "Internet", { size: 28, weight: 800, anchor: "middle" });
+  b += line(cx, 180, cx, 215) + node(cx, 215, 260, 80, "Modem ISP", "");
+  b += line(cx, 295, cx, 340) + text(cx + 18, 325, "ether1 (WAN)", { size: 20, weight: 500 });
+  b += node(cx, 340, 340, 100, "Router MikroTik", "WAN 203.0.113.5", M3);
+  b += line(cx, 440, cx, 505) + text(cx + 18, 480, "ether2: 192.168.88.1", { size: 20, weight: 500 });
+  b += node(cx, 505, 320, 80, "Switch", "");
+  [[100, "PC 1", "192.168.88.10"], [275, "PC 2", "192.168.88.11"], [450, "Printer", "192.168.88.20"], [625, "AP Wi-Fi", ""]].forEach(([x, name, ip]) => {
+    b += line(cx, 585, x, 650) + node(x, 650, 160, 80, name, ip);
+  });
+  b += line(625, 730, 625, 790, { sw: 3, dash: "3 10" }) + `<path d="M590 768q35-34 70 0M603 756q22-22 44 0" fill="none" stroke="${INK}" stroke-width="4" stroke-linecap="round"/>` + node(625, 790, 220, 70, "Laptop dan HP", "");
+  b += box(760, 110, 400, 470, { fill: M1, r: 22 });
+  b += text(960, 160, "Rencana alamat", { size: 30, weight: 800, anchor: "middle" });
+  [["Jaringan LAN", "192.168.88.0/24"], ["Gateway (ether2)", "192.168.88.1"], ["Pool DHCP", "192.168.88.100-200"], ["IP WAN (ether1)", "203.0.113.5"]].forEach(([k, v], i) => {
+    b += text(790, 215 + i * 78, k, { size: 22, weight: 800 }) + text(790, 247 + i * 78, v, { size: 22, weight: 500, mono: true });
+  });
+  b += text(960, 545, "Proyek: atur IP, DHCP, NAT, uji ping", { size: 21, weight: 500, anchor: "middle" });
+  b += text(600, 905, "ether1 ke modem (WAN), ether2 ke switch (LAN).", { size: 23, anchor: "middle", weight: 500 });
+  b += text(600, 938, "Semua perangkat kantor memakai router sebagai gateway.", { size: 23, anchor: "middle", weight: 500 });
+  return frame("Topologi kantor kecil: internet, modem ISP, router MikroTik, switch, PC, printer, access point, laptop dan HP, dengan rencana alamat IP", 975, b);
+}
+
 const DIAGRAMS = {
   "utp-t568a-t568b": gambarUtp,
   "kabel-straight-crossover": gambarStraightCrossover,
@@ -252,6 +336,9 @@ const DIAGRAMS = {
   "osi-tcpip": gambarOsi,
   "dhcp-dora": gambarDhcp,
   "nat-masquerade": gambarNat,
+  "rak-jaringan": gambarRak,
+  "router-5-port": gambarRouter,
+  "kantor-kecil-mikrotik": gambarKantor,
 };
 
 mkdirSync("public/praktik", { recursive: true });

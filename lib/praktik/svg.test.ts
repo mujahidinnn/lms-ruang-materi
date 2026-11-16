@@ -10,8 +10,7 @@ const EXPECTED = [
   "topologi-dasar", "osi-tcpip", "dhcp-dora", "nat-masquerade",
   "rak-jaringan", "router-5-port", "kantor-kecil-mikrotik",
 ];
-// Raised as each task adds its files (Task 3, then Task 4).
-const READY = EXPECTED.slice(0, 7);
+const READY = EXPECTED;
 
 test("T568B order is orange-white, orange, green-white, blue, blue-white, green, brown-white, brown", () => {
   expect([...T568B]).toEqual(["putih-oranye", "oranye", "putih-hijau", "biru", "putih-biru", "hijau", "putih-cokelat", "cokelat"]);
