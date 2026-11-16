@@ -1528,6 +1528,111 @@
         }
       ],
       "exercises": []
+    },
+    {
+      "slug": "praktik-uji-konektivitas",
+      "title": "Praktik: Menguji Konektivitas dengan Ping dan Traceroute",
+      "est_minutes": 30,
+      "slide_from": 31,
+      "slide_to": 38,
+      "body": "## Tujuan\n\n- Menguji konektivitas dengan urutan yang sistematis, dari yang terdekat sampai yang terjauh.\n- Membaca hasil `ping`: balasan, waktu, kehilangan paket, dan TTL.\n- Membaca hasil traceroute dan mengenali hop yang bermasalah.\n- Menyimpulkan bagian mana yang rusak: jaringan lokal, ISP, atau DNS.\n\n## Tangga Pengujian\n\nSaat internet \"tidak jalan\", jangan langsung menebak. Uji dari yang paling dekat ke yang paling jauh, dan berhenti di langkah pertama yang gagal. Ini seperti memeriksa listrik rumah dari meteran ke lampu, bukan sebaliknya.\n\n1. **Ping gateway** (alamat router, misalnya `192.168.88.1`). Menguji kabel, alamat IP laptop, dan jalur ke router.\n2. **Ping alamat IP publik** (misalnya `8.8.8.8`). Menguji jalur dari router sampai ke internet, tanpa melibatkan DNS.\n3. **Ping nama domain** (misalnya `google.com`). Menguji DNS, yaitu penerjemah nama menjadi alamat.\n\nHasilnya langsung menunjuk letak masalah.\n\n| Langkah yang gagal pertama | Artinya | Periksa |\n| --- | --- | --- |\n| Ping gateway | Masalah di jaringan lokal | Kabel, lampu port, alamat IP dan gateway di laptop |\n| Ping IP publik | Masalah di sisi WAN atau ISP | ether1, modem, status DHCP client, tagihan atau gangguan ISP |\n| Ping nama domain | Masalah DNS | Pengaturan DNS di laptop atau router |\n| Tidak ada yang gagal | Konektivitas sehat | Masalahnya mungkin di aplikasi atau situsnya |\n\nUntuk melihat gateway dan DNS laptop di Windows, jalankan `ipconfig`. Di Linux atau macOS, `ip route` menampilkan gateway.\n\n## Membaca Hasil Ping\n\nBerikut contoh ping ke `8.8.8.8` di Windows. Bila Windows-mu berbahasa Indonesia, tulisan \"Reply from\" menjadi \"Membalas dari\", tetapi angka-angkanya sama.\n\n```text\n> ping 8.8.8.8\n\nPinging 8.8.8.8 with 32 bytes of data:\nReply from 8.8.8.8: bytes=32 time=18ms TTL=116\nReply from 8.8.8.8: bytes=32 time=17ms TTL=116\nRequest timed out.\nReply from 8.8.8.8: bytes=32 time=19ms TTL=116\n\nPing statistics for 8.8.8.8:\n    Packets: Sent = 4, Received = 3, Lost = 1 (25% loss)\n```\n\nEmpat angka yang perlu kamu baca:\n\n- **Reply** berarti tujuan menjawab. **Request timed out** berarti tidak ada jawaban sampai batas waktu.\n- **time** adalah waktu pulang-pergi dalam milidetik. Makin kecil makin baik: beberapa milidetik di jaringan lokal, puluhan milidetik ke internet.\n- **TTL** menyusut satu di setiap router yang dilewati. Nilainya berguna untuk perkiraan jarak, bukan untuk menilai sehat atau tidaknya koneksi.\n- **Lost** adalah kehilangan paket. Nol berarti sehat. Kehilangan di atas beberapa persen membuat video dan panggilan suara tersendat.\n\nDi MikroTik, perintahnya `/ping 8.8.8.8 count=4`. Keluarannya kira-kira begini:\n\n```text\n[admin@R-Kantor] > /ping 8.8.8.8 count=4\n  SEQ HOST          SIZE TTL TIME   STATUS\n    0 8.8.8.8         56 116 18ms\n    1 8.8.8.8         56 116 17ms\n    2 8.8.8.8                       timeout\n    3 8.8.8.8         56 116 19ms\n    sent=4 received=3 packet-loss=25% min-rtt=17ms avg-rtt=18ms max-rtt=19ms\n```\n\n## Traceroute\n\nPing hanya memberi tahu ujung ke ujung. **Traceroute** menunjukkan jalurnya, hop demi hop, dengan mengirim paket yang TTL-nya dinaikkan satu per satu. Di Windows perintahnya `tracert`, di Linux dan macOS `traceroute`, dan di MikroTik `/tool traceroute`.\n\n```text\n> tracert 8.8.8.8\n\n  1    <1 ms    <1 ms    <1 ms  192.168.88.1\n  2     3 ms     2 ms     3 ms  203.0.113.1\n  3     *        *        *     Request timed out.\n  4    17 ms    17 ms    18 ms  8.8.8.8\n```\n\nCara membacanya: hop 1 adalah router kantor, hop 2 adalah router pertama milik ISP, dan hop 4 adalah tujuan. Tanda `*` di hop 3 berarti router itu tidak menjawab, tetapi karena hop 4 menjawab, jalurnya tetap sehat. Banyak router sengaja tidak membalas.\n\nYang perlu kamu waspadai adalah ketika `*` muncul terus sampai akhir tanpa pernah mencapai tujuan. Hop terakhir yang masih menjawab menunjukkan sampai mana jalurnya baik. Pada contoh di atas bila hop 3, 4, dan seterusnya semuanya `*`, berarti masalah ada setelah router ISP.\n\n## Praktik di Windows dan di RouterOS\n\nJalankan ketiganya bergantian di laptop, lalu di terminal Winbox.\n\n| Tujuan | Windows | RouterOS |\n| --- | --- | --- |\n| Ping gateway | `ping 192.168.88.1` | `/ping 192.168.88.1 count=4` |\n| Ping IP publik | `ping 8.8.8.8` | `/ping 8.8.8.8 count=4` |\n| Ping nama domain | `ping google.com` | `/ping google.com count=4` |\n| Lihat jalur | `tracert 8.8.8.8` | `/tool traceroute 8.8.8.8` |\n\nCatat hasilnya di tiga kondisi: saat semuanya normal, saat kabel ether1 sengaja dicabut, dan saat DNS laptop sengaja diubah ke alamat yang salah. Dengan membandingkan ketiganya kamu melihat sendiri bagaimana tiap kerusakan terlihat di tangga pengujian.\n\n## Tangga Pengujian dalam Kode\n\nLogika tangga di atas bisa ditulis sebagai fungsi: terima hasil tiga ping (berhasil atau tidak), kembalikan letak masalahnya. Latihan kode di bawah memintamu menulisnya. Kuncinya adalah urutan pengecekan, karena langkah yang gagal paling awal yang menentukan.\n\n## Checklist Hasil\n\n- [ ] Ping gateway, IP publik, dan nama domain berhasil dengan kehilangan 0%.\n- [ ] Kamu bisa membaca waktu balasan dan menyebut apakah wajar.\n- [ ] `tracert` ke `8.8.8.8` mencapai tujuan.\n- [ ] Kamu mencatat bentuk hasil ping saat ether1 dicabut.\n- [ ] Kamu mencatat bentuk hasil saat DNS laptop salah, dan bisa menjelaskan bedanya.\n\n## Kalau Tidak Berhasil\n\n| Gejala | Kemungkinan penyebab | Perbaikan |\n| --- | --- | --- |\n| Semua ping timeout, termasuk gateway | Kabel, Wi-Fi aktif bersamaan, atau alamat IP laptop salah | Cek kabel ke ether2, matikan Wi-Fi, setel IP otomatis |\n| Gateway berhasil, IP publik timeout | ether1 tidak mendapat alamat, atau gangguan ISP | `/ip dhcp-client print`, cek modem, hubungi ISP |\n| IP publik berhasil, nama domain gagal | DNS salah | Ganti DNS ke yang benar atau ke alamat router |\n| Ping berhasil tetapi lambat atau kehilangan paket | Kabel jelek, Wi-Fi padat, atau jalur ISP padat | Uji ulang dengan kabel, bandingkan beberapa kali |\n| `tracert` penuh `*` sampai akhir | Hop berikutnya memblokir atau jalur putus | Catat hop terakhir yang menjawab dan laporkan ke ISP |\n\n## Rangkuman\n\n- Uji dari yang terdekat: gateway, lalu IP publik, lalu nama domain, dan berhenti di langkah yang pertama gagal.\n- Ping gateway gagal berarti jaringan lokal, ping IP publik gagal berarti WAN atau ISP, ping nama gagal berarti DNS.\n- Dari ping, baca balasan, waktu, dan kehilangan paket. Kehilangan beberapa persen sudah mengganggu panggilan suara.\n- Traceroute menunjukkan jalur hop demi hop, dan tanda `*` sesekali belum tentu masalah.\n- Yang bermasalah adalah `*` terus sampai akhir, dan hop terakhir yang menjawab menunjukkan batas jalur yang sehat.\n- Windows memakai `ping` dan `tracert`, MikroTik memakai `/ping` dan `/tool traceroute`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Ping ke gateway berhasil, ping ke 8.8.8.8 berhasil, tetapi ping ke google.com gagal dengan pesan nama tidak ditemukan. Masalahnya ada di...",
+          "code": "",
+          "options": [
+            "Kabel LAN antara laptop dan router yang sedang longgar atau rusak",
+            "Koneksi ISP yang sedang terputus total di sisi WAN router",
+            "DNS yang tidak bisa menerjemahkan nama menjadi alamat",
+            "Aturan NAT di router yang tidak mengganti alamat sumber"
+          ],
+          "answer": 2,
+          "explanation": "Jalur ke gateway dan ke internet sehat karena dua ping pertama berhasil. Yang gagal hanya penerjemahan nama, yaitu tugas DNS."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa kesimpulan yang paling tepat dari statistik ping berikut?",
+          "code": "Ping statistics for 8.8.8.8:\n    Packets: Sent = 4, Received = 3, Lost = 1 (25% loss)\n    Approximate round trip times in milli-seconds:\n        Minimum = 17ms, Maximum = 19ms, Average = 18ms",
+          "options": [
+            "Tujuan terjangkau, tetapi 25% paket hilang sehingga koneksi tidak stabil",
+            "Tujuan tidak terjangkau sama sekali karena ada paket yang timeout",
+            "Koneksi sehat sepenuhnya karena tiga dari empat paket sudah dibalas",
+            "Waktu balasan 18 milidetik terlalu lambat sehingga kabel pasti rusak"
+          ],
+          "answer": 0,
+          "explanation": "Tiga balasan menunjukkan tujuan terjangkau, tetapi satu dari empat paket hilang, jadi kehilangan 25% membuat koneksi tidak stabil. Timeout satu kali bukan berarti putus total, dan 18 ms ke internet termasuk baik."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang bisa kamu simpulkan dari hasil traceroute ini?",
+          "code": "  1    <1 ms    <1 ms    <1 ms  192.168.88.1\n  2     3 ms     2 ms     3 ms  203.0.113.1\n  3     *        *        *     Request timed out.\n  4     *        *        *     Request timed out.\n  5     *        *        *     Request timed out.",
+          "options": [
+            "Router kantor mati sehingga tidak ada paket yang keluar dari laptop",
+            "DNS salah sehingga alamat tujuan tidak bisa diterjemahkan sama sekali",
+            "Laptop belum mendapat alamat IP dari DHCP server di router kantor",
+            "Router kantor dan router ISP menjawab, masalah ada setelah hop 2"
+          ],
+          "answer": 3,
+          "explanation": "Hop 1 dan hop 2 menjawab, jadi laptop, router kantor, dan router pertama ISP terjangkau. Mulai hop 3 tidak ada jawaban sampai akhir, jadi gangguan ada di jalur setelah ISP atau di tujuan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Bila ping ke gateway berhasil tetapi ping ke 8.8.8.8 gagal, maka masalah paling mungkin ada di DNS.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Ping ke alamat IP tidak memakai DNS, jadi yang gagal adalah jalur dari router ke internet: WAN, modem, atau ISP. DNS baru relevan bila yang gagal hanya ping ke nama."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa langkah kedua pengujian memakai ping ke 8.8.8.8 dan bukan langsung ke google.com?",
+          "code": "",
+          "options": [
+            "Karena google.com selalu diblokir oleh firewall bawaan MikroTik",
+            "Alamat IP menguji jalur tanpa melibatkan DNS",
+            "Karena ping ke nama domain tidak bisa berhasil di Windows",
+            "Karena 8.8.8.8 selalu lebih cepat daripada alamat lain mana pun"
+          ],
+          "answer": 1,
+          "explanation": "Dengan alamat IP, kegagalan pasti bukan karena DNS, sehingga kamu bisa memisahkan masalah jalur dari masalah penerjemahan nama."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Tangga diagnosa",
+          "prompt": "Tulis fungsi `lapisMasalah(hasil)` yang menerima objek `{ gateway, ipPublik, nama }`, tiga boolean yang bernilai `true` bila ping ke gateway, ke IP publik, dan ke nama domain berhasil.\n\nKembalikan salah satu string berikut dengan urutan pengecekan dari yang paling dekat:\n\n- `\"lokal\"` bila `gateway` gagal.\n- `\"isp\"` bila `gateway` berhasil tetapi `ipPublik` gagal.\n- `\"dns\"` bila `gateway` dan `ipPublik` berhasil tetapi `nama` gagal.\n- `\"sehat\"` bila ketiganya berhasil.\n\nContoh: `lapisMasalah({ gateway: true, ipPublik: true, nama: false })` menghasilkan `\"dns\"`.",
+          "starter": {
+            "code": "function lapisMasalah(hasil) {\n  // tulis kode di sini\n  return \"sehat\";\n}\n"
+          },
+          "solution": {
+            "code": "function lapisMasalah(hasil) {\n  if (!hasil.gateway) return \"lokal\";\n  if (!hasil.ipPublik) return \"isp\";\n  if (!hasil.nama) return \"dns\";\n  return \"sehat\";\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "semua berhasil berarti sehat",
+              "check": "lapisMasalah({ gateway: true, ipPublik: true, nama: true }) === \"sehat\""
+            },
+            {
+              "name": "hanya nama yang gagal berarti dns",
+              "check": "lapisMasalah({ gateway: true, ipPublik: true, nama: false }) === \"dns\""
+            },
+            {
+              "name": "IP publik dan nama gagal berarti isp",
+              "check": "lapisMasalah({ gateway: true, ipPublik: false, nama: false }) === \"isp\""
+            },
+            {
+              "name": "gateway gagal berarti lokal apa pun hasil lainnya",
+              "check": "lapisMasalah({ gateway: false, ipPublik: true, nama: true }) === \"lokal\" && lapisMasalah({ gateway: false, ipPublik: false, nama: false }) === \"lokal\""
+            }
+          ]
+        }
+      ]
     }
   ],
   "project": {
