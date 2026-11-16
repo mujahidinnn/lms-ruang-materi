@@ -44,3 +44,7 @@ test("an empty alt falls back to the name and has no caption", () => {
   expect(out).toContain('alt="Diagram utp-t568a-t568b"');
   expect(out).not.toContain("<figcaption");
 });
+
+test("diagram images are not lazy, so they reach the offline cache with the page", () => {
+  expect(html("![x](gambar:utp-t568a-t568b)")).not.toContain('loading="lazy"');
+});

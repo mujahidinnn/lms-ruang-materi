@@ -240,7 +240,7 @@ function gambarNat() {
     b += text(120, y + 43, head, { size: 26, weight: 800 }) + text(430, y + 43, detail, { size: 25, weight: 500, mono: true });
   });
   b += box(40, 640, 1120, 90, { fill: M1, r: 14 }) + text(70, 678, "Tabel terjemahan di router", { size: 24, weight: 800 }) + text(70, 712, "192.168.1.10:5000  <->  203.0.113.5:40000", { size: 26, weight: 500, mono: true });
-  b += text(60, 785, "Di MikroTik:", { size: 24, weight: 800 }) + text(240, 785, "/ip firewall nat add chain=srcnat", { size: 22, weight: 500, mono: true }) + text(240, 817, "    out-interface=ether1 action=masquerade", { size: 22, weight: 500, mono: true });
+  b += text(60, 785, "Di MikroTik:", { size: 24, weight: 800 }) + text(240, 785, "/ip firewall nat add chain=srcnat \\", { size: 22, weight: 500, mono: true }) + text(240, 817, "    out-interface=ether1 action=masquerade", { size: 22, weight: 500, mono: true });
   return frame("NAT mengganti alamat dan port sumber paket dari jaringan lokal menjadi alamat publik router", 860, b, AH);
 }
 

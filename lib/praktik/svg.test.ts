@@ -45,3 +45,8 @@ test("every diagram is a titled, self-contained svg", () => {
     expect(svg.replace('xmlns="http://www.w3.org/2000/svg"', ""), f).not.toMatch(/https?:\/\//);
   }
 });
+
+test("the MikroTik NAT command on nat-masquerade continues its first line with a backslash", () => {
+  const svg = readFileSync(`${DIR}/nat-masquerade.svg`, "utf8");
+  expect(svg).toContain("chain=srcnat \\");
+});

@@ -38,7 +38,7 @@ export default function MarkdownBase({
             if (diagram) {
               return (
                 <figure className="my-5 overflow-hidden rounded-2xl shadow-soft">
-                  <img src={diagramSrc(diagram)} alt={alt || `Diagram ${diagram}`} loading="lazy" className="h-auto w-full bg-white" />
+                  <img src={diagramSrc(diagram)} alt={alt || `Diagram ${diagram}`} className="h-auto w-full bg-white" />
                   {alt ? <figcaption className="bg-zinc-900 px-4 py-2 text-sm text-zinc-400">{alt}</figcaption> : null}
                 </figure>
               );
