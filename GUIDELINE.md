@@ -579,35 +579,83 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
 
 - **Exercise kind `mikrotik`** (`lib/code/routeros.ts`, wrapped by
   `lib/code/mikrotik.ts`): the learner's `code` is RouterOS command text,
-  run line by line against an in-memory router. `setup` may define
-  `var awal = {...}` (partial initial `router`); an `awal` entry that is
-  malformed is dropped, e.g. a `dhcpServers` entry must include a boolean
-  `disabled`. Tests read `router` (`identity`, `interfaces`, `addresses`,
-  `pools`, `dhcpServers`, `dhcpNetworks`, `nat`, `routes`, `dns`) and
-  `keluaran` (terminal lines; each command is echoed after
-  `[admin@<router name>] > `, and the name changes after `/system identity
-  set`, so never match the literal `[admin@MikroTik]`). The default router
-  has `ether1` to `ether5` (all running) and no addresses. Commands:
-  `/system identity set|print`, `/interface print`, `/ip address
-  add|remove|print`, `/ip pool add|print`, `/ip dhcp-server add|print`,
-  `/ip dhcp-server network add|print`, `/ip firewall nat add|print`,
-  `/ip route add|print`, `/ip dns set|print`, `ping`. Both `/ip address add`
-  and `/ip/address/add` forms work; tab and space both separate words;
-  surplus positional tokens (all commands take none, except `ping` and
-  `ip address remove` which take one) give `expected end of command`.
-  `dhcp-server add` takes optional `disabled=yes|no`; as on RouterOS (from
-  the terminal) a server added without `disabled=no` is disabled
-  (`dhcpServers[].disabled`, shown as an `X` flag in print). Unlike
-  RouterOS, where only `interface` is mandatory and `address-pool` defaults
-  to static-only, the simulator requires `name` and `address-pool`, and the
-  pool must exist before the server.
-  Behaviors where RouterOS is not mimicked exactly: `/ping` defaults to
-  `count=4`; `dhcp-server network add` needs only `address` (`gateway`,
-  `dns-server` default to empty); ping to a non-IP target just times out;
-  `allow-remote-requests` accepts only `yes`/`no`; `remove` needs a number.
-  Only three messages are exact RouterOS text: `bad command name <word>
-  (line N column M)`, `failure: already have such address` and `input does
-  not match any value of <arg>`; every other message is an approximation.
+  run line by line against an in-memory router. Tests read `router` and
+  `keluaran` (terminal lines). Each command is echoed as
+  `[admin@<identity>] > <line>`, and the identity changes after `/system
+  identity set`, so never match the literal `[admin@MikroTik]`.
+  - **Input**: `/ip address add` and `/ip/address/add` both work; tab and
+    space both separate words; `#` lines, blank lines and ` \` continuations
+    are handled; a single trailing blank line is not counted. Limits: 200
+    lines, 2000 characters per line (else the only output is `script too
+    long`). Surplus positional tokens and unknown arguments give `expected
+    end of command (line N column M)`. `comment=` is accepted and ignored on
+    every `add`. Commands take no positional token except `ping <address>`,
+    `/ip address remove <number>`, `/interface ethernet set <name>` and `/ip
+    service set <name>`.
+  - **Commands** (`print` takes no arguments; `*` = required):
+    `/system identity set name*`; `/system identity print`; `/interface
+    print`; `/interface ethernet set <name> arp*` (enabled, disabled,
+    proxy-arp, local-proxy-arp, reply-only; physical ports only); `/interface
+    ethernet print`; `/interface bridge add name*`; `/interface bridge port
+    add bridge* interface*` (interface must be physical, one bridge per
+    port); `/ip address add address* interface*` (CIDR) and `remove <n>`;
+    `/ip pool add name* ranges*`; `/ip dhcp-server add name* interface*
+    address-pool* disabled=yes|no` (pool must exist first; without
+    `disabled=no` the server is disabled, as on RouterOS); `/ip dhcp-server
+    network add address* gateway dns-server`; `/ip dhcp-server lease add
+    address* mac-address* server`; `/ip arp add address* mac-address*
+    interface*`; `/ip firewall nat add chain* action* out-interface
+    src-address` (chain srcnat|dstnat; action accept|masquerade|dst-nat|
+    src-nat); `/ip firewall filter add chain* action* protocol dst-port
+    src-address in-interface connection-state` (chain input|forward|output;
+    action accept|drop|reject|passthrough|log; protocol tcp|udp|icmp;
+    `dst-port` is `80`, `80-90` or a comma list and needs tcp or udp;
+    `connection-state` is a comma list of established, related, new,
+    invalid, untracked); `/ip firewall address-list add list* address*`;
+    `/queue simple add name* target* max-limit` (`max-limit` as `up/down`,
+    e.g. `1M/2M`); `/ip route add dst-address* gateway* distance` (gateway
+    is an IP or an interface; distance 1 to 255, default 1); `/ip dns set
+    servers allow-remote-requests=yes|no`; `/ip service set <name>
+    disabled=yes|no port`; `/user add name* group* password` (group
+    read|write|full); `ping <address> count=1..20` (default 4); and `print`
+    for every table above (`/ip dns print`, `/ip service print`, `/user
+    print`, `/ip route print` included).
+  - **`router`** (all keys always present): `identity` (`MikroTik`);
+    `interfaces` `{name, running, arp}` (`ether1` to `ether5`, running,
+    `arp: "enabled"`); `addresses` `{address, network, interface}`; `pools`
+    `{name, ranges}`; `dhcpServers` `{name, interface, addressPool,
+    disabled}`; `dhcpNetworks` `{address, gateway, dnsServer}`; `nat`
+    `{chain, action, outInterface, srcAddress}`; `routes` `{dstAddress,
+    gateway, distance}`; `dns` `{servers: string[], allowRemoteRequests}`
+    (empty, false); `bridges` `{name}`; `bridgePorts` `{bridge, interface}`;
+    `dhcpLeases` `{address, macAddress, server}`; `arp` `{address,
+    macAddress, interface}`; `filter` `{chain, action, protocol, dstPort,
+    srcAddress, inInterface, connectionState}`; `addressLists` `{list,
+    address}`; `queues` `{name, target, maxLimit}`; `services` `{name, port,
+    disabled}` (telnet 23, ftp 21, www 80, ssh 22, www-ssl 443 disabled, api
+    8728, winbox 8291, api-ssl 8729 disabled); `users` `{name, group}` (one
+    `admin`/`full`). Optional text fields of an `add` are stored as `""`.
+    Everything else starts empty. `/user add` requires `group` and does not
+    store the password. `/ip route print` also shows derived `DAc` rows
+    (distance 0, one per address) that are not in `router.routes`; stored
+    routes show as `AS`.
+  - **`awal`**: `setup` may define `var awal = {...}`, a partial initial
+    `router`. Fields with a default (`interfaces[].arp`, `routes[].distance`)
+    may be omitted; every other field must be present with the right
+    primitive type, or that entry is dropped (e.g. a `dhcpServers` entry
+    needs a boolean `disabled`). Mistyped top-level keys are ignored.
+  - **Interfaces**: bridges count as interfaces for `interface=`,
+    `in-interface=`, route `gateway` and `/ip dhcp-server add interface=`,
+    but not for `bridge port add` or `ethernet set`, and `/interface print`
+    lists only the physical ports.
+  - **Fidelity**: the simulator requires `name` and `address-pool` for
+    `dhcp-server add` (RouterOS does not); `dhcp-server network add` needs
+    only `address`; ping to a non-IP target just times out; `remove` needs a
+    number. Exactly RouterOS wording only for `bad command name <word> (line
+    N column M)`, `failure: already have such address`, `input does not
+    match any value of <argument>`, `failure: already have interface with
+    such name` and `failure: already have such name`; every other message is
+    an approximation.
 
 Naming: `PascalCase` for components, `camelCase` for helpers, kebab-case for
 slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
