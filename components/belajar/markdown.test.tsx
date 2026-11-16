@@ -22,3 +22,25 @@ test("raw HTML in the body is not rendered", () => {
 test("fenced code without highlighting stays a plain pre", () => {
   expect(html("```js\nconst a = 1;\n```")).toContain("<pre");
 });
+
+test("gambar:name embeds the diagram as a figure with a caption", () => {
+  const out = html("![Urutan warna](gambar:utp-t568a-t568b)");
+  expect(out).toContain('src="/praktik/utp-t568a-t568b.svg"');
+  expect(out).toContain("<figcaption");
+  expect(out).toContain("Urutan warna</figcaption>");
+});
+
+test("gambar: refuses path traversal and invalid names", () => {
+  expect(html("![x](gambar:../../etc/passwd)")).not.toContain("<img");
+  expect(html("![x](gambar:ABC)")).not.toContain("<img");
+});
+
+test("a diagram alt text is escaped, never a live tag", () => {
+  expect(html("![<script>alert(1)</script>](gambar:abc)")).not.toContain("<script");
+});
+
+test("an empty alt falls back to the name and has no caption", () => {
+  const out = html("![](gambar:utp-t568a-t568b)");
+  expect(out).toContain('alt="Diagram utp-t568a-t568b"');
+  expect(out).not.toContain("<figcaption");
+});

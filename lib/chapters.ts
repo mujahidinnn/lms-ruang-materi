@@ -9,6 +9,31 @@ export function parseSlideRef(src: string): number | null {
   return n >= 1 ? n : null;
 }
 
+// `![keterangan](gambar:nama)` embeds public/praktik/<nama>.svg (made by
+// scripts/praktik.mjs). Names are lowercase words joined by hyphens, so a
+// source can never point anywhere else.
+const DIAGRAM_NAME = "[a-z0-9]+(?:-[a-z0-9]+)*";
+
+export function parseDiagramRef(src: string): string | null {
+  return new RegExp(`^gambar:(${DIAGRAM_NAME})$`).exec(src)?.[1] ?? null;
+}
+
+export function diagramSrc(name: string): string {
+  return `/praktik/${name}.svg`;
+}
+
+const diagramRefs = (body: string) => [...body.matchAll(/\]\(gambar:([^)\s]*)\)/g)].map((m) => m[1]);
+
+export function diagramCount(body: string): number {
+  return diagramRefs(body).length;
+}
+
+// Names a body refers to that do not exist (invalid names count as missing).
+export function missingDiagrams(body: string, exists: (name: string) => boolean): string[] {
+  const missing = diagramRefs(body).filter((n) => parseDiagramRef(`gambar:${n}`) === null || !exists(n));
+  return [...new Set(missing)];
+}
+
 export function resolveSlideRef(src: string, slides: Slide[]): Slide | null {
   const n = parseSlideRef(src);
   return n === null ? null : slides.find((s) => s.index === n) ?? null;
