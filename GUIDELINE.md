@@ -529,6 +529,13 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
 
 - **Deck or topic**: upload the `.pptx` in `/admin/impor`, review the draft in
   `/admin/topik/[slug]`, publish.
+- **Diagram in a chapter**: `![keterangan](gambar:nama)` embeds
+  `public/praktik/<nama>.svg` as a figure (name: lowercase words joined by
+  hyphens). The SVGs are drawn by `node scripts/praktik.mjs` (facts such as
+  the T568A/B wire order live in `lib/praktik/` and are pinned by
+  `svg.test.ts`); the service worker caches them for offline reading. At most
+  3 per chapter; `draft:check` fails a draft that names a file that does not
+  exist.
 - **Track**: build it in `/admin/roadmap`. Nodes reference published topics;
   prerequisites are edges between nodes, and cycles are rejected by the
   database.

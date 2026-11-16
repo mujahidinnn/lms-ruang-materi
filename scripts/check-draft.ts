@@ -3,7 +3,9 @@
 // run against their own checks, and the content rules from GUIDELINE.
 //
 //   npm run draft:check -- sdlc 36      (36 = slides in the deck)
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { diagramCount, missingDiagrams } from "../lib/chapters.ts";
 import { draftSchema, failingChecks } from "../worker/prompt.ts";
 
 const [slug, slidesArg] = process.argv.slice(2);
@@ -28,6 +30,9 @@ for (const [i, c] of d.chapters.entries()) {
   if (w < 900 || w > 1700) problems.push(`${n}: ${w} kata, target 900-1500`);
   if (h2[0] !== "## Tujuan") problems.push(`${n}: harus mulai dengan ## Tujuan`);
   if (h2.at(-1) !== "## Rangkuman") problems.push(`${n}: harus berakhir dengan ## Rangkuman`);
+  const missing = missingDiagrams(c.body, (name) => existsSync(`public/praktik/${name}.svg`));
+  if (missing.length) problems.push(`${n}: gambar tidak ada: ${missing.join(", ")}`);
+  if (diagramCount(c.body) > 3) problems.push(`${n}: ${diagramCount(c.body)} gambar, maksimal 3`);
   if (embeds.length > 1) problems.push(`${n}: ${embeds.length} sisipan slide, maksimal 1`);
   if (embeds.some((e) => e < c.slide_from || e > c.slide_to)) problems.push(`${n}: sisipan slide di luar rentang bab`);
   if (c.slide_to > slides) problems.push(`${n}: slide_to ${c.slide_to} melebihi ${slides} slide`);

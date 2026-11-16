@@ -62,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const path = url.pathname;
-  if (path.startsWith("/_astro/") || path.startsWith("/icons/")) {
+  if (path.startsWith("/_astro/") || path.startsWith("/icons/") || path.startsWith("/praktik/")) {
     event.respondWith(cacheFirst(request));
   } else if (request.mode === "navigate") {
     if (path === "/" || path.startsWith("/belajar/") || path.startsWith("/roadmap")) {
