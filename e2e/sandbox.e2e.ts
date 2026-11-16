@@ -67,3 +67,16 @@ test("python runs on Pyodide: prints, checks, and the last traceback line as the
   const bad = await run(page, "python", { code: "print(belum_ada)" }, [], "", 60_000);
   expect(bad.error).toMatch(/^NameError/);
 });
+
+test("mikrotik: a two-command script passes its checks and a bad command prints an error line", async ({ page }) => {
+  const code = "/system identity set name=R-Kantor\n/ip address add address=192.168.88.1/24 interface=ether2";
+  const tests = [
+    { name: "nama", check: 'router.identity === "R-Kantor"' },
+    { name: "alamat", check: 'router.addresses.some((a) => a.address === "192.168.88.1/24" && a.interface === "ether2")' },
+  ];
+  const ok = await run(page, "mikrotik", { code }, tests);
+  expect(ok.results).toEqual([{ name: "nama", pass: true }, { name: "alamat", pass: true }]);
+  expect(ok.logs[0]).toBe("[admin@MikroTik] > /system identity set name=R-Kantor");
+  const bad = await run(page, "mikrotik", { code: "/ip tidak-ada" }, []);
+  expect(bad.logs.some((l) => l.includes("bad command name"))).toBe(true);
+});

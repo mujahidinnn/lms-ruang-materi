@@ -577,6 +577,25 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
   the page after the call, `invalidateContent()` drops cached content. No
   other endpoint unless a third party calls it.
 
+- **Exercise kind `mikrotik`** (`lib/code/routeros.ts`, wrapped by
+  `lib/code/mikrotik.ts`): the learner's `code` is RouterOS command text,
+  run line by line against an in-memory router. `setup` may define
+  `var awal = {...}` (partial initial `router`); tests read `router`
+  (`identity`, `interfaces`, `addresses`, `pools`, `dhcpServers`,
+  `dhcpNetworks`, `nat`, `routes`, `dns`) and `keluaran` (terminal lines,
+  each command echoed after `[admin@MikroTik] > `). Commands: `/system identity
+  set|print`, `/interface print`, `/ip address add|remove|print`, `/ip pool
+  add|print`, `/ip dhcp-server add|print`, `/ip dhcp-server network
+  add|print`, `/ip firewall nat add|print`, `/ip route add|print`, `/ip dns
+  set|print`, `ping`. Both `/ip address add` and `/ip/address/add` forms work.
+  Behaviors where RouterOS is not mimicked exactly: `/ping` defaults to
+  `count=4`; `dhcp-server network add` needs only `address` (`gateway`,
+  `dns-server` default to empty); ping to a non-IP target just times out;
+  `allow-remote-requests` accepts only `yes`/`no`; `remove` needs a number.
+  Only `bad command name`, `failure: already have such address` and `input
+  does not match any value of <arg>` are exact RouterOS messages; every
+  other error message is an approximation.
+
 Naming: `PascalCase` for components, `camelCase` for helpers, kebab-case for
 slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).
 
