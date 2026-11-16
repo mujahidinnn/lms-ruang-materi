@@ -587,7 +587,7 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
   set|print`, `/interface print`, `/ip address add|remove|print`, `/ip pool
   add|print`, `/ip dhcp-server add|print`, `/ip dhcp-server network
   add|print`, `/ip firewall nat add|print`, `/ip route add|print`, `/ip dns
-  set|print`, `ping`. Both `/ip address add` and `/ip/address/add` forms work.
+  set|print`, `ping`. `dhcp-server add` takes optional `disabled=yes|no`; as on RouterOS a server added without `disabled=no` is disabled (`dhcpServers[].disabled`, shown as an `X` flag in print). Both `/ip address add` and `/ip/address/add` forms work.
   Behaviors where RouterOS is not mimicked exactly: `/ping` defaults to
   `count=4`; `dhcp-server network add` needs only `address` (`gateway`,
   `dns-server` default to empty); ping to a non-IP target just times out;

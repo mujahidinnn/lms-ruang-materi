@@ -3,7 +3,7 @@ export type RouterState = {
   interfaces: { name: string; running: boolean }[];
   addresses: { address: string; network: string; interface: string }[];
   pools: { name: string; ranges: string }[];
-  dhcpServers: { name: string; interface: string; addressPool: string }[];
+  dhcpServers: { name: string; interface: string; addressPool: string; disabled: boolean }[];
   dhcpNetworks: { address: string; gateway: string; dnsServer: string }[];
   nat: { chain: string; action: string; outInterface: string; srcAddress: string }[];
   routes: { dstAddress: string; gateway: string }[];
@@ -86,7 +86,7 @@ export function routerOSShim() {
     "system identity set": { keys: ["name"], req: ["name"] },
     "ip address add": { keys: ["address", "interface"], req: ["address", "interface"] },
     "ip pool add": { keys: ["name", "ranges"], req: ["name", "ranges"] },
-    "ip dhcp-server add": { keys: ["name", "interface", "address-pool"], req: ["name", "interface", "address-pool"] },
+    "ip dhcp-server add": { keys: ["name", "interface", "address-pool", "disabled"], req: ["name", "interface", "address-pool"] },
     "ip dhcp-server network add": { keys: ["address", "gateway", "dns-server"], req: ["address"] },
     "ip firewall nat add": { keys: ["chain", "action", "out-interface", "src-address"], req: ["chain", "action"] },
     "ip route add": { keys: ["dst-address", "gateway"], req: ["dst-address", "gateway"] },
@@ -110,7 +110,7 @@ export function routerOSShim() {
         interfaces: { name: "string", running: "boolean" },
         addresses: { address: "string", network: "string", interface: "string" },
         pools: { name: "string", ranges: "string" },
-        dhcpServers: { name: "string", interface: "string", addressPool: "string" },
+        dhcpServers: { name: "string", interface: "string", addressPool: "string", disabled: "boolean" },
         dhcpNetworks: { address: "string", gateway: "string", dnsServer: "string" },
         nat: { chain: "string", action: "string", outInterface: "string", srcAddress: "string" },
         routes: { dstAddress: "string", gateway: "string" },
@@ -272,12 +272,13 @@ export function routerOSShim() {
           printList(["NAME", "RANGES"], router.pools.map((p) => [p.name, p.ranges]));
           break;
         case "ip dhcp-server add":
-          if (!router.pools.some((p) => p.name === g("address-pool"))) err("input does not match any value of address-pool");
+          if (args["disabled"] !== undefined && args["disabled"] !== "yes" && args["disabled"] !== "no") err("invalid value for argument disabled");
+          else if (!router.pools.some((p) => p.name === g("address-pool"))) err("input does not match any value of address-pool");
           else if (!hasIf(g("interface"))) err("input does not match any value of interface");
-          else router.dhcpServers.push({ name: g("name"), interface: g("interface"), addressPool: g("address-pool") });
+          else router.dhcpServers.push({ name: g("name"), interface: g("interface"), addressPool: g("address-pool"), disabled: args["disabled"] !== "no" });
           break;
         case "ip dhcp-server print":
-          printList(["NAME", "INTERFACE", "ADDRESS-POOL"], router.dhcpServers.map((d) => [d.name, d.interface, d.addressPool]));
+          printList(["FLAGS", "NAME", "INTERFACE", "ADDRESS-POOL"], router.dhcpServers.map((d) => [d.disabled ? "X" : "", d.name, d.interface, d.addressPool]));
           break;
         case "ip dhcp-server network add":
           router.dhcpNetworks.push({ address: g("address"), gateway: g("gateway"), dnsServer: g("dns-server") });

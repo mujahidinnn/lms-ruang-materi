@@ -61,10 +61,22 @@ describe("routerOSShim", () => {
     expect(has(r.keluaran, "p1")).toBe(true);
   });
 
+  it("dhcp-server disabled", () => {
+    const pool = "/ip pool add name=p1 ranges=10.0.0.2-10.0.0.9\n";
+    const add = "/ip dhcp-server add name=d1 interface=ether2 address-pool=p1";
+    expect(run(pool + add).router.dhcpServers[0].disabled).toBe(true);
+    expect(run(pool + add + " disabled=no").router.dhcpServers[0].disabled).toBe(false);
+    expect(run(pool + add + " disabled=yes").router.dhcpServers[0].disabled).toBe(true);
+    const bad = run(pool + add + " disabled=maybe");
+    expect(has(bad.keluaran, "invalid value for argument disabled")).toBe(true);
+    expect(bad.router.dhcpServers).toHaveLength(0);
+    expect(has(run(pool + add + "\n/ip dhcp-server print").keluaran, " X ")).toBe(true);
+  });
+
   it("dhcp-server dan network", () => {
     const pool = "/ip pool add name=p1 ranges=10.0.0.2-10.0.0.9\n";
     const ok = run(pool + "/ip dhcp-server add name=d1 interface=ether2 address-pool=p1\n/ip dhcp-server print");
-    expect(ok.router.dhcpServers).toEqual([{ name: "d1", interface: "ether2", addressPool: "p1" }]);
+    expect(ok.router.dhcpServers).toEqual([{ name: "d1", interface: "ether2", addressPool: "p1", disabled: true }]);
     const noPool = run("/ip dhcp-server add name=d1 interface=ether2 address-pool=zz");
     expect(has(noPool.keluaran, "input does not match any value of address-pool")).toBe(true);
     expect(noPool.router.dhcpServers).toHaveLength(0);
