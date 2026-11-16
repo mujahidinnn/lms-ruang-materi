@@ -1,0 +1,1374 @@
+{
+  "title": "Administrasi Server dan Keamanan",
+  "description": "Pelajari peran SysAdmin, administrasi Linux, jaringan, hardening, firewall, SSH, TLS, monitoring, backup, respons insiden, dan otomasi dengan contoh perintah nyata.",
+  "summary": "Kelas ini membahas pekerjaan administrator server dari dasar sampai praktik keamanannya. Kamu mulai dari peran SysAdmin dan model infrastruktur (bare metal, virtualisasi, container, cloud), lalu mempelajari administrasi Linux: perintah esensial, pengguna, grup, izin berkas, layanan systemd, proses, dan penjadwalan dengan cron.\n\nSetelah itu kamu masuk ke dasar jaringan (TCP/IP, port umum, layanan inti seperti DNS, DHCP, SSH, dan NTP) dan kerangka keamanan: CIA Triad, AAA, serta ancaman umum beserta mitigasinya. Bagian tengah kelas berfokus pada hardening: firewall dengan ufw dan default deny, segmentasi dengan DMZ, pengamanan SSH dengan kunci dan fail2ban, serta kriptografi dan TLS.\n\nBagian akhir mengajarkan visibilitas dan kesiapan pulih: monitoring dan logging terpusat, IDS dan IPS, manajemen kerentanan, backup 3-2-1, respons insiden menurut NIST, dan otomasi dengan Ansible. Kamu juga berlatih menerjemahkan izin chmod dan membaca log login gagal dengan JavaScript, lalu menutupnya dengan proyek penganalisis log keamanan.",
+  "tips": [
+    "Biasakan menulis catatan setiap kali mengubah konfigurasi server, sekecil apa pun perubahannya.",
+    "Hafalkan izin oktal dengan menjumlahkan r = 4, w = 2, x = 1 per kelompok, bukan menghafal angka satu per satu.",
+    "Latih grep, sort, dan uniq -c pada log autentikasi sampai kamu bisa menemukan IP penyerang dalam satu baris perintah.",
+    "Sebelum mematikan login sandi SSH atau mengaktifkan firewall, buka sesi terminal cadangan agar tidak terkunci dari server.",
+    "Untuk setiap kontrol keamanan, tanyakan pilar CIA mana yang dilindungi dan ancaman mana yang ditutup."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa tiga tanggung jawab inti SysAdmin?",
+      "back": "Ketersediaan, kinerja, dan keamanan server."
+    },
+    {
+      "front": "Apa bedanya VM dan container?",
+      "back": "VM membawa OS tamu sendiri di atas hypervisor, container berbagi kernel host sehingga lebih ringan."
+    },
+    {
+      "front": "Apa beda IaaS, PaaS, dan SaaS?",
+      "back": "IaaS menyewa infrastruktur, PaaS menyewa platform untuk aplikasi, SaaS memakai aplikasi jadi."
+    },
+    {
+      "front": "Berapa nilai r, w, dan x pada izin berkas?",
+      "back": "r = 4, w = 2, x = 1."
+    },
+    {
+      "front": "Apa arti chmod 750?",
+      "back": "Owner rwx, group r-x, others tanpa izin: rwxr-x---."
+    },
+    {
+      "front": "Apa itu least privilege?",
+      "back": "Memberi akses seminimal mungkin yang cukup untuk menyelesaikan tugas."
+    },
+    {
+      "front": "Apa beda systemctl start dan enable?",
+      "back": "start menjalankan layanan sekarang, enable menyalakannya otomatis saat boot."
+    },
+    {
+      "front": "Apa arti entri cron 0 2 * * *?",
+      "back": "Jalankan setiap hari pukul 02:00."
+    },
+    {
+      "front": "Sebutkan empat lapisan TCP/IP.",
+      "back": "Application, Transport, Internet, Network Access."
+    },
+    {
+      "front": "Port apa yang dipakai SSH, DNS, dan HTTPS?",
+      "back": "SSH 22, DNS 53, HTTPS 443."
+    },
+    {
+      "front": "Apa isi CIA Triad?",
+      "back": "Confidentiality, Integrity, Availability."
+    },
+    {
+      "front": "Apa isi AAA?",
+      "back": "Authentication (siapa kamu), Authorization (apa yang boleh), Accounting (apa yang dilakukan)."
+    },
+    {
+      "front": "Apa mitigasi brute force SSH?",
+      "back": "SSH key, fail2ban, dan kebijakan sandi kuat."
+    },
+    {
+      "front": "Apa itu hardening?",
+      "back": "Menutup celah dengan menghapus yang tidak perlu dan mengunci yang tersisa, acuannya CIS Benchmarks."
+    },
+    {
+      "front": "Apa arti firewall default deny?",
+      "back": "Blokir semua trafik masuk, lalu izinkan hanya yang dibutuhkan."
+    },
+    {
+      "front": "Apa fungsi DMZ?",
+      "back": "Zona untuk server publik seperti web dan mail, terpisah dari LAN internal tempat database berada."
+    },
+    {
+      "front": "Kapan kriptografi simetris dan asimetris dipakai di TLS?",
+      "back": "Asimetris untuk bertukar kunci sesi, simetris untuk mengenkripsi data."
+    },
+    {
+      "front": "Mengapa log dikirim ke server terpusat?",
+      "back": "Penyerang bisa menghapus log lokal, salinan terpusat tetap utuh untuk forensik."
+    },
+    {
+      "front": "Apa beda IDS dan IPS?",
+      "back": "IDS pasif dan hanya memberi peringatan, IPS inline dan memblokir otomatis."
+    },
+    {
+      "front": "Apa langkah siklus manajemen kerentanan?",
+      "back": "Identifikasi, evaluasi (CVSS), remediasi, verifikasi."
+    },
+    {
+      "front": "Apa aturan backup 3-2-1?",
+      "back": "3 salinan data, 2 jenis media, 1 salinan offsite."
+    },
+    {
+      "front": "Apa beda RPO dan RTO?",
+      "back": "RPO batas data yang boleh hilang, RTO batas waktu layanan pulih."
+    },
+    {
+      "front": "Sebutkan enam fase respons insiden NIST.",
+      "back": "Persiapan, deteksi dan analisis, penahanan, eradikasi, pemulihan, pembelajaran."
+    },
+    {
+      "front": "Apa itu Infrastructure as Code?",
+      "back": "Mengelola infrastruktur lewat berkas kode (Terraform atau OpenTofu) sehingga terdokumentasi dan bisa diulang."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang termasuk fungsi server berdasarkan tugasnya?",
+      "code": "",
+      "options": [
+        "DNS server",
+        "Hypervisor",
+        "Container",
+        "Bare metal"
+      ],
+      "answer": 0,
+      "explanation": "DNS server adalah jenis berdasarkan fungsi. Hypervisor, container, dan bare metal adalah model infrastruktur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah untuk melihat sisa ruang disk dalam format mudah dibaca adalah...",
+      "code": "",
+      "options": [
+        "df -h",
+        "free -h",
+        "ss -tulpn",
+        "uptime"
+      ],
+      "answer": 0,
+      "explanation": "df -h menampilkan penggunaan disk. free -h untuk memori, uptime untuk beban, ss -tulpn untuk port."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai oktal untuk izin r-x adalah...",
+      "code": "",
+      "options": [
+        "5",
+        "3",
+        "7",
+        "6"
+      ],
+      "answer": 0,
+      "explanation": "r = 4 dan x = 1 sehingga 4 + 1 = 5. Angka 6 adalah rw-, 7 adalah rwx."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana log autentikasi seperti login SSH umumnya tersimpan di distro Debian atau Ubuntu?",
+      "code": "",
+      "options": [
+        "/home/log",
+        "/var/log/auth.log",
+        "/etc/passwd",
+        "/usr/bin/ssh"
+      ],
+      "answer": 1,
+      "explanation": "auth.log mencatat login dan sudo. /etc/passwd berisi daftar akun, bukan log."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Lapisan model TCP/IP tempat protokol TCP dan UDP berada adalah...",
+      "code": "",
+      "options": [
+        "Network Access",
+        "Transport",
+        "Application",
+        "Internet"
+      ],
+      "answer": 1,
+      "explanation": "TCP dan UDP berada di lapisan Transport (OSI 4). IP ada di Internet, HTTP di Application."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi utama NTP di server adalah...",
+      "code": "",
+      "options": [
+        "Membagikan alamat IP otomatis",
+        "Menerjemahkan nama domain",
+        "Mengenkripsi lalu lintas SSH",
+        "Menyinkronkan waktu agar log dan sertifikat konsisten"
+      ],
+      "answer": 3,
+      "explanation": "NTP menjaga waktu tetap tepat. DNS menerjemahkan nama, DHCP membagikan IP, SSH mengenkripsi akses jarak jauh."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pilar CIA yang dijaga oleh redundansi dan backup adalah...",
+      "code": "",
+      "options": [
+        "Integrity",
+        "Availability",
+        "Confidentiality",
+        "Authentication"
+      ],
+      "answer": 1,
+      "explanation": "Redundansi dan backup memastikan layanan dan data tetap tersedia saat ada gangguan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Hardening dilakukan sebelum server masuk produksi, bukan setelah terjadi insiden.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Mengurangi attack surface sejak awal jauh lebih murah daripada menambal setelah diserang."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Hashing adalah fungsi satu arah yang tidak bisa dibalik untuk mendapatkan data aslinya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Karena itu sandi disimpan sebagai hash, misalnya dengan bcrypt atau Argon2."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "DMZ adalah zona untuk menaruh database internal agar terlindung dari internet.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. DMZ untuk server yang harus dijangkau publik seperti web dan mail, sedangkan database ditaruh di zona internal di belakang firewall kedua."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil izin berkas setelah perintah berikut?",
+      "code": "chmod 750 skrip.sh",
+      "options": [
+        "rwxr-x---",
+        "rwxr-xr-x",
+        "rw-r-----",
+        "rwx------"
+      ],
+      "answer": 0,
+      "explanation": "7 = rwx untuk owner, 5 = r-x untuk group, 0 = --- untuk others, sehingga hasilnya rwxr-x---."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang terjadi saat perintah ini dijalankan?",
+      "code": "sudo usermod -L userlama",
+      "options": [
+        "Akun userlama dikunci tanpa dihapus sehingga tidak bisa login",
+        "Akun userlama dan home-nya dihapus permanen",
+        "Akun userlama diberi hak sudo",
+        "Password userlama diubah menjadi kosong"
+      ],
+      "answer": 0,
+      "explanation": "Opsi -L mengunci akun, data dan riwayatnya tetap ada untuk audit. Penghapusan memakai userdel, hak sudo lewat grup sudo."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Area tugas SysAdmin yang meliputi penjadwalan backup dan uji restore disebut...",
+      "code": "",
+      "options": [
+        "Manajemen pengguna",
+        "Backup dan pemulihan",
+        "Instalasi dan konfigurasi",
+        "Monitoring dan kinerja"
+      ],
+      "answer": 1,
+      "explanation": "Backup dan pemulihan mencakup jadwal backup, uji restore, dan rencana DR. Area lain menangani akun, penyiapan sistem, dan pemantauan sumber daya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada model IaaS, siapa yang mengurus sistem operasi?",
+      "code": "",
+      "options": [
+        "Vendor perangkat keras",
+        "Pengguna akhir aplikasi",
+        "Penyedia cloud sepenuhnya",
+        "Pelanggan yang menyewa server virtual"
+      ],
+      "answer": 3,
+      "explanation": "IaaS hanya menyediakan server virtual, jaringan, dan penyimpanan. OS ke atas menjadi tanggung jawab penyewa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alat yang paling sesuai untuk mengatur banyak container sekaligus adalah...",
+      "code": "",
+      "options": [
+        "fail2ban",
+        "Nmap",
+        "Kubernetes",
+        "certbot"
+      ],
+      "answer": 2,
+      "explanation": "Kubernetes mengorkestrasi container. Nmap memindai jaringan, fail2ban memblokir IP penebak sandi, certbot mengurus sertifikat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan memisahkan web server dan database ke mesin berbeda adalah...",
+      "code": "",
+      "options": [
+        "Web server membutuhkan lebih banyak port",
+        "Database tidak bisa berjalan di mesin yang sama dengan web",
+        "Peretasan web server tidak otomatis memberi akses ke database",
+        "Agar backup tidak perlu dilakukan"
+      ],
+      "answer": 2,
+      "explanation": "Pemisahan fungsi membatasi dampak: penyerang yang menguasai satu mesin masih harus menembus aturan akses menuju mesin lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah untuk melihat proses berdasarkan pemakaian sumber daya secara interaktif adalah...",
+      "code": "",
+      "options": [
+        "chown",
+        "top",
+        "cat",
+        "dig"
+      ],
+      "answer": 1,
+      "explanation": "top (atau htop) menampilkan proses dan pemakaiannya secara langsung. cat membaca berkas, chown mengubah pemilik, dig memeriksa DNS."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah yang menampilkan port yang sedang mendengarkan beserta prosesnya adalah...",
+      "code": "",
+      "options": [
+        "ss -tulpn",
+        "usermod -aG",
+        "uname -a",
+        "ls -l"
+      ],
+      "answer": 0,
+      "explanation": "ss -tulpn menampilkan soket TCP dan UDP yang listening dan proses pemiliknya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi pada useradd yang membuat direktori home bagi pengguna baru adalah...",
+      "code": "",
+      "options": [
+        "-L",
+        "-s",
+        "-G",
+        "-m"
+      ],
+      "answer": 3,
+      "explanation": "-m membuat home. -G menentukan grup tambahan, -s menentukan shell, dan -L adalah opsi usermod untuk mengunci akun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa lebih baik memakai sudo daripada login langsung sebagai root?",
+      "code": "",
+      "options": [
+        "Sudo menghapus kebutuhan akan sandi sama sekali",
+        "Root tidak bisa menjalankan perintah apa pun",
+        "Setiap tindakan administratif tercatat atas nama pengguna yang menjalankannya",
+        "Sudo membuat perintah berjalan lebih cepat"
+      ],
+      "answer": 2,
+      "explanation": "Sudo memberi jejak audit per pengguna dan membatasi hak, sedangkan login root tidak menunjukkan siapa yang bertindak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah yang membaca log layanan nginx sejak hari ini adalah...",
+      "code": "",
+      "options": [
+        "journalctl -u nginx --since today",
+        "systemctl enable nginx",
+        "kill nginx",
+        "grep nginx /etc/passwd"
+      ],
+      "answer": 0,
+      "explanation": "journalctl -u menyaring log berdasarkan unit layanan dan --since membatasi waktunya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Lapisan model TCP/IP yang memuat IP, ICMP, dan routing adalah...",
+      "code": "",
+      "options": [
+        "Application",
+        "Internet",
+        "Transport",
+        "Network Access"
+      ],
+      "answer": 1,
+      "explanation": "Lapisan Internet (OSI 3) mengurus pengalamatan dan rute. Ethernet dan Wi-Fi ada di Network Access."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Port default HTTPS adalah...",
+      "code": "",
+      "options": [
+        "22",
+        "443",
+        "3306",
+        "80"
+      ],
+      "answer": 1,
+      "explanation": "443 untuk HTTPS, 80 untuk HTTP, 22 untuk SSH, 3306 untuk MySQL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh penerapan accounting dalam AAA adalah...",
+      "code": "",
+      "options": [
+        "Menentukan grup yang boleh membaca berkas",
+        "Mencatat siapa menjalankan perintah apa di log audit",
+        "Meminta pengguna memasukkan sandi",
+        "Mengenkripsi koneksi dengan TLS"
+      ],
+      "answer": 1,
+      "explanation": "Accounting menjawab apa yang telah dilakukan, diwujudkan dalam log. Sandi adalah authentication dan grup adalah authorization."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Phishing paling efektif dikurangi dengan kombinasi...",
+      "code": "",
+      "options": [
+        "Rate limiting dan CDN",
+        "TLS 1.3 dan HSTS",
+        "Prepared statement dan WAF",
+        "Edukasi pengguna, MFA, dan filter email"
+      ],
+      "answer": 3,
+      "explanation": "Phishing menyerang manusia. Edukasi dan filter mengurangi korban, MFA membatasi kerusakan jika sandi tercuri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prepared statement mengurangi risiko serangan jenis...",
+      "code": "",
+      "options": [
+        "Credential stuffing",
+        "Man-in-the-middle",
+        "DDoS",
+        "Injeksi SQL"
+      ],
+      "answer": 3,
+      "explanation": "Prepared statement memisahkan data dari perintah SQL sehingga input tidak ditafsirkan sebagai kode."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Acuan konfigurasi aman per sistem operasi yang dipakai banyak organisasi adalah...",
+      "code": "",
+      "options": [
+        "CVSS",
+        "NIST SP 800-61",
+        "RPO dan RTO",
+        "CIS Benchmarks"
+      ],
+      "answer": 3,
+      "explanation": "CIS Benchmarks adalah panduan hardening. NIST SP 800-61 untuk respons insiden, CVSS untuk skor kerentanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manfaat segmentasi jaringan dengan DMZ dan firewall internal adalah...",
+      "code": "",
+      "options": [
+        "Membatasi pergerakan lateral penyerang",
+        "Menghilangkan kebutuhan patching",
+        "Mempercepat koneksi internet",
+        "Membuat semua trafik terenkripsi otomatis"
+      ],
+      "answer": 0,
+      "explanation": "Jika zona publik jebol, penyerang tetap harus melewati aturan antar-zona untuk mencapai sistem internal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe kunci yang disarankan untuk SSH pada materi ini adalah...",
+      "code": "",
+      "options": [
+        "SHA-256",
+        "Ed25519",
+        "AES-256",
+        "ChaCha20"
+      ],
+      "answer": 1,
+      "explanation": "Ed25519 adalah algoritma kunci publik. AES dan ChaCha20 adalah simetris, SHA-256 adalah hash."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh platform SIEM yang disebut dalam materi adalah...",
+      "code": "",
+      "options": [
+        "HAProxy",
+        "Grafana",
+        "Terraform",
+        "Wazuh"
+      ],
+      "answer": 3,
+      "explanation": "Wazuh menggabungkan log dan deteksi sebagai SIEM. Grafana untuk visualisasi, Terraform untuk IaC, HAProxy untuk load balancing."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alat yang cocok untuk memindai kerentanan pada image container adalah...",
+      "code": "",
+      "options": [
+        "Suricata",
+        "Restic",
+        "chrony",
+        "Trivy"
+      ],
+      "answer": 3,
+      "explanation": "Trivy memindai kerentanan image dan dependensi. Suricata adalah IDS/IPS, chrony adalah NTP, Restic adalah alat backup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "RPO 1 jam berarti...",
+      "code": "",
+      "options": [
+        "Layanan harus pulih dalam 1 jam",
+        "Data yang hilang paling banyak setara 1 jam terakhir",
+        "Backup dilakukan 1 kali setahun",
+        "Hanya 1 salinan data yang boleh ada"
+      ],
+      "answer": 1,
+      "explanation": "RPO adalah batas data yang boleh hilang. Batas waktu pulih layanan adalah RTO."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Backup yang menyimpan data berubah sejak backup full terakhir disebut...",
+      "code": "",
+      "options": [
+        "Incremental",
+        "Differential",
+        "Mirror",
+        "Snapshot RAM"
+      ],
+      "answer": 1,
+      "explanation": "Differential menyalin perubahan sejak full terakhir. Incremental menyalin perubahan sejak backup terakhir apa pun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fase respons insiden yang berisi post-mortem adalah...",
+      "code": "",
+      "options": [
+        "Persiapan",
+        "Pembelajaran",
+        "Eradikasi",
+        "Penahanan"
+      ],
+      "answer": 1,
+      "explanation": "Fase terakhir adalah pembelajaran: menganalisis kejadian dan memperbaiki prosedur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tujuan fase penahanan (containment) adalah...",
+      "code": "",
+      "options": [
+        "Mengumumkan insiden ke publik",
+        "Menginstal ulang seluruh jaringan",
+        "Mengisolasi sistem agar serangan tidak meluas",
+        "Menghapus semua log sebagai bukti"
+      ],
+      "answer": 2,
+      "explanation": "Penahanan membatasi dampak lebih dulu. Log justru bukti yang harus diselamatkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alat configuration management yang memakai playbook YAML adalah...",
+      "code": "",
+      "options": [
+        "Ansible",
+        "Snort",
+        "Nginx",
+        "OpenSSH"
+      ],
+      "answer": 0,
+      "explanation": "Ansible memakai playbook YAML untuk mendefinisikan kondisi yang diinginkan di banyak server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prinsip zero trust berarti...",
+      "code": "",
+      "options": [
+        "Tidak memakai autentikasi sama sekali",
+        "Mempercayai semua trafik dari dalam jaringan kantor",
+        "Memverifikasi setiap akses dan perangkat, tanpa percaya otomatis",
+        "Hanya memverifikasi akses sekali setahun"
+      ],
+      "answer": 2,
+      "explanation": "Zero trust tidak mempercayai lokasi jaringan, setiap akses selalu divalidasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Praktik change management yang benar adalah...",
+      "code": "",
+      "options": [
+        "Menghindari semua perubahan selamanya",
+        "Langsung mengubah produksi saat jam sibuk",
+        "Merencanakan perubahan, menguji di staging, dan menyiapkan rollback",
+        "Mencatat perubahan hanya jika terjadi masalah"
+      ],
+      "answer": 2,
+      "explanation": "Change management mengurangi risiko dengan pengujian terlebih dahulu dan rencana mundur."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Server yang menjalankan banyak container tetap memakai sistem operasi tamu terpisah untuk tiap container.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Container berbagi kernel host, yang membedakannya dari VM."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada izin berkas, nilai x pada direktori berarti boleh masuk ke direktori tersebut.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Tanpa x pada direktori, pengguna tidak bisa masuk (cd) atau mengakses isinya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "chmod 777 adalah cara yang aman untuk mengatasi masalah izin.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. 777 memberi semua orang semua izin dan hampir selalu menjadi celah keamanan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "systemctl enable saja sudah menjalankan layanan saat itu juga tanpa opsi tambahan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. enable hanya mengatur start saat boot. Untuk langsung menjalankan, gunakan --now atau systemctl start."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Port 3306 dipakai oleh MySQL dan sebaiknya tidak terbuka langsung ke internet.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Database yang terekspos publik adalah kesalahan konfigurasi yang sering dieksploitasi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Waktu server yang tidak sinkron dapat menyulitkan korelasi log dan memengaruhi validitas sertifikat.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Karena itu NTP, misalnya dengan chrony, penting di setiap server."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Credential stuffing memakai pasangan akun dan sandi yang bocor dari layanan lain.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Penyerang mencoba kredensial bocor di banyak layanan karena orang sering memakai sandi yang sama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "IDS memblokir trafik berbahaya secara otomatis karena berada inline di jalur trafik.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Itu ciri IPS. IDS bersifat pasif dan hanya memberi peringatan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Sandi sebaiknya disimpan dengan enkripsi simetris agar bisa didekripsi saat dibutuhkan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Sandi disimpan sebagai hash satu arah dengan algoritma seperti bcrypt atau Argon2."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Aturan backup 3-2-1 mensyaratkan minimal satu salinan di lokasi terpisah.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Salinan offsite melindungi dari bencana yang menimpa satu lokasi."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dilakukan perintah ini?",
+      "code": "sudo ufw default deny incoming\nsudo ufw allow 22/tcp\nsudo ufw enable",
+      "options": [
+        "Menolak semua koneksi masuk kecuali SSH pada port 22, lalu mengaktifkan firewall",
+        "Mengizinkan semua koneksi masuk dan hanya menolak SSH",
+        "Menghapus semua aturan firewall yang ada",
+        "Menolak semua koneksi termasuk SSH lalu mengaktifkan firewall"
+      ],
+      "answer": 0,
+      "explanation": "Kebijakan default menolak semua yang masuk, aturan allow membuka 22/tcp, dan enable mengaktifkannya. Urutan ini menjaga akses SSH tetap ada."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa kali skrip ini dijalankan dalam sehari?",
+      "code": "*/15 * * * * /opt/scripts/cek.sh",
+      "options": [
+        "96 kali, yaitu setiap 15 menit",
+        "15 kali, yaitu sekali per menit ke-15",
+        "24 kali, yaitu setiap jam",
+        "1 kali pada pukul 15:00"
+      ],
+      "answer": 0,
+      "explanation": "*/15 pada kolom menit berarti tiap 15 menit sehingga 4 kali per jam x 24 jam = 96 kali."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa tujuan perintah ini?",
+      "code": "sha256sum ubuntu.iso\n# bandingkan dengan nilai di situs resmi",
+      "options": [
+        "Membuat backup berkas ke server lain",
+        "Mengenkripsi berkas agar tidak bisa dibaca",
+        "Memeriksa integritas berkas, apakah isinya berubah atau rusak",
+        "Mengubah izin berkas menjadi 644"
+      ],
+      "answer": 2,
+      "explanation": "SHA-256 menghasilkan sidik jari berkas. Bila hash cocok dengan nilai resmi, isi berkas tidak berubah, itulah integritas."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa fungsi bagian -aG pada perintah ini?",
+      "code": "sudo usermod -aG docker budi",
+      "options": [
+        "Mengunci akun budi dari grup lain",
+        "Menambahkan budi ke grup docker tanpa menghapus grup lainnya",
+        "Mengganti seluruh grup budi hanya dengan docker",
+        "Menghapus budi dari grup docker"
+      ],
+      "answer": 1,
+      "explanation": "-a (append) bersama -G menambah keanggotaan grup tanpa menghilangkan yang sudah ada."
+    }
+  ],
+  "prerequisites": [
+    "dasar-komputer-dan-os",
+    "jaringan-komputer"
+  ],
+  "chapters": [
+    {
+      "slug": "peran-sysadmin-dan-infrastruktur",
+      "title": "Peran SysAdmin dan Model Infrastruktur",
+      "est_minutes": 18,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa yang dikerjakan seorang system administrator (SysAdmin) dan kenapa perannya penting.\n- Menyebutkan enam area tugas harian SysAdmin.\n- Membedakan bare metal, virtualisasi, container, dan cloud.\n- Mengenali jenis server berdasarkan fungsinya dan memahami infrastruktur hybrid.\n\n## Server dan orang yang menjaganya\n\nServer adalah komputer yang tugasnya melayani komputer lain. Saat kamu membuka sebuah situs, login ke aplikasi kampus, atau mengirim email, ada server yang menerima permintaanmu dan membalasnya. Server tidak punya layar dan keyboard yang dipakai tiap hari. Ia diharapkan menyala terus, 24 jam sehari, tanpa ada yang menyadari keberadaannya sampai ia mati.\n\nOrang yang memastikan server tetap menyala, cepat, dan aman disebut **system administrator** atau SysAdmin. Kalau dianalogikan, SysAdmin itu seperti teknisi sekaligus satpam sebuah gedung: ia memastikan listrik dan air mengalir (ketersediaan), lift tidak macet (kinerja), dan hanya orang berhak yang bisa masuk ke ruang penting (keamanan). Tanggung jawab intinya ada tiga: **ketersediaan**, **kinerja**, dan **keamanan** server.\n\nMateri kelas ini disusun dari fondasi ke praktik: peran SysAdmin, infrastruktur, administrasi Linux, jaringan, konsep dan ancaman keamanan, hardening, monitoring, lalu backup, respons insiden, dan otomasi. Bab pertama ini meletakkan peta besarnya.\n\n## Enam tugas utama SysAdmin\n\nPekerjaan SysAdmin sehari-hari bisa dikelompokkan menjadi enam area.\n\n| Area | Isi pekerjaan |\n|------|---------------|\n| Instalasi dan konfigurasi | Menyiapkan OS, layanan, dan aplikasi server sesuai standar organisasi |\n| Manajemen pengguna | Membuat akun, mengatur grup, hak akses, dan kebijakan kata sandi |\n| Monitoring dan kinerja | Memantau CPU, memori, disk, dan jaringan agar layanan tetap tersedia |\n| Backup dan pemulihan | Menjadwalkan backup, menguji restore, dan menyiapkan rencana disaster recovery (DR) |\n| Keamanan dan patching | Menerapkan update, hardening, dan merespons kerentanan |\n| Dokumentasi dan otomasi | Mencatat konfigurasi dan mengotomasi tugas berulang dengan skrip |\n\nBeberapa catatan agar tiap area terasa nyata.\n\n**Instalasi dan konfigurasi.** Server baru tidak boleh dipasang sekenanya. Organisasi biasanya punya standar: versi OS tertentu, paket yang boleh dipasang, dan pengaturan dasar yang sama di semua server. Standar ini membuat server mudah dirawat karena kamu tahu persis apa yang ada di dalamnya.\n\n**Manajemen pengguna.** Setiap orang yang butuh akses diberi akun sendiri, dimasukkan ke grup yang sesuai, dan dicabut aksesnya ketika pindah tugas atau keluar. Kesalahan klasik adalah akun lama yang dibiarkan aktif bertahun-tahun, padahal pemiliknya sudah tidak ada di organisasi.\n\n**Monitoring dan kinerja.** Server yang kehabisan disk atau memori akan melambat lalu mati. SysAdmin yang baik melihat gejalanya sebelum pengguna mengeluh, misalnya disk sudah terisi 85 persen dan terus naik.\n\n**Backup dan pemulihan.** Data pasti pernah hilang, entah karena disk rusak, salah hapus, atau serangan. Backup yang tidak pernah diuji sama saja dengan tidak punya backup. Topik ini dibahas lengkap di bab terakhir.\n\n**Keamanan dan patching.** Patching adalah memasang pembaruan yang menambal celah keamanan. Banyak peretasan besar terjadi bukan karena serangan canggih, melainkan karena celah lama yang tambalannya sudah tersedia berbulan-bulan tetapi belum dipasang.\n\n**Dokumentasi dan otomasi.** Apa yang kamu ubah di server harus tercatat. Tugas yang kamu ulang lebih dari dua kali layak dijadikan skrip. Dua kebiasaan ini yang membedakan SysAdmin yang tenang dengan SysAdmin yang selalu kebakaran jenggot.\n\n## Model infrastruktur\n\nServer bisa berwujud banyak hal. Ada empat model infrastruktur yang perlu kamu kenali.\n\n**Bare metal** adalah server fisik yang dipasang di ruang server milik sendiri (on-premise). Satu mesin menjalankan satu OS langsung di atas perangkat keras. Kelebihannya kontrol penuh dan kinerja maksimal. Kekurangannya biaya awal tinggi: beli perangkat, listrik, pendingin, dan ruangan. Contoh merek perangkatnya Dell, HPE, dan Lenovo.\n\n**Virtualisasi** memungkinkan banyak mesin virtual (VM) berjalan di satu server fisik melalui perangkat lunak bernama **hypervisor**. Setiap VM merasa punya komputer sendiri, padahal berbagi perangkat keras yang sama. Contohnya Proxmox, VMware, dan KVM. Analogi: satu gedung besar disekat menjadi banyak kamar kos, masing-masing dengan kunci sendiri.\n\n**Container** lebih ringan lagi. Container tidak membawa OS lengkap seperti VM, melainkan berbagi kernel dengan host, tetapi aplikasi di dalamnya tetap terisolasi dan portabel. Aplikasi yang dibungkus dalam container berjalan sama di laptop developer maupun di server produksi. Contohnya Docker, Podman, dan Kubernetes (untuk mengatur banyak container sekaligus).\n\n**Cloud** menyediakan sumber daya komputasi sesuai permintaan. Kamu menyewa, bukan membeli. Tiga lapisan layanannya:\n\n- **IaaS** (Infrastructure as a Service): kamu menyewa server virtual, jaringan, dan penyimpanan, lalu mengurus OS ke atas sendiri.\n- **PaaS** (Platform as a Service): penyedia mengurus OS dan runtime, kamu cukup menaruh aplikasi.\n- **SaaS** (Software as a Service): kamu langsung memakai aplikasi jadi, misalnya layanan email berbasis web.\n\nPenyedia cloud besar antara lain AWS, Azure, dan GCP.\n\nPerbedaan keempatnya paling mudah dilihat dari siapa yang mengurus apa. Semakin ke arah cloud dan SaaS, semakin sedikit yang kamu kelola sendiri, tetapi semakin sedikit pula kontrol yang kamu punya.\n\n| Model | Kontrol | Biaya awal | Cocok untuk |\n|-------|---------|-----------|-------------|\n| Bare metal | Paling penuh | Tinggi | Beban berat dan stabil, data yang wajib di lokasi sendiri |\n| Virtualisasi | Tinggi | Sedang | Menyatukan banyak server kecil di satu perangkat |\n| Container | Di tingkat aplikasi | Rendah | Aplikasi modern yang sering dirilis |\n| Cloud | Bergantung layanan | Nyaris nol, bayar per pemakaian | Beban berubah-ubah, pertumbuhan cepat |\n\nInfrastruktur modern sering **hybrid**: sebagian di server sendiri, sebagian di cloud. Misalnya database yang berisi data sensitif tetap di ruang server kantor, sedangkan situs publik yang trafiknya naik turun dijalankan di cloud. Tidak ada model yang paling benar, yang ada hanya model yang paling cocok dengan kebutuhan, anggaran, dan aturan yang berlaku.\n\n## Jenis server berdasarkan fungsi\n\nSelain wujud fisiknya, server dikenali dari tugasnya. Satu mesin boleh menjalankan beberapa fungsi, tetapi pada sistem yang lebih besar tiap fungsi dipisah agar lebih aman dan mudah dirawat.\n\n- **Web server**: menyajikan situs dan API, misalnya Nginx atau Apache.\n- **Database server**: menyimpan dan mengelola data terstruktur, misalnya MySQL atau PostgreSQL.\n- **Mail server**: mengirim dan menerima email.\n- **File server**: tempat berbagi berkas antar pengguna dalam organisasi.\n- **DNS server**: menerjemahkan nama domain menjadi alamat IP.\n- **Proxy server**: perantara antara klien dan server lain, untuk menyaring, menyimpan cache, atau melindungi.\n\nMemisahkan fungsi punya alasan keamanan. Bila web server berhasil diretas, penyerang tidak otomatis memegang database kalau database berada di mesin lain dengan aturan akses ketat. Prinsip ini akan muncul lagi saat kita membahas segmentasi jaringan.\n\n## Kesalahan umum di tahap awal\n\nPemula sering menganggap SysAdmin hanya tentang menghafal perintah. Padahal perintah bisa dicari kapan saja, sedangkan kebiasaan kerja sulit dikejar belakangan. Beberapa kesalahan yang sering terjadi:\n\n- Mengubah konfigurasi di server produksi tanpa mencatat apa yang diubah.\n- Memakai satu akun bersama untuk semua orang sehingga tidak ada yang bisa dimintai pertanggungjawaban.\n- Menunda patching karena takut layanan terganggu, lalu terkena serangan yang tambalannya sudah ada.\n- Memilih model infrastruktur karena sedang tren, bukan karena kebutuhan.\n\nKebiasaan sederhana yang bisa kamu mulai sejak sekarang: tulis catatan setiap kali mengubah sesuatu, tanyakan siapa yang butuh akses ke apa, dan biasakan berpikir \"bagaimana kalau ini mati\" sebelum \"bagaimana membuatnya jalan\".\n\n## Rangkuman\n\n- SysAdmin bertanggung jawab atas ketersediaan, kinerja, dan keamanan server.\n- Enam area kerja harian: instalasi dan konfigurasi, manajemen pengguna, monitoring, backup dan pemulihan, keamanan dan patching, dokumentasi dan otomasi.\n- Empat model infrastruktur: bare metal, virtualisasi (hypervisor), container, dan cloud (IaaS, PaaS, SaaS).\n- Server dikenali dari fungsinya: web, database, mail, file, DNS, dan proxy.\n- Infrastruktur modern sering hybrid, jadi pahami kelebihan dan kekurangan tiap model.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa tanggung jawab inti seorang system administrator?",
+          "code": "",
+          "options": [
+            "Mendesain tampilan antarmuka untuk aplikasi web",
+            "Menjual lisensi perangkat lunak kepada pelanggan",
+            "Menulis seluruh kode aplikasi yang berjalan di server",
+            "Menjaga ketersediaan, kinerja, dan keamanan server"
+          ],
+          "answer": 3,
+          "explanation": "Tiga tanggung jawab inti SysAdmin adalah ketersediaan, kinerja, dan keamanan. Menulis aplikasi dan mendesain antarmuka adalah pekerjaan developer dan desainer, sedangkan penjualan lisensi bukan tugas teknis server."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perangkat lunak yang memungkinkan banyak mesin virtual berjalan di satu server fisik disebut...",
+          "code": "",
+          "options": [
+            "Hypervisor",
+            "Package manager",
+            "Load balancer",
+            "Reverse proxy"
+          ],
+          "answer": 0,
+          "explanation": "Hypervisor (misalnya KVM, VMware, Proxmox) membagi sumber daya satu host fisik ke banyak VM. Reverse proxy dan load balancer mengatur lalu lintas, package manager memasang perangkat lunak."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Container berbagi kernel dengan host sehingga lebih ringan daripada VM yang membawa sistem operasi lengkap.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Container hanya mengisolasi aplikasi dan dependensinya, sedangkan VM menjalankan OS tamu sendiri di atas hypervisor."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dimaksud infrastruktur hybrid?",
+          "code": "",
+          "options": [
+            "Sebagian sistem berjalan di server sendiri dan sebagian di cloud",
+            "Semua server memakai dua sistem operasi sekaligus",
+            "Satu server menjalankan banyak fungsi tanpa pemisahan",
+            "Seluruh sistem dipindah ke satu penyedia SaaS"
+          ],
+          "answer": 0,
+          "explanation": "Hybrid berarti menggabungkan on-premise dan cloud, misalnya database sensitif di kantor dan situs publik di cloud. Pilihan lain tidak menggambarkan pencampuran lokasi infrastruktur."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "linux-pengguna-dan-izin",
+      "title": "Perintah Linux, Pengguna, dan Izin Berkas",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Memakai perintah Linux esensial untuk navigasi, membaca berkas, memeriksa sistem, proses, paket, dan jaringan.\n- Membaca dan menulis izin berkas dalam notasi simbolik (rwx) maupun oktal (755).\n- Membuat user dan grup, memberi hak sudo, serta mengatur kepemilikan dan izin.\n- Menerapkan prinsip least privilege.\n\n## Toolkit harian\n\nSebagian besar server Linux tidak punya antarmuka grafis. Kamu bekerja lewat terminal, biasanya terhubung dari jauh. Karena itu sekumpulan perintah dasar menjadi alat kerja utama. Berikut kelompoknya.\n\n| Kategori | Perintah | Fungsi |\n|----------|----------|--------|\n| Navigasi dan berkas | `ls`, `cd`, `cp`, `mv`, `rm`, `find` | Mengelola dan mencari berkas serta direktori |\n| Isi berkas | `cat`, `less`, `grep`, `tail -f` | Membaca, menyaring, dan memantau isi log |\n| Sistem | `uname -a`, `uptime`, `df -h`, `free -h` | Info kernel, beban, disk, dan memori |\n| Proses | `ps aux`, `top`, `htop`, `kill` | Melihat dan menghentikan proses |\n| Paket | `apt` atau `dnf` (`install`, `update`) | Memasang dan memperbarui perangkat lunak |\n| Jaringan | `ip a`, `ss -tulpn`, `ping`, `dig` | Cek IP, port terbuka, dan DNS |\n| Pengguna | `useradd`, `passwd`, `usermod`, `id` | Membuat dan mengelola akun |\n| Layanan | `systemctl`, `journalctl` | Mengontrol layanan dan membaca log sistem |\n\nBeberapa contoh nyata yang akan sering kamu ketik:\n\n```bash\n# Seberapa penuh disk dan memori?\ndf -h\nfree -h\n\n# Server sudah menyala berapa lama, dan seberapa sibuk?\nuptime\n\n# Proses apa yang paling banyak memakai CPU?\nps aux --sort=-%cpu | head -5\n\n# Cari berkas .log yang lebih besar dari 100 MB\nfind /var/log -name \"*.log\" -size +100M\n\n# Port apa saja yang sedang mendengarkan?\nss -tulpn\n```\n\nPerintah `grep` dan `tail -f` pantas dilatih paling awal karena hampir semua investigasi dimulai dari log. `grep` menyaring baris yang cocok dengan pola, sedangkan `tail -f` menampilkan ujung berkas dan terus mengikuti baris baru yang masuk:\n\n```bash\n# Baris yang mengandung \"Failed password\"\ngrep \"Failed password\" /var/log/auth.log\n\n# Pantau log secara langsung sambil menyaring\ntail -f /var/log/syslog | grep -i error\n```\n\nSatu peringatan penting tentang `rm`: di Linux tidak ada tempat sampah. Perintah `rm -rf /srv/data` menghapus tanpa tanya dan tanpa bisa dibatalkan. Biasakan menjalankan `ls` dengan pola yang sama dulu untuk melihat apa yang akan terhapus, dan jangan menjalankan `rm -rf` dengan variabel yang mungkin kosong.\n\n## Membaca izin berkas\n\nSetiap berkas dan direktori di Linux punya tiga kelompok pemilik dan tiga jenis izin. Kelompoknya:\n\n- **Owner**: pengguna pemilik berkas.\n- **Group**: kelompok pengguna yang terkait dengan berkas.\n- **Others**: semua orang selain keduanya.\n\nJenis izinnya: **r** (read, baca) bernilai 4, **w** (write, tulis) bernilai 2, dan **x** (execute, eksekusi) bernilai 1. Pada direktori, `x` berarti boleh masuk ke dalamnya.\n\nJika kamu menjalankan `ls -l`, hasilnya seperti ini:\n\n```text\n-rwxr-x--- 1 budi devops 412 Mar  3 09:10 skrip.sh\n```\n\nSembilan karakter setelah tanda pertama dibaca per tiga: `rwx` untuk owner, `r-x` untuk group, `---` untuk others. Tanda minus berarti izin itu tidak ada.\n\nNotasi oktal hanyalah penjumlahan nilai tiap kelompok:\n\n| Simbolik | Perhitungan | Oktal |\n|----------|-------------|-------|\n| `rwx` | 4 + 2 + 1 | 7 |\n| `r-x` | 4 + 0 + 1 | 5 |\n| `---` | 0 + 0 + 0 | 0 |\n| `rw-` | 4 + 2 + 0 | 6 |\n| `r--` | 4 + 0 + 0 | 4 |\n\nSehingga `chmod 750 skrip.sh` berarti owner `rwx`, group `r-x`, others tanpa izin, ditulis `rwxr-x---`. Dan `chmod 644 catatan.txt` menghasilkan `rw-r--r--`, pola yang lazim untuk berkas biasa: pemilik boleh mengubah, yang lain hanya membaca.\n\nMengapa `755` untuk skrip dan `644` untuk berkas biasa? Skrip perlu bisa dieksekusi oleh banyak orang, sedangkan berkas biasa tidak perlu `x`. Sebaliknya `777` (semua orang boleh melakukan semuanya) hampir selalu menjadi tanda kemalasan dan celah keamanan. Bila ada yang menyarankan `chmod 777` sebagai solusi \"supaya jalan\", itu alarm.\n\n## Mengelola user dan grup\n\nPraktik terbaik: satu orang satu akun, dikelompokkan lewat grup berdasarkan peran. Contoh alur lengkap membuat akun baru untuk Budi dari tim devops:\n\n```bash\n# Membuat grup dan user\nsudo groupadd devops\nsudo useradd -m -s /bin/bash -G devops budi\nsudo passwd budi\n\n# Memberi hak sudo\nsudo usermod -aG sudo budi\n\n# Mengatur kepemilikan dan izin direktori aplikasi\nsudo chown budi:devops /srv/app\nsudo chmod 750 /srv/app\n\n# Mengunci akun yang tidak aktif\nsudo usermod -L userlama\n```\n\nArti opsi pentingnya:\n\n- `-m` membuat direktori home, `-s` menentukan shell login, `-G` memasukkan ke grup tambahan.\n- `-aG` pada `usermod` berarti append ke grup. Lupa `-a` akan mengganti seluruh keanggotaan grup lama dengan grup baru. Ini jebakan klasik.\n- `chown pemilik:grup` mengubah kepemilikan, `chmod` mengubah izin.\n- `usermod -L` mengunci akun tanpa menghapusnya, jadi riwayat dan berkasnya tetap ada untuk audit.\n\nUntuk memeriksa hasilnya, pakai `id budi`, yang menampilkan UID, GID, dan semua grup milik Budi.\n\n## Least privilege dan sudo\n\nPrinsip **least privilege** menyatakan: beri akses seminimal mungkin yang cukup untuk menyelesaikan tugas. Akun yang hanya perlu membaca log tidak perlu bisa menulis di `/etc`. Akun aplikasi web tidak perlu bisa login sebagai manusia.\n\nAlasannya sederhana. Setiap akun adalah pintu masuk. Kalau pintunya sedikit dan sempit, kerusakan akibat kesalahan atau pembobolan juga kecil. Bayangkan kunci master gedung yang dipegang semua staf: satu kunci hilang, seluruh gedung terbuka.\n\nPenerapannya di Linux:\n\n- Gunakan `sudo` untuk perintah yang memang perlu hak administrator, dan hindari login langsung sebagai `root`. Dengan `sudo`, setiap tindakan tercatat atas nama orang yang menjalankannya.\n- Pisahkan akun layanan dari akun manusia. Nginx berjalan sebagai pengguna khusus, bukan root.\n- Tinjau secara berkala siapa saja yang ada di grup `sudo`.\n- Kunci atau hapus akun yang tidak lagi dipakai.\n\nContoh cara memeriksa dengan cepat:\n\n```bash\n# Siapa saja anggota grup sudo?\ngetent group sudo\n\n# Izin direktori aplikasi sudah benar?\nls -ld /srv/app\n```\n\n## Rangkuman\n\n- Perintah esensial dikelompokkan: navigasi, isi berkas, sistem, proses, paket, jaringan, pengguna, dan layanan.\n- `grep` dan `tail -f` adalah pintu masuk analisis log, dan `rm` tidak punya tempat sampah.\n- Izin berkas dibaca per tiga kelompok (owner, group, others) dengan nilai r = 4, w = 2, x = 1, misalnya `chmod 750` menjadi `rwxr-x---`.\n- Buat akun dengan `useradd`, `passwd`, `usermod -aG`, lalu atur `chown` dan `chmod`, dan kunci akun lama dengan `usermod -L`.\n- Least privilege: akses seminimal mungkin, pakai `sudo`, hindari login langsung sebagai root.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hasil `chmod 640 laporan.txt` pada berkas tersebut adalah...",
+          "code": "",
+          "options": [
+            "r--r-----",
+            "rw-rw----",
+            "rw-r-----",
+            "rwxr-----"
+          ],
+          "answer": 2,
+          "explanation": "6 = rw-, 4 = r--, 0 = ---, jadi owner membaca dan menulis, group hanya membaca, others tanpa izin. Opsi lain salah menghitung satu kelompok."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Budi sebelumnya anggota grup sudo dan docker. Apa akibat perintah berikut?",
+          "code": "sudo usermod -G devops budi",
+          "options": [
+            "Akun budi dikunci sehingga tidak bisa login",
+            "Budi menjadi pemilik direktori home semua pengguna",
+            "Budi hanya ditambahkan ke grup devops tanpa mengubah grup lain",
+            "Keanggotaan grup tambahan lamanya diganti sehingga Budi keluar dari sudo dan docker"
+          ],
+          "answer": 3,
+          "explanation": "Tanpa opsi -a, usermod -G mengganti seluruh daftar grup tambahan. Untuk menambah, pakai usermod -aG. Mengunci akun memerlukan -L, dan perintah ini tidak menyentuh kepemilikan direktori."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prinsip least privilege berarti...",
+          "code": "",
+          "options": [
+            "Membatasi jumlah server yang boleh dimiliki organisasi",
+            "Memberi semua administrator akses root agar cepat bekerja",
+            "Memberi akses seminimal mungkin yang cukup untuk menyelesaikan tugas",
+            "Menghapus semua akun pengguna yang jarang login"
+          ],
+          "answer": 2,
+          "explanation": "Least privilege membatasi dampak kesalahan atau pembobolan dengan hak akses sekecil mungkin. Memberi root ke semua orang adalah kebalikannya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Perintah rm di Linux memindahkan berkas ke tempat sampah sehingga bisa dipulihkan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. rm menghapus langsung tanpa tempat sampah, karena itu berhati-hatilah terutama dengan opsi -rf."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Izin oktal ke simbolik",
+          "prompt": "Tulis fungsi `oktalKeSimbolik(oktal)` yang mengubah izin oktal tiga digit (string) menjadi notasi simbolik sembilan karakter seperti hasil `ls -l`.\n\n- r = 4, w = 2, x = 1; digit pertama untuk owner, kedua group, ketiga others.\n- Izin yang tidak ada ditulis `-`.\n\nContoh: `oktalKeSimbolik(\"755\")` menghasilkan `\"rwxr-xr-x\"`.",
+          "starter": {
+            "code": "function oktalKeSimbolik(oktal) {\n  // tulis kode di sini\n}\n"
+          },
+          "solution": {
+            "code": "function oktalKeSimbolik(oktal) {\n  return String(oktal).split(\"\").map((d) => {\n    const n = Number(d);\n    return (n & 4 ? \"r\" : \"-\") + (n & 2 ? \"w\" : \"-\") + (n & 1 ? \"x\" : \"-\");\n  }).join(\"\");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "755 menjadi rwxr-xr-x",
+              "check": "oktalKeSimbolik(\"755\") === \"rwxr-xr-x\""
+            },
+            {
+              "name": "750 menjadi rwxr-x---",
+              "check": "oktalKeSimbolik(\"750\") === \"rwxr-x---\""
+            },
+            {
+              "name": "644 menjadi rw-r--r--",
+              "check": "oktalKeSimbolik(\"644\") === \"rw-r--r--\""
+            },
+            {
+              "name": "000 menjadi sembilan tanda minus",
+              "check": "oktalKeSimbolik(\"000\") === \"---------\""
+            },
+            {
+              "name": "640 menjadi rw-r-----",
+              "check": "oktalKeSimbolik(\"640\") === \"rw-r-----\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Izin simbolik ke oktal",
+          "prompt": "Tulis fungsi `simbolikKeOktal(izin)` yang mengubah notasi simbolik sembilan karakter menjadi string oktal tiga digit.\n\n- Tiap kelompok tiga karakter dijumlahkan: r = 4, w = 2, x = 1, tanda `-` bernilai 0.\n\nContoh: `simbolikKeOktal(\"rwxr-x---\")` menghasilkan `\"750\"`.",
+          "starter": {
+            "code": "function simbolikKeOktal(izin) {\n  // tulis kode di sini\n}\n"
+          },
+          "solution": {
+            "code": "function simbolikKeOktal(izin) {\n  return izin.match(/.{3}/g).map((t) => (t[0] === \"r\" ? 4 : 0) + (t[1] === \"w\" ? 2 : 0) + (t[2] === \"x\" ? 1 : 0)).join(\"\");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "rwxr-x--- menjadi 750",
+              "check": "simbolikKeOktal(\"rwxr-x---\") === \"750\""
+            },
+            {
+              "name": "rw-r--r-- menjadi 644",
+              "check": "simbolikKeOktal(\"rw-r--r--\") === \"644\""
+            },
+            {
+              "name": "rwxrwxrwx menjadi 777",
+              "check": "simbolikKeOktal(\"rwxrwxrwx\") === \"777\""
+            },
+            {
+              "name": "sembilan tanda minus menjadi 000",
+              "check": "simbolikKeOktal(\"---------\") === \"000\""
+            },
+            {
+              "name": "rw-r----- menjadi 640",
+              "check": "simbolikKeOktal(\"rw-r-----\") === \"640\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "layanan-proses-dan-jaringan",
+      "title": "Layanan, Proses, dan Dasar Jaringan",
+      "est_minutes": 22,
+      "slide_from": 7,
+      "slide_to": 9,
+      "body": "## Tujuan\n\n- Mengontrol layanan dengan systemd dan membaca lognya dengan journalctl.\n- Melihat dan menghentikan proses, serta menjadwalkan tugas dengan cron.\n- Memahami model TCP/IP dan hubungannya dengan OSI.\n- Menghafal port layanan umum dan mengenali layanan jaringan inti di server.\n\n## Layanan dan systemd\n\nLayanan (service) adalah program yang berjalan di latar belakang, misalnya web server, database, atau SSH. Pada distro Linux modern, yang memulai, menghentikan, dan mengawasi layanan adalah **systemd**, init system standar. Perintah utamanya `systemctl`.\n\n```bash\n# Lihat status layanan\nsudo systemctl status nginx\n\n# Mulai ulang (restart) layanan\nsudo systemctl restart nginx\n\n# Nyalakan sekarang dan otomatis tiap boot\nsudo systemctl enable --now nginx\n\n# Daftar layanan yang gagal\nsystemctl list-units --failed\n```\n\nBedakan dua hal yang sering tertukar. `start` dan `stop` mengatur kondisi layanan **saat ini**. `enable` dan `disable` mengatur apakah layanan **menyala otomatis saat boot**. Karena itu `enable --now` praktis: ia melakukan keduanya sekaligus. Kesalahan umum adalah menjalankan `start` saja lalu kaget ketika layanan tidak ada setelah server di-reboot.\n\nKalau mengubah konfigurasi, ada pilihan `reload` (muat ulang konfigurasi tanpa memutus koneksi yang sedang berjalan, bila layanan mendukung) dan `restart` (hentikan lalu mulai lagi). Untuk layanan yang sedang melayani banyak pengguna, `reload` lebih ramah.\n\n## Membaca log dengan journalctl\n\nsystemd mengumpulkan log layanan dalam jurnal yang dibaca dengan `journalctl`. Keunggulannya, kamu bisa menyaring per layanan, waktu, dan tingkat keparahan:\n\n```bash\n# Log nginx sejak hari ini\njournalctl -u nginx --since today\n\n# Hanya pesan tingkat error sejak boot terakhir\njournalctl -p err -b\n\n# Ikuti log secara langsung\njournalctl -u nginx -f\n```\n\nSelain jurnal, log klasik tetap tersimpan di `/var/log`, seperti `auth.log` (catatan login dan sudo), `syslog` (pesan umum sistem), dan log aplikasi masing-masing. Saat sebuah layanan gagal start, urutan investigasinya hampir selalu sama: `systemctl status` untuk gambaran awal, lalu `journalctl -u nama-layanan` untuk detail penyebabnya.\n\n## Proses dan penjadwalan\n\nSetiap program yang berjalan adalah **proses**. Untuk melihatnya gunakan `ps`, `top`, atau `htop`. Untuk menghentikan proses bermasalah gunakan `kill` (berdasarkan nomor PID) atau `pkill` (berdasarkan nama).\n\n```bash\n# Cari PID proses tertentu\nps aux | grep nginx\n\n# Minta proses berhenti dengan sopan (SIGTERM)\nkill 4321\n\n# Paksa berhenti bila membandel (SIGKILL)\nkill -9 4321\n```\n\nUrutannya penting: coba `kill` biasa dulu supaya proses sempat menutup berkas dan koneksi dengan rapi. `kill -9` adalah pilihan terakhir karena proses tidak diberi kesempatan membereskan diri.\n\n**Penjadwalan** dipakai untuk tugas rutin seperti backup, rotasi log, dan pembersihan berkas sementara. Dua alatnya adalah **cron** dan **systemd timer**. Entri cron ditulis lewat `crontab -e` dengan lima kolom waktu:\n\n```text\n# menit jam tanggal bulan hari-minggu  perintah\n0 2 * * * /opt/scripts/backup.sh\n```\n\nBaris di atas menjalankan skrip backup setiap hari pukul 02:00. Tanda bintang berarti \"setiap\". Misalnya `*/15 * * * *` berarti tiap 15 menit, dan `30 3 * * 1` berarti setiap Senin pukul 03:30. Jangan lupa memberi izin eksekusi pada skrip (`chmod +x`) dan memakai path lengkap karena lingkungan cron lebih sederhana daripada terminal biasa.\n\n## Model TCP/IP\n\nAgar dua komputer bisa berbicara, aturan komunikasinya dibagi dalam lapisan. Model **TCP/IP** punya empat lapisan, yang dapat dipetakan ke tujuh lapisan model OSI.\n\n| Lapisan TCP/IP | Contoh | Padanan OSI |\n|----------------|--------|-------------|\n| Application | HTTP, DNS, SSH, SMTP | 5 sampai 7 |\n| Transport | TCP, UDP | 4 |\n| Internet | IP, ICMP, routing | 3 |\n| Network Access | Ethernet, Wi-Fi, ARP | 1 sampai 2 |\n\nAnalogi pengiriman paket: lapisan Application adalah isi surat, Transport menentukan cara pengirimannya (tercatat dan dipastikan sampai seperti TCP, atau lempar cepat tanpa konfirmasi seperti UDP), Internet adalah alamat tujuan dan rute, dan Network Access adalah jalan fisik yang dilewati kurir.\n\nManfaat praktisnya ada pada troubleshooting dari bawah ke atas. Kalau sebuah situs tidak terbuka, periksa berurutan: apakah kabel atau Wi-Fi hidup, apakah IP dan gateway benar (`ip a`), apakah host bisa dijangkau (`ping`), apakah nama domain terselesaikan (`dig`), baru kemudian apakah layanannya menyala dan port-nya terbuka (`ss -tulpn`).\n\nSatu contoh subnetting yang perlu diingat: jaringan `192.168.10.0/24` menyediakan 254 alamat host yang dapat dipakai, dan gateway umumnya diberi alamat `.1`. Angka 254 berasal dari 256 alamat dikurangi alamat jaringan (`.0`) dan alamat broadcast (`.255`).\n\n## Port layanan umum\n\nAlamat IP menunjuk komputernya, sedangkan **port** menunjuk layanan di dalam komputer itu. Port-port berikut wajib kamu hafal karena dipakai terus saat mengatur firewall.\n\n| Port | Layanan | Protokol |\n|------|---------|----------|\n| 22 | SSH | TCP |\n| 53 | DNS | UDP/TCP |\n| 80 / 443 | HTTP / HTTPS | TCP |\n| 25 / 587 | SMTP | TCP |\n| 123 | NTP | UDP |\n| 3306 | MySQL | TCP |\n| 3389 | RDP | TCP |\n\nPort 3306 dan 3389 sering menjadi sasaran pemindaian. Database dan desktop jarak jauh yang terbuka langsung ke internet adalah salah satu kesalahan konfigurasi paling umum, dan pelakunya biasanya menemukannya hanya dalam hitungan jam.\n\n## Layanan jaringan inti di server\n\nServer jarang berdiri sendiri. Ada beberapa layanan jaringan yang hampir selalu hadir.\n\n- **DNS** menerjemahkan nama domain menjadi alamat IP. Contoh perangkat lunak: BIND, Unbound, PowerDNS.\n- **DHCP** membagikan alamat IP otomatis ke klien. Contoh: ISC Kea dan dnsmasq.\n- **Web server** menyajikan situs dan API. Contoh: Nginx dan Apache HTTP Server.\n- **SSH** memberi akses jarak jauh terenkripsi untuk administrasi. Contoh: OpenSSH.\n- **NTP** menyinkronkan waktu, penting untuk log dan sertifikat. Contoh: chrony.\n- **Reverse proxy dan load balancer** membagi beban dan melindungi backend. Contoh: HAProxy.\n\nNTP sering dianggap remeh, padahal waktu yang melenceng membuat log dari beberapa server tidak bisa dicocokkan saat investigasi, dan sertifikat TLS bisa dianggap belum berlaku atau sudah kedaluwarsa.\n\nSetiap layanan perlu dikonfigurasi aman. Tiga pegangan sederhananya: batasi siapa yang boleh mengakses, gunakan versi terbaru, dan pantau lognya. Layanan yang dipasang lalu dibiarkan dengan pengaturan bawaan adalah sumber celah yang paling sering ditemukan.\n\n## Rangkuman\n\n- systemd mengelola layanan lewat `systemctl` (status, restart, `enable --now`), dan `journalctl` menyaring log per layanan, waktu, dan prioritas.\n- Hentikan proses dengan `kill` dulu, `kill -9` hanya bila terpaksa, dan jadwalkan tugas rutin dengan cron atau systemd timer.\n- TCP/IP punya empat lapisan (Application, Transport, Internet, Network Access) yang membantu troubleshooting dari bawah ke atas.\n- Hafalkan port umum: 22 SSH, 53 DNS, 80/443 HTTP(S), 25/587 SMTP, 123 NTP, 3306 MySQL, 3389 RDP.\n- Layanan inti server (DNS, DHCP, web, SSH, NTP, reverse proxy) harus dikonfigurasi aman, diperbarui, dan dipantau lognya.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah yang menyalakan layanan nginx sekarang sekaligus otomatis setiap boot adalah...",
+          "code": "",
+          "options": [
+            "sudo systemctl status nginx",
+            "sudo systemctl start nginx",
+            "sudo systemctl enable --now nginx",
+            "sudo systemctl reload nginx"
+          ],
+          "answer": 2,
+          "explanation": "enable mengatur start saat boot dan --now menjalankannya langsung. start saja tidak bertahan setelah reboot, reload memuat ulang konfigurasi, status hanya menampilkan kondisi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kapan skrip ini dijalankan oleh cron?",
+          "code": "30 3 * * 1 /opt/scripts/rotasi.sh",
+          "options": [
+            "Setiap Senin pukul 03:30",
+            "Setiap tanggal 1 pukul 03:30",
+            "Setiap hari pukul 03:30",
+            "Setiap 30 menit pada jam 3 pagi"
+          ],
+          "answer": 0,
+          "explanation": "Lima kolom cron: menit, jam, tanggal, bulan, hari-minggu. Angka 30 menit, 3 jam, hari-minggu 1 (Senin). Tanggal dan bulan bertanda bintang berarti setiap."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Layanan DNS secara bawaan mendengarkan pada port...",
+          "code": "",
+          "options": [
+            "22",
+            "53",
+            "25",
+            "123"
+          ],
+          "answer": 1,
+          "explanation": "DNS memakai port 53 (UDP dan TCP). Port 22 untuk SSH, 25 untuk SMTP, 123 untuk NTP."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Jaringan 192.168.10.0/24 menyediakan 256 alamat host yang dapat dipakai.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Dari 256 alamat, satu dipakai sebagai alamat jaringan dan satu untuk broadcast, sehingga tersisa 254 host."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "konsep-dan-ancaman-keamanan",
+      "title": "Konsep dan Ancaman Keamanan",
+      "est_minutes": 18,
+      "slide_from": 10,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Menjelaskan tiga pilar CIA Triad dan memetakan kontrol keamanan ke pilar yang dilindunginya.\n- Membedakan authentication, authorization, dan accounting (AAA).\n- Mengenali enam ancaman umum terhadap server dan jaringan.\n- Memasangkan tiap ancaman dengan mitigasinya yang spesifik.\n\n## Kenapa keamanan perlu kerangka berpikir\n\nKeamanan sering terasa seperti daftar belanja tak berujung: pasang ini, nyalakan itu, blokir yang lain. Tanpa kerangka berpikir, kamu mudah menambal satu sisi dan lupa sisi lain. Dua kerangka dasar yang dipakai hampir semua praktisi adalah **CIA Triad** dan **AAA**. Dengan keduanya, setiap kontrol keamanan bisa kamu tanyai: pilar mana yang dilindungi, dan siapa yang diverifikasi.\n\n## CIA Triad\n\nCIA bukan nama badan intelijen di sini, melainkan singkatan tiga pilar keamanan informasi.\n\n**Confidentiality (kerahasiaan).** Data hanya boleh diakses pihak yang berwenang. Kontrol yang melindunginya: enkripsi, kontrol akses, dan multi-factor authentication (MFA). Contoh pelanggaran: daftar nilai mahasiswa bisa dibuka siapa saja yang tahu alamat URL-nya.\n\n**Integrity (integritas).** Data tidak boleh diubah tanpa izin, dan perubahan harus bisa diketahui. Kontrolnya: hashing, tanda tangan digital, dan audit log. Contoh pelanggaran: seseorang mengubah angka saldo di database tanpa jejak, atau berkas pembaruan aplikasi disusupi sebelum diunduh pengguna.\n\n**Availability (ketersediaan).** Layanan harus dapat diakses ketika dibutuhkan. Kontrolnya: redundansi, backup, dan proteksi DDoS. Contoh pelanggaran: server pendaftaran mati tepat di hari pendaftaran dibuka karena dibanjiri trafik palsu.\n\nCara mengingatnya dengan analogi brankas bank. Dinding dan kunci brankas menjaga kerahasiaan. Segel dan catatan inventaris menjaga integritas, karena kamu tahu kalau isinya diutak-atik. Genset dan jam buka yang tepat menjaga ketersediaan, karena nasabah bisa mengambil uangnya kapan saja ia berhak.\n\nKetiganya sering saling tarik. Mengunci sistem serapat mungkin menguntungkan kerahasiaan tetapi bisa merugikan ketersediaan, karena pengguna sah jadi sulit masuk. Tugas SysAdmin adalah mencari keseimbangan yang sesuai dengan nilai data dan kebutuhan bisnis.\n\nLatihan memetakan kontrol:\n\n| Kontrol | Pilar utama |\n|---------|-------------|\n| Enkripsi disk | Confidentiality |\n| Checksum SHA-256 pada berkas unduhan | Integrity |\n| Backup harian dan server cadangan | Availability |\n| Audit log siapa mengubah apa | Integrity |\n| MFA saat login | Confidentiality |\n| Rate limiting terhadap trafik berlebih | Availability |\n\n## AAA: Authentication, Authorization, Accounting\n\nCIA menjawab \"apa yang dilindungi\". AAA menjawab \"bagaimana akses dikendalikan\".\n\n- **Authentication** menjawab: siapa kamu? Dibuktikan dengan sesuatu yang kamu tahu (sandi), kamu miliki (token, ponsel), atau kamu adalah (sidik jari).\n- **Authorization** menjawab: apa yang boleh kamu lakukan? Setelah identitas terbukti, hak akses ditentukan, misalnya lewat izin berkas dan grup.\n- **Accounting** menjawab: apa yang telah kamu lakukan? Seluruh tindakan dicatat dalam log agar bisa diaudit.\n\nUrutannya selalu begitu. Contoh di server Linux: Budi login dengan kunci SSH (authentication), perintah `sudo systemctl restart nginx` diizinkan karena ia anggota grup tertentu (authorization), lalu tindakannya masuk ke `auth.log` dan jurnal sistem (accounting). Kalau salah satu hilang, ada lubang. Tanpa accounting, kamu tidak bisa tahu siapa yang menghapus data kemarin malam.\n\n## Enam ancaman umum dan mitigasinya\n\nMengenal ancaman membuat kamu tahu kontrol mana yang layak diprioritaskan. Berikut enam yang paling sering menyasar server dan jaringan, masing-masing dengan mitigasi spesifiknya.\n\n| Ancaman | Gambaran singkat | Mitigasi |\n|---------|------------------|----------|\n| Malware dan ransomware | Program jahat yang merusak atau mengenkripsi data lalu meminta tebusan | Patch rutin, EDR, backup offline |\n| Phishing dan social engineering | Menipu manusia agar menyerahkan sandi atau menjalankan berkas berbahaya | Edukasi pengguna, MFA, filter email |\n| DDoS | Membanjiri layanan dengan trafik hingga tidak bisa melayani pengguna sah | Rate limiting, CDN, scrubbing service |\n| Brute force dan credential stuffing | Menebak sandi berulang-ulang, atau mencoba pasangan akun dan sandi yang bocor dari situs lain | SSH key, fail2ban, kebijakan sandi |\n| Man-in-the-middle | Penyerang menyadap atau mengubah komunikasi antara dua pihak | TLS, HSTS, VPN, verifikasi sertifikat |\n| Injeksi (SQLi, XSS, RCE) | Menyelipkan perintah berbahaya lewat input aplikasi | Validasi input, WAF, prepared statement |\n\nBeberapa catatan untuk memahami tiap baris.\n\n**Ransomware dan backup offline.** Ransomware mengenkripsi data milikmu. Backup yang terhubung terus ke jaringan ikut terenkripsi. Itu sebabnya backup offline atau immutable yang tidak bisa diubah menjadi penyelamat terakhir.\n\n**Phishing menyerang manusia, bukan mesin.** Firewall sebagus apa pun tidak membantu bila administrator mengetik sandinya di halaman palsu. MFA membatasi kerusakan: sandi yang dicuri saja tidak cukup untuk masuk.\n\n**DDoS menyerang ketersediaan.** Perhatikan bahwa tidak ada data yang dicuri; tujuannya membuat layanan lumpuh. Mitigasinya bekerja di depan server: rate limiting membatasi permintaan per klien, CDN menyerap trafik, dan scrubbing service membersihkan trafik jahat sebelum sampai ke kamu.\n\n**Brute force dan credential stuffing.** Server SSH yang terbuka ke internet akan dicoba ribuan kali per hari oleh bot. Kamu bisa melihatnya sendiri di `auth.log`. Pertahanan yang efektif adalah menghapus sasarannya: login dengan kunci (SSH key) tanpa sandi, lalu memblokir IP yang sering gagal dengan fail2ban. Sedangkan credential stuffing memanfaatkan kebiasaan orang memakai sandi yang sama di banyak layanan, sehingga kebijakan sandi dan MFA berperan.\n\n**Man-in-the-middle.** Selama komunikasi tidak terenkripsi, siapa pun di jalur jaringan bisa membaca dan mengubahnya, misalnya di Wi-Fi publik. TLS mengenkripsi lalu lintas, HSTS memaksa browser selalu memakai HTTPS, VPN membungkus lalu lintas dalam terowongan, dan verifikasi sertifikat memastikan kamu berbicara dengan server yang benar.\n\n**Injeksi.** Aplikasi yang menyambung input pengguna langsung ke kueri SQL atau perintah sistem membuka celah. Prepared statement memisahkan data dari perintah sehingga input tidak pernah ditafsirkan sebagai kode. WAF (web application firewall) menyaring pola serangan umum sebagai lapisan tambahan, bukan pengganti kode yang benar.\n\n## Cara menggunakan peta ini\n\nSaat mendengar berita pelanggaran keamanan, latihlah dirimu menjawab tiga pertanyaan: pilar CIA mana yang rusak, tahap AAA mana yang gagal, dan ancaman jenis apa yang dipakai. Misalnya situs diretas lewat sandi admin yang bocor. Kerahasiaan rusak, authentication gagal (tidak ada MFA), dan jenisnya credential stuffing. Dengan begitu mitigasinya langsung terlihat: MFA dan kebijakan sandi, plus accounting yang mendeteksi login dari lokasi tak lazim.\n\nKesalahan umum pemula adalah menganggap satu alat menyelesaikan semuanya. Tidak ada. Setiap ancaman punya kontrol yang spesifik, dan kontrol-kontrol itu saling melengkapi. Gagasan ini dikembangkan di bab berikutnya sebagai defense in depth.\n\n## Rangkuman\n\n- CIA Triad: confidentiality (enkripsi, kontrol akses, MFA), integrity (hashing, tanda tangan digital, audit log), availability (redundansi, backup, proteksi DDoS).\n- AAA melengkapi: authentication (siapa kamu), authorization (apa yang boleh), accounting (apa yang dilakukan).\n- Enam ancaman umum: malware dan ransomware, phishing, DDoS, brute force dan credential stuffing, man-in-the-middle, dan injeksi.\n- Setiap ancaman punya mitigasi spesifik, misalnya SSH key dan fail2ban untuk brute force, TLS untuk MITM, prepared statement untuk injeksi.\n- Selalu tanyakan pilar mana yang dilindungi sebuah kontrol dan ancaman mana yang ia tutup.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hashing dan tanda tangan digital terutama melindungi pilar...",
+          "code": "",
+          "options": [
+            "Accounting",
+            "Confidentiality",
+            "Integrity",
+            "Availability"
+          ],
+          "answer": 2,
+          "explanation": "Hash dan tanda tangan dipakai untuk mendeteksi perubahan data. Kerahasiaan dijaga enkripsi, ketersediaan oleh redundansi dan backup, dan accounting bukan bagian dari CIA."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dalam AAA, authorization menjawab pertanyaan...",
+          "code": "",
+          "options": [
+            "Seberapa kuat sandi yang dipakai pengguna",
+            "Apa yang boleh dilakukan pengguna setelah identitasnya terbukti",
+            "Siapa pengguna yang sedang mencoba masuk",
+            "Apa saja yang sudah dilakukan pengguna"
+          ],
+          "answer": 1,
+          "explanation": "Authentication menjawab siapa kamu, authorization menjawab apa yang boleh, accounting menjawab apa yang sudah dilakukan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kombinasi mitigasi yang paling tepat untuk brute force terhadap SSH adalah...",
+          "code": "",
+          "options": [
+            "HSTS dan verifikasi sertifikat",
+            "Backup offline dan EDR",
+            "SSH key dan fail2ban",
+            "Prepared statement dan WAF"
+          ],
+          "answer": 2,
+          "explanation": "SSH key menghapus sandi sebagai sasaran dan fail2ban memblokir IP penebak. Backup offline untuk ransomware, prepared statement dan WAF untuk injeksi, HSTS untuk MITM."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Serangan DDoS terutama bertujuan mencuri kerahasiaan data.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. DDoS menyerang ketersediaan dengan membanjiri layanan hingga tidak bisa melayani pengguna sah."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "hardening-firewall-ssh-dan-tls",
+      "title": "Hardening, Firewall, SSH, dan TLS",
+      "est_minutes": 25,
+      "slide_from": 12,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Menjelaskan hardening dan menerapkan checklist untuk mengurangi attack surface.\n- Merancang segmentasi jaringan dengan DMZ dan mengonfigurasi firewall ufw dengan kebijakan default deny.\n- Mengamankan SSH dengan kunci publik, konfigurasi sshd, fail2ban, MFA, dan bastion host.\n- Membedakan kriptografi simetris, asimetris, dan hashing, serta memahami alur TLS.\n\n## Hardening: kurangi permukaan serangan\n\n**Hardening** adalah proses menutup celah dengan menghapus yang tidak perlu dan mengunci yang tersisa. Konsep kuncinya adalah **attack surface**, yaitu semua titik yang bisa disentuh penyerang: port terbuka, layanan yang berjalan, akun, dan perangkat lunak yang terpasang. Semakin sedikit yang ada, semakin sedikit yang bisa diserang. Analogi rumah: lebih aman menutup jendela yang tak pernah dipakai daripada memasang gembok di semuanya.\n\nAcuan baku yang dipakai banyak organisasi adalah **CIS Benchmarks**, panduan konfigurasi aman per sistem operasi dan aplikasi. Hardening dilakukan **sebelum** server masuk produksi, bukan sesudah ada masalah. Berikut checklistnya:\n\n- Update dan patch sistem secara berkala.\n- Nonaktifkan layanan dan port yang tak terpakai.\n- Hapus atau kunci akun default.\n- Terapkan kebijakan sandi kuat dan MFA.\n- Pasang firewall dengan kebijakan default deny.\n- SSH hanya dengan kunci, tanpa login root.\n- Aktifkan SELinux atau AppArmor.\n- Enkripsi data at rest dan in transit.\n- Aktifkan audit log dengan auditd.\n- Pindai kerentanan secara rutin.\n\nLangkah pertama yang mudah: lihat apa yang sedang mendengarkan, lalu tanyakan untuk tiap baris \"apakah ini memang diperlukan?\"\n\n```bash\nsudo ss -tulpn\n# Contoh menonaktifkan layanan yang tidak dipakai\nsudo systemctl disable --now cups\n```\n\nSELinux dan AppArmor adalah lapisan kontrol akses wajib (mandatory access control). Walau sebuah proses diretas dan berjalan sebagai pengguna tertentu, ia tetap dibatasi profil yang menentukan berkas dan sumber daya mana yang boleh disentuh.\n\n## Firewall dan segmentasi\n\nFirewall menyaring lalu lintas berdasarkan aturan. Prinsip paling penting: **default deny**, yaitu blokir semuanya, lalu izinkan hanya yang dibutuhkan. Kebalikannya (izinkan semua, blokir yang berbahaya) mustahil dipertahankan karena daftar hal berbahaya tidak pernah selesai.\n\nDengan **ufw** (Uncomplicated Firewall) di Ubuntu dan Debian, penerapannya ringkas:\n\n```bash\nsudo ufw default deny incoming\nsudo ufw default allow outgoing\nsudo ufw allow 22/tcp\nsudo ufw allow 443\nsudo ufw enable\nsudo ufw status\n```\n\nDua baris pertama menetapkan kebijakan dasar: semua yang masuk ditolak, semua yang keluar diizinkan. Lalu dibuka SSH (22/tcp) dan HTTPS (443). Peringatan penting: pastikan aturan untuk SSH sudah ada **sebelum** `ufw enable`, kalau tidak kamu bisa mengunci diri dari server yang sedang kamu kendalikan dari jauh.\n\nSelain firewall di tiap host, jaringan juga dipisah menjadi zona berdasarkan tingkat kepercayaan. Pola klasiknya:\n\n```text\nInternet\n   |\n[Firewall]\n   |\n  DMZ  (Web, Mail)\n   |\n[FW Internal]\n   |\nLAN Internal (App, Database)\n```\n\nServer yang harus dijangkau publik, seperti web dan mail, ditaruh di **DMZ**. Database dan aplikasi internal berada di zona di belakang firewall kedua dan tidak terekspos langsung ke internet. Antar-zona dipasang aturan ketat, bisa dengan VLAN. Manfaatnya: bila web server di DMZ jebol, penyerang masih harus menembus firewall internal untuk mencapai database. Segmentasi membatasi **pergerakan lateral**, yaitu perpindahan penyerang dari satu mesin ke mesin lain.\n\n## Mengamankan SSH\n\nSSH adalah pintu masuk utama administrasi, sehingga juga sasaran utama. Langkah pengamanan standar:\n\n```bash\n# 1. Buat key pair di laptop admin\nssh-keygen -t ed25519 -C \"admin@kantor\"\nssh-copy-id budi@10.0.0.5\n```\n\nKunci privat tinggal di laptopmu, kunci publik disalin ke server. Autentikasi dengan kunci publik berbasis Ed25519 lebih aman daripada sandi dan tahan terhadap brute force. Lanjutkan dengan mengedit `/etc/ssh/sshd_config`:\n\n```text\nPermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\nMaxAuthTries 3\nAllowUsers budi\n```\n\nArtinya: root tidak boleh login langsung, sandi dimatikan, kunci publik diaktifkan, hanya tiga kali percobaan per koneksi, dan hanya pengguna `budi` yang boleh masuk. Terapkan dan pasang fail2ban:\n\n```bash\nsudo systemctl reload ssh\nsudo apt install fail2ban\n```\n\n**fail2ban** membaca log dan memblokir IP otomatis setelah beberapa kali login gagal. Perhatikan catatan paling penting dari bagian ini: **uji koneksi dengan kunci di sesi terminal lain sebelum menonaktifkan login sandi.** Jika kuncinya ternyata salah pasang dan kamu sudah menutup sesi yang lama, kamu terkunci dari server.\n\nLapisan tambahan:\n\n- **MFA**: tambahkan TOTP atau kunci FIDO2 untuk akses penting.\n- **Bastion atau jump host**: satu pintu masuk yang terpantau menuju server internal, sehingga server internal tidak perlu menerima SSH dari mana saja.\n\n## Kriptografi dan TLS\n\nTiga jenis kriptografi yang perlu kamu bedakan:\n\n| Jenis | Cara kerja | Kegunaan | Contoh |\n|-------|-----------|----------|--------|\n| Simetris | Satu kunci untuk enkripsi dan dekripsi | Cepat, cocok untuk data besar | AES-256, ChaCha20 |\n| Asimetris | Pasangan kunci publik dan privat | Pertukaran kunci dan tanda tangan | RSA, ECDSA, Ed25519 |\n| Hashing | Fungsi satu arah, tidak bisa dibalik | Verifikasi integritas, simpan sandi | SHA-256, bcrypt, Argon2 |\n\nAnalogi: kriptografi simetris seperti gembok dengan satu kunci yang dipegang kedua pihak (cepat, tetapi bagaimana menyerahkan kuncinya dengan aman?). Asimetris seperti kotak surat: siapa saja bisa memasukkan surat lewat lubang (kunci publik), tetapi hanya pemilik kunci kotak (kunci privat) yang bisa mengambilnya. Hashing seperti sidik jari: isi apa pun menghasilkan sidik jari yang sama bila isinya sama, tetapi dari sidik jari kamu tidak bisa merekonstruksi isinya. Karena itu sandi disimpan sebagai hash dengan algoritma lambat seperti bcrypt atau Argon2, bukan dienkripsi.\n\n**TLS** (yang mengamankan HTTPS) menggabungkan jenis-jenis tersebut. Alurnya:\n\n1. Client Hello: klien membuka koneksi dan menyatakan kemampuan enkripsinya.\n2. Server mengirim sertifikat.\n3. Klien memverifikasi sertifikat ke Certificate Authority (CA).\n4. Kedua pihak menukar kunci sesi, memakai kriptografi asimetris.\n5. Data dikirim terenkripsi dengan kunci sesi, memakai kriptografi simetris.\n\nJadi asimetris dipakai untuk sepakat soal kunci, simetris dipakai untuk mengenkripsi data karena lebih cepat. Gunakan TLS 1.2 sebagai minimum dan idealnya TLS 1.3. Sertifikat dapat diperoleh gratis dan diperbarui otomatis lewat **Let's Encrypt** dengan **certbot**:\n\n```bash\nsudo certbot --nginx -d contoh.id\n```\n\nSertifikat yang kedaluwarsa membuat browser menampilkan peringatan menakutkan kepada pengguna, jadi pastikan pembaruan otomatisnya berjalan dan jam server tersinkron lewat NTP.\n\n## Rangkuman\n\n- Hardening mengurangi attack surface dengan menghapus yang tidak perlu dan mengunci sisanya, berpatokan pada CIS Benchmarks, dan dilakukan sebelum produksi.\n- Firewall memakai default deny (`ufw default deny incoming`), dan segmentasi dengan DMZ serta aturan antar-zona membatasi pergerakan lateral.\n- SSH diamankan dengan kunci Ed25519, `PermitRootLogin no`, `PasswordAuthentication no`, fail2ban, MFA, dan bastion host; selalu uji kunci di sesi lain dulu.\n- Kriptografi dibagi simetris (cepat), asimetris (pertukaran kunci dan tanda tangan), dan hashing (satu arah).\n- TLS memakai asimetris untuk bertukar kunci sesi dan simetris untuk data; pakai minimal TLS 1.2 dan Let's Encrypt dengan certbot.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti kebijakan firewall default deny?",
+          "code": "",
+          "options": [
+            "Semua trafik masuk diblokir kecuali yang diizinkan secara eksplisit",
+            "Firewall dimatikan sementara saat maintenance",
+            "Semua trafik diizinkan kecuali yang dikenal berbahaya",
+            "Hanya trafik dari dalam jaringan yang boleh keluar"
+          ],
+          "answer": 0,
+          "explanation": "Default deny memulai dari blokir semua lalu membuka hanya yang dibutuhkan. Kebalikannya (izinkan semua) tidak bisa dipertahankan karena daftar ancaman tak pernah selesai."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa efek konfigurasi sshd berikut?",
+          "code": "PermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\nAllowUsers budi",
+          "options": [
+            "Hanya budi yang boleh login, tetapi tetap memakai sandi",
+            "Root boleh login tetapi hanya dengan kunci publik",
+            "Semua pengguna boleh login memakai sandi atau kunci",
+            "Hanya pengguna budi dengan kunci publik yang bisa login, sandi dan root langsung ditolak"
+          ],
+          "answer": 3,
+          "explanation": "Konfigurasi menutup login root, mematikan sandi, mengaktifkan kunci publik, dan membatasi pengguna ke budi saja."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dalam alur TLS, peran kriptografi asimetris dan simetris adalah...",
+          "code": "",
+          "options": [
+            "Asimetris untuk hashing, simetris untuk tanda tangan",
+            "Keduanya dipakai hanya untuk menyimpan sandi",
+            "Simetris untuk bertukar kunci, asimetris untuk mengenkripsi data",
+            "Asimetris untuk bertukar kunci sesi, simetris untuk mengenkripsi data"
+          ],
+          "answer": 3,
+          "explanation": "Asimetris lambat tetapi cocok untuk sepakat soal kunci. Setelah kunci sesi disepakati, data dienkripsi secara simetris karena jauh lebih cepat."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Aman menonaktifkan login sandi SSH sebelum menguji login dengan kunci di sesi lain.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Jika kunci ternyata salah pasang, kamu terkunci dari server. Uji dulu di sesi terpisah sebelum mematikan sandi."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "monitoring-logging-dan-deteksi",
+      "title": "Monitoring, Logging, dan Deteksi",
+      "est_minutes": 25,
+      "slide_from": 16,
+      "slide_to": 17,
+      "body": "## Tujuan\n\n- Menjelaskan pipeline monitoring dan logging terpusat serta alasan log harus dikirim keluar server.\n- Menyebutkan metrik kunci yang wajib dipantau.\n- Membaca dan memfilter log login gagal untuk mendeteksi brute force.\n- Membedakan IDS dan IPS, serta menjalankan siklus manajemen kerentanan.\n\n## Kamu tidak bisa melindungi yang tidak terlihat\n\nSetelah server dikeraskan, pekerjaan belum selesai. Kamu perlu tahu apa yang sebenarnya terjadi di dalamnya setiap saat. Prinsipnya: tidak bisa melindungi apa yang tidak terlihat. Monitoring menjawab \"apakah sistem sehat sekarang\", sedangkan logging menjawab \"apa yang terjadi, kapan, dan oleh siapa\".\n\nAda satu alasan khusus untuk log terpusat. Penyerang yang berhasil masuk ke server biasanya menghapus atau mengubah log lokal untuk menutupi jejak. Kalau log hanya ada di server itu, bukti hilang. Jika log dikirim ke tempat lain secara real time, salinannya tetap utuh untuk forensik. Dan agar log dari banyak server bisa dirunut berurutan, waktu semua server harus tersinkron lewat NTP.\n\n## Pipeline monitoring dan logging\n\nAlurnya terdiri dari empat tahap.\n\n| Tahap | Fungsi | Contoh alat |\n|-------|--------|-------------|\n| Sumber | Server, aplikasi, perangkat jaringan, firewall | Seluruh sistem milikmu |\n| Pengumpul | Mengambil dan meneruskan log atau metrik | rsyslog, Filebeat, Fluent Bit, node_exporter |\n| Penyimpanan dan analisis | Menyimpan, mengindeks, dan menganalisis | Prometheus, Elasticsearch, Loki, Wazuh (SIEM) |\n| Visualisasi dan alert | Dasbor dan notifikasi | Grafana, Kibana; email, Telegram, Slack |\n\nBedakan **metrik** dan **log**. Metrik adalah angka berkala, misalnya pemakaian CPU 73 persen pada pukul 10:05. Log adalah catatan kejadian, misalnya \"login gagal untuk user admin dari 203.0.113.9\". Metrik bagus untuk melihat tren dan memicu alarm, log bagus untuk menelusuri penyebab. Keduanya saling melengkapi.\n\nSIEM (Security Information and Event Management) seperti Wazuh menggabungkan log dari banyak sumber dan mengaitkannya dengan aturan deteksi, misalnya \"lima login gagal dalam satu menit dari IP yang sama\".\n\n## Metrik kunci\n\nEnam hal yang wajib dipantau di setiap server:\n\n- **CPU dan load**: beban tinggi yang berkepanjangan menandakan kekurangan kapasitas atau proses nakal.\n- **Memori**: kehabisan memori membuat sistem memakai swap lalu melambat drastis.\n- **Disk dan I/O**: disk penuh adalah penyebab klasik layanan mati mendadak, sering karena log yang tak dirotasi.\n- **Trafik**: lonjakan tak wajar bisa berarti DDoS atau kebocoran data.\n- **Uptime**: apakah layanan benar-benar dapat diakses.\n- **Login gagal**: indikator paling langsung dari upaya brute force.\n\nAlarm yang baik jarang tetapi bermakna. Jika setiap hal kecil memicu notifikasi, tim akan mengabaikannya (alert fatigue), dan alarm penting ikut terlewat. Tetapkan ambang yang masuk akal, misalnya peringatan saat disk di atas 80 persen, bukan 99 persen.\n\n## Membaca log login gagal\n\nLog autentikasi SSH di `/var/log/auth.log` mencatat setiap upaya masuk. Barisnya kira-kira begini:\n\n```text\nMar  3 02:14:07 srv sshd[2210]: Failed password for root from 203.0.113.9 port 51234 ssh2\nMar  3 02:14:09 srv sshd[2212]: Failed password for invalid user admin from 203.0.113.9 port 51240 ssh2\nMar  3 02:14:12 srv sshd[2215]: Accepted publickey for budi from 10.0.0.8 port 40122 ssh2\n```\n\nDari satu baris kamu bisa mengambil waktu, jenis kejadian, nama akun, dan alamat IP. Dengan rangkaian perintah sederhana, kamu mendapat peringkat IP penyerang:\n\n```bash\ngrep \"Failed password\" /var/log/auth.log \\\n  | grep -o \"from [0-9.]*\" \\\n  | sort | uniq -c | sort -rn | head\n```\n\nHasilnya misalnya `128 from 203.0.113.9`: ada 128 percobaan gagal dari satu alamat, tanda jelas brute force. IP seperti ini kandidat untuk diblokir fail2ban atau aturan firewall. Perhatikan juga kebalikannya: baris `Accepted` dari IP yang tidak dikenal, apalagi tepat setelah deretan `Failed`, bisa berarti penyerang akhirnya berhasil menebak. Di latihan bab ini kamu menulis logika yang sama dalam JavaScript.\n\n## IDS dan IPS\n\nPemantauan log bersifat melihat ke belakang. **IDS** dan **IPS** mengamati trafik dan perilaku secara langsung.\n\n| Aspek | IDS (Intrusion Detection System) | IPS (Intrusion Prevention System) |\n|-------|----------------------------------|-----------------------------------|\n| Tindakan | Memantau dan memberi peringatan | Mendeteksi dan memblokir otomatis |\n| Posisi | Pasif, tidak memblokir trafik | Inline di jalur trafik |\n| Risiko gangguan layanan | Rendah | Lebih tinggi, perlu tuning |\n| Catatan | Cocok untuk fase awal | Perlu tuning agar minim false positive |\n\nAnalogi: IDS adalah CCTV dengan alarm, IPS adalah pintu otomatis yang langsung mengunci saat mendeteksi penyusup. IPS lebih tegas, tetapi kalau salah mengenali (false positive), ia bisa memblokir pelanggan yang sah. Karena itu banyak tim memulai dengan mode deteksi, mempelajari polanya, baru menyalakan pemblokiran. Alat populer: Suricata, Snort, Zeek, dan Wazuh.\n\n## Siklus manajemen kerentanan\n\nKerentanan baru ditemukan setiap hari, jadi pemindaian harus menjadi siklus, bukan acara sekali jalan. Empat langkahnya:\n\n1. **Identifikasi**: temukan kelemahan dengan alat seperti Nmap, OpenVAS, atau Trivy (untuk image container).\n2. **Evaluasi**: tentukan prioritas dengan skor CVSS, yaitu skala 0 sampai 10 yang menilai tingkat keparahan.\n3. **Remediasi**: perbaiki lewat patch atau perubahan konfigurasi.\n4. **Verifikasi**: pindai ulang dan laporkan bahwa celah benar-benar tertutup.\n\n```bash\n# Contoh pemindaian port dan versi layanan pada server milikmu sendiri\nnmap -sV 10.0.0.5\n```\n\nPindai hanya sistem yang kamu miliki atau yang sudah memberi izin tertulis. Evaluasi penting karena sumber daya terbatas: kerentanan kritis pada server yang terekspos ke internet lebih mendesak daripada kerentanan rendah pada mesin internal terisolasi.\n\nGabungkan pemindaian terjadwal dengan deteksi intrusi real-time, itulah pertahanan berlapis. Pemindaian menemukan celah sebelum penyerang, IDS atau IPS menangkap serangan yang tetap lolos.\n\n## Rangkuman\n\n- Pipeline monitoring: sumber, pengumpul, penyimpanan dan analisis, lalu visualisasi dan alert.\n- Log harus dikirim terpusat karena penyerang bisa menghapus log lokal, dan waktu harus tersinkron lewat NTP.\n- Metrik kunci: CPU dan load, memori, disk dan I/O, trafik, uptime, dan login gagal.\n- IDS bersifat pasif dan hanya memberi peringatan, sedangkan IPS inline dan memblokir otomatis tetapi perlu tuning agar false positive minim.\n- Manajemen kerentanan adalah siklus berulang: identifikasi, evaluasi (CVSS), remediasi, verifikasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa log sebaiknya dikirim ke penyimpanan terpusat?",
+          "code": "",
+          "options": [
+            "Penyerang yang menguasai server bisa menghapus log lokal",
+            "Log lokal tidak bisa dibaca dengan grep",
+            "Server menolak menyimpan log lebih dari sehari",
+            "Log terpusat otomatis memblokir serangan"
+          ],
+          "answer": 0,
+          "explanation": "Salinan log di luar server tetap utuh untuk forensik walau server diretas. Log lokal bisa dibaca grep dan penyimpanan terpusat tidak memblokir apa pun sendiri."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa arti baris hasil terakhir dari pipeline ini?",
+          "code": "grep \"Failed password\" /var/log/auth.log | grep -o \"from [0-9.]*\" | sort | uniq -c | sort -rn | head -1\n# 57 from 203.0.113.9",
+          "options": [
+            "IP 203.0.113.9 paling banyak gagal login, yaitu 57 kali",
+            "IP 203.0.113.9 berhasil login sebanyak 57 kali",
+            "Ada 57 IP berbeda yang gagal login",
+            "Port 57 dipakai oleh IP 203.0.113.9"
+          ],
+          "answer": 0,
+          "explanation": "uniq -c menghitung kemunculan tiap IP dan sort -rn mengurutkan terbanyak dulu, jadi baris teratas adalah IP dengan gagal login terbanyak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perbedaan utama IPS dibanding IDS adalah...",
+          "code": "",
+          "options": [
+            "IPS hanya memberi peringatan tanpa memblokir",
+            "IPS hanya bekerja pada log yang sudah lama",
+            "IPS tidak memerlukan tuning sama sekali",
+            "IPS berada inline dan dapat memblokir trafik otomatis"
+          ],
+          "answer": 3,
+          "explanation": "IDS pasif dan hanya memberi peringatan, IPS inline dan memblokir, sehingga false positive dapat mengganggu layanan dan perlu tuning."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Skor CVSS dipakai untuk memprioritaskan kerentanan berdasarkan tingkat keparahannya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. CVSS memberi skala 0 sampai 10 sehingga tim dapat mengurutkan remediasi mulai dari yang paling parah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Parse satu baris log SSH",
+          "prompt": "Tulis fungsi `parseBaris(baris)` yang membaca satu baris `auth.log` SSH dan mengembalikan objek `{ status, user, ip }`.\n\n- `status` adalah `\"gagal\"` untuk baris `Failed password ...` dan `\"berhasil\"` untuk baris `Accepted ...`.\n- Untuk `invalid user admin`, nama pengguna yang diambil adalah `admin`.\n- Baris lain (bukan login SSH) menghasilkan `null`.\n\nContoh: baris `... Failed password for root from 203.0.113.9 port 51234 ssh2` menghasilkan `{ status: \"gagal\", user: \"root\", ip: \"203.0.113.9\" }`.",
+          "starter": {
+            "code": "function parseBaris(baris) {\n  // tulis kode di sini\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function parseBaris(baris) {\n  const m = baris.match(/(Failed|Accepted) \\w+ for (?:invalid user )?(\\S+) from (\\d{1,3}(?:\\.\\d{1,3}){3})/);\n  if (!m) return null;\n  return { status: m[1] === \"Failed\" ? \"gagal\" : \"berhasil\", user: m[2], ip: m[3] };\n}\n"
+          },
+          "setup": "const L1 = \"Mar  3 02:14:07 srv sshd[2210]: Failed password for root from 203.0.113.9 port 51234 ssh2\";\nconst L2 = \"Mar  3 02:14:09 srv sshd[2212]: Failed password for invalid user admin from 203.0.113.9 port 51240 ssh2\";\nconst L3 = \"Mar  3 02:14:12 srv sshd[2215]: Accepted publickey for budi from 10.0.0.8 port 40122 ssh2\";\nconst L4 = \"Mar  3 02:15:00 srv CRON[88]: pam_unix(cron:session): session opened for user root\";\nconst L5 = \"Mar  3 02:15:30 srv sshd[2301]: Failed password for root from 198.51.100.4 port 40001 ssh2\";",
+          "tests": [
+            {
+              "name": "Failed password menjadi status gagal dengan user dan ip",
+              "check": "parseBaris(L1).status === \"gagal\" && parseBaris(L1).user === \"root\" && parseBaris(L1).ip === \"203.0.113.9\""
+            },
+            {
+              "name": "invalid user mengambil nama setelahnya",
+              "check": "parseBaris(L2).user === \"admin\" && parseBaris(L2).status === \"gagal\""
+            },
+            {
+              "name": "Accepted menjadi status berhasil",
+              "check": "parseBaris(L3).status === \"berhasil\" && parseBaris(L3).ip === \"10.0.0.8\""
+            },
+            {
+              "name": "baris bukan login SSH menghasilkan null",
+              "check": "parseBaris(L4) === null"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Hitung login gagal per IP",
+          "prompt": "Tulis fungsi `hitungGagalPerIp(daftarBaris)` yang menerima array baris log dan mengembalikan objek `{ ip: jumlah }` berisi jumlah login gagal (`Failed password`) tiap alamat IP.\n\n- Baris `Accepted` dan baris lain diabaikan.\n- Kunci objek berurutan sesuai kemunculan pertama IP.\n\nContoh: `hitungGagalPerIp([L1, L2, L3, L5])` menghasilkan `{ \"203.0.113.9\": 2, \"198.51.100.4\": 1 }`.",
+          "starter": {
+            "code": "function hitungGagalPerIp(daftarBaris) {\n  const hasil = {};\n  // tulis kode di sini\n  return hasil;\n}\n"
+          },
+          "solution": {
+            "code": "function hitungGagalPerIp(daftarBaris) {\n  const hasil = {};\n  for (const baris of daftarBaris) {\n    const m = baris.match(/Failed \\w+ for (?:invalid user )?\\S+ from (\\d{1,3}(?:\\.\\d{1,3}){3})/);\n    if (m) hasil[m[1]] = (hasil[m[1]] || 0) + 1;\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "const L1 = \"Mar  3 02:14:07 srv sshd[2210]: Failed password for root from 203.0.113.9 port 51234 ssh2\";\nconst L2 = \"Mar  3 02:14:09 srv sshd[2212]: Failed password for invalid user admin from 203.0.113.9 port 51240 ssh2\";\nconst L3 = \"Mar  3 02:14:12 srv sshd[2215]: Accepted publickey for budi from 10.0.0.8 port 40122 ssh2\";\nconst L4 = \"Mar  3 02:15:00 srv CRON[88]: pam_unix(cron:session): session opened for user root\";\nconst L5 = \"Mar  3 02:15:30 srv sshd[2301]: Failed password for root from 198.51.100.4 port 40001 ssh2\";",
+          "tests": [
+            {
+              "name": "dua IP dihitung terpisah",
+              "check": "JSON.stringify(hitungGagalPerIp([L1, L2, L3, L5])) === '{\"203.0.113.9\":2,\"198.51.100.4\":1}'"
+            },
+            {
+              "name": "daftar kosong menghasilkan objek kosong",
+              "check": "Object.keys(hitungGagalPerIp([])).length === 0"
+            },
+            {
+              "name": "login berhasil tidak dihitung",
+              "check": "Object.keys(hitungGagalPerIp([L3])).length === 0"
+            },
+            {
+              "name": "baris lain diabaikan",
+              "check": "hitungGagalPerIp([L4, L1])[\"203.0.113.9\"] === 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "backup-insiden-dan-otomasi",
+      "title": "Backup, Respons Insiden, dan Otomasi",
+      "est_minutes": 22,
+      "slide_from": 18,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Merancang strategi backup dengan aturan 3-2-1, menentukan RPO dan RTO, serta memilih jenis backup.\n- Menjelaskan mengapa backup harus immutable, terenkripsi, dan diuji restore.\n- Menjalankan enam fase penanganan insiden menurut NIST SP 800-61.\n- Memahami otomasi (Ansible, Infrastructure as Code), zero trust, change management, dan lima prinsip penutup.\n\n## Backup: asuransi yang baru terasa saat dibutuhkan\n\nSetiap tindakan pengamanan sebelumnya bertujuan mencegah. Tetapi pencegahan tidak pernah sempurna, jadi kamu juga harus siap pulih. Backup adalah garis pertahanan terakhir: ketika disk rusak, data terhapus, atau ransomware mengenkripsi semuanya, backup menentukan apakah organisasi bangkit dalam beberapa jam atau bangkrut.\n\n### Aturan 3-2-1\n\nAturan paling terkenal untuk backup:\n\n- **3** salinan data: 1 data utama ditambah 2 backup.\n- **2** jenis media penyimpanan berbeda, misalnya disk lokal dan object storage.\n- **1** salinan di lokasi terpisah (offsite), supaya kebakaran atau banjir di satu tempat tidak menghabiskan semuanya.\n\nContoh praktis: database di server produksi (salinan 1), backup harian ke NAS di kantor (salinan 2, media berbeda), dan salinan terenkripsi ke penyimpanan cloud di kota lain (salinan 3, offsite).\n\n### RPO dan RTO\n\nDua angka ini ditentukan bersama pemilik bisnis, bukan sepihak oleh SysAdmin.\n\n- **RPO** (Recovery Point Objective): batas data yang boleh hilang, diukur dalam waktu. RPO 1 jam berarti backup minimal tiap jam.\n- **RTO** (Recovery Time Objective): batas waktu layanan harus pulih. RTO 4 jam berarti layanan kembali berjalan paling lambat 4 jam setelah gangguan.\n\nSemakin kecil angkanya, semakin mahal solusinya. Menetapkan RPO nol dan RTO nol tanpa anggaran besar hanyalah angan-angan, jadi angka harus realistis dan disepakati.\n\n### Jenis backup dan contoh perintah\n\n- **Full**: menyalin semua data. Pemulihan paling mudah, tetapi makan waktu dan ruang.\n- **Incremental**: hanya data yang berubah sejak backup terakhir (jenis apa pun). Hemat, tetapi pemulihan butuh rantai backup.\n- **Differential**: data yang berubah sejak backup full terakhir. Ukuran di tengah-tengah.\n\nAlat yang lazim: rsync, BorgBackup, Restic, dan Veeam. Contoh sederhana dengan rsync dan penjadwalan cron:\n\n```bash\n# Salin direktori data ke server backup, hapus berkas yang sudah tidak ada di sumber\nrsync -avz --delete /srv/app/ backup@10.0.0.20:/backups/app/\n\n# Jadwal tiap pukul 02:00 (crontab -e)\n0 2 * * * /opt/scripts/backup.sh\n```\n\nDua sifat yang membuat backup tahan ransomware: **immutable** (tidak bisa diubah atau dihapus selama periode tertentu) dan **terenkripsi** (agar kebocoran media backup tidak membuka data). Terakhir dan terpenting, **uji restore secara berkala**. Backup yang belum pernah diuji belum tentu bisa dipulihkan. Banyak organisasi baru sadar backup-nya rusak atau kosong pada saat paling genting.\n\n## Respons insiden\n\nMeski sudah berhati-hati, insiden tetap bisa terjadi. Yang membedakan adalah seberapa siap dan seberapa cepat kamu bereaksi. Acuan yang dipakai luas adalah **NIST SP 800-61** dengan enam fase:\n\n| Fase | Isi |\n|------|-----|\n| 1. Persiapan | Tim, playbook, dan alat siap sebelum insiden terjadi |\n| 2. Deteksi dan analisis | Identifikasi, validasi, dan tentukan dampak |\n| 3. Penahanan (containment) | Isolasi sistem agar serangan tidak meluas |\n| 4. Eradikasi | Hapus malware, tutup celah, ganti kredensial |\n| 5. Pemulihan | Kembalikan layanan dan pantau ketat |\n| 6. Pembelajaran | Post-mortem dan perbaikan prosedur |\n\nPegangan saat terjadi insiden:\n\n- Kecepatan penahanan sangat menentukan besarnya kerugian. Mengisolasi server yang terinfeksi dari jaringan lebih penting daripada langsung membersihkannya.\n- Dokumentasikan setiap langkah dan simpan bukti forensik. Jangan asal me-reboot atau menghapus sebelum bukti diamankan.\n- Komunikasikan sesuai jalur eskalasi, supaya manajemen dan pihak terkait tahu pada waktunya.\n- Eradikasi sebelum pemulihan: memulihkan layanan dari sistem yang celahnya belum ditutup hanya mengundang serangan kedua.\n\nFase terakhir sering dilewatkan. Post-mortem yang jujur, tanpa mencari kambing hitam, mengubah insiden menjadi perbaikan prosedur. Fase pertama sama pentingnya: playbook yang ditulis saat tenang jauh lebih baik daripada keputusan yang dikarang pukul tiga pagi.\n\n## Otomasi dan praktik terbaik\n\nMengerjakan konfigurasi secara manual di banyak server pasti menimbulkan perbedaan antar mesin dan kesalahan manusia. Solusinya otomasi.\n\n**Configuration management** (Ansible, Puppet, Chef) membuat konfigurasi konsisten di banyak server. Contoh playbook Ansible yang memperbarui paket dan memastikan UFW aktif:\n\n```yaml\n# playbook.yml\n- hosts: webservers\n  become: true\n  tasks:\n    - name: Update paket\n      apt:\n        upgrade: dist\n        update_cache: yes\n    - name: Pastikan UFW aktif\n      ufw:\n        state: enabled\n        policy: deny\n```\n\n```bash\nansible-playbook playbook.yml\n```\n\nPlaybook bersifat deklaratif: kamu menyatakan kondisi yang diinginkan, dan Ansible memastikan tercapai. Menjalankannya dua kali tidak merusak apa pun. **Infrastructure as Code** (Terraform atau OpenTofu) menerapkan ide yang sama untuk infrastrukturnya sendiri sehingga terdokumentasi dan dapat diulang. Simpan semua konfigurasi di Git agar setiap perubahan punya riwayat dan bisa dikembalikan.\n\nDua praktik lain:\n\n- **Zero Trust**: jangan percaya otomatis, verifikasi setiap akses dan perangkat, termasuk yang berasal dari dalam jaringan.\n- **Change management**: rencanakan perubahan, uji di staging, dan siapkan rollback sebelum menyentuh produksi.\n\n## Kesimpulan kelas: lima prinsip\n\nSeluruh materi dapat diringkas dalam lima prinsip:\n\n1. **Least privilege**: akses seminimal mungkin dan audit berkala.\n2. **Defense in depth**: lapisi pertahanan, yaitu firewall, hardening, enkripsi, dan deteksi, supaya satu lapisan yang jebol tidak berarti semuanya runtuh.\n3. **Visibilitas**: pantau dan log semuanya.\n4. **Siap pulih**: backup 3-2-1 yang teruji dan rencana respons insiden yang jelas.\n5. **Otomasi dan dokumentasi**: konsisten, dapat diulang, dan mudah diaudit.\n\nKeamanan bukan produk yang dibeli sekali, melainkan proses berkelanjutan.\n\n## Rangkuman\n\n- Backup mengikuti aturan 3-2-1 (3 salinan, 2 media, 1 offsite), dengan RPO sebagai batas data hilang dan RTO sebagai batas waktu pulih.\n- Backup sebaiknya immutable dan terenkripsi, dan restore harus diuji berkala.\n- Respons insiden NIST punya enam fase: persiapan, deteksi dan analisis, penahanan, eradikasi, pemulihan, pembelajaran.\n- Otomasi dengan Ansible dan Infrastructure as Code, konfigurasi di Git, zero trust, dan change management mengurangi kesalahan manusia.\n- Lima prinsip kunci: least privilege, defense in depth, visibilitas, siap pulih, otomasi dan dokumentasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aturan backup 3-2-1 berarti...",
+          "code": "",
+          "options": [
+            "3 jenis backup, 2 aplikasi, 1 enkripsi",
+            "3 kali sehari, 2 kali seminggu, 1 kali sebulan",
+            "3 salinan data, 2 jenis media berbeda, 1 salinan offsite",
+            "3 server, 2 administrator, 1 jadwal backup"
+          ],
+          "answer": 2,
+          "explanation": "Aturan 3-2-1 menjaga data dari kegagalan satu media atau satu lokasi. Pilihan lain bukan arti aturan tersebut."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "RTO adalah...",
+          "code": "",
+          "options": [
+            "Jumlah salinan backup minimum",
+            "Batas waktu layanan harus pulih setelah gangguan",
+            "Batas jumlah data yang boleh hilang",
+            "Waktu yang dibutuhkan untuk membuat backup penuh"
+          ],
+          "answer": 1,
+          "explanation": "RTO (Recovery Time Objective) adalah target waktu pemulihan. Batas data yang boleh hilang adalah RPO."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Menurut NIST SP 800-61, fase yang mengikuti penahanan adalah...",
+          "code": "",
+          "options": [
+            "Persiapan",
+            "Pembelajaran",
+            "Eradikasi",
+            "Deteksi dan analisis"
+          ],
+          "answer": 2,
+          "explanation": "Urutannya: persiapan, deteksi dan analisis, penahanan, eradikasi, pemulihan, pembelajaran."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Backup yang belum pernah diuji restore tetap dapat diandalkan sepenuhnya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Backup yang belum diuji belum tentu bisa dipulihkan, bisa jadi rusak atau tidak lengkap."
+        }
+      ],
+      "exercises": []
+    }
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Penganalisis Log Keamanan",
+    "prompt": "Tulis fungsi `analisisLog(baris, batas)` sesuai brief: hitung login gagal dan berhasil, kelompokkan gagal per IP, tandai IP mencurigakan, dan temukan IP yang berhasil login setelah mencapai batas gagal.",
+    "starter": {
+      "code": "function analisisLog(baris, batas) {\n  const gagalPerIp = {};\n  let totalGagal = 0;\n  let totalBerhasil = 0;\n  const kemungkinanJebol = [];\n  // 1. baca tiap baris: Failed atau Accepted, ambil IP-nya\n  // 2. hitung gagal per IP dan total\n  // 3. untuk Accepted, cek apakah IP sudah mencapai batas gagal\n  // 4. susun daftar mencurigakan, urut dari gagal terbanyak\n  return { totalGagal, totalBerhasil, gagalPerIp, mencurigakan: [], kemungkinanJebol };\n}\n"
+    },
+    "solution": {
+      "code": "function analisisLog(baris, batas) {\n  const gagalPerIp = {};\n  let totalGagal = 0;\n  let totalBerhasil = 0;\n  const kemungkinanJebol = [];\n  const pola = /(Failed|Accepted) \\w+ for (?:invalid user )?\\S+ from (\\d{1,3}(?:\\.\\d{1,3}){3})/;\n  for (const b of baris) {\n    const m = b.match(pola);\n    if (!m) continue;\n    const ip = m[2];\n    if (m[1] === \"Failed\") {\n      totalGagal++;\n      gagalPerIp[ip] = (gagalPerIp[ip] || 0) + 1;\n    } else {\n      totalBerhasil++;\n      if ((gagalPerIp[ip] || 0) >= batas && !kemungkinanJebol.includes(ip)) kemungkinanJebol.push(ip);\n    }\n  }\n  const mencurigakan = Object.keys(gagalPerIp)\n    .filter((ip) => gagalPerIp[ip] >= batas)\n    .sort((a, b) => gagalPerIp[b] - gagalPerIp[a]);\n  return { totalGagal, totalBerhasil, gagalPerIp, mencurigakan, kemungkinanJebol };\n}\n"
+    },
+    "setup": "const LOG = [\n  \"Mar  3 02:14:07 srv sshd[1]: Failed password for root from 203.0.113.9 port 1 ssh2\",\n  \"Mar  3 02:14:09 srv sshd[2]: Failed password for invalid user admin from 203.0.113.9 port 2 ssh2\",\n  \"Mar  3 02:14:10 srv sshd[3]: Failed password for root from 198.51.100.4 port 3 ssh2\",\n  \"Mar  3 02:14:12 srv sshd[4]: Failed password for invalid user test from 203.0.113.9 port 4 ssh2\",\n  \"Mar  3 02:14:20 srv sshd[5]: Accepted publickey for budi from 10.0.0.8 port 5 ssh2\",\n  \"Mar  3 02:14:30 srv sshd[6]: Accepted password for root from 203.0.113.9 port 6 ssh2\",\n  \"Mar  3 02:15:00 srv CRON[7]: pam_unix(cron:session): session opened for user root\",\n  \"Mar  3 02:15:30 srv sshd[8]: Failed password for root from 198.51.100.4 port 7 ssh2\"\n];",
+    "tests": [
+      {
+        "name": "contoh di brief menghasilkan hasil lengkap",
+        "check": "JSON.stringify(analisisLog(LOG, 3)) === '{\"totalGagal\":5,\"totalBerhasil\":2,\"gagalPerIp\":{\"203.0.113.9\":3,\"198.51.100.4\":2},\"mencurigakan\":[\"203.0.113.9\"],\"kemungkinanJebol\":[\"203.0.113.9\"]}'"
+      },
+      {
+        "name": "total gagal dan berhasil dihitung",
+        "check": "analisisLog(LOG, 3).totalGagal === 5 && analisisLog(LOG, 3).totalBerhasil === 2"
+      },
+      {
+        "name": "batas 2 memasukkan dua IP, terbanyak dulu",
+        "check": "JSON.stringify(analisisLog(LOG, 2).mencurigakan) === '[\"203.0.113.9\",\"198.51.100.4\"]'"
+      },
+      {
+        "name": "batas terlalu tinggi tidak menghasilkan IP mencurigakan",
+        "check": "analisisLog(LOG, 10).mencurigakan.length === 0"
+      },
+      {
+        "name": "login sah dari IP tanpa gagal bukan kemungkinan jebol",
+        "check": "analisisLog(LOG, 1).kemungkinanJebol.includes(\"10.0.0.8\") === false"
+      },
+      {
+        "name": "berhasil sebelum mencapai batas tidak dianggap jebol",
+        "check": "analisisLog([LOG[5], LOG[0], LOG[1], LOG[3]], 3).kemungkinanJebol.length === 0"
+      },
+      {
+        "name": "IP jebol hanya muncul sekali",
+        "check": "analisisLog([...LOG, LOG[5]], 3).kemungkinanJebol.length === 1"
+      },
+      {
+        "name": "daftar kosong menghasilkan nol dan objek kosong",
+        "check": "analisisLog([], 3).totalGagal === 0 && Object.keys(analisisLog([], 3).gagalPerIp).length === 0"
+      }
+    ],
+    "brief": "Kamu akan membangun **penganalisis log keamanan** sederhana, alat yang dipakai SysAdmin untuk mengenali brute force dan kemungkinan pembobolan dari `/var/log/auth.log`. Proyek ini menggabungkan pembacaan log, penghitungan per alamat IP, dan prinsip deteksi.\n\n## Yang dibangun\n\nFungsi `analisisLog(baris, batas)`. `baris` adalah array string log SSH, `batas` adalah jumlah login gagal minimal untuk dianggap mencurigakan. Format baris yang dikenali:\n\n```text\nMar  3 02:14:07 srv sshd[1]: Failed password for root from 203.0.113.9 port 1 ssh2\nMar  3 02:14:09 srv sshd[2]: Failed password for invalid user admin from 203.0.113.9 port 2 ssh2\nMar  3 02:14:20 srv sshd[5]: Accepted publickey for budi from 10.0.0.8 port 5 ssh2\n```\n\n## Fitur wajib\n\n1. **Hitung kejadian.** `totalGagal` adalah jumlah baris `Failed ...` dan `totalBerhasil` jumlah baris `Accepted ...`. Baris lain diabaikan.\n2. **Gagal per IP.** `gagalPerIp` adalah objek `{ ip: jumlah }` berisi jumlah login gagal tiap IP, berurutan sesuai kemunculan pertama. Untuk `invalid user`, tetap dihitung per IP.\n3. **IP mencurigakan.** `mencurigakan` adalah array IP dengan jumlah gagal lebih dari atau sama dengan `batas`, diurutkan dari jumlah gagal terbanyak. Jumlah sama mengikuti urutan kemunculan pertama.\n4. **Kemungkinan jebol.** `kemungkinanJebol` adalah array IP yang punya baris `Accepted` setelah IP itu sudah mencapai `batas` gagal sebelumnya (dihitung sesuai urutan baris). Tiap IP hanya muncul sekali.\n5. Kembalikan `{ totalGagal, totalBerhasil, gagalPerIp, mencurigakan, kemungkinanJebol }`.\n\n## Contoh hasil\n\nDengan `LOG` seperti di atas dan `batas` 3:\n\n```js\n{\n  totalGagal: 5,\n  totalBerhasil: 2,\n  gagalPerIp: { \"203.0.113.9\": 3, \"198.51.100.4\": 2 },\n  mencurigakan: [\"203.0.113.9\"],\n  kemungkinanJebol: [\"203.0.113.9\"]\n}\n```\n\nIP 203.0.113.9 gagal tiga kali lalu berhasil login sebagai root. Itu pola klasik penebakan sandi yang akhirnya berhasil, dan di dunia nyata berarti saatnya masuk ke fase penahanan insiden."
+  }
+}
