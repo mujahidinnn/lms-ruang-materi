@@ -136,3 +136,72 @@ describe("drift kunci array state", () => {
     expect(r[k]).toEqual([sample[k]]);
   });
 });
+
+describe("bridge", () => {
+  it("add dan print", () => {
+    const r = run("/interface bridge add name=br1 comment=\"a b\"\n/interface bridge print");
+    expect(r.router.bridges).toEqual([{ name: "br1" }]);
+    expect(has(r.keluaran, "NAME")).toBe(true);
+    expect(has(r.keluaran, "br1")).toBe(true);
+  });
+  it("galat", () => {
+    expect(run("/interface bridge add").keluaran).toContain("failure: missing required argument name");
+    expect(run("/interface bridge add name=bridge1", withBridge).keluaran).toContain("failure: already have interface with such name");
+    expect(run("/interface bridge add name=ether1").keluaran).toContain("failure: already have interface with such name");
+    expect(run("/interface bridge add foo=x").keluaran).toContain("expected end of command (line 1 column 23)");
+    expect(run("/interface bridge add __proto__=x").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/interface bridge add br1 name=br2").keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("bridge port", () => {
+  it("add dan print", () => {
+    const r = run("/interface bridge port add bridge=bridge1 interface=ether2 comment=\"a b\"\n/interface bridge port print", withBridge);
+    expect(r.router.bridgePorts).toEqual([{ bridge: "bridge1", interface: "ether2" }]);
+    expect(has(r.keluaran, "BRIDGE")).toBe(true);
+    expect(has(r.keluaran, "ether2")).toBe(true);
+  });
+  it("galat", () => {
+    expect(run("/interface bridge port add bridge=bridge1 interface=ether2").keluaran).toContain("input does not match any value of bridge");
+    expect(run("/interface bridge port add bridge=bridge1 interface=ether9", withBridge).keluaran).toContain("input does not match any value of interface");
+    expect(run("/interface bridge port add bridge=bridge1 interface=bridge1", withBridge).keluaran).toContain("input does not match any value of interface");
+    const dup = run("/interface bridge port add bridge=bridge1 interface=ether2\n/interface bridge port add bridge=bridge2 interface=ether2", { bridges: [{ name: "bridge1" }, { name: "bridge2" }] });
+    expect(dup.keluaran).toContain("failure: device already added as bridge port");
+    expect(dup.router.bridgePorts).toHaveLength(1);
+    expect(run("/interface bridge port add interface=ether2", withBridge).keluaran).toContain("failure: missing required argument bridge");
+    expect(run("/interface bridge port add bridge=bridge1 interface=ether2 x=1", withBridge).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/interface bridge port add bridge=bridge1 interface=ether2 junk", withBridge).keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("dhcp lease statis", () => {
+  const ok = "/ip dhcp-server lease add address=10.0.0.5 mac-address=aa:bb:cc:00:11:22";
+  it("add dan print", () => {
+    const r = run(`${ok} server=d comment="a b"\n/ip dhcp-server lease print`, { dhcpServers: [{ name: "d", interface: "ether1", addressPool: "p", disabled: false }] });
+    expect(r.router.dhcpLeases).toEqual([{ address: "10.0.0.5", macAddress: "aa:bb:cc:00:11:22", server: "d" }]);
+    expect(has(r.keluaran, "MAC-ADDRESS")).toBe(true);
+    expect(has(r.keluaran, "SERVER")).toBe(true);
+    expect(has(r.keluaran, "10.0.0.5")).toBe(true);
+  });
+  it("server kosong diterima", () => {
+    expect(run(ok).router.dhcpLeases).toEqual([{ address: "10.0.0.5", macAddress: "aa:bb:cc:00:11:22", server: "" }]);
+    expect(run(`${ok} server=`).router.dhcpLeases).toHaveLength(1);
+  });
+  it("galat", () => {
+    expect(run("/ip dhcp-server lease add address=10.0.0 mac-address=aa:bb:cc:00:11:22").keluaran).toContain("invalid value for argument address");
+    expect(run("/ip dhcp-server lease add address=10.0.0.5 mac-address=zz").keluaran).toContain("invalid value for argument mac-address");
+    expect(run(`${ok} server=nope`).keluaran).toContain("input does not match any value of server");
+    expect(run("/ip dhcp-server lease add address=10.0.0.5").keluaran).toContain("failure: missing required argument mac-address");
+    expect(run(`${ok} x=1`).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(`${ok} __proto__=x`).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(`${ok} junk`).keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+  it("duplikat", () => {
+    const sameMac = run(`${ok}\n/ip dhcp-server lease add address=10.0.0.6 mac-address=AA:BB:CC:00:11:22`);
+    expect(sameMac.keluaran).toContain("failure: already have such entry");
+    expect(sameMac.router.dhcpLeases).toHaveLength(1);
+    const sameIp = run(`${ok}\n/ip dhcp-server lease add address=10.0.0.5 mac-address=aa:bb:cc:00:11:33`);
+    expect(sameIp.keluaran).toContain("failure: already have such entry");
+    expect(sameIp.router.dhcpLeases).toHaveLength(1);
+  });
+});

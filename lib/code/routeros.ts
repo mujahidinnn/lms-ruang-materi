@@ -120,9 +120,12 @@ export function routerOSShim() {
     "ip dns set": { keys: ["servers", "allow-remote-requests"], req: [] },
     "interface ethernet set": { keys: ["arp"], req: ["arp"] },
     "ip arp add": { keys: ["address", "mac-address", "interface"], req: ["address", "mac-address", "interface"] },
+    "interface bridge add": { keys: ["name"], req: ["name"] },
+    "interface bridge port add": { keys: ["bridge", "interface"], req: ["bridge", "interface"] },
+    "ip dhcp-server lease add": { keys: ["address", "mac-address", "server"], req: ["address", "mac-address"] },
     ping: { keys: ["count"], req: [] },
   };
-  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns"];
+  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns", "interface bridge", "interface bridge port", "ip dhcp-server lease"];
   for (const p of PRINTS) SPECS[p + " print"] = { keys: [], req: [] };
   SPECS["ip address remove"] = { keys: [], req: [] };
   for (const n of Object.keys(SPECS)) if (n.endsWith(" add")) SPECS[n].keys.push("comment");
@@ -289,6 +292,7 @@ export function routerOSShim() {
       }
       const hasPhys = (n: string) => router.interfaces.some((i) => i.name === n);
       const hasIf = (n: string) => hasPhys(n) || router.bridges.some((b) => b.name === n);
+      const macOk = (m: string) => /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(m);
       const g = (k: string) => args[k] ?? "";
 
       switch (name) {
@@ -314,10 +318,38 @@ export function routerOSShim() {
         }
         case "ip arp add":
           if (!ip4(g("address"))) err("invalid value for argument address");
-          else if (!/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(g("mac-address"))) err("invalid value for argument mac-address");
+          else if (!macOk(g("mac-address"))) err("invalid value for argument mac-address");
           else if (!hasIf(g("interface"))) err("input does not match any value of interface");
           else if (router.arp.some((a) => a.address === g("address") && a.interface === g("interface"))) err("failure: already have such entry");
           else router.arp.push({ address: g("address"), macAddress: g("mac-address"), interface: g("interface") });
+          break;
+        case "interface bridge add":
+          if (hasIf(g("name"))) err("failure: already have interface with such name");
+          else router.bridges.push({ name: g("name") });
+          break;
+        case "interface bridge print":
+          printList(["NAME"], router.bridges.map((b) => [b.name]));
+          break;
+        case "interface bridge port add":
+          if (!router.bridges.some((b) => b.name === g("bridge"))) err("input does not match any value of bridge");
+          else if (!hasPhys(g("interface"))) err("input does not match any value of interface");
+          else if (router.bridgePorts.some((p) => p.interface === g("interface"))) err("failure: device already added as bridge port");
+          else router.bridgePorts.push({ bridge: g("bridge"), interface: g("interface") });
+          break;
+        case "interface bridge port print":
+          printList(["BRIDGE", "INTERFACE"], router.bridgePorts.map((p) => [p.bridge, p.interface]));
+          break;
+        case "ip dhcp-server lease add": {
+          const mac = g("mac-address").toLowerCase();
+          if (!ip4(g("address"))) err("invalid value for argument address");
+          else if (!macOk(g("mac-address"))) err("invalid value for argument mac-address");
+          else if (g("server") !== "" && !router.dhcpServers.some((d) => d.name === g("server"))) err("input does not match any value of server");
+          else if (router.dhcpLeases.some((l) => l.address === g("address") || l.macAddress.toLowerCase() === mac)) err("failure: already have such entry");
+          else router.dhcpLeases.push({ address: g("address"), macAddress: g("mac-address"), server: g("server") });
+          break;
+        }
+        case "ip dhcp-server lease print":
+          printList(["ADDRESS", "MAC-ADDRESS", "SERVER"], router.dhcpLeases.map((l) => [l.address, l.macAddress, l.server]));
           break;
         case "ip arp print":
           printList(["ADDRESS", "MAC-ADDRESS", "INTERFACE"], router.arp.map((a) => [a.address, a.macAddress, a.interface]));
