@@ -1408,6 +1408,80 @@
       "exercises": []
     },
     {
+      "slug": "praktik-router-pertama",
+      "title": "Praktik: Router MikroTik Pertama dengan Winbox",
+      "est_minutes": 40,
+      "slide_from": 25,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Menyambungkan router MikroTik ke modem ISP dan ke laptop dengan port yang benar.\n- Masuk ke router dengan Winbox, lewat alamat MAC maupun alamat IP.\n- Membaca konfigurasi bawaan: alamat, DHCP, dan NAT.\n- Melakukan pengaturan dasar yang aman: nama router dan sandi admin.\n\n## Alat dan Bahan\n\n- **Router MikroTik** dengan lima port atau lebih, dalam kondisi konfigurasi bawaan pabrik.\n- **Dua kabel UTP** straight. Salah satunya bisa kabel buatanmu dari praktik sebelumnya.\n- **Modem atau sumber internet** (modem ISP, atau router lain yang memberi internet lewat kabel).\n- **Laptop** dengan Winbox terpasang. Winbox adalah aplikasi resmi MikroTik yang kamu unduh dari situs MikroTik.\n- **Adaptor daya** router. Periksa **stiker di badan router**: beberapa model memuat nama pengguna dan sandi awal di sana.\n\nKerjakan di jaringan latihan, jangan di jaringan kantor atau sekolah yang sedang dipakai orang lain.\n\n## Menyambungkan Perangkat\n\nPada konfigurasi bawaan MikroTik yang umum, **ether1 adalah port WAN** dan **ether2 sampai ether5 adalah port LAN**. Jadi sambungkan seperti ini:\n\n1. Kabel dari modem ISP ke **ether1**.\n2. Kabel dari laptop ke **ether2**.\n3. Nyalakan router dan tunggu sekitar satu menit sampai lampu tenang.\n\n![Router 5 port dengan ether1 sebagai WAN dan ether2 sampai ether5 sebagai LAN](gambar:router-5-port)\n\nAtur laptop agar memakai **alamat IP otomatis (DHCP)**. Router bawaan menjalankan server DHCP di port LAN, jadi laptop akan mendapat alamat sekitar `192.168.88.x` dan router sendiri berada di `192.168.88.1`. Matikan Wi-Fi laptop selama praktik supaya tidak ada dua jaringan yang membingungkan.\n\n![Rancangan jaringan kantor kecil dengan MikroTik](gambar:kantor-kecil-mikrotik)\n\n## Masuk dengan Winbox\n\n1. Buka Winbox dan pilih tab **Neighbors**. Router akan muncul dengan alamat MAC dan, bila konfigurasi bawaan, alamat IP `192.168.88.1`.\n2. Klik baris router itu. Kolom alamat terisi otomatis.\n3. Isi **Login** `admin`. Sandi biasanya kosong, tetapi bila ada stiker sandi di router, pakai yang tertulis di stiker.\n4. Klik **Connect**.\n\nMasuk lewat **alamat MAC** punya keuntungan: kamu tetap bisa masuk walaupun laptop belum punya alamat IP yang cocok dengan router. Syaratnya laptop dan router berada di jaringan lokal yang sama, jadi cara ini tidak bisa dipakai dari internet. Kalau Winbox belum tersedia, kamu juga bisa membuka `http://192.168.88.1` di browser untuk tampilan web WebFig.\n\n## Memeriksa Konfigurasi Bawaan\n\nDi Winbox, buka **New Terminal**, lalu jalankan empat perintah berikut satu per satu.\n\n```text\n/interface print\n/ip address print\n/ip dhcp-client print\n/ip firewall nat print\n```\n\nFungsinya:\n\n- `/interface print` menampilkan semua port. Port yang kabelnya terpasang diberi tanda `R` (running).\n- `/ip address print` menampilkan alamat IP router. Pada konfigurasi bawaan, alamat `192.168.88.1/24` terpasang di bridge LAN.\n- `/ip dhcp-client print` menampilkan apakah ether1 sudah mendapat alamat dari modem. Status `bound` artinya sudah.\n- `/ip firewall nat print` menampilkan aturan NAT. Aturan `masquerade` itulah yang membuat banyak perangkat berbagi satu alamat publik.\n\nBentuk keluarannya kira-kira seperti ini (kolom bisa sedikit berbeda antar versi dan model):\n\n```text\n[admin@MikroTik] > /ip address print\nColumns: ADDRESS, NETWORK, INTERFACE\n# ADDRESS           NETWORK       INTERFACE\n0 192.168.88.1/24   192.168.88.0  bridge\n\n[admin@MikroTik] > /ip dhcp-client print\nColumns: INTERFACE, USE-PEER-DNS, ADD-DEFAULT-ROUTE, STATUS, ADDRESS\n# INTERFACE  USE-PEER-DNS  ADD-DEFAULT-ROUTE  STATUS  ADDRESS\n0 ether1     yes           yes                bound   203.0.113.5/24\n```\n\nKonfigurasi bawaan berbeda sedikit antar model. Ada model dengan Wi-Fi atau port tambahan, dan ada yang memakai nama port berbeda. Selalu cocokkan dengan keluaran routermu sendiri, jangan hanya menghafal contoh.\n\n## Pengaturan Dasar yang Aman\n\nDua hal yang sebaiknya dilakukan sebelum router dipakai.\n\nBeri **nama router** supaya mudah dikenali, terutama bila nanti ada lebih dari satu:\n\n```text\n/system identity set name=R-Kantor\n```\n\nGanti **sandi admin**. Router dengan sandi kosong atau sandi tebakan mudah bisa dimasuki siapa pun yang berada di jaringan yang sama, lalu pengaturannya diubah:\n\n```text\n/user set admin password=GantiDenganSandiPanjang\n```\n\nGunakan sandi yang panjang, unik, dan jangan dipakai di akun lain. Catat di tempat aman, karena kalau sandi hilang, jalan satu-satunya adalah mengembalikan router ke pengaturan pabrik.\n\nSatu perintah yang perlu kamu kenal tetapi jangan dipakai sembarangan adalah `/system reset-configuration`. Perintah itu **menghapus seluruh konfigurasi** router. Pakai hanya sebagai jalan terakhir, misalnya saat sandi hilang dan router memang tidak menyimpan pengaturan penting.\n\nTerakhir, biarkan firewall bawaan tetap aktif dan jangan membuka layanan router ke internet. Firewall bawaan sudah memblokir akses dari sisi WAN, dan itu perlindungan pertama yang tidak boleh kamu matikan hanya agar sesuatu terasa lebih mudah.\n\n## Checklist Hasil\n\n- [ ] Kabel modem terpasang di ether1 dan kabel laptop di ether2.\n- [ ] Laptop mendapat alamat IP otomatis di kisaran `192.168.88.x`.\n- [ ] Winbox berhasil masuk dengan login `admin`.\n- [ ] `/ip address print` menunjukkan `192.168.88.1/24`.\n- [ ] `/ip dhcp-client print` menunjukkan ether1 berstatus `bound`.\n- [ ] Nama router sudah diganti dan sandi admin sudah baru.\n\n## Kalau Tidak Berhasil\n\n| Gejala | Kemungkinan penyebab | Perbaikan |\n| --- | --- | --- |\n| Winbox tidak menemukan router | Kabel laptop di ether1, atau Wi-Fi laptop masih aktif | Pindahkan kabel ke ether2, matikan Wi-Fi, klik Refresh di Neighbors |\n| Login ditolak | Sandi awal ada di stiker perangkat | Baca stiker, ketik persis, perhatikan huruf besar dan kecil |\n| Laptop tidak dapat alamat IP | Kabel di port WAN, atau laptop diatur IP manual | Pakai port LAN dan setel laptop ke otomatis |\n| ether1 berstatus `searching...` | Modem belum memberi alamat atau kabel modem bermasalah | Cek kabel, nyalakan ulang modem, tunggu beberapa menit |\n| Internet tidak ada walau ether1 `bound` | DNS atau rute bermasalah | Lanjut ke praktik uji konektivitas berikutnya |\n\n## Rangkuman\n\n- Pada konfigurasi bawaan MikroTik, ether1 adalah WAN dan ether2 sampai ether5 adalah LAN.\n- Winbox bisa masuk lewat alamat MAC di jaringan lokal yang sama, dan alamat bawaan router adalah `192.168.88.1`.\n- Empat perintah periksa: interface, alamat IP, DHCP client, dan NAT.\n- Status `bound` pada DHCP client berarti ether1 sudah mendapat alamat dari modem.\n- Beri nama router dan ganti sandi admin sebelum dipakai.\n- `/system reset-configuration` menghapus semua konfigurasi, jadi pakai sebagai jalan terakhir.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menyambungkan modem ISP ke router MikroTik dengan konfigurasi bawaan. Kabel dari modem sebaiknya dicolok ke...",
+          "code": "",
+          "options": [
+            "ether1, port WAN bawaan",
+            "ether2, port LAN yang pertama",
+            "ether5, port LAN yang terakhir",
+            "Port USB di samping ether5"
+          ],
+          "answer": 0,
+          "explanation": "Pada konfigurasi bawaan yang umum, ether1 adalah WAN dan meminta alamat dari modem lewat DHCP client. Port LAN dan USB bukan untuk sambungan ke ISP."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Dari keluaran perintah berikut, apa yang bisa kamu simpulkan?",
+          "code": "[admin@MikroTik] > /ip address print\nColumns: ADDRESS, NETWORK, INTERFACE\n# ADDRESS           NETWORK       INTERFACE\n0 192.168.88.1/24   192.168.88.0  bridge",
+          "options": [
+            "Router tidak punya alamat IP sehingga harus diatur lewat browser dulu",
+            "Alamat router ada di jaringan lain yang sama sekali berbeda dari laptop",
+            "Router memakai alamat dinamis dari ISP pada bridge LAN saat ini",
+            "Router berada di 192.168.88.1 pada jaringan 192.168.88.0/24 di bridge"
+          ],
+          "answer": 3,
+          "explanation": "Baris 0 menunjukkan alamat 192.168.88.1/24 pada bridge, yaitu alamat bawaan LAN. Alamat dari ISP biasanya muncul di ether1 lewat DHCP client, bukan di bridge."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa sandi admin router sebaiknya diganti sebelum dipakai?",
+          "code": "",
+          "options": [
+            "Supaya Winbox bisa menemukan router lewat alamat MAC dengan lebih cepat",
+            "Siapa pun di jaringan bisa mengubah pengaturan bila sandinya kosong",
+            "Supaya router mendapat alamat IP dari modem dengan lebih cepat",
+            "Supaya kabel LAN tidak perlu diuji dengan tester lagi nanti"
+          ],
+          "answer": 1,
+          "explanation": "Sandi kosong atau mudah ditebak membuat router bisa diambil alih oleh siapa pun yang berada di jaringan. Sandi tidak memengaruhi kecepatan DHCP atau pencarian di Winbox."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Winbox bisa masuk ke router lewat alamat MAC walaupun laptop belum punya alamat IP yang cocok dengan router, selama keduanya berada di jaringan lokal yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Sambungan lewat alamat MAC bekerja di tingkat jaringan lokal, jadi tidak bergantung pada alamat IP. Cara ini tidak bisa dipakai dari internet."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Router tidak punya internet. Apa arti status di keluaran ini dan apa langkah pertamamu?",
+          "code": "[admin@MikroTik] > /ip dhcp-client print\nColumns: INTERFACE, STATUS, ADDRESS\n# INTERFACE  STATUS       ADDRESS\n0 ether1     searching...",
+          "options": [
+            "ether1 sudah mendapat alamat dari modem, jadi masalahnya pasti ada di laptop kamu",
+            "NAT belum aktif di router, jadi langkah pertama adalah mengganti sandi admin",
+            "Router sudah rusak total dan harus direset ke pengaturan pabrik sekarang juga",
+            "ether1 belum mendapat alamat dari modem, jadi cek kabel dan modem"
+          ],
+          "answer": 3,
+          "explanation": "Status searching berarti DHCP client belum mendapat jawaban dari modem. Periksa kabel di ether1 dan nyalakan ulang modem sebelum mengubah pengaturan lain. Reset pabrik tidak diperlukan."
+        }
+      ],
+      "exercises": []
+    },
+    {
       "slug": "keamanan-dan-troubleshooting",
       "title": "Keamanan dan Troubleshooting",
       "est_minutes": 20,
