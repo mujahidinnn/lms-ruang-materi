@@ -105,11 +105,31 @@ export function routerOSShim() {
     if (awal && typeof awal === "object") {
       const base = router as unknown as Record<string, unknown>;
       const given = awal as unknown as Record<string, unknown>;
+      // Entries and nested fields of the wrong type are dropped, never thrown on.
+      const shapes: Record<string, Record<string, string>> = {
+        interfaces: { name: "string", running: "boolean" },
+        addresses: { address: "string", network: "string", interface: "string" },
+        pools: { name: "string", ranges: "string" },
+        dhcpServers: { name: "string", interface: "string", addressPool: "string" },
+        dhcpNetworks: { address: "string", gateway: "string", dnsServer: "string" },
+        nat: { chain: "string", action: "string", outInterface: "string", srcAddress: "string" },
+        routes: { dstAddress: "string", gateway: "string" },
+      };
       for (const k of Object.keys(base)) {
         const v = given[k];
         if (v === undefined || v === null) continue;
-        const ok = Array.isArray(base[k]) ? Array.isArray(v) : typeof v === typeof base[k] && !Array.isArray(v);
-        if (ok) base[k] = JSON.parse(JSON.stringify(v));
+        const shape = shapes[k];
+        if (shape) {
+          if (!Array.isArray(v)) continue;
+          base[k] = v
+            .filter((e) => e && typeof e === "object" && Object.keys(shape).every((f) => typeof e[f] === shape[f]))
+            .map((e) => Object.fromEntries(Object.keys(shape).map((f) => [f, e[f]])));
+        } else if (k === "dns") {
+          if (typeof v !== "object" || Array.isArray(v)) continue;
+          const d = v as { servers?: unknown; allowRemoteRequests?: unknown };
+          if (Array.isArray(d.servers) && d.servers.every((x) => typeof x === "string")) router.dns.servers = [...d.servers];
+          if (typeof d.allowRemoteRequests === "boolean") router.dns.allowRemoteRequests = d.allowRemoteRequests;
+        } else if (typeof v === typeof base[k]) base[k] = v;
       }
     }
 

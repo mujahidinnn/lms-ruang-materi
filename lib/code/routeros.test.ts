@@ -148,6 +148,20 @@ describe("routerOSShim", () => {
     expect(run("/system identity print\n/system identity set name=R2\n/system identity print", { identity: "R1" }).keluaran[3]).toBe("[admin@R2] > /system identity print");
   });
 
+  it("awal malformed diabaikan tanpa melempar", () => {
+    const bad = (a: unknown, s = "") => run(s, a as never);
+    expect(bad({ addresses: [1, null] }).router.addresses).toEqual([]);
+    expect(bad({ addresses: [{}] }, "/ping 1.1.1.1").router.addresses).toEqual([]);
+    expect(bad({ interfaces: [{}] }, "/interface print").router.interfaces).toEqual([]);
+    expect(bad({ interfaces: [null] }, "/interface print").router.interfaces).toEqual([]);
+    const d = bad({ dns: { servers: 5, allowRemoteRequests: "x" } }, "/ip dns print");
+    expect(d.router.dns).toEqual({ servers: [], allowRemoteRequests: false });
+    const good = { address: "10.0.0.1/24", network: "10.0.0.0", interface: "ether1" };
+    expect(bad({ addresses: [null, good, { address: 1 }] }, "/ping 10.0.0.1").router.addresses).toEqual([good]);
+    expect(bad({ interfaces: [{ name: "e1", running: true }, { name: "e2" }] }).router.interfaces).toEqual([{ name: "e1", running: true }]);
+    expect(bad({ dns: { servers: ["8.8.8.8", 1], allowRemoteRequests: true } }).router.dns).toEqual({ servers: [], allowRemoteRequests: true });
+  });
+
   it("swa-cukup lewat toString", () => {
     const src = routerOSShim.toString();
     const shim = new Function("return (" + src + ")()")();
