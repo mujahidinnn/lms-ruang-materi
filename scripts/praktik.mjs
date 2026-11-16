@@ -9,12 +9,13 @@ import { T568A, T568B, WIRE_HEX } from "../lib/praktik/utp.ts";
 export const INK = "#0f100d", M1 = "#e3edc8", M3 = "#b5d36f", PINK = "#f4b6c2";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-// A 1200px-wide white card with a title for screen readers.
+// A 1200px-wide white sheet with a title for screen readers. No border or
+// rounded corners of its own: the figure around it draws those.
 export function frame(title, height, body, defs = "") {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 ${height}" width="1200" height="${height}" role="img" aria-labelledby="t" font-family="system-ui, 'Segoe UI', Roboto, sans-serif">
 <title id="t">${esc(title)}</title>
 <defs>${defs}</defs>
-<rect x="3" y="3" width="1194" height="${height - 6}" rx="28" fill="#ffffff" stroke="${INK}" stroke-width="4"/>
+<rect width="1200" height="${height}" fill="#ffffff"/>
 ${body}
 </svg>
 `;
