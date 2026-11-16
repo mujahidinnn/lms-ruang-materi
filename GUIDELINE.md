@@ -594,7 +594,7 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
     service set <name>`.
   - **Commands** (`print` takes no arguments; `*` = required):
     `/system identity set name*`; `/system identity print`; `/interface
-    print`; `/interface ethernet set <name> arp*` (enabled, disabled,
+    print` (ports, then bridges with type `bridge`); `/interface ethernet set <name> arp*` (enabled, disabled,
     proxy-arp, local-proxy-arp, reply-only; physical ports only); `/interface
     ethernet print`; `/interface bridge add name*`; `/interface bridge port
     add bridge* interface*` (interface must be physical, one bridge per
@@ -605,15 +605,25 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
     network add address* gateway dns-server`; `/ip dhcp-server lease add
     address* mac-address* server`; `/ip arp add address* mac-address*
     interface*`; `/ip firewall nat add chain* action* out-interface
-    src-address` (chain srcnat|dstnat; action accept|masquerade|dst-nat|
-    src-nat); `/ip firewall filter add chain* action* protocol dst-port
-    src-address in-interface connection-state` (chain input|forward|output;
-    action accept|drop|reject|passthrough|log; protocol tcp|udp|icmp;
-    `dst-port` is `80`, `80-90` or a comma list and needs tcp or udp;
+    src-address protocol dst-port in-interface to-addresses to-ports` (chain
+    srcnat|dstnat; action accept|masquerade|dst-nat|src-nat; `dst-nat`
+    requires `to-addresses`; `to-addresses` is an IPv4, `to-ports` a port or
+    `a-b`; `dst-port` and `protocol` as in filter; `in-interface` must
+    exist); `/ip firewall filter add chain* action* protocol dst-port
+    src-address in-interface connection-state src-address-list
+    dst-address-list` (chain input|forward|output; action
+    accept|drop|reject|passthrough|log|fasttrack-connection, the last only
+    in `forward`; the list names are any non-empty text; protocol
+    tcp|udp|icmp; `dst-port` is `80`, `80-90` or a comma list and needs tcp
+    or udp;
     `connection-state` is a comma list of established, related, new,
     invalid, untracked); `/ip firewall address-list add list* address*`;
-    `/queue simple add name* target* max-limit` (`max-limit` as `up/down`,
-    e.g. `1M/2M`); `/ip route add dst-address* gateway* distance` (gateway
+    `/queue simple add name* target* max-limit` (`target` is an IP, a CIDR
+    or an existing interface; `max-limit` as `up/down`, e.g. `1M/2M`); `/ip
+    dhcp-client add interface* disabled use-peer-dns add-default-route`
+    (interface physical or bridge, one client per interface; the three
+    options are yes|no, defaults disabled=yes, use-peer-dns=yes,
+    add-default-route=yes); `/ip route add dst-address* gateway* distance` (gateway
     is an IP or an interface; distance 1 to 255, default 1); `/ip dns set
     servers allow-remote-requests=yes|no`; `/ip service set <name>
     disabled=yes|no port`; `/user add name* group* password` (group
@@ -625,37 +635,67 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
     `arp: "enabled"`); `addresses` `{address, network, interface}`; `pools`
     `{name, ranges}`; `dhcpServers` `{name, interface, addressPool,
     disabled}`; `dhcpNetworks` `{address, gateway, dnsServer}`; `nat`
-    `{chain, action, outInterface, srcAddress}`; `routes` `{dstAddress,
+    `{chain, action, outInterface, srcAddress, protocol, dstPort,
+    inInterface, toAddresses, toPorts}`; `routes` `{dstAddress,
     gateway, distance}`; `dns` `{servers: string[], allowRemoteRequests}`
     (empty, false); `bridges` `{name}`; `bridgePorts` `{bridge, interface}`;
     `dhcpLeases` `{address, macAddress, server}`; `arp` `{address,
     macAddress, interface}`; `filter` `{chain, action, protocol, dstPort,
-    srcAddress, inInterface, connectionState}`; `addressLists` `{list,
+    srcAddress, inInterface, connectionState, srcAddressList,
+    dstAddressList}`; `addressLists` `{list,
     address}`; `queues` `{name, target, maxLimit}`; `services` `{name, port,
     disabled}` (telnet 23, ftp 21, www 80, ssh 22, www-ssl 443 disabled, api
-    8728, winbox 8291, api-ssl 8729 disabled); `users` `{name, group}` (one
-    `admin`/`full`). Optional text fields of an `add` are stored as `""`.
+    8728, winbox 8291, api-ssl 8729); `users` `{name, group}` (one
+    `admin`/`full`); `dhcpClients` `{interface, disabled, usePeerDns,
+    addDefaultRoute}`. Optional text fields of an `add` are stored as `""`.
     Everything else starts empty. `/user add` requires `group` and does not
     store the password. `/ip route print` also shows derived `DAc` rows
     (distance 0, one per address) that are not in `router.routes`; stored
-    routes show as `AS`.
+    routes show as `As`.
+  - **Print format**: each row starts with `#` (the row index, from 0);
+    columns are padded and separated by two spaces, trailing space trimmed;
+    the header prints even with no rows. Columns: interface `FLAGS NAME
+    TYPE`; ethernet `NAME ARP`; bridge `NAME`; bridge port `BRIDGE
+    INTERFACE`; address `ADDRESS NETWORK INTERFACE`; pool `NAME RANGES`;
+    dhcp-server `FLAGS NAME INTERFACE ADDRESS-POOL`; dhcp network `ADDRESS
+    GATEWAY DNS-SERVER`; lease `ADDRESS MAC-ADDRESS SERVER`; dhcp-client
+    `FLAGS INTERFACE USE-PEER-DNS ADD-DEFAULT-ROUTE`; arp `ADDRESS
+    MAC-ADDRESS INTERFACE`; nat `CHAIN ACTION PROTOCOL DST-PORT IN-INTERFACE
+    OUT-INTERFACE SRC-ADDRESS TO-ADDRESSES TO-PORTS`; filter `CHAIN ACTION
+    PROTOCOL DST-PORT SRC-ADDRESS IN-INTERFACE CONNECTION-STATE
+    SRC-ADDRESS-LIST DST-ADDRESS-LIST`; address-list `LIST ADDRESS`; queue
+    `NAME TARGET MAX-LIMIT`; route `FLAGS DST-ADDRESS GATEWAY DISTANCE`;
+    service `FLAGS NAME PORT`; user `NAME GROUP`. `FLAGS` is `X` for
+    disabled, `R` for a running interface. `/system identity print` prints
+    `name: <x>`; `/ip dns print` prints `servers: <a,b>` and
+    `allow-remote-requests: yes|no`.
+  - **Ping**: replies only if the target is one of the router's own
+    addresses, inside a connected network, or inside a stored route's
+    `dst-address`; each attempt prints `<ip> 56 64 1ms` or `timeout`, then
+    `sent=N received=M packet-loss=P%`.
+  - **Quoting**: double quotes group words with spaces and are stripped;
+    there are no escapes.
   - **`awal`**: `setup` may define `var awal = {...}`, a partial initial
-    `router`. Fields with a default (`interfaces[].arp`, `routes[].distance`)
-    may be omitted; every other field must be present with the right
-    primitive type, or that entry is dropped (e.g. a `dhcpServers` entry
-    needs a boolean `disabled`). Mistyped top-level keys are ignored.
+    `router`. Fields with a default (`interfaces[].arp`, `routes[].distance`,
+    the added `nat` and `filter` fields, default `""`) may be omitted; every
+    other field must be present with the right primitive type, or that entry
+    is dropped (e.g. a `dhcpServers` entry needs a boolean `disabled`).
+    Mistyped top-level keys are ignored. An array given in `awal` replaces
+    the default table (`services` replaces all 8 defaults); extra fields on
+    an entry are stripped; values are not validated.
   - **Interfaces**: bridges count as interfaces for `interface=`,
     `in-interface=`, route `gateway` and `/ip dhcp-server add interface=`,
-    but not for `bridge port add` or `ethernet set`, and `/interface print`
-    lists only the physical ports.
+    `/queue simple add target=` and `/ip dhcp-client add interface=`, but not
+    for `bridge port add` or `ethernet set`; `/interface print` lists bridges
+    too.
   - **Fidelity**: the simulator requires `name` and `address-pool` for
     `dhcp-server add` (RouterOS does not); `dhcp-server network add` needs
     only `address`; ping to a non-IP target just times out; `remove` needs a
     number. Exactly RouterOS wording only for `bad command name <word> (line
-    N column M)`, `failure: already have such address`, `input does not
-    match any value of <argument>`, `failure: already have interface with
-    such name` and `failure: already have such name`; every other message is
-    an approximation.
+    N column M)`, `failure: already have such address` and `input does not
+    match any value of <argument>`; every other message, including
+    `failure: already have interface with such name` and `failure: already
+    have such name`, is an approximation (not verified against RouterOS).
 
 Naming: `PascalCase` for components, `camelCase` for helpers, kebab-case for
 slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).

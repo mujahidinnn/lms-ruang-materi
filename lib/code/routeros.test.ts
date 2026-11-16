@@ -112,7 +112,7 @@ describe("routerOSShim", () => {
     expect(has(bad.keluaran, "input does not match any value of chain")).toBe(true);
     expect(has(run("/ip firewall nat add chain=srcnat action=foo").keluaran, "input does not match any value of action")).toBe(true);
     const ok = run("/ip firewall nat add chain=srcnat action=masquerade out-interface=ether1\n/ip firewall nat print");
-    expect(ok.router.nat).toEqual([{ chain: "srcnat", action: "masquerade", outInterface: "ether1", srcAddress: "" }]);
+    expect(ok.router.nat).toEqual([{ chain: "srcnat", action: "masquerade", outInterface: "ether1", srcAddress: "", protocol: "", dstPort: "", inInterface: "", toAddresses: "", toPorts: "" }]);
   });
 
   it("route dan dns", () => {

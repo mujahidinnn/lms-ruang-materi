@@ -11,10 +11,10 @@ describe("state dasar baru", () => {
     expect(router.interfaces[0].arp).toBe("enabled");
     expect(router.services).toHaveLength(8);
     const dis = router.services.filter((s) => s.disabled).map((s) => s.name);
-    expect(dis).toEqual(["www-ssl", "api-ssl"]);
+    expect(dis).toEqual(["www-ssl"]);
     expect(router.services.find((s) => s.name === "winbox")).toEqual({ name: "winbox", port: 8291, disabled: false });
     expect(router.users).toEqual([{ name: "admin", group: "full" }]);
-    for (const k of ["bridges", "bridgePorts", "dhcpLeases", "arp", "filter", "addressLists", "queues"] as const) expect(router[k]).toEqual([]);
+    for (const k of ["bridges", "bridgePorts", "dhcpLeases", "arp", "filter", "addressLists", "queues", "dhcpClients"] as const) expect(router[k]).toEqual([]);
   });
 
   it("awal mengisi bawaan dan membuang tipe salah", () => {
@@ -98,11 +98,11 @@ describe("ip route", () => {
       expect(r.router.routes).toHaveLength(0);
     }
   });
-  it("print: statik AS lalu turunan DAc", () => {
+  it("print: statik As lalu turunan DAc", () => {
     const r = run("/ip address add address=192.168.88.1/24 interface=ether2\n/ip route add dst-address=0.0.0.0/0 gateway=192.168.88.254\n/ip route print");
     const out = r.keluaran.slice(3);
     expect(out[0]).toMatch(/FLAGS\s+DST-ADDRESS\s+GATEWAY\s+DISTANCE/);
-    expect(out[1]).toMatch(/^0\s+AS\s+0\.0\.0\.0\/0\s+192\.168\.88\.254\s+1$/);
+    expect(out[1]).toMatch(/^0\s+As\s+0\.0\.0\.0\/0\s+192\.168\.88\.254\s+1$/);
     expect(out[2]).toMatch(/^1\s+DAc\s+192\.168\.88\.0\/24\s+ether2\s+0$/);
     expect(r.router.routes).toHaveLength(1);
   });
@@ -115,13 +115,14 @@ describe("drift kunci array state", () => {
     pools: { name: "p", ranges: "1.1.1.1-1.1.1.2" },
     dhcpServers: { name: "d", interface: "e9", addressPool: "p", disabled: false },
     dhcpNetworks: { address: "10.0.0.0/24", gateway: "10.0.0.1", dnsServer: "8.8.8.8" },
-    nat: { chain: "srcnat", action: "masquerade", outInterface: "e9", srcAddress: "" },
+    nat: { chain: "srcnat", action: "masquerade", outInterface: "e9", srcAddress: "", protocol: "", dstPort: "", inInterface: "", toAddresses: "", toPorts: "" },
+    dhcpClients: { interface: "e9", disabled: false, usePeerDns: true, addDefaultRoute: true },
     routes: { dstAddress: "0.0.0.0/0", gateway: "10.0.0.1", distance: 3 },
     bridges: { name: "b" },
     bridgePorts: { bridge: "b", interface: "e9" },
     dhcpLeases: { address: "10.0.0.5", macAddress: "AA:BB:CC:00:11:22", server: "d" },
     arp: { address: "10.0.0.5", macAddress: "AA:BB:CC:00:11:22", interface: "e9" },
-    filter: { chain: "input", action: "drop", protocol: "tcp", dstPort: "23", srcAddress: "", inInterface: "", connectionState: "" },
+    filter: { chain: "input", action: "drop", protocol: "tcp", dstPort: "23", srcAddress: "", inInterface: "", connectionState: "", srcAddressList: "", dstAddressList: "" },
     addressLists: { list: "l", address: "1.1.1.1" },
     queues: { name: "q", target: "10.0.0.0/24", maxLimit: "1M/1M" },
     services: { name: "ssh", port: 2222, disabled: true },
@@ -134,6 +135,17 @@ describe("drift kunci array state", () => {
   it.each(keys)("awal mempertahankan %s", (k) => {
     const r = run("", { [k]: [sample[k]] }).router as unknown as Record<string, unknown>;
     expect(r[k]).toEqual([sample[k]]);
+  });
+  it.each(keys)("awal membuang entri rusak %s", (k) => {
+    const r = run("", { [k]: [{ __bad: 1 }] }).router as unknown as Record<string, unknown>;
+    expect(r[k]).toEqual([]);
+  });
+  it("entri filter dan nat lama tetap sah", () => {
+    const f = { chain: "input", action: "drop", protocol: "", dstPort: "", srcAddress: "", inInterface: "", connectionState: "" };
+    const n = { chain: "srcnat", action: "masquerade", outInterface: "e1", srcAddress: "" };
+    const r = run("", { filter: [f], nat: [n] }).router;
+    expect(r.filter).toEqual([{ ...f, srcAddressList: "", dstAddressList: "" }]);
+    expect(r.nat).toEqual([{ ...n, protocol: "", dstPort: "", inInterface: "", toAddresses: "", toPorts: "" }]);
   });
 });
 
@@ -211,8 +223,8 @@ describe("firewall filter", () => {
   it("aturan beruntun, urutan, print", () => {
     const r = run(`${f("chain=input action=accept connection-state=established,related")}\n${f("chain=input action=drop protocol=tcp dst-port=23 src-address=10.0.0.0/24 in-interface=ether1 comment=x")}\n/ip firewall filter print`);
     expect(r.router.filter).toEqual([
-      { chain: "input", action: "accept", protocol: "", dstPort: "", srcAddress: "", inInterface: "", connectionState: "established,related" },
-      { chain: "input", action: "drop", protocol: "tcp", dstPort: "23", srcAddress: "10.0.0.0/24", inInterface: "ether1", connectionState: "" },
+      { chain: "input", action: "accept", protocol: "", dstPort: "", srcAddress: "", inInterface: "", connectionState: "established,related", srcAddressList: "", dstAddressList: "" },
+      { chain: "input", action: "drop", protocol: "tcp", dstPort: "23", srcAddress: "10.0.0.0/24", inInterface: "ether1", connectionState: "", srcAddressList: "", dstAddressList: "" },
     ]);
     expect(has(r.keluaran, "CONNECTION-STATE")).toBe(true);
     expect(has(r.keluaran, "IN-INTERFACE")).toBe(true);
@@ -325,5 +337,70 @@ describe("user", () => {
     expect(run("/user add name=a group=read x=1").keluaran.at(-1)).toMatch(/^expected end of command/);
     expect(run("/user add name=a group=read __proto__=x").keluaran.at(-1)).toMatch(/^expected end of command/);
     expect(run("/user add name=a group=read junk").keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("gelombang perbaikan", () => {
+  const f = (a: string) => `/ip firewall filter add ${a}`;
+  const nat = (a: string) => `/ip firewall nat add ${a}`;
+  it("filter address-list dan fasttrack", () => {
+    const r = run(f('chain=forward action=fasttrack-connection src-address-list=ok dst-address-list="a b"') + "\n/ip firewall filter print");
+    expect(r.router.filter[0]).toMatchObject({ action: "fasttrack-connection", srcAddressList: "ok", dstAddressList: "a b" });
+    expect(has(r.keluaran, "SRC-ADDRESS-LIST")).toBe(true);
+    expect(has(r.keluaran, "DST-ADDRESS-LIST")).toBe(true);
+    expect(run(f("chain=input action=fasttrack-connection")).keluaran).toContain("failure: fasttrack-connection works only in the forward chain");
+    expect(run(f("chain=input action=drop src-address-list=")).router.filter[0].srcAddressList).toBe("");
+    expect(run(f("chain=input action=drop src-address-list=__proto__")).router.filter).toHaveLength(1);
+    expect(run(f("chain=input action=drop __proto__=x")).keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+  it("nat argumen baru", () => {
+    const r = run(nat("chain=dstnat action=dst-nat protocol=tcp dst-port=80 in-interface=ether1 to-addresses=192.168.1.10 to-ports=8080-8090\n/ip firewall nat print"));
+    expect(r.router.nat).toEqual([{ chain: "dstnat", action: "dst-nat", outInterface: "", srcAddress: "", protocol: "tcp", dstPort: "80", inInterface: "ether1", toAddresses: "192.168.1.10", toPorts: "8080-8090" }]);
+    for (const c of ["TO-ADDRESSES", "TO-PORTS", "DST-PORT", "IN-INTERFACE", "PROTOCOL"]) expect(has(r.keluaran, c)).toBe(true);
+    const base = "chain=dstnat action=dst-nat to-addresses=1.1.1.1";
+    expect(run(nat(base + " protocol=x")).keluaran).toContain("input does not match any value of protocol");
+    expect(run(nat(base + " dst-port=80")).keluaran).toContain("failure: protocol tcp or udp required for dst-port");
+    expect(run(nat(base + " protocol=tcp dst-port=0")).keluaran).toContain("invalid value for argument dst-port");
+    expect(run(nat(base + " in-interface=ether9")).keluaran).toContain("input does not match any value of in-interface");
+    expect(run(nat("chain=dstnat action=dst-nat to-addresses=1.1.1")).keluaran).toContain("invalid value for argument to-addresses");
+    for (const p of ["0", "65536", "a", "9-1", "80,81"]) expect(run(nat(base + ` to-ports=${p}`)).keluaran).toContain("invalid value for argument to-ports");
+    expect(run(nat("chain=dstnat action=dst-nat")).keluaran).toContain("failure: missing required argument to-addresses");
+    expect(run(nat("chain=srcnat action=masquerade out-interface=ether1")).router.nat).toHaveLength(1);
+    expect(run(nat(base + " __proto__=x")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(nat(base + ' to-ports="80"')).router.nat[0].toPorts).toBe("80");
+  });
+  it("queue target interface", () => {
+    expect(run("/queue simple add name=a target=ether1").router.queues).toHaveLength(1);
+    expect(run("/queue simple add name=a target=br1", { bridges: [{ name: "br1" }] }).router.queues).toHaveLength(1);
+    expect(run("/queue simple add name=a target=ether9").keluaran).toContain("invalid value for argument target");
+  });
+  it("dhcp-client", () => {
+    const r = run('/ip dhcp-client add interface=ether1 comment="a b"\n/ip dhcp-client add interface=br1 disabled=no use-peer-dns=no add-default-route=no\n/ip dhcp-client print', { bridges: [{ name: "br1" }] });
+    expect(r.router.dhcpClients).toEqual([
+      { interface: "ether1", disabled: true, usePeerDns: true, addDefaultRoute: true },
+      { interface: "br1", disabled: false, usePeerDns: false, addDefaultRoute: false },
+    ]);
+    expect(has(r.keluaran, "USE-PEER-DNS")).toBe(true);
+    expect(has(r.keluaran, "ADD-DEFAULT-ROUTE")).toBe(true);
+    expect(r.keluaran.some((l) => /X\s+ether1/.test(l))).toBe(true);
+    expect(run("/ip dhcp-client add interface=ether9").keluaran).toContain("input does not match any value of interface");
+    expect(run("/ip dhcp-client add").keluaran).toContain("failure: missing required argument interface");
+    for (const k of ["disabled", "use-peer-dns", "add-default-route"]) {
+      expect(run(`/ip dhcp-client add interface=ether1 ${k}=maybe`).keluaran).toContain(`invalid value for argument ${k}`);
+      expect(run(`/ip dhcp-client add interface=ether1 ${k}=`).keluaran).toContain(`invalid value for argument ${k}`);
+    }
+    const d = run("/ip dhcp-client add interface=ether1\n/ip dhcp-client add interface=ether1");
+    expect(d.keluaran).toContain("failure: already have such entry");
+    expect(d.router.dhcpClients).toHaveLength(1);
+    expect(run("/ip dhcp-client add interface=ether1 __proto__=x").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/ip dhcp-client add interface=ether1 junk").keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+  it("interface print memuat bridge", () => {
+    const r = run("/interface print", { bridges: [{ name: "br1" }] });
+    expect(r.keluaran.some((l) => /^R\s+br1\s+bridge$|^\d+\s+R\s+br1\s+bridge$/.test(l))).toBe(true);
+  });
+  it("0.0.0.0 sah untuk arp dan lease", () => {
+    expect(run("/ip arp add address=0.0.0.0 mac-address=AA:BB:CC:00:11:22 interface=ether1").router.arp).toHaveLength(1);
+    expect(run("/ip dhcp-server lease add address=0.0.0.0 mac-address=aa:bb:cc:00:11:22").router.dhcpLeases).toHaveLength(1);
   });
 });

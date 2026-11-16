@@ -5,18 +5,19 @@ export type RouterState = {
   pools: { name: string; ranges: string }[];
   dhcpServers: { name: string; interface: string; addressPool: string; disabled: boolean }[];
   dhcpNetworks: { address: string; gateway: string; dnsServer: string }[];
-  nat: { chain: string; action: string; outInterface: string; srcAddress: string }[];
+  nat: { chain: string; action: string; outInterface: string; srcAddress: string; protocol: string; dstPort: string; inInterface: string; toAddresses: string; toPorts: string }[];
   routes: { dstAddress: string; gateway: string; distance: number }[];
   dns: { servers: string[]; allowRemoteRequests: boolean };
   bridges: { name: string }[];
   bridgePorts: { bridge: string; interface: string }[];
   dhcpLeases: { address: string; macAddress: string; server: string }[];
   arp: { address: string; macAddress: string; interface: string }[];
-  filter: { chain: string; action: string; protocol: string; dstPort: string; srcAddress: string; inInterface: string; connectionState: string }[];
+  filter: { chain: string; action: string; protocol: string; dstPort: string; srcAddress: string; inInterface: string; connectionState: string; srcAddressList: string; dstAddressList: string }[];
   addressLists: { list: string; address: string }[];
   queues: { name: string; target: string; maxLimit: string }[];
   services: { name: string; port: number; disabled: boolean }[];
   users: { name: string; group: string }[];
+  dhcpClients: { interface: string; disabled: boolean; usePeerDns: boolean; addDefaultRoute: boolean }[];
 };
 
 // A tiny RouterOS terminal for exercises: runs a script of commands against an
@@ -55,8 +56,9 @@ export function routerOSShim() {
       ["api", 8728],
       ["winbox", 8291],
       ["api-ssl", 8729],
-    ].map(([name, port]) => ({ name: name as string, port: port as number, disabled: name === "www-ssl" || name === "api-ssl" })),
+    ].map(([name, port]) => ({ name: name as string, port: port as number, disabled: name === "www-ssl" })),
     users: [{ name: "admin", group: "full" }],
+    dhcpClients: [],
   });
 
   const ip4 = (s: string): number | null => {
@@ -115,7 +117,7 @@ export function routerOSShim() {
     "ip pool add": { keys: ["name", "ranges"], req: ["name", "ranges"] },
     "ip dhcp-server add": { keys: ["name", "interface", "address-pool", "disabled"], req: ["name", "interface", "address-pool"] },
     "ip dhcp-server network add": { keys: ["address", "gateway", "dns-server"], req: ["address"] },
-    "ip firewall nat add": { keys: ["chain", "action", "out-interface", "src-address"], req: ["chain", "action"] },
+    "ip firewall nat add": { keys: ["chain", "action", "out-interface", "src-address", "protocol", "dst-port", "in-interface", "to-addresses", "to-ports"], req: ["chain", "action"] },
     "ip route add": { keys: ["dst-address", "gateway", "distance"], req: ["dst-address", "gateway"] },
     "ip dns set": { keys: ["servers", "allow-remote-requests"], req: [] },
     "interface ethernet set": { keys: ["arp"], req: ["arp"] },
@@ -123,14 +125,15 @@ export function routerOSShim() {
     "interface bridge add": { keys: ["name"], req: ["name"] },
     "interface bridge port add": { keys: ["bridge", "interface"], req: ["bridge", "interface"] },
     "ip dhcp-server lease add": { keys: ["address", "mac-address", "server"], req: ["address", "mac-address"] },
-    "ip firewall filter add": { keys: ["chain", "action", "protocol", "dst-port", "src-address", "in-interface", "connection-state"], req: ["chain", "action"] },
+    "ip firewall filter add": { keys: ["chain", "action", "protocol", "dst-port", "src-address", "in-interface", "connection-state", "src-address-list", "dst-address-list"], req: ["chain", "action"] },
     "ip firewall address-list add": { keys: ["list", "address"], req: ["list", "address"] },
     "queue simple add": { keys: ["name", "target", "max-limit"], req: ["name", "target"] },
     "ip service set": { keys: ["disabled", "port"], req: [] },
     "user add": { keys: ["name", "password", "group"], req: ["name", "group"] },
+    "ip dhcp-client add": { keys: ["interface", "disabled", "use-peer-dns", "add-default-route"], req: ["interface"] },
     ping: { keys: ["count"], req: [] },
   };
-  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns", "interface bridge", "interface bridge port", "ip dhcp-server lease", "ip firewall filter", "ip firewall address-list", "queue simple", "ip service", "user"];
+  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns", "interface bridge", "interface bridge port", "ip dhcp-server lease", "ip firewall filter", "ip firewall address-list", "queue simple", "ip service", "user", "ip dhcp-client"];
   for (const p of PRINTS) SPECS[p + " print"] = { keys: [], req: [] };
   SPECS["ip address remove"] = { keys: [], req: [] };
   for (const n of Object.keys(SPECS)) if (n.endsWith(" add")) SPECS[n].keys.push("comment");
@@ -150,22 +153,25 @@ export function routerOSShim() {
         pools: { name: "string", ranges: "string" },
         dhcpServers: { name: "string", interface: "string", addressPool: "string", disabled: "boolean" },
         dhcpNetworks: { address: "string", gateway: "string", dnsServer: "string" },
-        nat: { chain: "string", action: "string", outInterface: "string", srcAddress: "string" },
+        nat: { chain: "string", action: "string", outInterface: "string", srcAddress: "string", protocol: "string", dstPort: "string", inInterface: "string", toAddresses: "string", toPorts: "string" },
         routes: { dstAddress: "string", gateway: "string" },
         bridges: { name: "string" },
         bridgePorts: { bridge: "string", interface: "string" },
         dhcpLeases: { address: "string", macAddress: "string", server: "string" },
         arp: { address: "string", macAddress: "string", interface: "string" },
-        filter: { chain: "string", action: "string", protocol: "string", dstPort: "string", srcAddress: "string", inInterface: "string", connectionState: "string" },
+        filter: { chain: "string", action: "string", protocol: "string", dstPort: "string", srcAddress: "string", inInterface: "string", connectionState: "string", srcAddressList: "string", dstAddressList: "string" },
         addressLists: { list: "string", address: "string" },
         queues: { name: "string", target: "string", maxLimit: "string" },
         services: { name: "string", port: "number", disabled: "boolean" },
         users: { name: "string", group: "string" },
+        dhcpClients: { interface: "string", disabled: "boolean", usePeerDns: "boolean", addDefaultRoute: "boolean" },
       };
       // Fields with a default may be absent from an entry; present but mistyped drops it.
       const defaults: Record<string, Record<string, string | number>> = {
         interfaces: { arp: "enabled" },
         routes: { distance: 1 },
+        nat: { protocol: "", dstPort: "", inInterface: "", toAddresses: "", toPorts: "" },
+        filter: { srcAddressList: "", dstAddressList: "" },
       };
       for (const k of Object.keys(base)) {
         const v = given[k];
@@ -299,6 +305,11 @@ export function routerOSShim() {
       const hasIf = (n: string) => hasPhys(n) || router.bridges.some((b) => b.name === n);
       const macOk = (m: string) => /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(m);
       const g = (k: string) => args[k] ?? "";
+      const portRange = (x: string) => {
+        const m = /^(\d{1,5})(?:-(\d{1,5}))?$/.exec(x);
+        return !!m && Number(m[1]) >= 1 && Number(m[1]) <= 65535 && (m[2] === undefined || (Number(m[2]) >= Number(m[1]) && Number(m[2]) <= 65535));
+      };
+      const yn = (k: string) => args[k] === undefined || args[k] === "yes" || args[k] === "no";
 
       switch (name) {
         case "system identity set":
@@ -308,7 +319,7 @@ export function routerOSShim() {
           err(`name: ${router.identity}`);
           break;
         case "interface print":
-          printList(["FLAGS", "NAME", "TYPE"], router.interfaces.map((i) => [i.running ? "R" : "", i.name, "ether"]));
+          printList(["FLAGS", "NAME", "TYPE"], [...router.interfaces.map((i) => [i.running ? "R" : "", i.name, "ether"]), ...router.bridges.map((b) => ["R", b.name, "bridge"])]);
           break;
         case "interface ethernet print":
           printList(["NAME", "ARP"], router.interfaces.map((i) => [i.name, i.arp]));
@@ -322,7 +333,7 @@ export function routerOSShim() {
           break;
         }
         case "ip arp add":
-          if (!ip4(g("address"))) err("invalid value for argument address");
+          if (ip4(g("address")) === null) err("invalid value for argument address");
           else if (!macOk(g("mac-address"))) err("invalid value for argument mac-address");
           else if (!hasIf(g("interface"))) err("input does not match any value of interface");
           else if (router.arp.some((a) => a.address === g("address") && a.interface === g("interface"))) err("failure: already have such entry");
@@ -346,7 +357,7 @@ export function routerOSShim() {
           break;
         case "ip dhcp-server lease add": {
           const mac = g("mac-address").toLowerCase();
-          if (!ip4(g("address"))) err("invalid value for argument address");
+          if (ip4(g("address")) === null) err("invalid value for argument address");
           else if (!macOk(g("mac-address"))) err("invalid value for argument mac-address");
           else if (g("server") !== "" && !router.dhcpServers.some((d) => d.name === g("server"))) err("input does not match any value of server");
           else if (router.dhcpLeases.some((l) => l.address === g("address") || l.macAddress.toLowerCase() === mac)) err("failure: already have such entry");
@@ -401,10 +412,17 @@ export function routerOSShim() {
         case "ip firewall nat add":
           if (!["srcnat", "dstnat"].includes(g("chain"))) err("input does not match any value of chain");
           else if (!["accept", "masquerade", "dst-nat", "src-nat"].includes(g("action"))) err("input does not match any value of action");
-          else router.nat.push({ chain: g("chain"), action: g("action"), outInterface: g("out-interface"), srcAddress: g("src-address") });
+          else if (g("action") === "dst-nat" && g("to-addresses") === "") err("failure: missing required argument to-addresses");
+          else if (g("protocol") !== "" && !["tcp", "udp", "icmp"].includes(g("protocol"))) err("input does not match any value of protocol");
+          else if (g("dst-port") !== "" && !g("dst-port").split(",").every(portRange)) err("invalid value for argument dst-port");
+          else if (g("dst-port") !== "" && g("protocol") !== "tcp" && g("protocol") !== "udp") err("failure: protocol tcp or udp required for dst-port");
+          else if (g("in-interface") !== "" && !hasIf(g("in-interface"))) err("input does not match any value of in-interface");
+          else if (g("to-addresses") !== "" && ip4(g("to-addresses")) === null) err("invalid value for argument to-addresses");
+          else if (g("to-ports") !== "" && !portRange(g("to-ports"))) err("invalid value for argument to-ports");
+          else router.nat.push({ chain: g("chain"), action: g("action"), outInterface: g("out-interface"), srcAddress: g("src-address"), protocol: g("protocol"), dstPort: g("dst-port"), inInterface: g("in-interface"), toAddresses: g("to-addresses"), toPorts: g("to-ports") });
           break;
         case "ip firewall nat print":
-          printList(["CHAIN", "ACTION", "OUT-INTERFACE", "SRC-ADDRESS"], router.nat.map((n) => [n.chain, n.action, n.outInterface, n.srcAddress]));
+          printList(["CHAIN", "ACTION", "PROTOCOL", "DST-PORT", "IN-INTERFACE", "OUT-INTERFACE", "SRC-ADDRESS", "TO-ADDRESSES", "TO-PORTS"], router.nat.map((n) => [n.chain, n.action, n.protocol, n.dstPort, n.inInterface, n.outInterface, n.srcAddress, n.toAddresses, n.toPorts]));
           break;
         case "ip route add": {
           const d = args["distance"];
@@ -415,7 +433,7 @@ export function routerOSShim() {
           break;
         }
         case "ip route print": {
-          const rows = router.routes.map((r) => ["AS", r.dstAddress, r.gateway, String(r.distance)]);
+          const rows = router.routes.map((r) => ["As", r.dstAddress, r.gateway, String(r.distance)]);
           for (const a of router.addresses) {
             const c = cidr(a.address);
             if (c) rows.push(["DAc", `${a.network}/${c.prefix}`, a.interface, "0"]);
@@ -439,23 +457,21 @@ export function routerOSShim() {
           break;
         case "ip firewall filter add": {
           const port = g("dst-port");
-          const portOk = port.split(",").every((x) => {
-            const m = /^(\d{1,5})(?:-(\d{1,5}))?$/.exec(x);
-            return !!m && Number(m[1]) >= 1 && Number(m[1]) <= 65535 && (m[2] === undefined || (Number(m[2]) >= Number(m[1]) && Number(m[2]) <= 65535));
-          });
+          const portOk = port.split(",").every(portRange);
           if (!["input", "forward", "output"].includes(g("chain"))) err("input does not match any value of chain");
-          else if (!["accept", "drop", "reject", "passthrough", "log"].includes(g("action"))) err("input does not match any value of action");
+          else if (!["accept", "drop", "reject", "passthrough", "log", "fasttrack-connection"].includes(g("action"))) err("input does not match any value of action");
+          else if (g("action") === "fasttrack-connection" && g("chain") !== "forward") err("failure: fasttrack-connection works only in the forward chain");
           else if (g("protocol") !== "" && !["tcp", "udp", "icmp"].includes(g("protocol"))) err("input does not match any value of protocol");
           else if (port !== "" && !portOk) err("invalid value for argument dst-port");
           else if (port !== "" && g("protocol") !== "tcp" && g("protocol") !== "udp") err("failure: protocol tcp or udp required for dst-port");
           else if (g("src-address") !== "" && ip4(g("src-address")) === null && !cidr(g("src-address"))) err("invalid value for argument src-address");
           else if (g("in-interface") !== "" && !hasIf(g("in-interface"))) err("input does not match any value of in-interface");
           else if (g("connection-state") !== "" && !g("connection-state").split(",").every((x) => ["established", "related", "new", "invalid", "untracked"].includes(x))) err("invalid value for argument connection-state");
-          else router.filter.push({ chain: g("chain"), action: g("action"), protocol: g("protocol"), dstPort: port, srcAddress: g("src-address"), inInterface: g("in-interface"), connectionState: g("connection-state") });
+          else router.filter.push({ chain: g("chain"), action: g("action"), protocol: g("protocol"), dstPort: port, srcAddress: g("src-address"), inInterface: g("in-interface"), connectionState: g("connection-state"), srcAddressList: g("src-address-list"), dstAddressList: g("dst-address-list") });
           break;
         }
         case "ip firewall filter print":
-          printList(["CHAIN", "ACTION", "PROTOCOL", "DST-PORT", "SRC-ADDRESS", "IN-INTERFACE", "CONNECTION-STATE"], router.filter.map((f) => [f.chain, f.action, f.protocol, f.dstPort, f.srcAddress, f.inInterface, f.connectionState]));
+          printList(["CHAIN", "ACTION", "PROTOCOL", "DST-PORT", "SRC-ADDRESS", "IN-INTERFACE", "CONNECTION-STATE", "SRC-ADDRESS-LIST", "DST-ADDRESS-LIST"], router.filter.map((f) => [f.chain, f.action, f.protocol, f.dstPort, f.srcAddress, f.inInterface, f.connectionState, f.srcAddressList, f.dstAddressList]));
           break;
         case "ip firewall address-list add":
           if (ip4(g("address")) === null && !cidr(g("address"))) err("invalid value for argument address");
@@ -466,7 +482,7 @@ export function routerOSShim() {
           printList(["LIST", "ADDRESS"], router.addressLists.map((a) => [a.list, a.address]));
           break;
         case "queue simple add":
-          if (ip4(g("target")) === null && !cidr(g("target"))) err("invalid value for argument target");
+          if (ip4(g("target")) === null && !cidr(g("target")) && !hasIf(g("target"))) err("invalid value for argument target");
           else if (g("max-limit") !== "" && !/^\d+[kMG]?\/\d+[kMG]?$/.test(g("max-limit"))) err("invalid value for argument max-limit");
           else if (router.queues.some((q) => q.name === g("name"))) err("failure: already have such name");
           else router.queues.push({ name: g("name"), target: g("target"), maxLimit: g("max-limit") });
@@ -496,6 +512,17 @@ export function routerOSShim() {
           if (!["read", "write", "full"].includes(g("group"))) err("input does not match any value of group");
           else if (router.users.some((u) => u.name === g("name"))) err("failure: user with the same name already exists");
           else router.users.push({ name: g("name"), group: g("group") }); // password deliberately not stored
+          break;
+        case "ip dhcp-client add": {
+          const bad = ["disabled", "use-peer-dns", "add-default-route"].find((k) => !yn(k));
+          if (!hasIf(g("interface"))) err("input does not match any value of interface");
+          else if (bad) err(`invalid value for argument ${bad}`);
+          else if (router.dhcpClients.some((c) => c.interface === g("interface"))) err("failure: already have such entry");
+          else router.dhcpClients.push({ interface: g("interface"), disabled: args["disabled"] !== "no", usePeerDns: args["use-peer-dns"] !== "no", addDefaultRoute: args["add-default-route"] !== "no" });
+          break;
+        }
+        case "ip dhcp-client print":
+          printList(["FLAGS", "INTERFACE", "USE-PEER-DNS", "ADD-DEFAULT-ROUTE"], router.dhcpClients.map((c) => [c.disabled ? "X" : "", c.interface, c.usePeerDns ? "yes" : "no", c.addDefaultRoute ? "yes" : "no"]));
           break;
         case "user print":
           printList(["NAME", "GROUP"], router.users.map((u) => [u.name, u.group]));
