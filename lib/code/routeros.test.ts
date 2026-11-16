@@ -117,7 +117,7 @@ describe("routerOSShim", () => {
 
   it("route dan dns", () => {
     const r = run("/ip route add dst-address=0.0.0.0/0 gateway=192.168.1.1\n/ip route print");
-    expect(r.router.routes).toEqual([{ dstAddress: "0.0.0.0/0", gateway: "192.168.1.1" }]);
+    expect(r.router.routes).toEqual([{ dstAddress: "0.0.0.0/0", gateway: "192.168.1.1", distance: 1 }]);
     const d = run('/ip dns set servers=8.8.8.8,1.1.1.1 allow-remote-requests=yes\n/ip dns print');
     expect(d.router.dns).toEqual({ servers: ["8.8.8.8", "1.1.1.1"], allowRemoteRequests: true });
   });
@@ -192,7 +192,7 @@ describe("routerOSShim", () => {
     expect(d.router.dns).toEqual({ servers: [], allowRemoteRequests: false });
     const good = { address: "10.0.0.1/24", network: "10.0.0.0", interface: "ether1" };
     expect(bad({ addresses: [null, good, { address: 1 }] }, "/ping 10.0.0.1").router.addresses).toEqual([good]);
-    expect(bad({ interfaces: [{ name: "e1", running: true }, { name: "e2" }] }).router.interfaces).toEqual([{ name: "e1", running: true }]);
+    expect(bad({ interfaces: [{ name: "e1", running: true }, { name: "e2" }] }).router.interfaces).toEqual([{ name: "e1", running: true, arp: "enabled" }]);
     expect(bad({ dns: { servers: ["8.8.8.8", 1], allowRemoteRequests: true } }).router.dns).toEqual({ servers: [], allowRemoteRequests: true });
   });
 

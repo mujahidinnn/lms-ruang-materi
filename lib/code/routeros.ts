@@ -1,13 +1,22 @@
 export type RouterState = {
   identity: string;
-  interfaces: { name: string; running: boolean }[];
+  interfaces: { name: string; running: boolean; arp: string }[];
   addresses: { address: string; network: string; interface: string }[];
   pools: { name: string; ranges: string }[];
   dhcpServers: { name: string; interface: string; addressPool: string; disabled: boolean }[];
   dhcpNetworks: { address: string; gateway: string; dnsServer: string }[];
   nat: { chain: string; action: string; outInterface: string; srcAddress: string }[];
-  routes: { dstAddress: string; gateway: string }[];
+  routes: { dstAddress: string; gateway: string; distance: number }[];
   dns: { servers: string[]; allowRemoteRequests: boolean };
+  bridges: { name: string }[];
+  bridgePorts: { bridge: string; interface: string }[];
+  dhcpLeases: { address: string; macAddress: string; server: string }[];
+  arp: { address: string; macAddress: string; interface: string }[];
+  filter: { chain: string; action: string; protocol: string; dstPort: string; srcAddress: string; inInterface: string; connectionState: string }[];
+  addressLists: { list: string; address: string }[];
+  queues: { name: string; target: string; maxLimit: string }[];
+  services: { name: string; port: number; disabled: boolean }[];
+  users: { name: string; group: string }[];
 };
 
 // A tiny RouterOS terminal for exercises: runs a script of commands against an
@@ -22,7 +31,7 @@ export function routerOSShim() {
 
   const initial = (): S => ({
     identity: "MikroTik",
-    interfaces: [1, 2, 3, 4, 5].map((n) => ({ name: "ether" + n, running: true })),
+    interfaces: [1, 2, 3, 4, 5].map((n) => ({ name: "ether" + n, running: true, arp: "enabled" })),
     addresses: [],
     pools: [],
     dhcpServers: [],
@@ -30,6 +39,24 @@ export function routerOSShim() {
     nat: [],
     routes: [],
     dns: { servers: [], allowRemoteRequests: false },
+    bridges: [],
+    bridgePorts: [],
+    dhcpLeases: [],
+    arp: [],
+    filter: [],
+    addressLists: [],
+    queues: [],
+    services: [
+      ["telnet", 23],
+      ["ftp", 21],
+      ["www", 80],
+      ["ssh", 22],
+      ["www-ssl", 443],
+      ["api", 8728],
+      ["winbox", 8291],
+      ["api-ssl", 8729],
+    ].map(([name, port]) => ({ name: name as string, port: port as number, disabled: name === "www-ssl" || name === "api-ssl" })),
+    users: [{ name: "admin", group: "full" }],
   });
 
   const ip4 = (s: string): number | null => {
@@ -89,13 +116,16 @@ export function routerOSShim() {
     "ip dhcp-server add": { keys: ["name", "interface", "address-pool", "disabled"], req: ["name", "interface", "address-pool"] },
     "ip dhcp-server network add": { keys: ["address", "gateway", "dns-server"], req: ["address"] },
     "ip firewall nat add": { keys: ["chain", "action", "out-interface", "src-address"], req: ["chain", "action"] },
-    "ip route add": { keys: ["dst-address", "gateway"], req: ["dst-address", "gateway"] },
+    "ip route add": { keys: ["dst-address", "gateway", "distance"], req: ["dst-address", "gateway"] },
     "ip dns set": { keys: ["servers", "allow-remote-requests"], req: [] },
+    "interface ethernet set": { keys: ["arp"], req: ["arp"] },
+    "ip arp add": { keys: ["address", "mac-address", "interface"], req: ["address", "mac-address", "interface"] },
     ping: { keys: ["count"], req: [] },
   };
-  const PRINTS = ["system identity", "interface", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns"];
+  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns"];
   for (const p of PRINTS) SPECS[p + " print"] = { keys: [], req: [] };
   SPECS["ip address remove"] = { keys: [], req: [] };
+  for (const n of Object.keys(SPECS)) if (n.endsWith(" add")) SPECS[n].keys.push("comment");
   // Longest path first so "ip dhcp-server network add" beats "ip dhcp-server".
   const NAMES = Object.keys(SPECS).sort((a, b) => b.length - a.length);
 
@@ -114,6 +144,20 @@ export function routerOSShim() {
         dhcpNetworks: { address: "string", gateway: "string", dnsServer: "string" },
         nat: { chain: "string", action: "string", outInterface: "string", srcAddress: "string" },
         routes: { dstAddress: "string", gateway: "string" },
+        bridges: { name: "string" },
+        bridgePorts: { bridge: "string", interface: "string" },
+        dhcpLeases: { address: "string", macAddress: "string", server: "string" },
+        arp: { address: "string", macAddress: "string", interface: "string" },
+        filter: { chain: "string", action: "string", protocol: "string", dstPort: "string", srcAddress: "string", inInterface: "string", connectionState: "string" },
+        addressLists: { list: "string", address: "string" },
+        queues: { name: "string", target: "string", maxLimit: "string" },
+        services: { name: "string", port: "number", disabled: "boolean" },
+        users: { name: "string", group: "string" },
+      };
+      // Fields with a default may be absent from an entry; present but mistyped drops it.
+      const defaults: Record<string, Record<string, string | number>> = {
+        interfaces: { arp: "enabled" },
+        routes: { distance: 1 },
       };
       for (const k of Object.keys(base)) {
         const v = given[k];
@@ -121,9 +165,12 @@ export function routerOSShim() {
         const shape = shapes[k];
         if (shape) {
           if (!Array.isArray(v)) continue;
+          const def = defaults[k] ?? {};
+          const fields: Record<string, string> = { ...shape };
+          for (const f of Object.keys(def)) fields[f] = typeof def[f];
           base[k] = v
-            .filter((e) => e && typeof e === "object" && Object.keys(shape).every((f) => typeof e[f] === shape[f]))
-            .map((e) => Object.fromEntries(Object.keys(shape).map((f) => [f, e[f]])));
+            .filter((e) => e && typeof e === "object" && Object.keys(fields).every((f) => (e[f] === undefined && f in def) || typeof e[f] === fields[f]))
+            .map((e) => Object.fromEntries(Object.keys(fields).map((f) => [f, e[f] ?? def[f]])));
         } else if (k === "dns") {
           if (typeof v !== "object" || Array.isArray(v)) continue;
           const d = v as { servers?: unknown; allowRemoteRequests?: unknown };
@@ -134,6 +181,7 @@ export function routerOSShim() {
     }
 
     const physical = String(script).split(/\r?\n/);
+    if (physical.length > 1 && physical[physical.length - 1] === "") physical.pop();
     if (physical.length > MAX_LINES || physical.some((l) => l.length > MAX_LINE_LEN)) return { router, keluaran: ["script too long"] };
 
     // Join " \" continuations into logical lines, remembering the first physical line.
@@ -229,7 +277,7 @@ export function routerOSShim() {
         args[k] = t.text.slice(i + 1);
       }
       if (failed) continue;
-      const maxPos = name === "ping" || name === "ip address remove" ? 1 : 0;
+      const maxPos = name === "ping" || name === "ip address remove" || name === "interface ethernet set" ? 1 : 0;
       if (pos.length > maxPos) {
         err(`expected end of command (line ${no} column ${pos[maxPos].col})`);
         continue;
@@ -239,7 +287,8 @@ export function routerOSShim() {
         err(`failure: missing required argument ${miss}`);
         continue;
       }
-      const hasIf = (n: string) => router.interfaces.some((i) => i.name === n);
+      const hasPhys = (n: string) => router.interfaces.some((i) => i.name === n);
+      const hasIf = (n: string) => hasPhys(n) || router.bridges.some((b) => b.name === n);
       const g = (k: string) => args[k] ?? "";
 
       switch (name) {
@@ -251,6 +300,27 @@ export function routerOSShim() {
           break;
         case "interface print":
           printList(["FLAGS", "NAME", "TYPE"], router.interfaces.map((i) => [i.running ? "R" : "", i.name, "ether"]));
+          break;
+        case "interface ethernet print":
+          printList(["NAME", "ARP"], router.interfaces.map((i) => [i.name, i.arp]));
+          break;
+        case "interface ethernet set": {
+          const n = pos[0]?.text;
+          if (n === undefined) err("failure: missing required argument name");
+          else if (!["enabled", "disabled", "proxy-arp", "local-proxy-arp", "reply-only"].includes(g("arp"))) err("input does not match any value of arp");
+          else if (!hasPhys(n)) err("no such item");
+          else router.interfaces.find((i) => i.name === n)!.arp = g("arp");
+          break;
+        }
+        case "ip arp add":
+          if (!ip4(g("address"))) err("invalid value for argument address");
+          else if (!/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/.test(g("mac-address"))) err("invalid value for argument mac-address");
+          else if (!hasIf(g("interface"))) err("input does not match any value of interface");
+          else if (router.arp.some((a) => a.address === g("address") && a.interface === g("interface"))) err("failure: already have such entry");
+          else router.arp.push({ address: g("address"), macAddress: g("mac-address"), interface: g("interface") });
+          break;
+        case "ip arp print":
+          printList(["ADDRESS", "MAC-ADDRESS", "INTERFACE"], router.arp.map((a) => [a.address, a.macAddress, a.interface]));
           break;
         case "ip address add": {
           const c = cidr(g("address"));
@@ -299,12 +369,23 @@ export function routerOSShim() {
         case "ip firewall nat print":
           printList(["CHAIN", "ACTION", "OUT-INTERFACE", "SRC-ADDRESS"], router.nat.map((n) => [n.chain, n.action, n.outInterface, n.srcAddress]));
           break;
-        case "ip route add":
-          router.routes.push({ dstAddress: g("dst-address"), gateway: g("gateway") });
+        case "ip route add": {
+          const d = args["distance"];
+          if (!cidr(g("dst-address"))) err("invalid value for argument dst-address");
+          else if (ip4(g("gateway")) === null && !hasIf(g("gateway"))) err("invalid value for argument gateway");
+          else if (d !== undefined && (!/^\d{1,3}$/.test(d) || Number(d) < 1 || Number(d) > 255)) err("invalid value for argument distance");
+          else router.routes.push({ dstAddress: g("dst-address"), gateway: g("gateway"), distance: d === undefined ? 1 : Number(d) });
           break;
-        case "ip route print":
-          printList(["DST-ADDRESS", "GATEWAY"], router.routes.map((r) => [r.dstAddress, r.gateway]));
+        }
+        case "ip route print": {
+          const rows = router.routes.map((r) => ["AS", r.dstAddress, r.gateway, String(r.distance)]);
+          for (const a of router.addresses) {
+            const c = cidr(a.address);
+            if (c) rows.push(["DAc", `${a.network}/${c.prefix}`, a.interface, "0"]);
+          }
+          printList(["FLAGS", "DST-ADDRESS", "GATEWAY", "DISTANCE"], rows);
           break;
+        }
         case "ip dns set": {
           const a = args["allow-remote-requests"];
           if (a !== undefined && a !== "yes" && a !== "no") {
