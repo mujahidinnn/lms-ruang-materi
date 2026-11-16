@@ -69,7 +69,7 @@ export function routerOSShim() {
       if (c === '"') {
         if (start < 0) start = i;
         q = !q;
-      } else if (c === " " && !q) {
+      } else if (/\s/.test(c) && !q) {
         if (start >= 0) out.push({ text: cur, col: start + 1 });
         cur = "";
         start = -1;
@@ -211,13 +211,13 @@ export function routerOSShim() {
       }
 
       const spec = SPECS[name];
-      const pos = words.slice(used).map((w) => w.text);
+      const pos: Tok[] = words.slice(used);
       const args: Record<string, string> = Object.create(null);
       let failed = false;
       for (const t of rest) {
         const i = t.text.indexOf("=");
         if (i <= 0) {
-          pos.push(t.text);
+          pos.push(t);
           continue;
         }
         const k = t.text.slice(0, i);
@@ -229,6 +229,11 @@ export function routerOSShim() {
         args[k] = t.text.slice(i + 1);
       }
       if (failed) continue;
+      const maxPos = name === "ping" || name === "ip address remove" ? 1 : 0;
+      if (pos.length > maxPos) {
+        err(`expected end of command (line ${no} column ${pos[maxPos].col})`);
+        continue;
+      }
       const miss = spec.req.find((k) => args[k] === undefined || args[k] === "");
       if (miss) {
         err(`failure: missing required argument ${miss}`);
@@ -259,7 +264,7 @@ export function routerOSShim() {
           printList(["ADDRESS", "NETWORK", "INTERFACE"], router.addresses.map((a) => [a.address, a.network, a.interface]));
           break;
         case "ip address remove": {
-          const n = pos[0];
+          const n = pos[0]?.text;
           if (n === undefined) err("failure: missing required argument number");
           else if (!/^\d+$/.test(n) || Number(n) >= router.addresses.length) err("no such item");
           else router.addresses.splice(Number(n), 1);
@@ -315,7 +320,7 @@ export function routerOSShim() {
           err(`allow-remote-requests: ${router.dns.allowRemoteRequests ? "yes" : "no"}`);
           break;
         case "ping": {
-          const target = pos[0];
+          const target = pos[0]?.text;
           if (target === undefined) {
             err("failure: missing required argument address");
             break;

@@ -580,21 +580,34 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
 - **Exercise kind `mikrotik`** (`lib/code/routeros.ts`, wrapped by
   `lib/code/mikrotik.ts`): the learner's `code` is RouterOS command text,
   run line by line against an in-memory router. `setup` may define
-  `var awal = {...}` (partial initial `router`); tests read `router`
-  (`identity`, `interfaces`, `addresses`, `pools`, `dhcpServers`,
-  `dhcpNetworks`, `nat`, `routes`, `dns`) and `keluaran` (terminal lines,
-  each command echoed after `[admin@MikroTik] > `). Commands: `/system identity
-  set|print`, `/interface print`, `/ip address add|remove|print`, `/ip pool
-  add|print`, `/ip dhcp-server add|print`, `/ip dhcp-server network
-  add|print`, `/ip firewall nat add|print`, `/ip route add|print`, `/ip dns
-  set|print`, `ping`. `dhcp-server add` takes optional `disabled=yes|no`; as on RouterOS a server added without `disabled=no` is disabled (`dhcpServers[].disabled`, shown as an `X` flag in print). Both `/ip address add` and `/ip/address/add` forms work.
+  `var awal = {...}` (partial initial `router`); an `awal` entry that is
+  malformed is dropped, e.g. a `dhcpServers` entry must include a boolean
+  `disabled`. Tests read `router` (`identity`, `interfaces`, `addresses`,
+  `pools`, `dhcpServers`, `dhcpNetworks`, `nat`, `routes`, `dns`) and
+  `keluaran` (terminal lines; each command is echoed after
+  `[admin@<router name>] > `, and the name changes after `/system identity
+  set`, so never match the literal `[admin@MikroTik]`). The default router
+  has `ether1` to `ether5` (all running) and no addresses. Commands:
+  `/system identity set|print`, `/interface print`, `/ip address
+  add|remove|print`, `/ip pool add|print`, `/ip dhcp-server add|print`,
+  `/ip dhcp-server network add|print`, `/ip firewall nat add|print`,
+  `/ip route add|print`, `/ip dns set|print`, `ping`. Both `/ip address add`
+  and `/ip/address/add` forms work; tab and space both separate words;
+  surplus positional tokens (all commands take none, except `ping` and
+  `ip address remove` which take one) give `expected end of command`.
+  `dhcp-server add` takes optional `disabled=yes|no`; as on RouterOS (from
+  the terminal) a server added without `disabled=no` is disabled
+  (`dhcpServers[].disabled`, shown as an `X` flag in print). Unlike
+  RouterOS, where only `interface` is mandatory and `address-pool` defaults
+  to static-only, the simulator requires `name` and `address-pool`, and the
+  pool must exist before the server.
   Behaviors where RouterOS is not mimicked exactly: `/ping` defaults to
   `count=4`; `dhcp-server network add` needs only `address` (`gateway`,
   `dns-server` default to empty); ping to a non-IP target just times out;
   `allow-remote-requests` accepts only `yes`/`no`; `remove` needs a number.
-  Only `bad command name`, `failure: already have such address` and `input
-  does not match any value of <arg>` are exact RouterOS messages; every
-  other error message is an approximation.
+  Only three messages are exact RouterOS text: `bad command name <word>
+  (line N column M)`, `failure: already have such address` and `input does
+  not match any value of <arg>`; every other message is an approximation.
 
 Naming: `PascalCase` for components, `camelCase` for helpers, kebab-case for
 slugs, Indonesian route names (`belajar`, `latihan`, `ujian`).

@@ -61,6 +61,28 @@ describe("routerOSShim", () => {
     expect(has(r.keluaran, "p1")).toBe(true);
   });
 
+  it("token posisi berlebih ditolak tanpa mengubah state", () => {
+    const eoc = (s: string) => run(s);
+    const a = eoc("/ip firewall nat add chain=srcnat action=masquerade out-interface ether1");
+    expect(has(a.keluaran, "expected end of command (line 1 column 53)")).toBe(true);
+    expect(a.router.nat).toHaveLength(0);
+    const b = eoc("/ip address add address=192.168.88.1/24 interface=ether2 junk");
+    expect(has(b.keluaran, "expected end of command (line 1 column 58)")).toBe(true);
+    expect(b.router.addresses).toHaveLength(0);
+    expect(has(eoc("/ping 1.1.1.1 2.2.2.2").keluaran, "expected end of command (line 1 column 15)")).toBe(true);
+    const c = eoc("/ip address add address=10.0.0.1/24 interface=ether2\n/ip address remove 0 extra");
+    expect(has(c.keluaran, "expected end of command (line 2 column 22)")).toBe(true);
+    expect(c.router.addresses).toHaveLength(1);
+    expect(has(eoc("/interface print foo").keluaran, "expected end of command (line 1 column 18)")).toBe(true);
+  });
+
+  it("tab memisahkan kata seperti spasi", () => {
+    const sp = run("/ip address add address=192.168.88.1/24 interface=ether2").router;
+    const tab = run("/ip\taddress\tadd\taddress=192.168.88.1/24\tinterface=ether2").router;
+    expect(tab).toEqual(sp);
+    expect(tab.addresses).toHaveLength(1);
+  });
+
   it("dhcp-server disabled", () => {
     const pool = "/ip pool add name=p1 ranges=10.0.0.2-10.0.0.9\n";
     const add = "/ip dhcp-server add name=d1 interface=ether2 address-pool=p1";
