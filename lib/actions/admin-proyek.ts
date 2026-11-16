@@ -20,7 +20,7 @@ export async function simpanProyek(form: FormData) {
     .object({
       id: z.uuid(),
       title: z.string().trim().min(1).max(120),
-      kind: z.enum(["web", "js", "express", "python"]),
+      kind: z.enum(["web", "js", "express", "python", "mikrotik"]),
       brief: z.string(),
       prompt: z.string(),
       starter: json(files),

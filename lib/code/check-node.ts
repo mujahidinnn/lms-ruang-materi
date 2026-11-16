@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import { expressShim } from "./express-shim.ts";
+import { mikrotikCode } from "./mikrotik.ts";
+import { routerOSShim } from "./routeros.ts";
 
 export type Check = { name: string; check: string };
 export type CheckResult = { name: string; pass: boolean; error?: string };
@@ -11,15 +13,15 @@ const TOO_LONG = "Kode berjalan terlalu lama";
 // generation from strings, which closes the usual constructor.constructor
 // escape to `process`; the process itself has no env and, under the Node
 // permission model, no fs, child processes or workers.
-const CHILD = (shim: string) => `
+const CHILD = () => `
 const vm = require("node:vm");
 let raw = "";
 process.stdin.on("data", (d) => (raw += d)).on("end", async () => {
-  const { kind, code, setup, tests } = JSON.parse(raw);
+  const { shim, code, setup, tests } = JSON.parse(raw);
   const msg = (e) => String((e && e.message) || e);
   const ctx = vm.createContext({}, { codeGeneration: { strings: false, wasm: false } });
   vm.runInContext("globalThis.console = { log() {}, info() {}, warn() {}, error() {} };" +
-    (kind === "express" ? "Object.assign(globalThis, (" + ${JSON.stringify(shim)} + ")());" : ""), ctx);
+    (shim ? "Object.assign(globalThis, (" + shim + ")());" : ""), ctx);
   const out = { results: [] };
   try {
     vm.runInContext(setup + "\\n" + code, ctx, { timeout: 3000 });
@@ -39,9 +41,9 @@ process.stdin.on("data", (d) => (raw += d)).on("end", async () => {
 
 // Worker-side validation of drafted solutions (js, express). Learner code
 // never reaches this; it runs only in the browser sandbox.
-export function runChecksNode(input: { kind: "js" | "express"; code: string; setup: string; tests: Check[] }): Promise<Outcome> {
+export function runChecksNode(input: { kind: "js" | "express" | "mikrotik"; code: string; setup: string; tests: Check[] }): Promise<Outcome> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, ["--permission", "--disallow-code-generation-from-strings", "-e", CHILD(expressShim.toString())], { env: {} as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "ignore"] });
+    const child = spawn(process.execPath, ["--permission", "--disallow-code-generation-from-strings", "-e", CHILD()], { env: {} as NodeJS.ProcessEnv, stdio: ["pipe", "pipe", "ignore"] });
     let stdout = "";
     const timer = setTimeout(() => child.kill("SIGKILL"), 3000 * (input.tests.length + 2));
     child.stdout.on("data", (d) => (stdout += d));
@@ -55,6 +57,8 @@ export function runChecksNode(input: { kind: "js" | "express"; code: string; set
     });
     // A child that dies early must not crash the worker with EPIPE.
     child.stdin.on("error", () => {});
-    child.stdin.end(JSON.stringify(input));
+    const shim = input.kind === "express" ? expressShim.toString() : input.kind === "mikrotik" ? routerOSShim.toString() : "";
+    const code = input.kind === "mikrotik" ? mikrotikCode(input.code) : input.code;
+    child.stdin.end(JSON.stringify({ ...input, shim, code }));
   });
 }

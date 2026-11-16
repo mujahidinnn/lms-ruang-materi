@@ -21,7 +21,7 @@ const question = z
 const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
 
 const exercise = z.object({
-  kind: z.enum(["web", "js", "express", "python"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express, python untuk Python 3"),
+  kind: z.enum(["web", "js", "express", "python", "mikrotik"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express, python untuk Python 3, mikrotik untuk perintah RouterOS (tes memeriksa objek router dan keluaran)"),
   title: z.string().min(1).max(120),
   prompt: z.string().min(1).describe("Instruksi markdown singkat: apa yang dibuat dan hasil yang diharapkan"),
   starter: files.describe("Kode awal untuk murid: html, css, js untuk web; code untuk js dan express"),
@@ -92,7 +92,7 @@ const outlineItem = z.object({
   slide_from: z.int().min(1),
   slide_to: z.int().min(1),
   goals: z.array(z.string().min(1)).min(2).max(4).describe("Tujuan belajar bab, kalimat pendek"),
-  code_kind: z.enum(["web", "js", "express", "python", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
+  code_kind: z.enum(["web", "js", "express", "python", "mikrotik", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
 });
 export type Outline = z.infer<typeof outlineItem>;
 

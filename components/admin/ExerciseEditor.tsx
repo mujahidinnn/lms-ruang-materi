@@ -31,7 +31,7 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
     } catch {
       return setOut({ logs: [], results: [], error: "JSON tidak valid" });
     }
-    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
+    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python" && kind !== "mikrotik") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
     setOut(await run({ kind, setup, ...input }));
   }
 
@@ -50,6 +50,7 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
               <option value="js">JavaScript</option>
               <option value="express">Express</option>
               <option value="python">Python</option>
+              <option value="mikrotik">MikroTik</option>
             </select>
           </label>
         </div>

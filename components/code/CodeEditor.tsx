@@ -9,7 +9,7 @@ import { tags as t } from "@lezer/highlight";
 import { EditorView, basicSetup } from "codemirror";
 import { useEffect, useRef } from "react";
 
-const LANG = { html, css, javascript, python };
+const LANG = { html, css, javascript, python, plain: () => [] };
 
 // Token colors are CSS variables (globals.css) so they follow the theme;
 // basicSetup's default style is only a fallback.

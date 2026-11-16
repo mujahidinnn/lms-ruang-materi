@@ -18,9 +18,10 @@ const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
 const editorSkeleton = <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
-const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"] };
+const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"], mikrotik: ["code"] };
 const LANG: Record<Part, EditorLanguage> = { html: "html", css: "css", js: "javascript", code: "javascript" };
 const LABEL: Record<Part, string> = { html: "HTML", css: "CSS", js: "JS", code: "Kode" };
+const editorLabel = (kind: string, part: Part) => (kind === "mikrotik" ? "Editor terminal" : `Editor ${LABEL[part]}`);
 
 function readDraft(key: string): ExerciseFiles | null {
   try {
@@ -149,7 +150,7 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
       <div className="mt-3">
         {mounted ? (
           <Suspense fallback={editorSkeleton}>
-            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={ex.kind === "python" ? "python" : LANG[part]} label={`Editor ${LABEL[part]}`} />
+            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={ex.kind === "python" ? "python" : ex.kind === "mikrotik" ? "plain" : LANG[part]} label={editorLabel(ex.kind, part)} />
           </Suspense>
         ) : editorSkeleton}
       </div>

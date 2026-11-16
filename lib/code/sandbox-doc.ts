@@ -2,9 +2,11 @@ import type { Check } from "./check-node";
 import { sandboxEngine, type EnginePayload } from "./engine";
 import { expressShim } from "./express-shim";
 import { guardLoops } from "./loop-guard";
+import { mikrotikCode } from "./mikrotik";
+import { routerOSShim } from "./routeros";
 
 export type ExerciseFiles = { html?: string; css?: string; js?: string; code?: string };
-export type SandboxKind = "web" | "js" | "express" | "python";
+export type SandboxKind = "web" | "js" | "express" | "python" | "mikrotik";
 
 // Loop guards end a runaway loop before the parent's 3 s cut-off.
 const LIMIT = 2500;
@@ -75,9 +77,10 @@ w.onerror = (e) => { e.preventDefault(); post({ logs: [], results: [], error: e.
   }
   const payload: EnginePayload = {
     setup: guardLoops(setup),
-    code: guardLoops((kind === "web" ? files.js : files.code) ?? ""),
+    // The RouterOS script is data inside mikrotikCode, so it skips guardLoops.
+    code: kind === "mikrotik" ? mikrotikCode(files.code ?? "") : guardLoops((kind === "web" ? files.js : files.code) ?? ""),
     tests,
-    shim: kind === "express" ? expressShim.toString() : "",
+    shim: kind === "express" ? expressShim.toString() : kind === "mikrotik" ? routerOSShim.toString() : "",
     web: kind === "web",
     limit: LIMIT,
   };

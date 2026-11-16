@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { classSchema as cs, draftSchema, repairClass, validateExercises } from "./prompt";
+import { classSchema as cs, draftSchema, exerciseSchema, failingChecks, repairClass, validateExercises } from "./prompt";
 
 const q = (i: number, type = "pilihan_ganda") => ({
   type,
@@ -167,4 +167,18 @@ test("assembleDraft merges the outline with the chapters that came back", () => 
 
 test("assembleDraft fails under four chapters", () => {
   expect(() => assembleDraft(cls as never, [written, null, null, written, written])).toThrow(/bab/);
+});
+
+test("mikrotik exercises validate and run in failingChecks", async () => {
+  const ex = exerciseSchema.parse({
+    kind: "mikrotik",
+    title: "Alamat",
+    prompt: "Beri alamat.",
+    starter: { code: "" },
+    solution: { code: "/ip address add address=192.168.88.1/24 interface=ether2" },
+    setup: "",
+    tests: [{ name: "alamat", check: "router.addresses.length === 1" }],
+  });
+  expect(await failingChecks(ex)).toEqual([]);
+  expect(await failingChecks({ ...ex, solution: ex.starter })).toEqual(["alamat"]);
 });
