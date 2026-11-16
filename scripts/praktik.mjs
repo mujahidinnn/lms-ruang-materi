@@ -19,8 +19,8 @@ ${body}
 </svg>
 `;
 }
-export const text = (x, y, s, { size = 28, weight = 600, anchor = "start", fill = INK } = {}) =>
-  `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}">${esc(s)}</text>`;
+export const text = (x, y, s, { size = 28, weight = 600, anchor = "start", fill = INK, mono = false } = {}) =>
+  `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${fill}"${mono ? ' font-family="ui-monospace, Menlo, Consolas, monospace"' : ""}>${esc(s)}</text>`;
 export const box = (x, y, w, h, { fill = "#ffffff", r = 14, sw = 4 } = {}) =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" stroke="${INK}" stroke-width="${sw}"/>`;
 export const line = (x1, y1, x2, y2, { sw = 4, stroke = INK, dash } = {}) =>
@@ -115,10 +115,143 @@ function gambarRj45() {
   return frame("Konektor RJ45 dilihat dari sisi kontak, dengan nomor pin 1 sampai 8 dan fungsinya", 730, s, wireDefs);
 }
 
+// ---- Network concepts ----
+const dot = (x, y, r = 18, fill = M1) => circle(x, y, r, { fill, sw: 3 });
+const ring = (n, cx, cy, r) => Array.from({ length: n }, (_, k) => [cx + r * Math.cos(((-90 + (360 / n) * k) * Math.PI) / 180), cy + r * Math.sin(((-90 + (360 / n) * k) * Math.PI) / 180)]);
+
+function topoPanel(x, y, title, sub, draw) {
+  const cx = x + 180, cy = y + 172;
+  return box(x, y, 360, 370, { r: 22 }) +
+    text(cx, y + 48, title, { size: 32, weight: 800, anchor: "middle" }) +
+    draw(cx, cy) +
+    sub.map((l, i) => text(cx, y + 318 + i * 28, l, { size: 21, weight: 500, anchor: "middle" })).join("");
+}
+
+function gambarTopologi() {
+  const star = (cx, cy) => {
+    const pts = ring(5, cx, cy, 78);
+    return pts.map(([px, py]) => line(cx, cy, px, py)).join("") + box(cx - 34, cy - 20, 68, 40, { fill: M3, r: 10, sw: 3 }) + pts.map(([px, py]) => dot(px, py)).join("");
+  };
+  const bus = (cx, cy) => {
+    let s = line(cx - 150, cy, cx + 150, cy, { sw: 9 }) + box(cx - 162, cy - 18, 12, 36, { fill: INK, r: 3, sw: 2 }) + box(cx + 150, cy - 18, 12, 36, { fill: INK, r: 3, sw: 2 });
+    for (let i = 0; i < 5; i++) {
+      const px = cx - 108 + i * 54, up = i % 2 === 0, py = cy + (up ? -62 : 62);
+      s += line(px, cy, px, py) + dot(px, py);
+    }
+    return s;
+  };
+  const ringT = (cx, cy) => {
+    const pts = ring(6, cx, cy, 78);
+    return pts.map(([px, py], i) => { const [qx, qy] = pts[(i + 1) % 6]; return line(px, py, qx, qy, { sw: 5 }); }).join("") + pts.map(([px, py]) => dot(px, py)).join("");
+  };
+  const mesh = (cx, cy) => {
+    const pts = ring(5, cx, cy, 78);
+    let s = "";
+    for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) s += line(pts[i][0], pts[i][1], pts[j][0], pts[j][1], { sw: 3 });
+    return s + pts.map(([px, py]) => dot(px, py)).join("");
+  };
+  const tree = (cx, cy) => {
+    const root = [cx, cy - 80], kids = [[cx - 80, cy], [cx + 80, cy]], leaves = [[cx - 120, cy + 80], [cx - 40, cy + 80], [cx + 40, cy + 80], [cx + 120, cy + 80]];
+    let s = kids.map(([kx, ky]) => line(root[0], root[1], kx, ky)).join("") + leaves.map(([lx, ly], i) => line(kids[i >> 1][0], kids[i >> 1][1], lx, ly)).join("");
+    return s + dot(root[0], root[1], 18, M3) + kids.map(([kx, ky]) => dot(kx, ky)).join("") + leaves.map(([lx, ly]) => dot(lx, ly, 14)).join("");
+  };
+  const info = box(800, 490, 360, 370, { fill: M1, r: 22 }) +
+    text(980, 545, "Jumlah link mesh penuh", { size: 27, weight: 800, anchor: "middle" }) +
+    text(980, 625, "n x (n - 1) / 2", { size: 38, weight: 800, anchor: "middle" }) +
+    text(980, 695, "5 perangkat: 5 x 4 / 2 = 10 link", { size: 24, weight: 500, anchor: "middle" }) +
+    text(980, 735, "10 perangkat: 45 link", { size: 24, weight: 500, anchor: "middle" }) +
+    text(980, 805, "Link naik jauh lebih cepat", { size: 22, weight: 500, anchor: "middle" }) +
+    text(980, 833, "daripada jumlah perangkat.", { size: 22, weight: 500, anchor: "middle" });
+  const body = text(600, 62, "Topologi jaringan dasar", { size: 42, weight: 800, anchor: "middle" }) +
+    topoPanel(40, 100, "Star", ["Semua terhubung ke satu switch.", "Switch mati, semua putus."], star) +
+    topoPanel(420, 100, "Bus", ["Satu kabel utama dipakai bersama.", "Kabel utama putus, semua ikut."], bus) +
+    topoPanel(800, 100, "Ring", ["Perangkat tersambung melingkar.", "Satu link putus, jalur bisa putus."], ringT) +
+    topoPanel(40, 490, "Mesh penuh", ["Setiap perangkat ke semua lainnya.", "Paling andal, paling mahal."], mesh) +
+    topoPanel(420, 490, "Tree", ["Hierarki bertingkat dari root.", "Root bermasalah, dampaknya luas."], tree) +
+    info;
+  return frame("Lima topologi jaringan dasar: star, bus, ring, mesh penuh, dan tree, dengan rumus jumlah link mesh penuh", 900, body);
+}
+
+function gambarOsi() {
+  const layers = [["7", "Application"], ["6", "Presentation"], ["5", "Session"], ["4", "Transport"], ["3", "Network"], ["2", "Data Link"], ["1", "Physical"]];
+  const pdu = { 7: "Data", 6: "Data", 5: "Data", 4: "Segmen / datagram", 3: "Paket", 2: "Frame", 1: "Bit" };
+  const contoh = { 7: "HTTP, DNS, SSH", 6: "TLS, enkripsi, JPEG", 5: "Mengelola sesi", 4: "TCP, UDP, nomor port", 3: "IP, router", 2: "Ethernet, MAC, switch", 1: "Kabel, sinyal, hub" };
+  const y = (n) => 130 + (7 - n) * 100;
+  let b = text(600, 62, "Model OSI dan TCP/IP", { size: 42, weight: 800, anchor: "middle" });
+  b += text(170, 112, "TCP/IP", { size: 26, weight: 800, anchor: "middle" }) + text(495, 112, "OSI", { size: 26, weight: 800, anchor: "middle" }) +
+    text(765, 112, "Unit data", { size: 26, weight: 800, anchor: "middle" }) + text(1020, 112, "Contoh", { size: 26, weight: 800, anchor: "middle" });
+  [[7, 5, "Application", M3], [4, 4, "Transport", M1], [3, 3, "Internet", M1], [2, 1, "Network Access", M1]].forEach(([from, to, name, fill]) => {
+    const top = y(from), h = y(to) + 88 - top;
+    b += box(40, top, 260, h, { fill, r: 18 }) + text(170, top + h / 2 + 10, name, { size: 28, weight: 800, anchor: "middle" });
+  });
+  layers.forEach(([n, name]) => {
+    const k = Number(n);
+    b += box(330, y(k), 330, 88, { r: 14 }) + circle(375, y(k) + 44, 22, { fill: M1 }) + text(375, y(k) + 54, n, { size: 26, weight: 800, anchor: "middle" }) + text(410, y(k) + 54, name, { size: 28 });
+    b += text(765, y(k) + 54, pdu[k], { size: k === 4 ? 21 : 26, weight: 600, anchor: "middle" }) + text(1020, y(k) + 52, contoh[k], { size: 22, weight: 500, anchor: "middle" });
+  });
+  b += text(600, 880, "Data turun dari lapisan 7 ke 1 di pengirim, lalu naik dari 1 ke 7 di penerima.", { size: 24, anchor: "middle", weight: 500 });
+  b += text(600, 916, "Setiap lapisan menambah header: itu enkapsulasi. Penerima melepasnya: dekapsulasi.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Tujuh lapisan model OSI dipetakan ke empat lapisan TCP/IP, dengan unit data dan contoh tiap lapisan", 960, b);
+}
+
+const AH = '<marker id="ah" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L14 7L0 14z" fill="#0f100d"/></marker>';
+const arrow = (x1, y1, x2, y2, o = {}) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="5" stroke-linecap="round"${o.dash ? ` stroke-dasharray="${o.dash}"` : ""} marker-end="url(#ah)"/>`;
+
+function gambarDhcp() {
+  const L = 260, R = 940;
+  let b = text(600, 62, "Proses DHCP: DORA", { size: 42, weight: 800, anchor: "middle" });
+  b += box(L - 130, 90, 260, 70, { fill: M3, r: 16 }) + text(L, 135, "Klien (laptop)", { size: 28, anchor: "middle", weight: 800 });
+  b += box(R - 130, 90, 260, 70, { fill: M3, r: 16 }) + text(R, 135, "Server DHCP", { size: 28, anchor: "middle", weight: 800 });
+  b += line(L, 160, L, 720, { sw: 4, dash: "3 14" }) + line(R, 160, R, 720, { sw: 4, dash: "3 14" });
+  const steps = [
+    ["1", "Discover", "Ada server DHCP di sini? (broadcast)", true],
+    ["2", "Offer", "Pakai 192.168.1.50, sewa 24 jam", false],
+    ["3", "Request", "Baik, saya ambil 192.168.1.50", true],
+    ["4", "Acknowledge", "Disetujui. Alamat sudah milikmu", false],
+  ];
+  steps.forEach(([n, name, desc, toServer], i) => {
+    const yy = 265 + i * 130;
+    b += toServer ? arrow(L + 8, yy, R - 12, yy) : arrow(R - 8, yy, L + 12, yy);
+    b += circle(600, yy - 52, 22, { fill: M1 }) + text(600, yy - 42, n, { size: 26, anchor: "middle", weight: 800 });
+    b += text(640, yy - 42, name, { size: 30, weight: 800 }) + text(600, yy + 36, desc, { size: 24, anchor: "middle", weight: 500 });
+  });
+  b += text(600, 775, "DORA = Discover, Offer, Request, Acknowledge.", { size: 26, anchor: "middle", weight: 800 });
+  b += text(600, 813, "Pesan memakai UDP: klien di port 68, server di port 67.", { size: 24, anchor: "middle", weight: 500 });
+  b += text(600, 847, "Discover berupa broadcast karena klien belum punya alamat IP.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Empat langkah DHCP: Discover, Offer, Request, Acknowledge antara klien dan server", 885, b, AH);
+}
+
+function gambarNat() {
+  let b = text(600, 62, "NAT: satu alamat publik untuk banyak perangkat", { size: 38, weight: 800, anchor: "middle" });
+  b += box(40, 110, 290, 140, { fill: M1, r: 18 }) + text(185, 160, "Laptop", { size: 28, weight: 800, anchor: "middle" }) + text(185, 200, "192.168.1.10", { size: 26, anchor: "middle", weight: 500 }) + text(185, 232, "port 5000", { size: 22, anchor: "middle", weight: 500 });
+  b += box(455, 110, 290, 140, { fill: M3, r: 18 }) + text(600, 160, "Router NAT", { size: 28, weight: 800, anchor: "middle" }) + text(600, 198, "LAN 192.168.1.1", { size: 24, anchor: "middle", weight: 500 }) + text(600, 230, "WAN 203.0.113.5", { size: 24, anchor: "middle", weight: 500 });
+  b += box(870, 110, 290, 140, { fill: M1, r: 18 }) + text(1015, 160, "Server web", { size: 28, weight: 800, anchor: "middle" }) + text(1015, 200, "198.51.100.20", { size: 26, anchor: "middle", weight: 500 }) + text(1015, 232, "port 443", { size: 22, anchor: "middle", weight: 500 });
+  b += arrow(334, 150, 450, 150) + arrow(749, 150, 865, 150) + arrow(865, 215, 749, 215, { dash: "10 8" }) + arrow(450, 215, 334, 215, { dash: "10 8" });
+  [[392, 126, "1"], [807, 126, "2"], [807, 191, "3"], [392, 191, "4"]].forEach(([x, y, n]) => { b += circle(x, y, 17, { fill: "#ffffff", sw: 3 }) + text(x, y + 8, n, { size: 22, anchor: "middle", weight: 800 }); });
+  const rows = [
+    ["1", "Keluar dari laptop", "sumber 192.168.1.10:5000  ke  198.51.100.20:443"],
+    ["2", "Setelah NAT", "sumber 203.0.113.5:40000  ke  198.51.100.20:443"],
+    ["3", "Balasan server", "dari 198.51.100.20:443  ke  203.0.113.5:40000"],
+    ["4", "Diterjemahkan balik", "dari 198.51.100.20:443  ke  192.168.1.10:5000"],
+  ];
+  rows.forEach(([n, head, detail], i) => {
+    const y = 300 + i * 82;
+    b += box(40, y, 1120, 66, { r: 14 }) + circle(80, y + 33, 20, { fill: M1 }) + text(80, y + 42, n, { size: 24, anchor: "middle", weight: 800 });
+    b += text(120, y + 43, head, { size: 26, weight: 800 }) + text(430, y + 43, detail, { size: 25, weight: 500, mono: true });
+  });
+  b += box(40, 640, 1120, 90, { fill: M1, r: 14 }) + text(70, 678, "Tabel terjemahan di router", { size: 24, weight: 800 }) + text(70, 712, "192.168.1.10:5000  <->  203.0.113.5:40000", { size: 26, weight: 500, mono: true });
+  b += text(60, 785, "Di MikroTik:", { size: 24, weight: 800 }) + text(240, 785, "/ip firewall nat add chain=srcnat", { size: 22, weight: 500, mono: true }) + text(240, 817, "    out-interface=ether1 action=masquerade", { size: 22, weight: 500, mono: true });
+  return frame("NAT mengganti alamat dan port sumber paket dari jaringan lokal menjadi alamat publik router", 860, b, AH);
+}
+
 const DIAGRAMS = {
   "utp-t568a-t568b": gambarUtp,
   "kabel-straight-crossover": gambarStraightCrossover,
   "rj45-konektor": gambarRj45,
+  "topologi-dasar": gambarTopologi,
+  "osi-tcpip": gambarOsi,
+  "dhcp-dora": gambarDhcp,
+  "nat-masquerade": gambarNat,
 };
 
 mkdirSync("public/praktik", { recursive: true });
