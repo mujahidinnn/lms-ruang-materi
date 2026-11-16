@@ -5,6 +5,7 @@
 //   npm run draft:check -- sdlc 36      (36 = slides in the deck)
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { BIAS_LIMIT, longestCorrectShare, maxPositionShare } from "../lib/answer-bias.ts";
 import { diagramCount, missingDiagrams } from "../lib/chapters.ts";
 import { draftSchema, failingChecks } from "../worker/prompt.ts";
 
@@ -51,6 +52,13 @@ if (d.project) {
 const practice = new Set(d.practice_questions.map((q) => q.prompt.trim().toLowerCase()));
 const dup = d.exam_questions.filter((q) => practice.has(q.prompt.trim().toLowerCase()));
 if (dup.length) problems.push(`${dup.length} soal ujian sama dengan soal latihan`);
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+for (const [name, qs] of [["ujian", d.exam_questions], ["latihan", d.practice_questions], ["kuis bab", d.chapters.flatMap((c) => c.quiz)]] as const) {
+  const share = longestCorrectShare(qs);
+  if (share > BIAS_LIMIT) problems.push(`bias panjang opsi: ${name} ${pct(share)} opsi benar terpanjang (batas ${pct(BIAS_LIMIT)})`);
+}
+const pos = maxPositionShare(d.exam_questions);
+if (pos > BIAS_LIMIT) problems.push(`bias posisi jawaban ujian: ${pct(pos)} di satu posisi (batas ${pct(BIAS_LIMIT)})`);
 const cites = JSON.stringify(d).match(/\[cite[^\]]*\]/g);
 if (cites) problems.push(`${cites.length} penanda [cite]`);
 console.log(`ringkasan: ${d.chapters.length} bab, ${d.flashcards.length} kartu, ${d.practice_questions.length} latihan, ${d.exam_questions.length} ujian, ${d.tips.length} tips`);
