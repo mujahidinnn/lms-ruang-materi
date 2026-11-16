@@ -205,3 +205,125 @@ describe("dhcp lease statis", () => {
     expect(sameIp.router.dhcpLeases).toHaveLength(1);
   });
 });
+
+describe("firewall filter", () => {
+  const f = (a: string) => `/ip firewall filter add ${a}`;
+  it("aturan beruntun, urutan, print", () => {
+    const r = run(`${f("chain=input action=accept connection-state=established,related")}\n${f("chain=input action=drop protocol=tcp dst-port=23 src-address=10.0.0.0/24 in-interface=ether1 comment=x")}\n/ip firewall filter print`);
+    expect(r.router.filter).toEqual([
+      { chain: "input", action: "accept", protocol: "", dstPort: "", srcAddress: "", inInterface: "", connectionState: "established,related" },
+      { chain: "input", action: "drop", protocol: "tcp", dstPort: "23", srcAddress: "10.0.0.0/24", inInterface: "ether1", connectionState: "" },
+    ]);
+    expect(has(r.keluaran, "CONNECTION-STATE")).toBe(true);
+    expect(has(r.keluaran, "IN-INTERFACE")).toBe(true);
+  });
+  it("dst-port bentuk", () => {
+    for (const p of ["80", "8000-8100", "80,443"]) expect(run(f(`chain=input action=drop protocol=udp dst-port=${p}`)).router.filter).toHaveLength(1);
+    for (const p of ["0", "65536", "a", "100-80"]) expect(run(f(`chain=input action=drop protocol=tcp dst-port=${p}`)).keluaran).toContain("invalid value for argument dst-port");
+  });
+  it("galat", () => {
+    expect(run(f("chain=x action=drop")).keluaran).toContain("input does not match any value of chain");
+    expect(run(f("chain=input action=x")).keluaran).toContain("input does not match any value of action");
+    expect(run(f("chain=input action=drop protocol=x")).keluaran).toContain("input does not match any value of protocol");
+    expect(run(f("chain=input action=drop dst-port=80")).keluaran).toContain("failure: protocol tcp or udp required for dst-port");
+    expect(run(f("chain=input action=drop protocol=icmp dst-port=80")).keluaran).toContain("failure: protocol tcp or udp required for dst-port");
+    expect(run(f("chain=input action=drop src-address=1.1.1")).keluaran).toContain("invalid value for argument src-address");
+    expect(run(f("chain=input action=drop in-interface=ether9")).keluaran).toContain("input does not match any value of in-interface");
+    expect(run(f("chain=input action=drop connection-state=established,foo")).keluaran).toContain("invalid value for argument connection-state");
+    expect(run(f("chain=input")).keluaran).toContain("failure: missing required argument action");
+    expect(run(f("action=drop")).keluaran).toContain("failure: missing required argument chain");
+    expect(run(f("chain=input action=drop x=1")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(f("chain=input action=drop __proto__=x")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(f("chain=input action=drop junk")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(f("chain=input action=drop src-address=1.2.3.4")).router.filter).toHaveLength(1);
+  });
+});
+
+describe("address-list", () => {
+  const a = "/ip firewall address-list add list=ban address=10.0.0.5";
+  it("add dan print", () => {
+    const r = run(`${a} comment="a b"\n/ip firewall address-list add list=ban address=10.0.1.0/24\n/ip firewall address-list print`);
+    expect(r.router.addressLists).toEqual([{ list: "ban", address: "10.0.0.5" }, { list: "ban", address: "10.0.1.0/24" }]);
+    expect(has(r.keluaran, "LIST")).toBe(true);
+  });
+  it("galat", () => {
+    expect(run("/ip firewall address-list add list=ban address=1.1.1").keluaran).toContain("invalid value for argument address");
+    const d = run(`${a}\n${a}`);
+    expect(d.keluaran).toContain("failure: already have such entry");
+    expect(d.router.addressLists).toHaveLength(1);
+    expect(run("/ip firewall address-list add list=ban").keluaran).toContain("failure: missing required argument address");
+    expect(run("/ip firewall address-list add address=1.1.1.1").keluaran).toContain("failure: missing required argument list");
+    expect(run(`${a} x=1`).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(`${a} __proto__=x`).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(`${a} junk`).keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("queue simple", () => {
+  const q = (a: string) => `/queue simple add ${a}`;
+  it("add dan print", () => {
+    const r = run(`${q("name=q1 target=192.168.88.0/24 max-limit=2M/10M comment=x")}\n${q("name=q2 target=10.0.0.5")}\n/queue simple print`);
+    expect(r.router.queues).toEqual([{ name: "q1", target: "192.168.88.0/24", maxLimit: "2M/10M" }, { name: "q2", target: "10.0.0.5", maxLimit: "" }]);
+    expect(has(r.keluaran, "MAX-LIMIT")).toBe(true);
+  });
+  it("max-limit", () => {
+    for (const m of ["2M/10M", "512k/1M", "0/0"]) expect(run(q(`name=a target=10.0.0.5 max-limit=${m}`)).router.queues).toHaveLength(1);
+    for (const m of ["2M", "M/2M", "2X/2M"]) expect(run(q(`name=a target=10.0.0.5 max-limit=${m}`)).keluaran).toContain("invalid value for argument max-limit");
+  });
+  it("galat", () => {
+    expect(run(q("name=a target=1.1.1")).keluaran).toContain("invalid value for argument target");
+    const d = run(`${q("name=a target=10.0.0.5")}\n${q("name=a target=10.0.0.6")}`);
+    expect(d.keluaran).toContain("failure: already have such name");
+    expect(d.router.queues).toHaveLength(1);
+    expect(run(q("name=a")).keluaran).toContain("failure: missing required argument target");
+    expect(run(q("target=10.0.0.5")).keluaran).toContain("failure: missing required argument name");
+    expect(run(q("name=a target=10.0.0.5 x=1")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(q("name=a target=10.0.0.5 __proto__=x")).keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run(q("name=a target=10.0.0.5 junk")).keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("ip service", () => {
+  it("print dan set", () => {
+    const r = run("/ip service print\n/ip service set telnet disabled=yes port=2323\n/ip service set www-ssl disabled=no");
+    expect(has(r.keluaran, "FLAGS")).toBe(true);
+    expect(r.keluaran.some((l) => /X\s+www-ssl\s+443/.test(l))).toBe(true);
+    expect(r.router.services.find((s) => s.name === "telnet")).toEqual({ name: "telnet", port: 2323, disabled: true });
+    expect(r.router.services.find((s) => s.name === "www-ssl")!.disabled).toBe(false);
+  });
+  it("set tanpa argumen diterima tanpa efek", () => {
+    const r = run("/ip service set telnet");
+    expect(r.keluaran).toHaveLength(1);
+    expect(r.router.services.find((s) => s.name === "telnet")).toEqual({ name: "telnet", port: 23, disabled: false });
+  });
+  it("galat", () => {
+    expect(run("/ip service set foo disabled=yes").keluaran).toContain("no such item");
+    expect(run("/ip service set disabled=yes").keluaran).toContain("failure: missing required argument name");
+    expect(run("/ip service set telnet disabled=maybe").keluaran).toContain("invalid value for argument disabled");
+    for (const p of ["0", "65536", "a", "1.5"]) expect(run(`/ip service set telnet port=${p}`).keluaran).toContain("invalid value for argument port");
+    expect(run("/ip service set telnet ssh disabled=yes").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/ip service set telnet x=1").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/ip service set telnet __proto__=x").keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});
+
+describe("user", () => {
+  it("add, print, password tidak disimpan", () => {
+    const r = run('/user add name=budi password="rahasia123" group=read comment=x\n/user print');
+    expect(r.router.users).toEqual([{ name: "admin", group: "full" }, { name: "budi", group: "read" }]);
+    expect(JSON.stringify(r.router)).not.toContain("rahasia123");
+    expect(has(r.keluaran, "GROUP")).toBe(true);
+    expect(has(r.keluaran, "budi")).toBe(true);
+  });
+  it("galat", () => {
+    expect(run("/user add name=a group=root").keluaran).toContain("input does not match any value of group");
+    expect(run("/user add name=a").keluaran).toContain("failure: missing required argument group");
+    expect(run("/user add group=read").keluaran).toContain("failure: missing required argument name");
+    const d = run("/user add name=admin group=read");
+    expect(d.keluaran).toContain("failure: user with the same name already exists");
+    expect(d.router.users).toHaveLength(1);
+    expect(run("/user add name=a group=read x=1").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/user add name=a group=read __proto__=x").keluaran.at(-1)).toMatch(/^expected end of command/);
+    expect(run("/user add name=a group=read junk").keluaran.at(-1)).toMatch(/^expected end of command/);
+  });
+});

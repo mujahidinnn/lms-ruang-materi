@@ -123,9 +123,14 @@ export function routerOSShim() {
     "interface bridge add": { keys: ["name"], req: ["name"] },
     "interface bridge port add": { keys: ["bridge", "interface"], req: ["bridge", "interface"] },
     "ip dhcp-server lease add": { keys: ["address", "mac-address", "server"], req: ["address", "mac-address"] },
+    "ip firewall filter add": { keys: ["chain", "action", "protocol", "dst-port", "src-address", "in-interface", "connection-state"], req: ["chain", "action"] },
+    "ip firewall address-list add": { keys: ["list", "address"], req: ["list", "address"] },
+    "queue simple add": { keys: ["name", "target", "max-limit"], req: ["name", "target"] },
+    "ip service set": { keys: ["disabled", "port"], req: [] },
+    "user add": { keys: ["name", "password", "group"], req: ["name", "group"] },
     ping: { keys: ["count"], req: [] },
   };
-  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns", "interface bridge", "interface bridge port", "ip dhcp-server lease"];
+  const PRINTS = ["system identity", "interface", "interface ethernet", "ip arp", "ip address", "ip pool", "ip dhcp-server", "ip dhcp-server network", "ip firewall nat", "ip route", "ip dns", "interface bridge", "interface bridge port", "ip dhcp-server lease", "ip firewall filter", "ip firewall address-list", "queue simple", "ip service", "user"];
   for (const p of PRINTS) SPECS[p + " print"] = { keys: [], req: [] };
   SPECS["ip address remove"] = { keys: [], req: [] };
   for (const n of Object.keys(SPECS)) if (n.endsWith(" add")) SPECS[n].keys.push("comment");
@@ -280,7 +285,7 @@ export function routerOSShim() {
         args[k] = t.text.slice(i + 1);
       }
       if (failed) continue;
-      const maxPos = name === "ping" || name === "ip address remove" || name === "interface ethernet set" ? 1 : 0;
+      const maxPos = name === "ping" || name === "ip address remove" || name === "interface ethernet set" || name === "ip service set" ? 1 : 0;
       if (pos.length > maxPos) {
         err(`expected end of command (line ${no} column ${pos[maxPos].col})`);
         continue;
@@ -431,6 +436,69 @@ export function routerOSShim() {
         case "ip dns print":
           err(`servers: ${router.dns.servers.join(",")}`);
           err(`allow-remote-requests: ${router.dns.allowRemoteRequests ? "yes" : "no"}`);
+          break;
+        case "ip firewall filter add": {
+          const port = g("dst-port");
+          const portOk = port.split(",").every((x) => {
+            const m = /^(\d{1,5})(?:-(\d{1,5}))?$/.exec(x);
+            return !!m && Number(m[1]) >= 1 && Number(m[1]) <= 65535 && (m[2] === undefined || (Number(m[2]) >= Number(m[1]) && Number(m[2]) <= 65535));
+          });
+          if (!["input", "forward", "output"].includes(g("chain"))) err("input does not match any value of chain");
+          else if (!["accept", "drop", "reject", "passthrough", "log"].includes(g("action"))) err("input does not match any value of action");
+          else if (g("protocol") !== "" && !["tcp", "udp", "icmp"].includes(g("protocol"))) err("input does not match any value of protocol");
+          else if (port !== "" && !portOk) err("invalid value for argument dst-port");
+          else if (port !== "" && g("protocol") !== "tcp" && g("protocol") !== "udp") err("failure: protocol tcp or udp required for dst-port");
+          else if (g("src-address") !== "" && ip4(g("src-address")) === null && !cidr(g("src-address"))) err("invalid value for argument src-address");
+          else if (g("in-interface") !== "" && !hasIf(g("in-interface"))) err("input does not match any value of in-interface");
+          else if (g("connection-state") !== "" && !g("connection-state").split(",").every((x) => ["established", "related", "new", "invalid", "untracked"].includes(x))) err("invalid value for argument connection-state");
+          else router.filter.push({ chain: g("chain"), action: g("action"), protocol: g("protocol"), dstPort: port, srcAddress: g("src-address"), inInterface: g("in-interface"), connectionState: g("connection-state") });
+          break;
+        }
+        case "ip firewall filter print":
+          printList(["CHAIN", "ACTION", "PROTOCOL", "DST-PORT", "SRC-ADDRESS", "IN-INTERFACE", "CONNECTION-STATE"], router.filter.map((f) => [f.chain, f.action, f.protocol, f.dstPort, f.srcAddress, f.inInterface, f.connectionState]));
+          break;
+        case "ip firewall address-list add":
+          if (ip4(g("address")) === null && !cidr(g("address"))) err("invalid value for argument address");
+          else if (router.addressLists.some((a) => a.list === g("list") && a.address === g("address"))) err("failure: already have such entry");
+          else router.addressLists.push({ list: g("list"), address: g("address") });
+          break;
+        case "ip firewall address-list print":
+          printList(["LIST", "ADDRESS"], router.addressLists.map((a) => [a.list, a.address]));
+          break;
+        case "queue simple add":
+          if (ip4(g("target")) === null && !cidr(g("target"))) err("invalid value for argument target");
+          else if (g("max-limit") !== "" && !/^\d+[kMG]?\/\d+[kMG]?$/.test(g("max-limit"))) err("invalid value for argument max-limit");
+          else if (router.queues.some((q) => q.name === g("name"))) err("failure: already have such name");
+          else router.queues.push({ name: g("name"), target: g("target"), maxLimit: g("max-limit") });
+          break;
+        case "queue simple print":
+          printList(["NAME", "TARGET", "MAX-LIMIT"], router.queues.map((q) => [q.name, q.target, q.maxLimit]));
+          break;
+        case "ip service print":
+          printList(["FLAGS", "NAME", "PORT"], router.services.map((v) => [v.disabled ? "X" : "", v.name, String(v.port)]));
+          break;
+        case "ip service set": {
+          const n = pos[0]?.text;
+          const d = args["disabled"];
+          const p = args["port"];
+          const svc = router.services.find((v) => v.name === n);
+          if (n === undefined) err("failure: missing required argument name");
+          else if (!svc) err("no such item");
+          else if (d !== undefined && d !== "yes" && d !== "no") err("invalid value for argument disabled");
+          else if (p !== undefined && (!/^\d{1,5}$/.test(p) || Number(p) < 1 || Number(p) > 65535)) err("invalid value for argument port");
+          else {
+            if (d !== undefined) svc.disabled = d === "yes";
+            if (p !== undefined) svc.port = Number(p);
+          }
+          break;
+        }
+        case "user add":
+          if (!["read", "write", "full"].includes(g("group"))) err("input does not match any value of group");
+          else if (router.users.some((u) => u.name === g("name"))) err("failure: user with the same name already exists");
+          else router.users.push({ name: g("name"), group: g("group") }); // password deliberately not stored
+          break;
+        case "user print":
+          printList(["NAME", "GROUP"], router.users.map((u) => [u.name, u.group]));
           break;
         case "ping": {
           const target = pos[0]?.text;
