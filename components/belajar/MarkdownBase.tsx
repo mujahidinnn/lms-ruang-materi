@@ -62,7 +62,7 @@ export default function MarkdownBase({
             const text = String(children ?? "");
             const lang = /language-(\w+)/.exec(className ?? "")?.[1];
             const block = lang !== undefined || text.includes("\n");
-            if (!block) return <code className="rounded-md bg-zinc-800 px-1.5 py-0.5 font-mono text-[0.9em]">{children}</code>;
+            if (!block) return <code className="rounded-md bg-zinc-800 px-1.5 py-0.5 font-mono text-[0.9em] break-words [overflow-wrap:anywhere]">{children}</code>;
             const code = text.replace(/\n$/, "");
             return renderCode ? (
               renderCode(code, lang ?? "text")
