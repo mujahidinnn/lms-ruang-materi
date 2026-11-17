@@ -50,10 +50,15 @@ test("gemini: valid draft parses", () => {
   expect(draftSchema.safeParse(valid).success).toBe(true);
 });
 
-test("extra exam questions are trimmed to 40", () => {
-  const extra = { ...valid, exam_questions: [...valid.exam_questions, q(999)] };
-  const parsed = draftSchema.parse(extra);
-  expect(parsed.exam_questions).toHaveLength(40);
+test("exam bank of 40 to 60 is kept whole, more than 60 is rejected, order kept", () => {
+  const bank = (n: number) => Array.from({ length: n }, (_, i) => q(200 + i));
+  for (const n of [40, 50, 60]) {
+    const out = draftSchema.parse({ ...valid, exam_questions: bank(n) }).exam_questions;
+    expect(out).toHaveLength(n);
+    expect(out.map((x) => x.prompt)).toEqual(bank(n).map((x) => x.prompt));
+  }
+  expect(draftSchema.safeParse({ ...valid, exam_questions: bank(39) }).success).toBe(false);
+  expect(draftSchema.safeParse({ ...valid, exam_questions: bank(61) }).success).toBe(false);
 });
 
 test("gemini: broken drafts fail", () => {

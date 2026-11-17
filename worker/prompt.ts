@@ -74,8 +74,8 @@ export const draftSchema = z.object({
   tips: z.array(z.string().min(1)).min(3).max(6),
   flashcards: z.array(z.object({ front: z.string().min(1), back: z.string().min(1) })).min(15).max(30),
   practice_questions: z.array(question).min(10).max(15),
-  // Models often give one or two extra; keep the first 40.
-  exam_questions: z.array(question).min(40).max(60).transform((qs) => qs.slice(0, 40)),
+  // Keep up to 60: a class may run 25-question exams from a bank of 50.
+  exam_questions: z.array(question).min(40).max(60),
   prerequisites: z.array(z.string().regex(/^[a-z0-9-]+$/)).max(5).describe("Slug topik yang sebaiknya dipelajari dulu"),
   chapters: z.array(chapter).min(4).max(12),
   project: project.nullable().default(null),
