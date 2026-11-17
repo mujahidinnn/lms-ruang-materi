@@ -1115,5 +1115,957 @@
         }
       ]
     }
-  ]
+  ],
+  "title": "MikroTik RouterOS Dasar (kerangka MTCNA)",
+  "description": "Kelas tidak resmi dan tidak berafiliasi dengan MikroTik yang mengikuti susunan kerangka MTCNA, dari mengenal RouterOS sampai routing, firewall, NAT, queue, tunnel, dan alat bantu.",
+  "summary": "Kelas ini membawamu dari nol memahami router MikroTik dan RouterOS. Duabelas bab mengikuti urutan kerangka MTCNA: mengenal RouterOS dan Winbox, CLI dan konfigurasi awal sampai internet, pemeliharaan, DHCP dan ARP, bridge, routing statik, wireless, firewall filter, NAT dan FastTrack, queue, tunnel PPP, lalu alat bantu dan monitoring.\n\nSetiap bab diakhiri kuis dan, bila bisa disimulasikan, latihan terminal RouterOS yang kamu periksa langsung di browser. Bab wireless, tunnel, dan beberapa bagian pemeliharaan hanya berisi teori dan panduan lab untuk perangkat fisik, karena simulator tidak memodelkannya. Latihan penutup berupa proyek Kantor Kecil MikroTik yang menggabungkan alamat, DHCP, NAT, firewall, queue, dan rute dalam satu skrip.\n\nKelas ini tidak resmi dan tidak berafiliasi dengan MikroTik. Susunan babnya mengacu pada kerangka bertanggal 22 Januari 2016 yang bisa berubah, jadi baca kerangka terbaru sebelum ujian resmi mana pun. Kelas ini tidak menjanjikan kelulusan sertifikasi apa pun, tetapi membantumu menguasai dasarnya.",
+  "tips": [
+    "Selalu cetak ulang tabel dengan print sebelum remove atau set memakai nomor, sebab nomor entri dihitung dari print terakhir.",
+    "Sebelum mengubah firewall lewat jaringan, siapkan aturan accept untuk dirimu sendiri dan tambahkan aturan drop paling akhir, supaya sesi tidak terputus.",
+    "Saat internet mati, uji dari dekat ke jauh: alamat router, gateway, alamat IP publik, lalu nama domain, agar letak masalah cepat terlihat.",
+    "Simpan hasil export sebelum bereksperimen dan pakai CHR atau router cadangan untuk berlatih, jangan mencoba pertama kali di router produksi.",
+    "Cek versi RouterOS dan paket yang terpasang lebih dulu, karena perintah wireless dan wifi, serta beberapa fitur v6 dan v7, berbeda antar perangkat."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa beda RouterOS dan RouterBOARD?",
+      "back": "RouterOS adalah sistem operasi MikroTik. RouterBOARD adalah perangkat keras buatan MikroTik yang menjalankannya."
+    },
+    {
+      "front": "Sebutkan cara mengakses router MikroTik.",
+      "back": "Winbox (termasuk MAC-Winbox), WebFig, SSH, Telnet, dan kabel konsol. Telnet tidak terenkripsi sehingga sebaiknya dimatikan."
+    },
+    {
+      "front": "Bagaimana mengatasi lupa argumen di CLI RouterOS?",
+      "back": "Tekan tanda tanya untuk melihat pilihan di posisi itu, dan tekan Tab untuk melengkapi kata. Angka entri untuk remove diambil dari print terakhir."
+    },
+    {
+      "front": "Apa alur dasar agar LAN bisa ke internet?",
+      "back": "Alamat LAN, alamat atau DHCP client di WAN, rute bawaan, NAT masquerade di chain srcnat dengan out-interface WAN, dan DNS."
+    },
+    {
+      "front": "Apa beda backup dan export?",
+      "back": "Backup (.backup) berupa biner untuk pulihkan perangkat yang sama. Export (.rsc) berupa skrip teks yang bisa disunting dan dipakai di perangkat lain."
+    },
+    {
+      "front": "Mengapa firmware RouterBOOT dinaikkan terpisah?",
+      "back": "Firmware adalah lapisan terpisah dari RouterOS. Upgrade RouterOS tidak selalu menaikkannya, dan firmware baru aktif setelah reboot."
+    },
+    {
+      "front": "Apa saja bagian server DHCP di RouterOS?",
+      "back": "Pool alamat, server DHCP di antarmuka (jangan lupa diaktifkan), dan DHCP network yang memuat gateway serta DNS untuk klien."
+    },
+    {
+      "front": "Apa fungsi lease statis dan ARP?",
+      "back": "Lease statis mengikat satu alamat ke satu MAC. ARP memetakan alamat IP ke alamat MAC di satu jaringan layer 2."
+    },
+    {
+      "front": "Apa fungsi bridge di RouterOS?",
+      "back": "Menyatukan beberapa port pada layer 2 dalam satu segmen. Alamat IP dipasang pada bridge, dan RSTP berjalan secara bawaan."
+    },
+    {
+      "front": "Mengapa alamat IP tidak dipasang di port anggota bridge?",
+      "back": "Port anggota bridge bekerja di layer 2. Alamat IP milik bridge sebagai antarmuka, dan port hanya meneruskan frame."
+    },
+    {
+      "front": "Bagaimana router memilih antara beberapa rute?",
+      "back": "Prefix paling spesifik dipakai lebih dulu. Untuk tujuan yang sama, distance terkecil menang, dan gateway harus terjangkau."
+    },
+    {
+      "front": "Apa arti rute 0.0.0.0/0?",
+      "back": "Rute bawaan: dipakai untuk semua tujuan yang tidak cocok dengan rute lain yang lebih spesifik, biasanya menuju gateway ISP."
+    },
+    {
+      "front": "Mengapa kanal 1, 6, dan 11 dipakai di 2,4 GHz?",
+      "back": "Pada lebar 20 MHz, hanya ketiganya yang tidak saling tumpang tindih, sehingga gangguan antar-AP berkurang."
+    },
+    {
+      "front": "Apa beda access list dan connect list?",
+      "back": "Access list mengatur klien mana yang boleh ke AP (efektif membatasi bila default-authenticate=no). Connect list mengatur AP mana yang dituju station."
+    },
+    {
+      "front": "Bagaimana filter firewall memproses paket?",
+      "back": "Dari atas ke bawah, aturan pertama yang cocok berlaku. Chain input untuk router sendiri, forward untuk lalu lintas melintas, output untuk keluar dari router."
+    },
+    {
+      "front": "Aturan dasar input yang aman untuk router?",
+      "back": "Accept established,related, drop invalid, accept dari LAN, lalu drop sisanya dari WAN. Urutan menentukan hasil."
+    },
+    {
+      "front": "Apa beda masquerade dan src-nat?",
+      "back": "Keduanya menulis ulang alamat sumber di srcnat. Masquerade mengambil alamat dari antarmuka keluar, src-nat memakai to-addresses yang tetap."
+    },
+    {
+      "front": "Apa itu FastTrack dan risikonya?",
+      "back": "Percepatan untuk koneksi established yang melewati sebagian filter, mangle, dan queue global. Pembatasan tertentu bisa tidak berlaku."
+    },
+    {
+      "front": "Bagaimana simple queue memilih aturan?",
+      "back": "Queue yang cocok pertama menang, jadi urutan penting. max-limit ditulis unggah/unduh dan berlaku bersama untuk seluruh target."
+    },
+    {
+      "front": "Apa gagasan PCQ?",
+      "back": "Satu aturan yang membagi bandwidth rata per alamat, tanpa membuat satu queue untuk setiap perangkat."
+    },
+    {
+      "front": "Apa beda PPPoE, PPTP, dan SSTP?",
+      "back": "PPPoE berjalan di layer 2 dalam satu ethernet. PPTP dan SSTP berjalan di atas IP, dan PPTP dianggap lemah, sedangkan SSTP memakai TLS di TCP 443."
+    },
+    {
+      "front": "Sebutkan komponen server PPP.",
+      "back": "PPP secret (akun), profile (alamat lokal dan jauh), dan pool alamat yang dibagikan ke klien."
+    },
+    {
+      "front": "Alat bantu apa untuk memantau di RouterOS?",
+      "back": "Ping dan traceroute, Netwatch untuk host, Torch untuk lalu lintas langsung, profiler untuk CPU, grafik, SNMP, dan The Dude."
+    },
+    {
+      "front": "Bagaimana membaca pola hasil ping?",
+      "back": "Dari dekat ke jauh: alamat sendiri, gateway, IP internet, lalu domain. Ping IP berhasil tetapi nama gagal berarti masalah DNS."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu menjelaskan kepada rekan baru perbedaan RouterOS dengan RouterBOARD. Penjelasan yang tepat?",
+      "code": "",
+      "options": [
+        "RouterOS adalah perangkat kerasnya, RouterBOARD adalah sistem operasinya",
+        "RouterOS adalah sistem operasinya, RouterBOARD adalah perangkat kerasnya",
+        "Keduanya nama lain untuk aplikasi Winbox yang dipakai untuk mengelola router",
+        "RouterOS dipakai untuk kabel, sedangkan RouterBOARD hanya untuk jaringan nirkabel"
+      ],
+      "answer": 1,
+      "explanation": "RouterOS adalah perangkat lunak yang berjalan di RouterBOARD atau di mesin virtual (CHR). Winbox hanyalah alat pengelola."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Perintah /ip address add address=192.168.88.1/24 interface=ether2 juga memunculkan rute connected untuk 192.168.88.0/24.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pemasangan alamat pada antarmuka otomatis membuat rute connected, dan itu tampil sebagai baris DAc di tabel rute."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu mengganti router dengan model lain dan ingin membawa pengaturan firewall dan DHCP. Cara yang paling masuk akal?",
+      "code": "",
+      "options": [
+        "Salin berkas .backup biner dan pulihkan begitu saja di model yang berbeda",
+        "Reset router baru lalu ketik ulang seluruh perintah dari ingatan sendiri",
+        "Pindahkan kartu memori router lama ke router baru tanpa mengubah apa pun",
+        "Export ke berkas .rsc, sunting seperlunya, lalu jalankan di router baru"
+      ],
+      "answer": 3,
+      "explanation": "Skrip teks bisa dibaca dan disesuaikan dengan perangkat baru. Backup biner paling cocok untuk perangkat yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu sudah membuat server DHCP dengan pool dan network yang benar, tetapi klien tidak mendapat alamat. Apa yang paling perlu dicek lebih dulu?",
+      "code": "",
+      "options": [
+        "Apakah server berstatus aktif, karena server baru bisa saja masih nonaktif",
+        "Apakah nama server memakai huruf kecil semua, karena huruf besar ditolak",
+        "Apakah pool memuat alamat gateway, karena gateway harus ada di dalam pool",
+        "Apakah ether1 sudah diberi alamat statik yang sama dengan alamat milik ether2"
+      ],
+      "answer": 0,
+      "explanation": "Server yang dibuat lewat add bisa nonaktif sampai disertai disabled=no. Nama huruf besar sah, dan gateway sebaiknya berada di luar pool."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dua port yang dijadikan anggota bridge yang sama otomatis berada di subnet yang berbeda.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Bridge menyatukan port pada layer 2, sehingga keduanya berada di segmen dan subnet yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Router punya dua rute bawaan: ke ISP-A dengan distance 5 dan ke ISP-B dengan distance 20. Kedua gateway terjangkau. Rute mana yang aktif?",
+      "code": "",
+      "options": [
+        "Rute ke ISP-B, karena angka distance yang lebih besar dipilih lebih dulu",
+        "Keduanya aktif bergantian setiap satu paket seperti pembagian beban",
+        "Rute ke ISP-A, karena distance-nya lebih kecil",
+        "Tidak ada yang aktif, sebab dua rute bawaan tidak boleh ada bersamaan"
+      ],
+      "answer": 2,
+      "explanation": "Untuk tujuan yang sama, distance terkecil menang. Rute dengan distance lebih besar menjadi cadangan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa 5 GHz sering terasa lebih lega daripada 2,4 GHz di kantor yang padat?",
+      "code": "",
+      "options": [
+        "Kanalnya lebih sedikit sehingga perangkat tidak perlu memilih saat memulai",
+        "Sinyalnya menembus dinding lebih baik dan menjangkau jarak yang lebih jauh",
+        "Kanalnya lebih banyak yang tidak tumpang tindih dan pengguna lain lebih sedikit",
+        "Pita ini tidak dipakai oleh standar 802.11 sehingga bebas dari gangguan apa pun"
+      ],
+      "answer": 2,
+      "explanation": "5 GHz menyediakan lebih banyak kanal bebas tumpang tindih. Jangkauan dan tembus dinding justru lebih lemah dari 2,4 GHz."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu menyusun chain input agar router aman dari WAN tetapi LAN tetap bisa mengelolanya. Urutan aturan yang benar?",
+      "code": "",
+      "options": [
+        "Accept established,related, accept dari LAN, lalu drop sisanya",
+        "Drop semua lebih dulu, lalu accept established,related, lalu accept dari LAN",
+        "Accept dari LAN, drop sisanya, lalu accept established,related di paling bawah",
+        "Drop dari LAN, accept sisanya, lalu drop established,related di paling bawah"
+      ],
+      "answer": 0,
+      "explanation": "Aturan dibaca dari atas dan paket mengikuti aturan pertama yang cocok. Drop tanpa syarat harus berada paling bawah, sesudah semua accept."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Router bisa ping 8.8.8.8, tetapi laptop LAN 192.168.88.20 tidak dapat keluar ke internet. Perhatikan keluaran ini. Apa penyebabnya?",
+      "code": "[admin@MikroTik] > /ip firewall nat print\n#  CHAIN   ACTION      PROTOCOL  DST-PORT  IN-INTERFACE  OUT-INTERFACE  SRC-ADDRESS  TO-ADDRESSES  TO-PORTS\n0  srcnat  masquerade                                    ether1         10.0.0.0/8",
+      "options": [
+        "out-interface seharusnya ether2, karena paket LAN keluar lewat ether2",
+        "Action seharusnya dst-nat, karena paket LAN perlu diarahkan ke internet",
+        "Chain seharusnya dstnat, karena NAT harus terjadi sebelum routing berjalan",
+        "src-address hanya mencakup 10.0.0.0/8, sehingga alamat LAN 192.168.88.x tidak diterjemahkan"
+      ],
+      "answer": 3,
+      "explanation": "Aturan hanya cocok untuk sumber 10.x.x.x, sedangkan laptop memakai 192.168.88.20. Paket laptop lolos tanpa terjemahan dan balasan tidak pernah kembali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa router tidak bisa memperlambat kiriman sebuah server di internet menuju LAN kamu?",
+      "code": "",
+      "options": [
+        "Router hanya bisa mengatur paket yang masuk dari internet, bukan yang keluar",
+        "Router hanya mengatur paket yang keluar dari antarmukanya sendiri",
+        "Router hanya bisa mengatur server yang berada di jaringan lokal yang sama",
+        "Router hanya bisa mengatur laju bila FastTrack dimatikan di semua antarmuka"
+      ],
+      "answer": 1,
+      "explanation": "Pembatasan unduh dilakukan saat paket hendak dikirim ke LAN, dan TCP menyesuaikan lajunya sendiri. Router tidak mengendalikan pengirim di luar."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "PPPoE membuat sesi login pelanggan di atas jaringan ethernet yang sama antara klien dan server.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "PPPoE membungkus PPP dalam frame ethernet, sehingga klien dan server harus berada di satu segmen layer 2."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu menyusun urutan uji untuk mencari titik masalah dari dekat ke jauh. Urutan yang tepat?",
+      "code": "",
+      "options": [
+        "Nama domain, alamat IP internet, gateway, lalu alamat dan antarmuka",
+        "Alamat dan antarmuka, gateway, alamat IP internet, lalu nama domain",
+        "Alamat IP internet, nama domain, alamat dan antarmuka, lalu gateway",
+        "Gateway, nama domain, alamat dan antarmuka, lalu alamat IP internet"
+      ],
+      "answer": 1,
+      "explanation": "Mulai dari yang terdekat mempersempit letak masalah satu langkah demi satu langkah, dan DNS diuji terakhir setelah jalur ke internet terbukti sehat."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah router MikroTik baru masih memakai konfigurasi bawaan pabrik. Laptop yang mendapat alamat otomatis dicolokkan ke salah satu port LAN. Alamat mana yang umumnya dipakai untuk membuka WebFig?",
+      "code": "",
+      "options": [
+        "http://192.168.0.254 di browser, karena itu alamat umum untuk semua router rumah",
+        "http://192.168.88.1 di browser, selama model itu belum diubah pengaturannya",
+        "http://10.0.0.1 di browser, karena alamat ini dibagikan oleh server DHCP bawaan",
+        "http://169.254.1.1 di browser, karena alamat link-local selalu dipakai router baru"
+      ],
+      "answer": 1,
+      "explanation": "Pada banyak model, konfigurasi bawaan memasang 192.168.88.1/24 di sisi LAN. Alamat lain pada pilihan adalah kebiasaan merek atau jenis alamat yang tidak ditetapkan MikroTik untuk keperluan ini."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Winbox hanya dapat dijalankan di Windows, termasuk versi terbarunya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "WinBox 4 tersedia native untuk Windows, Linux, dan macOS. Hanya versi lama 3.x yang terbatas pada Windows."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Seorang siswa menjalankan RouterOS di mesin virtual sebagai CHR untuk berlatih. Pernyataan mana yang tepat tentang perangkat itu?",
+      "code": "",
+      "options": [
+        "Ia memakai RouterBOARD khusus yang hanya bisa dipasang dalam rak operator besar",
+        "Ia berisi firmware RouterBOOT tetapi tidak memuat RouterOS sebagai sistem operasinya",
+        "Ia adalah aplikasi Winbox versi khusus untuk mengelola router lain lewat jaringan",
+        "Ia menjalankan RouterOS tanpa perangkat keras RouterBOARD"
+      ],
+      "answer": 3,
+      "explanation": "CHR adalah RouterOS versi virtual, sehingga tidak butuh RouterBOARD. RouterBOOT adalah firmware perangkat keras, dan Winbox hanya alat pengelola."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Quick Set menyediakan pilihan skenario cepat, misalnya mode rumah atau CPE, yang lalu menyusun konfigurasi dasar.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Quick Set memang cara cepat memilih skenario umum. Hasilnya tetap konfigurasi biasa yang bisa kamu lihat dan ubah di menu lain."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Nomor pada kolom # di hasil print selalu tetap dan menjadi identitas permanen sebuah entri.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Nomor dihitung ulang dari print terakhir. Setelah entri dihapus atau ditambah, nomornya bisa bergeser, jadi lakukan print lagi sebelum remove."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Laptop memakai 192.168.88.1 sebagai DNS dan bisa mencapai 8.8.8.8 lewat ping, tetapi nama situs tidak terbuka. Perhatikan keluaran router ini. Apa penyebab paling mungkin?",
+      "code": "[admin@MikroTik] > /ip dns print\nservers: 8.8.8.8\nallow-remote-requests: no",
+      "options": [
+        "Router belum mau melayani permintaan DNS dari klien LAN",
+        "Server DNS 8.8.8.8 sengaja diblokir oleh penyedia layanan internet kantor",
+        "Alamat IP laptop bentrok dengan alamat router sehingga paket DNS hilang",
+        "Router hanya bisa meneruskan DNS bila NAT masquerade memakai action src-nat"
+      ],
+      "answer": 0,
+      "explanation": "allow-remote-requests=no membuat router tidak menjawab klien, walau ia sendiri punya server DNS. Ubah menjadi yes, atau berikan DNS langsung ke klien lewat DHCP. Kedua dugaan lain tidak terlihat di keluaran itu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Modem penyedia layanan terpasang di ether1 dan membagikan alamat otomatis lewat DHCP. Pengaturan tercepat agar router mendapat alamat dan rute bawaan?",
+      "code": "",
+      "options": [
+        "Tambah server DHCP di ether1 supaya modem mengambil alamat dari router",
+        "Tambah alamat 0.0.0.0/0 di ether1 lalu aktifkan ARP jenis reply-only",
+        "Tambah DHCP client di ether1 dengan add-default-route=yes",
+        "Pasang rute statik tanpa alamat apa pun di ether1 dan matikan firewall"
+      ],
+      "answer": 2,
+      "explanation": "Sisi WAN yang mendapat alamat otomatis memakai DHCP client. Server DHCP dipakai di sisi LAN, dan alamat 0.0.0.0/0 bukan alamat antarmuka yang sah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin menjalankan perintah /system identity set name=R-Kantor di terminal. Apa efek yang langsung terlihat?",
+      "code": "",
+      "options": [
+        "Router otomatis reboot lalu memilih alamat IP baru dari server DHCP",
+        "Semua pengguna lama dihapus dan hanya admin yang boleh login sesudahnya",
+        "Prompt berubah menjadi [admin@R-Kantor] pada baris berikutnya",
+        "Alamat MAC antarmuka ether1 berubah mengikuti nama baru milik router itu"
+      ],
+      "answer": 2,
+      "explanation": "Identity hanyalah nama router dan tampil di prompt. Mengubahnya tidak me-reboot router, tidak menyentuh pengguna, dan tidak mengubah alamat MAC."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah router bekas dari penyewa lama akan dipakai ulang. Sandi admin tidak diketahui dan tidak ada berkas backup. Langkah yang paling masuk akal?",
+      "code": "",
+      "options": [
+        "Reset konfigurasi lewat tombol fisik, atau Netinstall bila OS perlu dipasang ulang",
+        "Menebak sandi lewat Telnet sampai berhasil karena Telnet tidak membatasi percobaan",
+        "Mengunggah berkas export .rsc milik orang lain supaya sandi lama tertimpa otomatis",
+        "Menunggu beberapa jam sampai sandi lama kedaluwarsa dengan sendirinya di router"
+      ],
+      "answer": 0,
+      "explanation": "Reset konfigurasi dan Netinstall adalah jalur pemulihan resmi. Sandi tidak kedaluwarsa sendiri, dan berkas export tidak dapat dimuat tanpa akses login."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Berkas export .rsc berupa teks perintah yang boleh disunting di editor sebelum dipakai di router lain.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Export menghasilkan skrip teks sehingga bisa dibaca dan disunting. Itu bedanya dengan backup biner yang tidak bisa diedit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin memasang RouterOS v7 pada router baru dan mencari paket utama bernama system, seperti yang ia kenal di v6. Apa nama paket utama pada v7?",
+      "code": "",
+      "options": [
+        "system, sebab namanya tidak berubah dan tetap terpisah dari paket ipv6 lainnya",
+        "routerboard, karena paket ini memuat firmware dan seluruh sistem operasi sekaligus",
+        "winbox, sebab paket ini berisi semua menu konfigurasi yang tampil di dalam router",
+        "routeros, yang sudah memuat ipv6 dan advanced-tools"
+      ],
+      "answer": 3,
+      "explanation": "Pada v7 paket utama bernama routeros. Paket system dikenal di v6, dan RouterBOOT adalah firmware terpisah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah upgrade RouterOS, hasil /system routerboard print menunjukkan current-firmware lebih rendah daripada upgrade-firmware. Langkah yang tepat pada banyak model?",
+      "code": "",
+      "options": [
+        "Abaikan saja, karena firmware selalu naik sendiri ketika RouterOS di-reboot",
+        "Jalankan /system routerboard upgrade, lalu reboot router",
+        "Jalankan /system reset-configuration agar firmware menyesuaikan versi OS",
+        "Turunkan versi RouterOS sampai angkanya sama dengan versi firmware sekarang"
+      ],
+      "answer": 1,
+      "explanation": "Firmware RouterBOOT dinaikkan terpisah lewat perintah upgrade dan baru aktif setelah reboot. Reset konfigurasi dan downgrade tidak diperlukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien menerima alamat dari pool 192.168.88.100-200, tetapi tidak punya gateway dan DNS. Bagian konfigurasi DHCP mana yang paling mungkin kurang?",
+      "code": "",
+      "options": [
+        "Entri di /ip pool yang memuat alamat gateway sebagai bagian rentang",
+        "Entri di /ip dhcp-server network yang memuat gateway dan dns-server",
+        "Entri lease statis untuk setiap klien yang menyebut MAC dan gateway",
+        "Entri ARP bertipe reply-only untuk antarmuka tempat server berjalan"
+      ],
+      "answer": 1,
+      "explanation": "Gateway dan DNS dibagikan lewat DHCP network, bukan lewat pool atau lease. ARP reply-only malah akan membatasi klien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Printer kantor diganti dengan unit baru yang punya alamat MAC berbeda, sedangkan lease statis lama masih memakai MAC printer lama. Apa yang terjadi pada unit baru?",
+      "code": "",
+      "options": [
+        "Ia otomatis mewarisi alamat tetap karena lease statis terikat pada nama server",
+        "Ia ditolak total oleh server DHCP sampai lease lama dihapus secara manual",
+        "Ia memakai alamat lama dan alamat MAC lamanya dipindah ke unit yang baru itu",
+        "Ia mendapat alamat biasa dari pool, sebab lease statis tidak cocok dengan MAC-nya"
+      ],
+      "answer": 3,
+      "explanation": "Lease statis mengikat satu alamat ke satu MAC. Klien dengan MAC lain diperlakukan seperti klien biasa dan mengambil alamat dari pool."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Server DHCP yang dibuat dengan /ip dhcp-server add langsung aktif tanpa pengaturan tambahan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Server baru dari perintah add berstatus nonaktif sampai kamu menyertakan disabled=no atau mengaktifkannya. Wizard setup memang sudah mengaktifkannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien kadang menerima gateway 192.168.1.1, padahal gateway LAN yang benar adalah 192.168.88.1. Dugaan paling kuat?",
+      "code": "",
+      "options": [
+        "Ada perangkat lain di segmen yang sama yang menjalankan server DHCP sendiri",
+        "Pool di router kehabisan alamat sehingga klien mengambil alamat acak dari luar",
+        "Entri ARP di router salah sehingga gateway klien ditimpa alamat MAC lain",
+        "Router mengirim gateway acak pada tiap permintaan karena opsi lease-time pendek"
+      ],
+      "answer": 0,
+      "explanation": "Server DHCP kedua, sering berupa modem atau router rumahan yang dicolokkan, menjawab lebih cepat dari server yang benar. Pool habis memberi gejala tidak dapat alamat, bukan gateway lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua kabel penghubung dua switch tanpa sengaja membentuk loop lewat port yang sama-sama anggota satu bridge di router. Dengan bridge baru yang memakai setelan bawaan, apa yang umumnya terjadi?",
+      "code": "",
+      "options": [
+        "Router memadamkan seluruh port bridge selamanya sampai admin menyalakannya lagi",
+        "Loop dibiarkan dan paket berputar karena bridge tidak mengenal protokol pencegah loop",
+        "RSTP, yang aktif secara bawaan, memblokir salah satu jalur sehingga loop terhenti",
+        "Bridge mengubah dirinya menjadi router dan membagi dua subnet secara otomatis"
+      ],
+      "answer": 2,
+      "explanation": "Bridge RouterOS menjalankan RSTP secara bawaan dan memblokir jalur berlebih. Protokol itu bisa dimatikan, tetapi bukan setelan awalnya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Alamat IP untuk LAN sebaiknya dipasang pada port yang sudah menjadi anggota bridge, bukan pada bridge-nya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Alamat dipasang pada antarmuka bridge. Port anggota bridge bekerja di layer 2 dan tidak lagi memegang alamat IP sendiri."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Server DHCP dipasang pada bridge1, tetapi perangkat di ether3 tidak mendapat alamat. Perhatikan keluaran ini. Apa penyebabnya?",
+      "code": "[admin@MikroTik] > /interface bridge port print\n#  BRIDGE   INTERFACE\n0  bridge1  ether2",
+      "options": [
+        "ether2 harus dikeluarkan dari bridge1 supaya server DHCP bisa melayani ether3",
+        "Bridge1 hanya boleh punya satu port sehingga ether3 otomatis ditolak masuk",
+        "ether3 belum menjadi port bridge1 sehingga tidak sesegmen dengan server DHCP",
+        "Server DHCP pada bridge hanya melayani port yang memakai alamat MAC bawaan"
+      ],
+      "answer": 2,
+      "explanation": "Hanya port yang terdaftar di bridge1 yang berada satu segmen dengan server DHCP di bridge itu. Daftar port hanya memuat ether2."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kantor ingin dua port ethernet berada pada satu subnet dan klien di keduanya saling melihat di layer 2. Pendekatan yang paling tepat?",
+      "code": "",
+      "options": [
+        "Satukan keduanya dalam satu bridge dan pasang satu alamat IP pada bridge itu",
+        "Beri kedua port alamat yang sama persis lalu aktifkan proxy-arp di keduanya",
+        "Beri tiap port subnet berbeda lalu pasang rute statik di antara kedua subnet",
+        "Pasang dua server DHCP, satu per port, dengan pool yang berurutan dan tumpang tindih"
+      ],
+      "answer": 0,
+      "explanation": "Bridge menyatukan port pada layer 2 dengan satu alamat IP. Alamat yang sama di dua port atau subnet berbeda tidak membentuk satu segmen."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Baris rute dengan distance 0 pada tabel adalah rute connected yang dibuat otomatis saat alamat IP dipasang.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Setiap alamat IP pada antarmuka melahirkan rute connected berflag DAc dengan distance 0. Rute statik yang kamu buat memakai distance 1 atau lebih."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kantor A (192.168.88.0/24) dan kantor B (192.168.10.0/24) terhubung lewat link point-to-point. Router A sudah punya rute ke B, tetapi ping dari A ke host B timeout. Apa yang paling mungkin kurang?",
+      "code": "",
+      "options": [
+        "Rute 0.0.0.0/0 di router A dengan gateway yang menunjuk ke host B tadi",
+        "Aturan masquerade di router B yang membuang semua paket dari kantor A",
+        "Server DHCP di router A yang memberi alamat tetap kepada seluruh host B",
+        "Rute balik di router B menuju 192.168.88.0/24 lewat router A"
+      ],
+      "answer": 3,
+      "explanation": "Paket sampai ke B, tetapi balasannya tidak tahu jalan pulang tanpa rute balik. Routing harus ada di kedua arah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Admin mengirim ping dari laptop yang mengarah ke 172.16.5.5, tetapi paket tidak pernah keluar dari router. Berdasarkan tabel rute ini, apa yang terjadi pada paket itu?",
+      "code": "[admin@MikroTik] > /ip route print\n#  FLAGS  DST-ADDRESS      GATEWAY       DISTANCE\n0  As     192.168.10.0/24  192.168.88.2  1\n1  DAc    203.0.113.0/24   ether1        0\n2  DAc    192.168.88.0/24  ether2        0",
+      "options": [
+        "Dikirim lewat gateway 192.168.88.2 karena rute itu berdistance paling kecil",
+        "Dibuang karena tidak ada rute yang cocok dan tidak ada rute bawaan",
+        "Dikirim lewat ether1 karena antarmuka ini punya alamat publik paling besar",
+        "Ditahan router sampai ada rute baru, lalu dikirim ulang secara otomatis"
+      ],
+      "answer": 1,
+      "explanation": "172.16.5.5 tidak masuk 192.168.10.0/24, 203.0.113.0/24, ataupun 192.168.88.0/24, dan 0.0.0.0/0 belum ada. Router membuang paket itu, tidak menahannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti rute dengan dst-address=0.0.0.0/0?",
+      "code": "",
+      "options": [
+        "Hanya tujuan di dalam jaringan yang terhubung langsung ke router itu",
+        "Semua tujuan yang tidak cocok dengan rute lain yang lebih spesifik",
+        "Hanya paket broadcast yang harus dikirim ke gateway milik penyedia layanan",
+        "Semua tujuan, termasuk yang punya rute lebih spesifik dan distance lebih kecil"
+      ],
+      "answer": 1,
+      "explanation": "Rute bawaan adalah pilihan terakhir. Rute dengan prefix lebih panjang, seperti /24, lebih diutamakan daripada /0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Gudang berdinding tebal memerlukan Wi-Fi yang tembus ke ruang dalam, dan kecepatan bukan prioritas. Pita mana yang masuk akal dipilih?",
+      "code": "",
+      "options": [
+        "5 GHz, sebab frekuensi tinggi selalu menembus dinding lebih baik dari 2,4 GHz",
+        "5 GHz, sebab hanya pita ini yang boleh dipakai di dalam gedung tertutup",
+        "2,4 GHz, sebab pita ini tidak pernah terganggu oven microwave maupun Bluetooth",
+        "2,4 GHz, sebab menembus dinding lebih baik walau lebih ramai gangguan"
+      ],
+      "answer": 3,
+      "explanation": "Frekuensi lebih rendah meredam lebih sedikit saat menembus dinding, dengan harga pita yang lebih padat. Kedua pita boleh dipakai dalam ruangan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di 2,4 GHz, kanal 1, 6, dan 11 dipilih karena ketiganya tidak saling tumpang tindih pada lebar 20 MHz.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Kanal 2,4 GHz berjarak 5 MHz, sedangkan lebar 20 MHz memakan sekitar empat kanal. Hanya 1, 6, dan 11 yang tidak bertabrakan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perangkat MikroTik mode station diminta hanya tersambung ke AP dengan SSID tertentu dan memilih yang sinyalnya terbaik. Fitur yang dipakai?",
+      "code": "",
+      "options": [
+        "Connect list pada sisi station, dengan SSID yang dituju",
+        "Access list pada sisi station, dengan alamat MAC milik klien lainnya",
+        "Security profile pada sisi AP, dengan jenis enkripsi dan sandi bersama",
+        "Snooper pada sisi station, dengan pemindaian semua kanal yang ada"
+      ],
+      "answer": 0,
+      "explanation": "Connect list mengatur AP mana yang boleh dituju station. Access list bekerja di sisi AP untuk klien, dan snooper hanya mengamati."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Teknisi membandingkan 802.11ac dengan 802.11g untuk dipasang di kantor. Pernyataan mana yang benar?",
+      "code": "",
+      "options": [
+        "802.11ac hanya di 2,4 GHz, sedangkan 802.11g bisa di 2,4 dan 5 GHz",
+        "Keduanya hanya bekerja di 5 GHz dan berbeda pada jumlah kanal yang dipakai",
+        "802.11ac hanya di 5 GHz, sedangkan 802.11g hanya di 2,4 GHz",
+        "Keduanya bekerja di 2,4 dan 5 GHz dan hanya berbeda pada namanya saja"
+      ],
+      "answer": 2,
+      "explanation": "Menurut standarnya, 802.11g di 2,4 GHz dan 802.11ac di 5 GHz. Kecepatan teoretis ac jauh lebih tinggi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin klien dari WAN tidak dapat membuka Winbox (port 8291) di router, tetapi LAN tetap bisa. Aturan filter yang tepat?",
+      "code": "",
+      "options": [
+        "chain=forward, protocol=tcp, dst-port=8291, in-interface=ether1, action=drop",
+        "chain=input, protocol=udp, dst-port=8291, in-interface=ether2, action=drop",
+        "chain=input, protocol=tcp, dst-port=8291, in-interface=ether1, action=drop",
+        "chain=output, protocol=tcp, dst-port=8291, in-interface=ether1, action=drop"
+      ],
+      "answer": 2,
+      "explanation": "Lalu lintas yang ditujukan ke router lewat chain input, dan Winbox memakai TCP. Forward untuk lalu lintas yang melintasi router, dan ether2 adalah sisi LAN."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Aturan accept untuk koneksi established dan related sebaiknya diletakkan paling atas agar paket lanjutan tidak melewati banyak aturan lain.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Sebagian besar paket milik koneksi yang sudah berjalan, jadi aturan ini menghemat pemeriksaan dan memastikan balasan tidak ikut terbuang oleh aturan drop di bawahnya."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Aturan forward untuk memblokir 192.168.88.50 sudah dipasang, tetapi klien itu masih bisa mengakses internet. Perhatikan kedua keluaran ini. Apa penyebabnya?",
+      "code": "[admin@MikroTik] > /ip firewall filter print\n#  CHAIN    ACTION  PROTOCOL  DST-PORT  SRC-ADDRESS  IN-INTERFACE  CONNECTION-STATE  SRC-ADDRESS-LIST  DST-ADDRESS-LIST\n0  forward  drop                                                                     blokir\n[admin@MikroTik] > /ip firewall address-list print\n#  LIST           ADDRESS\n0  daftar-blokir  192.168.88.50",
+      "options": [
+        "Nama daftar pada aturan (blokir) berbeda dengan daftar yang berisi alamatnya",
+        "Aturan drop harus memakai dst-address-list agar bisa memblokir klien tadi",
+        "Chain forward tidak boleh memakai address-list, hanya chain input yang bisa",
+        "Alamat 192.168.88.50 perlu ditulis dengan awalan /32 di dalam daftar itu"
+      ],
+      "answer": 0,
+      "explanation": "Aturan mencari daftar bernama blokir, sedangkan alamat tersimpan di daftar daftar-blokir. Karena tidak ada alamat di daftar blokir, aturan tidak pernah cocok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk apa aturan input dengan connection-state=invalid dan action=drop biasanya dipasang?",
+      "code": "",
+      "options": [
+        "Membuang semua paket baru yang berasal dari antarmuka sisi WAN router",
+        "Membuang paket yang alamat sumbernya tercantum di dalam address-list",
+        "Membuang paket yang ukurannya melebihi batas MTU pada antarmuka keluar",
+        "Membuang paket yang tidak cocok dengan koneksi apa pun yang dikenal router"
+      ],
+      "answer": 3,
+      "explanation": "Status invalid berarti paket tidak terkait koneksi yang tercatat connection tracking. Paket baru dari WAN berstatus new dan ditangani aturan lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin melindungi router dari akses WAN tanpa mengganggu lalu lintas klien LAN menuju internet. Chain mana yang dipakai untuk aturan pelindung itu?",
+      "code": "",
+      "options": [
+        "forward, karena chain ini memeriksa semua paket yang masuk ke antarmuka WAN",
+        "input, karena hanya memeriksa lalu lintas yang ditujukan ke router sendiri",
+        "output, karena chain ini memeriksa paket yang datang dari klien di jaringan LAN",
+        "srcnat, karena chain ini menyaring paket sebelum sampai ke tabel routing router"
+      ],
+      "answer": 1,
+      "explanation": "Input menyaring paket yang tujuannya router itu sendiri. Forward untuk paket yang hanya melintas, dan srcnat adalah chain NAT, bukan filter."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Penyedia layanan memberi alamat publik statis 203.0.113.2 pada ether1. Pilihan NAT mana yang lebih tepat dibanding masquerade?",
+      "code": "",
+      "options": [
+        "src-nat dengan to-addresses=192.168.88.1, karena itu alamat gateway klien",
+        "src-nat dengan to-addresses=203.0.113.2, karena alamat WAN tidak berubah",
+        "dst-nat dengan to-addresses=203.0.113.2, karena paket keluar perlu diarahkan",
+        "masquerade wajib dipakai, karena src-nat tidak dapat menerjemahkan alamat"
+      ],
+      "answer": 1,
+      "explanation": "Bila alamat WAN tetap, src-nat dengan to-addresses sudah cukup, dan masquerade tetap bisa dipakai. Masquerade dirancang untuk alamat yang berubah-ubah."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Aturan dst-nat dievaluasi sebelum chain forward, sehingga aturan forward melihat alamat tujuan yang sudah diterjemahkan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Terjemahan tujuan terjadi sebelum routing dan sebelum chain forward. Aturan forward untuk server di LAN perlu mencocokkan alamat LAN, bukan alamat WAN."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Aturan dst-nat hanya mencocokkan tcp dengan dst-port=8080 dan meneruskannya ke 192.168.88.10 port 80. Dari internet, pengunjung membuka alamat WAN di port 80 dan gagal. Mengapa?",
+      "code": "",
+      "options": [
+        "Port 80 tidak pernah bisa diteruskan oleh dst-nat karena dipakai Winbox",
+        "Aturan dst-nat harus berada di chain srcnat supaya bisa menerima koneksi",
+        "Server di LAN wajib memakai alamat DHCP dinamis agar bisa dijangkau dari luar",
+        "Aturan hanya berlaku untuk port 8080, sehingga port 80 dari luar tidak diteruskan"
+      ],
+      "answer": 3,
+      "explanation": "dst-port pada aturan adalah port yang dituju pengunjung. Karena aturan menunggu 8080, koneksi ke port 80 tidak cocok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa aturan fasttrack-connection biasanya diberi syarat connection-state=established,related?",
+      "code": "",
+      "options": [
+        "Hanya koneksi yang sudah lolos pemeriksaan awal yang dipercepat, paket pertama tetap diperiksa penuh",
+        "Agar paket baru dari WAN langsung dipercepat tanpa melewati aturan firewall",
+        "Agar koneksi tampak seolah memakai masquerade padahal belum diterjemahkan",
+        "Agar semua koneksi invalid ikut dipercepat bersama koneksi yang sudah berjalan"
+      ],
+      "answer": 0,
+      "explanation": "Paket pertama melewati filter normal. Setelah koneksi diizinkan, paket berikutnya dapat dipercepat dengan konsekuensi melewati sebagian pemeriksaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin memasang aturan masquerade di chain dstnat dan tidak ada koneksi LAN yang berhasil keluar. Apa kesalahannya?",
+      "code": "",
+      "options": [
+        "Masquerade hanya valid di chain forward bersama aturan filter accept",
+        "Masquerade membutuhkan chain dstnat tetapi dengan in-interface ether2",
+        "Masquerade hanya valid di chain srcnat dan perlu out-interface sisi WAN",
+        "Masquerade membutuhkan to-addresses supaya tahu alamat sumber barunya"
+      ],
+      "answer": 2,
+      "explanation": "Masquerade menulis ulang alamat sumber, jadi tempatnya di srcnat. Alamat baru diambil dari antarmuka keluar, sehingga to-addresses tidak diperlukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin seluruh LAN mengunduh paling banyak 8 Mbps dan mengunggah paling banyak 2 Mbps. Nilai max-limit di simple queue yang benar?",
+      "code": "",
+      "options": [
+        "max-limit=8M/2M, karena urutannya unduh lalu unggah dari sudut pandang target",
+        "max-limit=2M/2M, karena satu nilai berlaku untuk dua arah sekaligus di queue",
+        "max-limit=2M/8M, karena urutannya unggah lalu unduh",
+        "max-limit=8M, karena nilai tunggal otomatis dibagi dua untuk setiap arah lalu lintas"
+      ],
+      "answer": 2,
+      "explanation": "Format max-limit adalah unggah/unduh dari sudut pandang target. Menukar angkanya membalik batas kedua arah."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "limit-at adalah batas atas laju, sedangkan max-limit adalah laju minimum yang dijamin untuk queue.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Sebaliknya: limit-at adalah laju yang dijamin, max-limit adalah batas atasnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kantor punya 40 laptop dan ingin bandwidth dibagi rata antarperangkat tanpa membuat 40 queue manual. Pendekatan yang paling tepat?",
+      "code": "",
+      "options": [
+        "Satu aturan berbasis PCQ yang membagi rata menurut alamat sumber atau tujuan",
+        "Satu simple queue untuk blok LAN dengan burst besar agar setiap laptop kebagian",
+        "Empat puluh aturan fasttrack-connection, masing-masing untuk satu laptop saja",
+        "Satu aturan drop di chain forward yang menghapus paket dari laptop tercepat"
+      ],
+      "answer": 0,
+      "explanation": "PCQ membuat sub-antrean per alamat dari satu aturan. Queue blok biasa dibagi bersama tanpa jaminan rata, dan fasttrack serta drop bukan alat pembagi bandwidth."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Seorang pemula mencari cara membatasi bandwidth yang paling mudah dibaca untuk satu alamat atau satu blok jaringan. Fitur mana yang disarankan?",
+      "code": "",
+      "options": [
+        "Queue tree, karena aturan pembatasnya tidak memerlukan penandaan paket",
+        "Netwatch, karena fitur ini menghentikan host yang terlalu banyak unduhan",
+        "Torch, karena tampilan ini otomatis memperlambat host yang paling padat",
+        "Simple queue, karena target dan max-limit ditulis dalam satu baris"
+      ],
+      "answer": 3,
+      "explanation": "Simple queue menggabungkan siapa dan seberapa cepat. Queue tree memerlukan mangle penanda, dan Netwatch serta Torch hanya alat pantau."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kantor mencoba menjalankan PPPoE antara dua router di dua kota lewat internet, dengan banyak router di antaranya, dan sesi tidak pernah terbentuk. Mengapa?",
+      "code": "",
+      "options": [
+        "PPPoE hanya mendukung sandi kosong sehingga ditolak oleh server di kota lain",
+        "PPPoE bekerja di layer 2, sehingga kedua ujung harus ada di satu jaringan ethernet",
+        "PPPoE memakai port 443 yang selalu diblokir oleh penyedia layanan internet",
+        "PPPoE hanya berjalan di perangkat dengan antarmuka nirkabel dan mode station"
+      ],
+      "answer": 1,
+      "explanation": "PPPoE membungkus PPP di frame ethernet, jadi tidak melewati router di antaranya. Untuk antarkota pakai tunnel di atas IP seperti SSTP atau L2TP."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin tunnel yang tetap bisa lewat firewall ketat karena memakai TCP port 443. Pilihan yang paling cocok?",
+      "code": "",
+      "options": [
+        "PPTP, yang berjalan di port 443 dan memakai enkripsi paling modern",
+        "SSTP, yang berjalan di atas TCP dengan TLS pada port 443",
+        "PPPoE, yang berjalan di port 443 lewat jaringan ethernet publik luas",
+        "Telnet, yang dibungkus dalam port 443 agar sandi tidak terbaca orang"
+      ],
+      "answer": 1,
+      "explanation": "SSTP membungkus PPP dalam TLS pada TCP 443. PPTP memakai TCP 1723 dengan GRE dan lemah, sedangkan PPPoE tidak melewati router."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada sesi PPP titik-ke-titik, alamat lokal server dan alamat jauh klien tidak harus berada dalam satu subnet yang sama.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Sesi titik-ke-titik memasang pasangan alamat, dan RouterOS membuat rute ke alamat lawan di antarmuka PPP itu, jadi subnet bersama tidak diwajibkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien PPP berhasil login, tetapi sesinya tidak mendapat alamat. Sandi sudah benar. Komponen mana yang paling perlu diperiksa?",
+      "code": "",
+      "options": [
+        "Rentang kanal pada antarmuka nirkabel yang dipakai oleh klien tersebut",
+        "Entri lease statis di server DHCP untuk MAC milik klien PPP itu sendiri",
+        "Aturan address-list di chain forward untuk klien dengan nama yang sama",
+        "remote-address di profile, yang harus menunjuk ke pool berisi alamat bebas"
+      ],
+      "answer": 3,
+      "explanation": "Alamat klien diambil lewat profile dari pool. Pool kosong atau profile tanpa remote-address membuat login sukses tanpa alamat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin ada tindakan otomatis, misalnya menjalankan skrip, saat sebuah host berhenti membalas ping. Alat mana yang paling cocok?",
+      "code": "",
+      "options": [
+        "Netwatch, yang memantau host dan menjalankan skrip saat statusnya berubah",
+        "Torch, yang menampilkan lalu lintas dan menjalankan skrip saat host mati",
+        "Traceroute, yang mencatat jalur paket dan menjalankan skrip bila terputus",
+        "Profiler, yang menampilkan beban CPU dan menjalankan skrip bila host mati"
+      ],
+      "answer": 0,
+      "explanation": "Netwatch memantau ketersediaan host dan punya aksi saat naik atau turun. Alat lain hanya menampilkan data."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Traceroute menampilkan isi paket yang lewat, lengkap dengan data aplikasi di dalamnya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Traceroute hanya menunjukkan hop yang dilalui menuju tujuan beserta waktu tempuhnya, bukan isi paket."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Router berhasil melakukan ping seperti di bawah, tetapi laptop LAN tidak bisa membuka nama situs. Apa kesimpulan yang paling tepat?",
+      "code": "[admin@MikroTik] > ping 8.8.8.8 count=2\n8.8.8.8 56 64 1ms\n8.8.8.8 56 64 1ms\nsent=2 received=2 packet-loss=0%",
+      "options": [
+        "Jalur ke internet putus, jadi periksa kabel antara router dan penyedia layanan",
+        "Rute bawaan belum ada, jadi router belum mengenal jalan menuju alamat publik",
+        "Jalur ke internet sehat, jadi periksa pengaturan DNS di klien dan router",
+        "Aturan masquerade berlebih, jadi hapus aturan itu lalu coba sekali lagi pingnya"
+      ],
+      "answer": 2,
+      "explanation": "Ping ke IP publik berhasil, jadi kabel, rute, dan jalur sudah beres. Yang tersisa adalah penerjemahan nama, yaitu DNS."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin melihat grafik pemakaian bandwidth harian per antarmuka dari browser tanpa memasang server pemantau terpisah. Fitur RouterOS yang cocok?",
+      "code": "",
+      "options": [
+        "Netinstall, yang menyimpan grafik pemakaian ketika OS dipasang ulang di router",
+        "Safe mode, yang menyimpan grafik pemakaian sampai perubahan disetujui admin",
+        "Graphing, yang menyimpan grafik antarmuka dan antrean untuk dilihat di web",
+        "Quick Set, yang menyimpan grafik pemakaian sesuai skenario yang telah dipilih"
+      ],
+      "answer": 2,
+      "explanation": "Graphing bawaan RouterOS dapat dibuka lewat web dan menampilkan grafik per antarmuka atau antrean. Netinstall, safe mode, dan Quick Set punya fungsi lain."
+    }
+  ],
+  "prerequisites": [
+    "jaringan-komputer"
+  ],
+  "project": {
+    "kind": "mikrotik",
+    "title": "Kantor Kecil MikroTik",
+    "brief": "Kamu mengatur router sebuah **kantor kecil** dari kondisi kosong. Penyedia layanan sudah memasang alamat **203.0.113.2/24** di `ether1` (sisi WAN), jadi itu sudah ada sejak awal. `ether2` menghadap LAN kantor. Semuanya ditulis sebagai skrip RouterOS di editor terminal, satu perintah per baris.\n\n## Fitur wajib\n\n1. **Identity**: namai router `R-Kantor`.\n2. **Alamat LAN**: `192.168.88.1/24` di `ether2`.\n3. **DHCP**: pool `pool-lan` (`192.168.88.100-192.168.88.200`), server `dhcp-lan` di `ether2` yang **aktif**, dan jaringan `192.168.88.0/24` dengan gateway `192.168.88.1` serta DNS `8.8.8.8`.\n4. **Lease statis** untuk printer: `192.168.88.50` untuk MAC `AA:BB:CC:DD:EE:50` pada server `dhcp-lan`.\n5. **NAT**: masquerade di chain `srcnat` dengan `out-interface=ether1`.\n6. **Firewall input**, dengan urutan tepat: accept koneksi `established,related`, drop `invalid`, accept dari `ether2`, lalu drop sisanya dari `ether1`.\n7. **Firewall forward**: address-list `blokir` berisi `192.168.88.99`, dan satu aturan forward `drop` dengan `src-address-list=blokir`.\n8. **Queue**: satu simple queue `lan-limit` dengan target `192.168.88.0/24` dan `max-limit=5M/10M`.\n9. **Rute statik**: rute bawaan `0.0.0.0/0` dengan gateway `203.0.113.1`.\n\n## Cara pemeriksaan\n\nTiap tes memeriksa satu fitur di atas pada keadaan router setelah skripmu dijalankan. Dua tes memeriksa **urutan** aturan input: aturan pertama harus accept `established,related`, dan drop untuk WAN harus berada setelah semua accept. Aturan filter ditambahkan ke akhir daftar, jadi tulis dari atas ke bawah.\n\n## Petunjuk\n\n- Server DHCP yang dibuat dengan `/ip dhcp-server add` nonaktif bila tanpa `disabled=no`, dan pool harus dibuat lebih dulu.\n- Gunakan `/ip firewall filter print` untuk melihat urutan aturan.\n- Perintah di sini juga valid di RouterOS sungguhan. Di sana kamu bisa menambah pengaturan lain, misalnya `fasttrack-connection`, yang tidak dinilai di sini.",
+    "prompt": "Tulis skrip RouterOS untuk router kantor kecil sesuai brief: identity, alamat LAN, DHCP dengan lease statis, NAT, firewall input dan forward berurutan, satu queue, dan rute bawaan. Lalu klik **Periksa**.",
+    "starter": {
+      "code": "# 1. Identity router: R-Kantor\n# 2. Alamat LAN 192.168.88.1/24 di ether2\n# 3. Pool pool-lan, server DHCP dhcp-lan (aktif), jaringan DHCP\n# 4. Lease statis printer 192.168.88.50\n# 5. NAT masquerade keluar lewat ether1\n# 6. Firewall input: established,related, invalid, LAN, drop WAN\n# 7. Address-list blokir dan aturan forward drop\n# 8. Simple queue lan-limit\n# 9. Rute bawaan lewat 203.0.113.1\n"
+    },
+    "solution": {
+      "code": "/system identity set name=R-Kantor\n/ip address add address=192.168.88.1/24 interface=ether2\n/ip pool add name=pool-lan ranges=192.168.88.100-192.168.88.200\n/ip dhcp-server add name=dhcp-lan interface=ether2 address-pool=pool-lan disabled=no\n/ip dhcp-server network add address=192.168.88.0/24 gateway=192.168.88.1 dns-server=8.8.8.8\n/ip dhcp-server lease add address=192.168.88.50 mac-address=AA:BB:CC:DD:EE:50 server=dhcp-lan\n/ip firewall nat add chain=srcnat action=masquerade out-interface=ether1\n/ip firewall filter add chain=input action=accept connection-state=established,related\n/ip firewall filter add chain=input action=drop connection-state=invalid\n/ip firewall filter add chain=input action=accept in-interface=ether2\n/ip firewall filter add chain=input action=drop in-interface=ether1\n/ip firewall address-list add list=blokir address=192.168.88.99\n/ip firewall filter add chain=forward action=drop src-address-list=blokir\n/queue simple add name=lan-limit target=192.168.88.0/24 max-limit=5M/10M\n/ip route add dst-address=0.0.0.0/0 gateway=203.0.113.1\n"
+    },
+    "setup": "var awal = { addresses: [{ address: \"203.0.113.2/24\", network: \"203.0.113.0\", interface: \"ether1\" }] };",
+    "tests": [
+      {
+        "name": "Identity router bernama R-Kantor",
+        "check": "router.identity === \"R-Kantor\""
+      },
+      {
+        "name": "Alamat 192.168.88.1/24 terpasang di ether2",
+        "check": "router.addresses.some((a) => a.address === \"192.168.88.1/24\" && a.interface === \"ether2\")"
+      },
+      {
+        "name": "Pool pool-lan berisi rentang 192.168.88.100-192.168.88.200",
+        "check": "router.pools.some((p) => p.name === \"pool-lan\" && p.ranges === \"192.168.88.100-192.168.88.200\")"
+      },
+      {
+        "name": "Server DHCP di ether2 memakai pool-lan dan aktif",
+        "check": "router.dhcpServers.some((s) => s.interface === \"ether2\" && s.addressPool === \"pool-lan\" && s.disabled === false)"
+      },
+      {
+        "name": "Jaringan DHCP 192.168.88.0/24 punya gateway 192.168.88.1 dan DNS",
+        "check": "router.dhcpNetworks.some((n) => n.address === \"192.168.88.0/24\" && n.gateway === \"192.168.88.1\" && n.dnsServer !== \"\")"
+      },
+      {
+        "name": "Lease statis 192.168.88.50 untuk printer di server DHCP yang ada",
+        "check": "router.dhcpLeases.some((l) => l.address === \"192.168.88.50\" && l.macAddress.toUpperCase() === \"AA:BB:CC:DD:EE:50\" && router.dhcpServers.some((s) => s.name === l.server))"
+      },
+      {
+        "name": "NAT masquerade di srcnat keluar lewat ether1",
+        "check": "router.nat.some((n) => n.chain === \"srcnat\" && n.action === \"masquerade\" && n.outInterface === \"ether1\")"
+      },
+      {
+        "name": "Aturan input pertama adalah accept established,related",
+        "check": "(() => { const r = router.filter.filter((f) => f.chain === \"input\")[0]; return !!r && r.action === \"accept\" && r.connectionState.includes(\"established\") && r.connectionState.includes(\"related\"); })()"
+      },
+      {
+        "name": "Input membuang invalid",
+        "check": "router.filter.some((f) => f.chain === \"input\" && f.action === \"drop\" && f.connectionState.includes(\"invalid\"))"
+      },
+      {
+        "name": "Drop dari ether1 ada di input dan berada setelah accept dari ether2",
+        "check": "(() => { const r = router.filter.filter((f) => f.chain === \"input\"); const a = r.findIndex((f) => f.action === \"accept\" && f.inInterface === \"ether2\"); const d = r.findIndex((f) => f.action === \"drop\" && f.inInterface === \"ether1\"); return a >= 0 && d > a; })()"
+      },
+      {
+        "name": "Aturan forward drop memakai address-list yang berisi alamat",
+        "check": "router.filter.some((f) => f.chain === \"forward\" && f.action === \"drop\" && f.srcAddressList !== \"\" && router.addressLists.some((a) => a.list === f.srcAddressList))"
+      },
+      {
+        "name": "Simple queue dan rute bawaan 0.0.0.0/0 lewat 203.0.113.1 ada",
+        "check": "router.queues.some((q) => q.target === \"192.168.88.0/24\" && q.maxLimit === \"5M/10M\") && router.routes.some((r) => r.dstAddress === \"0.0.0.0/0\" && r.gateway === \"203.0.113.1\")"
+      }
+    ]
+  }
 }
