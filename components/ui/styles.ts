@@ -9,7 +9,7 @@ export const primaryButton =
 
 // Everything else: a white pill on the canvas.
 export const secondaryButton =
-  `inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-zinc-50 shadow-soft transition-colors hover:bg-zinc-800 disabled:opacity-50 ${focus}`;
+  `inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-zinc-900 px-5 text-sm font-medium text-zinc-50 shadow-soft ring-1 ring-zinc-800 transition-colors hover:bg-zinc-800 disabled:opacity-50 ${focus}`;
 
 // Round icon button, white on the canvas.
 export const iconButton =
