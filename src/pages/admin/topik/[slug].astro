@@ -1,4 +1,5 @@
 ---
+import { ChevronDown } from "lucide-react";
 import ChapterEditor, { type ChapterRow } from "@/components/admin/ChapterEditor";
 import ExerciseEditor, { type ExerciseRow } from "@/components/admin/ExerciseEditor";
 import ProjectEditor, { type ProjectRow } from "@/components/admin/ProjectEditor";
@@ -119,7 +120,7 @@ const sections = [
       </aside>
 
       <div class="flex min-w-0 flex-col gap-12">
-        <AdminSection id="ringkasan" title="Ringkasan" note={topic.draft_summary ? "Draf, tampil setelah diterbitkan" : undefined}>
+        <AdminSection open id="ringkasan" title="Ringkasan" note={topic.draft_summary ? "Draf, tampil setelah diterbitkan" : undefined}>
           <form method="post" action="/rpc/simpanRingkasan" class="flex flex-col gap-3">
             <input type="hidden" name="slug" value={slug} />
             <textarea name="summary" aria-label="Ringkasan" rows={10} required class={`${field} leading-relaxed`}>{topic.draft_summary ?? topic.summary}</textarea>
@@ -127,10 +128,18 @@ const sections = [
           </form>
         </AdminSection>
 
-        <AdminSection id="bab" title="Bab" note="Isi bab dalam markdown, kuis tiap bab di bawahnya">
+        <AdminSection open id="bab" title="Bab" count={shownChapters.length} note="Isi bab dalam markdown, kuis tiap bab di bawahnya">
           <ul class="divide-y divide-zinc-800/80">
             {shownChapters.map((c, i) => (
               <li>
+               <details class="group/bab py-1">
+                <summary class="flex min-h-12 cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
+                  <ChevronDown aria-hidden className="size-4 shrink-0 text-zinc-500 transition-transform group-not-open/bab:-rotate-90" />
+                  <span class="min-w-0 flex-1 truncate font-medium">Bab {i + 1}: {c.title}</span>
+                  <span class="shrink-0 text-xs tabular-nums text-zinc-500">
+                    {allChapterQuestions.filter((q) => q.chapter_id === c.id).length} kuis, {allExercises.filter((x) => x.chapter_id === c.id).length} latihan
+                  </span>
+                </summary>
                 <ul>
                   <ChapterEditor client:load topic={slug} c={c} n={i + 1} slides={slidesForPreview} />
                 </ul>
@@ -153,6 +162,7 @@ const sections = [
                   <input type="hidden" name="topic" value={slug} />
                   <button class={smallButton}>Tambah latihan kode</button>
                 </form>
+               </details>
               </li>
             ))}
           </ul>
@@ -163,7 +173,7 @@ const sections = [
           </form>
         </AdminSection>
 
-        <AdminSection id="proyek" title="Proyek akhir" note="Syarat sertifikat, diperiksa otomatis di browser">
+        <AdminSection id="proyek" title="Proyek akhir" count={project ? 1 : 0} note="Syarat sertifikat, diperiksa otomatis di browser">
           {project ? (
             <ProjectEditor client:load p={project} />
           ) : (
@@ -185,13 +195,13 @@ const sections = [
           </ul>
         </AdminSection>
 
-        <AdminSection id="tips" title="Tips">
+        <AdminSection id="tips" title="Tips" count={shownTips.length}>
           <ul class="divide-y divide-zinc-800/80">
             {shownTips.map((r) => <RowEditor client:load table="tips" slug={slug} row={r} fields={[{ name: "body", label: "Tip" }]} />)}
           </ul>
         </AdminSection>
 
-        <AdminSection id="flashcard" title="Flashcard">
+        <AdminSection id="flashcard" title="Flashcard" count={shownCards.length}>
           <ul class="divide-y divide-zinc-800/80">
             {shownCards.map((r) => (
               <RowEditor client:load table="flashcards" slug={slug} row={r} fields={[{ name: "front", label: "Depan" }, { name: "back", label: "Belakang" }]} />
@@ -199,13 +209,13 @@ const sections = [
           </ul>
         </AdminSection>
 
-        <AdminSection id="latihan" title="Soal latihan" note="Langsung dapat pembahasan, tidak dinilai">
+        <AdminSection id="latihan" title="Soal latihan" count={shownPractice.length} note="Langsung dapat pembahasan, tidak dinilai">
           <ul class="divide-y divide-zinc-800/80">
             {shownPractice.map((q, i) => <QuestionEditor client:load table="practice_questions" slug={slug} q={q} n={i + 1} />)}
           </ul>
         </AdminSection>
 
-        <AdminSection id="ujian" title="Soal ujian" note="Bank soal, tiap percobaan mengambil sebagian secara acak">
+        <AdminSection id="ujian" title="Soal ujian" count={shownExam.length} note="Bank soal, tiap percobaan mengambil sebagian secara acak">
           <ul class="divide-y divide-zinc-800/80">
             {shownExam.map((q, i) => <QuestionEditor client:load table="exam_questions" slug={slug} q={q} n={i + 1} />)}
           </ul>
