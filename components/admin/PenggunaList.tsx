@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { chip } from "@/components/ui/styles";
 import ActionForm from "./ActionForm";
+import Select from "@/components/ui/Select";
 import { field, smallButton } from "./editor";
 
 export type Person = {
@@ -26,12 +27,12 @@ const FILTERS = [
   ["siswa", "Siswa", (p: Person) => !p.admin],
   ["undangan", "Belum diterima", (p: Person) => p.pending],
 ] as const;
-const SORTS = { baru: "Terbaru daftar", masuk: "Terakhir masuk", nama: "Nama A-Z" } as const;
+const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir masuk"], ["nama", "Nama A-Z"]] as const;
 
 export default function PenggunaList({ people }: { people: Person[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("semua");
-  const [sort, setSort] = useState<keyof typeof SORTS>("baru");
+  const [sort, setSort] = useState<(typeof SORTS)[number][0]>("baru");
 
   const shown = useMemo(() => {
     const test = FILTERS.find((f) => f[0] === filter)![2];
@@ -49,12 +50,7 @@ export default function PenggunaList({ people }: { people: Person[] }) {
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-500" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau email" className={`${field} pl-11`} />
         </label>
-        <label className="text-sm text-zinc-400">
-          <span className="sr-only">Urutkan</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value as keyof typeof SORTS)} className={`${field} w-auto`}>
-            {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
+        <div className="w-full sm:w-64"><Select label="Urutkan" value={sort} options={SORTS} onChange={setSort} /></div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring">
         {FILTERS.map(([key, label, test]) => (
