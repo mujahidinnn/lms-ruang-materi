@@ -20,8 +20,10 @@ export function isAllowedModel(provider: string, model: string): boolean {
 // "provider:model" options for the dropdown, from LLM_PROVIDERS (server
 // env). The default (LLM_PROVIDER + LLM_MODEL) comes first.
 export function enabledModels(): string[] {
-  const providers = (process.env.LLM_PROVIDERS ?? "").split(",").map((s) => s.trim());
+  // astro dev fills import.meta.env from .env.local but not process.env; Vercel sets process.env.
+  const env = (k: string) => process.env[k] ?? (import.meta.env as Record<string, string | undefined>)[k];
+  const providers = (env("LLM_PROVIDERS") ?? "").split(",").map((s) => s.trim());
   const all = providers.flatMap((p) => (LLM_MODELS[p] ?? []).map((m) => `${p}:${m}`));
-  const preferred = `${process.env.LLM_PROVIDER}:${process.env.LLM_MODEL}`;
+  const preferred = `${env("LLM_PROVIDER")}:${env("LLM_MODEL")}`;
   return all.includes(preferred) ? [preferred, ...all.filter((m) => m !== preferred)] : all;
 }
