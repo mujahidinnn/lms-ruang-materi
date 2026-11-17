@@ -27,6 +27,7 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
     .update({
       display_name: parsed.data.display_name || null,
       timezone: parsed.data.timezone,
+      announce_email: form.get("announce_email") === "on",
       age_group: usia(form),
       guardian_consent: usia(form) !== null,
     })

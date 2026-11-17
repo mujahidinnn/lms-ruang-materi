@@ -1,5 +1,5 @@
 ---
-import { BookOpen, Check, ClipboardCheck, Code2, Play, Presentation, ShieldCheck } from "lucide-react";
+import { BookOpen, Check, ClipboardCheck, Code2, Megaphone, Play, Presentation, ShieldCheck, X } from "lucide-react";
 import { Api, Kartu, Medali } from "@/components/ui/icons";
 import { card, chip, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
@@ -23,12 +23,14 @@ type Row = {
   last_slide: number;
   topics: { id: string; slug: string; title: string; slides: { count: number }[]; chapters: { id: string; slug: string; title: string; position: number }[] } | null;
 };
-const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }] = await Promise.all([
+const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }, { data: notices }] = await Promise.all([
   db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count), chapters(id, slug, title, position))").eq("user_id", user.id).order("updated_at", { ascending: false }),
   db.from("chapter_progress").select("chapter_id").eq("user_id", user.id),
   db.from("learning_streaks").select("current_days").eq("user_id", user.id).maybeSingle(),
   db.rpc("flashcard_queue"),
+  db.from("announcements").select("id, title, body, link_url").eq("on_web", true).gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("created_at", { ascending: false }).limit(1),
 ]);
+const notice = notices?.[0];
 const done = new Set((doneRows ?? []).map((r) => r.chapter_id));
 // RLS returns only published chapters; a pulled topic comes back null.
 const classes = ((progress ?? []) as unknown as Row[])
@@ -68,6 +70,27 @@ const days = streak?.current_days ?? 0;
       <div class="mx-auto grid max-w-7xl gap-8">
         {user.role === "admin" && (
           <a href="/admin" class={`${secondaryButton} w-fit`}><ShieldCheck aria-hidden className="size-4" />Buka panel admin</a>
+        )}
+        {notice && (
+          <section data-pengumuman={notice.id} aria-label="Pengumuman" class="relative rounded-[28px] bg-tile-butter p-5 pr-14 ring-1 ring-zinc-800">
+            <p class="flex items-center gap-2 text-sm font-semibold"><Megaphone aria-hidden className="size-4" />Pengumuman</p>
+            <h2 class="mt-2 text-lg font-bold tracking-tight">{notice.title}</h2>
+            <p class="mt-1 max-w-prose text-sm leading-relaxed whitespace-pre-line">{notice.body}</p>
+            {notice.link_url && <a href={notice.link_url} class={`${secondaryButton} mt-4`}>Buka</a>}
+            <button type="button" data-tutup aria-label="Tutup pengumuman" class="absolute top-3 right-3 grid size-11 cursor-pointer place-items-center rounded-full hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-accent"><X aria-hidden className="size-4" /></button>
+          </section>
+          <script>
+            // Closing hides this announcement for this browser only.
+            const box = document.querySelector<HTMLElement>("[data-pengumuman]");
+            const key = "ruang-materi:pengumuman";
+            if (box) {
+              try { if (localStorage.getItem(key) === box.dataset.pengumuman) box.hidden = true; } catch {}
+              box.querySelector("[data-tutup]")?.addEventListener("click", () => {
+                box.hidden = true;
+                try { localStorage.setItem(key, box.dataset.pengumuman ?? ""); } catch {}
+              });
+            }
+          </script>
         )}
         <section aria-labelledby="sapa" class="relative overflow-hidden rounded-[32px] bg-noir p-6 text-on-noir ring-1 ring-zinc-800 sm:p-8">
           <div aria-hidden="true" class="absolute right-8 bottom-0 hidden h-56 w-40 items-end justify-center overflow-hidden rounded-t-full bg-matcha-300 pt-4 lg:flex"><img src="/ilustrasi/kode.svg" alt="" width="890" height="1220" class="h-full w-auto -scale-x-100" /></div>
