@@ -129,18 +129,48 @@ def L_grid4(title, n, b, k, pic, ic, term):
     return s
 
 
+PROMPT = "[admin@MikroTik] > "
+SKY, SUN, MUTE = C("7DD3FC"), C("FCD34D"), C("64748B")
+
+
+def term_runs(cmd, width=54):
+    """One command -> physical lines of (text, color, bold) runs, RouterOS style:
+    path in white, key in sky blue, value in amber, long lines wrapped with a trailing backslash."""
+    if cmd.startswith("#"):
+        return [[(cmd, MUTE, False)]]
+    toks = cmd.split(" ")
+    i = next((k for k, t in enumerate(toks) if "=" in t), len(toks))
+    path, params = " ".join(toks[:i]), toks[i:]
+    lines, cur, used = [], [(PROMPT, GREEN, True), (path, WHITE, True)], len(PROMPT) + len(path)
+    for t in params:
+        if used + 1 + len(t) + 2 > width:
+            cur.append((" \\", MUTE, False)); lines.append(cur)
+            cur, used = [("    ", WHITE, False)], 4
+        else:
+            cur.append((" ", WHITE, False)); used += 1
+        k, _, v = t.partition("=")
+        cur += [(k + "=", SKY, False), (v, SUN, False)]; used += len(t)
+    lines.append(cur)
+    return lines
+
+
 def L_term(title, n, b, k, pic, ic, term):
     s = base(title, n, k)
-    card(s, 0.6, 1.85, 6.3, 4.9, INK)
+    card(s, 0.6, 1.85, 6.3, 4.9, C("0B1220"))
+    rect(s, 0.6, 2.2, 6.3, 0.04, C("1E293B"))
     for j, col in enumerate(("EF4444", "F59E0B", "10B981")):
-        shape(s, MSO_SHAPE.OVAL, 0.85 + j * 0.27, 2.08, 0.15, 0.15, C(col))
-    text(s, 1.8, 2.04, 4.5, 0.25, "terminal - RouterOS", 10, color=GREY, gap=0)
-    lines = [(t, GREY if t.startswith("#") else WHITE) for t in term]
-    tb = s.shapes.add_textbox(Inches(0.85), Inches(2.55), Inches(5.8), Inches(4.0)); tf = tb.text_frame; tf.word_wrap = True
+        shape(s, MSO_SHAPE.OVAL, 0.85 + j * 0.27, 2.0, 0.15, 0.15, C(col))
+    text(s, 1.85, 1.97, 4.8, 0.25, "admin@MikroTik - terminal", 10, color=MUTE, gap=0, font="DejaVu Sans Mono")
+    tb = s.shapes.add_textbox(Inches(0.9), Inches(2.5), Inches(5.8), Inches(4.1)); tf = tb.text_frame; tf.word_wrap = True
     tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
-    for i, (t, col) in enumerate(lines):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph(); p.space_after = Pt(9)
-        r = p.add_run(); r.text = t; r.font.size = Pt(13); r.font.name = "DejaVu Sans Mono"; r.font.color.rgb = GREEN if (col == WHITE and t.startswith("/")) else col
+    first = True
+    phys = [(ln, last) for cmd in term for ln, last in ((l, j == len(term_runs(cmd)) - 1) for j, l in enumerate(term_runs(cmd)))]
+    phys.append(([(PROMPT, GREEN, True), ("\u2588", GREEN, False)], True))
+    for runs, last in phys:
+        p = tf.paragraphs[0] if first else tf.add_paragraph(); first = False
+        p.space_after = Pt(11 if last else 2)
+        for t, col, bold in runs:
+            r = p.add_run(); r.text = t; r.font.size = Pt(12); r.font.name = "DejaVu Sans Mono"; r.font.color.rgb = col; r.font.bold = bold
     for i, ln in enumerate(b):
         y = 1.85 + i * 1.0
         card(s, 7.15, y, 5.55, 0.9)
