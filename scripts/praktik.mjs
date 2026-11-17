@@ -428,6 +428,137 @@ function gambarPpp() {
   return frame("Terowongan PPP: klien di rumah menyambung ke server di kantor lewat PPPoE, PPTP, atau SSTP, dengan PPP secret, PPP profile, dan pool alamat", 960, b, AH);
 }
 
+// ---- Elektronika, mikrokontroler, robotika, IoT ----
+const mid = { anchor: "middle" };
+const note = (y, s, w = 500) => text(600, y, s, { size: 24, anchor: "middle", weight: w });
+const res = (x, y, w, h, a, b) => box(x, y, w, h, { fill: M1, r: 10 }) + text(x + w / 2, y + h / 2 - 4, a, { size: 26, weight: 800, anchor: "middle" }) + text(x + w / 2, y + h / 2 + 26, b, S({ anchor: "middle" }));
+
+function gambarSeriParalel() {
+  let b = text(600, 62, "Rangkaian seri dan paralel", { size: 42, weight: 800, anchor: "middle" });
+  b += text(60, 130, "Seri", { size: 34, weight: 800 }) + text(660, 130, "Paralel", { size: 34, weight: 800 });
+  b += line(60, 260, 100, 260) + res(100, 225, 160, 70, "R1", "100 Ω") + line(260, 260, 340, 260) + res(340, 225, 160, 70, "R2", "220 Ω") + line(500, 260, 540, 260);
+  b += dot(60, 260, 10, M3) + dot(540, 260, 10, M3);
+  b += line(680, 220, 680, 340) + line(1140, 220, 1140, 340);
+  b += line(680, 220, 760, 220) + res(760, 185, 160, 70, "R1", "100 Ω") + line(920, 220, 1140, 220);
+  b += line(680, 340, 760, 340) + res(760, 305, 160, 70, "R2", "100 Ω") + line(920, 340, 1140, 340);
+  b += line(640, 280, 680, 280) + line(1140, 280, 1180, 280) + dot(640, 280, 10, M3) + dot(1180, 280, 10, M3);
+  [["R total = R1 + R2", "100 + 220 = 320 Ω", "Arus sama di semua komponen", "Tegangan terbagi ke tiap komponen", "Satu putus, seluruh rangkaian mati"], ["1/R total = 1/R1 + 1/R2", "100 Ω ∥ 100 Ω = 50 Ω", "Tegangan sama di tiap cabang", "Arus terbagi ke tiap cabang", "Satu cabang putus, cabang lain jalan"]].forEach(([f, ex, l1, l2, l3], i) => {
+    const x = 60 + i * 580;
+    b += box(x - 20, 420, 540, 270, { r: 16 }) + text(x, 470, f, { size: 28, weight: 800, mono: true }) + text(x, 510, ex, { size: 26, weight: 800, mono: true, fill: "#3d5a0a" });
+    b += text(x, 565, l1, S({ size: 24 })) + text(x, 603, l2, S({ size: 24 })) + text(x, 641, l3, S({ size: 24 }));
+  });
+  b += note(740, "Hambatan seri selalu lebih besar dari tiap resistor; paralel selalu lebih kecil dari yang terkecil.");
+  return frame("Rangkaian seri dengan R1 100 ohm dan R2 220 ohm menjadi 320 ohm, rangkaian paralel dua resistor 100 ohm menjadi 50 ohm", 790, b);
+}
+
+function gambarLedResistor() {
+  let b = text(600, 62, "Rangkaian LED pertama", { size: 42, weight: 800, anchor: "middle" });
+  b += box(60, 210, 130, 180, { fill: M3, r: 16 }) + text(125, 270, "Sumber", S({ weight: 800, anchor: "middle", size: 24 })) + text(125, 315, "5 V", { size: 40, weight: 800, anchor: "middle" }) + text(125, 360, "+ di atas", S({ anchor: "middle", size: 20 }));
+  b += line(125, 210, 125, 150) + line(125, 150, 380, 150) + res(380, 115, 220, 70, "R", "150 Ω") + line(600, 150, 900, 150) + arrow(640, 150, 760, 150);
+  b += text(700, 128, "arus", S({ anchor: "middle", size: 22 }));
+  b += line(900, 150, 900, 215) + box(830, 215, 140, 120, { fill: PINK, r: 18 }) + text(900, 265, "LED", { size: 32, weight: 800, anchor: "middle" }) + text(900, 305, "merah", S({ anchor: "middle" }));
+  b += line(900, 335, 900, 440) + line(900, 440, 125, 440) + line(125, 440, 125, 390);
+  b += text(990, 245, "anoda (+)", S({ size: 22 })) + text(990, 272, "kaki panjang", S({ size: 20 })) + text(990, 315, "katoda (−)", S({ size: 22 })) + text(990, 342, "kaki pendek", S({ size: 20 }));
+  b += box(60, 500, 1080, 150, { fill: M1, r: 18 }) + text(90, 552, "R = (V sumber − V LED) ÷ I", { size: 30, weight: 800, mono: true }) + text(90, 600, "R = (5 − 2) ÷ 0,02 = 150 Ω", { size: 30, weight: 800, mono: true }) + text(90, 636, "V LED sekitar 2 V dan arus 20 mA; pakai nilai standar yang tidak lebih kecil dari hasil hitung.", S({ size: 22 }));
+  b += note(705, "Tanpa resistor, LED cepat rusak. Matikan sumber sebelum mengubah rangkaian.");
+  return frame("LED merah seri dengan resistor 150 ohm pada sumber 5 volt, arus 20 miliampere", 750, b, AH);
+}
+
+function gambarPwm() {
+  let b = text(600, 62, "PWM: duty cycle dan tegangan rata-rata", { size: 42, weight: 800, anchor: "middle" });
+  [[25, "1,25 V"], [50, "2,5 V"], [75, "3,75 V"]].forEach(([d, v], i) => {
+    const y = 150 + i * 190, per = 260, x0 = 420, hi = y, lo = y + 80;
+    b += text(60, y + 38, `Duty ${d}%`, { size: 32, weight: 800 }) + text(60, y + 78, `rata-rata ${v}`, S({ size: 24 }));
+    let p = `M${x0} ${lo}`;
+    for (let k = 0; k < 3; k++) { const s = x0 + k * per; p += ` L${s} ${hi} L${s + (per * d) / 100} ${hi} L${s + (per * d) / 100} ${lo} L${s + per} ${lo}`; }
+    b += `<path d="${p}" fill="none" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`;
+    b += line(x0, y + 120, x0 + per, y + 120, { sw: 3 }) + text(x0 + per / 2, y + 150, "1 periode", S({ size: 20, anchor: "middle" }));
+    b += text(x0 - 20, hi + 8, "5 V", S({ size: 20, anchor: "end" })) + text(x0 - 20, lo + 8, "0 V", S({ size: 20, anchor: "end" }));
+  });
+  b += note(750, "Duty cycle = waktu HIGH ÷ periode. Tegangan rata-rata = duty × 5 V.", 800);
+  b += note(788, "analogWrite(0..255): 64 sekitar 25%, 128 sekitar 50%, 191 sekitar 75%.");
+  return frame("Tiga gelombang PWM dengan duty cycle 25, 50, dan 75 persen pada 5 volt, tegangan rata-rata 1,25, 2,5, dan 3,75 volt", 830, b);
+}
+
+function gambarBus() {
+  let b = text(600, 62, "UART, I2C, dan SPI", { size: 42, weight: 800, anchor: "middle" });
+  const panel = (x, name, lines, bus, facts) => {
+    let s = box(x, 110, 350, 590, { r: 18 }) + text(x + 175, 160, name, { size: 34, weight: 800, anchor: "middle" });
+    s += box(x + 15, 200, 80, 70 + lines.length * 40, { fill: M3, r: 12 }) + text(x + 55, 235, "MCU", { size: 24, weight: 800, anchor: "middle" });
+    s += box(x + 255, 200, 80, 70 + lines.length * 40, { fill: bus ? M1 : "#ffffff", r: 12 }) + text(x + 295, 235, bus ? "Sensor" : "Modul", { size: 22, weight: 800, anchor: "middle" });
+    lines.forEach((l, i) => { const y = 270 + i * 40; s += line(x + 95, y, x + 255, y) + text(x + 175, y - 8, l, S({ size: 19, anchor: "middle", mono: true })); });
+    facts.forEach((f, i) => { s += text(x + 20, 470 + lines.length * 0 + i * 34 + 40, f, S({ size: 21 })); });
+    return s;
+  };
+  b += panel(30, "UART", ["TX → RX", "RX ← TX", "GND"], false, ["2 jalur data, tanpa clock", "Kedua sisi sepakat baud rate", "Satu ke satu, saling silang", "Cocok untuk serial monitor,", "GPS, modul Bluetooth"]);
+  b += panel(425, "I2C", ["SDA data", "SCL clock", "GND"], true, ["2 jalur untuk banyak perangkat", "Tiap perangkat punya alamat", "Butuh resistor pull-up", "Dua perangkat beralamat sama", "bentrok"]);
+  b += panel(820, "SPI", ["SCK clock", "MOSI data", "MISO data", "CS pilih"], false, ["4 jalur, paling cepat", "CS terpisah tiap perangkat", "Satu master, banyak slave", "Cocok untuk kartu SD,", "layar, flash"]);
+  b += note(760, "Pilih UART untuk satu modul sederhana, I2C untuk banyak sensor, SPI untuk data besar dan cepat.");
+  return frame("Perbandingan UART dengan jalur TX dan RX, I2C dengan SDA dan SCL, dan SPI dengan SCK, MOSI, MISO, dan CS", 810, b);
+}
+
+function gambarHBridge() {
+  let b = text(600, 62, "H-bridge: membalik arah putaran motor", { size: 42, weight: 800, anchor: "middle" });
+  const hb = (x0, title, on) => {
+    const L = x0 + 150, R = x0 + 410, top = 190, bot = 520, cy = 355;
+    const hot = (a, c) => (on.includes(a) && on.includes(c) ? M3 : INK);
+    let s = text(x0 + 280, 140, title, { size: 28, weight: 800, anchor: "middle" });
+    s += text(x0 + 280, 178, "+V", { size: 24, weight: 800, anchor: "middle" }) + line(L, top, R, top) + line(L, bot, R, bot) + text(x0 + 280, 556, "GND", { size: 24, weight: 800, anchor: "middle" });
+    const sw = (x, y, n) => box(x - 35, y, 70, 60, { fill: on.includes(n) ? M3 : "#ffffff", r: 10 }) + text(x, y + 38, "S" + n, { size: 24, weight: 800, anchor: "middle" });
+    s += line(L, top, L, 240) + sw(L, 240, 1) + line(L, 300, L, cy) + line(L, cy, L, 400) + sw(L, 400, 3) + line(L, 460, L, bot);
+    s += line(R, top, R, 240) + sw(R, 240, 2) + line(R, 300, R, cy) + line(R, cy, R, 400) + sw(R, 400, 4) + line(R, 460, R, bot);
+    s += line(L, cy, x0 + 245, cy) + line(x0 + 315, cy, R, cy) + circle(x0 + 280, cy, 38, { fill: PINK }) + text(x0 + 280, cy + 10, "M", { size: 30, weight: 800, anchor: "middle" });
+    const path = on.includes(1) ? `M${L} ${top} L${L} ${cy} L${R} ${cy} L${R} ${bot}` : `M${R} ${top} L${R} ${cy} L${L} ${cy} L${L} ${bot}`;
+    s += `<path d="${path}" fill="none" stroke="#7aa12a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>`;
+    return s;
+  };
+  b += hb(20, "S1 + S4 ON: motor maju", [1, 4]) + hb(620, "S2 + S3 ON: motor mundur", [2, 3]);
+  b += note(610, "Arus melewati motor dari kiri ke kanan, atau sebaliknya. Itu yang membalik putaran.", 800);
+  b += note(648, "Jalur hijau menunjukkan arah arus. PWM pada saklar yang aktif mengatur kecepatan.");
+  b += box(180, 680, 840, 70, { fill: PINK, r: 14 }) + text(600, 725, "Jangan nyalakan S1 + S3 atau S2 + S4 bersamaan: korsleting.", { size: 26, weight: 800, anchor: "middle" });
+  return frame("H-bridge dengan empat saklar: S1 dan S4 aktif membuat motor maju, S2 dan S3 aktif membuat motor mundur", 790, b);
+}
+
+function gambarDiferensial() {
+  let b = text(600, 62, "Robot diferensial dari atas", { size: 42, weight: 800, anchor: "middle" });
+  b += box(450, 230, 300, 250, { fill: M1, r: 24 }) + text(600, 360, "badan robot", S({ anchor: "middle" }));
+  b += box(405, 260, 45, 190, { fill: M3, r: 8 }) + box(750, 260, 45, 190, { fill: M3, r: 8 });
+  b += arrow(427, 255, 427, 190) + text(427, 170, "vL", { size: 28, weight: 800, anchor: "middle" });
+  b += arrow(772, 255, 772, 120) + text(772, 100, "vR", { size: 28, weight: 800, anchor: "middle" });
+  b += text(310, 345, "roda kiri", S({ anchor: "end" })) + text(890, 345, "roda kanan", S());
+  b += line(427, 510, 772, 510, { sw: 3 }) + line(427, 498, 427, 522, { sw: 3 }) + line(772, 498, 772, 522, { sw: 3 }) + text(600, 548, "L = jarak antar roda", S({ anchor: "middle" }));
+  b += text(600, 205, "depan", S({ anchor: "middle", size: 20 }));
+  b += box(60, 600, 520, 120, { r: 14 }) + text(85, 648, "v = (vR + vL) ÷ 2", { size: 28, weight: 800, mono: true }) + text(85, 692, "ω = (vR − vL) ÷ L", { size: 28, weight: 800, mono: true });
+  [["vR = vL", "lurus"], ["vR > vL", "belok kiri"], ["vR = −vL", "berputar di tempat"]].forEach(([c, r], i) => { b += text(640, 635 + i * 40, c, { size: 26, weight: 800, mono: true }) + text(820, 635 + i * 40, r, S({ size: 24 })); });
+  b += note(775, "v adalah kecepatan maju robot (m/s), ω kecepatan putar (rad/s, positif berlawanan arah jarum jam).");
+  return frame("Robot diferensial dilihat dari atas dengan dua roda, kecepatan vL dan vR, jarak antar roda L, rumus v dan omega", 820, b, AH);
+}
+
+function gambarMqtt() {
+  let b = text(600, 62, "MQTT: publish dan subscribe lewat broker", { size: 42, weight: 800, anchor: "middle" });
+  const node = (x, y, name, topic, verb) => box(x, y, 330, 150, { fill: "#ffffff", r: 16 }) + text(x + 165, y + 45, name, { size: 28, weight: 800, anchor: "middle" }) + text(x + 165, y + 85, verb, S({ size: 22, anchor: "middle" })) + text(x + 165, y + 120, topic, S({ size: 22, anchor: "middle", mono: true }));
+  b += box(435, 250, 330, 250, { fill: M3, r: 24 }) + text(600, 345, "Broker", { size: 36, weight: 800, anchor: "middle" }) + text(600, 392, "mencocokkan topik", S({ anchor: "middle" })) + text(600, 424, "dengan filter", S({ anchor: "middle" }));
+  b += node(30, 150, "Sensor suhu", "gh/01/sensor/temp", "publish ke") + node(30, 400, "Aplikasi kontrol", "gh/01/actuator/fan/set", "publish ke");
+  b += node(840, 150, "Dashboard", "gh/+/sensor/#", "subscribe ke") + node(840, 400, "Kipas (ESP32)", "gh/01/actuator/fan/set", "subscribe ke");
+  b += arrow(364, 225, 431, 300) + arrow(364, 475, 431, 440) + arrow(769, 300, 836, 225) + arrow(769, 440, 836, 475);
+  b += note(610, "Pengirim dan penerima tidak saling kenal; semuanya lewat broker.", 800);
+  b += note(648, "Topik hierarkis dipisah garis miring. + cocok satu tingkat, # cocok semua tingkat di bawahnya.");
+  return frame("Sensor dan aplikasi kontrol mempublikasikan topik ke broker MQTT, dashboard dan kipas berlangganan dengan filter", 690, b, AH);
+}
+
+function gambarIotLapis() {
+  let b = text(600, 62, "Lima lapisan arsitektur IoT", { size: 42, weight: 800, anchor: "middle" });
+  [["1", "Perangkat", "Sensor, aktuator, mikrokontroler"], ["2", "Edge / gateway", "Agregasi, penyaringan, logika lokal"], ["3", "Jaringan", "Wi-Fi, BLE, Zigbee, LoRaWAN, seluler"], ["4", "Platform", "Broker, registry, penyimpanan, rules engine"], ["5", "Aplikasi", "Dashboard, notifikasi, analitik"]].forEach(([n, name, d], i) => {
+    const y = 110 + i * 120;
+    b += box(80, y, 1040, 92, { fill: i % 2 ? "#ffffff" : M1, r: 16 }) + circle(135, y + 46, 26, { fill: M3 }) + text(135, y + 56, n, { size: 28, weight: 800, anchor: "middle" });
+    b += text(190, y + 56, name, { size: 30, weight: 800 }) + text(500, y + 56, d, S({ size: 24 }));
+    if (i < 4) b += arrow(1152, y + 60, 1152, y + 170, { dash: "2 10" });
+  });
+  b += note(730, "Data mengalir dari perangkat ke aplikasi (atas ke bawah); perintah naik lewat jalur yang sama.", 800);
+  b += note(768, "Keamanan, pembaruan, dan pemantauan melintasi semua lapisan, bukan satu lapisan saja.");
+  return frame("Lima lapisan arsitektur IoT dari perangkat, edge atau gateway, jaringan, platform, sampai aplikasi", 810, b, AH);
+}
+
 const DIAGRAMS = {
   "utp-t568a-t568b": gambarUtp,
   "kabel-straight-crossover": gambarStraightCrossover,
@@ -443,6 +574,14 @@ const DIAGRAMS = {
   "bridge-vs-router": gambarBridgeRouter,
   "queue-simple-limit": gambarQueue,
   "ppp-tunnel": gambarPpp,
+  "rangkaian-seri-paralel": gambarSeriParalel,
+  "rangkaian-led-resistor": gambarLedResistor,
+  "pwm-duty-cycle": gambarPwm,
+  "bus-uart-i2c-spi": gambarBus,
+  "h-bridge": gambarHBridge,
+  "robot-diferensial": gambarDiferensial,
+  "mqtt-publish-subscribe": gambarMqtt,
+  "arsitektur-iot-lima-lapis": gambarIotLapis,
 };
 
 mkdirSync("public/praktik", { recursive: true });

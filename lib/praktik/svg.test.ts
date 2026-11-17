@@ -10,6 +10,8 @@ const EXPECTED = [
   "topologi-dasar", "osi-tcpip", "dhcp-dora", "nat-masquerade",
   "rak-jaringan", "router-5-port", "kantor-kecil-mikrotik",
   "firewall-chain-flow", "bridge-vs-router", "queue-simple-limit", "ppp-tunnel",
+  "rangkaian-seri-paralel", "rangkaian-led-resistor", "pwm-duty-cycle", "bus-uart-i2c-spi",
+  "h-bridge", "robot-diferensial", "mqtt-publish-subscribe", "arsitektur-iot-lima-lapis",
 ];
 const READY = EXPECTED;
 
