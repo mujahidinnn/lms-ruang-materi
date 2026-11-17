@@ -38,7 +38,11 @@ export default function MarkdownBase({
             if (diagram) {
               return (
                 <figure className="my-5 overflow-hidden rounded-2xl shadow-soft">
-                  <img src={diagramSrc(diagram)} alt={alt || `Diagram ${diagram}`} className="h-auto w-full bg-white" />
+                  {/* Diagrams are 1200 units wide; on a phone the labels shrink below 7px, so the picture keeps a 680px floor and scrolls inside the card. */}
+                  <div className="scrollbar-thin overflow-x-auto bg-white">
+                    <img src={diagramSrc(diagram)} alt={alt || `Diagram ${diagram}`} className="h-auto w-full min-w-[680px] bg-white" />
+                  </div>
+                  <p className="bg-white px-4 pb-2 text-xs text-zinc-500 sm:hidden">Geser ke samping untuk melihat seluruh diagram.</p>
                   {alt ? <figcaption className="bg-zinc-900 px-4 py-2 text-sm text-zinc-400">{alt}</figcaption> : null}
                 </figure>
               );
