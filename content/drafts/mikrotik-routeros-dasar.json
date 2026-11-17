@@ -556,6 +556,319 @@
           ]
         }
       ]
+    },
+    {
+      "slug": "wireless-dasar",
+      "title": "Wireless Dasar",
+      "est_minutes": 40,
+      "slide_from": 15,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Membedakan standar 802.11b, a, g, n, dan ac menurut frekuensi dan kecepatan teoretisnya.\n- Menjelaskan kanal, lebar kanal, dan chain, serta alasan kanal 1, 6, dan 11 dipakai di 2,4 GHz.\n- Membedakan mode AP dan station, serta fungsi security profile, access list, dan connect list.\n- Memakai registration table dan snooper untuk memantau, lalu menyusun langkah praktik di perangkat fisik.\n\n## Catatan Sebelum Mulai\n\nBab ini murni teori ditambah panduan lab. Simulator di kelas ini tidak memodelkan antarmuka nirkabel, jadi tidak ada latihan klik **Periksa** di sini. Untuk mencoba, kamu butuh perangkat MikroTik yang punya radio Wi-Fi, dan panduannya ada di bagian akhir. Nama menu dan perintah bergantung pada perangkat: banyak perangkat RouterOS v6 dan sebagian perangkat v7 memakai paket `wireless` (menu `/interface wireless`), sedangkan perangkat lebih baru memakai paket `wifi` (menu `/interface wifi`, mulai tersedia sekitar v7.13). Periksa paket yang terpasang di perangkatmu lebih dulu.\n\n## Standar 802.11\n\nWi-Fi adalah nama dagang untuk keluarga standar IEEE 802.11. Setiap huruf di belakangnya menandai generasi dengan pita frekuensi dan kecepatan berbeda. Angka kecepatan di tabel adalah batas teoretis di lapisan fisik. Throughput nyata biasanya jauh lebih rendah, sering kira-kira separuhnya atau kurang, karena ada overhead protokol, jarak, dan gangguan.\n\n| Standar | Pita | Kecepatan teoretis maksimum |\n| --- | --- | --- |\n| 802.11b | 2,4 GHz | 11 Mbps |\n| 802.11a | 5 GHz | 54 Mbps |\n| 802.11g | 2,4 GHz | 54 Mbps |\n| 802.11n | 2,4 dan 5 GHz | hingga 600 Mbps (empat stream, kanal 40 MHz) |\n| 802.11ac | hanya 5 GHz | hingga beberapa Gbps, bergantung jumlah stream dan lebar kanal |\n\nPerangkat yang mendukung standar baru biasanya masih bisa berbicara dengan perangkat lama. Namun satu klien yang sangat lama dapat memperlambat jaringan karena AP harus memberinya waktu siar lebih banyak. Karena itu, banyak administrator menonaktifkan laju data yang terlalu rendah bila tidak ada klien lama.\n\n## Frekuensi dan Kanal\n\nPita 2,4 GHz menembus dinding dengan lebih baik dan jangkauannya lebih luas, tetapi ruangnya sempit dan ramai: oven microwave, Bluetooth, dan AP tetangga ikut berebut. Pita 5 GHz lebih lega dan lebih cepat, namun redamannya oleh dinding lebih besar sehingga jangkauannya lebih pendek.\n\nSetiap pita dibagi menjadi **kanal**. Di 2,4 GHz, kanal berjarak 5 MHz sedangkan satu kanal 20 MHz memakan sekitar empat kanal bertetangga. Akibatnya hanya tiga kanal yang tidak saling tumpang tindih, yaitu **1, 6, dan 11** (kanal 1 berpusat di 2412 MHz, kanal 6 di 2437 MHz, kanal 11 di 2462 MHz). Memakai kanal tengah seperti 3 justru mengganggu dua kanal sekaligus. Aturan praktisnya: bila ada beberapa AP berdekatan, bagi mereka ke kanal 1, 6, dan 11 secara bergantian.\n\nDaftar kanal yang legal berbeda antar negara, dan RouterOS membatasinya lewat pengaturan **country**. Atur country sesuai tempatmu berada, jangan memilih negara lain hanya demi daya pancar atau kanal tambahan. Ketentuan frekuensi dan daya pancar setiap negara berbeda, jadi cek aturan setempat.\n\nLebar kanal juga berpengaruh. Kanal 40 MHz pada 802.11n menggandakan kecepatan teoretis, tetapi menghabiskan ruang kanal dua kali lipat. Di 2,4 GHz, kanal 40 MHz hampir selalu menabrak tetangga, jadi di lokasi ramai tetap pakai 20 MHz.\n\n## Chain dan Laju Data\n\nSatu **chain** adalah satu jalur radio dan antena yang dipakai pada perangkat. Perangkat dengan dua chain bisa mengirim dua aliran data paralel (MIMO), sehingga kecepatan teoretisnya naik. Itulah sebabnya spesifikasi perangkat sering berbunyi seperti 2x2 atau 3x3. Kecepatan yang tampak di registration table adalah laju data (`tx-rate`) hasil negosiasi, dan ia turun otomatis saat sinyal melemah atau terganggu. Laju 6,5 Mbps pada klien 802.11n biasanya tanda sinyal lemah, bukan tanda AP rusak.\n\n## Mode AP dan Station\n\nAntarmuka nirkabel RouterOS dapat bekerja dalam beberapa mode. Dua yang wajib kamu kenal:\n\n- **AP (access point)**: memancarkan SSID dan menerima klien. Mode yang umum adalah `ap-bridge`, yang melayani banyak klien sekaligus.\n- **Station**: bertindak sebagai klien, menyambung ke AP lain. Pemakaian tipikalnya adalah menerima internet dari AP jarak jauh, misalnya link antar gedung.\n\nPada mode station, penerusan lapis 2 transparan ke jaringan di belakangnya tidak otomatis tersedia pada standar 802.11, sehingga RouterOS menyediakan varian khusus seperti `station-bridge` dan `station-pseudobridge`. Detailnya di luar cakupan kelas ini, tetapi ingat bahwa menjadikan satu router sebagai klien Wi-Fi lalu meneruskan LAN di belakangnya bukan sekadar mengganti mode.\n\nBila AP dan LAN-nya ingin berada di satu subnet, masukkan antarmuka nirkabel sebagai port bridge, seperti yang kamu lakukan pada bab Bridge.\n\n## Keamanan\n\nJaringan tanpa sandi berarti siapa pun dapat menyambung dan membaca lalu lintas yang tidak terenkripsi. Pengaturan keamanan disimpan di **security profile**, lalu dipasang pada antarmuka.\n\n- **WPA2-PSK** dengan enkripsi AES-CCM adalah pilihan yang aman dan kompatibel hampir di semua klien. Pilih sandi panjang dan acak.\n- **WPA3** tersedia pada perangkat dan paket yang mendukungnya, terutama paket `wifi`. Ketersediaannya bergantung model dan versi, jadi periksa dokumentasi perangkatmu.\n- Hindari WEP, WPA lama, dan jaringan terbuka untuk jaringan yang dipakai sungguhan.\n\nDua daftar kendali tambahan sering membingungkan karena namanya mirip:\n\n- **Access list** berada di sisi AP. Ia menentukan klien mana (berdasarkan alamat MAC, kekuatan sinyal, dan sebagainya) yang boleh atau tidak boleh menyambung, termasuk sandi per klien.\n- **Connect list** berada di sisi station. Ia menentukan AP mana yang boleh dipilih station untuk disambungi.\n\nFilter MAC bukan pengganti sandi yang kuat, karena alamat MAC bisa dipalsukan. Anggap ia lapisan tambahan, bukan pertahanan utama.\n\n## Alat Pantau\n\nDua alat bawaan di RouterOS paket `wireless` membantu saat kamu memecahkan masalah:\n\n- **Registration table** (`/interface wireless registration-table print`) mencantumkan klien yang sedang tersambung, lengkap dengan kekuatan sinyal dalam dBm dan laju data. Sinyal -50 dBm tergolong sangat kuat, sedangkan -85 dBm sudah lemah dan rawan putus. Semakin mendekati nol, semakin kuat.\n- **Snooper** memindai kanal di sekitar dan menampilkan penggunaan kanal serta jaringan lain. Ia dipakai untuk memilih kanal yang paling sepi sebelum menetapkan frekuensi AP.\n\nPada paket `wifi`, alat serupa tersedia dengan nama dan perintah yang berbeda, jadi cari padanannya di menu `/interface wifi`.\n\n## Panduan Lab Fisik: Membuat AP\n\nBahan: satu perangkat MikroTik dengan radio Wi-Fi yang sudah direset ke konfigurasi bawaan, serta laptop atau ponsel sebagai klien. Banyak perangkat sudah punya konfigurasi nirkabel bawaan lewat Quick Set, jadi untuk latihan ini sebaiknya buat sendiri agar kamu paham tiap bagiannya. Contoh di bawah mengikuti paket `wireless`, dan sandinya hanya contoh yang wajib kamu ganti.\n\n```text\n/interface wireless security-profiles add name=lab-wpa2 mode=dynamic-keys authentication-types=wpa2-psk wpa2-pre-shared-key=\"ganti-dengan-sandi-panjangmu\"\n/interface wireless set wlan1 mode=ap-bridge ssid=LAB-KELAS band=2ghz-b/g/n frequency=2437 country=indonesia security-profile=lab-wpa2 disabled=no\n/interface bridge port add bridge=bridge1 interface=wlan1\n```\n\nLangkahnya:\n\n1. Jalankan snooper pada `wlan1`, lalu pilih kanal 1, 6, atau 11 yang paling sepi.\n2. Buat security profile dengan WPA2-PSK dan sandi yang kuat.\n3. Atur `wlan1` ke mode AP, isi SSID, band, frekuensi, country, dan security profile, lalu aktifkan.\n4. Masukkan `wlan1` ke bridge LAN agar klien Wi-Fi satu subnet dengan klien kabel dan menerima alamat dari DHCP server yang sama.\n5. Sambungkan ponsel ke SSID itu, lalu buka registration table dan pastikan klien muncul dengan sinyal yang wajar.\n6. Dekatkan dan jauhkan ponsel dari AP, lalu amati perubahan sinyal dan laju data.\n\nNama band dan opsi bisa berbeda antar versi dan paket. Pada perangkat dengan paket `wifi`, perintahnya memakai `/interface wifi` dengan struktur konfigurasi yang berbeda, jadi ikuti dokumentasi perangkatmu alih-alih menyalin baris di atas mentah-mentah.\n\n## Rangkuman\n\n- 802.11b, g, dan n memakai 2,4 GHz; a dan ac memakai 5 GHz; n bisa memakai keduanya. Kecepatan di spesifikasi adalah batas teoretis.\n- Di 2,4 GHz hanya kanal 1, 6, dan 11 yang tidak saling tumpang tindih. Atur country sesuai lokasi.\n- Chain adalah jalur radio dan antena. Semakin banyak chain, semakin tinggi kecepatan teoretis, dan laju data turun saat sinyal lemah.\n- Mode AP memancarkan SSID, mode station menyambung ke AP. Gunakan WPA2-PSK atau lebih baru, jangan jaringan terbuka.\n- Access list mengatur klien di sisi AP, connect list mengatur AP yang dipilih station. Registration table menunjukkan klien dan sinyal, snooper menunjukkan kanal sekitar.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kantor memasang tiga AP berdekatan, semuanya di 2,4 GHz dengan lebar kanal 20 MHz, dan klien sering lambat karena gangguan antar AP. Penataan kanal yang paling masuk akal adalah...",
+          "code": "",
+          "options": [
+            "Kanal 1, 6, dan 11 untuk masing-masing AP supaya pita mereka tidak saling menimpa",
+            "Kanal 1, 2, dan 3 supaya letaknya berdekatan dan klien pindah AP dengan lebih mulus",
+            "Kanal 6 untuk semua AP, sebab satu kanal yang sama menjamin gangguan paling kecil",
+            "Kanal 3, 7, dan 10 karena kanal tengah selalu lebih sepi daripada kanal di tepi pita"
+          ],
+          "answer": 0,
+          "explanation": "Hanya kanal 1, 6, dan 11 yang tidak tumpang tindih pada lebar 20 MHz. Kanal berdekatan atau kanal yang sama membuat AP saling mengganggu."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Klien mengeluh Wi-Fi sangat lambat di ruang rapat paling ujung. Cuplikan registration table (disederhanakan) tampak seperti di bawah. Penjelasan yang paling tepat adalah...",
+          "code": "[admin@MikroTik] > /interface wireless registration-table print\n#  INTERFACE  MAC-ADDRESS        SIGNAL-STRENGTH      TX-RATE\n0  wlan1      AA:BB:CC:00:11:22  -86dBm@2GHz-B/G/N    6.5Mbps",
+          "options": [
+            "Antarmuka wlan1 rusak, sebab klien yang sehat selalu mendapat laju data di atas 100 Mbps",
+            "Sinyal klien lemah, jadi laju data turun otomatis; dekatkan klien atau tambah AP",
+            "Alamat MAC klien tidak terdaftar di bridge, sehingga laju datanya dibatasi oleh router",
+            "Kanal 2,4 GHz sengaja dibatasi 6,5 Mbps oleh RouterOS untuk melindungi klien lainnya"
+          ],
+          "answer": 1,
+          "explanation": "Sinyal -86 dBm tergolong lemah. Laju data dinegosiasi menurun saat sinyal buruk, jadi kecepatan rendah adalah gejala jarak atau penghalang, bukan kerusakan antarmuka."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan mengatur access list di sebuah AP, kamu dapat membatasi klien mana yang boleh menyambung ke AP itu, sedangkan connect list dipakai di sisi station untuk menentukan AP yang boleh disambungi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Access list bekerja di sisi AP terhadap klien yang datang, connect list di sisi station terhadap AP yang dipilih."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang teman membuat AP kantor tanpa sandi supaya tamu mudah menyambung, dan mengaku sudah aman karena mengaktifkan filter MAC di access list. Penilaian yang tepat adalah...",
+          "code": "",
+          "options": [
+            "Aman, karena hanya MAC yang terdaftar yang bisa membaca seluruh lalu lintas jaringan itu",
+            "Aman bila SSID disembunyikan, sebab penyerang tidak akan menemukan jaringan yang tersembunyi",
+            "Berisiko, sebab MAC bisa dipalsukan dan lalu lintas tanpa enkripsi bisa disadap",
+            "Berisiko hanya pada 5 GHz, sedangkan di 2,4 GHz filter MAC sudah menggantikan sandi"
+          ],
+          "answer": 2,
+          "explanation": "Filter MAC bukan enkripsi: alamat MAC bisa ditiru, dan tanpa WPA2 isi lalu lintas dapat disadap. Pakai security profile dengan WPA2-PSK atau lebih baru."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "firewall-filter",
+      "title": "Firewall Filter",
+      "est_minutes": 50,
+      "slide_from": 17,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Menjelaskan prinsip firewall stateful dan status koneksi: new, established, related, invalid, untracked.\n- Membedakan chain input, forward, dan output serta aksi accept, drop, reject, passthrough, dan log.\n- Menyusun aturan untuk melindungi router dan pelanggan, dengan urutan yang benar.\n- Memakai address-list untuk menandai kumpulan alamat dalam aturan.\n\n## Prinsip Firewall\n\nFirewall adalah penjaga lalu lintas: setiap paket diperiksa terhadap daftar aturan, lalu diizinkan atau dibuang. Firewall RouterOS bersifat **stateful**. Router mengingat setiap percakapan lewat **connection tracking**, sehingga aturan bisa berbunyi seperti \"izinkan balasan untuk koneksi yang kuminta sendiri\" tanpa harus membuka semua port.\n\nSetiap paket berada pada satu status koneksi:\n\n| Status | Arti |\n| --- | --- |\n| `new` | Paket pembuka koneksi baru, misalnya SYN pertama |\n| `established` | Bagian dari koneksi yang sudah terlihat dua arah |\n| `related` | Koneksi baru yang berhubungan dengan koneksi lain, misalnya pesan galat ICMP atau saluran data FTP |\n| `invalid` | Paket yang tidak cocok dengan koneksi mana pun dan tidak sah |\n| `untracked` | Paket yang sengaja dikecualikan dari pelacakan lewat aturan raw |\n\nDengan status ini, aturan klasik muncul: terima `established,related`, buang `invalid`, dan baru sesudahnya putuskan nasib paket `new`.\n\n## Tiga Chain\n\nAturan dikelompokkan dalam **chain** menurut arah paketnya.\n\n![Alur paket melewati chain firewall](gambar:firewall-chain-flow)\n\n- **input**: paket yang **ditujukan ke router itu sendiri**, misalnya login Winbox atau SSH, ping ke alamat router, dan DNS bila router jadi resolver.\n- **forward**: paket yang **melewati** router, dari satu jaringan ke jaringan lain, misalnya laptop LAN menuju internet.\n- **output**: paket yang **dibuat oleh router sendiri**, misalnya ping dari router atau permintaan DNS router.\n\nKesalahan pemula yang paling umum adalah memasang aturan di chain yang salah. Aturan untuk memblokir klien LAN agar tidak membuka situs tertentu harus di `forward`, bukan `input`, karena paket klien tidak ditujukan ke router.\n\n## Aksi\n\nAksi adalah apa yang dilakukan saat sebuah paket cocok dengan aturan.\n\n- `accept`: izinkan, berhenti memeriksa aturan di chain itu.\n- `drop`: buang diam-diam tanpa memberi tahu pengirim.\n- `reject`: buang, tetapi pengirim diberi tahu (pesan ICMP atau TCP reset).\n- `passthrough`: tidak melakukan apa-apa selain menambah penghitung, lalu lanjut ke aturan berikutnya.\n- `log`: catat paket ke log sistem, lalu lanjut.\n\n`drop` lebih sering dipilih untuk lalu lintas dari internet karena tidak membocorkan keberadaan layanan, sedangkan `reject` lebih ramah untuk klien LAN yang butuh tahu bahwa koneksinya ditolak. RouterOS punya banyak aksi lain seperti `jump`, `tarpit`, dan `add-src-to-address-list`. Simulator hanya memodelkan accept, drop, reject, passthrough, log, dan fasttrack-connection.\n\n## Urutan Aturan\n\nAturan dibaca **dari atas ke bawah** dan paket diproses oleh aturan pertama yang cocok. Untuk accept dan drop, pemeriksaan di chain itu berakhir. Bila tidak ada aturan yang cocok, paket **diterima**, karena RouterOS tidak punya kebijakan bawaan yang menolak. Itulah sebabnya firewall yang aman biasanya diakhiri aturan drop untuk semua yang tidak diizinkan.\n\nDua akibatnya perlu kamu hafal:\n\n1. Aturan `accept` yang spesifik harus berada **di atas** aturan `drop` yang umum. Kalau `drop` di atas, `accept` di bawahnya tidak pernah tercapai.\n2. Aturan baru yang ditambahkan dengan `add` masuk di **akhir** chain. Aturan itu tidak efektif bila di atasnya sudah ada `drop` yang menangkap paketnya. Simulator juga menyimpan aturan menurut urutan penambahan, dan tidak menyediakan perintah memindah atau menghapus aturan.\n\n## Melindungi Router (Chain Input)\n\nRouter yang alamat WAN-nya terjangkau dari internet akan dipindai tak lama setelah online. Aturan dasar untuk chain input:\n\n```text\n/ip firewall filter add chain=input action=accept connection-state=established,related\n/ip firewall filter add chain=input action=drop connection-state=invalid\n/ip firewall filter add chain=input action=accept in-interface=ether2\n/ip firewall filter add chain=input action=drop in-interface=ether1\n```\n\nUrutan logikanya: balasan untuk koneksi yang sudah ada diizinkan, paket tidak sah dibuang, semua yang masuk dari LAN (ether2) diterima, dan sisanya dari WAN (ether1) dibuang. Contoh ini mengikuti pola konfigurasi bawaan, tetapi konfigurasi bawaan sungguhan lebih panjang dan memakai interface list.\n\nPeringatan keselamatan, dua hal sekaligus:\n\n- Jangan pernah memasang aturan `drop` di input tanpa lebih dulu mengizinkan `established,related` dan akses dari LAN. Kalau tidak, balasan untuk sesimu sendiri ikut terbuang dan kamu terkunci keluar dari router.\n- Jangan memasang `accept` tanpa syarat di input hanya karena \"yang penting jalan\". Itu membuka Winbox, SSH, dan semua layanan lain ke internet.\n\nBila terkunci, kamu perlu akses fisik atau MAC-Winbox. Untuk mencegahnya, gunakan **Safe Mode** (tombol Safe Mode di Winbox atau Ctrl+X di terminal) saat mengubah firewall di perangkat jarak jauh: perubahan dibatalkan otomatis bila sesimu terputus.\n\n## Melindungi Pelanggan (Chain Forward)\n\nChain forward mengatur lalu lintas antar jaringan. Pola yang umum untuk router rumah atau kantor kecil:\n\n- Terima `established,related` dan buang `invalid`.\n- Biarkan LAN keluar ke internet.\n- Buang koneksi baru dari WAN yang tidak berasal dari NAT port forward (di RouterOS sungguhan dengan `connection-nat-state=!dstnat`, yang tidak dimodelkan simulator).\n\nTujuannya agar perangkat di LAN tidak bisa dijangkau langsung dari internet, kecuali yang memang kamu buka dengan sengaja.\n\n## Address-List\n\n**Address-list** adalah daftar nama berisi alamat IP atau subnet. Alih-alih menulis satu aturan per alamat, kamu mengisi daftar, lalu satu aturan merujuk namanya lewat `src-address-list` atau `dst-address-list`.\n\n```text\n/ip firewall address-list add list=blokir address=192.168.88.50\n/ip firewall filter add chain=forward action=drop src-address-list=blokir\n```\n\nMenambah klien yang diblokir cukup dengan menambah entri daftar, tanpa menyentuh aturan. Di RouterOS sungguhan, daftar juga bisa diisi otomatis, misalnya lewat aksi `add-src-to-address-list` untuk menangkap pemindai port. Fitur itu bukan bagian simulator.\n\n## Membaca Keluaran Print di Simulator\n\nDengan empat aturan input di atas, `/ip firewall filter print` menampilkan:\n\n```text\n#  CHAIN  ACTION  PROTOCOL  DST-PORT  SRC-ADDRESS  IN-INTERFACE  CONNECTION-STATE     SRC-ADDRESS-LIST  DST-ADDRESS-LIST\n0  input  accept                                                 established,related\n1  input  drop                                                   invalid\n2  input  accept                                   ether2\n3  input  drop                                     ether1\n```\n\nNomor di kolom pertama adalah urutan aturan, yang sekaligus urutan pemeriksaan. Format ini milik simulator, sedangkan RouterOS sungguhan menampilkan flag dan kolom yang berbeda.\n\n## Latihan di Simulator\n\nAda dua latihan. Latihan pertama melindungi router: tulis empat aturan input persis dengan urutan di atas. Latihan kedua memblokir klien memakai address-list di chain forward: isi daftar `blokir` dengan dua alamat, lalu pasang satu aturan drop yang memakai daftar itu. Setelah menulis, periksa dengan `/ip firewall filter print` dan `/ip firewall address-list print`, lalu klik **Periksa**.\n\n## Rangkuman\n\n- Firewall RouterOS bersifat stateful: status koneksi `new`, `established`, `related`, `invalid`, dan `untracked` dipakai dalam aturan.\n- Input untuk paket ke router, forward untuk paket yang melewati router, output untuk paket buatan router.\n- Aturan dibaca dari atas, aturan pertama yang cocok menang, dan tanpa kecocokan paket diterima.\n- Untuk router: terima `established,related`, buang `invalid`, terima LAN, buang WAN. Jangan membuang semuanya sebelum mengizinkan sesimu sendiri.\n- Address-list mengelompokkan alamat sehingga satu aturan bisa berlaku untuk banyak alamat.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Router baru saja dipasangi aturan di bawah lewat Winbox jarak jauh, lalu sesi langsung terputus dan tidak bisa masuk lagi dari LAN. Apa penyebab paling mungkin?",
+          "code": "#  CHAIN  ACTION  PROTOCOL  DST-PORT  SRC-ADDRESS  IN-INTERFACE  CONNECTION-STATE     SRC-ADDRESS-LIST  DST-ADDRESS-LIST\n0  input  drop\n1  input  accept                                                 established,related",
+          "options": [
+            "Aturan accept di nomor 1 memakai status yang salah, sehingga Winbox otomatis ditutup",
+            "Aturan drop berada di atas accept sehingga semua paket input, termasuk sesimu, dibuang",
+            "Chain input hanya untuk paket yang melewati router, jadi kedua aturan tidak berpengaruh",
+            "Status established tidak boleh dipakai bersama related dalam satu aturan accept yang sama"
+          ],
+          "answer": 1,
+          "explanation": "Paket dicocokkan dari atas. Drop tanpa syarat di nomor 0 menangkap semua paket yang menuju router sebelum accept sempat dibaca. Urutan harus dibalik, dan akses LAN diizinkan dulu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin klien LAN dengan alamat 192.168.88.50 tidak bisa mengakses internet, sementara akses ke router tetap normal. Aturan yang tepat adalah...",
+          "code": "",
+          "options": [
+            "Drop di chain output dengan src-address 192.168.88.50 supaya paketnya tidak keluar",
+            "Drop di chain input dengan src-address 192.168.88.50 supaya paketnya tidak masuk",
+            "Drop di chain forward untuk src-address 192.168.88.50 karena paketnya lewat router",
+            "Drop di chain input pada ether1, sebab internet datang lewat port WAN milik router"
+          ],
+          "answer": 2,
+          "explanation": "Lalu lintas klien menuju internet melewati router, jadi ditangani chain forward. Input hanya untuk paket yang ditujukan ke router dan output untuk paket buatan router sendiri."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada RouterOS, jika sebuah paket tidak cocok dengan satu pun aturan di sebuah chain, paket itu otomatis dibuang karena firewall bersifat menolak secara bawaan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Paket yang tidak cocok dengan aturan mana pun diterima. Karena itu firewall yang aman diakhiri aturan drop untuk lalu lintas yang tidak diizinkan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Admin menambah accept untuk koneksi dari LAN sesudah aturan drop tanpa syarat yang menangkap semua paket di chain input, lalu LAN tetap tidak bisa login Winbox. Perbaikan yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Memindahkan accept LAN ke atas aturan drop yang menangkap semua paket itu",
+            "Mengganti accept LAN menjadi reject supaya klien mendapat jawaban penolakan yang jelas",
+            "Menambah aturan passthrough di bawah drop supaya penghitung paket LAN ikut bertambah",
+            "Memasang masquerade pada ether2 supaya paket LAN berubah alamat sumbernya ke router"
+          ],
+          "answer": 0,
+          "explanation": "Aturan baru masuk di akhir chain, jadi accept di bawah drop tidak pernah tercapai. Aturan yang spesifik harus di atas aturan yang umum."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "mikrotik",
+          "title": "Lindungi router dengan aturan input",
+          "prompt": "Router kosong. Di editor terminal, tulis empat aturan `/ip firewall filter add` pada chain `input`, dalam urutan ini:\n\n- Terima koneksi `established,related`.\n- Buang koneksi `invalid`.\n- Terima semua yang masuk dari `in-interface=ether2` (LAN).\n- Buang semua yang masuk dari `in-interface=ether1` (WAN).\n\nPeriksa dengan `/ip firewall filter print`, lalu klik **Periksa**.",
+          "starter": {
+            "code": "# 1. input accept established,related\n# 2. input drop invalid\n# 3. input accept dari ether2\n# 4. input drop dari ether1\n"
+          },
+          "solution": {
+            "code": "/ip firewall filter add chain=input action=accept connection-state=established,related\n/ip firewall filter add chain=input action=drop connection-state=invalid\n/ip firewall filter add chain=input action=accept in-interface=ether2\n/ip firewall filter add chain=input action=drop in-interface=ether1\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "aturan pertama menerima established,related",
+              "check": "router.filter[0] && router.filter[0].chain === \"input\" && router.filter[0].action === \"accept\" && router.filter[0].connectionState === \"established,related\""
+            },
+            {
+              "name": "ada aturan drop untuk invalid",
+              "check": "router.filter.some((f) => f.chain === \"input\" && f.action === \"drop\" && f.connectionState === \"invalid\")"
+            },
+            {
+              "name": "LAN ether2 diterima",
+              "check": "router.filter.some((f) => f.chain === \"input\" && f.action === \"accept\" && f.inInterface === \"ether2\")"
+            },
+            {
+              "name": "WAN ether1 dibuang",
+              "check": "router.filter.some((f) => f.chain === \"input\" && f.action === \"drop\" && f.inInterface === \"ether1\")"
+            },
+            {
+              "name": "accept LAN berada di atas drop WAN",
+              "check": "(() => { const a = router.filter.findIndex((f) => f.action === \"accept\" && f.inInterface === \"ether2\"); const d = router.filter.findIndex((f) => f.action === \"drop\" && f.inInterface === \"ether1\"); return a >= 0 && d > a; })()"
+            }
+          ]
+        },
+        {
+          "kind": "mikrotik",
+          "title": "Blokir klien dengan address-list",
+          "prompt": "Router kosong. Di editor terminal, tulis perintah RouterOS satu per baris untuk:\n\n- Memasukkan `192.168.88.50` dan `192.168.88.51` ke address-list bernama `blokir` (`/ip firewall address-list add`).\n- Membuat satu aturan filter di chain `forward` dengan aksi `drop` yang memakai `src-address-list=blokir`.\n\nPeriksa dengan `/ip firewall address-list print` dan `/ip firewall filter print`, lalu klik **Periksa**.",
+          "starter": {
+            "code": "# Dua alamat masuk daftar blokir\n# Satu aturan drop di forward untuk daftar itu\n"
+          },
+          "solution": {
+            "code": "/ip firewall address-list add list=blokir address=192.168.88.50\n/ip firewall address-list add list=blokir address=192.168.88.51\n/ip firewall filter add chain=forward action=drop src-address-list=blokir\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "192.168.88.50 ada di daftar blokir",
+              "check": "router.addressLists.some((a) => a.list === \"blokir\" && a.address === \"192.168.88.50\")"
+            },
+            {
+              "name": "192.168.88.51 ada di daftar blokir",
+              "check": "router.addressLists.some((a) => a.list === \"blokir\" && a.address === \"192.168.88.51\")"
+            },
+            {
+              "name": "aturan drop di forward memakai daftar blokir",
+              "check": "router.filter.some((f) => f.chain === \"forward\" && f.action === \"drop\" && f.srcAddressList === \"blokir\")"
+            },
+            {
+              "name": "tidak memakai chain input",
+              "check": "!router.filter.some((f) => f.chain === \"input\")"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "nat-dan-fasttrack",
+      "title": "NAT dan FastTrack",
+      "est_minutes": 50,
+      "slide_from": 19,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Menjelaskan fungsi NAT dan membedakan src-nat dari dst-nat.\n- Menulis aturan masquerade untuk berbagi satu alamat publik ke seluruh LAN.\n- Membuat port forwarding dengan dst-nat dan menjelaskan risikonya.\n- Menjelaskan cara kerja FastTrack, pemasangannya, serta batasannya.\n\n## Mengapa NAT Diperlukan\n\nAlamat seperti 192.168.88.0/24 adalah alamat privat. Alamat ini tidak diteruskan di internet, jadi paket dari laptop di LAN tidak akan menemukan jalan pulang bila dikirim apa adanya. **NAT (Network Address Translation)** mengubah alamat paket saat melewati router. Dengan NAT, puluhan perangkat LAN berbagi satu alamat publik, misalnya 203.0.113.2.\n\nAda dua arah perubahan yang berbeda:\n\n- **src-nat** mengubah alamat **sumber**. Dipakai untuk lalu lintas keluar dari LAN, di chain `srcnat`.\n- **dst-nat** mengubah alamat **tujuan**. Dipakai untuk lalu lintas masuk dari luar menuju server di LAN, di chain `dstnat`.\n\n![Masquerade mengubah alamat sumber paket LAN](gambar:nat-masquerade)\n\n## Src-NAT dan Masquerade\n\nAturan NAT keluar yang paling umum adalah **masquerade**. Router mengganti alamat sumber paket dengan alamat antarmuka WAN pada saat itu, lalu mencatat pasangan alamat dan port di tabel koneksi. Balasan dari internet dikembalikan ke laptop yang tepat berkat tabel itu.\n\n```text\n/ip firewall nat add chain=srcnat action=masquerade out-interface=ether1\n```\n\nAturan ini berbunyi: untuk paket yang keluar lewat ether1, ubah alamat sumbernya. Perhatikan `out-interface`. Tanpa pembatas, aturan juga mengubah lalu lintas yang tidak perlu diubah.\n\nKapan memakai `src-nat` dan bukan masquerade? Dengan `action=src-nat` kamu menentukan sendiri alamat tujuan perubahan lewat `to-addresses`, cocok bila WAN punya alamat publik **statis**. Masquerade lebih lambat sedikit karena harus mencari alamat antarmuka, tetapi ia menyesuaikan diri bila alamat WAN berubah (DHCP client atau PPPoE), sehingga menjadi pilihan aman saat alamat WAN dinamis. Banyak administrator tetap memakai masquerade untuk alamat statis demi kesederhanaan, dan itu tidak salah.\n\nPenyebab internet tidak jalan yang sangat sering ditemukan adalah NAT yang lupa dipasang: router sendiri bisa mengirim ping ke 8.8.8.8, tetapi klien LAN tidak bisa. Kasus ini sudah diingatkan pada bab Routing Statik.\n\n## Dst-NAT dan Port Forwarding\n\nDari luar, server di LAN tidak terlihat karena alamat privatnya tidak dikenal internet. **Port forwarding** meminta router meneruskan paket yang masuk ke port tertentu pada alamat publik ke perangkat di dalam. Mekanismenya adalah `dst-nat`.\n\n```text\n/ip firewall nat add chain=dstnat action=dst-nat protocol=tcp dst-port=80 in-interface=ether1 to-addresses=192.168.88.10 to-ports=80\n```\n\nArtinya: paket TCP yang masuk lewat ether1 dengan port tujuan 80 diarahkan ke 192.168.88.10 port 80. Jika port di luar dan di dalam berbeda, isi `dst-port` dengan nomor luar dan `to-ports` dengan nomor dalam. Misalnya `dst-port=8080 to-ports=80`.\n\nBeberapa hal penting:\n\n1. **Firewall tetap berlaku.** NAT dilakukan sebelum chain forward, jadi bila forward berisi drop untuk lalu lintas baru dari WAN, kamu masih perlu aturan accept untuk koneksi yang sudah di-dst-nat. Pada konfigurasi bawaan sudah ada aturan yang membuang koneksi dari WAN yang tidak melalui dst-nat, jadi dst-nat yang kamu tambahkan otomatis diperbolehkan.\n2. **Server perlu gateway yang benar.** Balasan dari 192.168.88.10 harus kembali lewat router yang sama, bila tidak, koneksi tidak pernah selesai.\n3. **Peringatan keamanan.** Setiap port yang kamu teruskan terbuka untuk seluruh internet. Jangan meneruskan Winbox (8291), Telnet, atau layanan administratif ke internet. Teruskan hanya layanan yang memang harus publik, dan pastikan server di dalamnya selalu diperbarui.\n4. **Akses dari dalam lewat alamat publik** (hairpin) butuh aturan srcnat tambahan, karena tanpa itu balasan server langsung ke klien dan klien menolaknya. Topik ini di luar cakupan kelas.\n\nAksi `redirect` mirip dst-nat, tetapi tujuannya adalah router itu sendiri. Pemakaian klasiknya adalah mengalihkan semua permintaan web LAN ke proxy lokal. Simulator tidak memodelkan `redirect`, jadi hanya masquerade, src-nat, dst-nat, dan accept yang bisa dicoba.\n\n## FastTrack\n\nSecara normal setiap paket melewati seluruh rantai pengolahan: connection tracking, mangle, firewall, NAT, dan antrean. Untuk koneksi yang sudah established, pekerjaan itu berulang tanpa perlu. **FastTrack** menandai koneksi tersebut agar paket berikutnya dilewatkan lewat jalur cepat. Fitur ini tersedia sejak RouterOS v6.29, dan pada sebagian perangkat dapat dibantu hardware (hw-offload), meski dukungannya bergantung model.\n\nAturan standarnya berada di chain forward:\n\n```text\n/ip firewall filter add chain=forward action=fasttrack-connection connection-state=established,related\n/ip firewall filter add chain=forward action=accept connection-state=established,related\n```\n\nAturan pertama menandai koneksi untuk FastTrack. Aturan kedua tetap diperlukan untuk paket established dan related yang tidak ikut ter-FastTrack, supaya tidak jatuh ke aturan drop di bawahnya. Pada konfigurasi bawaan, aturan fasttrack berada di dekat bagian atas chain forward, sebelum aturan yang membuang lalu lintas.\n\n### Batasan FastTrack\n\nPaket yang dilewatkan FastTrack **melewati sebagian besar pemrosesan** yang biasa terjadi, termasuk beberapa bagian firewall, mangle, dan antrean. Akibatnya:\n\n- **Simple queue dan queue tree tidak membatasi koneksi yang ter-FastTrack.** Bila kamu memakai pembatasan bandwidth, koneksi itu tidak boleh di-FastTrack, atau fasttrack dinonaktifkan.\n- **Mangle tidak menandai paket FastTrack** setelah koneksi ditandai, sehingga aturan berbasis mark ikut terlewati.\n- Aturan firewall di bawah aturan fasttrack tidak lagi memeriksa paket yang sudah ter-FastTrack.\n\nKarena itu FastTrack berguna untuk router yang hanya butuh forwarding cepat dengan aturan sederhana, dan kurang cocok bila kamu perlu manajemen bandwidth rinci. Di simulator, `fasttrack-connection` hanya bisa dipakai di chain forward dan hanya dicatat sebagai aturan. Simulator tidak menghitung kecepatan.\n\n## Latihan di Simulator\n\nLatihan pertama: pasang masquerade untuk keluar lewat ether1, lalu port forwarding TCP port 80 dari ether1 ke 192.168.88.10 port 80. Latihan kedua: pasang aturan FastTrack untuk koneksi established dan related di chain forward, diikuti aturan accept untuk status yang sama. Periksa dengan `/ip firewall nat print` dan `/ip firewall filter print`, lalu klik **Periksa**.\n\n## Rangkuman\n\n- NAT mengubah alamat paket. Src-nat mengubah sumber (chain srcnat), dst-nat mengubah tujuan (chain dstnat).\n- Masquerade memakai alamat antarmuka WAN saat itu dan cocok untuk alamat WAN dinamis, dengan `out-interface` sebagai pembatas.\n- Port forwarding memakai dst-nat dengan `to-addresses` dan `to-ports`. Firewall forward tetap berlaku, dan port yang diteruskan terbuka untuk internet.\n- FastTrack menandai koneksi established dan related agar lewat jalur cepat, dipasang di chain forward bersama aturan accept pendampingnya.\n- Paket FastTrack melewati antrean, mangle, dan sebagian firewall, jadi pembatasan bandwidth tidak berlaku untuknya.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Router bisa ping 8.8.8.8, tetapi laptop LAN 192.168.88.20 tidak bisa membuka situs apa pun. Tabel NAT kosong dan DNS di laptop sudah benar. Tindakan yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Menambah dst-nat ke 8.8.8.8 supaya paket laptop diarahkan ke server DNS publik itu",
+            "Memasang rute statik 192.168.88.0/24 lewat ether1 agar internet mengenali alamat LAN",
+            "Menaikkan distance rute bawaan supaya laptop LAN memakai jalur lain yang lebih cepat",
+            "Menambah masquerade di chain srcnat pada out-interface ether1 untuk mengubah sumber paket LAN"
+          ],
+          "answer": 3,
+          "explanation": "Alamat privat tidak bisa kembali dari internet. Masquerade mengganti alamat sumber paket LAN dengan alamat WAN sehingga balasan bisa pulang."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Admin ingin web server 192.168.88.10 dapat dibuka dari internet lewat alamat WAN, tetapi dari luar halamannya tidak pernah muncul. Aturan NAT-nya seperti di bawah. Kesalahan yang paling jelas adalah...",
+          "code": "#  CHAIN   ACTION      PROTOCOL  DST-PORT  IN-INTERFACE  OUT-INTERFACE  SRC-ADDRESS  TO-ADDRESSES   TO-PORTS\n0  srcnat  dst-nat     tcp       80        ether1                                    192.168.88.10  80",
+          "options": [
+            "Protokol tcp tidak boleh dipakai untuk port 80, karena port itu hanya untuk UDP",
+            "Aksi dst-nat ada di chain srcnat, padahal lalu lintas masuk memakai chain dstnat",
+            "Alamat 192.168.88.10 tidak dapat dipakai sebagai tujuan karena termasuk alamat privat",
+            "Nomor port tujuan harus berbeda dari port luar, kalau sama aturannya diabaikan router"
+          ],
+          "answer": 1,
+          "explanation": "Dst-nat mengubah alamat tujuan paket yang masuk, sehingga harus di chain dstnat. Di simulator aturan seperti ini bisa tercatat, tetapi RouterOS sungguhan tidak akan memakainya dengan benar."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Koneksi yang sudah ter-FastTrack tetap dibatasi oleh simple queue yang menargetkan alamat kliennya, karena queue selalu dijalankan sebelum paket diteruskan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Paket FastTrack melewati antrean, mangle, dan sebagian firewall. Pembatasan bandwidth butuh FastTrack dinonaktifkan atau koneksi itu dikecualikan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Admin meneruskan port Winbox 8291 dari WAN ke 192.168.88.1 supaya bisa mengelola dari rumah, sambil memakai sandi bawaan. Penilaian yang tepat adalah...",
+          "code": "",
+          "options": [
+            "Berisiko, karena layanan administrasi yang terbuka ke internet bisa diserang",
+            "Aman, sebab Winbox memakai port khusus yang tidak pernah dipindai oleh pihak luar",
+            "Aman bila memakai protokol UDP, karena UDP tidak dapat dijangkau dari internet",
+            "Berisiko hanya bila sandinya pendek, sedangkan sandi bawaan sudah cukup untuk menjaga"
+          ],
+          "answer": 0,
+          "explanation": "Layanan administratif yang terbuka ke internet akan dipindai dan diserang. Hindari meneruskannya, gunakan VPN, dan jangan pernah pakai sandi bawaan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "mikrotik",
+          "title": "Masquerade dan port forwarding web",
+          "prompt": "Router kosong. Di editor terminal, tulis dua aturan `/ip firewall nat add`:\n\n- Masquerade di chain `srcnat` untuk lalu lintas yang keluar lewat `out-interface=ether1`.\n- Port forwarding di chain `dstnat` dengan aksi `dst-nat`: TCP port 80 yang masuk lewat `in-interface=ether1` diarahkan ke `to-addresses=192.168.88.10` dan `to-ports=80`.\n\nPeriksa dengan `/ip firewall nat print`, lalu klik **Periksa**.",
+          "starter": {
+            "code": "# Masquerade keluar lewat ether1\n# dst-nat TCP 80 dari ether1 ke 192.168.88.10 port 80\n"
+          },
+          "solution": {
+            "code": "/ip firewall nat add chain=srcnat action=masquerade out-interface=ether1\n/ip firewall nat add chain=dstnat action=dst-nat protocol=tcp dst-port=80 in-interface=ether1 to-addresses=192.168.88.10 to-ports=80\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "masquerade di srcnat lewat ether1",
+              "check": "router.nat.some((n) => n.chain === \"srcnat\" && n.action === \"masquerade\" && n.outInterface === \"ether1\")"
+            },
+            {
+              "name": "dst-nat di chain dstnat",
+              "check": "router.nat.some((n) => n.chain === \"dstnat\" && n.action === \"dst-nat\")"
+            },
+            {
+              "name": "dst-nat untuk tcp port 80 dari ether1",
+              "check": "router.nat.some((n) => n.action === \"dst-nat\" && n.protocol === \"tcp\" && n.dstPort === \"80\" && n.inInterface === \"ether1\")"
+            },
+            {
+              "name": "tujuan 192.168.88.10 port 80",
+              "check": "router.nat.some((n) => n.action === \"dst-nat\" && n.toAddresses === \"192.168.88.10\" && n.toPorts === \"80\")"
+            },
+            {
+              "name": "tepat dua aturan NAT",
+              "check": "router.nat.length === 2"
+            }
+          ]
+        },
+        {
+          "kind": "mikrotik",
+          "title": "FastTrack untuk koneksi established dan related",
+          "prompt": "Router kosong. Di editor terminal, tulis dua aturan `/ip firewall filter add` pada chain `forward`, dalam urutan ini:\n\n- Aksi `fasttrack-connection` untuk `connection-state=established,related`.\n- Aksi `accept` untuk `connection-state=established,related`.\n\nPeriksa dengan `/ip firewall filter print`, lalu klik **Periksa**.",
+          "starter": {
+            "code": "# 1. forward fasttrack-connection established,related\n# 2. forward accept established,related\n"
+          },
+          "solution": {
+            "code": "/ip firewall filter add chain=forward action=fasttrack-connection connection-state=established,related\n/ip firewall filter add chain=forward action=accept connection-state=established,related\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "ada aturan fasttrack di forward",
+              "check": "router.filter.some((f) => f.chain === \"forward\" && f.action === \"fasttrack-connection\" && f.connectionState === \"established,related\")"
+            },
+            {
+              "name": "ada aturan accept established,related di forward",
+              "check": "router.filter.some((f) => f.chain === \"forward\" && f.action === \"accept\" && f.connectionState === \"established,related\")"
+            },
+            {
+              "name": "fasttrack berada di atas accept",
+              "check": "(() => { const f = router.filter.findIndex((x) => x.action === \"fasttrack-connection\"); const a = router.filter.findIndex((x) => x.action === \"accept\" && x.connectionState === \"established,related\"); return f >= 0 && a > f; })()"
+            },
+            {
+              "name": "tepat dua aturan filter",
+              "check": "router.filter.length === 2"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
