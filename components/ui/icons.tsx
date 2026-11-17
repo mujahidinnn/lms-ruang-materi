@@ -180,3 +180,13 @@ export const Robot = (p: P) => (
     <path d="M15 38v5M33 38v5M12 43h6M30 43h6" />
   </Svg>
 );
+
+// One icon per roadmap track, by a word in its slug; anything else gets the route icon.
+const TRACK_ICONS = [
+  [/frontend|web/, Frontend],
+  [/git/, Cabang],
+  [/backend|api/, Backend],
+  [/infrastruktur|server|jaringan/, Infrastruktur],
+  [/elektronika|iot|robot/, Robot],
+] as const;
+export const trackIcon = (slug: string) => TRACK_ICONS.find(([re]) => re.test(slug))?.[1] ?? Jalur;

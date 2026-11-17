@@ -1,23 +1,14 @@
-import { Backend, Cabang, Frontend, Infrastruktur, Jalur, Robot } from "@/components/ui/icons";
+import { trackIcon } from "@/components/ui/icons";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, mutedChip } from "@/components/ui/styles";
 import type { TrackSummary } from "@/lib/content";
-
-// By a word in the track slug; anything else gets the route icon.
-const ICONS = [
-  [/frontend|web/, Frontend],
-  [/git/, Cabang],
-  [/backend|api/, Backend],
-  [/infrastruktur|server|jaringan/, Infrastruktur],
-  [/elektronika|iot|robot/, Robot],
-] as const;
 
 const SHOWN = 4;
 const STEP_TONES = ["bg-matcha-100", "bg-matcha-200", "bg-matcha-300", "bg-matcha-50"];
 
 // A track as its path: one dot per topic on a line, up to twelve.
 export default function TrackCard({ track }: { track: TrackSummary }) {
-  const Icon = ICONS.find(([re]) => re.test(track.slug))?.[1] ?? Jalur;
+  const Icon = trackIcon(track.slug);
   return (
     <li>
       <a
