@@ -9,6 +9,7 @@ import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
 import type { ExerciseFiles } from "@/lib/code/sandbox-doc";
 import type { CodeExerciseData } from "@/lib/content";
 import { burstFrom, celebrate, playCorrect, playWrong } from "@/lib/feedback";
+import MikrotikTerminal from "@/components/code/MikrotikTerminal";
 import SimpanProgres from "@/components/belajar/SimpanProgres";
 import { keepCode } from "@/lib/pending";
 import { createClient } from "@/lib/supabase/client";
@@ -173,7 +174,9 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
           <p className="rounded-2xl bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Error:</span> {out.error}</p>
         )}
         {out && out.logs.length > 0 && (
-          <pre className="scrollbar-thin max-h-48 overflow-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
+          ex.kind === "mikrotik" ? <MikrotikTerminal lines={out.logs.flatMap((l) => l.split("\n"))} /> : (
+            <pre className="scrollbar-thin max-h-48 overflow-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
+          )
         )}
         {out && out.results.length > 0 && (
           <ul className="space-y-2">
