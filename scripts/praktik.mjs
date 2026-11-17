@@ -329,6 +329,105 @@ function gambarKantor() {
   return frame("Topologi kantor kecil: internet, modem ISP, router MikroTik, switch, PC, printer, access point, laptop dan HP, dengan rencana alamat IP", 975, b);
 }
 
+// ---- MikroTik concepts ----
+const S = (o = {}) => ({ size: 22, weight: 500, ...o });
+
+function gambarFirewall() {
+  const mid = (x, y, w, h, name, sub, fill = "#ffffff") =>
+    box(x, y, w, h, { fill, r: 14 }) + text(x + w / 2, y + 36, name, { size: 28, weight: 800, anchor: "middle" }) + text(x + w / 2, y + 64, sub, S({ anchor: "middle" }));
+  let b = text(600, 62, "Jalur paket di firewall MikroTik", { size: 42, weight: 800, anchor: "middle" });
+  b += box(40, 235, 150, 80, { fill: M1, r: 14 }) + text(115, 268, "Paket", { size: 26, weight: 800, anchor: "middle" }) + text(115, 298, "masuk", { size: 26, weight: 800, anchor: "middle" });
+  b += mid(225, 235, 190, 80, "prerouting", "dst-nat", M3);
+  b += arrow(194, 275, 221, 275) + arrow(419, 275, 436, 275);
+  b += `<polygon points="540,195 645,275 540,355 435,275" fill="#ffffff" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>`;
+  b += text(540, 268, "Tujuan:", { size: 24, weight: 800, anchor: "middle" }) + text(540, 298, "router?", { size: 24, weight: 800, anchor: "middle" });
+  // yes: input -> local process -> output
+  b += line(540, 195, 540, 180) + arrow(540, 180, 636, 180) + text(560, 166, "Ya", { size: 24, weight: 800 });
+  b += mid(640, 140, 140, 80, "input", "ke router") + arrow(784, 180, 811, 180);
+  b += box(815, 140, 170, 80, { fill: M1, r: 14 }) + text(900, 175, "Proses di", { size: 24, weight: 800, anchor: "middle" }) + text(900, 205, "router", { size: 24, weight: 800, anchor: "middle" });
+  b += arrow(989, 180, 1016, 180);
+  b += mid(1020, 140, 140, 80, "output", "dari router");
+  // no: forward
+  b += line(540, 355, 540, 370) + arrow(540, 370, 636, 370) + text(560, 410, "Tidak", { size: 24, weight: 800 });
+  b += mid(640, 330, 180, 80, "forward", "melewati router");
+  b += line(824, 370, 1090, 370);
+  // merge to postrouting
+  b += arrow(1090, 224, 1090, 466);
+  b += mid(960, 470, 200, 80, "postrouting", "src-nat", M3) + arrow(956, 510, 884, 510);
+  b += box(640, 470, 240, 80, { fill: M1, r: 14 }) + text(760, 520, "Paket keluar", { size: 26, weight: 800, anchor: "middle" });
+  b += text(40, 480, "Dst-nat dikerjakan sebelum", S()) + text(40, 508, "keputusan routing, src-nat", S()) + text(40, 536, "sesudahnya.", S());
+  // connection tracking
+  b += text(40, 625, "Status koneksi (connection tracking)", { size: 30, weight: 800 });
+  [["established", "bagian dari koneksi yang sudah berjalan", "#ffffff"], ["related", "terkait koneksi lain, mis. error ICMP", "#ffffff"], ["new", "paket pertama yang memulai koneksi", "#ffffff"], ["invalid", "tidak dikenali, biasanya di-drop", PINK]].forEach(([n, d, f], i) => {
+    const x = 40 + (i % 2) * 570, y = 650 + Math.floor(i / 2) * 105;
+    b += box(x, y, 550, 90, { fill: f, r: 14 }) + text(x + 24, y + 38, n, { size: 26, weight: 800, mono: true }) + text(x + 24, y + 70, d, S());
+  });
+  b += text(600, 905, "Paket tujuan router lewat input. Paket yang melewati router lewat forward.", { size: 24, anchor: "middle", weight: 500 });
+  b += text(600, 941, "Paket buatan router sendiri keluar lewat output.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Jalur paket di firewall MikroTik: prerouting, keputusan tujuan router, input atau forward, output, postrouting, dan status koneksi", 985, b, AH);
+}
+
+function gambarBridgeRouter() {
+  const panel = (ox, head, sub, devName, devSub, nets, bullets) => {
+    const cx = ox + 270;
+    let s = box(ox, 100, 540, 770, { r: 22 }) + text(cx, 160, head, { size: 36, weight: 800, anchor: "middle" }) + text(cx, 198, sub, S({ anchor: "middle", size: 24 }));
+    s += box(cx - 140, 250, 280, 130, { fill: M3, r: 16 }) + text(cx, 292, devName, { size: 28, weight: 800, anchor: "middle" });
+    const tags = [cx - 70, cx + 70];
+    tags.forEach((tx, i) => { s += box(tx - 55, 314, 110, 44, { fill: "#ffffff", r: 10, sw: 3 }) + text(tx, 345, `ether${i + 2}`, { size: 22, weight: 700, anchor: "middle" }); });
+    nets.forEach(([n1, n2], i) => {
+      const nx = ox + 30 + i * 260;
+      s += line(tags[i], 380, nx + 110, 480) + box(nx, 480, 220, 100, { fill: M1, r: 14 }) + text(nx + 110, 520, n1, { size: 26, weight: 800, anchor: "middle" }) + text(nx + 110, 556, n2, S({ anchor: "middle", mono: !!n2 && n2.includes(".") }));
+    });
+    bullets.forEach((t, i) => { s += circle(ox + 36, 640 + i * 52 - 8, 8, { fill: M3, sw: 3 }) + text(ox + 60, 640 + i * 52, t, { size: 23, weight: 500 }); });
+    return s;
+  };
+  let b = text(600, 62, "Bridge dan router: apa bedanya", { size: 42, weight: 800, anchor: "middle" });
+  b += panel(40, "Bridge", "Lapis 2 (Data Link)", "bridge1", "", [["PC A", "MAC A"], ["PC B", "MAC B"]],
+    ["Meneruskan frame lewat alamat MAC", "Satu segmen, satu subnet IP", "Port ether2 dan ether3 jadi satu", "Cara kerjanya mirip switch"]);
+  b += panel(620, "Router", "Lapis 3 (Network)", "Router", "", [["Jaringan A", "192.168.88.0/24"], ["Jaringan B", "192.168.99.0/24"]],
+    ["Meneruskan paket lewat alamat IP", "Menghubungkan dua jaringan", "Tiap port punya IP dan subnet sendiri", "Memilih jalur dari tabel rute"]);
+  b += text(60, 915, "Di MikroTik:", { size: 24, weight: 800 }) + text(240, 915, "/interface bridge add name=bridge1", S({ mono: true }));
+  b += text(240, 950, "/interface bridge port add bridge=bridge1 interface=ether2", S({ mono: true }));
+  return frame("Bridge bekerja di lapis 2 dengan alamat MAC dalam satu segmen, router bekerja di lapis 3 antar jaringan dengan alamat IP dan rute", 990, b);
+}
+
+function gambarQueue() {
+  let b = text(600, 62, "Simple queue: batas kecepatan per target", { size: 40, weight: 800, anchor: "middle" });
+  b += box(380, 120, 440, 350, { fill: M1, r: 22 }) + text(600, 170, "Simple queue", { size: 30, weight: 800, anchor: "middle" });
+  b += box(40, 190, 260, 220, { fill: M3, r: 18 }) + text(170, 245, "Target", { size: 30, weight: 800, anchor: "middle" }) + text(170, 288, "192.168.88.0/24", S({ anchor: "middle", mono: true })) + text(170, 326, "PC, laptop, HP", S({ anchor: "middle" }));
+  b += box(900, 190, 260, 220, { fill: "#ffffff", r: 18 }) + text(1030, 245, "Internet", { size: 30, weight: 800, anchor: "middle" });
+  b += arrow(304, 270, 896, 270) + text(600, 238, "Unggah: max-limit 5M", { size: 26, weight: 800, anchor: "middle" }) + text(600, 306, "dari target ke internet", S({ anchor: "middle" }));
+  b += `<line x1="896" y1="390" x2="304" y2="390" stroke="${INK}" stroke-width="10" stroke-linecap="round" marker-end="url(#ah)"/>` + text(600, 358, "Unduh: max-limit 10M", { size: 26, weight: 800, anchor: "middle" }) + text(600, 436, "dari internet ke target", S({ anchor: "middle" }));
+  [["max-limit", "Batas atas kecepatan,", "format unggah/unduh."], ["limit-at (opsi)", "Kecepatan yang dijamin", "untuk target."], ["burst (opsi)", "Boleh melewati max-limit", "untuk waktu singkat."]].forEach(([n, l1, l2], i) => {
+    const x = 40 + i * 390;
+    b += box(x, 510, 340, 150, { r: 14 }) + text(x + 24, 554, n, { size: 26, weight: 800, mono: true }) + text(x + 24, 598, l1, S()) + text(x + 24, 628, l2, S());
+  });
+  b += text(60, 725, "Di MikroTik:", { size: 24, weight: 800 }) + text(240, 725, "/queue simple add name=kantor \\", S({ mono: true })) + text(240, 757, "    target=192.168.88.0/24 max-limit=5M/10M", S({ mono: true }));
+  b += text(600, 815, "Angka pertama pada max-limit adalah unggah, angka kedua unduh.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Simple queue dengan target 192.168.88.0/24 dan max-limit unggah 5M, unduh 10M, serta opsi limit-at dan burst", 860, b, AH);
+}
+
+function gambarPpp() {
+  const end = (x, name, a, c) => box(x, 150, 270, 160, { fill: M3, r: 18 }) + text(x + 135, 200, name, { size: 32, weight: 800, anchor: "middle" }) + text(x + 135, 240, a, S({ anchor: "middle" })) + text(x + 135, 276, c, S({ anchor: "middle", mono: true }));
+  let b = text(600, 62, "Terowongan PPP antara klien dan server", { size: 40, weight: 800, anchor: "middle" });
+  b += end(40, "Klien", "laptop di rumah", "10.10.10.2") + end(890, "Server", "router kantor", "10.10.10.1");
+  b += box(330, 180, 540, 100, { fill: M1, r: 50 }) + text(600, 242, "PPPoE / PPTP / SSTP", { size: 28, weight: 800, anchor: "middle" });
+  b += line(310, 230, 330, 230) + line(870, 230, 890, 230) + text(600, 162, "terowongan lewat jaringan", S({ anchor: "middle", size: 24 }));
+  [["PPPoE", "Lapis 2, di atas ethernet.", "Butuh interface dan", "service-name."], ["PPTP", "Di atas IP.", "Sudah tua, keamanannya", "lemah."], ["SSTP", "Di atas IP, dibungkus", "TLS (SSL).", ""]].forEach(([n, l1, l2, l3], i) => {
+    const x = 40 + i * 390;
+    b += box(x, 430, 340, 170, { r: 14 }) + text(x + 24, 476, n, { size: 30, weight: 800 }) + text(x + 24, 516, l1, S()) + text(x + 24, 546, l2, S()) + (l3 ? text(x + 24, 576, l3, S()) : "");
+  });
+  b += text(40, 665, "Di sisi server", { size: 30, weight: 800 });
+  [["PPP secret", "Nama user dan password", "untuk tiap klien."], ["PPP profile", "Aturan sesi: alamat lokal,", "pool, dan batas."], ["Pool alamat", "Daftar IP yang dibagikan", "ke klien."]].forEach(([n, l1, l2], i) => {
+    const x = 40 + i * 390;
+    b += box(x, 695, 340, 130, { fill: i === 2 ? M1 : "#ffffff", r: 14 }) + text(x + 24, 739, n, { size: 28, weight: 800 }) + text(x + 24, 774, l1, S()) + text(x + 24, 804, l2, S());
+    if (i < 2) b += arrow(x + 344, 760, x + 386, 760);
+  });
+  b += text(600, 885, "Klien masuk dengan user dan password dari PPP secret.", { size: 24, anchor: "middle", weight: 500 });
+  b += text(600, 921, "Server memberi klien alamat dari pool lewat PPP profile.", { size: 24, anchor: "middle", weight: 500 });
+  return frame("Terowongan PPP: klien di rumah menyambung ke server di kantor lewat PPPoE, PPTP, atau SSTP, dengan PPP secret, PPP profile, dan pool alamat", 960, b, AH);
+}
+
 const DIAGRAMS = {
   "utp-t568a-t568b": gambarUtp,
   "kabel-straight-crossover": gambarStraightCrossover,
@@ -340,6 +439,10 @@ const DIAGRAMS = {
   "rak-jaringan": gambarRak,
   "router-5-port": gambarRouter,
   "kantor-kecil-mikrotik": gambarKantor,
+  "firewall-chain-flow": gambarFirewall,
+  "bridge-vs-router": gambarBridgeRouter,
+  "queue-simple-limit": gambarQueue,
+  "ppp-tunnel": gambarPpp,
 };
 
 mkdirSync("public/praktik", { recursive: true });

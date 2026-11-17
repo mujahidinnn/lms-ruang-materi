@@ -9,6 +9,7 @@ const EXPECTED = [
   "utp-t568a-t568b", "kabel-straight-crossover", "rj45-konektor",
   "topologi-dasar", "osi-tcpip", "dhcp-dora", "nat-masquerade",
   "rak-jaringan", "router-5-port", "kantor-kecil-mikrotik",
+  "firewall-chain-flow", "bridge-vs-router", "queue-simple-limit", "ppp-tunnel",
 ];
 const READY = EXPECTED;
 
