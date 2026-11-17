@@ -169,3 +169,14 @@ export const Slide = (p: P) => (
     <path d="M17 24v-5M24 24V13M31 24v-8" strokeWidth={4} /><path d="M24 32v8M17 43l7-3 7 3" />
   </Svg>
 );
+
+export const Robot = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 12V6" /><circle cx="24" cy="5" r="3" style={tint} />
+    <rect x="7" y="12" width="34" height="26" rx="8" style={paper} />
+    <rect x="3" y="21" width="4" height="9" rx="2" style={tint} /><rect x="41" y="21" width="4" height="9" rx="2" style={tint} />
+    <circle cx="17" cy="24" r="4" style={tint} /><circle cx="31" cy="24" r="4" style={tint} />
+    <path d="M18 31q6 5 12 0" />
+    <path d="M15 38v5M33 38v5M12 43h6M30 43h6" />
+  </Svg>
+);

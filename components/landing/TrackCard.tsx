@@ -1,4 +1,4 @@
-import { Backend, Cabang, Frontend, Infrastruktur, Jalur } from "@/components/ui/icons";
+import { Backend, Cabang, Frontend, Infrastruktur, Jalur, Robot } from "@/components/ui/icons";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, mutedChip } from "@/components/ui/styles";
 import type { TrackSummary } from "@/lib/content";
@@ -9,6 +9,7 @@ const ICONS = [
   [/git/, Cabang],
   [/backend|api/, Backend],
   [/infrastruktur|server|jaringan/, Infrastruktur],
+  [/elektronika|iot|robot/, Robot],
 ] as const;
 
 const SHOWN = 4;
