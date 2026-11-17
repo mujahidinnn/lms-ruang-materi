@@ -869,6 +869,251 @@
           ]
         }
       ]
+    },
+    {
+      "slug": "qos-queue",
+      "title": "QoS dan Queue",
+      "est_minutes": 45,
+      "slide_from": 21,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menjelaskan fungsi simple queue dan arti `target` serta `max-limit` (urutan unggah/unduh).\n- Membedakan `max-limit`, `limit-at`, dan burst sebagai konsep.\n- Menjelaskan mengapa urutan queue menentukan hasil dan mengapa FastTrack mengacaukan pembatasan.\n- Memahami gagasan PCQ: satu aturan untuk seluruh jaringan yang dibagi rata per alamat.\n\n## Mengapa Bandwidth Perlu Diatur\n\nSatu laptop yang mengunduh berkas besar bisa menghabiskan hampir seluruh kapasitas koneksi kantor, sementara rekan lain hanya mendapat sisa yang lambat. Tanpa pengaturan, router meneruskan paket sesuai urutan datang. **QoS (Quality of Service)** adalah kumpulan teknik untuk mengatur siapa mendapat berapa. Di RouterOS, bagian ini bernama *queue*, dan bentuk yang paling mudah dipelajari adalah **simple queue**.\n\nSatu hal perlu dipahami dari awal: router hanya bisa mengatur paket yang **keluar** dari antarmukanya. Karena itu pembatasan unduh dikerjakan saat paket hendak dikirim ke LAN, bukan saat paket masih di internet. Router tidak dapat memperlambat pengirim di luar sana. Router hanya menahan atau membuang paket yang melebihi jatah, lalu protokol seperti TCP menyesuaikan kecepatannya sendiri.\n\n![Simple queue dengan target, max-limit unggah dan unduh, serta limit-at dan burst](gambar:queue-simple-limit)\n\nAlamat di gambar hanya ilustrasi. Bab ini memakai 192.168.88.0/24 untuk LAN dan 8.8.8.8 untuk uji ke internet.\n\n## Simple Queue: Target dan Max-Limit\n\nSimple queue menggabungkan dua hal dalam satu baris: siapa yang diatur dan seberapa cepat. Siapa yang diatur ditulis di `target`, yaitu satu alamat IP, satu blok alamat (CIDR), beberapa alamat dipisah koma, atau sebuah antarmuka. Seberapa cepat ditulis di `max-limit`, dengan bentuk `unggah/unduh` dari sudut pandang target.\n\n```text\n/queue simple add name=lantai-bawah target=192.168.88.0/24 max-limit=5M/10M\n```\n\nPerintah ini membatasi seluruh blok 192.168.88.0/24 **bersama-sama** hingga 5 Mbps unggah dan 10 Mbps unduh. Angka pertama adalah arah dari target ke internet, angka kedua arah dari internet ke target. Kebiasaan keliru yang sering terjadi adalah menukar kedua angka itu, sehingga unduh yang terasa lambat padahal unggahnya yang longgar. Satuan yang umum adalah `k` (kilobit per detik), `M` (megabit per detik), dan `G`. Perhatikan bahwa satuannya bit, bukan byte, jadi 10M kira-kira setara 1,2 MB per detik pada unduhan berkas.\n\nBila target berupa blok alamat, batas itu berlaku untuk **seluruh blok sekaligus**, bukan untuk tiap perangkat. Dua puluh laptop dalam 192.168.88.0/24 berbagi 10 Mbps unduh itu. Untuk membatasi tiap perangkat sendiri-sendiri, kamu bisa membuat satu queue per alamat, atau memakai PCQ yang dibahas di bawah.\n\nHasilnya dilihat dengan `/queue simple print`. Simulator mencetak tiga kolom saja, yaitu NAME, TARGET, dan MAX-LIMIT. RouterOS sungguhan menampilkan lebih banyak kolom, antara lain PACKETS dan BYTES pada tampilan statistik, serta menandai queue yang dinonaktifkan atau tidak valid.\n\n## Limit-At dan Burst\n\n`max-limit` adalah batas atas. Ada dua parameter lain yang sering muncul di materi QoS, dan di kelas ini cukup dipahami sebagai konsep karena simulator tidak memodelkannya.\n\n- **`limit-at`** adalah kecepatan yang diusahakan tersedia untuk target. Jaminan ini baru berarti bila jumlah seluruh `limit-at` tidak melebihi kapasitas koneksi yang sebenarnya. Jika kamu menjanjikan 10 Mbps kepada lima queue pada koneksi 20 Mbps, janji itu tidak bisa dipenuhi semuanya.\n- **Burst** mengizinkan target melewati `max-limit` untuk waktu singkat. Tiga parameter bekerja bersama: `burst-limit` (kecepatan puncak), `burst-threshold` (ambang rata-rata), dan `burst-time` (jendela waktu perataan). Selama rata-rata kecepatan target di bawah ambang, ia boleh memakai kecepatan puncak, sehingga halaman web terasa cepat terbuka. Begitu rata-rata naik melewati ambang, kecepatan kembali ke `max-limit`.\n\nBurst cocok untuk lalu lintas yang datang berupa lonjakan pendek seperti membuka halaman web. Ia tidak menolong unduhan panjang, karena rata-rata kecepatannya cepat melewati ambang.\n\n## Urutan Queue Menentukan Hasil\n\nSimple queue dievaluasi dari atas ke bawah, dan sebuah paket ditangani oleh queue pertama yang cocok dengan targetnya. Queue di bawahnya tidak ikut mengurus paket yang sama. Akibatnya urutan penting.\n\nMisalkan kamu ingin laptop atasan 192.168.88.20 mendapat batas yang lebih longgar daripada seluruh LAN. Jika queue untuk 192.168.88.0/24 berada di atas dan queue untuk 192.168.88.20 di bawahnya, paket atasan sudah cocok dengan queue pertama karena alamatnya termasuk dalam blok itu. Queue kedua tidak pernah menerima paket. Solusinya adalah menaruh queue yang **lebih spesifik di atas** queue yang umum, memakai perintah `/queue simple move` atau membuatnya lebih dulu. Pemeriksaan sederhananya: lihat kolom urutan pada `print` dan pastikan target yang sempit ada di baris atas.\n\nUntuk pengaturan yang lebih bertingkat, simple queue mendukung hubungan **parent**, sehingga beberapa queue anak berbagi satu batas induk. Topik itu di luar cakupan latihan di sini.\n\n## PCQ: Satu Aturan untuk Seluruh Jaringan\n\nMembuat satu queue untuk setiap komputer tidak praktis bila ada seratus perangkat. **PCQ (Per Connection Queue)** adalah jenis queue yang membagi satu batas secara adil per alamat. Kamu membuat satu jenis queue dengan pengelompokan (classifier) berdasarkan alamat sumber atau tujuan, lalu memasangnya pada satu simple queue. Setiap alamat yang aktif mendapat bagian yang kira-kira sama, dan bila ada yang menganggur, bagiannya dipakai yang lain.\n\nGambaran mudahnya: batas unduh 20 Mbps dengan PCQ yang mengelompokkan per alamat tujuan. Bila dua perangkat sedang mengunduh, masing-masing mendapat sekitar 10 Mbps. Bila sepuluh perangkat aktif, masing-masing sekitar 2 Mbps. Jenis queue dibuat lewat `/queue type`, dan simulator tidak memodelkannya. Kamu cukup mengenali konsep dan istilahnya.\n\n## Queue dan FastTrack\n\nSeperti dijelaskan pada bab NAT dan FastTrack, koneksi yang sudah ter-FastTrack melewati sebagian besar pemrosesan, termasuk simple queue global. Akibatnya batas yang kamu pasang bisa tampak tidak bekerja: unduhan tetap ngebut walau queue sudah benar. Pada kebanyakan konfigurasi, solusi yang umum adalah menonaktifkan aturan FastTrack, atau mengecualikan koneksi dari klien yang diatur. Jika pembatasan itu tidak pernah menahan trafik, periksa FastTrack lebih dulu sebelum menyalahkan angka `max-limit`.\n\n## Latihan di Simulator\n\nRouter kosong. Buat satu simple queue bernama `lantai-bawah` dengan target 192.168.88.0/24 dan `max-limit=5M/10M`, lalu periksa dengan `/queue simple print` dan klik **Periksa**. Ingat bahwa angka pertama adalah unggah dan angka kedua unduh.\n\n## Rangkuman\n\n- Simple queue memadukan `target` (siapa) dan `max-limit` (seberapa cepat) dalam satu baris, dengan urutan unggah/unduh.\n- Target berupa blok alamat berbagi satu batas bersama, bukan batas per perangkat.\n- `limit-at` adalah kecepatan yang diusahakan, sedangkan burst mengizinkan lonjakan sementara di atas `max-limit`.\n- Queue dievaluasi dari atas ke bawah dan queue pertama yang cocok menang, jadi taruh target yang spesifik di atas.\n- PCQ membagi satu batas per alamat, dan FastTrack dapat membuat queue global tidak berlaku.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kantor memasang simple queue untuk 192.168.88.0/24 dengan max-limit=10M/2M, karena admin ingin unduhan 10 Mbps. Setelah itu pegawai mengeluh unduhan lambat sekali, sedangkan unggahan terasa longgar. Penyebab yang paling mungkin adalah...",
+          "code": "",
+          "options": [
+            "Target berupa blok alamat sehingga router hanya membatasi paket yang keluar dari WAN",
+            "Satuan M dibaca router sebagai megabyte, sehingga batas unduh terhitung terlalu kecil",
+            "Angka tertukar, padahal urutannya unggah/unduh, jadi yang benar adalah 2M/10M",
+            "Burst otomatis aktif dan menurunkan batas unduh setiap kali rata-rata kecepatan naik"
+          ],
+          "answer": 2,
+          "explanation": "Urutan max-limit adalah unggah lalu unduh, dari sudut pandang target. Menulis 10M/2M membatasi unduh hanya 2 Mbps. Satuan M adalah megabit per detik, dan burst tidak aktif kecuali diisi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Admin ingin laptop atasan 192.168.88.20 mendapat batas 20M/20M, tetapi laptop itu tetap lambat seperti pegawai lain. Keluaran print queue di simulator tampak seperti di bawah. Penyebab yang paling tepat adalah...",
+          "code": "#  NAME  TARGET           MAX-LIMIT\n0  umum  192.168.88.0/24  5M/10M\n1  bos   192.168.88.20    20M/20M",
+          "options": [
+            "Queue umum di atas sudah cocok dengan alamat atasan, jadi queue bos tidak terpakai",
+            "Queue bos memakai target satu alamat, padahal target hanya boleh berupa blok alamat CIDR",
+            "Batas 20M/20M lebih besar dari batas queue umum, jadi router otomatis menolak queue kedua",
+            "Nama bos tidak boleh dipakai di dua queue, sehingga queue kedua tidak dianggap berlaku"
+          ],
+          "answer": 0,
+          "explanation": "Queue dievaluasi dari atas, dan paket diurus queue pertama yang cocok. Alamat .20 termasuk blok /24 sehingga queue umum menangkapnya lebih dulu. Pindahkan queue yang spesifik ke atas. Tampilan ini milik simulator, RouterOS sungguhan memuat kolom lain."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Simple queue dengan target 192.168.88.0/24 dan max-limit=1M/1M memberi setiap laptop di blok itu jatah 1 Mbps sendiri-sendiri.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Target berupa blok alamat memakai satu batas bersama untuk seluruh blok. Jatah per perangkat butuh satu queue per alamat atau PCQ."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Simple queue 5M/10M untuk LAN sudah benar dan berada di urutan teratas, tetapi seorang pegawai tetap mengunduh dengan kecepatan penuh. Di chain forward ada aturan fasttrack-connection untuk established,related. Tindakan yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Menaikkan burst-limit supaya router lebih agresif memperlambat koneksi yang sedang berjalan",
+            "Mengganti target menjadi nama antarmuka ether1 karena alamat klien tidak dikenali queue",
+            "Memindahkan queue ke baris terbawah supaya dievaluasi sesudah semua aturan firewall lain",
+            "Menonaktifkan FastTrack atau mengecualikan klien itu, sebab koneksinya lolos dari queue"
+          ],
+          "answer": 3,
+          "explanation": "Paket yang ter-FastTrack melewati sebagian besar pemrosesan, termasuk simple queue global. Selama koneksi itu di-FastTrack, max-limit tidak menahannya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "mikrotik",
+          "title": "Batasi bandwidth satu segmen",
+          "prompt": "Router kosong. Di editor terminal, buat satu simple queue dengan `/queue simple add`:\n\n- Nama `lantai-bawah`.\n- Target `192.168.88.0/24`.\n- `max-limit=5M/10M` (unggah 5M, unduh 10M).\n\nPeriksa dengan `/queue simple print`, lalu klik **Periksa**.",
+          "starter": {
+            "code": "# Simple queue lantai-bawah untuk 192.168.88.0/24, 5M unggah dan 10M unduh\n"
+          },
+          "solution": {
+            "code": "/queue simple add name=lantai-bawah target=192.168.88.0/24 max-limit=5M/10M\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "ada queue bernama lantai-bawah",
+              "check": "router.queues.some((x) => x.name === \"lantai-bawah\")"
+            },
+            {
+              "name": "target 192.168.88.0/24",
+              "check": "router.queues.some((x) => x.name === \"lantai-bawah\" && x.target === \"192.168.88.0/24\")"
+            },
+            {
+              "name": "max-limit unggah 5M dan unduh 10M",
+              "check": "router.queues.some((x) => x.name === \"lantai-bawah\" && x.maxLimit === \"5M/10M\")"
+            },
+            {
+              "name": "tepat satu queue",
+              "check": "router.queues.length === 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tunnel-ppp-dan-vpn",
+      "title": "Tunnel PPP dan VPN",
+      "est_minutes": 45,
+      "slide_from": 23,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu PPP dan fungsi secret, profile, serta pool alamat.\n- Membedakan PPPoE (lapis 2) dari PPTP dan SSTP (berjalan di atas IP).\n- Menjelaskan alamat titik-ke-titik pada sesi PPP.\n- Menyebut keterbatasan keamanan PPTP dan pilihan yang lebih layak.\n- Menjalankan panduan lab fisik PPPoE dengan dua router.\n\n## Apa Itu PPP\n\n**PPP (Point-to-Point Protocol)** adalah protokol untuk menghubungkan dua ujung secara langsung: satu klien dan satu server. Protokol ini menangani login (nama pengguna dan sandi), pembagian alamat, dan pengaturan sesi. Hasilnya adalah antarmuka virtual di kedua ujung, dan antarmuka itu diperlakukan RouterOS seperti port biasa: kamu bisa memberinya alamat, memasangnya di rute, dan menyaringnya dengan firewall.\n\nBeberapa bentuk PPP dipakai untuk keperluan berbeda. PPPoE sering dipakai penyedia layanan internet untuk login pelanggan. PPTP dan SSTP membentuk **terowongan (tunnel)** lewat internet supaya dua lokasi atau seorang pekerja jarak jauh bisa tersambung seolah berada di jaringan yang sama.\n\n![Terowongan PPP dengan PPP secret, profile, dan pool alamat](gambar:ppp-tunnel)\n\nAlamat di gambar hanya ilustrasi untuk pasangan titik-ke-titik. Contoh teks bab ini memakai 10.10.10.0/24 untuk alamat terowongan.\n\n## Secret, Profile, dan Pool\n\nSisi server memakai tiga komponen yang saling terhubung, dan pola ini sama untuk semua jenis PPP.\n\n- **PPP secret** adalah daftar akun: nama, sandi, layanan yang diizinkan (`service`), dan profile yang dipakai.\n- **PPP profile** adalah aturan sesi: alamat lokal (milik server), alamat jauh (milik klien), dan pengaturan lain seperti DNS.\n- **Pool alamat** adalah rentang IP yang dibagikan ke klien, dibuat dengan `/ip pool` seperti pada bab DHCP dan ARP.\n\n```text\n/ip pool add name=pool-ppp ranges=10.10.10.10-10.10.10.50\n/ppp profile add name=profil-lab local-address=10.10.10.1 remote-address=pool-ppp\n/ppp secret add name=andi password=GantiDenganSandiPanjang service=pppoe profile=profil-lab\n```\n\nSandi pada contoh hanyalah penanda. Gunakan sandi yang panjang dan unik, dan jangan memakai sandi yang gampang ditebak untuk akun yang bisa dijangkau dari internet. Ketika klien berhasil login, server mengambil satu alamat dari pool dan memberikannya ke klien lewat profile.\n\nSimulator tidak memodelkan PPP sama sekali. Perintah di bab ini tidak bisa dijalankan di editor terminal, jadi bab ini memakai panduan lab fisik, bukan latihan simulator.\n\n## Alamat Titik-ke-Titik\n\nPada sesi PPP, kedua ujung biasanya memakai alamat yang dibentuk sebagai pasangan: alamat lokal di server (misalnya 10.10.10.1) dan alamat jauh untuk klien (misalnya 10.10.10.2). RouterOS menampilkannya sebagai alamat dinamis pada antarmuka PPP, dengan alamat tetangga (*network*) berupa alamat pihak seberang. Karena hanya ada dua ujung, tidak ada konsep \"gateway\" yang berbeda: pihak seberang sendiri adalah tujuan.\n\nEfek praktisnya, kamu bisa mem-ping alamat seberang segera setelah sesi terbentuk, dan memakainya sebagai gateway rute statik. Untuk menjangkau jaringan di balik server, klien perlu rute ke jaringan itu lewat alamat seberang. Tanpa rute itu, hanya dua ujung terowongan yang saling melihat.\n\n## PPPoE: PPP di Atas Ethernet\n\n**PPPoE** membungkus PPP di dalam frame ethernet. Ia bekerja di lapis 2: klien menemukan server lewat siaran (broadcast) pada kabel yang sama. Karena siaran tidak melewati router, PPPoE hanya dapat berjalan di dalam **satu jaringan ethernet**, misalnya satu kabel langsung atau satu bridge. PPPoE tidak bisa menyeberangi internet.\n\nSisi server dipasang di antarmuka tertentu dan diberi nama layanan:\n\n```text\n/interface pppoe-server server add service-name=lab interface=ether2 default-profile=profil-lab disabled=no\n```\n\nSisi klien dipasang di antarmuka yang terhubung ke server:\n\n```text\n/interface pppoe-client add name=pppoe-out1 interface=ether1 user=andi password=GantiDenganSandiPanjang add-default-route=yes disabled=no\n```\n\nAntarmuka yang dipakai PPPoE sebaiknya tidak diberi alamat IP, sebab sesi PPP-nya sendiri yang membawa alamat. Opsi `add-default-route=yes` membuat klien memasang rute bawaan lewat server, dan umum dipakai pada router pelanggan yang menyambung ke penyedia layanan.\n\n## PPTP dan SSTP: Terowongan di Atas IP\n\nBerbeda dari PPPoE, PPTP dan SSTP berjalan di atas IP sehingga bisa melewati internet. Klien cukup tahu alamat IP publik server.\n\n- **PPTP** memakai TCP 1723 untuk kontrol ditambah protokol GRE untuk data. PPTP sudah tua dan dianggap **lemah**: autentikasi MS-CHAPv2 yang lazim dipakainya dan enkripsi MPPE-nya diketahui dapat dibobol. Pakai hanya bila terpaksa untuk perangkat lama, dan jangan percayakan data penting padanya.\n- **SSTP** membungkus PPP di dalam TLS lewat TCP 443, sehingga lebih mudah melewati firewall yang hanya membuka port web. Server butuh sertifikat, dan klien sebaiknya memeriksa sertifikat itu agar tidak tertipu server palsu.\n\nAda pilihan modern lain di luar cakupan kelas ini, seperti L2TP dengan IPsec, dan WireGuard pada RouterOS v7. Bila kamu perlu akses jarak jauh yang aman dalam pekerjaan nyata, pilih salah satunya sebelum PPTP.\n\nKeamanan juga menyangkut firewall. Server VPN yang bisa dijangkau dari internet adalah layanan yang akan dipindai. Buka hanya port yang diperlukan pada chain input, gunakan sandi kuat, dan jangan pernah membuka layanan administratif router ke internet.\n\n## Panduan Lab Fisik: PPPoE dengan Dua Router\n\nKamu butuh dua router MikroTik (atau satu router dan satu komputer yang menjalankan klien PPPoE) dan satu kabel ethernet. Hubungkan ether2 router A ke ether1 router B. Pada kebanyakan perangkat, lab ini aman dilakukan setelah konfigurasi di-backup atau dengan router yang di-reset.\n\n1. Di router A, buat pool, profile, dan secret seperti contoh di atas.\n2. Di router A, tambahkan server PPPoE pada ether2 dan pastikan ether2 tidak punya alamat IP.\n3. Di router B, tambahkan klien PPPoE pada ether1 dengan nama pengguna dan sandi yang sama.\n4. Di router B, jalankan `/interface print`. Antarmuka `pppoe-out1` harus bertanda R (running).\n5. Di router A, jalankan `/ppp active print` untuk melihat sesi yang aktif, lalu di router B jalankan `ping 10.10.10.1`.\n\nJika sesi tidak muncul, periksa tiga hal: nama layanan dan sandi cocok, kabel terhubung ke port yang benar, dan antarmuka tidak diblokir oleh bridge atau firewall. Setelah selesai, hapus akun dan antarmuka lab supaya tidak tertinggal di router.\n\n## Rangkuman\n\n- PPP membuat antarmuka virtual antara klien dan server, dengan login dan pembagian alamat.\n- Server memakai secret (akun), profile (aturan sesi), dan pool (rentang alamat).\n- Sesi PPP memakai pasangan alamat titik-ke-titik, dan rute ke jaringan di belakang server tetap perlu ditambahkan.\n- PPPoE berjalan di lapis 2 dalam satu jaringan ethernet dan tidak dapat menyeberangi internet.\n- PPTP dan SSTP berjalan di atas IP. PPTP lemah, SSTP memakai TLS dan butuh sertifikat, dan pada v7 WireGuard juga pilihan yang lebih modern.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kantor cabang di kota lain ingin tersambung ke kantor pusat lewat internet, dan seorang teknisi mengusulkan PPPoE di antara kedua router. Penilaian yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Bisa, asalkan kedua router memakai nama layanan yang sama pada antarmuka WAN masing-masing",
+            "Tidak bisa, sebab PPPoE bekerja di lapis 2 dan tidak melewati router, pakai SSTP atau sejenisnya",
+            "Bisa, sebab PPPoE membungkus data di dalam TCP 443 sehingga dapat menembus firewall di internet",
+            "Tidak bisa, karena PPPoE hanya mendukung satu klien sehingga tidak cocok untuk dua kantor"
+          ],
+          "answer": 1,
+          "explanation": "PPPoE menemukan server lewat siaran ethernet, yang tidak diteruskan router, jadi hanya jalan dalam satu jaringan ethernet. Untuk melewati internet pakai terowongan di atas IP seperti SSTP, L2TP dengan IPsec, atau WireGuard pada v7."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Klien PPPoE dengan nama pengguna andi selalu ditolak saat login, padahal sandinya benar dan kabel sudah terhubung. Konfigurasi di server seperti di bawah. Penyebab yang paling mungkin adalah...",
+          "code": "/ip pool add name=pool-ppp ranges=10.10.10.10-10.10.10.50\n/ppp profile add name=profil-lab local-address=10.10.10.1 remote-address=pool-ppp\n/ppp secret add name=andi password=GantiDenganSandiPanjang service=sstp profile=profil-lab",
+          "options": [
+            "Profile memakai alamat lokal yang terlalu kecil sehingga server tidak dapat membuat sesi",
+            "Nama andi terlalu pendek, karena nama akun PPP minimal harus berisi lima karakter",
+            "Pool bernama pool-ppp tidak boleh dipakai bersama alamat lokal yang berada satu blok",
+            "Secret hanya mengizinkan service=sstp, sehingga login lewat PPPoE tidak diterima server"
+          ],
+          "answer": 3,
+          "explanation": "Opsi service pada secret membatasi jenis layanan yang boleh memakai akun itu. Untuk PPPoE nilainya harus pppoe atau any."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "PPTP sebaiknya dihindari untuk data yang sensitif, karena autentikasi MS-CHAPv2 dan enkripsi MPPE yang lazim dipakainya diketahui dapat dibobol.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. PPTP sudah tua dan lemah. Pilih SSTP, L2TP dengan IPsec, atau WireGuard pada v7 bila kamu butuh akses jarak jauh yang aman."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sesi SSTP dari laptop ke router kantor sudah aktif dan laptop bisa mem-ping 10.10.10.1 (ujung seberang), tetapi 192.168.88.10 di LAN kantor tidak terjangkau. Langkah yang paling tepat pertama kali adalah...",
+          "code": "",
+          "options": [
+            "Mengganti jenis terowongan menjadi PPTP karena SSTP tidak membawa lalu lintas LAN",
+            "Memperbesar pool alamat PPP, karena rentang yang sempit membuat LAN tidak terjangkau",
+            "Menambah rute di laptop ke 192.168.88.0/24 lewat 10.10.10.1, lalu cek firewall",
+            "Menonaktifkan sertifikat server supaya laptop dapat melihat seluruh jaringan di belakangnya"
+          ],
+          "answer": 2,
+          "explanation": "Sesi PPP hanya menghubungkan dua ujung. Untuk jaringan di belakang server, klien butuh rute lewat alamat seberang, dan firewall di server harus mengizinkan forward."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "alat-bantu-dan-monitoring",
+      "title": "Alat Bantu dan Monitoring",
+      "est_minutes": 40,
+      "slide_from": 25,
+      "slide_to": 26,
+      "body": "## Tujuan\n\n- Menyebut alat bantu diagnosis RouterOS dan kapan masing-masing dipakai.\n- Menggunakan `ping` untuk menguji konektivitas dan membaca hasilnya.\n- Menjelaskan fungsi Netwatch, traceroute, Torch, profiler, grafik, SNMP, dan The Dude.\n- Menyiapkan pemantauan tanpa membuka layanan yang tidak aman.\n\n## Mengapa Perlu Alat Bantu\n\nKonfigurasi yang benar belum menjamin jaringan yang sehat. Kabel bisa longgar, penyedia layanan bisa putus, dan satu komputer bisa menghabiskan kapasitas. Router MikroTik menyediakan banyak alat untuk melihat apa yang terjadi. Bab ini memperkenalkan alat-alat itu dan hanya `ping` yang bisa dicoba di simulator.\n\nPola kerja yang baik adalah dari dekat ke jauh: periksa antarmuka dan alamat, lalu gateway, lalu internet lewat alamat IP, dan terakhir nama domain. Setiap langkah mempersempit letak masalahnya.\n\n## Ping: Menguji Keterjangkauan\n\n**Ping** mengirim paket ICMP echo ke sebuah alamat dan menunggu balasan. Bila balasan datang, jalur ke sana dan kembali sedang berfungsi. Uji berurutan memberi petunjuk. Ping ke alamat router sendiri menguji antarmuka dan alamat, ping ke gateway menguji jalur ke penyedia layanan, ping ke 8.8.8.8 menguji rute ke internet, dan ping ke nama domain menguji DNS.\n\n```text\nping 8.8.8.8 count=3\n```\n\nSimulator mencetak setiap percobaan sebagai `8.8.8.8 56 64 1ms` bila ada balasan, atau `timeout` bila tidak, lalu satu baris ringkasan `sent=3 received=3 packet-loss=0%`. RouterOS sungguhan mencetak tabel dengan kolom urutan, alamat, ukuran, TTL, dan waktu yang nilainya berbeda tiap balasan. Dalam simulator, balasan hanya muncul bila alamat tujuan adalah alamat milik router, berada dalam jaringan yang terhubung langsung, atau tercakup oleh `dst-address` sebuah rute yang tersimpan. Selain itu hasilnya `timeout`. Perhatikan juga bahwa banyak host sungguhan memblokir ICMP, sehingga ping yang gagal belum tentu berarti host mati.\n\n## Membaca Pola Hasil Ping\n\nHasil ping lebih berguna bila dibaca sebagai pola, bukan satu angka.\n\n- **Semua balasan datang, tetapi nama domain gagal.** Jalur sehat, masalahnya ada di DNS. Periksa server DNS di router dan di klien.\n- **Ping ke gateway berhasil, ping ke 8.8.8.8 timeout.** Router tersambung ke penyedia layanan, tetapi rute bawaan atau jalur di luar bermasalah. Lihat `/ip route print` dan pastikan ada rute `0.0.0.0/0` yang aktif.\n- **Router bisa ping 8.8.8.8, laptop tidak bisa.** Penyebab klasiknya adalah NAT yang belum dipasang atau gateway di laptop yang salah.\n- **Sebagian paket hilang.** Koneksi tidak stabil. Cek kabel, kualitas sinyal, atau antarmuka yang sedang penuh.\n\nCatat hasil setiap langkah sebelum mengubah konfigurasi. Dengan begitu kamu tahu apakah perubahan terakhir memperbaiki atau malah memperburuk keadaan.\n\n## Traceroute, Netwatch, dan Torch\n\n**Traceroute** (`/tool traceroute 8.8.8.8`) menunjukkan jalur yang dilewati paket, hop demi hop, dengan mengirim paket yang TTL-nya bertambah satu demi satu. Jika paket berhenti di hop ketiga, di sanalah letak masalah atau pemblokiran. Hop yang tidak menjawab belum tentu rusak, karena banyak router sengaja tidak membalas. Simulator tidak menyediakan traceroute.\n\n**Netwatch** (`/tool netwatch`) memantau sebuah host secara berkala dan menjalankan skrip saat statusnya berubah antara hidup dan mati. Contohnya, host 8.8.8.8 diuji tiap 30 detik, dan saat mati router bisa mengirim peringatan atau mengganti rute. Simulator tidak memodelkan Netwatch.\n\n**Torch** (`/tool torch interface=ether1`) menampilkan lalu lintas yang sedang lewat di sebuah antarmuka secara langsung, dikelompokkan per alamat sumber, tujuan, protokol, dan port. Torch cocok untuk menjawab pertanyaan \"siapa yang sedang menghabiskan bandwidth sekarang\". Torch memberi beban pada CPU saat berjalan, jadi tutup setelah selesai dipakai.\n\n## Memantau Trafik dan Beban\n\nBeberapa alat menjawab pertanyaan seberapa besar lalu lintas dan seberapa berat kerja router.\n\n- **Monitor traffic** (`/interface monitor-traffic ether1`) menampilkan kecepatan masuk dan keluar sebuah antarmuka saat ini.\n- **Grafik** (`/tool graphing`) merekam penggunaan antarmuka, CPU, dan sumber daya lain dalam waktu lama, lalu menampilkannya sebagai gambar yang dapat dibuka lewat browser. Batasi alamat yang boleh mengakses halaman grafik, sebab informasi ini berguna bagi penyerang.\n- **Profiler** (`/tool profile`) menampilkan bagian sistem mana yang memakai CPU. Saat router terasa lambat, profiler membantu menentukan apakah penyebabnya firewall, routing, queue, atau proses lain.\n\nKetiganya melihat keadaan router sendiri. Untuk memantau banyak perangkat sekaligus, kamu butuh sistem pemantau seperti di bawah.\n\n## E-mail, SNMP, dan The Dude\n\n**E-mail** (`/tool e-mail`) memungkinkan router mengirim surel, misalnya untuk peringatan dari Netwatch atau berkas cadangan. Kamu mengisi alamat server surel, port, dan akun. Gunakan koneksi terenkripsi (TLS) bila server mendukungnya, dan sebaiknya akun khusus dengan sandi aplikasi, bukan sandi utama kamu. Kredensial tidak boleh dikirim tanpa enkripsi lewat jaringan yang tidak kamu percayai.\n\n**SNMP** adalah protokol standar bagi sistem pemantau untuk membaca data perangkat: beban CPU, lalu lintas antarmuka, suhu, dan sebagainya. Versi 1 dan 2c memakai string *community* sebagai sandi yang dikirim tanpa enkripsi, sedangkan versi 3 mendukung autentikasi dan enkripsi. Di RouterOS, komunitas bawaan bernama `public`. Jangan dibiarkan: ganti namanya, batasi alamat yang boleh bertanya ke server pemantau saja, dan jangan membuka SNMP ke internet.\n\n**The Dude** adalah aplikasi pemantau jaringan gratis buatan MikroTik. Ia menemukan perangkat secara otomatis, menggambar peta jaringan, mengumpulkan grafik, dan mengirim peringatan. Server The Dude berjalan sebagai paket tambahan pada beberapa perangkat atau pada mesin virtual, dan klien tersedia untuk beberapa sistem operasi. Dukungan tiap versi RouterOS berbeda, jadi cek dokumentasi untuk versi yang kamu pakai.\n\n## Latihan di Simulator\n\nRouter sudah memiliki alamat 192.168.88.1/24 di ether2, alamat 203.0.113.2/30 di ether1, dan rute bawaan lewat 203.0.113.1. Jalankan `ping 8.8.8.8 count=3` dan `ping 192.168.88.1 count=2`, lalu klik **Periksa**. Pada simulator, alamat tujuan yang tercakup rute bawaan mendapat balasan, jadi hasilnya `received` sama dengan `sent`.\n\n## Rangkuman\n\n- Uji dari dekat ke jauh: antarmuka dan alamat, gateway, alamat internet, lalu nama domain.\n- Ping memakai ICMP. Host yang memblokir ICMP tampak mati padahal hidup.\n- Traceroute menunjukkan jalur per hop, Netwatch memantau host berkala, dan Torch menampilkan lalu lintas sekarang.\n- Monitor traffic, grafik, dan profiler membaca beban antarmuka dan CPU router sendiri.\n- SNMP sebaiknya memakai community yang bukan `public`, dibatasi alamatnya, dan tidak dibuka ke internet. The Dude memantau banyak perangkat sekaligus.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dari router, ping ke gateway penyedia layanan 203.0.113.1 selalu berhasil, tetapi ping ke 8.8.8.8 timeout seratus persen. Langkah berikutnya yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Menambah masquerade di chain srcnat karena ping dari router butuh NAT keluar",
+            "Mengganti server DNS di router, sebab 8.8.8.8 baru bisa dijangkau setelah DNS benar",
+            "Menaikkan max-limit simple queue supaya paket ping tidak dibuang karena kuota habis",
+            "Memeriksa lewat /ip route print apakah rute 0.0.0.0/0 ada dan aktif sekarang"
+          ],
+          "answer": 3,
+          "explanation": "Ping ke alamat IP tidak memakai DNS. Gateway terjangkau tetapi internet tidak, jadi cek rute bawaan dulu. Ping dari router sendiri memakai alamat WAN, jadi tidak butuh masquerade."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Router baru hanya memiliki alamat 192.168.88.1/24 pada ether2 dan belum punya rute. Admin menjalankan ping di simulator dan mendapat keluaran di bawah. Kesimpulan yang paling tepat adalah...",
+          "code": "[admin@MikroTik] > ping 8.8.8.8 count=3\ntimeout\ntimeout\ntimeout\nsent=3 received=0 packet-loss=100%",
+          "options": [
+            "Server DNS di router belum diisi, sehingga semua ping ke alamat luar dibatalkan",
+            "Kabel ether1 belum terpasang, sehingga antarmuka WAN tidak mengirim paket sama sekali",
+            "Tidak ada rute atau jaringan yang mencakup 8.8.8.8, jadi perlu menambah rute bawaan",
+            "Host 8.8.8.8 sedang mati, sehingga simulator mencetak timeout pada setiap percobaan"
+          ],
+          "answer": 2,
+          "explanation": "Di simulator, balasan hanya ada untuk alamat router, jaringan terhubung, atau yang tercakup rute tersimpan. Tanpa rute, 8.8.8.8 timeout. RouterOS sungguhan mencetak tabel dengan kolom berbeda, tetapi pola 100 persen hilang tetap menunjukkan jalur ke sana tidak ada."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Bila ping ke sebuah server tidak mendapat balasan, server itu pasti sedang mati.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Banyak host dan firewall sengaja memblokir ICMP, sehingga host yang hidup pun bisa tidak membalas ping. Uji juga lewat layanan yang sebenarnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sistem pemantau perlu membaca data SNMP dari router kantor. Router baru diaktifkan SNMP-nya dan masih memakai community bawaan. Pengaturan yang paling tepat adalah...",
+          "code": "",
+          "options": [
+            "Mengganti nama community, membatasi ke server pemantau, dan tidak membuka ke WAN",
+            "Membiarkan community bawaan karena SNMP hanya membaca data dan tidak bisa menimbulkan masalah",
+            "Membuka SNMP ke seluruh internet supaya pemantau bisa dipasang di mana saja tanpa batasan",
+            "Memakai community yang sama di semua router supaya sistem pemantau tidak perlu diatur ulang"
+          ],
+          "answer": 0,
+          "explanation": "Community bawaan public sudah dikenal semua orang, dan versi 1 atau 2c mengirimkannya tanpa enkripsi. Ganti namanya, batasi alamat yang boleh bertanya, dan jangan buka ke internet."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "mikrotik",
+          "title": "Uji konektivitas dengan ping",
+          "prompt": "Router sudah dikonfigurasi: alamat 192.168.88.1/24 di ether2, alamat 203.0.113.2/30 di ether1, dan rute bawaan lewat 203.0.113.1. Di editor terminal, jalankan dua uji:\n\n- `ping 8.8.8.8 count=3`\n- `ping 192.168.88.1 count=2`\n\nLalu klik **Periksa**. Konfigurasi awal tidak perlu diubah.",
+          "starter": {
+            "code": "# ping ke 8.8.8.8 sebanyak 3 kali\n# ping ke 192.168.88.1 sebanyak 2 kali\n"
+          },
+          "solution": {
+            "code": "ping 8.8.8.8 count=3\nping 192.168.88.1 count=2\n"
+          },
+          "setup": "var awal = {addresses: [{address: \"192.168.88.1/24\", network: \"192.168.88.0\", interface: \"ether2\"}, {address: \"203.0.113.2/30\", network: \"203.0.113.0\", interface: \"ether1\"}], routes: [{dstAddress: \"0.0.0.0/0\", gateway: \"203.0.113.1\", distance: 1}]};",
+          "tests": [
+            {
+              "name": "ping 8.8.8.8 tiga kali, semua dibalas",
+              "check": "keluaran.some((l) => l === \"sent=3 received=3 packet-loss=0%\")"
+            },
+            {
+              "name": "ping 192.168.88.1 dua kali, semua dibalas",
+              "check": "keluaran.some((l) => l === \"sent=2 received=2 packet-loss=0%\")"
+            },
+            {
+              "name": "tiga balasan dari 8.8.8.8",
+              "check": "keluaran.filter((l) => l.startsWith(\"8.8.8.8 56 64\")).length === 3"
+            },
+            {
+              "name": "tidak ada timeout",
+              "check": "!keluaran.some((l) => l === \"timeout\")"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
