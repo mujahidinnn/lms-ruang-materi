@@ -397,7 +397,7 @@ function gambarQueue() {
   b += box(40, 190, 260, 220, { fill: M3, r: 18 }) + text(170, 245, "Target", { size: 30, weight: 800, anchor: "middle" }) + text(170, 288, "192.168.88.0/24", S({ anchor: "middle", mono: true })) + text(170, 326, "PC, laptop, HP", S({ anchor: "middle" }));
   b += box(900, 190, 260, 220, { fill: "#ffffff", r: 18 }) + text(1030, 245, "Internet", { size: 30, weight: 800, anchor: "middle" });
   b += arrow(304, 270, 896, 270) + text(600, 238, "Unggah: max-limit 5M", { size: 26, weight: 800, anchor: "middle" }) + text(600, 306, "dari target ke internet", S({ anchor: "middle" }));
-  b += `<line x1="896" y1="390" x2="304" y2="390" stroke="${INK}" stroke-width="10" stroke-linecap="round" marker-end="url(#ah)"/>` + text(600, 358, "Unduh: max-limit 10M", { size: 26, weight: 800, anchor: "middle" }) + text(600, 436, "dari internet ke target", S({ anchor: "middle" }));
+  b += `${arrow(896, 390, 304, 390)}` + text(600, 358, "Unduh: max-limit 10M", { size: 26, weight: 800, anchor: "middle" }) + text(600, 436, "dari internet ke target", S({ anchor: "middle" }));
   [["max-limit", "Batas atas kecepatan,", "format unggah/unduh."], ["limit-at (opsi)", "Kecepatan yang dijamin", "untuk target."], ["burst (opsi)", "Boleh melewati max-limit", "untuk waktu singkat."]].forEach(([n, l1, l2], i) => {
     const x = 40 + i * 390;
     b += box(x, 510, 340, 150, { r: 14 }) + text(x + 24, 554, n, { size: 26, weight: 800, mono: true }) + text(x + 24, 598, l1, S()) + text(x + 24, 628, l2, S());
@@ -411,11 +411,11 @@ function gambarPpp() {
   const end = (x, name, a, c) => box(x, 150, 270, 160, { fill: M3, r: 18 }) + text(x + 135, 200, name, { size: 32, weight: 800, anchor: "middle" }) + text(x + 135, 240, a, S({ anchor: "middle" })) + text(x + 135, 276, c, S({ anchor: "middle", mono: true }));
   let b = text(600, 62, "Terowongan PPP antara klien dan server", { size: 40, weight: 800, anchor: "middle" });
   b += end(40, "Klien", "laptop di rumah", "10.10.10.2") + end(890, "Server", "router kantor", "10.10.10.1");
-  b += box(330, 180, 540, 100, { fill: M1, r: 50 }) + text(600, 242, "PPPoE / PPTP / SSTP", { size: 28, weight: 800, anchor: "middle" });
+  b += box(330, 180, 540, 100, { fill: M1, r: 50 }) + text(600, 242, "PPTP / SSTP (lewat internet)", { size: 28, weight: 800, anchor: "middle" });
   b += line(310, 230, 330, 230) + line(870, 230, 890, 230) + text(600, 162, "terowongan lewat jaringan", S({ anchor: "middle", size: 24 }));
-  [["PPPoE", "Lapis 2, di atas ethernet.", "Butuh interface dan", "service-name."], ["PPTP", "Di atas IP.", "Sudah tua, keamanannya", "lemah."], ["SSTP", "Di atas IP, dibungkus", "TLS (SSL).", ""]].forEach(([n, l1, l2, l3], i) => {
+  [["PPPoE", ["Lapis 2, di atas ethernet.", "Butuh interface dan", "service-name.", "Hanya dalam satu ethernet,", "bukan lewat internet."]], ["PPTP", ["Di atas IP.", "Sudah tua, keamanannya", "lemah."]], ["SSTP", ["Di atas IP, dibungkus", "TLS (SSL)."]]].forEach(([n, ls], i) => {
     const x = 40 + i * 390;
-    b += box(x, 430, 340, 170, { r: 14 }) + text(x + 24, 476, n, { size: 30, weight: 800 }) + text(x + 24, 516, l1, S()) + text(x + 24, 546, l2, S()) + (l3 ? text(x + 24, 576, l3, S()) : "");
+    b += box(x, 360, 340, 240, { r: 14 }) + text(x + 24, 406, n, { size: 30, weight: 800 }) + ls.map((l, j) => text(x + 24, 446 + j * 30, l, S())).join("");
   });
   b += text(40, 665, "Di sisi server", { size: 30, weight: 800 });
   [["PPP secret", "Nama user dan password", "untuk tiap klien."], ["PPP profile", "Aturan sesi: alamat lokal,", "pool, dan batas."], ["Pool alamat", "Daftar IP yang dibagikan", "ke klien."]].forEach(([n, l1, l2], i) => {
