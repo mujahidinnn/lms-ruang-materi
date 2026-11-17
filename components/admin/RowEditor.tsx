@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { dangerButton, field, smallButton } from "./editor";
 import { rpc } from "@/lib/rpc";
@@ -19,18 +19,18 @@ export default function RowEditor({
   fields: { name: string; label: string }[];
 }) {
   return (
-    <li className="py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
+    <li className="rounded-2xl bg-zinc-800/40 p-4">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
           {fields.map((f, i) => (
-            <p key={f.name} className={i === 0 ? "text-zinc-50" : "text-sm text-zinc-400"}>{row[f.name]}</p>
+            <p key={f.name} className={i === 0 ? "font-medium text-zinc-50" : "text-sm text-zinc-400"}>{row[f.name]}</p>
           ))}
         </div>
         <StatusBadge status={row.status} />
       </div>
-      <details className="group mt-2">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm text-zinc-400 hover:text-zinc-50">Edit</summary>
-        <form action={simpanBaris} className="mt-2 flex flex-col gap-3">
+      <details className="mt-3">
+        <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full bg-zinc-900 px-4 text-sm text-zinc-300 shadow-soft hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"><Pencil aria-hidden className="size-3.5" />Edit</summary>
+        <form action={simpanBaris} className="mt-4 flex flex-col gap-3 border-t border-zinc-800 pt-4">
           <input type="hidden" name="table" value={table} />
           <input type="hidden" name="id" value={row.id} />
           <input type="hidden" name="slug" value={slug} />

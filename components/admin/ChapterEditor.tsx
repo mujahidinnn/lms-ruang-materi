@@ -18,9 +18,9 @@ export default function ChapterEditor({ topic, c, n, slides }: { topic: string; 
   const [preview, setPreview] = useState(false);
   const [body, setBody] = useState(c.body);
   return (
-    <li className="py-6">
+    <li className="pb-4 pt-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold">Bab {n}</p>
+        <p className="text-sm font-semibold text-zinc-400">Isi bab {n}</p>
         <div className="flex items-center gap-2">
           <StatusBadge status={c.status} />
           <form action={geserBab}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="topic" value={topic} /><input type="hidden" name="arah" value="naik" /><button aria-label="Naikkan" className={smallButton}><ArrowUp aria-hidden className="size-4" /></button></form>
@@ -46,14 +46,17 @@ export default function ChapterEditor({ topic, c, n, slides }: { topic: string; 
         <textarea name="body" aria-label="Isi bab (markdown)" value={body} onChange={(e) => setBody(e.target.value)} rows={16} hidden={preview} className={`${field} font-mono leading-relaxed`} />
         {preview && <div className="rounded-2xl bg-zinc-950 p-5"><MarkdownBase body={body} slides={slides} /></div>}
         <p className="text-xs text-zinc-500">Sisipkan slide dengan <code className="font-mono">![keterangan](slide:12)</code>.</p>
-        <div className="flex gap-2">
-          <button className={smallButton}>Simpan bab</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className={`${smallButton} bg-primary font-semibold text-on-primary hover:bg-primary-hover hover:text-on-primary`}>Simpan bab</button>
+          <button
+            formAction={hapusBab}
+            formNoValidate
+            className={`${dangerButton} ml-auto`}
+            data-confirm={`Hapus bab "${c.title}" beserta kuisnya?`}
+            data-confirm-action="Hapus"
+            data-confirm-danger
+          ><Trash2 aria-hidden className="size-4" />Hapus bab</button>
         </div>
-      </form>
-      <form action={hapusBab} className="mt-2" data-confirm={`Hapus bab "${c.title}" beserta kuisnya?`} data-confirm-action="Hapus" data-confirm-danger>
-        <input type="hidden" name="id" value={c.id} />
-        <input type="hidden" name="topic" value={topic} />
-        <button className={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus bab</button>
       </form>
     </li>
   );
