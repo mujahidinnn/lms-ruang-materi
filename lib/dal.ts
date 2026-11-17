@@ -1,7 +1,17 @@
-import { notFound, perRequest, redirect } from "@/lib/request";
+import { currentRequest, notFound, perRequest, redirect } from "@/lib/request";
 import { createClient } from "@/lib/supabase/server";
 
 export type Role = "student" | "admin";
+
+// A hint for cached public pages (the "Admin" item in the account menu,
+// shown through the admin: variant). Never trusted: /admin checks the role.
+export const ADMIN_HINT = "rm-admin";
+function hintAdmin(on: boolean) {
+  const { cookies } = currentRequest();
+  const has = cookies.get(ADMIN_HINT)?.value === "1";
+  if (on && !has) cookies.set(ADMIN_HINT, "1", { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax", secure: import.meta.env.PROD });
+  else if (!on && has) cookies.delete(ADMIN_HINT, { path: "/" });
+}
 export type CurrentUser = { id: string; email: string; role: Role };
 
 // Returns null when signed out. getClaims() verifies the JWT signature
@@ -13,7 +23,11 @@ export function getCurrentUser(): Promise<CurrentUser | null> {
     const supabase = await createClient();
     const [{ data }, { data: admin }] = await Promise.all([supabase.auth.getClaims(), supabase.rpc("is_admin")]);
     const claims = data?.claims;
-    if (!claims?.sub) return null;
+    if (!claims?.sub) {
+      hintAdmin(false);
+      return null;
+    }
+    hintAdmin(admin === true);
 
     return {
       id: claims.sub,

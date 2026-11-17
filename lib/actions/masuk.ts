@@ -105,6 +105,7 @@ export async function lupaPassword(_prev: MasukState, form: FormData): Promise<M
 export async function keluar() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  currentRequest().cookies.delete("rm-admin", { path: "/" });
   redirect("/");
 }
 
