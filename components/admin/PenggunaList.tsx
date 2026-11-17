@@ -21,6 +21,7 @@ export type Person = {
   joinedAt: number;
   seen: string;
   seenFull: string;
+  online: boolean;
   seenAt: number;
 };
 
@@ -91,10 +92,14 @@ export default function PenggunaList({ people }: { people: Person[] }) {
                 {p.pending ? (
                   <p className="text-accent-warm">Undangan belum diterima</p>
                 ) : (
-                  <p className="flex items-center gap-1.5 text-zinc-300" title={p.seenFull ? `Terakhir akses ${p.seenFull}` : undefined}>
-                    <Clock aria-hidden className="size-3.5 shrink-0 text-zinc-500" />
-                    <span className="sr-only">Terakhir akses: </span>{p.seen}
-                  </p>
+                  <>
+                    <p className="flex items-center gap-1.5 text-zinc-300">
+                      {p.online ? <span aria-hidden className="size-2 shrink-0 rounded-full bg-brand ring-4 ring-brand/20" /> : <Clock aria-hidden className="size-3.5 shrink-0 text-zinc-500" />}
+                      <span className="sr-only">Terakhir akses: </span>
+                      <span className={p.online ? "font-semibold text-accent" : ""}>{p.online ? "Online" : p.seen}</span>
+                    </p>
+                    {p.seenFull && <p className="text-xs text-zinc-500">{p.seenFull}</p>}
+                  </>
                 )}
                 <p className="text-xs text-zinc-500">Daftar {p.joined}, {p.provider === "google" ? "Google" : "email"}</p>
               </div>

@@ -6,6 +6,16 @@ export type Role = "student" | "admin";
 // A hint for cached public pages (the "Admin" item in the account menu,
 // shown through the admin: variant). Never trusted: /admin checks the role.
 export const ADMIN_HINT = "rm-admin";
+// Records "last seen" for the admin Pengguna list, at most every 5 minutes
+// per browser (a cookie), and every 2 minutes per user (touch_seen()).
+const SEEN = "rm-seen";
+async function touchSeen(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { cookies } = currentRequest();
+  if (cookies.get(SEEN)) return;
+  cookies.set(SEEN, "1", { path: "/", maxAge: 300, httpOnly: true, sameSite: "lax", secure: import.meta.env.PROD });
+  await supabase.rpc("touch_seen");
+}
+
 function hintAdmin(on: boolean) {
   const { cookies } = currentRequest();
   const has = cookies.get(ADMIN_HINT)?.value === "1";
@@ -28,6 +38,7 @@ export function getCurrentUser(): Promise<CurrentUser | null> {
       return null;
     }
     hintAdmin(admin === true);
+    await touchSeen(supabase);
 
     return {
       id: claims.sub,
