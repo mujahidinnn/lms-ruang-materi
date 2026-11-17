@@ -12,7 +12,7 @@ export type Review = {
 // Never "Gagal": a failed result says "Belum lulus" and points back to the
 // material. The key shows only when the database decided it may. The page
 // adds the Celebrate island for a pass.
-export default function ExamReview({ review, slug }: { review: Review; slug: string }) {
+export default function ExamReview({ review, slug, children }: { review: Review; slug: string; children?: React.ReactNode }) {
   return (
     <div>
       {review.passed ? <Passed className="mb-6 size-20" /> : <TryAgain className="mb-6 size-20" />}
@@ -28,6 +28,7 @@ export default function ExamReview({ review, slug }: { review: Review; slug: str
       {!review.show_keys && (
         <p className="mt-4 text-sm text-zinc-500">Kunci jawaban tampil setelah kamu lulus atau setelah percobaan terakhir.</p>
       )}
+      {children}
 
       <ol className="mt-10 space-y-3">
         {review.questions.map((q, n) => (
