@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { chip } from "@/components/ui/styles";
 import ActionForm from "./ActionForm";
+import Avatar from "./Avatar";
 import Select from "@/components/ui/Select";
 import { field, smallButton } from "./editor";
 
@@ -15,6 +16,7 @@ export type Person = {
   me: boolean;
   pending: boolean; // invited, not accepted yet
   provider: string;
+  avatar: string | null;
   joined: string;
   joinedAt: number;
   seen: string;
@@ -77,9 +79,7 @@ export default function PenggunaList({ people }: { people: Person[] }) {
           {shown.map((p) => (
             <li key={p.id} className="grid items-center gap-x-4 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_5rem_11rem_15.5rem]">
               <div className="flex min-w-0 items-center gap-3">
-                <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-2xl text-base font-bold ${p.admin ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-300"}`}>
-                  {p.name.charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={p.name} src={p.avatar} admin={p.admin} />
                 <div className="min-w-0">
                   <p className="truncate font-medium"><a href={`/admin/pengguna/${p.id}`} className="hover:text-accent">{p.name}</a>{p.me && <span className="ml-2 text-xs font-normal text-zinc-500">kamu</span>}</p>
                   <p className="truncate text-sm text-zinc-400">{p.email}</p>
