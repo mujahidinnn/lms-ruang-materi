@@ -37,7 +37,7 @@ export default function MikrotikTerminal({ lines }: { lines: string[] }) {
   // Newest output first in view, like a real terminal.
   const last = [...lines].reverse().find((l) => PROMPT_RE.test(l));
   const prompt = last ? PROMPT_RE.exec(last)![0] : PROMPT;
-  useEffect(() => { body.current?.scrollTo({ top: body.current.scrollHeight }); }, [lines]);
+  useEffect(() => { body.current?.scrollTo({ top: body.current.scrollHeight, left: 0 }); }, [lines]);
   return (
     <figure className="overflow-hidden rounded-2xl bg-noir text-[13px] leading-6 text-on-noir shadow-soft">
       <figcaption className="flex items-center gap-2 bg-white/[0.06] px-4 py-2.5">
@@ -47,7 +47,7 @@ export default function MikrotikTerminal({ lines }: { lines: string[] }) {
         <span className="ml-2 font-mono text-xs text-on-noir/60">admin@MikroTik</span>
         <span className="ml-auto rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-on-primary">simulator</span>
       </figcaption>
-      <div ref={body} role="log" aria-label="Keluaran terminal" tabIndex={0} className="scrollbar-thin max-h-80 overflow-auto px-4 py-3 font-mono text-on-noir/85 focus-visible:outline-2 focus-visible:outline-accent">
+      <div ref={body} role="log" aria-label="Keluaran terminal" tabIndex={0} className="scrollbar-thin max-h-80 overflow-auto overscroll-contain px-4 py-3 font-mono text-on-noir/85 focus-visible:outline-2 focus-visible:outline-accent">
         {lines.map((l, k) =>
           PROMPT_RE.test(l) ? <Command key={k} line={l} /> : (
             <div key={k} className={lineClass(l)}>{l || " "}</div>
