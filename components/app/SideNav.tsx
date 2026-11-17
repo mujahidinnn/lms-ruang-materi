@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardCheck, FileUp, LayoutDashboard, Route } from "lucide-react";
+import { BookOpen, ClipboardCheck, FileUp, LayoutDashboard, Route, Users } from "lucide-react";
 
 // Admin links (learners use SiteHeader, GUIDELINE Navigation).
 const SETS = {
@@ -8,6 +8,7 @@ const SETS = {
     { href: "/admin/topik", label: "Topik", Icon: BookOpen },
     { href: "/admin/roadmap", label: "Roadmap", Icon: Route },
     { href: "/admin/ujian", label: "Ujian", Icon: ClipboardCheck },
+    { href: "/admin/pengguna", label: "Pengguna", Icon: Users },
   ],
 };
 export type NavSet = keyof typeof SETS;
