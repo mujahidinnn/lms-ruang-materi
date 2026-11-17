@@ -52,7 +52,7 @@ export default function PenggunaList({ people }: { people: Person[] }) {
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-500" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau email" className={`${field} pl-11`} />
         </label>
-        <div className="w-full sm:w-64"><Select label="Urutkan" value={sort} options={SORTS} onChange={setSort} /></div>
+        <div className="w-full sm:w-64"><Select prefix label="Urutkan" value={sort} options={SORTS} onChange={(v) => setSort(v as typeof sort)} /></div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring">
         {FILTERS.map(([key, label, test]) => (

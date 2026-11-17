@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import { FileUp } from "lucide-react";
 import { useState, useTransition } from "react";
 import { MAX_PPTX_BYTES, MAX_SLIDES, countSlides, estimateTokens, isZip } from "@/lib/pptx";
@@ -93,9 +94,7 @@ export default function ImporForm({ models }: { models: string[] }) {
           </label>
           <label className="flex flex-col gap-1.5 text-sm text-zinc-300">
             Model
-            <select value={model} onChange={(e) => setModel(e.target.value)} className={field}>
-              {models.map((m) => <option key={m} value={m}>{m.replace(":", " / ")}</option>)}
-            </select>
+            <Select label="Model" value={model} options={models.map((m) => [m, m.replace(":", " / ")] as const)} onChange={setModel} className="mt-1" />
           </label>
           <button onClick={submit} disabled={!slug || pending} className={primaryButton}>
             {!pending && <FileUp aria-hidden className="size-4" />}

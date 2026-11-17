@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import { BadgeCheck, FlaskConical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
@@ -28,6 +29,8 @@ const label = "text-sm text-zinc-400";
 
 // The final project. Learners see it only once "Uji solusi" passes on the
 // saved version; saving clears that mark.
+const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"]] as const;
+
 export default function ProjectEditor({ p }: { p: ProjectRow }) {
   const [kind, setKind] = useState(p.kind);
   const [solution, setSolution] = useState(pretty(p.solution));
@@ -63,13 +66,7 @@ export default function ProjectEditor({ p }: { p: ProjectRow }) {
           <label className={label}>Judul<input name="title" defaultValue={p.title} required className={`${field} mt-1`} /></label>
           <label className={label}>
             Jenis
-            <select name="kind" value={kind} onChange={(e) => setKind(e.target.value)} className={`${field} mt-1`}>
-              <option value="web">Web</option>
-              <option value="js">JavaScript</option>
-              <option value="express">Express</option>
-              <option value="python">Python</option>
-              <option value="mikrotik">MikroTik</option>
-            </select>
+            <Select name="kind" label="Jenis" value={kind} options={KINDS} onChange={setKind} className="mt-1" />
           </label>
         </div>
         <label className={label}>Brief (markdown: apa yang dibangun, fitur wajib)<textarea name="brief" defaultValue={p.brief} rows={6} className={`${field} mt-1`} /></label>

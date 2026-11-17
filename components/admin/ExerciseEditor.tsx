@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import { FlaskConical, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
@@ -16,6 +17,8 @@ const pretty = (v: unknown) => JSON.stringify(v, null, 2);
 const label = "text-sm text-zinc-400";
 
 // One exercise. "Uji solusi" runs the solution through the learner sandbox.
+const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"]] as const;
+
 export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: ExerciseRow; n: number }) {
   const [kind, setKind] = useState(ex.kind);
   const [solution, setSolution] = useState(pretty(ex.solution));
@@ -45,13 +48,7 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
           <label className={label}>Judul<input name="title" defaultValue={ex.title} required className={`${field} mt-1`} /></label>
           <label className={label}>
             Jenis
-            <select name="kind" value={kind} onChange={(e) => setKind(e.target.value)} className={`${field} mt-1`}>
-              <option value="web">Web</option>
-              <option value="js">JavaScript</option>
-              <option value="express">Express</option>
-              <option value="python">Python</option>
-              <option value="mikrotik">MikroTik</option>
-            </select>
+            <Select name="kind" label="Jenis" value={kind} options={KINDS} onChange={setKind} className="mt-1" />
           </label>
         </div>
         <label className={label}>Instruksi (markdown)<textarea name="prompt" defaultValue={ex.prompt} rows={4} className={`${field} mt-1`} /></label>

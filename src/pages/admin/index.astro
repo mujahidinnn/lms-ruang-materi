@@ -1,5 +1,5 @@
 ---
-import { FileSearch, FileUp } from "lucide-react";
+import { FileSearch, FileUp, Users } from "lucide-react";
 import ProgressStat from "@/components/admin/ProgressStat";
 import { primaryButton } from "@/components/admin/editor";
 import { createClient } from "@/lib/supabase/server";
@@ -13,11 +13,16 @@ if (user instanceof Response) return user;
 // Same window as the 10-a-day limit in check_import_limits().
 const oneDayAgo = new Date(Date.now() - 864e5).toISOString();
 const db = await createClient();
-const [topics, waiting, today] = await Promise.all([
+const [topics, waiting, today, people] = await Promise.all([
   db.from("topics").select("status"),
   db.from("topics").select("slug, title").not("draft_summary", "is", null).order("title"),
-  db.from("import_jobs").select("id", { count: "exact", head: true }).gte("created_at", oneDayAgo),
+  // Hand-written imports (claude:manual) are outside the cap.
+  db.from("import_jobs").select("id", { count: "exact", head: true }).gte("created_at", oneDayAgo).or("provider.neq.claude,model.neq.manual"),
+  db.rpc("admin_users"),
 ]);
+const users = (people.data ?? []) as { role: string; last_sign_in_at: string | null }[];
+const weekAgo = Date.now() - 7 * 864e5;
+const activeWeek = users.filter((u) => u.last_sign_in_at && Date.parse(u.last_sign_in_at) > weekAgo).length;
 const all = topics.data ?? [];
 const published = all.filter((t) => t.status === "published").length;
 const [next, ...rest] = waiting.data ?? [];
@@ -48,8 +53,18 @@ const [next, ...rest] = waiting.data ?? [];
 
         <div class="grid gap-4 sm:grid-cols-2">
           <ProgressStat label="Topik terbit" value={published} max={all.length} />
-          <ProgressStat label="Impor 24 jam terakhir" value={today.count ?? 0} max={10} />
+          <ProgressStat label="Impor otomatis 24 jam terakhir" value={today.count ?? 0} max={10} />
         </div>
+
+        <a href="/admin/pengguna" class="group flex items-center gap-4 rounded-3xl bg-zinc-900 p-5 shadow-soft hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-accent">
+          <span aria-hidden class="grid size-12 shrink-0 place-items-center rounded-2xl bg-tile-mint"><Users className="size-5" /></span>
+          <p class="min-w-0 flex-1">
+            <span class="block text-sm text-zinc-400">Pengguna</span>
+            <span class="text-xl font-semibold tabular-nums">{users.length}</span>
+            <span class="text-sm text-zinc-500"> akun, {users.filter((u) => u.role === "admin").length} admin, {activeWeek} aktif 7 hari terakhir</span>
+          </p>
+          <span class="text-sm text-zinc-500 group-hover:text-accent">Kelola</span>
+        </a>
 
         {rest.length > 0 && (
           <section aria-labelledby="antrean">

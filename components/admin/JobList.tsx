@@ -1,5 +1,6 @@
 "use client";
 
+import Select from "@/components/ui/Select";
 import { CheckCircle2, Clock, LoaderCircle, RotateCcw, XCircle } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { importErrorText } from "@/lib/import-errors";
@@ -29,6 +30,7 @@ const STATUS = {
   failed: { label: "Gagal", Icon: XCircle, tone: "text-red-500" },
 };
 
+const RECENT = 6;
 const active = (j: Job) => j.status === "queued" || j.status === "rendering" || j.status === "drafting";
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -65,8 +67,9 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
       {jobs.length === 0 ? (
         <p className="text-sm text-zinc-400">Belum ada impor. Unggah deck pertama di atas.</p>
       ) : (
+        <>
         <ul className="divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-          {jobs.map((j) => {
+          {jobs.slice(0, RECENT).map((j) => {
             const { label, Icon, tone } = STATUS[j.status];
             return (
               <li key={j.id} className="grid gap-x-4 gap-y-2 py-4 sm:grid-cols-[1fr_auto]">
@@ -100,6 +103,26 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
             );
           })}
         </ul>
+        {jobs.length > RECENT && (
+          <details className="rounded-[28px] bg-zinc-900 px-5 py-3 shadow-soft">
+            <summary className="min-h-11 cursor-pointer list-none py-2.5 text-sm text-zinc-400 hover:text-zinc-50 [&::-webkit-details-marker]:hidden">
+              Impor lama ({jobs.length - RECENT})
+            </summary>
+            <ul className="divide-y divide-zinc-800">
+              {jobs.slice(RECENT).map((j) => (
+                <li key={j.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
+                  <span className="min-w-0 truncate">{j.original_name || j.slug}</span>
+                  <span className="flex items-center gap-3 text-xs text-zinc-500">
+                    <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
+                    <span className={STATUS[j.status].tone}>{STATUS[j.status].label}</span>
+                    {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className="text-accent hover:underline">Tinjau</a>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        </>
       )}
     </section>
   );
@@ -109,14 +132,7 @@ function Ulang({ models, current, disabled, onRetry }: { models: string[]; curre
   const [model, setModel] = useState(models.includes(current) ? current : models[0]);
   return (
     <>
-      <select
-        aria-label="Model untuk ulang"
-        value={model}
-        onChange={(e) => setModel(e.target.value)}
-        className="min-h-11 max-w-56 rounded-full border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-50"
-      >
-        {models.map((m) => <option key={m} value={m}>{m.replace(":", " / ")}</option>)}
-      </select>
+      <Select label="Model untuk ulang" value={model} options={models.map((m) => [m, m.replace(":", " / ")] as const)} onChange={setModel} className="w-56" />
       <button onClick={() => onRetry(model)} disabled={disabled} className={smallButton}><RotateCcw aria-hidden className="size-4" />Ulang</button>
     </>
   );

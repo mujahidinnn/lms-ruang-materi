@@ -1,4 +1,5 @@
 ---
+import Select from "@/components/ui/Select";
 import { Plus, Trash2 } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import StatusBadge from "@/components/admin/StatusBadge";
@@ -34,6 +35,8 @@ const [{ data: edgeRows }, { data: topics }] = await Promise.all([
 const edges = (edgeRows ?? []) as Edge[];
 const title = new Map(nodes.map((n) => [n.id, n.topics.title]));
 const used = new Set(nodes.map((n) => n.topics.slug));
+const free = (topics ?? []).filter((t) => !used.has(t.slug)).map((t) => [t.id, `${t.title}${t.status !== "published" ? " (draf)" : ""}`] as [string, string]);
+const nodeOptions = nodes.map((n) => [n.id, n.topics.title] as [string, string]);
 const hasDraft = [...nodes, ...edges].some((r) => r.status === "draft");
 const graphEdges = edges.map((e) => ({ from: e.from_node_id, to: e.to_node_id }));
 const placed = layout(
@@ -116,13 +119,7 @@ const placed = layout(
           </ul>
           <ActionForm client:load action="tambahNode" className="mt-4 flex flex-wrap gap-2">
             <input type="hidden" name="track" value={slug} />
-            <select name="topic_id" required aria-label="Topik" class={`${field} w-auto flex-1`}>
-              {(topics ?? []).filter((t) => !used.has(t.slug)).map((t) => (
-                <option value={t.id}>
-                  {t.title}{t.status !== "published" ? " (draf)" : ""}
-                </option>
-              ))}
-            </select>
+            <Select client:load name="topic_id" label="Topik" value={free[0]?.[0] ?? ""} options={free} className="min-w-48 flex-1" />
             <button class={primaryButton}><Plus aria-hidden className="size-4" />Tambah topik</button>
           </ActionForm>
         </section>
@@ -149,13 +146,9 @@ const placed = layout(
             </ul>
             <ActionForm client:load action="tambahEdge" className="mt-4 flex flex-wrap items-center gap-2">
               <input type="hidden" name="track" value={slug} />
-              <select name="from" required aria-label="Prasyarat" class={`${field} w-auto flex-1`}>
-                {nodes.map((n) => <option value={n.id}>{n.topics.title}</option>)}
-              </select>
+              <Select client:load name="from" label="Prasyarat" value={nodeOptions[0]?.[0] ?? ""} options={nodeOptions} className="min-w-48 flex-1" />
               <span class="text-sm text-zinc-500">sebelum</span>
-              <select name="to" required aria-label="Topik lanjutan" class={`${field} w-auto flex-1`}>
-                {nodes.map((n) => <option value={n.id}>{n.topics.title}</option>)}
-              </select>
+              <Select client:load name="to" label="Topik lanjutan" value={nodeOptions[1]?.[0] ?? nodeOptions[0]?.[0] ?? ""} options={nodeOptions} className="min-w-48 flex-1" />
               <button class={primaryButton}><Plus aria-hidden className="size-4" />Tambah</button>
             </ActionForm>
           </section>
