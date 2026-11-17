@@ -1,7 +1,5 @@
 ---
-import ActionForm from "@/components/admin/ActionForm";
-import { smallButton } from "@/components/admin/editor";
-import { chip } from "@/components/ui/styles";
+import PenggunaList, { type Person } from "@/components/admin/PenggunaList";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -15,18 +13,35 @@ type Row = {
   email: string;
   display_name: string | null;
   role: "student" | "admin";
+  provider: string;
   created_at: string;
   last_sign_in_at: string | null;
   confirmed: boolean;
 };
 
-const { data } = await (await createClient()).rpc("admin_users");
-// Admins first, then newest.
-const people = ((data ?? []) as Row[]).sort((a, b) => Number(b.role === "admin") - Number(a.role === "admin"));
-const admins = people.filter((p) => p.role === "admin").length;
+const fmt = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+const day = (d: Date) => Math.floor((d.getTime() + 7 * 36e5) / 864e5); // WIB calendar day
+function ago(iso: string | null) {
+  if (!iso) return "Belum pernah masuk";
+  const n = day(new Date()) - day(new Date(iso));
+  return n <= 0 ? "Masuk hari ini" : n === 1 ? "Masuk kemarin" : n < 30 ? `Masuk ${n} hari lalu` : `Masuk ${fmt.format(new Date(iso))}`;
+}
 
-const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
-const seen = (p: Row) => (!p.confirmed ? "Undangan belum diterima" : p.last_sign_in_at ? `Terakhir masuk ${date.format(new Date(p.last_sign_in_at))}` : "Belum pernah masuk");
+const { data } = await (await createClient()).rpc("admin_users");
+const rows = (data ?? []) as Row[];
+const people: Person[] = rows.map((r) => ({
+  id: r.user_id,
+  name: r.display_name || r.email.split("@")[0],
+  email: r.email,
+  admin: r.role === "admin",
+  me: r.user_id === user.id,
+  pending: !r.confirmed,
+  provider: r.provider,
+  joined: fmt.format(new Date(r.created_at)),
+  joinedAt: Date.parse(r.created_at),
+  seen: ago(r.last_sign_in_at),
+  seenAt: r.last_sign_in_at ? Date.parse(r.last_sign_in_at) : 0,
+}));
 ---
 
 <Base title="Pengguna" description="Lihat semua akun dan atur siapa yang menjadi admin." noindex>
@@ -34,47 +49,9 @@ const seen = (p: Row) => (!p.confirmed ? "Undangan belum diterima" : p.last_sign
     <div class="mx-auto max-w-4xl">
       <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Pengguna</h1>
       <p class="mt-2 text-sm text-zinc-400">
-        {people.length} akun, {admins} admin. Admin bisa mengelola semua materi. Role dirimu sendiri tidak bisa diubah di sini.
+        Admin bisa mengelola semua materi. Role dirimu sendiri tidak bisa diubah di sini.
       </p>
-      {!people.length ? (
-        <p class="mt-6 text-zinc-400">Belum ada akun.</p>
-      ) : (
-        <ul class="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-          {people.map((p) => {
-            const me = p.user_id === user.id;
-            const admin = p.role === "admin";
-            const name = p.display_name || p.email.split("@")[0];
-            return (
-              <li class="flex flex-wrap items-center gap-x-4 gap-y-3 py-4">
-                <span aria-hidden class={`grid size-11 shrink-0 place-items-center rounded-2xl text-base font-bold ${admin ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-300"}`}>
-                  {name.charAt(0).toUpperCase()}
-                </span>
-                <div class="min-w-0 flex-1 basis-56">
-                  <p class="truncate font-medium">{name}{me && <span class="ml-2 text-xs font-normal text-zinc-500">kamu</span>}</p>
-                  <p class="truncate text-sm text-zinc-400">{p.email}</p>
-                  <p class="text-xs text-zinc-500">Daftar {date.format(new Date(p.created_at))}, {seen(p).toLowerCase()}</p>
-                </div>
-                <span class={`${chip} ${admin ? "bg-tile-mint text-zinc-50" : "bg-zinc-800"}`}>{admin ? "Admin" : "Siswa"}</span>
-                {!me && (
-                  <ActionForm
-                    client:load
-                    action="gantiRole"
-                    className="flex flex-wrap items-center gap-2"
-                    data-confirm={admin ? `Jadikan ${name} siswa?` : `Jadikan ${name} admin?`}
-                    data-confirm-text={admin ? "Akses ke halaman admin dicabut." : "Admin bisa mengubah dan menerbitkan semua materi."}
-                    data-confirm-action={admin ? "Jadikan siswa" : "Jadikan admin"}
-                    data-confirm-danger={admin ? true : undefined}
-                  >
-                    <input type="hidden" name="user_id" value={p.user_id} />
-                    <input type="hidden" name="role" value={admin ? "student" : "admin"} />
-                    <button class={smallButton}>{admin ? "Jadikan siswa" : "Jadikan admin"}</button>
-                  </ActionForm>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <PenggunaList client:load people={people} />
     </div>
   </AppShell>
 </Base>
