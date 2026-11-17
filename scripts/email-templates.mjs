@@ -22,7 +22,7 @@ const layout = ({ title, body, button, url, note }) => `<!doctype html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;color:#0f100d;">
 <tr><td style="padding:0 4px 16px 4px;">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-<td><img src="${SITE}/email/logo.png" width="32" height="32" alt="" style="display:block;border:0;"></td>
+<td><img src="${SITE}/email/logo-mark.png" width="40" height="40" alt="Ruang Materi" style="display:block;border:0;"></td>
 <td style="padding-left:10px;font-size:17px;font-weight:700;">Ruang Materi</td>
 </tr></table>
 </td></tr>
