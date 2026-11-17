@@ -184,7 +184,7 @@ function Extra({
         href={href}
         className={`group flex items-center gap-4 rounded-[28px] p-5 ${color}`}
       >
-        <span className="grid size-11 place-items-center rounded-full bg-zinc-900/70">
+        <span className="grid size-11 place-items-center rounded-full bg-zinc-900/70 [--icon-paper:var(--color-zinc-900)]">
           {icon}
         </span>
         <span className="flex-1">
