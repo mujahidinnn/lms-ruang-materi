@@ -103,7 +103,8 @@ export default function ImporForm({ models }: { models: string[] }) {
         </div>
       )}
 
-      <p aria-live="polite" className={`min-h-5 text-sm ${message?.error ? "text-red-500" : "text-zinc-400"}`}>
+      {/* Takes no room until there is a message, so the upload card stays as tall as the status column. */}
+      <p aria-live="polite" className={message ? `text-sm ${message.error ? "text-red-500" : "text-zinc-400"}` : "sr-only"}>
         {message?.text}
       </p>
     </section>
