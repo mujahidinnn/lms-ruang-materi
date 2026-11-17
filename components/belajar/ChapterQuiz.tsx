@@ -191,7 +191,7 @@ export default function ChapterQuiz({
           )}
           {status === "blocked" && <p className="rounded-2xl bg-tile-butter px-4 py-3 text-sm">{blocked}</p>}
           {((finished && allPassed) || status === "saved") && (
-            <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><Pesta className="size-7" />Bab selesai</p>
+            <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><Pesta className="size-7 [--icon-tint:var(--color-matcha-500)]" />Bab selesai</p>
           )}
           {/* How it went: first-try score, and which questions are worth a re-read. */}
           {finished && (() => {
