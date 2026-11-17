@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the 28-slide MikroTik RouterOS Dasar support deck (varied layouts).
-Usage: python scripts/deck-mikrotik.py <png-dir> [out.pptx]
-Needs python-pptx. PNGs: <png-dir>/<name>.png (SVGs of public/praktik rendered at 2x).
+"""Generate the 28-slide MikroTik RouterOS Dasar support deck, in the style of the
+other class decks (white slides, kicker, soft cards, round icons, dark callout bar).
+Usage: python scripts/deck-mikrotik.py <asset-dir> [out.pptx]
+Needs python-pptx. <asset-dir>/<diagram>.png: SVGs of public/praktik rendered at 2x;
+<asset-dir>/icons/<lucide-name>-w.png (white) and -k.png (green) 256px icons.
 Slide count and order are fixed: chapter slide ranges in the draft point at them."""
 import os, sys
 from pptx import Presentation
@@ -11,9 +13,11 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from PIL import Image
 
-INK, ACC, SOFT, GREY, WHITE, PALE = (RGBColor.from_string(c) for c in ("0F100D", "B5D36F", "E3EDC8", "5A5C54", "FFFFFF", "F4F7EA"))
-PNG = sys.argv[1] if len(sys.argv) > 1 else "."
+C = lambda h: RGBColor.from_string(h)
+INK, GREEN, AMBER, CARD, GREY, WHITE, LINE = C("0F172A"), C("10B981"), C("F59E0B"), C("F1F5F9"), C("64748B"), C("FFFFFF"), C("CBD5E1")
+ASSET = sys.argv[1] if len(sys.argv) > 1 else "."
 OUT = sys.argv[2] if len(sys.argv) > 2 else "public/MikroTik_RouterOS_Dasar.pptx"
+DECK = "MikroTik RouterOS Dasar  |  Kerangka MTCNA"
 
 prs = Presentation()
 prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
@@ -30,102 +34,130 @@ def rect(s, x, y, w, h, color):
     return shape(s, MSO_SHAPE.RECTANGLE, x, y, w, h, color)
 
 
-def card(s, x, y, w, h, color):
+def card(s, x, y, w, h, color=CARD):
     r = shape(s, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h, color)
-    r.adjustments[0] = 0.06
+    r.adjustments[0] = 0.07
     return r
 
 
-def text(s, x, y, w, h, lines, size, bold=False, color=INK, bullet=False, gap=8, anchor=MSO_ANCHOR.TOP, align=None):
+def text(s, x, y, w, h, lines, size, bold=False, color=INK, gap=6, anchor=MSO_ANCHOR.TOP, align=None, font="Calibri", spc=None):
     tb = s.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
     tf = tb.text_frame; tf.word_wrap = True; tf.vertical_anchor = anchor
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
     for i, ln in enumerate(lines if isinstance(lines, list) else [lines]):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         if align: p.alignment = align
-        r = p.add_run(); r.text = ("•  " + ln) if bullet else ln
-        r.font.size = Pt(size); r.font.bold = bold; r.font.color.rgb = color; r.font.name = "Calibri"
+        r = p.add_run(); r.text = ln
+        r.font.size = Pt(size); r.font.bold = bold; r.font.color.rgb = color; r.font.name = font
+        if spc: r._r.get_or_add_rPr().set("spc", str(spc))
         p.space_after = Pt(gap)
     return tb
 
 
-def badge(s, x, y, d, label, size=20):
-    shape(s, MSO_SHAPE.OVAL, x, y, d, d, ACC)
-    text(s, x, y, d, d, label, size, True, INK, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, gap=0)
+def icon(s, name, x, y, d, bg=GREEN):
+    shape(s, MSO_SHAPE.OVAL, x, y, d, d, bg)
+    k = d * 0.54
+    s.shapes.add_picture(os.path.join(ASSET, "icons", name + "-w.png"), Inches(x + (d - k) / 2), Inches(y + (d - k) / 2), Inches(k), Inches(k))
 
 
-def base(title, n, kicker=None):
+def num(s, x, y, d, label, bg=GREEN, size=18):
+    shape(s, MSO_SHAPE.OVAL, x, y, d, d, bg)
+    text(s, x, y, d, d, label, size, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+
+
+def base(title, n, kicker):
     s = prs.slides.add_slide(BLANK)
-    rect(s, 0, 0, 13.333, 0.18, ACC)
-    if kicker:
-        text(s, 0.6, 0.35, 9, 0.4, kicker, 16, True, GREY)
-    text(s, 0.6, 0.7, 12.1, 0.9, title, 38, True)
-    rect(s, 0.6, 1.62, 1.4, 0.07, ACC)
-    text(s, 12.0, 7.0, 1.0, 0.35, str(n), 14, color=GREY)
+    text(s, 0.6, 0.34, 10, 0.3, kicker, 11, True, GREEN, gap=0, spc=250)
+    text(s, 0.6, 0.68, 11.0, 0.8, title, 32, True, gap=0)
+    shape(s, MSO_SHAPE.OVAL, 12.1, 0.3, 0.62, 0.62, INK)
+    s.shapes.add_picture(os.path.join(ASSET, "icons", "router-k.png"), Inches(12.2), Inches(0.4), Inches(0.42), Inches(0.42))
+    text(s, 0.6, 7.03, 8, 0.25, DECK, 10, color=GREY, gap=0)
+    text(s, 12.2, 7.03, 0.6, 0.25, str(n), 10, color=GREY, gap=0, align=PP_ALIGN.RIGHT)
     return s
+
+
+def bar(s, y, msg, ic="lightbulb", label=None):
+    card(s, 0.6, y, 12.1, 0.85, INK)
+    s.shapes.add_picture(os.path.join(ASSET, "icons", ic + "-k.png"), Inches(0.85), Inches(y + 0.22), Inches(0.42), Inches(0.42))
+    r = text(s, 1.5, y, 11.0, 0.85, msg, 14, False, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+    if label:
+        p = r.text_frame.paragraphs[0]; p.runs[0].text = msg
+        first = p.runs[0]; first.text = label + "  "; first.font.bold = True; first.font.color.rgb = AMBER
+        rr = p.add_run(); rr.text = msg; rr.font.size = Pt(14); rr.font.color.rgb = WHITE; rr.font.name = "Calibri"
 
 
 def picture(s, name, x, y, w, h):
-    path = os.path.join(PNG, name + ".png")
+    path = os.path.join(ASSET, name + ".png")
     iw, ih = Image.open(path).size
-    sc = min(w / iw, h / ih)
+    sc = min((w - 0.3) / iw, (h - 0.3) / ih)
     pw, ph = iw * sc, ih * sc
-    card(s, x, y, w, h, SOFT)
+    card(s, x, y, w, h, WHITE).line.color.rgb = LINE
     s.shapes.add_picture(path, Inches(x + (w - pw) / 2), Inches(y + (h - ph) / 2), Inches(pw), Inches(ph))
 
 
-# ---- layouts: each takes (title, n, bullets, kicker, num, pic) ----
-def L_cards(title, n, b, k, num, pic):
-    s = base(title, n, k)
-    xs, ys, w, h = (0.6, 4.75, 8.9), (1.95, 4.4), 3.85, 2.3
-    for i, ln in enumerate(b):
-        x, y = xs[i % 3], ys[i // 3]
-        card(s, x, y, w, h, SOFT if i % 2 == 0 else PALE)
-        badge(s, x + 0.25, y + 0.2, 0.55, str(i + 1), 18)
-        text(s, x + 0.25, y + 0.85, w - 0.5, h - 0.95, ln, 17 if len(ln) < 95 else 15, gap=0)
-    x, y = xs[2], ys[1]
-    card(s, x, y, w, h, INK)
-    text(s, x, y + 0.1, w, 1.4, f"{num:02d}", 64, True, ACC, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, gap=0)
-    text(s, x + 0.2, y + 1.45, w - 0.4, 0.8, k.split(" - ", 1)[1], 15, False, SOFT, align=PP_ALIGN.CENTER, gap=0)
-    return s
-
-
-def L_steps(title, n, b, k, num, pic):
+# ---- layouts: (title, n, bullets, kicker, pic, icons, term) ----
+def L_row5(title, n, b, k, pic, ic, term):
     s = base(title, n, k)
     for i, ln in enumerate(b):
-        y = 1.95 + i * 0.97
-        badge(s, 0.6, y, 0.62, str(i + 1), 20)
-        text(s, 1.5, y - 0.03, 11.2, 0.75, ln, 21, gap=0, anchor=MSO_ANCHOR.MIDDLE)
-        if i < len(b) - 1:
-            rect(s, 0.88, y + 0.66, 0.05, 0.3, SOFT)
+        x = 0.6 + i * 2.47
+        card(s, x, 1.95, 2.3, 3.9)
+        icon(s, ic[i], x + 0.7, 2.3, 0.9)
+        text(s, x + 0.2, 3.5, 1.9, 2.9, ln, 17 if len(ln) < 90 else 15, gap=0, align=PP_ALIGN.CENTER)
     return s
 
 
-def L_callout(title, n, b, k, num, pic):
+def L_steps(title, n, b, k, pic, ic, term):
     s = base(title, n, k)
-    card(s, 0.6, 1.95, 5.8, 4.8, INK)
-    rect(s, 0.9, 2.3, 0.9, 0.08, ACC)
-    text(s, 0.9, 2.55, 5.2, 4.0, b[0], 30, True, WHITE, gap=0)
-    text(s, 6.9, 1.95, 5.9, 4.8, b[1:], 20, bullet=True, gap=14, anchor=MSO_ANCHOR.MIDDLE)
+    rect(s, 1.3, 2.37, 10.7, 0.04, LINE)
+    for i, ln in enumerate(b):
+        x = 0.6 + i * 2.47
+        num(s, x + 0.85, 2.05, 0.65, str(i + 1), GREEN if i < 4 else INK, 20)
+        card(s, x, 3.0, 2.3, 3.4, WHITE).line.color.rgb = LINE
+        icon(s, ic[i], x + 0.2, 3.2, 0.5, INK)
+        text(s, x + 0.2, 3.95, 1.9, 2.4, ln, 16 if len(ln) < 90 else 14.5, gap=0)
     return s
 
 
-def L_split(title, n, b, k, num, pic):
-    s = prs.slides.add_slide(BLANK)
-    rect(s, 0, 0, 4.6, 7.5, INK); rect(s, 4.6, 0, 8.733, 0.18, ACC)
-    text(s, 0.5, 0.5, 3.8, 1.5, f"{num:02d}", 72, True, ACC, gap=0)
-    text(s, 0.5, 2.2, 3.7, 3.6, title, 32, True, WHITE, gap=0)
-    text(s, 0.5, 6.4, 3.7, 0.6, k.split(" - ", 1)[1], 14, False, SOFT, gap=0)
-    text(s, 5.2, 0.9, 7.6, 5.9, b, 22, bullet=True, gap=16, anchor=MSO_ANCHOR.MIDDLE)
-    text(s, 12.2, 7.0, 0.8, 0.35, str(n), 14, color=GREY)
+def L_grid4(title, n, b, k, pic, ic, term):
+    s = base(title, n, k)
+    for i, ln in enumerate(b[:4]):
+        x, y = 0.6 + (i % 2) * 6.15, 1.85 + (i // 2) * 2.0
+        card(s, x, y, 5.95, 1.85)
+        icon(s, ic[i], x + 0.3, y + 0.3, 0.7)
+        text(s, x + 1.25, y + 0.2, 4.45, 1.45, ln, 16, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+    bar(s, 5.95, b[4], "lightbulb" if term is None else "rocket", "Ingat:" if term is None else None)
+    return s
+
+
+def L_term(title, n, b, k, pic, ic, term):
+    s = base(title, n, k)
+    card(s, 0.6, 1.85, 6.3, 4.9, INK)
+    for j, col in enumerate(("EF4444", "F59E0B", "10B981")):
+        shape(s, MSO_SHAPE.OVAL, 0.85 + j * 0.27, 2.08, 0.15, 0.15, C(col))
+    text(s, 1.8, 2.04, 4.5, 0.25, "terminal - RouterOS", 10, color=GREY, gap=0)
+    lines = [(t, GREY if t.startswith("#") else WHITE) for t in term]
+    tb = s.shapes.add_textbox(Inches(0.85), Inches(2.55), Inches(5.8), Inches(4.0)); tf = tb.text_frame; tf.word_wrap = True
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    for i, (t, col) in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph(); p.space_after = Pt(9)
+        r = p.add_run(); r.text = t; r.font.size = Pt(13); r.font.name = "DejaVu Sans Mono"; r.font.color.rgb = GREEN if (col == WHITE and t.startswith("/")) else col
+    for i, ln in enumerate(b):
+        y = 1.85 + i * 1.0
+        card(s, 7.15, y, 5.55, 0.9)
+        icon(s, ic[i], 7.35, y + 0.17, 0.56)
+        text(s, 8.1, y, 4.45, 0.9, ln, 12.5, gap=0, anchor=MSO_ANCHOR.MIDDLE)
     return s
 
 
 def L_pic(right):
-    def f(title, n, b, k, num, pic):
+    def f(title, n, b, k, pic, ic, term):
         s = base(title, n, k)
-        tx, px = (0.6, 7.1) if right else (6.9, 0.6)
-        text(s, tx, 1.95, 6.0, 4.9, b, 21, bullet=True, gap=10)
-        picture(s, pic, px, 1.95, 5.8, 4.8)
+        px, tx = (0.6, 6.85) if right else (6.85, 0.6)
+        picture(s, pic, px, 1.85, 5.85, 4.9)
+        for i, ln in enumerate(b):
+            y = 1.85 + i * 1.0
+            rect(s, tx, y + 0.05, 0.07, 0.8, [GREEN, C("0EA5E9"), AMBER, INK, GREEN][i])
+            text(s, tx + 0.3, y, 5.4, 0.9, ln, 14.5, gap=0, anchor=MSO_ANCHOR.MIDDLE)
         return s
     return f
 
@@ -171,70 +203,63 @@ CH = [
 ]
 
 
-A_CYCLE = [L_cards, L_split, L_steps, L_callout]
-B_NOPIC = [L_callout, L_steps, L_split, L_cards]
+
+A_LAY = [L_row5, L_term, L_steps, L_grid4, L_term, L_row5, L_steps, L_term, L_grid4, L_term, L_row5, L_steps]
+B_NOPIC = {3: L_grid4, 7: L_row5, 12: L_grid4}
+ICA = ["cpu hard-drive layers terminal router", "terminal folder list-checks search file-text", "package download save file-text hard-drive",
+       "share-2 layers wrench link shield-check", "split users globe wifi ban", "route list-checks link settings globe",
+       "radio wifi eye signal gauge", "shield-check layers router list-checks ban", "shuffle eye arrow-left-right globe ban",
+       "gauge users list-checks trending-up clock", "link shield-check settings key-round network", "activity eye gauge file-text search"]
+ICB = {3: "rotate-ccw plug key-round settings lock", 7: "lock globe link users ban", 12: "chart-line bell cpu wrench file-text"}
+TERM = {
+ 2: ["# Melihat dan mengubah konfigurasi", "/ip address print", "/ip address add address=192.168.88.1/24 interface=ether2", "/interface print", "/export"],
+ 5: ["/interface bridge add name=bridge1", "/interface bridge port add bridge=bridge1 interface=ether2", "/interface bridge port add bridge=bridge1 interface=ether3", "/ip address add address=192.168.88.1/24 interface=bridge1"],
+ 8: ["/ip firewall filter add chain=input connection-state=established,related action=accept", "/ip firewall filter add chain=input connection-state=invalid action=drop", "/ip firewall filter add chain=input in-interface=ether2 action=accept", "/ip firewall filter add chain=input action=drop", "# Uji dulu agar tidak terkunci"],
+ 10: ["/queue simple add name=kantor target=192.168.88.0/24 max-limit=5M/10M", "/queue simple print"],
+}
 
 # 1: title
 s = prs.slides.add_slide(BLANK)
-rect(s, 0, 0, 13.333, 7.5, SOFT); rect(s, 0, 0, 0.5, 7.5, ACC)
-card(s, 8.6, 1.2, 4.0, 5.1, INK)
-text(s, 8.6, 1.5, 4.0, 2.4, "12", 120, True, ACC, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, gap=0)
-text(s, 8.9, 4.0, 3.4, 1.8, "bab, dari Winbox sampai monitoring", 20, False, SOFT, align=PP_ALIGN.CENTER, gap=0)
-text(s, 1.2, 2.0, 7.2, 1.8, "MikroTik RouterOS Dasar", 54, True)
-text(s, 1.2, 3.9, 7.0, 0.8, "Kerangka MTCNA - dek pendukung kelas", 26, color=GREY)
-text(s, 1.2, 5.0, 7.0, 0.8, "Ruang Materi", 22, True)
+rect(s, 0, 0, 13.333, 7.5, INK)
+shape(s, MSO_SHAPE.OVAL, 8.6, 1.4, 4.1, 4.1, C("16253D"))
+shape(s, MSO_SHAPE.OVAL, 9.35, 2.15, 2.6, 2.6, GREEN)
+s.shapes.add_picture(os.path.join(ASSET, "icons", "router-w.png"), Inches(9.95), Inches(2.75), Inches(1.4), Inches(1.4))
+text(s, 0.9, 1.9, 7, 0.4, "KERANGKA MTCNA", 14, True, AMBER, gap=0, spc=300)
+text(s, 0.9, 2.5, 7.4, 2.2, "MikroTik RouterOS Dasar", 50, True, WHITE, gap=0)
+text(s, 0.9, 4.6, 7.2, 1.2, "Dek pendukung kelas: 12 bab, dari Winbox dan CLI sampai firewall, VPN, dan monitoring", 18, False, C("CBD5E1"), gap=0)
+text(s, 0.9, 6.8, 6, 0.3, "Ruang Materi", 11, True, GREEN, gap=0, spc=250)
 
 # 2: agenda + disclaimer
-s = base("Agenda dan catatan penting", 2)
+s = base("Peta Materi", 2, "AGENDA")
+AG = "router terminal settings package network split route wifi shield-check shuffle gauge link".split()
+AG = ["router", "terminal", "package", "share-2", "split", "route", "wifi", "shield-check", "shuffle", "gauge", "link", "activity"]
 for i, c in enumerate(CH):
-    col, row = i // 6, i % 6
-    x, y = 0.6 + col * 3.55, 1.95 + row * 0.78
-    badge(s, x, y, 0.5, str(i + 1), 15)
-    text(s, x + 0.62, y - 0.03, 2.85, 0.6, c[0], 15, gap=0, anchor=MSO_ANCHOR.MIDDLE)
-card(s, 7.9, 1.95, 4.9, 4.8, INK)
-text(s, 8.2, 2.1, 4.3, 0.5, "Catatan penting", 16, True, ACC, gap=0)
-text(s, 8.2, 2.7, 4.3, 3.9, [
-    "Kelas ini tidak resmi dan tidak berafiliasi dengan MikroTik.",
-    "Susunannya mengikuti kerangka MTCNA publik bertanggal 22 Januari 2016, yang bisa berubah.",
-    "Sebelum ujian resmi, cek outline terbaru di situs resmi MikroTik."], 18, True, WHITE, gap=12)
+    x, y = 0.6 + (i % 4) * 3.05, 1.7 + (i // 4) * 1.45
+    card(s, x, y, 2.9, 1.3)
+    icon(s, AG[i], x + 0.2, y + 0.18, 0.55)
+    text(s, x + 2.0, y + 0.2, 0.75, 0.4, f"{i + 1:02d}", 18, True, GREY, gap=0, align=PP_ALIGN.RIGHT)
+    text(s, x + 0.2, y + 0.82, 2.55, 0.45, c[0], 13, True, gap=0)
+bar(s, 6.1, "Kelas ini tidak resmi dan tidak berafiliasi dengan MikroTik. Susunannya mengikuti kerangka MTCNA publik bertanggal 22 Januari 2016, yang bisa berubah. Sebelum ujian resmi, cek outline terbaru di situs resmi MikroTik.", "lightbulb", "Catatan penting:")
 
-# 3-26 modules: two slides per chapter, layouts rotate so neighbours differ
+# 3-26 modules
 n = 3
 for i, (ch, a, b) in enumerate(CH, 1):
-    k = f"Bab {i} - {ch}"
-    A_CYCLE[i % 4](a[0], n, a[1], k, i, None); n += 1
-    lay = L_pic(i % 2 == 1) if b[2] else B_NOPIC[i % 4]
-    lay(b[0], n, b[1], k, i, b[2]); n += 1
+    k = f"BAB {i}  \u2022  {ch.upper()}"
+    ica = ICA[i - 1].split()
+    A_LAY[i - 1](a[0], n, a[1], k, None, ica, TERM.get(i)); n += 1
+    if b[2]:
+        L_pic(i % 2 == 1)(b[0], n, b[1], k, b[2], None, None)
+    else:
+        B_NOPIC[i](b[0], n, b[1], k, None, ICB[i].split(), None)
+    n += 1
 
-# 27 rangkuman: five cards
-s = base("Rangkuman", 27)
-R = [("Mulai", "Mulai dari Winbox, CLI, dan konfigurasi internet awal"),
-     ("Rawat", "Rawat router: backup, export, upgrade, dan amankan layanan"),
-     ("Jaringan lokal", "Jaringan lokal: DHCP, ARP, bridge, routing statik, dan wireless"),
-     ("Lindungi", "Lindungi dan atur lalu lintas: firewall, NAT, queue"),
-     ("Hubungkan", "Hubungkan lokasi dengan VPN dan pantau dengan alat bantu")]
-for i, (h, ln) in enumerate(R):
-    x = 0.6 + i * 2.47
-    card(s, x, 1.95, 2.3, 4.8, SOFT if i % 2 == 0 else PALE)
-    badge(s, x + 0.2, 2.15, 0.55, str(i + 1), 18)
-    text(s, x + 0.2, 2.95, 1.95, 0.5, h, 18, True, gap=0)
-    text(s, x + 0.2, 3.6, 1.95, 3.0, ln, 16, gap=0)
-
-# 28 closing
-s = prs.slides.add_slide(BLANK)
-rect(s, 0, 0, 13.333, 7.5, INK); rect(s, 0, 0, 13.333, 0.18, ACC)
-text(s, 0.8, 0.7, 11.5, 1.0, "Langkah berikutnya", 40, True, WHITE)
-rect(s, 0.8, 1.72, 1.4, 0.07, ACC)
-for i, ln in enumerate(["Praktikkan tiap bab di router asli, simulator, atau CHR",
-                        "Kerjakan latihan dan ujian di akhir kelas",
-                        "Cek outline MTCNA terbaru sebelum ujian resmi MikroTik",
-                        "Lanjut belajar ke topik jaringan berikutnya di Ruang Materi"]):
-    y = 2.1 + i * 0.85
-    badge(s, 0.8, y, 0.55, str(i + 1), 18)
-    text(s, 1.65, y - 0.03, 11, 0.7, ln, 22, False, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE)
-card(s, 0.8, 5.8, 11.7, 1.0, ACC)
-text(s, 1.0, 5.85, 11.3, 0.9, "Terima kasih - tetap rajin praktik!", 28, True, anchor=MSO_ANCHOR.MIDDLE)
-text(s, 12.2, 7.0, 0.8, 0.35, "28", 14, color=GREY)
+# 27 rangkuman, 28 closing
+L_steps("Rangkuman", 27, ["Mulai dari Winbox, CLI, dan konfigurasi internet awal", "Rawat router: backup, export, upgrade, dan amankan layanan",
+    "Jaringan lokal: DHCP, ARP, bridge, routing statik, dan wireless", "Lindungi dan atur lalu lintas: firewall, NAT, queue",
+    "Hubungkan lokasi dengan VPN dan pantau dengan alat bantu"], "RANGKUMAN", None, "terminal wrench network shield-check activity".split(), None)
+L_grid4("Langkah berikutnya", 28, ["Praktikkan tiap bab di router asli, simulator, atau CHR", "Kerjakan latihan dan ujian di akhir kelas",
+    "Cek outline MTCNA terbaru sebelum ujian resmi MikroTik", "Lanjut belajar ke topik jaringan berikutnya di Ruang Materi",
+    "Terima kasih - tetap rajin praktik!"], "PENUTUP", None, "terminal clipboard-check book-open rocket".split(), "")
 
 prs.save(OUT)
 print("saved", OUT, len(prs.slides._sldIdLst), "slides")
