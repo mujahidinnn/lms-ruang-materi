@@ -106,6 +106,17 @@ describe("ip route", () => {
     expect(out[2]).toMatch(/^1\s+DAc\s+192\.168\.88\.0\/24\s+ether2\s+0$/);
     expect(r.router.routes).toHaveLength(1);
   });
+  it("print: hanya distance terkecil per tujuan yang As, sisanya s", () => {
+    const r = run("/ip route add dst-address=0.0.0.0/0 gateway=198.51.100.1 distance=2\n/ip route add dst-address=0.0.0.0/0 gateway=203.0.113.1\n/ip route add dst-address=10.0.0.0/8 gateway=203.0.113.1 distance=5\n/ip route print");
+    const out = r.keluaran.slice(4);
+    expect(out[1]).toMatch(/^0\s+s\s+0\.0\.0\.0\/0\s+198\.51\.100\.1\s+2$/);
+    expect(out[2]).toMatch(/^1\s+As\s+0\.0\.0\.0\/0\s+203\.0\.113\.1\s+1$/);
+    expect(out[3]).toMatch(/^2\s+As\s+10\.0\.0\.0\/8/);
+  });
+  it("print: distance sama, semuanya As", () => {
+    const r = run("/ip route add dst-address=0.0.0.0/0 gateway=198.51.100.1\n/ip route add dst-address=0.0.0.0/0 gateway=203.0.113.1\n/ip route print");
+    expect(r.keluaran.filter((l) => /\sAs\s/.test(l))).toHaveLength(2);
+  });
 });
 
 describe("drift kunci array state", () => {

@@ -651,7 +651,8 @@ Publish (terbitkan, lib/actions): publish_topic(slug) swaps drafts in per table,
     Everything else starts empty. `/user add` requires `group` and does not
     store the password. `/ip route print` also shows derived `DAc` rows
     (distance 0, one per address) that are not in `router.routes`; stored
-    routes show as `As`.
+    routes show as `As` (active) only if they have the lowest `distance` for
+    their `dst-address` (ties all `As`), else `s` (inactive backup).
   - **Print format**: each row starts with `#` (the row index, from 0);
     columns are padded and separated by two spaces, trailing space trimmed;
     the header prints even with no rows. Columns: interface `FLAGS NAME

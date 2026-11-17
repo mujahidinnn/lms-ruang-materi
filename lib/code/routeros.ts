@@ -433,7 +433,7 @@ export function routerOSShim() {
           break;
         }
         case "ip route print": {
-          const rows = router.routes.map((r) => ["As", r.dstAddress, r.gateway, String(r.distance)]);
+          const rows = router.routes.map((r) => [router.routes.some((o) => o.dstAddress === r.dstAddress && o.distance < r.distance) ? "s" : "As", r.dstAddress, r.gateway, String(r.distance)]);
           for (const a of router.addresses) {
             const c = cidr(a.address);
             if (c) rows.push(["DAc", `${a.network}/${c.prefix}`, a.interface, "0"]);
