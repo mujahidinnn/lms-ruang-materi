@@ -1,14 +1,14 @@
-import { Code2, GitBranch, LayoutTemplate, Route, Server } from "lucide-react";
+import { Backend, Cabang, Frontend, Infrastruktur, Jalur } from "@/components/ui/icons";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, mutedChip } from "@/components/ui/styles";
 import type { TrackSummary } from "@/lib/content";
 
 // By a word in the track slug; anything else gets the route icon.
 const ICONS = [
-  [/frontend|web/, LayoutTemplate],
-  [/git/, GitBranch],
-  [/backend|server|api/, Server],
-  [/python|program|dasar/, Code2],
+  [/frontend|web/, Frontend],
+  [/git/, Cabang],
+  [/backend|api/, Backend],
+  [/infrastruktur|server|jaringan/, Infrastruktur],
 ] as const;
 
 const SHOWN = 4;
@@ -16,7 +16,7 @@ const STEP_TONES = ["bg-matcha-100", "bg-matcha-200", "bg-matcha-300", "bg-match
 
 // A track as its path: one dot per topic on a line, up to twelve.
 export default function TrackCard({ track }: { track: TrackSummary }) {
-  const Icon = ICONS.find(([re]) => re.test(track.slug))?.[1] ?? Route;
+  const Icon = ICONS.find(([re]) => re.test(track.slug))?.[1] ?? Jalur;
   return (
     <li>
       <a
@@ -25,7 +25,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
       >
         <div className="flex items-start justify-between gap-3">
           <span className="grid size-14 -rotate-6 place-items-center rounded-[20px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
-            <Icon aria-hidden className="size-7" strokeWidth={1.75} />
+            <Icon className="size-9" />
           </span>
           <ArrowBadge />
         </div>

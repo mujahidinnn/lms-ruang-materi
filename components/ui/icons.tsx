@@ -98,3 +98,38 @@ export const Latihan = (p: P) => (
     <rect x="14" y="26" width="7" height="7" rx="2" style={tint} /><path d="M26 29.5h8M16 15l1.5 1.5L20 14" strokeWidth={2.5} />
   </Svg>
 );
+
+// Roadmap tracks
+export const Frontend = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="7" width="40" height="32" rx="5" style={paper} />
+    <path d="M4 17h40" /><path d="M10 12h.01M16 12h.01" strokeWidth={4} />
+    <rect x="10" y="23" width="13" height="10" rx="2.5" style={tint} /><path d="M29 24h9M29 31h6" />
+  </Svg>
+);
+export const Cabang = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 12v24M12 30c0-8 6-9 14-9h4a6 6 0 0 0 6-6" />
+    <circle cx="12" cy="10" r="5" style={paper} /><circle cx="12" cy="38" r="5" style={tint} /><circle cx="36" cy="12" r="5" style={tint} />
+  </Svg>
+);
+export const Backend = (p: P) => (
+  <Svg {...p}>
+    <rect x="6" y="5" width="36" height="14" rx="4" style={paper} />
+    <rect x="6" y="22" width="36" height="14" rx="4" style={tint} />
+    <path d="M12 12h.01M12 29h.01M20 12h10M20 29h10" strokeWidth={4} /><path d="M24 36v6M16 42h16" />
+  </Svg>
+);
+export const Infrastruktur = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 17v8M24 25l-12 8M24 25l12 8" />
+    <rect x="15" y="4" width="18" height="13" rx="3.5" style={tint} />
+    <rect x="3" y="31" width="18" height="13" rx="3.5" style={paper} /><rect x="27" y="31" width="18" height="13" rx="3.5" style={paper} />
+  </Svg>
+);
+export const Jalur = (p: P) => (
+  <Svg {...p}>
+    <path d="M12 38c14 0 14-14 0-14S10 10 36 10" /><circle cx="10" cy="38" r="5" style={paper} />
+    <path d="M36 4l7 6-7 6z" style={tint} />
+  </Svg>
+);
