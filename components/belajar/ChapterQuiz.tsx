@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, PartyPopper, RotateCcw, X } from "lucide-react";
+import { Check, RotateCcw, X } from "lucide-react";
+import { Pesta } from "@/components/ui/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CodeExercise from "@/components/code/CodeExercise";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -190,7 +191,7 @@ export default function ChapterQuiz({
           )}
           {status === "blocked" && <p className="rounded-2xl bg-tile-butter px-4 py-3 text-sm">{blocked}</p>}
           {((finished && allPassed) || status === "saved") && (
-            <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><PartyPopper aria-hidden className="size-5" />Bab selesai</p>
+            <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><Pesta className="size-7" />Bab selesai</p>
           )}
           {/* How it went: first-try score, and which questions are worth a re-read. */}
           {finished && (() => {

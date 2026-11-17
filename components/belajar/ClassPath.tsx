@@ -1,6 +1,7 @@
 "use client";
 
-import { Award, Check, ClipboardCheck, Code2, ListChecks, Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
+import { Latihan, Medali, Proyek, Ujian } from "@/components/ui/icons";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { confirmDialog } from "@/lib/confirm";
 import { createClient } from "@/lib/supabase/client";
@@ -92,16 +93,16 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
         </ul>
       </li>
       {(topic.practiceCount > 0 || topic.hasExam) && (
-        <Step href={`/latihan/${topic.slug}`} icon={<ListChecks aria-hidden className="size-5" />} title="Latihan ujian" text="Soal latihan dan try out 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
+        <Step href={`/latihan/${topic.slug}`} icon={<Latihan className="size-7" />} title="Latihan ujian" text="Soal latihan dan try out 20 soal, kunci langsung terlihat. Opsional." tone="bg-matcha-50" />
       )}
       {topic.hasExam && (
-        <Step href={`/ujian/${topic.slug}`} icon={<ClipboardCheck aria-hidden className="size-5" />} title="Ujian akhir" text="Lulus untuk naik level" tone="bg-matcha-200" done={status?.exam_passed} />
+        <Step href={`/ujian/${topic.slug}`} icon={<Ujian className="size-7" />} title="Ujian akhir" text="Lulus untuk naik level" tone="bg-matcha-200" done={status?.exam_passed} />
       )}
       {topic.project && (
-        <Step href={`/belajar/${topic.slug}/proyek`} icon={<Code2 aria-hidden className="size-5" />} title={`Proyek akhir: ${topic.project.title}`} text="Bangun sendiri, diperiksa otomatis" tone="bg-matcha-300" done={status?.project_passed} />
+        <Step href={`/belajar/${topic.slug}/proyek`} icon={<Proyek className="size-7" />} title={`Proyek akhir: ${topic.project.title}`} text="Bangun sendiri, diperiksa otomatis" tone="bg-matcha-300" done={status?.project_passed} />
       )}
       <li className="flex flex-wrap items-center gap-4 rounded-[28px] border-2 border-noir bg-noir p-5 text-on-noir">
-        <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-2xl bg-matcha-300 text-noir"><Award aria-hidden className="size-5" /></span>
+        <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-2xl bg-matcha-300 text-noir"><Medali className="size-7 [--icon-tint:var(--color-matcha-600)]" /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Sertifikat</span>
           <span className="block text-sm text-on-noir/80">Bukti kamu menguasai {topic.title}, dengan kode yang bisa dicek siapa saja.</span>

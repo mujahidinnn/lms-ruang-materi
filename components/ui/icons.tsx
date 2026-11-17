@@ -133,3 +133,39 @@ export const Jalur = (p: P) => (
     <path d="M36 4l7 6-7 6z" style={tint} />
   </Svg>
 );
+
+// Kelas, ujian, dan perayaan
+export const Ujian = (p: P) => (
+  <Svg {...p}>
+    <rect x="9" y="8" width="30" height="35" rx="4" style={paper} />
+    <rect x="16" y="3" width="16" height="10" rx="3" style={tint} />
+    <path d="M16 26l5 5 11-11" />
+  </Svg>
+);
+export const Proyek = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="6" width="40" height="28" rx="4" style={paper} />
+    <path d="M19 15l-6 5 6 5M29 15l6 5-6 5" />
+    <path d="M12 42h24M24 34v8" style={tint} />
+  </Svg>
+);
+export const Surat = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="10" width="40" height="29" rx="5" style={paper} />
+    <path d="M6 14l18 14 18-14" />
+    <circle cx="38" cy="36" r="8" style={tint} /><path d="M34.5 36l2.5 2.5 4.5-5" strokeWidth={2.5} />
+  </Svg>
+);
+export const Pesta = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 42l8-24 18 18z" style={tint} />
+    <path d="M14 18l18 18" />
+    <path d="M26 8c0 4 3 4 3 8M36 20c4 0 5-3 9-3M32 10h.01M40 28h.01M20 6h.01" />
+  </Svg>
+);
+export const Slide = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 5h36M10 5v24a3 3 0 0 0 3 3h22a3 3 0 0 0 3-3V5" style={paper} />
+    <path d="M17 24v-5M24 24V13M31 24v-8" strokeWidth={4} /><path d="M24 32v8M17 43l7-3 7 3" />
+  </Svg>
+);

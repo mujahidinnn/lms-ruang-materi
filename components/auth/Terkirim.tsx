@@ -1,6 +1,7 @@
 "use client";
 
-import { MailCheck, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
+import { Surat } from "@/components/ui/icons";
 import { useEffect, useState } from "react";
 import { secondaryButton } from "@/components/ui/styles";
 import type { MasukState } from "@/lib/actions/masuk";
@@ -23,7 +24,7 @@ export default function Terkirim({ state, onResend, onBack, busy }: { state: Mas
   const what = WHAT[state.kind ?? "link"];
   return (
     <div role="status" className="grid gap-4">
-      <span className="grid size-14 -rotate-6 place-items-center rounded-2xl border-2 border-noir bg-matcha-300 text-noir"><MailCheck aria-hidden className="size-7" /></span>
+      <span className="grid size-14 -rotate-6 place-items-center rounded-2xl border-2 border-noir bg-matcha-300 text-noir"><Surat className="size-9" /></span>
       <div>
         <p className="text-2xl font-extrabold tracking-tight">{what.title}</p>
         <p className="mt-1 text-zinc-300">Kami kirim email ke <strong className="text-zinc-50">{state.email}</strong>. {what.text}</p>

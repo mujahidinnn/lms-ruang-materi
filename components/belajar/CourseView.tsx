@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, ChevronLeft, Clock, Layers, Presentation, Play } from "lucide-react";
+import { Check, ChevronLeft, Clock, Presentation, Play } from "lucide-react";
+import { Kartu, Slide } from "@/components/ui/icons";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
 import { chip, primaryButton } from "@/components/ui/styles";
@@ -142,7 +143,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                 {topic.cardCount > 0 && (
                   <Extra
                     href={`/flashcard/${topic.slug}`}
-                    icon={<Layers aria-hidden className="size-5" />}
+                    icon={<Kartu className="size-7" />}
                     title="Flashcard"
                     text={`${topic.cardCount} kartu`}
                     color="bg-tile-sky"
@@ -150,7 +151,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                 )}
                 <Extra
                   href={`/belajar/${topic.slug}/slide`}
-                  icon={<Presentation aria-hidden className="size-5" />}
+                  icon={<Slide className="size-7" />}
                   title="Semua slide"
                   text={`${topic.slideCount} slide`}
                   color="bg-tile-sky"

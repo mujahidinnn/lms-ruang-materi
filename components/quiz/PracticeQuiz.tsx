@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, ClipboardCheck, Layers, PartyPopper, Play, RotateCcw, X } from "lucide-react";
+import { Check, ClipboardCheck, Layers, Play, RotateCcw, X } from "lucide-react";
+import { Pesta } from "@/components/ui/icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SoundToggle from "@/components/quiz/SoundToggle";
 import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
@@ -120,7 +121,7 @@ export default function PracticeQuiz({
     const { score, win } = setResult(correct, set.length, prep?.passScore);
     return (
       <div aria-live="polite" className={`rounded-[32px] p-6 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
-        {win && <PartyPopper aria-hidden className="size-10 text-accent-warm" />}
+        {win && <Pesta className="size-14" />}
         <p className="mt-2 text-5xl font-bold tracking-tight tabular-nums">
           {prep ? `Nilai ${score}` : `${correct} dari ${set.length} benar`}
         </p>
