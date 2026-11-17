@@ -1,0 +1,1805 @@
+{
+  "title": "IoT dan Otomasi Tingkat Lanjut",
+  "description": "Merancang sistem IoT yang andal dan aman: arsitektur berlapis, MQTT mendalam, edge computing, otomasi dengan histeresis dan PID, TinyML, serta keamanan dan OTA.",
+  "summary": "Kelas ini membawa kamu dari satu node sensor menjadi sistem IoT yang siap dipakai di lapangan. Kamu mulai dari arsitektur berlapis, memilih mikrokontroler atau SBC, firmware dengan RTOS, lalu membandingkan radio seperti Wi-Fi, BLE, Zigbee, LoRaWAN, dan NB-IoT berdasarkan jangkauan, laju data, dan daya.\n\nBagian tengah kelas membahas MQTT secara mendalam, mulai dari topik dan wildcard, QoS, retained, dan LWT, sampai perbandingan dengan HTTP, CoAP, WebSocket, AMQP, dan Kafka. Dari sana kamu mengolah data di edge, membangun pipeline time-series, lalu menyusun otomasi yang stabil dengan trigger, condition, action, histeresis, state machine, dan kontrol PID.\n\nBagian akhir mengenalkan TinyML untuk keputusan lokal, keamanan berlapis, siklus hidup perangkat dengan OTA yang ditandatangani, dan studi kasus smart greenhouse. Latihan kode memakai Python untuk logika murni seperti pencocok topik, validasi payload, agregasi, histeresis, PID, dan rollout, ditutup dengan proyek Pengendali Greenhouse.",
+  "tips": [
+    "Gambar dulu aliran data dari sensor sampai dashboard di kertas, lalu tandai tiap kotak sebagai lapisan mana; kelemahan desain biasanya terlihat dari sana.",
+    "Gunakan klien MQTT seperti mosquitto_sub dengan filter gh/# di jaringan pengujian untuk melihat pesan sungguhan sebelum menulis kode pemrosesnya.",
+    "Simulasikan kegagalan sejak awal: cabut Wi-Fi, matikan broker, dan putus internet, lalu amati apakah node menyambung ulang dan otomasi tetap jalan.",
+    "Selalu beri aktuator dua ambang dan batas waktu minimum, lalu catat berapa kali ia berganti status per jam untuk memastikan tidak chattering.",
+    "Mulailah dari aturan sederhana atau statistik sebelum mencoba TinyML; model baru layak dipakai bila terbukti mengalahkan garis dasar itu.",
+    "Beri setiap perangkat ID dan kredensial unik sejak prototipe, supaya kamu tidak perlu mengubah cara kerjanya saat jumlah perangkat bertambah."
+  ],
+  "flashcards": [
+    {
+      "front": "Sebutkan lima lapisan arsitektur IoT.",
+      "back": "Perangkat, edge atau gateway, jaringan, platform, dan aplikasi."
+    },
+    {
+      "front": "Apa tujuan memisahkan sistem IoT menjadi lapisan?",
+      "back": "Agar setiap lapis bisa diganti tanpa merombak sistem, misalnya mengganti Wi-Fi dengan LoRaWAN tanpa mengubah dashboard."
+    },
+    {
+      "front": "Apa tugas gateway di lapisan edge?",
+      "back": "Agregasi, penyaringan, logika lokal, dan penerjemahan protokol."
+    },
+    {
+      "front": "Kapan memilih MCU dan kapan SBC Linux?",
+      "back": "MCU untuk tugas real-time dan hemat daya di lapangan; SBC Linux untuk gateway yang menjalankan broker, basis data, dan container."
+    },
+    {
+      "front": "Mengapa hindari delay() yang memblokir di firmware?",
+      "back": "Ia menahan seluruh program selama menunggu; pakai timer, event, atau task RTOS."
+    },
+    {
+      "front": "Untuk apa watchdog?",
+      "back": "Mereset perangkat otomatis bila program hang, tanpa menunggu orang menekan reset."
+    },
+    {
+      "front": "Mengapa konfigurasi disimpan di NVS atau flash?",
+      "back": "Agar SSID, alamat broker, dan pengaturan lain dapat diganti tanpa mengompilasi ulang firmware."
+    },
+    {
+      "front": "Radio mana cocok untuk jarak jauh, data kecil, dan baterai awet?",
+      "back": "LoRaWAN atau NB-IoT/LTE-M."
+    },
+    {
+      "front": "Apa beda Thread dan Matter?",
+      "back": "Thread adalah jaringan mesh IPv6; Matter adalah lapisan aplikasi di atasnya."
+    },
+    {
+      "front": "Apa itu topologi star-of-stars pada LoRaWAN?",
+      "back": "Node bicara ke gateway terdekat, lalu gateway meneruskan ke server jaringan."
+    },
+    {
+      "front": "Apa arti wildcard + pada filter MQTT?",
+      "back": "Mencocokkan tepat satu level topik."
+    },
+    {
+      "front": "Apa arti wildcard # pada filter MQTT?",
+      "back": "Mencocokkan semua level di bawahnya; hanya sah di akhir filter."
+    },
+    {
+      "front": "Jelaskan QoS 0, 1, dan 2.",
+      "back": "QoS 0 paling banyak sekali, QoS 1 minimal sekali (bisa duplikat), QoS 2 tepat sekali dengan overhead terbesar."
+    },
+    {
+      "front": "Apa fungsi retained message?",
+      "back": "Broker menyimpan pesan terakhir per topik dan langsung mengirimkannya ke subscriber baru."
+    },
+    {
+      "front": "Apa itu Last Will and Testament (LWT)?",
+      "back": "Pesan yang didaftarkan klien saat menyambung dan dipublikasikan broker bila klien terputus tidak wajar."
+    },
+    {
+      "front": "Bagaimana pola status perangkat yang andal di MQTT?",
+      "back": "Publikasikan online sebagai retained setelah tersambung, dan daftarkan LWT retained berisi offline."
+    },
+    {
+      "front": "Apa beda MQTT dan CoAP secara transport?",
+      "back": "MQTT memakai TCP (dengan TLS), CoAP biasanya memakai UDP (dengan DTLS)."
+    },
+    {
+      "front": "Apa keuntungan edge computing?",
+      "back": "Latensi rendah, hemat bandwidth, privasi data, dan tetap berjalan saat offline."
+    },
+    {
+      "front": "Apa beda tag dan field di basis data time-series?",
+      "back": "Tag adalah metadata terindeks seperti lokasi atau id; field adalah nilai ukur."
+    },
+    {
+      "front": "Apa itu downsampling?",
+      "back": "Menyimpan ringkasan, misalnya rata-rata per jam, untuk data lama agar ruang penyimpanan hemat."
+    },
+    {
+      "front": "Apa itu chattering dan solusinya?",
+      "back": "Aktuator menyala dan mati cepat di sekitar ambang; solusinya histeresis dengan dua ambang."
+    },
+    {
+      "front": "Apa peran suku P, I, dan D pada PID?",
+      "back": "P merespons error sekarang, I menghapus error tunak, D meredam osilasi tetapi peka terhadap noise."
+    },
+    {
+      "front": "Apa itu anti-windup?",
+      "back": "Pembatasan akumulasi integral saat output aktuator jenuh agar sistem tidak overshoot besar."
+    },
+    {
+      "front": "Apa aturan emas keamanan untuk PLC?",
+      "back": "Jangan beri akses tulis langsung dari internet; pakai gateway read-only dan zona jaringan terpisah."
+    },
+    {
+      "front": "Mengapa kuantisasi dipakai di TinyML?",
+      "back": "Mengubah float32 menjadi int8 sehingga model sekitar empat kali lebih kecil dan lebih cepat."
+    },
+    {
+      "front": "Apa praktik terbaik OTA?",
+      "back": "Partisi A/B dengan rollback, firmware ditandatangani, rollout bertahap, dan health check pasca-update."
+    },
+    {
+      "front": "Apa risiko nomor satu OWASP IoT Top 10?",
+      "back": "Kata sandi lemah, bawaan, atau tertanam di firmware."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah gateway menerima data Zigbee dari sensor, lalu mengirimnya sebagai pesan MQTT ke platform. Lapisan mana yang berperan sebagai penerjemah protokol?",
+      "code": "",
+      "options": [
+        "Aplikasi, karena ia mengurus tampilan dashboard",
+        "Edge atau gateway",
+        "Perangkat, karena sensor membuat pesan MQTT sendiri",
+        "Platform, karena hanya broker boleh mengubah format"
+      ],
+      "answer": 1,
+      "explanation": "Penerjemahan protokol adalah salah satu tugas lapisan edge atau gateway."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu butuh node dengan Wi-Fi dan Bluetooth LE terintegrasi, murah, dan punya mode deep-sleep. Pilihan paling sesuai?",
+      "code": "",
+      "options": [
+        "Raspberry Pi dengan Linux penuh dan Docker",
+        "ESP32",
+        "Mikrokontroler tanpa radio yang memakai modul tambahan",
+        "Server rak di ruang data"
+      ],
+      "answer": 1,
+      "explanation": "ESP32 memadukan Wi-Fi dan BLE dengan deep-sleep sehingga cocok sebagai node nirkabel."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menaruh tugas sensor dan jaringan di task RTOS terpisah membantu jaringan yang lambat tidak menunda pembacaan sensor.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Task terpisah dengan queue memisahkan pekerjaan yang kecepatannya berbeda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pelacak aset berpindah-pindah antar kota tanpa gateway tetap. Teknologi konektivitas yang paling masuk akal?",
+      "code": "",
+      "options": [
+        "Zigbee dengan satu koordinator di rumah",
+        "Bluetooth LE yang dipasangkan ke ponsel pemilik",
+        "Wi-Fi rumah milik pemilik aset",
+        "LTE-M atau NB-IoT lewat jaringan seluler"
+      ],
+      "answer": 3,
+      "explanation": "Aset bergerak butuh cakupan seluler karena tidak ada gateway tetap."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Filter langganan gh/+/sensor/# cocok dengan topik mana?",
+      "code": "",
+      "options": [
+        "gh/05/sensor/soil/raw",
+        "gh/05/actuator/fan/set",
+        "gh/sensor/temp",
+        "gh/05/status"
+      ],
+      "answer": 0,
+      "explanation": "+ cocok satu level (05), sensor harus sama, dan # menangkap semua level setelahnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Telemetri suhu dikirim tiap detik dan kehilangan satu-dua pembacaan tidak masalah. QoS yang paling hemat dan memadai adalah",
+      "code": "",
+      "options": [
+        "QoS 1 untuk setiap pembacaan suhu yang dikirim",
+        "QoS 2 agar tidak ada duplikat sama sekali",
+        "QoS 0",
+        "Tidak ada QoS yang bisa dipilih pada MQTT"
+      ],
+      "answer": 2,
+      "explanation": "QoS 0 paling ringan dan cukup untuk data yang sering dan boleh hilang sesekali."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pesan retained disimpan broker per topik hanya satu, yaitu yang terakhir.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Broker menyimpan satu pesan retained per topik dan menggantinya dengan yang terbaru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perangkat mati mendadak karena listrik padam, tetapi dashboard masih menampilkan online. Fitur MQTT yang belum dipakai adalah",
+      "code": "",
+      "options": [
+        "Wildcard # pada filter dashboard",
+        "Shared subscription MQTT 5",
+        "Topik dengan awalan $",
+        "Last Will and Testament"
+      ],
+      "answer": 3,
+      "explanation": "LWT membuat broker mengumumkan offline bila klien terputus tidak wajar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dashboard di browser harus menampilkan pembacaan secara real-time. Protokol yang lazim dipakai di sisi browser adalah",
+      "code": "",
+      "options": [
+        "AMQP langsung dari browser ke broker enterprise",
+        "WebSocket",
+        "Kafka melalui koneksi UDP biasa",
+        "Modbus RTU lewat kabel serial"
+      ],
+      "answer": 1,
+      "explanation": "WebSocket menyediakan koneksi dua arah real-time ke browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Suhu disimpan ke basis data dengan waktu dalam zona lokal tiap lokasi sehingga grafik antarlokasi tidak sejajar. Praktik yang benar adalah",
+      "code": "",
+      "options": [
+        "Menyimpan waktu sesuai jam dinding tiap node",
+        "Membuang cap waktu dan memakai urutan masuk saja",
+        "Menyimpan waktu dalam UTC dan mengubah zona di tampilan",
+        "Menyimpan waktu sebagai teks bebas dari sensor"
+      ],
+      "answer": 2,
+      "explanation": "UTC konsisten untuk penyimpanan; konversi dilakukan saat menampilkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah otomasi menyala saat suhu di atas 30 dan mati saat di bawah 30, dan relay cepat aus. Perbaikan paling tepat?",
+      "code": "",
+      "options": [
+        "Nyalakan di atas 30 dan matikan di bawah 27",
+        "Naikkan ambang menyala menjadi 31 dan mati tetap 30",
+        "Ganti sensor dengan model yang lebih mahal",
+        "Kirim notifikasi tiap kali relay berganti"
+      ],
+      "answer": 0,
+      "explanation": "Dua ambang berbeda membentuk zona mati sehingga relay tidak chattering."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada PID, suku mana yang paling terpengaruh noise sensor?",
+      "code": "",
+      "options": [
+        "Proporsional",
+        "Integral",
+        "Derivatif",
+        "Setpoint"
+      ],
+      "answer": 2,
+      "explanation": "D menurunkan sinyal, sehingga noise cepat diperkuat; beri filter."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tim memutuskan menaruh logika siram bila kering sekaligus di firmware dan di aplikasi, lalu aturannya berbeda di dua tempat. Prinsip arsitektur yang dilanggar adalah",
+      "code": "",
+      "options": [
+        "Penggunaan broker pesan di lapisan platform",
+        "Pemakaian enkripsi pada lapisan jaringan",
+        "Penyimpanan data dalam format time-series",
+        "Pemisahan tanggung jawab antarlapis"
+      ],
+      "answer": 3,
+      "explanation": "Logika yang sama tersebar di dua lapisan menyulitkan perubahan dan membuat aturan tidak konsisten."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada arsitektur IoT, data biasanya mengalir dari perangkat ke aplikasi, sedangkan perintah mengalir sebaliknya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Telemetri naik dari lapangan ke pengguna, perintah turun dari aplikasi ke aktuator."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keamanan dan manajemen perangkat disebut aspek lintas-lapis karena",
+      "code": "",
+      "options": [
+        "Keduanya melibatkan perangkat, jaringan, platform, dan aplikasi sekaligus",
+        "Keduanya hanya dikerjakan di lapisan aplikasi saja",
+        "Keduanya tidak memerlukan perencanaan awal sama sekali",
+        "Keduanya hanya relevan setelah sistem melayani ribuan pengguna"
+      ],
+      "answer": 0,
+      "explanation": "Kelemahan di satu lapisan bisa dimanfaatkan, dan siklus hidup perangkat menyentuh semua lapisan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "STM32 berbasis inti prosesor apa?",
+      "code": "",
+      "options": [
+        "Intel x86",
+        "RISC-V khusus ESP",
+        "Arm Cortex-M",
+        "Arm Cortex-A kelas ponsel"
+      ],
+      "answer": 2,
+      "explanation": "STM32 adalah keluarga MCU berbasis inti Arm Cortex-M."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Raspberry Pi cocok dipakai sebagai gateway yang menjalankan broker MQTT dan Docker.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Ia menjalankan Linux penuh sehingga mampu menampung banyak layanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "ESPHome membantu proyek otomasi rumah karena",
+      "code": "",
+      "options": [
+        "Ia menggantikan kebutuhan akan broker MQTT sepenuhnya dan memakai protokol tertutup",
+        "Ia berjalan langsung sebagai sistem operasi Linux di ESP32",
+        "Ia otomatis mengamankan perangkat dari semua serangan jaringan",
+        "Firmware dibuat dari berkas konfigurasi YAML tanpa menulis kode dari nol"
+      ],
+      "answer": 3,
+      "explanation": "ESPHome menghasilkan firmware dari konfigurasi YAML."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menulis password Wi-Fi langsung di kode firmware memudahkan penggantian konfigurasi di masa depan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Konfigurasi tertanam mempersulit perubahan karena firmware harus dikompilasi ulang dan dipasang ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu butuh jaringan mesh berbasis IPv6 berdaya rendah untuk rumah pintar. Teknologi lapisan jaringannya adalah",
+      "code": "",
+      "options": [
+        "LoRaWAN",
+        "Thread",
+        "Wi-Fi 6 di mode infrastruktur",
+        "NB-IoT lewat operator seluler"
+      ],
+      "answer": 1,
+      "explanation": "Thread adalah mesh IPv6 berdaya rendah; Matter berada di lapisan aplikasi di atasnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa NB-IoT membutuhkan biaya langganan?",
+      "code": "",
+      "options": [
+        "Karena protokolnya tertutup dan hanya boleh dipakai bila dibeli per lisensi tahunan",
+        "Karena setiap node harus membuat gateway sendiri",
+        "Ia memakai jaringan seluler operator sehingga perlu SIM dan layanan",
+        "Karena frekuensinya hanya boleh dipakai satu kali per tahun"
+      ],
+      "answer": 2,
+      "explanation": "NB-IoT dan LTE-M berjalan di jaringan seluler yang dikelola operator."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada topologi mesh, node yang meneruskan pesan harus tetap sadar sehingga umumnya tidak cocok bertenaga baterai.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Peran penerus pesan membuat konsumsi daya lebih tinggi daripada node ujung yang boleh tidur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pilihan topologi yang bila pusatnya mati menyebabkan semua node terputus adalah",
+      "code": "",
+      "options": [
+        "Star dengan satu titik akses",
+        "Mesh dengan banyak jalur",
+        "Star-of-stars dengan banyak gateway",
+        "Mesh dengan banyak koordinator cadangan"
+      ],
+      "answer": 0,
+      "explanation": "Pada star, semua node bergantung pada satu pusat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa angka jangkauan pada tabel perbandingan radio disebut kisaran tipikal?",
+      "code": "",
+      "options": [
+        "Karena standarnya belum selesai disusun",
+        "Karena angka tersebut dipilih acak oleh produsen",
+        "Hasil nyata dipengaruhi lingkungan, antena, dan konfigurasi",
+        "Karena radio hanya bekerja saat cuaca cerah"
+      ],
+      "answer": 2,
+      "explanation": "Penghalang, interferensi, dan antena membuat jangkauan nyata berbeda dari angka brosur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi broker dalam MQTT?",
+      "code": "",
+      "options": [
+        "Menerima pesan lalu meneruskannya ke semua subscriber yang cocok",
+        "Menyimpan firmware untuk pembaruan OTA",
+        "Menghitung nilai PID untuk aktuator",
+        "Mengubah payload JSON menjadi biner lalu menyimpannya sebagai firmware cadangan"
+      ],
+      "answer": 0,
+      "explanation": "Broker adalah pusat yang mencocokkan topik dan mendistribusikan pesan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Topik MQTT tidak perlu dibuat lebih dulu; ia ada begitu ada publish atau subscribe.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Topik bersifat implisit dan tidak memerlukan pendaftaran."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Topik mana yang tidak cocok dengan filter gh/01/#?",
+      "code": "",
+      "options": [
+        "gh/01",
+        "gh/01/sensor/temp",
+        "gh/01/actuator/fan/set",
+        "gh/02/status"
+      ],
+      "answer": 3,
+      "explanation": "# hanya mencakup level di bawah gh/01 dan topik induk itu sendiri."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Filter gh/0+/sensor adalah filter wildcard yang sah di MQTT.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Wildcard + harus menempati satu level penuh dan tidak bisa dipakai sebagian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan mengapa nilai suhu sebaiknya tidak dimasukkan ke nama topik adalah",
+      "code": "",
+      "options": [
+        "Karena MQTT melarang angka di nama topik",
+        "Nilai yang selalu berubah membuat topik tak terhingga banyaknya",
+        "Karena payload hanya boleh berisi teks",
+        "Karena broker tidak bisa menyimpan angka desimal"
+      ],
+      "answer": 1,
+      "explanation": "Nilai harus berada di payload; topik mengidentifikasi sumber dan jenis data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada QoS 1, apa yang bisa terjadi?",
+      "code": "",
+      "options": [
+        "Pesan tidak pernah sampai bila jaringan berkedip",
+        "Pesan dikirim lebih dari sekali sehingga penerima menerima duplikat",
+        "Pesan dijamin tepat sekali oleh empat langkah pertukaran",
+        "Pesan hanya dikirim ke subscriber yang pertama kali mendaftar pada topik itu"
+      ],
+      "answer": 1,
+      "explanation": "At least once berarti pesan sampai, tetapi duplikat mungkin terjadi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pertukaran PUBLISH, PUBREC, PUBREL, PUBCOMP merupakan alur dari",
+      "code": "",
+      "options": [
+        "QoS 0",
+        "QoS 1",
+        "Retained message",
+        "QoS 2"
+      ],
+      "answer": 3,
+      "explanation": "QoS 2 memakai empat langkah untuk menjamin pesan diterima tepat sekali."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "QoS di MQTT berlaku per hop, yaitu antara publisher dengan broker dan antara broker dengan subscriber.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Tingkat jaminan efektif untuk subscriber adalah yang lebih rendah di antara keduanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk menghapus pesan retained dari sebuah topik, kamu harus",
+      "code": "",
+      "options": [
+        "Memublikasikan payload kosong ke topik itu dengan flag retained",
+        "Menghapus broker dan memasangnya ulang",
+        "Berlangganan topik dengan wildcard #",
+        "Mengganti QoS menjadi 0 pada subscriber"
+      ],
+      "answer": 0,
+      "explanation": "Payload kosong dengan retained menghapus pesan tersimpan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi pada pesan wasiat bila klien memutus koneksi dengan baik lewat DISCONNECT?",
+      "code": "",
+      "options": [
+        "Dipublikasikan segera oleh broker",
+        "Disimpan sebagai pesan retained permanen",
+        "Tidak dipublikasikan",
+        "Dikirim ulang dengan QoS 2"
+      ],
+      "answer": 2,
+      "explanation": "LWT hanya untuk pemutusan tidak wajar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa dua klien MQTT dengan ID sama menjadi masalah?",
+      "code": "",
+      "options": [
+        "Keduanya otomatis berbagi sesi dan menerima pesan sama",
+        "Broker menggabungkan payload keduanya",
+        "Tidak ada masalah apa pun karena ID hanya label",
+        "Broker memutus klien lama saat klien baru menyambung sehingga keduanya bergantian terputus"
+      ],
+      "answer": 3,
+      "explanation": "ID klien harus unik dan stabil per perangkat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fitur MQTT 5 yang membuang pesan basi setelah waktu tertentu bernama",
+      "code": "",
+      "options": [
+        "Shared subscription",
+        "Message expiry",
+        "Retained flag",
+        "Reason code"
+      ],
+      "answer": 1,
+      "explanation": "Message expiry menentukan umur pesan sebelum broker membuangnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dibanding HTTP, keunggulan MQTT untuk perangkat yang sering melapor dan menerima perintah adalah",
+      "code": "",
+      "options": [
+        "MQTT selalu lebih aman daripada HTTP walau tanpa konfigurasi TLS apa pun",
+        "MQTT tidak memerlukan broker atau alamat server",
+        "Koneksi TCP bertahan lama dan server dapat mendorong pesan ke klien",
+        "MQTT memakai UDP sehingga tidak ada paket yang hilang"
+      ],
+      "answer": 2,
+      "explanation": "Koneksi persisten dan push dari broker membuat MQTT efisien untuk telemetri dan perintah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Protokol yang mirip REST untuk perangkat sangat terbatas dan biasanya berjalan di atas UDP adalah",
+      "code": "",
+      "options": [
+        "CoAP",
+        "AMQP",
+        "WebSocket",
+        "Kafka"
+      ],
+      "answer": 0,
+      "explanation": "CoAP dirancang sebagai REST ringan untuk perangkat terbatas."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Kafka cocok untuk backend skala besar karena throughput tinggi dan kemampuan memutar ulang data.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Kafka adalah log terdistribusi yang menyimpan riwayat sehingga data bisa diputar ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk satu gateway dengan beberapa layanan, orkestrasi yang cukup adalah",
+      "code": "",
+      "options": [
+        "Kubernetes dengan banyak node master",
+        "Mesin virtual terpisah untuk tiap layanan",
+        "Docker Compose",
+        "Tidak perlu container, semuanya dijalankan dengan tangan"
+      ],
+      "answer": 2,
+      "explanation": "Compose cukup untuk satu gateway; K3s berguna untuk banyak gateway."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Node-RED menyusun logika dan integrasi sebagai flow visual.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Flow visual adalah ciri utama Node-RED."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk bandwidth yang sangat sempit, alternatif payload yang lebih ringkas daripada JSON adalah",
+      "code": "",
+      "options": [
+        "CBOR atau Protobuf",
+        "XML dengan namespace lengkap",
+        "HTML dengan stylesheet",
+        "CSV tanpa pembatas"
+      ],
+      "answer": 0,
+      "explanation": "Format biner seperti CBOR dan Protobuf lebih ringkas, dengan harga debugging yang lebih sulit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa sinkronisasi NTP dan penyimpanan UTC penting di pipeline data?",
+      "code": "",
+      "options": [
+        "Supaya ukuran basis data menjadi lebih kecil dan kueri tren tahunan lebih cepat",
+        "Supaya broker tidak perlu memakai TLS",
+        "Supaya sensor tidak memerlukan catu daya",
+        "Titik data dari banyak perangkat dapat dibandingkan dan disusun dengan benar"
+      ],
+      "answer": 3,
+      "explanation": "Waktu yang konsisten membuat grafik dan agregasi antarperangkat sejajar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kebijakan retensi 30 hari untuk data mentah dan rata-rata per jam untuk jangka panjang adalah contoh dari",
+      "code": "",
+      "options": [
+        "Sharding broker",
+        "Retensi dan downsampling",
+        "Kuantisasi model",
+        "Provisioning perangkat"
+      ],
+      "answer": 1,
+      "explanation": "Data mentah disimpan singkat, ringkasan disimpan lama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada Google Cloud, setelah Cloud IoT Core dihentikan, pendekatan yang umum adalah",
+      "code": "",
+      "options": [
+        "Terus memakai Cloud IoT Core versi lama karena layanannya tetap berjalan seperti biasa",
+        "Memakai broker MQTT mitra atau buatan sendiri lalu meneruskan ke Pub/Sub",
+        "Menghentikan semua penggunaan MQTT",
+        "Memindahkan semua perangkat ke Zigbee"
+      ],
+      "answer": 1,
+      "explanation": "Layanan itu dihentikan pada 2023; pengguna memakai broker lain dengan Pub/Sub."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Memilih platform terkelola berarti tidak perlu mempertimbangkan biaya per pesan dan risiko vendor lock-in.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Biaya per pesan dan lock-in justru pertimbangan utama platform terkelola."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pola otomasi yang bereaksi pada kejadian seperti pintu terbuka disebut",
+      "code": "",
+      "options": [
+        "Terjadwal",
+        "Loop tertutup",
+        "Kuantisasi",
+        "Event-driven"
+      ],
+      "answer": 3,
+      "explanation": "Event-driven bereaksi pada momen perubahan atau kejadian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada model trigger-condition-action, bagian condition menjawab pertanyaan",
+      "code": "",
+      "options": [
+        "Apakah otomasi boleh jalan saat trigger terpicu",
+        "Kapan otomasi dievaluasi",
+        "Apa yang dilakukan setelahnya",
+        "Siapa yang menulis otomasi"
+      ],
+      "answer": 0,
+      "explanation": "Condition menyaring apakah aksi boleh dijalankan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi histeresis hanya butuh nilai suhu sekarang tanpa perlu mengetahui status aktuator sebelumnya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Di zona antara dua ambang, fungsi harus mempertahankan status sebelumnya sehingga butuh memori."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode berikut dipanggil dengan kipas(28, True). Apa hasilnya?",
+      "code": "def kipas(suhu, menyala, atas=30.0, bawah=27.0):\n    if suhu > atas:\n        return True\n    if suhu < bawah:\n        return False\n    return menyala",
+      "options": [
+        "False",
+        "None",
+        "True",
+        "Terjadi error karena argumen kurang"
+      ],
+      "answer": 2,
+      "explanation": "28 berada di antara 27 dan 30, jadi status lama dipertahankan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode berikut dipanggil dengan cocok(\"gh/+/temp\", \"gh/01/temp\"). Apa hasilnya?",
+      "code": "def cocok(f, t):\n    f = f.split(\"/\")\n    t = t.split(\"/\")\n    if len(f) != len(t):\n        return False\n    return all(a == \"+\" or a == b for a, b in zip(f, t))",
+      "options": [
+        "False karena + harus berada di akhir",
+        "None karena fungsi tidak mengembalikan apa pun",
+        "Error karena indeks di luar batas",
+        "True"
+      ],
+      "answer": 3,
+      "explanation": "Level kedua + menerima 01, dan jumlah level sama."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode berikut mengelompokkan cap waktu per jam. Apa hasil jam(7300)?",
+      "code": "def jam(ts):\n    return ts // 3600 * 3600",
+      "options": [
+        "7300",
+        "7200",
+        "3600",
+        "2"
+      ],
+      "answer": 1,
+      "explanation": "7300 // 3600 = 2, lalu dikali 3600 menjadi 7200."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode berikut memeriksa payload. Apa hasil sah({\"t\": True})?",
+      "code": "def sah(d):\n    t = d.get(\"t\")\n    return isinstance(t, (int, float)) and not isinstance(t, bool)",
+      "options": [
+        "True karena True adalah angka 1",
+        "Error TypeError",
+        "False",
+        "None"
+      ],
+      "answer": 2,
+      "explanation": "Boolean sengaja ditolak walau di Python bool adalah subkelas int."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Suku PID yang menghapus error tunak adalah",
+      "code": "",
+      "options": [
+        "Integral",
+        "Derivatif",
+        "Proporsional saja",
+        "Setpoint"
+      ],
+      "answer": 0,
+      "explanation": "Integral menjumlahkan error sisa sampai nol."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada piramida ISA-95, PLC berada di level",
+      "code": "",
+      "options": [
+        "Level 4, perencanaan bisnis",
+        "Level 3, eksekusi produksi",
+        "Level 1, kontrol real-time",
+        "Level 2, supervisi"
+      ],
+      "answer": 2,
+      "explanation": "Level 1 adalah PLC; Level 2 SCADA dan HMI; Level 3 MES; Level 4 ERP."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Digital twin paling sederhana adalah representasi status perangkat seperti device shadow atau device twin.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Versi lanjutan menambahkan model fisika atau ML."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Setelah kuantisasi dari float32 ke int8, model biasanya menjadi sekitar empat kali lebih kecil.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Bobot 8 bit memakai seperempat memori bobot 32 bit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan utama kredensial unik per perangkat adalah",
+      "code": "",
+      "options": [
+        "Satu perangkat yang dibongkar tidak membuka seluruh armada",
+        "Supaya firmware lebih kecil",
+        "Supaya broker berjalan lebih cepat",
+        "Supaya tidak perlu TLS"
+      ],
+      "answer": 0,
+      "explanation": "Kredensial bersama membuat satu kebocoran menjadi kebocoran armada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa mTLS memakai CA privat untuk perangkat?",
+      "code": "",
+      "options": [
+        "Karena CA publik tidak mendukung X.509",
+        "Karena CA privat tidak butuh sertifikat server",
+        "Karena sertifikat privat tidak pernah kedaluwarsa",
+        "Kamu mengendalikan siapa yang terdaftar dan bisa mencabut sertifikat tertentu"
+      ],
+      "answer": 3,
+      "explanation": "CA privat memberi kendali penuh atas penerbitan dan pencabutan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Mematikan validasi sertifikat server di firmware supaya koneksi berhasil adalah praktik yang aman.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa validasi, perangkat bisa tersambung ke server palsu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada rollout OTA bertahap 5%, 25%, 100%, tujuan health check di antara tahap adalah",
+      "code": "",
+      "options": [
+        "Mempercepat unduhan firmware",
+        "Memastikan perangkat sehat sebelum rollout dilanjutkan",
+        "Menghapus kebutuhan tanda tangan firmware",
+        "Mengurangi jumlah perangkat yang terdaftar"
+      ],
+      "answer": 1,
+      "explanation": "Gelombang berikutnya hanya jalan bila gelombang sebelumnya sehat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk akses jarak jauh ke dashboard greenhouse tanpa membuka port ke internet, pendekatan yang dianjurkan adalah",
+      "code": "",
+      "options": [
+        "Port forwarding broker MQTT tanpa TLS",
+        "VPN seperti Tailscale atau WireGuard",
+        "Menonaktifkan firewall di gateway",
+        "Berbagi kata sandi administrator ke seluruh tim"
+      ],
+      "answer": 1,
+      "explanation": "VPN membuat akses lewat terowongan terenkripsi tanpa mengekspos layanan."
+    }
+  ],
+  "prerequisites": [
+    "pemrograman-mikrokontroler"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Pengendali Greenhouse",
+    "brief": "Bangun inti logika gateway **smart greenhouse**: menerima pesan MQTT berisi suhu, memvalidasinya, lalu mengatur kipas dengan histeresis. Kode ini tidak memakai jaringan sungguhan. Pesan datang sebagai pasangan topik dan teks JSON.\n\nPayload sensor berbentuk:\n\n```json\n{\"id\": \"gh01\", \"t\": 27.4, \"rh\": 63.2}\n```\n\n## Fungsi wajib\n\n| Nama | Tugas |\n| --- | --- |\n| `parse_pesan(teks)` | Ubah JSON menjadi dict `{\"id\", \"t\", \"rh\"}`. Lempar `ValueError` bila bukan JSON objek, `id` bukan teks atau kosong, `t` atau `rh` bukan angka (boolean tidak dihitung), `t` di luar -40 sampai 125, atau `rh` di luar 0 sampai 100. |\n| `cocok(filter_, topik)` | Pencocok topik MQTT: `+` satu level, `#` di akhir untuk semua level di bawahnya (termasuk topik induk). |\n\n## Class `Pengendali`\n\n- `__init__(self, atas=30.0, bawah=27.0)`: atribut `kipas = False`, `otomatis = True`, `ditolak = 0`, dan `suhu = []` (daftar suhu yang diterima).\n- `proses(self, topik, teks)`: abaikan (kembalikan `None`) bila topik tidak cocok dengan filter `gh/+/sensor/#`. Bila payload tidak sah, naikkan `ditolak` lalu kembalikan `None`. Bila sah, simpan `t` ke `suhu`. Jika `otomatis` aktif, perbarui `kipas` dengan histeresis: `True` bila `t > atas`, `False` bila `t < bawah`, selain itu pertahankan. Kembalikan status `kipas`.\n- `rata_suhu(self)`: rata-rata `suhu` dibulatkan 1 desimal, `0.0` bila belum ada.\n\n## Contoh\n\n```python\np = Pengendali()\np.proses(\"gh/01/sensor/temp\", '{\"id\": \"gh01\", \"t\": 31, \"rh\": 60}')   # True\np.proses(\"gh/01/sensor/temp\", '{\"id\": \"gh01\", \"t\": 28, \"rh\": 60}')   # True, masih di zona histeresis\np.proses(\"gh/01/sensor/temp\", '{\"id\": \"gh01\", \"t\": 26, \"rh\": 60}')   # False\np.proses(\"gh/01/status\", \"online\")                                    # None, topik tidak cocok\np.proses(\"gh/01/sensor/temp\", \"rusak\")                                # None, ditolak naik 1\n```\n",
+    "prompt": "Lengkapi parse_pesan, cocok, dan class Pengendali agar pesan sensor divalidasi, topik disaring dengan wildcard, dan kipas diatur dengan histeresis.",
+    "starter": {
+      "code": "import json\n\n\ndef parse_pesan(teks):\n    # TODO: json.loads, lalu validasi id, t, dan rh; lempar ValueError bila salah\n    pass\n\n\ndef cocok(filter_, topik):\n    # TODO: pencocok topik MQTT dengan + dan #\n    pass\n\n\nclass Pengendali:\n    def __init__(self, atas=30.0, bawah=27.0):\n        # TODO: kipas, otomatis, ditolak, suhu\n        pass\n\n    def proses(self, topik, teks):\n        # TODO\n        pass\n\n    def rata_suhu(self):\n        # TODO\n        pass\n"
+    },
+    "solution": {
+      "code": "import json\n\n\ndef parse_pesan(teks):\n    try:\n        data = json.loads(teks)\n    except json.JSONDecodeError:\n        raise ValueError(\"bukan JSON\")\n    if not isinstance(data, dict):\n        raise ValueError(\"bukan objek\")\n    id_ = data.get(\"id\")\n    if not isinstance(id_, str) or not id_.strip():\n        raise ValueError(\"id tidak sah\")\n    nilai = {}\n    for kunci, bawah, atas in ((\"t\", -40, 125), (\"rh\", 0, 100)):\n        v = data.get(kunci)\n        if isinstance(v, bool) or not isinstance(v, (int, float)):\n            raise ValueError(kunci + \" bukan angka\")\n        if v < bawah or v > atas:\n            raise ValueError(kunci + \" di luar rentang\")\n        nilai[kunci] = v\n    return {\"id\": id_, \"t\": nilai[\"t\"], \"rh\": nilai[\"rh\"]}\n\n\ndef cocok(filter_, topik):\n    f = filter_.split(\"/\")\n    t = topik.split(\"/\")\n    for i, bagian in enumerate(f):\n        if bagian == \"#\":\n            return True\n        if i >= len(t):\n            return False\n        if bagian != \"+\" and bagian != t[i]:\n            return False\n    return len(f) == len(t)\n\n\nclass Pengendali:\n    def __init__(self, atas=30.0, bawah=27.0):\n        self.atas = atas\n        self.bawah = bawah\n        self.kipas = False\n        self.otomatis = True\n        self.ditolak = 0\n        self.suhu = []\n\n    def proses(self, topik, teks):\n        if not cocok(\"gh/+/sensor/#\", topik):\n            return None\n        try:\n            data = parse_pesan(teks)\n        except ValueError:\n            self.ditolak += 1\n            return None\n        self.suhu.append(data[\"t\"])\n        if self.otomatis:\n            if data[\"t\"] > self.atas:\n                self.kipas = True\n            elif data[\"t\"] < self.bawah:\n                self.kipas = False\n        return self.kipas\n\n    def rata_suhu(self):\n        if not self.suhu:\n            return 0.0\n        return round(sum(self.suhu) / len(self.suhu), 1)\n"
+    },
+    "setup": "def gagal(fungsi, *argumen):\n    try:\n        fungsi(*argumen)\n    except ValueError:\n        return True\n    return False\n\n\ndef pesan(t, rh=60, id_=\"gh01\"):\n    return '{\"id\": \"%s\", \"t\": %s, \"rh\": %s}' % (id_, t, rh)\n\n\nT = \"gh/01/sensor/temp\"\n",
+    "tests": [
+      {
+        "name": "parse_pesan() mengembalikan dict id, t, rh",
+        "check": "parse_pesan(pesan(27.4, 63.2)) == {\"id\": \"gh01\", \"t\": 27.4, \"rh\": 63.2}"
+      },
+      {
+        "name": "parse_pesan() menolak JSON rusak dan bukan objek",
+        "check": "gagal(parse_pesan, \"rusak\") and gagal(parse_pesan, \"[1]\")"
+      },
+      {
+        "name": "parse_pesan() menolak id kosong dan nilai bukan angka",
+        "check": "gagal(parse_pesan, '{\"id\": \"\", \"t\": 20, \"rh\": 50}') and gagal(parse_pesan, '{\"id\": \"a\", \"t\": \"20\", \"rh\": 50}') and gagal(parse_pesan, '{\"id\": \"a\", \"t\": 20, \"rh\": true}')"
+      },
+      {
+        "name": "parse_pesan() menolak nilai di luar rentang",
+        "check": "gagal(parse_pesan, pesan(200)) and gagal(parse_pesan, pesan(20, 101)) and gagal(parse_pesan, pesan(-41))"
+      },
+      {
+        "name": "cocok() menangani + dan #",
+        "check": "cocok(\"gh/+/sensor/#\", \"gh/02/sensor/temp\") and not cocok(\"gh/+/sensor/temp\", \"gh/01/sensor\") and cocok(\"gh/01/#\", \"gh/01\")"
+      },
+      {
+        "name": "Kipas menyala di atas ambang atas",
+        "check": "(p := Pengendali(), p.proses(T, pesan(31)))[1] is True"
+      },
+      {
+        "name": "Di zona histeresis kipas mempertahankan status",
+        "check": "(p := Pengendali(), p.proses(T, pesan(31)), p.proses(T, pesan(28)))[2] is True and Pengendali().proses(T, pesan(28)) is False"
+      },
+      {
+        "name": "Kipas mati di bawah ambang bawah",
+        "check": "(p := Pengendali(), p.proses(T, pesan(31)), p.proses(T, pesan(26)))[2] is False"
+      },
+      {
+        "name": "Mode manual membuat kipas tidak berubah",
+        "check": "(p := Pengendali(), setattr(p, \"otomatis\", False), p.proses(T, pesan(35)))[2] is False"
+      },
+      {
+        "name": "Topik tidak cocok diabaikan dan payload rusak dihitung",
+        "check": "(p := Pengendali(), p.proses(\"gh/01/status\", \"online\"), p.proses(T, \"rusak\"), p.proses(T, pesan(20)))[0].ditolak == 1 and p.suhu == [20]"
+      },
+      {
+        "name": "rata_suhu() dibulatkan 1 desimal, 0.0 bila kosong",
+        "check": "(p := Pengendali(), p.proses(T, pesan(20)), p.proses(T, pesan(21)), p.proses(T, pesan(24)))[0].rata_suhu() == 21.7 and Pengendali().rata_suhu() == 0.0"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "arsitektur-iot-berlapis",
+      "title": "Arsitektur IoT Berlapis dan Prasyarat",
+      "est_minutes": 35,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan lima lapisan arsitektur IoT dan tugas masing-masing.\n- Menentukan lapisan mana yang berubah saat satu komponen diganti.\n- Menjelaskan mengapa keamanan dan manajemen perangkat bersifat lintas-lapis.\n- Memeriksa apakah kamu sudah memenuhi prasyarat modul lanjutan ini.\n\n## Dari prototipe ke sistem\n\nKalau kamu sudah pernah membaca sensor suhu dengan mikrokontroler lalu menampilkannya di Serial Monitor, kamu sudah punya satu potong sistem IoT. Masalahnya, potongan itu baru satu node, satu sensor, dan satu orang yang memantau. Begitu jumlah node bertambah menjadi puluhan, lalu ratusan, pertanyaan yang muncul berubah. Bagaimana node mengirim data ketika Wi-Fi putus? Siapa yang boleh memerintahkan pompa menyala? Bagaimana memperbarui firmware di 200 perangkat yang terpasang di atap? Modul ini menjawab pertanyaan semacam itu.\n\nModul ini bersifat opsional dan berada di tingkat mahir. Artinya, kita tidak lagi membahas cara menyalakan LED atau membaca satu sensor. Fokusnya adalah merancang sistem yang andal, aman, dan bisa diskalakan, lalu mengotomasikannya. Kamu akan bolak-balik antara perangkat keras kecil di lapangan dan layanan di server, jadi kemampuan membaca kedua dunia itu sangat membantu.\n\n## Prasyarat yang harus kamu kuasai\n\nSebelum lanjut, pastikan kamu nyaman dengan empat hal berikut.\n\n- **Dasar elektronika.** Kamu paham GPIO, ADC, dan antarmuka I²C, SPI, serta UART. Kamu tahu mengapa pembacaan ADC bisa berisik dan mengapa dua perangkat I²C tidak boleh memakai alamat yang sama.\n- **Pemrograman C/C++ atau Python.** Contoh dalam modul ini memakai Python untuk logika yang bisa dicoba langsung di browser, sedangkan firmware biasanya ditulis dalam C/C++ atau MicroPython.\n- **Jaringan TCP/IP.** Kamu paham alamat IP, port, dan konsep client-server. Pengetahuan ini dipakai saat membahas broker dan TLS.\n- **Perintah dasar Linux.** Gateway di lapangan umumnya berupa komputer Linux kecil yang kamu kelola lewat terminal.\n\nKalau salah satu terasa goyah, ulas dulu modul dasarnya. Modul lanjutan ini sengaja tidak mengulang materi tersebut supaya waktu kita bisa dipakai untuk desain sistem.\n\n## Lima lapisan arsitektur IoT\n\nCara paling praktis memikirkan sistem IoT adalah memotongnya menjadi lapisan. Setiap lapisan punya satu tanggung jawab utama.\n\n1. **Perangkat.** Sensor, aktuator, dan mikrokontroler. Lapisan ini membaca dunia fisik dan bertindak di dalamnya, misalnya mengukur suhu atau menyalakan relay.\n2. **Edge atau gateway.** Titik yang mengumpulkan data dari banyak node. Ia melakukan agregasi, penyaringan, logika lokal, dan penerjemahan protokol.\n3. **Jaringan.** Wi-Fi, BLE, Zigbee, LoRaWAN, atau seluler. Lapisan ini mengurus transport dan keamanan di jalur komunikasi.\n4. **Platform.** Broker pesan, registry perangkat, penyimpanan data, dan rules engine.\n5. **Aplikasi.** Dashboard, notifikasi, analitik, dan integrasi dengan sistem bisnis.\n\nUrutan di atas mengikuti aliran data dari lapangan menuju pengguna. Perintah mengalir sebaliknya, dari aplikasi turun ke perangkat. Di tengah, gateway sering bertindak sebagai penerjemah, misalnya menerima data lewat Zigbee lalu meneruskannya sebagai pesan MQTT ke platform.\n\n[Lihat diagram lima lapisan](slide:4)\n\n## Prinsip pemisahan tanggung jawab\n\nAlasan utama memakai lapisan adalah supaya setiap lapis dapat diganti tanpa merombak sistem. Bayangkan sebuah kebun yang awalnya memakai Wi-Fi, lalu diperluas ke area yang jauh dari router sehingga kamu beralih ke LoRaWAN. Bila arsitekturmu rapi, perubahan itu hanya menyentuh lapisan jaringan dan sedikit kode firmware di node. Dashboard, basis data, dan aturan otomasi tidak perlu tahu bahwa radionya berganti.\n\nSebaliknya, bila kode node langsung menulis ke basis data lewat koneksi khusus Wi-Fi, mengganti radio berarti menulis ulang hampir semuanya. Itu tanda lapisan-lapisanmu menyatu terlalu erat.\n\nContoh pelanggaran yang sering terjadi:\n\n- Firmware berisi alamat IP server yang ditulis langsung di kode, sehingga memindahkan server berarti memperbarui semua perangkat.\n- Dashboard membaca langsung dari memori node, bukan dari platform, sehingga node yang offline membuat dashboard ikut gagal.\n- Logika bisnis seperti \"siram bila kering\" tersebar di firmware dan di aplikasi sekaligus, sehingga aturan berbeda di dua tempat.\n\nSatu aturan sederhana membantu: tiap lapisan hanya berbicara dengan lapisan di sebelahnya lewat antarmuka yang jelas, misalnya topik MQTT atau API.\n\n## Aspek lintas-lapis\n\nAda dua hal yang tidak bisa ditaruh di satu lapisan saja.\n\n**Keamanan.** Perangkat perlu kredensial unik dan boot yang terpercaya. Jaringan perlu enkripsi. Platform perlu kontrol akses. Aplikasi perlu autentikasi pengguna. Kalau salah satu lapisan lemah, penyerang cukup masuk lewat sana. Bab terakhir membahasnya lebih dalam.\n\n**Manajemen perangkat.** Mendaftarkan perangkat baru, memantau apakah ia hidup, memperbarui firmware, dan mempensiunkannya melibatkan semua lapisan. Merencanakan siklus hidup perangkat sejak awal jauh lebih murah daripada menambalnya setelah ribuan unit terpasang.\n\n## Contoh: membaca arsitektur dari satu aliran data\n\nAmbil satu pembacaan suhu dari sebuah greenhouse dan telusuri perjalanannya.\n\n1. Node ESP32 membaca sensor, lalu membuat payload kecil seperti `{\"t\": 27.4}`.\n2. Node mengirimnya lewat Wi-Fi ke gateway Raspberry Pi. Wi-Fi adalah lapisan jaringan, Raspberry Pi adalah lapisan edge.\n3. Di gateway, broker menerima pesan dan sebuah flow memvalidasinya.\n4. Platform menyimpan nilainya ke basis data time-series.\n5. Dashboard menampilkan grafik, dan aturan otomasi memutuskan apakah kipas perlu menyala.\n\nPerhatikan bahwa hanya langkah 1 yang menyentuh perangkat keras sensor. Langkah lain bisa kamu ganti. Kamu bisa menukar basis data tanpa mengubah node, atau mengubah ambang kipas tanpa menyentuh firmware. Itulah hasil dari pemisahan lapisan.\n\n## Kesalahan umum saat merancang\n\n- **Langsung memilih alat sebelum tahu pola datanya.** Berapa sering data dikirim, seberapa besar payload, dan apakah node bertenaga baterai menentukan pilihan radio dan protokol. Putuskan pola data dulu, baru pilih teknologi.\n- **Menganggap jaringan selalu tersedia.** Di lapangan, koneksi putus adalah hal biasa. Rancang node agar bisa menyambung ulang dan gateway agar bisa tetap bekerja sendiri.\n- **Mengabaikan skala.** Sistem yang jalan baik dengan lima node bisa runtuh di lima ratus node bila setiap node memakai kredensial yang sama atau diperbarui manual satu per satu.\n- **Memperlakukan keamanan sebagai tahap akhir.** Menambahkan TLS dan kredensial unik setelah produk dipasang jauh lebih sulit daripada merancangnya dari awal.\n\n## Cara memakai modul ini\n\nModul terbagi menjadi enam bagian yang saling membangun: arsitektur dan perangkat, konektivitas dan protokol, edge dan data, otomasi dan kontrol, AI di edge, lalu keamanan dan operasional. Studi kasus smart greenhouse di akhir merangkai semuanya menjadi satu sistem utuh, dan proyek akhir meminta kamu membuat inti logikanya.\n\nSelama membaca, biasakan bertanya pada setiap topik: ini hidup di lapisan mana, dan apa yang terjadi bila lapisan di bawahnya gagal. Pertanyaan itu yang membedakan perancang sistem dari orang yang sekadar menyambungkan modul.\n\n## Rangkuman\n\n- Sistem IoT dipotong menjadi lima lapisan: perangkat, edge atau gateway, jaringan, platform, dan aplikasi.\n- Tujuan pemisahan lapisan adalah agar satu lapis bisa diganti tanpa merombak sistem lain.\n- Keamanan dan manajemen perangkat bersifat lintas-lapis dan harus direncanakan sejak awal.\n- Gateway sering menjadi penerjemah protokol dan tempat logika lokal.\n- Modul ini mengasumsikan kamu sudah menguasai elektronika dasar, pemrograman, jaringan TCP/IP, dan Linux dasar.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu mengganti jaringan sebuah kebun dari Wi-Fi ke LoRaWAN. Pada arsitektur yang dirancang rapi, bagian mana yang seharusnya paling banyak berubah?",
+          "code": "",
+          "options": [
+            "Lapisan jaringan dan sedikit firmware di node",
+            "Dashboard dan seluruh aturan otomasi yang sudah dibuat di platform",
+            "Skema basis data penyimpanan beserta semua kueri di aplikasi",
+            "Seluruh lapisan, karena radio memengaruhi setiap komponen di atasnya"
+          ],
+          "answer": 0,
+          "explanation": "Pemisahan lapisan membuat pergantian radio hanya menyentuh lapisan jaringan dan sedikit kode transport di node."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Firmware sebuah node berisi alamat IP server yang ditulis langsung di kode. Server dipindah ke alamat baru. Masalah apa yang muncul?",
+          "code": "",
+          "options": [
+            "Basis data otomatis menolak data yang datang dari alamat berbeda",
+            "Broker menyalin konfigurasi lama ke setiap perangkat lewat jaringan",
+            "Tidak ada masalah, karena alamat IP selalu dipetakan ulang secara otomatis oleh router",
+            "Semua perangkat harus diperbarui satu per satu agar menemukan server"
+          ],
+          "answer": 3,
+          "explanation": "Konfigurasi yang tertanam di firmware membuat perubahan sepele menjadi pekerjaan memperbarui seluruh armada."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dalam arsitektur berlapis, gateway hanya bertugas meneruskan data tanpa pernah menjalankan logika apa pun.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Gateway di lapisan edge sering melakukan agregasi, penyaringan, logika lokal, dan penerjemahan protokol."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim kamu menambahkan TLS dan kredensial unik baru setelah 500 perangkat terpasang di lapangan. Mengapa langkah itu mahal?",
+          "code": "",
+          "options": [
+            "TLS hanya bisa dipasang pada perangkat yang belum pernah menyala sama sekali",
+            "Keamanan adalah aspek lintas-lapis yang paling murah bila dirancang sejak awal",
+            "Kredensial unik tidak dikenali oleh broker mana pun yang sudah berjalan lama",
+            "Lapisan aplikasi tidak pernah mendukung enkripsi sehingga harus ditulis ulang"
+          ],
+          "answer": 1,
+          "explanation": "Menambal keamanan pada armada yang sudah terpasang menuntut pembaruan massal; merancangnya dari awal jauh lebih murah."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "memilih-perangkat-dan-firmware",
+      "title": "Memilih Perangkat, Firmware, dan RTOS",
+      "est_minutes": 35,
+      "slide_from": 5,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Memilih antara ESP32, Arduino, Raspberry Pi, dan STM32 berdasarkan kebutuhan proyek.\n- Membedakan peran MCU di lapangan dan SBC Linux sebagai gateway.\n- Menyebutkan toolchain dan framework firmware yang umum dipakai.\n- Menerapkan praktik RTOS: task terpisah, queue, watchdog, dan penyimpanan konfigurasi.\n\n## MCU atau SBC\n\nPertanyaan pertama saat memilih perangkat bukan merek, melainkan jenis komputernya. Ada dua kelompok besar.\n\n**Mikrokontroler (MCU)** menjalankan satu program langsung di perangkat keras, tanpa sistem operasi penuh. Ia hemat daya, menyala dalam hitungan milidetik, dan punya respons waktu nyata yang bisa diprediksi. ESP32, STM32, dan Arduino masuk kelompok ini. Cocok untuk node sensor, pengendali relay, dan apa pun yang tinggal bertahun-tahun di lapangan.\n\n**Single-board computer (SBC)** seperti Raspberry Pi menjalankan Linux penuh. Ia boros daya dibanding MCU, tetapi bisa menjalankan broker MQTT, basis data, dan container Docker. Cocok untuk gateway dan edge server.\n\nAturan praktis yang bisa kamu pegang: MCU untuk tugas real-time dan hemat daya di lapangan, SBC Linux untuk gateway yang menjalankan broker, basis data, dan container. Dalam satu sistem biasanya keduanya dipakai bersama.\n\n[Bandingkan keempat platform](slide:5)\n\n## Empat pilihan populer\n\n**ESP32.** MCU dengan Wi-Fi dan Bluetooth LE terintegrasi. Varian umumnya dual-core dengan clock sampai 240 MHz, meski varian lain dalam keluarga ESP32 berbeda spesifikasi, jadi periksa lembar data chip yang kamu beli. Ia punya mode deep-sleep untuk menghemat daya. Cocok sebagai node sensor nirkabel karena kamu tidak perlu modul radio tambahan.\n\n**Arduino.** Kekuatannya ada di ekosistem: pustaka dan komunitas yang sangat besar, dengan banyak board seperti Uno R4, Nano, dan Portenta, serta Arduino IDE dan CLI. Cocok untuk prototipe dan pembelajaran, karena hambatan masuknya rendah.\n\n**Raspberry Pi.** SBC dengan CPU multi-core dan Linux penuh, dilengkapi Ethernet, USB, dan dukungan kamera. Ia bisa menjalankan Docker sehingga satu perangkat dapat menampung broker, Node-RED, dan basis data sekaligus. Cocok sebagai gateway dan edge server.\n\n**STM32.** Keluarga MCU berbasis inti Arm Cortex-M, dari kelas daya ultra-rendah sampai performa tinggi. Periferalnya kaya dan sifatnya real-time, serta cocok dipasangkan dengan RTOS. Cocok untuk produk industri yang butuh kontrol ketat.\n\nRingkasnya: ESP32 untuk node nirkabel murah, Arduino untuk belajar dan prototipe cepat, Raspberry Pi untuk gateway, STM32 untuk produk yang harus tahan lama dan presisi. Tidak ada pilihan terbaik mutlak. Kamu memilih berdasarkan daya yang tersedia, kebutuhan radio, anggaran, dan keahlian tim.\n\n## Firmware dan toolchain\n\nSetelah memilih chip, kamu memilih cara menulis firmware.\n\n- **PlatformIO** mengatur build, pustaka, dan banyak board dalam satu proyek, sehingga cocok untuk tim.\n- **Arduino core dan IDE** paling ramah pemula dan tersedia untuk banyak chip, termasuk ESP32.\n- **ESP-IDF dan STM32Cube** adalah kerangka resmi dari produsen chip, memakai C/C++ dan memberi akses penuh ke fitur chip.\n- **MicroPython** menjalankan Python di MCU, bagus untuk iterasi cepat walau lebih boros memori.\n- **ESPHome** membuat firmware dari berkas konfigurasi YAML, tanpa menulis kode C++ dari nol.\n- **Tasmota** adalah firmware siap pakai untuk perangkat rumah pintar.\n\nESPHome dan Tasmota sangat mempercepat proyek otomasi rumah. Tetapi bila kamu butuh logika khusus, misalnya state machine dengan banyak kondisi, kerangka seperti ESP-IDF atau PlatformIO memberi kendali lebih besar.\n\n## RTOS dan multitasking\n\nFirmware sederhana biasanya berbentuk satu loop panjang: baca sensor, kirim data, tunggu, ulangi. Pola itu bekerja sampai kamu perlu melakukan beberapa hal sekaligus. Misalnya menjaga koneksi MQTT tetap hidup, membaca sensor tiap 100 milidetik, dan mengatur relay, semuanya tanpa saling menghambat.\n\nDi sinilah RTOS (real-time operating system) berguna. Contoh yang populer adalah FreeRTOS dan Zephyr. ESP-IDF sendiri dibangun di atas FreeRTOS, sehingga task dan queue sudah tersedia di ESP32. Ide dasarnya: pecah pekerjaan menjadi task terpisah, misalnya satu untuk sensor, satu untuk jaringan, satu untuk kontrol, lalu biarkan penjadwal membagi waktu CPU.\n\nPraktik yang sebaiknya kamu pegang:\n\n- **Task terpisah** untuk sensor, jaringan, dan kontrol, supaya jaringan yang lambat tidak menunda pembacaan sensor.\n- **Queue dan semaphore** untuk berbagi data antartask dengan aman. Jangan membiarkan dua task menulis variabel global yang sama tanpa pengaman.\n- **Hindari `delay()` yang memblokir.** Gunakan timer atau event, karena `delay()` menahan seluruh program selama menunggu.\n- **Pakai watchdog** agar perangkat pulih sendiri bila program hang. Perangkat di atap tidak bisa kamu tekan tombol resetnya.\n- **Simpan konfigurasi di NVS atau flash**, bukan ditulis permanen di kode. Dengan begitu kamu bisa mengganti SSID atau alamat broker tanpa mengompilasi ulang.\n\n## Contoh pola task di ESP32\n\nBerikut kerangka sederhana dengan FreeRTOS di lingkungan Arduino-ESP32. Satu task membaca sensor dan menaruh hasilnya ke queue, task lain mengambilnya untuk dikirim.\n\n```cpp\nQueueHandle_t antrean;\n\nvoid taskSensor(void *p) {\n  for (;;) {\n    float suhu = bacaSuhu();\n    xQueueSend(antrean, &suhu, 0);\n    vTaskDelay(pdMS_TO_TICKS(5000));\n  }\n}\n\nvoid taskKirim(void *p) {\n  float suhu;\n  for (;;) {\n    if (xQueueReceive(antrean, &suhu, portMAX_DELAY)) {\n      kirimMqtt(\"gh/01/sensor/temp\", suhu);\n    }\n  }\n}\n\nvoid setup() {\n  antrean = xQueueCreate(10, sizeof(float));\n  xTaskCreate(taskSensor, \"sensor\", 2048, NULL, 1, NULL);\n  xTaskCreate(taskKirim, \"kirim\", 4096, NULL, 1, NULL);\n}\n```\n\nPerhatikan `vTaskDelay`. Berbeda dengan `delay()` pada loop tunggal, fungsi ini menyerahkan CPU ke task lain selama menunggu. Perhatikan juga bahwa `xQueueSend` memakai waktu tunggu 0, sehingga bila queue penuh, data baru dibuang alih-alih memblokir task sensor. Keputusan seperti ini harus kamu buat sadar: apakah kehilangan satu pembacaan lebih baik daripada menunda sensor.\n\n## Kesalahan yang sering terjadi\n\n- **Memilih SBC untuk node baterai.** Raspberry Pi mudah dipakai, tetapi konsumsi dayanya jauh di atas MCU dalam deep-sleep. Untuk node yang harus hidup lama dengan baterai, pilih MCU.\n- **Memilih MCU untuk gateway yang butuh basis data.** MCU tidak cocok menjalankan layanan berat. Biarkan gateway Linux yang melakukannya.\n- **Konfigurasi tertanam di firmware.** Mengganti password Wi-Fi berarti memperbarui seluruh armada. Simpan di NVS dan sediakan cara menggantinya.\n- **Tidak ada watchdog.** Satu bug langka yang membuat program hang bisa membuat node mati sampai ada orang datang menekan reset.\n\n## Rangkuman\n\n- MCU cocok untuk tugas real-time dan hemat daya, SBC Linux cocok untuk gateway yang menjalankan layanan.\n- ESP32 cocok sebagai node nirkabel, Arduino untuk prototipe, Raspberry Pi untuk gateway, STM32 untuk produk industri.\n- PlatformIO, Arduino, ESP-IDF, MicroPython, ESPHome, dan Tasmota adalah pilihan firmware dengan tingkat kendali berbeda.\n- RTOS seperti FreeRTOS dan Zephyr memungkinkan task terpisah, dengan queue dan semaphore untuk berbagi data.\n- Hindari `delay()` pemblokir, pasang watchdog, dan simpan konfigurasi di NVS atau flash.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Node sensor tanah harus hidup bertahun-tahun dengan baterai dan hanya mengirim satu pembacaan tiap beberapa menit. Perangkat mana yang paling masuk akal?",
+          "code": "",
+          "options": [
+            "Raspberry Pi dengan Linux penuh karena paling mudah dikelola dari jauh",
+            "Raspberry Pi dengan Docker agar semua layanan berada di node yang sama",
+            "Mini PC dengan sistem operasi desktop supaya antarmuka grafis tersedia",
+            "MCU seperti ESP32 yang memakai deep-sleep di antara pembacaan"
+          ],
+          "answer": 3,
+          "explanation": "MCU hemat daya dan punya mode tidur; SBC Linux boros daya dan lebih cocok sebagai gateway."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pembacaan sensor di firmware kamu sering tertunda karena koneksi MQTT lambat. Perbaikan terbaik adalah",
+          "code": "",
+          "options": [
+            "Menambah delay() panjang di loop agar jaringan sempat menyelesaikan kirimannya",
+            "Memisahkan tugas sensor dan jaringan ke task RTOS berbeda dengan queue di antaranya",
+            "Menjalankan semuanya di satu loop dan berharap jaringan menjadi lebih cepat",
+            "Menghapus watchdog karena ia dianggap mengganggu pengiriman data jaringan"
+          ],
+          "answer": 1,
+          "explanation": "Task terpisah dengan queue mencegah jaringan lambat menghambat pembacaan sensor."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menyimpan SSID dan alamat broker di NVS lebih fleksibel daripada menuliskannya permanen di kode.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Konfigurasi di NVS atau flash bisa diganti tanpa mengompilasi ulang firmware."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah node di atap kadang berhenti merespons karena bug langka dan baru pulih bila ada orang menekan reset. Mekanisme apa yang paling tepat ditambahkan?",
+          "code": "",
+          "options": [
+            "Gateway tambahan",
+            "Watchdog yang me-reset perangkat bila program tidak melapor hidup",
+            "Pustaka JSON yang lebih cepat agar program tidak sempat berhenti",
+            "Antena Wi-Fi yang lebih besar supaya sinyal selalu stabil di atap"
+          ],
+          "answer": 1,
+          "explanation": "Watchdog memulihkan perangkat yang hang tanpa campur tangan manusia."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "konektivitas-nirkabel",
+      "title": "Konektivitas Nirkabel: Jangkauan Lawan Daya",
+      "est_minutes": 30,
+      "slide_from": 7,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Membandingkan Wi-Fi, BLE, Zigbee, Thread/Matter, LoRaWAN, dan NB-IoT/LTE-M dari sisi jangkauan, laju data, dan daya.\n- Memilih radio berdasarkan pola data dan sumber daya perangkat.\n- Menjelaskan topologi star, mesh, dan star-of-stars.\n- Menyebut batasan dari angka kisaran tipikal.\n\n## Tidak ada radio terbaik\n\nPemula sering bertanya radio mana yang paling bagus. Pertanyaannya keliru, karena setiap teknologi nirkabel menukar tiga hal yang saling bertentangan: jangkauan, laju data, dan konsumsi daya. Radio yang menjangkau 15 km hampir pasti hanya mengirim data sangat kecil. Radio yang mengirim puluhan megabit per detik pasti menguras baterai lebih cepat.\n\nJadi tugasmu adalah mencari radio yang paling cocok untuk situasi tertentu. Mulailah dengan tiga pertanyaan.\n\n1. Seberapa besar dan seberapa sering data dikirim?\n2. Apakah perangkat memakai listrik jaringan atau baterai, dan berapa lama baterai harus bertahan?\n3. Seberapa jauh perangkat dari gateway atau jaringan terdekat?\n\nJawaban tiga pertanyaan itu biasanya sudah menyempitkan pilihan menjadi satu atau dua teknologi.\n\n## Enam teknologi umum\n\nAngka di bawah adalah kisaran tipikal. Hasil nyata sangat bergantung pada lingkungan, antena, dan konfigurasi, jadi anggap angka ini sebagai titik awal diskusi, bukan jaminan.\n\n**Wi-Fi.** Jangkauan sekitar 30 sampai 50 m di dalam ruangan, laju data puluhan sampai ratusan Mbps, konsumsi daya tinggi. Topologinya star, dan perangkat langsung memperoleh alamat IP dan akses internet. Pilih Wi-Fi bila data besar dan listrik tersedia.\n\n**Bluetooth LE.** Jangkauan sekitar 10 sampai 100 m, laju 1 sampai 2 Mbps, konsumsi daya sangat rendah. Bisa point-to-point dan juga mesh. Cocok untuk sensor sekitar ponsel atau perangkat wearable.\n\n**Zigbee.** Jangkauan sekitar 10 sampai 100 m per hop, laju 250 kbps, daya rendah. Memakai mesh di atas standar 802.15.4 dan membutuhkan koordinator. Banyak dipakai di rumah pintar dengan banyak perangkat kecil.\n\n**Thread dan Matter.** Jangkauan dan laju mirip Zigbee, daya rendah, mesh berbasis IPv6. Perlu dicatat bahwa Thread adalah lapisan jaringan, sedangkan Matter adalah lapisan aplikasi di atasnya. Matter juga dapat berjalan di jaringan lain seperti Wi-Fi dan Ethernet, sehingga keduanya bukan hal yang sama.\n\n**LoRaWAN.** Jangkauan sekitar 2 sampai 15 km, laju sangat rendah, sekitar 0,3 sampai 50 kbps, daya sangat rendah. Topologinya star-of-stars: node bicara ke gateway terdekat, gateway meneruskan ke server jaringan. Cocok untuk sensor lahan, tangki air, atau meteran yang mengirim data kecil jarang-jarang dari lokasi jauh.\n\n**NB-IoT dan LTE-M.** Memakai jaringan seluler, jadi cakupannya mengikuti operator. Lajunya puluhan kbps sampai sekitar 1 Mbps, daya rendah berkat mode hemat daya (PSM). Konsekuensinya kamu perlu kartu SIM dan layanan operator, dan ada biaya langganan.\n\n[Lihat tabel perbandingan lengkap](slide:7)\n\n## Topologi dan akibatnya\n\nTopologi menentukan bagaimana jaringan tumbuh dan bagaimana ia gagal.\n\n- **Star.** Setiap node berbicara langsung ke satu pusat, misalnya titik akses Wi-Fi. Sederhana dan mudah diprediksi, tetapi bila pusat mati, semua node terputus.\n- **Mesh.** Node bisa meneruskan pesan node lain. Jangkauan jaringan meluas dan ada jalur cadangan, tetapi node perantara harus selalu menyala sehingga perangkat bertenaga baterai biasanya berperan sebagai ujung saja.\n- **Star-of-stars.** Seperti LoRaWAN: banyak node ke beberapa gateway, gateway ke server. Gateway ganda memberi redundansi tanpa node harus meneruskan pesan.\n\nPerhatikan bahwa pilihan topologi mempengaruhi daya. Di mesh, perangkat yang meneruskan pesan harus tetap sadar sehingga konsumsi dayanya lebih besar daripada node ujung yang boleh tidur sebagian besar waktu.\n\n## Memilih berdasarkan skenario\n\nBeberapa skenario untuk melatih intuisi.\n\n**Kamera pengawas di dalam gudang dengan listrik tersedia.** Data besar, listrik ada, jarak dekat. Wi-Fi atau Ethernet adalah pilihan alami.\n\n**Seratus sensor kelembapan di perkebunan seluas beberapa kilometer, baterai harus bertahan bertahun-tahun.** Data kecil dan jarang, jarak jauh, daya sangat terbatas. LoRaWAN atau NB-IoT cocok. Bila area sudah terjangkau sinyal seluler yang baik dan anggaran langganan tersedia, NB-IoT atau LTE-M menghemat pembangunan gateway. Bila tidak ada sinyal seluler, LoRaWAN dengan gateway sendiri jadi masuk akal.\n\n**Lampu, sakelar, dan sensor pintu untuk satu rumah.** Banyak perangkat kecil di jarak pendek. Zigbee atau Thread/Matter sesuai, karena mesh membuat sinyal menjangkau seluruh rumah.\n\n**Sensor pelacak aset yang bergerak bersama kendaraan.** Lokasi berubah dan tidak ada gateway tetap. Jaringan seluler seperti LTE-M lebih masuk akal.\n\nPolanya terlihat: kebutuhan data besar dengan listrik mengarah ke Wi-Fi, baterai bertahun-tahun dengan jarak jauh dan data kecil mengarah ke LoRaWAN atau NB-IoT, dan banyak perangkat di rumah mengarah ke Zigbee atau Thread/Matter.\n\n## Hal yang sering terlewat\n\n- **Pita frekuensi dan regulasi.** Frekuensi yang boleh dipakai berbeda per negara, begitu pula batas daya pancar. Periksa aturan setempat sebelum membeli modul LoRa atau memasang gateway.\n- **Latensi dan arah komunikasi.** Beberapa radio hemat daya sengaja membatasi seberapa sering perangkat boleh menerima perintah. Jika aplikasimu butuh perintah cepat ke aktuator, pilih radio yang mendukungnya.\n- **Interferensi.** Wi-Fi, Bluetooth, dan Zigbee berbagi pita 2,4 GHz yang ramai. Di lingkungan padat, laju nyata bisa jauh di bawah angka brosur.\n- **Penetrasi dinding dan antena.** Jangkauan di lapangan terbuka dan di dalam gedung beton bisa berbeda berkali-kali lipat.\n- **Biaya total.** Radio murah dengan gateway mahal dan langganan operator bisa lebih mahal daripada radio yang lebih mahal tanpa biaya bulanan.\n\n## Hubungan dengan arsitektur berlapis\n\nIngat pemisahan lapisan dari bab pertama. Radio berada di lapisan jaringan. Bila kamu mendesain dengan benar, mengganti Wi-Fi ke LoRaWAN seharusnya hanya mengubah firmware transport di node dan menambah gateway, sementara format payload dan topik tetap sama. Karena itu, simpan logika pembentuk payload terpisah dari kode yang memanggil radio. Dengan cara itu eksperimen dengan radio berbeda tidak memaksa kamu menulis ulang semuanya.\n\n## Rangkuman\n\n- Tidak ada radio terbaik: setiap teknologi menukar jangkauan, laju data, dan konsumsi daya.\n- Wi-Fi untuk data besar dengan listrik tersedia, LoRaWAN dan NB-IoT untuk jarak jauh dengan data kecil dan baterai awet, Zigbee dan Thread/Matter untuk rumah pintar.\n- Wi-Fi umumnya star, Zigbee dan Thread mesh, LoRaWAN star-of-stars, dan NB-IoT/LTE-M bergantung pada operator seluler.\n- Angka jangkauan dan laju adalah kisaran tipikal yang dipengaruhi lingkungan, antena, dan konfigurasi.\n- Periksa regulasi frekuensi, interferensi, dan biaya total sebelum memutuskan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seratus sensor kelembapan tersebar di area beberapa kilometer tanpa listrik, dan mengirim data kecil tiap jam. Teknologi mana yang paling cocok?",
+          "code": "",
+          "options": [
+            "Wi-Fi karena lajunya paling tinggi dan tersedia di hampir semua tempat",
+            "LoRaWAN, atau NB-IoT bila sinyal seluler tersedia",
+            "Zigbee dengan satu koordinator yang dipasang di tengah area kebun",
+            "Bluetooth LE karena konsumsi dayanya sangat rendah dan ringkas dipakai"
+          ],
+          "answer": 1,
+          "explanation": "Jarak jauh, data kecil, dan baterai awet adalah wilayah LoRaWAN dan NB-IoT."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah rumah punya puluhan lampu, sakelar, dan sensor pintu di jarak pendek. Mengapa Zigbee atau Thread cocok?",
+          "code": "",
+          "options": [
+            "Keduanya menjangkau belasan kilometer sehingga satu gateway cukup",
+            "Topologi mesh membuat sinyal menjangkau seluruh rumah dengan daya rendah",
+            "Keduanya memiliki laju data tertinggi di antara semua teknologi nirkabel",
+            "Keduanya tidak memerlukan koordinator atau router sama sekali"
+          ],
+          "answer": 1,
+          "explanation": "Mesh dengan daya rendah menjangkau seluruh rumah lewat perangkat yang saling meneruskan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Thread dan Matter adalah dua nama untuk teknologi yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Thread adalah jaringan mesh IPv6, sedangkan Matter adalah lapisan aplikasi di atasnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Datasheet sebuah modul LoRa menyebut jangkauan 15 km, tetapi di gedung beton kamu hanya mendapat beberapa ratus meter. Penjelasan paling tepat?",
+          "code": "",
+          "options": [
+            "Modul rusak dan harus diganti karena jangkauan tidak boleh berbeda dari brosur",
+            "Firmware salah memakai frekuensi sehingga sinyal tidak keluar dari gedung",
+            "LoRa memang hanya bekerja di dalam gedung dan tidak dirancang untuk luar ruangan",
+            "Angka brosur adalah kisaran tipikal yang sangat dipengaruhi lingkungan dan antena"
+          ],
+          "answer": 3,
+          "explanation": "Jangkauan nyata bergantung pada lingkungan, penghalang, antena, dan konfigurasi."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "mqtt-topik-dan-wildcard",
+      "title": "MQTT: Publish/Subscribe, Topik, dan Wildcard",
+      "est_minutes": 40,
+      "slide_from": 8,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Menjelaskan model publish/subscribe dan peran broker.\n- Merancang topik hierarkis yang konsisten.\n- Memakai wildcard `+` dan `#` dengan benar.\n- Menulis fungsi pencocok topik untuk logika subscribe.\n\n## Mengapa bukan request/response\n\nPada model request/response seperti HTTP, klien meminta lalu server menjawab. Klien harus tahu alamat server dan menunggu jawabannya. Untuk IoT, pola itu kurang pas. Sebuah sensor yang mengirim suhu tiap lima detik tidak sedang bertanya apa pun. Ia hanya melaporkan. Sementara itu ada beberapa pihak yang ingin tahu: dashboard, aturan otomasi, dan penyimpan data. Dengan HTTP, sensor harus mengirim ke tiga alamat berbeda atau kamu menaruh server perantara yang meneruskannya.\n\nMQTT menyelesaikan ini dengan model publish/subscribe. Pengirim (publisher) menaruh pesan ke sebuah topik. Penerima (subscriber) mendaftar pada topik yang ia minati. Di tengah ada broker yang menerima pesan dan meneruskannya ke semua subscriber yang cocok. Pengirim dan penerima tidak saling kenal, cukup sepakat soal nama topik. Sifat ini disebut decoupling.\n\n[Lihat alur broker dan subscriber](slide:8)\n\n## Peran broker\n\nBroker adalah pusat sistem. Ia memegang daftar langganan, mencocokkan topik setiap pesan masuk, lalu mengirimkan salinan ke setiap subscriber yang berhak. Eclipse Mosquitto adalah broker open-source yang ringan dan banyak dipakai, cukup kecil untuk berjalan di Raspberry Pi.\n\nKonsekuensinya penting. Karena semua lewat broker, broker adalah titik yang harus dijaga: ia perlu autentikasi, enkripsi, dan pemantauan. Bila broker mati, komunikasi berhenti, jadi pada sistem penting kamu perlu merencanakan pemulihan atau penggandaan broker.\n\nKelebihan lain: node tidak perlu tahu berapa banyak subscriber. Menambahkan layanan baru, misalnya modul peringatan Telegram, cukup dengan membuat langganan baru tanpa mengubah firmware sensor. Ini sesuai prinsip pemisahan tanggung jawab di bab pertama.\n\nMQTT juga ringan. Header tetap paket hanya berukuran minimal 2 byte, sehingga cocok untuk jaringan terbatas. Tetapi ukuran total tentu bertambah oleh nama topik dan payload.\n\n## Topik hierarkis\n\nTopik adalah string yang dipisahkan garis miring, misalnya `gh/01/sensor/temp`. Tiap bagian disebut level. Topik tidak perlu dibuat lebih dulu. Ia tercipta begitu ada yang memublikasikan atau berlangganan.\n\nKarena kamu bebas memberi nama, tim yang tidak disiplin cepat menghasilkan kekacauan. Pegang satu pola, misalnya:\n\n```\nlokasi/perangkat/jenis/ukuran\ngh/01/sensor/temp         27.4\ngh/01/sensor/soil         41\ngh/01/actuator/fan/set    ON\ngh/01/status              online\n```\n\nTips desain topik:\n\n- Urutkan dari yang umum ke yang khusus, sehingga wildcard bisa memotong dari kiri.\n- Jangan masukkan data yang berubah-ubah ke nama topik, misalnya nilai sensor. Nilai masuk ke payload.\n- Jangan mulai dengan garis miring dan jangan memakai spasi.\n- Pisahkan topik pembacaan (sensor) dari topik perintah (actuator). Topik perintah sering diberi akhiran seperti `/set`, sedangkan topik laporan status terpisah.\n- Hindari topik yang mulai dengan `$`, karena awalan itu biasanya dicadangkan broker untuk topik sistem.\n\n## Wildcard\n\nSubscriber dapat memakai dua wildcard dalam filter langganan. Wildcard hanya berlaku saat berlangganan, bukan saat memublikasikan.\n\n- `+` cocok dengan tepat satu level. Filter `gh/+/sensor/temp` cocok dengan `gh/01/sensor/temp` dan `gh/02/sensor/temp`, tetapi tidak dengan `gh/01/sensor/soil`.\n- `#` cocok dengan semua level di bawahnya dan harus berada di akhir filter. Filter `gh/01/#` cocok dengan `gh/01/sensor/temp`, `gh/01/actuator/fan/set`, dan `gh/01/status`. Filter `#` saja cocok dengan semua topik.\n\nContoh dari slide: Node-RED memakai `gh/+/sensor/#` sehingga ia menerima data sensor dari semua greenhouse, sedangkan Home Assistant memakai `gh/01/#` untuk semua yang berasal dari greenhouse nomor 01.\n\nDetail yang sering menjebak: `#` juga mencocokkan topik induknya. Filter `gh/01/#` cocok dengan `gh/01` sendiri. Bagian `+` tidak bisa dipakai setengah level, jadi `gh/0+/sensor` bukan filter yang sah. Dan wildcard tidak mencocokkan level kosong secara ajaib, jadi `gh//temp` hanyalah topik dengan level tengah kosong.\n\n## Menulis pencocok topik\n\nBroker melakukan pencocokan ini untuk kamu, tetapi kamu sering perlu logika serupa di kode sendiri, misalnya di gateway yang memutuskan flow mana yang memproses sebuah pesan. Algoritmanya sederhana: pecah filter dan topik di garis miring, lalu bandingkan level demi level.\n\n```python\ndef cocok(filter_, topik):\n    f = filter_.split(\"/\")\n    t = topik.split(\"/\")\n    for i, bagian in enumerate(f):\n        if bagian == \"#\":\n            return True\n        if i >= len(t):\n            return False\n        if bagian != \"+\" and bagian != t[i]:\n            return False\n    return len(f) == len(t)\n```\n\nTelusuri contoh `cocok(\"gh/+/sensor/#\", \"gh/02/sensor/temp\")`. Level pertama sama, level kedua `+` menerima apa saja, level ketiga sama, lalu `#` langsung mengembalikan `True`. Sekarang `cocok(\"gh/+/sensor/temp\", \"gh/01/sensor\")`. Setelah tiga level, filter masih punya satu bagian tetapi topik sudah habis, jadi fungsi mengembalikan `False`.\n\nSatu kasus tepi: `cocok(\"gh/01/#\", \"gh/01\")`. Pada level ketiga, `i` sama dengan 2 sedangkan topik hanya punya 2 level. Versi di atas akan melihat `#` dulu sebelum memeriksa panjang, jadi mengembalikan `True`, sesuai perilaku MQTT.\n\n## Kesalahan yang sering terjadi\n\n- **Langganan `#` di produksi.** Menerima seluruh lalu lintas broker mudah untuk debugging, tetapi membebani klien dan membuka data yang tidak perlu. Gunakan filter sesempit mungkin.\n- **Memublikasikan ke topik dengan wildcard.** Karakter `+` dan `#` tidak boleh ada di topik publikasi, hanya di filter langganan.\n- **Topik yang terlalu dalam.** Sepuluh level membuat filter sulit dibaca. Empat sampai lima level biasanya cukup.\n- **Topik yang tidak konsisten.** Satu tim menulis `Temp`, tim lain `temp`. Topik MQTT membedakan huruf besar dan kecil, jadi keduanya dianggap dua topik berbeda. Tetapkan huruf kecil sebagai aturan.\n- **Mengira subscriber lama menerima riwayat.** Secara bawaan, subscriber hanya menerima pesan yang dipublikasikan setelah ia berlangganan. Bab berikutnya membahas retained message untuk kasus ini.\n\n## Rangkuman\n\n- MQTT memakai model publish/subscribe: pengirim dan penerima tidak saling kenal, mereka hanya sepakat soal topik lewat broker.\n- Broker seperti Eclipse Mosquitto mencocokkan topik dan meneruskan pesan, jadi ia harus diamankan dan dipantau.\n- Topik bersifat hierarkis dan membedakan huruf besar kecil; susun dari umum ke khusus.\n- Wildcard `+` mencocokkan satu level dan `#` mencocokkan semua level di bawahnya, hanya di akhir filter.\n- Wildcard hanya dipakai saat berlangganan, tidak saat memublikasikan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sensor suhu mengirim data, sementara dashboard, aturan otomasi, dan penyimpan data semuanya perlu menerimanya. Keuntungan terbesar MQTT di sini adalah",
+          "code": "",
+          "options": [
+            "Sensor harus mengetahui alamat ketiga penerima dan mengirim ke masing-masing",
+            "Sensor cukup memublikasikan sekali dan setiap pihak berlangganan sendiri",
+            "Dashboard bisa meminta data langsung ke sensor kapan pun ia mau",
+            "Broker menolak subscriber baru agar sensor tidak kelebihan beban kerja"
+          ],
+          "answer": 1,
+          "explanation": "Decoupling lewat broker membuat penambahan penerima baru tidak menyentuh pengirim."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Node-RED perlu menerima suhu dari semua greenhouse, misalnya gh/01/sensor/temp dan gh/02/sensor/temp, tetapi bukan topik soil. Filter yang tepat adalah",
+          "code": "",
+          "options": [
+            "gh/#/sensor/temp",
+            "gh/+/sensor/#",
+            "gh/01/sensor/temp",
+            "gh/+/sensor/temp"
+          ],
+          "answer": 3,
+          "explanation": "Tanda + mencocokkan tepat satu level; # hanya sah di akhir filter dan akan ikut menangkap topik soil."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Wildcard + dan # boleh dipakai pada topik saat memublikasikan pesan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Wildcard hanya berlaku untuk filter langganan, bukan topik publikasi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim kamu menulis Temp di satu firmware dan temp di firmware lain. Apa akibatnya di broker MQTT?",
+          "code": "",
+          "options": [
+            "Dianggap dua topik berbeda sehingga pelanggan salah satunya tidak menerima data",
+            "Broker menyamakan keduanya karena nama topik tidak membedakan huruf besar dan kecil",
+            "Broker menolak koneksi kedua klien sampai ejaannya diseragamkan",
+            "Pesan digabung otomatis menjadi satu aliran data dengan nama pertama"
+          ],
+          "answer": 0,
+          "explanation": "Topik MQTT membedakan huruf besar dan kecil, jadi ejaan harus konsisten."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Pencocok topik MQTT",
+          "prompt": "Tulis `cocok(filter_, topik)` yang mengembalikan `True` bila topik cocok dengan filter langganan MQTT.\n\n- `+` cocok dengan tepat satu level.\n- `#` hanya di akhir filter, cocok dengan semua level di bawahnya, termasuk topik induknya (`gh/01/#` cocok dengan `gh/01`).\n- Selain itu level harus sama persis dan jumlah level harus sama.\n\nContoh: `cocok(\"gh/+/sensor/#\", \"gh/02/sensor/temp\")` menghasilkan `True`.",
+          "starter": {
+            "code": "def cocok(filter_, topik):\n    # TODO: pecah dengan split(\"/\") lalu bandingkan level demi level\n    pass\n"
+          },
+          "solution": {
+            "code": "def cocok(filter_, topik):\n    f = filter_.split(\"/\")\n    t = topik.split(\"/\")\n    for i, bagian in enumerate(f):\n        if bagian == \"#\":\n            return True\n        if i >= len(t):\n            return False\n        if bagian != \"+\" and bagian != t[i]:\n            return False\n    return len(f) == len(t)\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Topik persis sama cocok",
+              "check": "cocok(\"gh/01/sensor/temp\", \"gh/01/sensor/temp\") is True"
+            },
+            {
+              "name": "+ cocok satu level",
+              "check": "cocok(\"gh/+/sensor/temp\", \"gh/02/sensor/temp\") is True and cocok(\"gh/+/sensor/temp\", \"gh/02/sensor/soil\") is False"
+            },
+            {
+              "name": "+ tidak cocok dengan dua level",
+              "check": "cocok(\"gh/+/temp\", \"gh/01/sensor/temp\") is False"
+            },
+            {
+              "name": "# cocok semua level di bawahnya",
+              "check": "cocok(\"gh/+/sensor/#\", \"gh/01/sensor/fan/speed\") is True and cocok(\"gh/01/#\", \"gh/02/status\") is False"
+            },
+            {
+              "name": "# juga cocok dengan topik induk",
+              "check": "cocok(\"gh/01/#\", \"gh/01\") is True"
+            },
+            {
+              "name": "Topik lebih pendek atau lebih panjang tanpa wildcard tidak cocok",
+              "check": "cocok(\"gh/01/sensor/temp\", \"gh/01/sensor\") is False and cocok(\"gh/01\", \"gh/01/sensor\") is False"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "mqtt-lanjutan-dan-protokol",
+      "title": "MQTT Lanjutan dan Perbandingan Protokol",
+      "est_minutes": 40,
+      "slide_from": 9,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Memilih QoS 0, 1, atau 2 sesuai tingkat kepentingan pesan.\n- Memakai retained message, Last Will and Testament, dan persistent session.\n- Merancang pola status online/offline perangkat.\n- Memilih protokol aplikasi (MQTT, CoAP, HTTP, WebSocket, AMQP, Kafka) sesuai kebutuhan.\n\n## Tiga tingkat QoS\n\nQuality of Service di MQTT menentukan seberapa kuat jaminan pengiriman antara satu pihak dan broker. Ia berlaku per hop, yaitu dari publisher ke broker dan dari broker ke subscriber, dan tingkat efektif untuk subscriber adalah yang lebih rendah di antara pesan dan langganannya.\n\n**QoS 0, at most once.** Pesan dikirim sekali dan tidak ada konfirmasi. Bila jaringan hilang, pesan hilang. Ini paling ringan. Cocok untuk telemetri yang sering dikirim, karena kehilangan satu pembacaan suhu dari ratusan tidak berarti apa-apa.\n\n**QoS 1, at least once.** Penerima menjawab dengan PUBACK. Bila pengirim tidak menerima konfirmasi, ia mengirim ulang, sehingga pesan pasti sampai tetapi bisa sampai lebih dari sekali. Ini pilihan praktis yang paling sering dipakai. Konsekuensinya penerima harus siap menerima duplikat, jadi perintah seperti \"nyalakan pompa\" aman diulang, sedangkan \"tambah satu ke penghitung\" tidak.\n\n**QoS 2, exactly once.** Memakai pertukaran empat langkah: PUBLISH, PUBREC, PUBREL, PUBCOMP. Pesan diterima tepat sekali. Overhead terbesar, jadi dipakai untuk perintah kritis ketika duplikat berbahaya, misalnya penagihan.\n\n[Lihat alur ketiga QoS](slide:9)\n\nPilih tingkat paling rendah yang masih aman bagi aplikasimu. Untuk banyak sistem, telemetri berjalan di QoS 0 atau 1, perintah aktuator di QoS 1 dengan desain idempoten, dan QoS 2 dipakai jarang. Satu catatan jujur: QoS tidak membuat sistemmu andal sendirian. Bila node mati, tidak ada QoS yang membuat data terkirim. Ia hanya menjamin hubungan antara dua pihak yang sedang terhubung atau yang punya sesi tersimpan.\n\n## Retained message\n\nSecara bawaan, subscriber baru tidak menerima apa pun sampai ada pesan baru. Bayangkan dashboard yang baru dibuka. Ia berlangganan topik suhu tetapi harus menunggu lima detik hingga pembacaan berikutnya, dan untuk perangkat yang jarang melapor, bisa menunggu berjam-jam.\n\nBendera retained memperbaiki hal ini. Bila publisher menandai pesan sebagai retained, broker menyimpan pesan terakhir untuk topik itu dan langsung mengirimkannya ke setiap subscriber baru yang cocok. Hanya satu pesan retained per topik yang disimpan. Untuk menghapusnya, publikasikan payload kosong ke topik itu dengan flag retained.\n\nRetained cocok untuk status dan konfigurasi, misalnya \"online\", mode otomatis, atau nilai terakhir yang jarang berubah. Ia kurang cocok untuk aliran data cepat yang tidak perlu diulang.\n\n## Last Will and Testament\n\nBagaimana dashboard tahu sebuah node mati? Node yang mati tidak bisa melapor bahwa ia mati. Solusi MQTT adalah Last Will and Testament (LWT). Saat menyambung ke broker, klien mendaftarkan sebuah pesan wasiat beserta topiknya. Bila klien terputus secara tidak wajar, misalnya listrik padam atau Wi-Fi hilang hingga keepalive habis, broker memublikasikan pesan itu atas nama klien. Bila klien memutus koneksi dengan baik lewat DISCONNECT, pesan wasiat tidak dikirim.\n\nPola yang dianjurkan menggabungkan retained dan LWT:\n\n```\n# saat menyambung, daftarkan wasiat\nLWT:   topik gh/01/status  payload \"offline\"  retained\n# setelah tersambung, umumkan kondisi\nPUBLISH gh/01/status  \"online\"  retained\n```\n\nDengan pola ini dashboard yang baru dibuka langsung menerima status terakhir, entah \"online\" atau \"offline\", tanpa menunggu. Status perangkat akurat bahkan saat dashboard tidak sedang menyala ketika perangkat putus.\n\n## Persistent session dan fitur MQTT 5\n\nPersistent session membuat broker menyimpan langganan dan, untuk pesan QoS 1 dan 2, mengantre pesan saat klien sedang offline atau tidur. Ketika klien kembali dengan identitas yang sama, ia menerima pesan yang tertinggal. Ini berguna untuk node yang tidur hemat daya tetapi tetap perlu menerima perintah. Antrean tidak tak terbatas, jadi batasan memori dan kebijakan broker berlaku.\n\nMQTT 5 menambahkan fitur yang berguna di skala besar, antara lain shared subscription yang membagi beban pesan di antara beberapa pekerja, message expiry yang membuang pesan basi, dan reason code yang menjelaskan alasan penolakan atau pemutusan. Tidak semua broker dan pustaka klien mendukungnya sama baik, jadi periksa dokumentasi komponen yang kamu pakai.\n\n## Membandingkan protokol aplikasi\n\nMQTT bukan satu-satunya protokol, dan seringkali bukan yang terbaik untuk semua lapisan. Berikut peta singkat.\n\n- **MQTT.** Publish/subscribe di atas TCP, dapat diamankan dengan TLS. Ringan, punya QoS, LWT, dan retained. Cocok untuk telemetri dan perintah.\n- **CoAP.** Request/response mirip REST, biasanya di atas UDP dengan DTLS. Dirancang untuk perangkat sangat terbatas dan punya fitur observe untuk mengikuti perubahan sumber daya.\n- **HTTP/REST.** Request/response di atas TCP dengan TLS. Universal dan mudah diintegrasikan, cocok untuk API dan konfigurasi, tetapi lebih berat per pesan daripada MQTT.\n- **WebSocket.** Koneksi dua arah di atas TCP, ideal untuk memperbarui dashboard di browser secara real-time.\n- **AMQP.** Model antrean pesan dengan routing dan jaminan pengiriman yang kaya, umum di integrasi enterprise.\n- **Kafka.** Log terdistribusi dengan throughput tinggi dan kemampuan memutar ulang data, dipakai di backend skala besar.\n\nKombinasi yang umum: MQTT di sisi perangkat, HTTP untuk API, WebSocket untuk dashboard real-time, dan Kafka atau AMQP di backend. Gateway sering menjadi penerjemah antarprotokol, misalnya menerima MQTT dari node lalu meneruskannya ke Kafka.\n\nPerbedaan inti MQTT dan HTTP patut kamu ingat. HTTP bersifat request/response dan tiap permintaan biasanya membawa header yang lebih besar. MQTT membuka satu koneksi TCP yang bertahan lama dan server dapat mendorong pesan ke klien tanpa diminta. Itulah sebabnya MQTT lebih efisien untuk perangkat yang melapor sering dan perlu menerima perintah.\n\n## Kesalahan yang sering terjadi\n\n- **QoS 2 di mana-mana.** Overhead dan latensinya lebih besar. Rancang pesan idempoten dan pakai QoS 1 bila bisa.\n- **Lupa menandai status sebagai retained.** Dashboard baru menampilkan status kosong sampai perangkat mengirim ulang.\n- **Mengirim \"online\" tanpa wasiat.** Tanpa LWT, perangkat yang mati mendadak akan terlihat online selamanya.\n- **Mengabaikan ID klien.** Dua klien dengan ID sama saling menendang dari broker, dan persistent session bergantung pada ID yang stabil. Beri ID unik dan tetap per perangkat.\n- **Memaksa satu protokol untuk semuanya.** Memakai MQTT untuk mengunduh berkas firmware besar bukan pilihan bijak. HTTP lebih sesuai untuk unduhan.\n\n## Rangkuman\n\n- QoS 0 maksimal sekali, QoS 1 minimal sekali dengan kemungkinan duplikat, QoS 2 tepat sekali dengan overhead terbesar.\n- Retained message menyimpan pesan terakhir per topik agar subscriber baru langsung mendapat nilai.\n- LWT membuat broker mengumumkan \"offline\" bila klien terputus tidak wajar; gabungkan dengan retained untuk status perangkat.\n- Persistent session mengantre pesan untuk klien yang tidur; MQTT 5 menambah shared subscription, message expiry, dan reason code.\n- Pilih protokol sesuai peran: MQTT untuk perangkat, HTTP untuk API, WebSocket untuk dashboard, AMQP dan Kafka untuk backend.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Node mengirim perintah nyalakan pompa. Duplikat tidak berbahaya karena perintah itu idempoten, tetapi pesan tidak boleh hilang. QoS yang paling pantas adalah",
+          "code": "",
+          "options": [
+            "QoS 0, karena kehilangan pesan perintah tidak pernah membawa akibat apa pun",
+            "QoS 2 selalu, sebab tidak ada alasan memakai tingkat lain di sistem apa pun",
+            "QoS tidak berpengaruh pada pengiriman, hanya pada ukuran pesan di jaringan",
+            "QoS 1, karena at least once cukup bila perintah aman diulang"
+          ],
+          "answer": 3,
+          "explanation": "Perintah idempoten aman diulang, jadi QoS 1 memberi jaminan sampai dengan overhead lebih kecil dari QoS 2."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dashboard yang baru dibuka harus langsung menampilkan status online atau offline sebuah perangkat tanpa menunggu pesan berikutnya. Fitur yang dibutuhkan adalah",
+          "code": "",
+          "options": [
+            "Pesan status yang ditandai retained",
+            "Persistent session pada dashboard",
+            "QoS 2 pada pesan telemetri suhu",
+            "Shared subscription di MQTT 5"
+          ],
+          "answer": 0,
+          "explanation": "Retained membuat broker menyimpan pesan terakhir dan mengirimkannya ke subscriber baru."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Last Will and Testament dikirim broker ketika klien memutus koneksi dengan baik lewat DISCONNECT.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Wasiat hanya dipublikasikan bila klien terputus tidak wajar; DISCONNECT yang normal tidak memicunya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah node yang tidur hemat daya perlu menerima perintah QoS 1 yang dikirim saat ia tidur. Apa yang membuat itu mungkin?",
+          "code": "",
+          "options": [
+            "Retained message pada setiap topik telemetri",
+            "Memakai wildcard # pada filter langganan",
+            "Persistent session dengan ID klien yang tetap",
+            "QoS 0 yang dikirim lebih sering"
+          ],
+          "answer": 2,
+          "explanation": "Persistent session membuat broker mengantre pesan untuk klien yang offline."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perangkat harus mengunduh berkas firmware berukuran besar. Protokol mana yang lebih sesuai?",
+          "code": "",
+          "options": [
+            "MQTT dengan QoS 2 agar tiap potongan tepat sekali",
+            "AMQP karena memakai antrean pesan",
+            "CoAP selalu lebih cepat daripada HTTP pada jaringan apa pun",
+            "HTTP, karena cocok untuk unduhan berkas"
+          ],
+          "answer": 3,
+          "explanation": "HTTP lebih sesuai untuk unduhan besar; MQTT dirancang untuk pesan kecil."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "edge-pipeline-data-dan-platform",
+      "title": "Edge Computing, Pipeline Data, dan Platform IoT",
+      "est_minutes": 40,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menjelaskan manfaat edge computing dan hubungannya dengan cloud.\n- Menggambarkan pipeline data time-series dari sensor hingga dashboard.\n- Membedakan tag dan field, serta menerapkan retensi dan downsampling.\n- Membandingkan platform IoT terkelola dengan stack self-hosted.\n\n## Mengapa mengolah data di dekat sumber\n\nPola lama mengirim semua data mentah ke cloud, lalu memutuskan di sana. Pola itu mudah dibangun, tetapi punya empat kelemahan yang langsung terasa di lapangan. Edge computing membalik urutannya: olah data di dekat sumber, kirim hanya yang perlu.\n\n- **Latensi rendah.** Keputusan seperti mematikan pompa saat tangki penuh dapat diambil dalam milidetik tanpa bolak-balik ke cloud.\n- **Hemat bandwidth.** Alih-alih mengirim pembacaan setiap detik, gateway mengirim ringkasan atau hanya anomali.\n- **Privasi.** Data sensitif, misalnya gambar kamera, bisa tetap berada di lokasi.\n- **Tahan offline.** Otomasi tetap berjalan ketika internet putus, karena logikanya ada di gateway lokal.\n\nEdge tidak menggantikan cloud. Keduanya saling melengkapi. Cloud unggul untuk analitik jangka panjang dan manajemen armada, edge untuk respons cepat dan ketahanan. Sistem yang baik membiarkan fungsi kritis berjalan lokal dan memakai cloud untuk hal yang boleh tertunda.\n\n## Stack edge modern\n\nGateway edge biasanya komputer Linux kecil. Empat alat yang sering muncul:\n\n- **Docker** membungkus tiap layanan dalam container, sehingga broker, basis data, dan dashboard terisolasi dan mudah dipasang ulang.\n- **K3s** adalah Kubernetes ringan untuk edge, berguna bila kamu mengelola banyak gateway.\n- **Kubernetes** untuk orkestrasi armada skala besar.\n- **Node-RED** menyusun logika dan integrasi sebagai flow visual.\n\nUntuk satu gateway, Docker Compose sudah cukup. Jangan memakai K3s hanya karena terdengar canggih. Orkestrasi baru terbayar bila jumlah gateway dan layanan membuat pengelolaan manual melelahkan.\n\n## Pipeline data time-series\n\nData sensor bersifat deret waktu: setiap nilai punya cap waktu dan datang terus-menerus. Alurnya kira-kira lima tahap.\n\n1. **Sensor** melakukan sampling dan membentuk payload, umumnya JSON.\n2. **Broker** mengangkut pesan lewat MQTT dengan TLS.\n3. **Ingest** memvalidasi dan mentransformasi data, memakai Node-RED atau Telegraf.\n4. **Penyimpanan** di basis data time-series, misalnya InfluxDB atau TimescaleDB, ekstensi PostgreSQL.\n5. **Visualisasi** lewat dashboard seperti Grafana, yang juga dapat mengirim alert, misalnya ke Telegram.\n\n[Lihat diagram pipeline](slide:12)\n\nContoh payload dari node:\n\n```json\n{\"id\": \"gh01\", \"t\": 27.4, \"rh\": 63.2, \"ts\": 1731830400}\n```\n\nJSON mudah dibaca dan dilacak saat debugging. Untuk bandwidth yang sempit, format biner seperti CBOR atau Protobuf bisa dipertimbangkan, dengan harga debugging yang lebih sulit.\n\n## Validasi di tahap ingest\n\nJangan percaya payload mentah. Sensor bisa mengirim nilai mustahil, field bisa hilang, atau angka datang sebagai teks. Bila data buruk masuk basis data, grafik jadi menyesatkan dan aturan otomasi bisa mengambil keputusan salah. Tahap ingest bertugas menolak atau menandai data seperti itu.\n\nAturan validasi yang wajar: field wajib ada, tipe sesuai, nilai berada dalam rentang fisik yang masuk akal (misalnya suhu antara minus 40 dan 125 derajat Celsius untuk banyak sensor umum), dan cap waktu tidak berasal dari masa depan. Data yang ditolak sebaiknya dicatat, bukan dibuang diam-diam, supaya kamu bisa mendeteksi sensor yang rusak.\n\n## Tag dan field\n\nBasis data time-series seperti InfluxDB membedakan dua jenis kolom.\n\n- **Tag** adalah metadata terindeks seperti lokasi atau id perangkat. Tag dipakai untuk menyaring dan mengelompokkan dengan cepat.\n- **Field** adalah nilai ukur, misalnya suhu atau kelembapan, yang berubah di setiap titik.\n\nKesalahan klasik adalah memasukkan nilai yang selalu berbeda, seperti nilai suhu, sebagai tag. Kardinalitas tag meledak, indeks membengkak, dan kueri melambat. Aturan jari: bila kamu ingin menyaring atau mengelompokkan berdasarkan nilai itu, jadikan tag. Bila kamu menghitung statistik atas nilai itu, jadikan field.\n\n## Waktu, retensi, dan downsampling\n\n**Waktu yang konsisten.** Sinkronkan perangkat dengan NTP dan simpan cap waktu dalam UTC. Konversi zona waktu dilakukan di tampilan, bukan di penyimpanan. Mikrokontroler tanpa pengatur waktu realtime bisa menyimpang, jadi sering lebih aman bila gateway atau basis data yang memberi cap waktu.\n\n**Retensi dan downsampling.** Menyimpan data per detik selamanya memakan ruang. Kebijakan umum: simpan data mentah beberapa waktu, misalnya 30 hari, lalu simpan rata-rata per jam untuk jangka panjang. Downsampling mengurangi ukuran dan mempercepat kueri tren tahunan. Konsekuensinya detail halus hilang, jadi putuskan resolusi apa yang masih dibutuhkan sebelum menghapus.\n\nBerikut ide agregasi per jam dalam Python:\n\n```python\nfrom collections import defaultdict\n\ndef rata_per_jam(titik):\n    jam = defaultdict(list)\n    for ts, nilai in titik:\n        jam[ts // 3600 * 3600].append(nilai)\n    return {j: round(sum(v) / len(v), 2) for j, v in sorted(jam.items())}\n```\n\nKunci `ts // 3600 * 3600` membulatkan cap waktu ke awal jamnya, sehingga semua titik dalam satu jam masuk keranjang yang sama.\n\n## Platform IoT: terkelola atau self-hosted\n\nSetelah memahami pipeline, pertanyaan berikut: membangun sendiri atau memakai platform.\n\n**Cloud terkelola.** AWS IoT Core menawarkan device shadow, rules engine, dan autentikasi X.509. Azure IoT Hub punya device twin, layanan provisioning DPS, dan routing pesan. Google Cloud IoT Core dihentikan pada 2023, sehingga pengguna Google Cloud kini memakai broker MQTT dari mitra atau buatan sendiri lalu meneruskan data ke Pub/Sub.\n\n**Open-source dan self-hosted.** ThingsBoard menyediakan dashboard dan rule chain dan bisa dipasang sendiri. Home Assistant adalah platform otomasi rumah dan lab dengan ribuan integrasi.\n\nPertimbangan memilih: biaya per pesan, risiko vendor lock-in, lokasi data (ada regulasi yang mewajibkan data tetap di negara tertentu), dan kemampuan timmu mengoperasikan server sendiri. Untuk belajar, stack self-hosted seperti Mosquitto, Node-RED, InfluxDB, Grafana, dan Home Assistant memberi pemahaman paling dalam karena kamu melihat setiap bagian bekerja.\n\n## Rangkuman\n\n- Edge computing memberi latensi rendah, hemat bandwidth, menjaga privasi, dan tahan offline; ia melengkapi cloud, bukan menggantikannya.\n- Docker Compose cukup untuk satu gateway, K3s dan Kubernetes berguna saat armada besar.\n- Pipeline time-series: sensor, broker, ingest dengan validasi, penyimpanan, lalu visualisasi dan alert.\n- Tag adalah metadata terindeks, field adalah nilai ukur; simpan waktu dalam UTC dan sinkronkan dengan NTP.\n- Terapkan retensi dan downsampling, lalu pilih platform dengan menimbang biaya, lock-in, lokasi data, dan kemampuan tim.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu membuat dashboard dari data yang masuk dengan suhu bernilai 999. Tahap pipeline mana yang seharusnya menolak data itu?",
+          "code": "",
+          "options": [
+            "Ingest, lewat validasi rentang nilai sebelum disimpan",
+            "Visualisasi, dengan menyembunyikan angka yang tampak terlalu besar",
+            "Sensor, karena sensor selalu menjamin nilainya masuk akal",
+            "Broker, karena broker memeriksa makna fisik setiap payload"
+          ],
+          "answer": 0,
+          "explanation": "Validasi dilakukan di tahap ingest agar data buruk tidak masuk penyimpanan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menyimpan nilai suhu sebagai tag di InfluxDB. Apa dampaknya?",
+          "code": "",
+          "options": [
+            "Tidak ada dampak karena tag dan field sebenarnya sama persis",
+            "Nilai suhu menjadi lebih akurat karena diberi indeks",
+            "Kardinalitas tag meledak sehingga indeks membengkak dan kueri melambat",
+            "Basis data menolak seluruh titik data berikutnya"
+          ],
+          "answer": 2,
+          "explanation": "Tag untuk metadata yang jarang berbeda; nilai ukur yang selalu berubah harus jadi field."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Internet di lokasi sering putus, tetapi kipas tetap harus bereaksi terhadap suhu. Arsitektur mana yang tepat?",
+          "code": "",
+          "options": [
+            "Semua keputusan diambil di cloud supaya selalu seragam",
+            "Node menunggu cloud menjawab setiap kali suhu berubah",
+            "Kipas dimatikan otomatis tiap kali internet terputus",
+            "Logika otomasi berjalan di gateway lokal, cloud hanya untuk analitik"
+          ],
+          "answer": 3,
+          "explanation": "Edge membuat otomasi tetap berjalan tanpa internet."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Untuk data per detik yang disimpan bertahun-tahun, downsampling menjadi rata-rata per jam dapat menghemat ruang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Retensi dan downsampling mengurangi ukuran penyimpanan dengan mengorbankan detail halus."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Validasi payload sensor",
+          "prompt": "Tulis `validasi(teks)` yang menerima payload JSON berupa teks dan mengembalikan dict `{\"id\": ..., \"t\": ...}`.\n\nLempar `ValueError` bila:\n\n- teks bukan JSON yang sah atau bukan objek,\n- `id` bukan teks atau kosong,\n- `t` bukan angka (nilai `true` atau teks tidak dihitung), atau di luar rentang -40 sampai 125.\n\nContoh: `validasi('{\"id\": \"gh01\", \"t\": 27.4}')` menghasilkan `{\"id\": \"gh01\", \"t\": 27.4}`.",
+          "starter": {
+            "code": "import json\n\n\ndef validasi(teks):\n    # TODO: json.loads lalu periksa id dan t\n    pass\n"
+          },
+          "solution": {
+            "code": "import json\n\n\ndef validasi(teks):\n    try:\n        data = json.loads(teks)\n    except json.JSONDecodeError:\n        raise ValueError(\"bukan JSON\")\n    if not isinstance(data, dict):\n        raise ValueError(\"bukan objek\")\n    id_ = data.get(\"id\")\n    t = data.get(\"t\")\n    if not isinstance(id_, str) or not id_.strip():\n        raise ValueError(\"id tidak sah\")\n    if isinstance(t, bool) or not isinstance(t, (int, float)):\n        raise ValueError(\"t bukan angka\")\n    if t < -40 or t > 125:\n        raise ValueError(\"t di luar rentang\")\n    return {\"id\": id_, \"t\": t}\n"
+          },
+          "setup": "def gagal(fungsi, *argumen):\n    try:\n        fungsi(*argumen)\n    except ValueError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Payload sah dikembalikan sebagai dict",
+              "check": "validasi('{\"id\": \"gh01\", \"t\": 27.4}') == {\"id\": \"gh01\", \"t\": 27.4}"
+            },
+            {
+              "name": "Bukan JSON ditolak",
+              "check": "gagal(validasi, \"suhu=27\") and gagal(validasi, \"[1, 2]\")"
+            },
+            {
+              "name": "id kosong atau hilang ditolak",
+              "check": "gagal(validasi, '{\"id\": \"\", \"t\": 20}') and gagal(validasi, '{\"t\": 20}')"
+            },
+            {
+              "name": "t teks atau boolean ditolak",
+              "check": "gagal(validasi, '{\"id\": \"a\", \"t\": \"27\"}') and gagal(validasi, '{\"id\": \"a\", \"t\": true}')"
+            },
+            {
+              "name": "t di luar rentang ditolak, batas masih sah",
+              "check": "gagal(validasi, '{\"id\": \"a\", \"t\": 999}') and gagal(validasi, '{\"id\": \"a\", \"t\": -41}') and validasi('{\"id\": \"a\", \"t\": 125}')[\"t\"] == 125"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Rata-rata per jam",
+          "prompt": "Tulis `rata_per_jam(titik)`. `titik` adalah list `(ts, nilai)` dengan `ts` detik epoch. Kelompokkan per jam, yaitu `ts // 3600 * 3600`, dan kembalikan dict `{awal_jam: rata_rata}` dengan rata-rata dibulatkan 2 desimal, urut dari jam paling awal. List kosong menghasilkan `{}`.",
+          "starter": {
+            "code": "def rata_per_jam(titik):\n    # TODO: kelompokkan nilai berdasarkan ts // 3600 * 3600\n    pass\n"
+          },
+          "solution": {
+            "code": "def rata_per_jam(titik):\n    jam = {}\n    for ts, nilai in titik:\n        jam.setdefault(ts // 3600 * 3600, []).append(nilai)\n    return {j: round(sum(v) / len(v), 2) for j, v in sorted(jam.items())}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "List kosong menghasilkan dict kosong",
+              "check": "rata_per_jam([]) == {}"
+            },
+            {
+              "name": "Satu jam dirata-ratakan",
+              "check": "rata_per_jam([(0, 20), (1800, 30)]) == {0: 25.0}"
+            },
+            {
+              "name": "Dua jam dipisah",
+              "check": "rata_per_jam([(3600, 10), (7199, 20), (7200, 30)]) == {3600: 15.0, 7200: 30.0}"
+            },
+            {
+              "name": "Hasil dibulatkan 2 desimal",
+              "check": "rata_per_jam([(0, 1), (10, 1), (20, 2)]) == {0: 1.33}"
+            },
+            {
+              "name": "Urutan jam dari paling awal",
+              "check": "list(rata_per_jam([(7200, 1), (0, 2)]).keys()) == [0, 7200]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pola-otomasi-dan-histeresis",
+      "title": "Pola Otomasi dan Histeresis",
+      "est_minutes": 40,
+      "slide_from": 14,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Membedakan lima pola otomasi: terjadwal, berbasis aturan, event-driven, state machine, dan loop tertutup.\n- Menyusun otomasi dengan model trigger, condition, dan action.\n- Menerapkan histeresis agar aktuator tidak chattering.\n- Membaca otomasi Home Assistant dan menjelaskan tiap bagiannya.\n\n## Lima pola otomasi\n\nOtomasi adalah memindahkan keputusan rutin dari manusia ke sistem. Sebelum menulis aturan apa pun, tentukan pola yang cocok, karena pola yang salah menghasilkan sistem yang rapuh. Ada lima pola dasar.\n\n**Terjadwal.** Berjalan pada waktu tertentu, misalnya menyiram jam 06.00. Sederhana dan mudah dipahami, tetapi buta terhadap kondisi nyata. Bila hujan turun tadi malam, penyiraman tetap jalan.\n\n**Berbasis aturan.** Berjalan berdasarkan kondisi, misalnya jika suhu di atas 30 derajat Celsius dan mode otomatis aktif, nyalakan kipas. Responsif terhadap keadaan sebenarnya.\n\n**Event-driven.** Bereaksi terhadap kejadian, misalnya pintu terbuka atau perangkat menjadi offline. Berbeda dari aturan berbasis nilai, event berupa momen perubahan.\n\n**State machine.** Sistem punya status eksplisit, misalnya idle, menyiram, dan jeda, dengan transisi yang jelas. Pola ini mencegah kondisi yang saling bertabrakan, misalnya pompa dan kipas yang saling memicu.\n\n**Loop tertutup.** Mengukur, membandingkan dengan setpoint, lalu mengoreksi terus-menerus. Bentuk lanjutnya adalah kontrol PID, yang dibahas di bab berikutnya.\n\nSaran praktis: mulailah dari pola paling sederhana yang memenuhi kebutuhan. Jadwal sederhana yang andal mengalahkan state machine rumit yang tidak kamu pahami lagi tiga bulan kemudian.\n\n## Anatomi sebuah otomasi\n\nHampir semua platform otomasi memakai tiga bagian yang sama.\n\n- **Trigger:** kapan otomasi dievaluasi? Misalnya saat suhu berubah atau pukul 06.00.\n- **Condition:** apakah otomasi boleh jalan? Misalnya hanya bila mode otomatis aktif.\n- **Action:** apa yang dilakukan? Misalnya menyalakan kipas dan mengirim notifikasi.\n\nPemisahan ini berguna saat debugging. Bila kipas tidak menyala, kamu bertanya tiga hal berurutan: apakah trigger terpicu, apakah condition lolos, apakah action berhasil dieksekusi. Model ini dipakai Home Assistant dan mudah dipetakan ke flow Node-RED, yaitu node masukan sebagai trigger, node switch sebagai condition, dan node keluaran sebagai action.\n\n## Contoh di Home Assistant\n\nBerikut otomasi kipas greenhouse dengan sintaks terbaru Home Assistant yang memakai kunci jamak `triggers`, `conditions`, dan `actions`.\n\n```yaml\nalias: Kipas greenhouse otomatis\nmode: single\ntriggers:\n  - trigger: numeric_state\n    entity_id: sensor.gh01_suhu\n    above: 30\n    for: \"00:02:00\"\nconditions:\n  - condition: state\n    entity_id: input_boolean.mode_otomatis\n    state: \"on\"\nactions:\n  - action: switch.turn_on\n    target: { entity_id: switch.gh01_kipas }\n  - action: notify.telegram\n    data: { message: \"Suhu tinggi, kipas ON\" }\n```\n\n[Lihat contoh otomasi lengkap](slide:15)\n\nTelusuri bagian-bagiannya.\n\n- **Trigger dengan `for`.** Suhu harus di atas 30 derajat selama dua menit penuh. Ini menyaring lonjakan sesaat, misalnya sensor terkena sinar matahari sebentar atau pembacaan tersendat.\n- **Condition.** Otomasi hanya jalan bila mode otomatis aktif, sehingga operator manusia tetap bisa mengambil alih dengan mematikan mode itu.\n- **Action.** Kipas dinyalakan lalu notifikasi Telegram dikirim. Nama layanan `notify.telegram` bergantung pada konfigurasi integrasi Telegram di instalasimu.\n\nOpsi `mode: single` berarti bila otomasi sedang berjalan dan terpicu lagi, pemicu baru diabaikan. Pilih mode yang sesuai agar action tidak menumpuk.\n\n## Masalah chattering dan histeresis\n\nOtomasi di atas hanya menyalakan kipas. Bagaimana mematikannya? Godaan pertama: matikan ketika suhu turun di bawah 30. Itu menciptakan masalah.\n\nBayangkan suhu naik ke 30,1 derajat, kipas menyala, suhu turun ke 29,9, kipas mati, suhu naik ke 30,1 lagi, dan seterusnya. Suhu bergoyang kecil di sekitar ambang karena noise sensor dan karena kipas sendiri mengubah suhu. Relay menyala dan mati berulang dalam hitungan detik. Gejala ini disebut chattering. Dampaknya buruk: kontak relay cepat aus, motor kipas stres karena arus awal berulang, dan perangkat boleh jadi rusak lebih awal.\n\nSolusinya adalah histeresis: gunakan dua ambang berbeda. Nyalakan di atas ambang atas, matikan hanya di bawah ambang bawah. Misalnya nyalakan di atas 30 derajat dan matikan di bawah 27 derajat. Di antara 27 dan 30, aktuator mempertahankan keadaan terakhir. Karena itu fungsi histeresis membutuhkan memori: ia harus tahu apakah kipas sedang menyala.\n\nDi Home Assistant, kamu membuat otomasi kedua dengan trigger `below: 27`. Logika yang sama dalam Python:\n\n```python\ndef kipas(suhu, menyala, atas=30.0, bawah=27.0):\n    if suhu > atas:\n        return True\n    if suhu < bawah:\n        return False\n    return menyala\n```\n\nPerhatikan baris terakhir. Di zona antara kedua ambang, fungsi mengembalikan status sebelumnya. Pemanggil menyimpan nilai kembalian lalu menyuplainya lagi pada pembacaan berikutnya. Itulah memori yang dimaksud.\n\n## Memilih lebar histeresis\n\nLebar zona mati, yaitu selisih ambang atas dan bawah, adalah pertimbangan teknik. Terlalu sempit dan chattering kembali muncul. Terlalu lebar dan suhu bergoyang lebar sebelum dikoreksi. Patokan awal: lebih besar dari noise sensor dan dari perubahan yang disebabkan aktuator dalam satu siklus. Mulai dengan lebar beberapa derajat untuk kipas greenhouse, ukur perilakunya, lalu sesuaikan.\n\nTeknik pelengkap lain adalah waktu minimum menyala dan mati. Misalnya, setelah kompresor mati, jangan hidupkan lagi selama tiga menit. Beberapa aktuator memang punya batas jumlah start per jam yang tercantum di lembar datanya.\n\n## Kesalahan yang sering terjadi\n\n- **Satu ambang untuk menyala dan mati.** Penyebab utama chattering. Selalu gunakan dua ambang.\n- **Tidak ada mode manual.** Otomasi yang tidak bisa dimatikan membuat operator frustrasi dan berbahaya saat perawatan. Sediakan saklar mode otomatis.\n- **Aturan yang saling bertabrakan.** Aturan A menyalakan kipas, aturan B mematikannya dalam kondisi yang tumpang tindih. Bila interaksi mulai rumit, pindah ke state machine.\n- **Mengabaikan kegagalan sensor.** Bila sensor mengirim nilai beku atau berhenti melapor, aturan tetap bekerja dengan data basi. Tambahkan pemeriksaan kesegaran data dan perilaku aman bawaan, misalnya aktuator ke keadaan aman bila data hilang.\n- **Tidak ada notifikasi.** Otomasi diam-diam yang gagal baru ketahuan saat tanaman layu. Kirim peringatan untuk kejadian penting.\n\n## Rangkuman\n\n- Lima pola otomasi: terjadwal, berbasis aturan, event-driven, state machine, dan loop tertutup; mulai dari yang paling sederhana.\n- Setiap otomasi terdiri dari trigger, condition, dan action, yang memudahkan debugging dan pemetaan ke Home Assistant atau Node-RED.\n- Opsi `for` pada trigger menyaring lonjakan sesaat, dan condition mode otomatis menjaga kendali manual.\n- Histeresis memakai dua ambang dan mengingat keadaan terakhir sehingga relay tidak chattering.\n- Sediakan perilaku aman saat data sensor hilang dan kirim notifikasi untuk kejadian penting.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kipas menyala dan mati berulang dalam hitungan detik saat suhu berfluktuasi di sekitar 30 derajat. Penyebab dan solusinya adalah",
+          "code": "",
+          "options": [
+            "Relay terlalu besar; ganti dengan relay lebih kecil agar tidak sering menyala",
+            "Broker MQTT menunda pesan; naikkan QoS menjadi 2 pada topik suhu",
+            "Satu ambang untuk dua keputusan; gunakan histeresis dengan dua ambang",
+            "Sensor terlalu akurat; turunkan resolusinya agar nilai lebih stabil"
+          ],
+          "answer": 2,
+          "explanation": "Chattering muncul bila satu ambang dipakai untuk menyala dan mati; histeresis memberi zona mati."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada otomasi Home Assistant, opsi for dua menit pada trigger suhu di atas 30 berguna untuk",
+          "code": "",
+          "options": [
+            "Mempercepat eksekusi aksi karena trigger dievaluasi dua kali lebih cepat",
+            "Mengirim notifikasi ke Telegram setiap dua menit tanpa henti",
+            "Menonaktifkan condition mode otomatis selama dua menit",
+            "Menyaring lonjakan sesaat sehingga aksi hanya jalan bila suhu bertahan"
+          ],
+          "answer": 3,
+          "explanation": "for mensyaratkan kondisi bertahan selama durasi tertentu sebelum aksi."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Aturan berbasis kondisi lebih responsif terhadap keadaan nyata daripada otomasi terjadwal.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Jadwal tidak melihat kondisi, sedangkan aturan mengevaluasi keadaan sebenarnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pompa dan kipas saling memicu karena aturan-aturanmu bertumpang tindih. Pola mana yang paling membantu?",
+          "code": "",
+          "options": [
+            "Menambah lebih banyak aturan terjadwal di tiap jam",
+            "State machine dengan status dan transisi yang eksplisit",
+            "Menghapus semua notifikasi",
+            "Menggandakan jumlah sensor suhu dan kelembapan di setiap rak"
+          ],
+          "answer": 1,
+          "explanation": "State machine mencegah kondisi yang saling bertabrakan dengan status eksplisit."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Kipas dengan histeresis",
+          "prompt": "Tulis `kipas(suhu, menyala, atas=30.0, bawah=27.0)` yang mengembalikan status kipas berikutnya.\n\n- Suhu di atas `atas`: kipas `True`.\n- Suhu di bawah `bawah`: kipas `False`.\n- Di antara keduanya (termasuk tepat di kedua ambang): pertahankan `menyala`.\n\nLalu tulis `simulasi(daftar_suhu)` yang memulai dengan kipas mati, memanggil `kipas` untuk tiap pembacaan, dan mengembalikan list status tiap langkah.",
+          "starter": {
+            "code": "def kipas(suhu, menyala, atas=30.0, bawah=27.0):\n    # TODO: dua ambang, di antaranya pertahankan status lama\n    pass\n\n\ndef simulasi(daftar_suhu):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def kipas(suhu, menyala, atas=30.0, bawah=27.0):\n    if suhu > atas:\n        return True\n    if suhu < bawah:\n        return False\n    return menyala\n\n\ndef simulasi(daftar_suhu):\n    status = False\n    hasil = []\n    for s in daftar_suhu:\n        status = kipas(s, status)\n        hasil.append(status)\n    return hasil\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Menyala di atas ambang atas",
+              "check": "kipas(30.1, False) is True"
+            },
+            {
+              "name": "Mati di bawah ambang bawah",
+              "check": "kipas(26.9, True) is False"
+            },
+            {
+              "name": "Di zona antara status dipertahankan",
+              "check": "kipas(28.5, True) is True and kipas(28.5, False) is False"
+            },
+            {
+              "name": "Tepat di ambang tidak mengubah status",
+              "check": "kipas(30.0, False) is False and kipas(27.0, True) is True"
+            },
+            {
+              "name": "Simulasi tidak chattering di sekitar 30",
+              "check": "simulasi([29, 30.5, 29.8, 30.2, 28, 26, 28]) == [False, True, True, True, True, False, False]"
+            },
+            {
+              "name": "Ambang bisa diatur lewat argumen",
+              "check": "kipas(25, False, atas=24, bawah=20) is True"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pid-industri-dan-digital-twin",
+      "title": "Kontrol PID, Otomasi Industri, dan Digital Twin",
+      "est_minutes": 40,
+      "slide_from": 16,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Menjelaskan peran suku P, I, dan D dalam kontrol PID.\n- Menerapkan praktik PID: sampling tetap, anti-windup, filter pada D, dan pembatasan output.\n- Menjelaskan piramida otomasi ISA-95 dan protokol industri umum.\n- Menjelaskan konsep digital twin dan batas aman akses ke PLC.\n\n## Dari on/off ke kontrol proporsional\n\nHisteresis membuat aktuator hanya punya dua keadaan: nyala atau mati. Itu cukup untuk kipas, tetapi kasar untuk hal yang butuh ketelitian, misalnya menjaga suhu air tepat di 25 derajat atau kelembapan tanah di angka tertentu. Kontrol on/off selalu membuat nilai bergoyang di sekitar target.\n\nKontrol loop tertutup memperbaikinya. Sistem mengukur nilai nyata, membandingkannya dengan setpoint, menghitung error, lalu mengatur keluaran aktuator secara bertahap, bukan sekadar nyala atau mati. Algoritma yang paling luas dipakai untuk ini adalah PID.\n\nRumusnya:\n\n```\nu(t) = Kp * e(t) + Ki * integral(e) dt + Kd * de/dt\n```\n\nDi sini `e(t)` adalah error, yaitu setpoint dikurangi pengukuran, dan `u(t)` adalah keluaran kontrol, misalnya persentase daya pemanas.\n\n## Tiga suku PID\n\n**P, proporsional.** Keluaran sebanding dengan error saat ini. Error besar menghasilkan koreksi besar. Responsnya cepat, tetapi bila dipakai sendirian, biasanya tersisa error tunak: sistem berhenti sedikit di bawah atau di atas setpoint, karena koreksi proporsional mengecil saat error mengecil.\n\n**I, integral.** Menjumlahkan error dari waktu ke waktu. Selama masih ada error sisa, jumlah itu terus membesar dan mendorong keluaran sampai error hilang. Suku ini menghapus error tunak. Bila terlalu besar, sistem melewati target dulu lalu kembali, yang disebut overshoot.\n\n**D, derivatif.** Bereaksi terhadap laju perubahan error. Ia meredam osilasi dengan memperlambat koreksi saat error berubah cepat. Kelemahannya, ia sangat peka terhadap noise sensor, karena noise tampak seperti perubahan cepat.\n\nHasil simulasi pada sistem orde dua sederhana menunjukkan pola tipikal: P saja tidak mencapai setpoint, PI mencapai setpoint tetapi dengan overshoot, dan PID lebih cepat stabil. Itu hasil simulasi, bukan pengukuran dari perangkat nyata.\n\n[Lihat grafik respons P, PI, dan PID](slide:16)\n\n## Praktik implementasi\n\nRumus tampak ringkas, tetapi implementasi yang baik butuh empat kebiasaan.\n\n- **Interval sampling tetap.** Suku I dan D bergantung pada selisih waktu `dt`. Bila `dt` tidak konsisten, hasil perhitungan kacau. Jalankan loop dengan timer yang stabil.\n- **Anti-windup.** Bila aktuator sudah mentok di batas maksimal, integral tetap menumpuk, lalu setelah error berbalik, integral yang menumpuk membuat sistem lambat pulih. Batasi integral atau hentikan akumulasi saat keluaran jenuh.\n- **Filter pada D.** Haluskan pengukuran sebelum diturunkan agar noise tidak diperkuat.\n- **Batasi output.** Potong keluaran ke rentang yang aman bagi aktuator, misalnya 0 sampai 100 persen.\n\nSketsa langkah PID dalam Python:\n\n```python\ndef langkah(pid, setpoint, ukur, dt):\n    e = setpoint - ukur\n    pid[\"i\"] += e * dt\n    d = (e - pid[\"e_lalu\"]) / dt\n    pid[\"e_lalu\"] = e\n    u = pid[\"kp\"] * e + pid[\"ki\"] * pid[\"i\"] + pid[\"kd\"] * d\n    return max(0.0, min(100.0, u))\n```\n\nVersi ini sengaja ringkas. Ia membatasi output, tetapi belum membatasi `pid[\"i\"]`, jadi anti-windup perlu ditambahkan untuk produksi.\n\nUntuk tuning awal, metode Ziegler-Nichols memberi titik mulai, lalu kamu menyempurnakannya lewat uji langsung. Aturan kasar yang aman: naikkan Kp sampai respons cukup cepat, tambahkan Ki secukupnya untuk menghilangkan error sisa, dan baru gunakan Kd bila osilasi mengganggu. Banyak proses lambat seperti suhu ruangan cukup dengan PI.\n\n## Otomasi industri dan IIoT\n\nDi pabrik, otomasi disusun berlapis seperti piramida ISA-95.\n\n- **Level 0:** sensor dan aktuator pada proses fisik.\n- **Level 1:** PLC dengan kontrol real-time.\n- **Level 2:** SCADA dan HMI untuk supervisi.\n- **Level 3:** MES untuk eksekusi produksi.\n- **Level 4:** ERP untuk perencanaan bisnis.\n\nIIoT (Industrial IoT) menjembatani dunia OT, yaitu PLC dan SCADA, dengan dunia IT, yaitu cloud dan analitik. Beberapa protokol yang akan kamu temui:\n\n- **Modbus RTU dan TCP.** Sederhana dan sangat luas di meter listrik dan inverter.\n- **OPC UA.** Model data kaya, aman, dan lintas vendor.\n- **MQTT Sparkplug B.** Spesifikasi di atas MQTT yang menstandarkan payload dan status untuk IIoT.\n- **PLC seperti Siemens S7.** Biasanya dijembatani lewat gateway ke MQTT atau OPC UA.\n\nAturan emas keamanan: jangan pernah memberi akses tulis langsung dari internet ke PLC. Gunakan gateway yang hanya membaca data (read-only) dan taruh di zona jaringan terpisah. PLC mengendalikan mesin fisik, dan kesalahan perintah bisa melukai orang atau merusak peralatan. Banyak PLC lama tidak dirancang dengan autentikasi kuat.\n\n## Digital twin\n\nDigital twin adalah replika virtual yang hidup dari sebuah aset fisik, misalnya mesin, gedung, atau greenhouse. Model virtual menyimpan status, perilaku fisika, dan riwayat. Data sensor real-time mengalir dari aset ke model, dan perintah serta hasil optimasi mengalir kembali ke aset.\n\nManfaat yang sering disebut:\n\n- **Pemeliharaan prediktif.** Mendeteksi keausan sebelum komponen rusak.\n- **Simulasi what-if.** Menguji skenario tanpa risiko pada aset nyata.\n- **Komisioning virtual.** Memvalidasi logika kontrol sebelum dipasang di lapangan.\n\nBentuk paling sederhana adalah representasi status perangkat, seperti device shadow atau device twin pada layanan cloud. Versi lanjutan menambahkan model fisika atau machine learning untuk memprediksi perilaku. Contoh layanan terkelola: AWS IoT TwinMaker dan Azure Digital Twins. Alternatif open-source adalah Eclipse Ditto.\n\nJangan terkecoh istilahnya. Untuk sistem kecil, tabel status terakhir tiap perangkat plus riwayatnya sudah merupakan digital twin sederhana yang berguna. Kebutuhan akan simulasi fisika penuh baru muncul bila ada keputusan mahal yang ingin kamu uji lebih dulu.\n\n## Kesalahan yang sering terjadi\n\n- **Memakai Kd tanpa menyaring noise.** Keluaran melonjak-lonjak mengikuti noise sensor.\n- **Mengabaikan windup.** Setelah aktuator jenuh lama, sistem overshoot besar saat kondisi berubah.\n- **Menyetel PID saat sistem belum stabil secara mekanis.** Longgar pada sensor atau aktuator memberi hasil menyesatkan.\n- **Membuka PLC ke internet.** Ini risiko keamanan terbesar di lingkungan industri.\n- **Membangun digital twin tanpa pertanyaan bisnis.** Mulai dari keputusan yang ingin dibantu, bukan dari teknologinya.\n\n## Rangkuman\n\n- PID memadukan koreksi sekarang (P), akumulasi error masa lalu (I), dan laju perubahan (D); P saja menyisakan error tunak.\n- Praktik wajib: sampling tetap, anti-windup, filter pada D, dan output dibatasi.\n- Piramida ISA-95 memiliki lima level dari sensor sampai ERP; Modbus, OPC UA, dan MQTT Sparkplug B menjembatani OT dan IT.\n- Jangan beri akses tulis dari internet ke PLC; pakai gateway read-only dan zona jaringan terpisah.\n- Digital twin berkisar dari representasi status perangkat sampai model fisika dan ML untuk memprediksi perilaku.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pengendali suhu memakai P saja dan berhenti sedikit di bawah setpoint. Suku mana yang menghapus error tunak itu?",
+          "code": "",
+          "options": [
+            "Suku derivatif",
+            "Suku proporsional yang digandakan",
+            "Filter noise pada pengukuran",
+            "Suku integral"
+          ],
+          "answer": 3,
+          "explanation": "Integral menjumlahkan error sisa sampai hilang, dengan risiko overshoot bila terlalu besar."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aktuator sudah mentok di 100 persen selama lama, dan setelah kondisi berubah, sistem lambat pulih dan overshoot. Masalah ini disebut",
+          "code": "",
+          "options": [
+            "Chattering, yang diatasi dengan menaikkan Kd",
+            "Windup integral, yang diatasi dengan anti-windup",
+            "Latensi jaringan, yang diatasi dengan QoS 2",
+            "Kuantisasi, yang diatasi dengan model lebih besar"
+          ],
+          "answer": 1,
+          "explanation": "Integral menumpuk saat output jenuh; anti-windup membatasi akumulasinya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Mengaktifkan akses tulis langsung dari internet ke PLC adalah praktik yang aman asalkan kata sandinya panjang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Jangan beri akses tulis dari internet ke PLC; gunakan gateway read-only dan zona jaringan terpisah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin menguji logika kontrol sebelum dipasang di pabrik. Manfaat digital twin yang relevan adalah",
+          "code": "",
+          "options": [
+            "Pemeliharaan prediktif",
+            "Penambahan bandwidth otomatis",
+            "Komisioning virtual",
+            "Penghapusan kebutuhan sensor"
+          ],
+          "answer": 2,
+          "explanation": "Komisioning virtual memvalidasi logika sebelum pemasangan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Langkah kontrol PID",
+          "prompt": "Tulis `langkah(pid, setpoint, ukur, dt)`. `pid` adalah dict dengan kunci `kp`, `ki`, `kd`, `i` (akumulasi integral), `e_lalu` (error sebelumnya), dan `i_maks`.\n\nUrutan hitung:\n\n1. `e = setpoint - ukur`.\n2. `pid[\"i\"] += e * dt`, lalu batasi ke rentang `-i_maks` sampai `i_maks` (anti-windup).\n3. `d = (e - pid[\"e_lalu\"]) / dt`, lalu simpan `e_lalu = e`.\n4. `u = kp*e + ki*i + kd*d`, batasi hasil ke 0.0 sampai 100.0 dan kembalikan.",
+          "starter": {
+            "code": "def langkah(pid, setpoint, ukur, dt):\n    # TODO: hitung e, perbarui i dengan batas i_maks, hitung d, lalu u\n    pass\n"
+          },
+          "solution": {
+            "code": "def langkah(pid, setpoint, ukur, dt):\n    e = setpoint - ukur\n    pid[\"i\"] += e * dt\n    pid[\"i\"] = max(-pid[\"i_maks\"], min(pid[\"i_maks\"], pid[\"i\"]))\n    d = (e - pid[\"e_lalu\"]) / dt\n    pid[\"e_lalu\"] = e\n    u = pid[\"kp\"] * e + pid[\"ki\"] * pid[\"i\"] + pid[\"kd\"] * d\n    return max(0.0, min(100.0, u))\n"
+          },
+          "setup": "def baru(kp=0, ki=0, kd=0, i_maks=50):\n    return {\"kp\": kp, \"ki\": ki, \"kd\": kd, \"i\": 0.0, \"e_lalu\": 0.0, \"i_maks\": i_maks}\n",
+          "tests": [
+            {
+              "name": "Suku P sebanding dengan error",
+              "check": "langkah(baru(kp=2), 50, 40, 1) == 20.0"
+            },
+            {
+              "name": "Output dipotong ke 0 sampai 100",
+              "check": "langkah(baru(kp=20), 50, 40, 1) == 100.0 and langkah(baru(kp=20), 40, 50, 1) == 0.0"
+            },
+            {
+              "name": "Suku I menumpuk antarlangkah",
+              "check": "(p := baru(ki=1), langkah(p, 10, 0, 1), langkah(p, 10, 0, 1))[2] == 20.0"
+            },
+            {
+              "name": "Anti-windup membatasi integral",
+              "check": "(p := baru(ki=1, i_maks=15), langkah(p, 10, 0, 1), langkah(p, 10, 0, 1), langkah(p, 10, 0, 1))[3] == 15.0 and p[\"i\"] == 15"
+            },
+            {
+              "name": "Suku D memakai selisih error dibagi dt",
+              "check": "langkah(baru(kd=1), 10, 0, 2) == 5.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tinyml-ai-di-edge",
+      "title": "TinyML: AI di Edge",
+      "est_minutes": 35,
+      "slide_from": 19,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu TinyML dan kapan ia lebih cocok daripada aturan biasa.\n- Menguraikan lima tahap alur TinyML dari data hingga pemantauan.\n- Menjelaskan kuantisasi dan dampaknya pada ukuran model.\n- Memilih alat dan platform yang sesuai untuk kelas perangkat berbeda.\n\n## Apa itu TinyML\n\nTinyML adalah menjalankan model machine learning langsung di mikrokontroler yang memiliki memori dan daya sangat terbatas. Model dilatih di komputer yang kuat, lalu disusutkan agar muat di chip yang hanya punya ratusan kilobyte memori. Setelah itu, perangkat menjalankan inferensi sendiri tanpa menghubungi cloud.\n\nMengapa repot-repot? Alasannya sama dengan edge computing di bab sebelumnya. Keputusan terjadi lokal sehingga latensinya rendah. Data mentah tidak perlu dikirim, sehingga bandwidth dan baterai hemat serta privasi terjaga, misalnya suara tidak meninggalkan perangkat. Dan perangkat tetap pintar walau internet putus.\n\nContoh kasus yang realistis:\n\n- **Deteksi anomali getaran motor.** Akselerometer membaca getaran, model membedakan getaran normal dari yang mencurigakan, sehingga tanda kerusakan bantalan terdeteksi lebih dini.\n- **Keyword spotting.** Perangkat mengenali kata pemicu seperti \"nyalakan lampu\" tanpa mengirim rekaman ke server.\n- **Klasifikasi gambar di ESP32-S3 berkamera.** Misalnya membedakan daun sehat dan berpenyakit dalam resolusi kecil.\n- **Estimasi umur baterai atau aset.** Memperkirakan sisa umur dari pola pemakaian.\n\n## Kapan tidak perlu ML\n\nSebelum mengambil jalan ML, tanya dulu apakah aturan sederhana sudah cukup. Bila masalahmu berbunyi nyalakan kipas bila suhu lebih dari 30 derajat, ambang batas sudah menyelesaikannya dan jauh lebih mudah dipahami serta diuji. ML pantas dipertimbangkan bila pola sulit ditulis sebagai aturan, misalnya membedakan bunyi mesin normal dari bunyi yang mulai aus, atau mengenali kata dalam sinyal suara yang berisik.\n\nML juga datang dengan biaya: kamu perlu data berlabel yang cukup, proses pelatihan, dan pemantauan karena model bisa menurun kinerjanya ketika kondisi lapangan berubah. Model yang bagus pada data uji bisa buruk di lapangan bila datanya berbeda. Pertimbangkan beban ini sebelum berkomitmen.\n\n## Lima tahap alur kerja\n\n[Lihat alur kerja TinyML](slide:19)\n\n**1. Kumpulkan data.** Rekam sinyal sensor yang diberi label, misalnya getaran saat motor normal dan saat dibebani tidak seimbang. Kualitas data menentukan batas atas kualitas model. Kumpulkan dari kondisi yang beragam: suhu berbeda, posisi sensor berbeda, dan beberapa unit perangkat.\n\n**2. Latih model.** Gunakan arsitektur kecil seperti CNN mungil atau jaringan dense, dilatih di PC atau cloud. Model besar tidak akan muat, jadi arsitekturnya dirancang hemat sejak awal. Pisahkan data latih dan data uji, dan lebih baik lagi uji pada data dari perangkat yang tidak ikut dilatih.\n\n**3. Kuantisasi.** Bobot model biasanya bertipe float32. Kuantisasi mengubahnya menjadi bilangan bulat 8 bit (int8), sehingga ukuran model menyusut sekitar empat kali dan hitungan lebih cepat di chip tanpa unit floating point yang kuat. Harganya adalah penurunan akurasi yang biasanya kecil tetapi perlu kamu ukur.\n\n**4. Deploy.** Model dikonversi ke bentuk yang bisa dibaca runtime di MCU dan ditanam ke firmware. Inferensi berjalan on-device.\n\n**5. Pantau.** Ukur akurasi di lapangan dan kumpulkan data baru, terutama kasus yang salah ditebak. Data itu masuk ke putaran pelatihan berikutnya. Tahap ini sering dilupakan, padahal tanpa itu model membusuk pelan-pelan.\n\n## Alat dan platform\n\nBeberapa nama yang akan kamu temui:\n\n- **Edge Impulse** menyediakan alur ujung ke ujung, dari pengumpulan data hingga pustaka siap deploy.\n- **TF Lite**, yang kini bernama LiteRT, adalah runtime ringan untuk menjalankan model di perangkat kecil.\n- **PyTorch** populer untuk pelatihan, dan modelnya dapat dikonversi untuk perangkat tepi.\n- **Python** menjadi bahasa utama untuk menyiapkan data dan melatih model.\n- **NVIDIA Jetson** berada di kelas berbeda. Ia modul dengan GPU untuk visi komputer di edge, bukan mikrokontroler.\n\nPembedaan kelas perangkat penting. MCU dengan memori kecil cocok untuk model sinyal sederhana seperti getaran dan suara kata kunci. Pengenalan objek di video beresolusi tinggi biasanya butuh kelas Jetson atau SBC yang lebih kuat. Memilih kelas yang salah berarti model tidak muat atau perangkat terlalu boros.\n\n## Contoh logika anomali sederhana\n\nSebelum menyentuh jaringan saraf, banyak kasus anomali selesai dengan statistik sederhana yang cocok di MCU. Ide dasarnya: pelajari rata-rata dan simpangan baku dari data normal, lalu tandai pembacaan yang jauh dari rata-rata.\n\n```python\ndef anomali(nilai, rata, simpangan, batas=3.0):\n    if simpangan == 0:\n        return nilai != rata\n    return abs(nilai - rata) / simpangan > batas\n```\n\nPembacaan yang jaraknya lebih dari tiga simpangan baku dari rata-rata ditandai sebagai anomali. Pendekatan ini murah, mudah dijelaskan, dan sering menjadi garis dasar yang harus dikalahkan model ML sebelum model itu pantas dipakai. Bila model ML tidak lebih baik dari garis dasar ini, jangan pakai ML.\n\n## Batasan dan kehati-hatian\n\n- **Memori puncak.** Selain ukuran model, inferensi butuh memori kerja sementara. Periksa penggunaan memori puncak, bukan hanya ukuran berkas model.\n- **Akurasi bukan segalanya.** Dalam deteksi anomali, kejadian langka berarti akurasi tinggi bisa dicapai dengan selalu menjawab normal. Lihat juga seberapa banyak anomali nyata yang terdeteksi dan seberapa sering terjadi alarm palsu.\n- **Pergeseran data.** Sensor menua, lingkungan berubah, dan motor diganti. Siapkan jalur untuk memperbarui model lewat OTA, topik bab berikutnya.\n- **Daya.** Inferensi memakan energi. Pada perangkat baterai, ukur konsumsi nyata, jangan hanya memperkirakan.\n- **Keputusan kritis.** Jangan serahkan keselamatan sepenuhnya ke model probabilistik. Beri lapisan aturan keras di atasnya, misalnya batas suhu mutlak yang mematikan pemanas apa pun kata model.\n\n## Rangkuman\n\n- TinyML menjalankan inferensi model langsung di mikrokontroler sehingga latensi rendah, data tetap lokal, dan perangkat tahan offline.\n- Alur kerjanya: kumpulkan data, latih model, kuantisasi, deploy, lalu pantau.\n- Kuantisasi float32 ke int8 mengecilkan model sekitar empat kali dengan penurunan akurasi kecil yang harus diukur.\n- Edge Impulse, TF Lite (LiteRT), PyTorch, dan Python membentuk rantai alat; Jetson adalah kelas GPU, bukan MCU.\n- Mulai dari aturan atau statistik sederhana sebagai garis dasar, dan pasang aturan keras untuk keputusan kritis.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu hanya perlu menyalakan kipas bila suhu di atas 30 derajat. Apakah TinyML perlu dipakai?",
+          "code": "",
+          "options": [
+            "Ya, karena ML selalu lebih akurat daripada aturan apa pun juga",
+            "Tidak, aturan ambang sudah cukup dan lebih mudah diuji",
+            "Ya, karena MCU tidak mampu membandingkan dua angka secara langsung",
+            "Ya, karena ambang tidak bisa dijalankan tanpa koneksi internet"
+          ],
+          "answer": 1,
+          "explanation": "ML pantas dipertimbangkan bila pola sulit ditulis sebagai aturan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah kuantisasi float32 ke int8, apa dampak umumnya?",
+          "code": "",
+          "options": [
+            "Ukuran model tidak berubah tetapi akurasi pasti meningkat",
+            "Model tidak bisa lagi dijalankan di mikrokontroler apa pun",
+            "Ukuran model sekitar empat kali lebih kecil dengan penurunan akurasi kecil yang perlu diukur",
+            "Model berubah menjadi aturan ambang tanpa bobot"
+          ],
+          "answer": 2,
+          "explanation": "Kuantisasi mengecilkan model dan mempercepat hitungan, dengan konsekuensi akurasi yang harus diukur."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "NVIDIA Jetson adalah mikrokontroler hemat daya yang sekelas dengan ESP32.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Jetson adalah modul GPU untuk visi komputer di edge, kelas yang berbeda dari MCU."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Model anomali kamu akurat 99 persen karena anomali sangat jarang, tetapi sering melewatkan kerusakan. Pelajaran yang tepat?",
+          "code": "",
+          "options": [
+            "Akurasi saja menyesatkan; lihat juga deteksi anomali nyata dan alarm palsu",
+            "Naikkan kuantisasi ke int4 agar semua kerusakan terdeteksi",
+            "Hapus data uji supaya akurasi lebih tinggi lagi",
+            "Abaikan kerusakan jarang karena tidak mempengaruhi hasil"
+          ],
+          "answer": 0,
+          "explanation": "Pada kelas yang tidak seimbang, menjawab selalu normal pun bisa tampak akurat."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "keamanan-ota-dan-studi-kasus",
+      "title": "Keamanan, OTA, dan Studi Kasus Greenhouse",
+      "est_minutes": 45,
+      "slide_from": 20,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menerapkan pertahanan berlapis pada perangkat, komunikasi, jaringan, dan cloud.\n- Menggunakan OWASP IoT Top 10 sebagai checklist.\n- Merancang siklus hidup perangkat dengan OTA yang aman.\n- Membaca arsitektur studi kasus smart greenhouse dan merencanakan proyek bertingkat.\n\n## Pertahanan berlapis\n\nPerangkat IoT sering dipasang tanpa pengawasan di lokasi yang bisa dijangkau siapa pun, dengan kemampuan komputasi terbatas. Itu membuat keamanannya sulit dan sering diabaikan. Tidak ada satu langkah yang membuat sistem aman. Yang efektif adalah pertahanan berlapis, supaya kegagalan satu lapis tidak langsung menjadi bencana.\n\n**Perangkat.** Aktifkan secure boot agar hanya firmware sah yang berjalan, enkripsi flash bila chip mendukung, beri kredensial unik per perangkat, dan nonaktifkan port debug di produksi. Kredensial yang sama di semua perangkat berarti satu perangkat yang dibongkar membuka seluruh armada.\n\n**Komunikasi.** Pakai TLS 1.2 atau 1.3. Untuk mTLS, perangkat dan broker saling membuktikan identitas dengan sertifikat X.509. Penting: klien harus memvalidasi sertifikat server, bukan mematikan verifikasi hanya supaya koneksi berhasil. Port MQTT di atas TLS yang lazim adalah 8883, sedangkan 1883 adalah MQTT tanpa enkripsi.\n\n**Jaringan.** Pisahkan perangkat IoT di VLAN sendiri, pasang firewall, dan akses jarak jauh lewat VPN, bukan dengan membuka port ke internet.\n\n**Aplikasi dan cloud.** Terapkan prinsip least privilege. Gunakan ACL per topik MQTT supaya node gh01 hanya boleh memublikasikan ke topik miliknya dan tidak bisa menyadap atau memerintah node lain. Simpan audit log dan rotasi kunci secara berkala.\n\n## OWASP IoT Top 10\n\nOWASP IoT Top 10 edisi 2018 masih relevan sebagai checklist. Daftarnya mencakup: kata sandi lemah atau tertanam, layanan jaringan tidak aman, antarmuka ekosistem tidak aman, mekanisme pembaruan tidak aman, komponen usang atau tidak aman, perlindungan privasi kurang, transfer dan penyimpanan data tidak aman, manajemen perangkat kurang, pengaturan default tidak aman, dan pengamanan fisik kurang.\n\nNomor satu adalah kata sandi lemah atau tertanam di firmware. Itulah yang dieksploitasi botnet seperti Mirai, yang menyerang perangkat dengan kredensial bawaan pabrik. Pelajaran praktisnya: jangan kirim perangkat dengan kata sandi bawaan yang sama, dan jangan menaruh rahasia dalam kode sumber.\n\nUntuk sertifikat, Let's Encrypt cocok bagi sertifikat server atau broker yang terekspos ke internet. Untuk mTLS pada perangkat, gunakan CA privat sendiri, karena kamu perlu mengendalikan siapa yang boleh terdaftar dan mencabut sertifikat tertentu.\n\n## Siklus hidup perangkat dan OTA\n\nMengelola armada berarti merencanakan seluruh siklus hidup sejak awal: provisioning, konfigurasi, monitoring, pembaruan OTA, lalu pensiun. Provisioning yang aman memberi tiap perangkat identitas unik. Monitoring lewat heartbeat memberi tahu perangkat mana yang hilang. Dan pensiun berarti mencabut kredensial, bukan hanya mematikan unit.\n\nPembaruan OTA (over-the-air) adalah kemampuan yang menyelamatkan sekaligus berbahaya. Menyelamatkan karena celah keamanan bisa ditambal tanpa memanjat atap. Berbahaya karena firmware buruk yang dikirim ke semua perangkat bisa membuat seluruh armada mati serentak. Praktik terbaiknya:\n\n- **Partisi A/B dengan rollback otomatis.** Firmware baru ditulis ke partisi cadangan, dan bila boot gagal, perangkat kembali ke versi lama.\n- **Firmware ditandatangani.** Perangkat memverifikasi tanda tangan sebelum memasang, sehingga penyerang tidak bisa menyuntikkan firmware palsu.\n- **Rollout bertahap.** Mulai dari 5 persen, naik ke 25 persen, lalu 100 persen.\n- **Health check pasca-update.** Pastikan perangkat sehat sebelum rollout lanjut.\n- **CI/CD.** Build, uji, dan tanda tangani firmware secara otomatis.\n\nSalah satu cara menentukan perangkat mana yang masuk gelombang rollout adalah menurunkan angka dari ID perangkat, lalu membandingkannya dengan persentase. Dengan begitu, perangkat yang sama tetap berada di kelompok yang sama saat persentase dinaikkan, sehingga gelombang 5 persen otomatis menjadi bagian dari gelombang 25 persen.\n\n## Studi kasus: smart greenhouse\n\nStudi kasus merangkai semua bab. Di lapangan, node ESP32 dengan ESPHome membaca suhu dan kelembapan udara serta kelembapan tanah, dan mengendalikan kipas dan pompa lewat relay. Datanya dikirim lewat MQTT dengan TLS ke gateway Raspberry Pi. Di gateway, Mosquitto menjadi broker, Node-RED dan Home Assistant menjalankan otomasi (histeresis kipas dan PID penyiraman), InfluxDB menyimpan data, dan Grafana menampilkan grafik sekaligus mengirim alert ke Telegram. Semua layanan berjalan di Docker Compose. Untuk akses jarak jauh dipakai VPN seperti Tailscale atau WireGuard, bukan membuka port ke internet.\n\n[Lihat arsitektur studi kasus](slide:22)\n\nPertanyaan bagus untuk menguji pemahamanmu: bila internet putus, apa yang masih jalan? Jawabannya hampir semuanya, karena broker, otomasi, dan penyimpanan ada di gateway lokal. Hanya notifikasi Telegram dan akses jarak jauh yang terhenti. Itu hasil dari prinsip edge dan pemisahan lapisan.\n\n## Proyek bertingkat\n\nLatihan akhir terbagi tiga level yang dikerjakan berurutan.\n\n- **Level 1, fondasi.** ESP32 mengirim suhu lewat MQTT dengan TLS, data tersimpan di InfluxDB, dashboard Grafana tampil. Uji lulus: perangkat menyambung ulang otomatis setelah Wi-Fi putus.\n- **Level 2, otomasi.** Kipas dengan histeresis, mode manual atau otomatis di Home Assistant, status online/offline lewat LWT. Uji lulus: firmware diperbarui lewat OTA tanpa kabel.\n- **Level 3, mahir.** PID untuk penyiraman, model TinyML deteksi anomali, rollout OTA bertahap dengan monitoring. Uji lulus: sistem tetap berjalan saat internet putus.\n\nPerhatikan bahwa kriteria uji lulus menguji ketahanan, bukan hanya fitur. Cabut Wi-Fi, matikan broker, atau putuskan internet, lalu amati apa yang terjadi. Sistem yang hanya berfungsi saat semuanya normal belum siap dipakai.\n\n## Enam hal yang dibawa pulang\n\nPisahkan lapisan. Pilih radio sesuai kebutuhan. Kuasai MQTT: QoS, retained, LWT, dan desain topik. Rancang otomasi yang stabil dengan histeresis, state machine, dan PID. Gunakan TinyML untuk keputusan lokal. Dan bangun keamanan sejak desain: TLS, kredensial unik, dan OTA yang ditandatangani. Mulailah dari satu node, tetapi rancang untuk ribuan.\n\n## Rangkuman\n\n- Pertahanan berlapis mencakup perangkat (secure boot, kredensial unik), komunikasi (TLS, mTLS), jaringan (VLAN, VPN), dan cloud (least privilege, ACL per topik).\n- OWASP IoT Top 10 jadi checklist; kata sandi lemah atau tertanam adalah risiko nomor satu.\n- OTA aman memakai partisi A/B, firmware bertanda tangan, rollout bertahap, dan health check.\n- Studi kasus greenhouse menunjukkan sistem yang tetap berjalan lokal saat internet putus.\n- Proyek tiga level menguji ketahanan: sambung ulang, OTA, dan operasi tanpa internet.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang penyerang membongkar satu perangkat dan memperoleh kredensialnya, lalu menguasai seluruh armada. Kesalahan desain yang paling mungkin?",
+          "code": "",
+          "options": [
+            "Broker memakai Mosquitto sehingga tidak aman",
+            "Perangkat memakai ESP32 yang tidak bisa memakai TLS",
+            "Kredensial yang sama dipakai di semua perangkat",
+            "Dashboard memakai Grafana yang tidak bisa diberi sandi"
+          ],
+          "answer": 2,
+          "explanation": "Kredensial unik per perangkat membatasi dampak satu perangkat yang dibobol."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah rollout OTA dikirim ke 100 persen perangkat sekaligus, dan firmware barunya gagal boot. Praktik yang mencegah bencana itu adalah",
+          "code": "",
+          "options": [
+            "Rollout bertahap dengan partisi A/B dan rollback otomatis",
+            "Menonaktifkan tanda tangan firmware agar pembaruan lebih cepat",
+            "Mengirim firmware lewat MQTT QoS 0 supaya ringan",
+            "Menunda semua pembaruan sampai ada kerusakan nyata"
+          ],
+          "answer": 0,
+          "explanation": "Rollout bertahap membatasi dampak, A/B dengan rollback memulihkan perangkat yang gagal boot."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Let's Encrypt cocok untuk sertifikat server broker yang terekspos, sedangkan mTLS perangkat lebih baik memakai CA privat.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "CA privat memberi kendali penuh siapa yang boleh terdaftar dan dicabut."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Greenhouse kehilangan internet semalam. Pada arsitektur studi kasus, apa yang tetap jalan?",
+          "code": "",
+          "options": [
+            "Tidak ada, karena semua layanan berada di cloud",
+            "Hanya firmware node, sedangkan otomasi berhenti total",
+            "Broker, otomasi, penyimpanan, dan dashboard lokal di gateway",
+            "Hanya notifikasi Telegram karena memakai jalur lain"
+          ],
+          "answer": 2,
+          "explanation": "Layanan inti berjalan di Raspberry Pi; hanya notifikasi dan akses jarak jauh yang terhenti."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Gelombang rollout OTA",
+          "prompt": "Tulis `termasuk_rollout(id_perangkat, persen)` yang menentukan apakah perangkat masuk gelombang rollout.\n\n- Hitung `bucket = sum(ord(c) for c in id_perangkat) % 100`.\n- Perangkat termasuk bila `bucket < persen`.\n\nDengan begitu perangkat yang masuk gelombang 5 persen otomatis juga masuk gelombang 25 persen. Tulis juga `daftar_rollout(daftar_id, persen)` yang mengembalikan id yang termasuk, dengan urutan asli.",
+          "starter": {
+            "code": "def termasuk_rollout(id_perangkat, persen):\n    # TODO\n    pass\n\n\ndef daftar_rollout(daftar_id, persen):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def termasuk_rollout(id_perangkat, persen):\n    bucket = sum(ord(c) for c in id_perangkat) % 100\n    return bucket < persen\n\n\ndef daftar_rollout(daftar_id, persen):\n    return [i for i in daftar_id if termasuk_rollout(i, persen)]\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "gh01 jatuh di bucket 4 sehingga masuk 5 persen",
+              "check": "termasuk_rollout(\"gh01\", 5) is True"
+            },
+            {
+              "name": "gh02 jatuh di bucket 5 sehingga belum masuk 5 persen",
+              "check": "termasuk_rollout(\"gh02\", 5) is False and termasuk_rollout(\"gh02\", 6) is True"
+            },
+            {
+              "name": "0 persen tidak mengikutkan siapa pun",
+              "check": "daftar_rollout([\"gh01\", \"gh02\", \"gh03\"], 0) == []"
+            },
+            {
+              "name": "100 persen mengikutkan semua perangkat",
+              "check": "daftar_rollout([\"gh01\", \"gh02\", \"x\"], 100) == [\"gh01\", \"gh02\", \"x\"]"
+            },
+            {
+              "name": "Gelombang kecil selalu bagian dari gelombang besar",
+              "check": "all(termasuk_rollout(i, 25) for i in daftar_rollout([\"gh%02d\" % n for n in range(40)], 5))"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

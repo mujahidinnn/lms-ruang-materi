@@ -1,0 +1,2065 @@
+{
+  "title": "Robotika: Mekanika, Aktuator, dan Navigasi",
+  "description": "Belajar tiga pilar robot bergerak: mekanika (DOF, kinematika, transmisi), aktuator (motor, PWM, PID), dan navigasi (sensor, SLAM, perencanaan jalur, ROS 2).",
+  "summary": "Robot bergerak bekerja dalam siklus Sense - Think - Act: sensor membaca keadaan, komputer memperkirakan posisi dan merencanakan gerak, lalu aktuator mengubah perintah menjadi gerak lewat struktur mekanik. Kelas ini membahas tiga pilar yang membuat siklus itu berjalan: mekanika, aktuator, dan navigasi.\n\nDi bagian mekanika kamu mengenal komponen tubuh robot, derajat kebebasan, konfigurasi lengan, kinematika maju dan balik, model robot beroda diferensial, serta transmisi yang menukar kecepatan dengan torsi. Di bagian aktuator kamu membandingkan jenis penggerak, memahami motor DC, BLDC, stepper, dan servo, lalu mempelajari driver, PWM, encoder, dan kontrol PID.\n\nDi bagian navigasi kamu mempelajari sensor dan kelemahannya, fusi sensor, SLAM, perencanaan jalur global dan lokal, hingga ekosistem ROS 2 dan alur robot otonom. Beberapa bab memuat latihan Python untuk logika murni, dan proyek akhir merangkai kinematika, odometri, dan pengendali menuju target.",
+  "tips": [
+    "Mulai dari satu roda yang bisa dikontrol kecepatannya dengan PID, baru lanjut ke odometri dan navigasi.",
+    "Selalu cek satuan: sudut dalam radian untuk math, jari-jari roda bukan diameter, dan semua jarak dalam meter.",
+    "Kalibrasi jari-jari roda dan jarak antar roda dengan mengukur jarak tempuh nyata, karena galat kecil menumpuk pada odometri.",
+    "Jangan menahan motor sampai stall lama, dan pilih motor dengan margin torsi jauh di atas beban rutin.",
+    "Saat robot berperilaku aneh, telusuri dari lapisan terendah: mekanik, motor, sensor, lalu algoritma tinggi.",
+    "Uji logika di simulator seperti Gazebo sebelum menjalankannya pada robot sungguhan."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa tiga pilar robot bergerak pada materi ini?",
+      "back": "Mekanika, aktuator, dan navigasi."
+    },
+    {
+      "front": "Apa itu siklus Sense - Think - Act?",
+      "back": "Lingkaran berulang: sensor membaca kondisi, komputer berpikir dan merencanakan, aktuator bertindak, lalu hasilnya dibaca lagi."
+    },
+    {
+      "front": "Mengapa robot butuh umpan balik?",
+      "back": "Agar hasil gerakan diukur dan dipakai mengoreksi gerakan berikutnya, bukan sekadar mengikuti urutan tetap."
+    },
+    {
+      "front": "Apa itu derajat kebebasan (DOF)?",
+      "back": "Jumlah gerak independen sebuah benda atau mekanisme."
+    },
+    {
+      "front": "Berapa DOF minimum untuk posisi dan orientasi sembarang di 3D?",
+      "back": "6: tiga translasi (x, y, z) dan tiga rotasi (roll, pitch, yaw)."
+    },
+    {
+      "front": "Apa itu robot redundan?",
+      "back": "Robot dengan lebih dari 6 DOF, sehingga target yang sama dapat dicapai dengan banyak bentuk lengan."
+    },
+    {
+      "front": "Sebutkan tiga jenis sendi dan DOF-nya",
+      "back": "Revolute 1 rotasi, prismatic 1 translasi, spherical 3 rotasi."
+    },
+    {
+      "front": "Rumus Grübler spasial",
+      "back": "DOF = 6(N - 1 - J) + Σ f_i, dengan N link termasuk base dan J jumlah sendi. Planar mengganti 6 dengan 3."
+    },
+    {
+      "front": "Apa arti kode konfigurasi R-R-P?",
+      "back": "Tiga sendi pertama dari base: dua revolute lalu satu prismatic."
+    },
+    {
+      "front": "Apa beda FK dan IK?",
+      "back": "FK menghitung posisi ujung dari sudut sendi, IK menghitung sudut sendi dari posisi ujung."
+    },
+    {
+      "front": "Kapan IK lengan 2 link tidak punya solusi?",
+      "back": "Saat target berada di luar jangkauan, yaitu jaraknya kurang dari |L1 - L2| atau lebih dari L1 + L2."
+    },
+    {
+      "front": "Rumus kecepatan robot diferensial",
+      "back": "v = r(ωR + ωL)/2 dan ω = r(ωR - ωL)/L."
+    },
+    {
+      "front": "Apa itu robot holonomik?",
+      "back": "Robot yang dapat bergerak ke segala arah di bidang tanpa harus berputar lebih dulu, seperti roda mecanum."
+    },
+    {
+      "front": "Pembaruan odometri sederhana",
+      "back": "x += v·cos(θ)·dt, y += v·sin(θ)·dt, θ += ω·dt."
+    },
+    {
+      "front": "Rumus rasio gear dan torsi keluaran",
+      "back": "i = N2/N1, ω_out = ω_in / i, τ_out = τ_in · i · η."
+    },
+    {
+      "front": "Apa itu backlash?",
+      "back": "Celah antar gigi yang membuat poros keluaran sempat diam ketika arah putaran berbalik."
+    },
+    {
+      "front": "Ciri tiga keluarga aktuator",
+      "back": "Listrik presisi dan mudah dikontrol, hidrolik bergaya sangat besar, pneumatik cepat dan lentur tetapi sulit dikontrol posisinya."
+    },
+    {
+      "front": "Perbedaan motor DC dan BLDC",
+      "back": "Motor DC memakai sikat yang aus, BLDC memakai komutasi elektronik sehingga awet tetapi butuh driver."
+    },
+    {
+      "front": "Mengapa stepper bisa kehilangan langkah?",
+      "back": "Tanpa umpan balik, beban berlebih membuat motor melewatkan langkah dan tidak ada yang memberi tahu."
+    },
+    {
+      "front": "Model linear motor DC",
+      "back": "τ = τ_stall(1 - ω/ω₀). Daya maksimum pada ω = ω₀/2 dengan P_maks = τ_stall · ω₀ / 4."
+    },
+    {
+      "front": "Tegangan efektif PWM",
+      "back": "Duty cycle dikali tegangan suplai, misalnya duty 25 persen pada 12 V sekitar 3 V."
+    },
+    {
+      "front": "Peran suku P, I, dan D",
+      "back": "P bereaksi pada error sekarang, I menghapus error tunak, D meredam perubahan error."
+    },
+    {
+      "front": "Apa itu integral windup?",
+      "back": "Integral menumpuk saat aktuator jenuh sehingga menimbulkan overshoot besar. Diatasi dengan membatasi integral."
+    },
+    {
+      "front": "Kelemahan IMU",
+      "back": "Drift saat diintegrasikan: bias kecil menumpuk menjadi galat sudut atau posisi."
+    },
+    {
+      "front": "Apa itu filter komplementer?",
+      "back": "Memadukan giroskop untuk jangka pendek dan akselerometer untuk jangka panjang agar sudut stabil dan tidak drift."
+    },
+    {
+      "front": "Apa itu loop closure?",
+      "back": "Saat robot mengenali tempat yang pernah dilewati, SLAM menyesuaikan lintasan dan peta untuk mengoreksi drift."
+    },
+    {
+      "front": "Beda perencana global dan lokal",
+      "back": "Global mencari rute utuh di peta lengkap sesekali, lokal memilih kecepatan aman jangka pendek dari costmap yang terus diperbarui."
+    },
+    {
+      "front": "Apa itu node, topic, dan service di ROS 2?",
+      "back": "Node program kecil, topic saluran publikasi-langganan, service permintaan dan jawaban sesekali."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah robot pengantar makanan bereaksi telat pada rintangan walaupun semua sensornya normal. Bagian siklus yang perlu diperiksa pertama adalah",
+      "code": "",
+      "options": [
+        "Warna rangka robot",
+        "Frekuensi pembacaan dan pengolahan di tahap Sense dan Think",
+        "Merek baterai yang dipakai",
+        "Jumlah roda gigi di gripper"
+      ],
+      "answer": 1,
+      "explanation": "Reaksi telat biasanya berkaitan dengan siklus yang terlalu lambat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Lengan 6R serial memiliki DOF",
+      "code": "",
+      "options": [
+        "3",
+        "7",
+        "12",
+        "6"
+      ],
+      "answer": 3,
+      "explanation": "Enam sendi revolute dalam rantai serial memberi enam DOF."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu ingin menghitung posisi ujung lengan dari sudut yang sudah diketahui. Metode yang dipakai adalah",
+      "code": "",
+      "options": [
+        "Kinematika balik",
+        "Integrasi giroskop",
+        "Kinematika maju",
+        "Fusi EKF"
+      ],
+      "answer": 2,
+      "explanation": "FK: dari sudut sendi ke posisi ujung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Robot diferensial dengan ωR = ωL = 8 rad/s dan r = 0,05 m bergerak dengan kecepatan linear",
+      "code": "",
+      "options": [
+        "0,8 m/s",
+        "8 m/s",
+        "0 m/s",
+        "0,4 m/s"
+      ],
+      "answer": 3,
+      "explanation": "v = 0,05 × (8 + 8) / 2 = 0,4 m/s."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Gearbox 20:1 efisiensi 0,9 dipasang pada motor 0,2 N·m. Torsi keluarannya",
+      "code": "",
+      "options": [
+        "4 N·m",
+        "3,6 N·m",
+        "0,01 N·m",
+        "18 N·m"
+      ],
+      "answer": 1,
+      "explanation": "0,2 × 20 × 0,9 = 3,6 N·m."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Motor BLDC tidak membutuhkan driver elektronik karena komutasinya dilakukan sikat.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "BLDC komutasi elektronik sehingga butuh driver seperti ESC."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Servo hobi tidak bergerak ke sudut yang diharapkan walau pulsa sudah sesuai rumus. Langkah paling masuk akal",
+      "code": "",
+      "options": [
+        "Naikkan frekuensi PWM sampai 20 kHz",
+        "Ganti H-bridge",
+        "Periksa lembar data untuk rentang pulsa dan kalibrasi",
+        "Tambahkan roda gigi planetary"
+      ],
+      "answer": 2,
+      "explanation": "Rentang pulsa berbeda antar servo, jadi perlu kalibrasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Motor berhenti di bawah setpoint dengan selisih kecil tetapi tetap. Suku PID yang menolong",
+      "code": "",
+      "options": [
+        "Derivatif saja",
+        "Integral",
+        "Tidak ada karena error tunak tidak bisa dihilangkan",
+        "Filter PWM"
+      ],
+      "answer": 1,
+      "explanation": "Integral mengumpulkan error kecil sampai nol."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sudut IMU yang halus tetapi melenceng jangka panjang berasal dari",
+      "code": "",
+      "options": [
+        "Pembacaan LiDAR",
+        "Hitungan ticks encoder",
+        "Integrasi giroskop",
+        "Sinyal GNSS"
+      ],
+      "answer": 2,
+      "explanation": "Bias giroskop menyebabkan drift setelah diintegralkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Odometri dan GPS memiliki varians 1 dan 1 pada pengukuran yang sama. Hasil fusi berada",
+      "code": "",
+      "options": [
+        "Sama dengan pengukuran odometri",
+        "Di tengah kedua pengukuran",
+        "Sama dengan pengukuran GPS",
+        "Di luar kedua pengukuran"
+      ],
+      "answer": 1,
+      "explanation": "Varians sama berarti bobot sama sehingga hasilnya rata-rata."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perencana mana yang bekerja pada peta lengkap dan dijalankan sesekali?",
+      "code": "",
+      "options": [
+        "DWA",
+        "Perencana global seperti A*",
+        "TEB",
+        "Kontrol PID"
+      ],
+      "answer": 1,
+      "explanation": "Perencana global menghitung rute utuh, sedangkan perencana lokal bereaksi cepat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di ROS 2, data LiDAR yang diterbitkan satu node dan dibaca banyak node lewat",
+      "code": "",
+      "options": [
+        "Service tunggal",
+        "Driver H-bridge",
+        "Sendi prismatic",
+        "Topic"
+      ],
+      "answer": 3,
+      "explanation": "Topic bersifat publikasi-langganan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada rumus Grübler, base tidak dihitung ke dalam jumlah link N.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Base dihitung sebagai satu link."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menurut materi, apa beda utama robot dengan mesin cuci otomatis berprogram tetap?",
+      "code": "",
+      "options": [
+        "Robot selalu memiliki roda sedangkan mesin cuci tidak memiliki bagian bergerak",
+        "Robot tidak pernah menggunakan mikrokontroler dalam proses kerjanya",
+        "Robot memakai umpan balik sensor untuk menentukan gerak berikutnya",
+        "Mesin cuci memakai motor listrik sedangkan robot hanya memakai hidrolik"
+      ],
+      "answer": 2,
+      "explanation": "Robot mengukur hasil geraknya lalu menyesuaikan, sedangkan mesin berprogram tetap mengulang urutan yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada siklus Sense - Think - Act, tahap mana yang menjalankan algoritma perencanaan jalur?",
+      "code": "",
+      "options": [
+        "Think",
+        "Sense, karena sensor LiDAR sekaligus menghitung jalur",
+        "Act, karena motor yang memilih rute",
+        "Ketiganya sama saja dan tidak bisa dipisahkan sama sekali"
+      ],
+      "answer": 0,
+      "explanation": "Perencanaan dan perhitungan perintah gerak adalah bagian tahap Think."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Siklus Sense - Think - Act hanya dijalankan sekali ketika robot dinyalakan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Siklus berulang terus, puluhan hingga ribuan kali per detik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Robot melaju 1 m/s dan membaca sensor jarak 5 kali per detik. Berapa jarak yang ditempuh di antara dua pembacaan?",
+      "code": "",
+      "options": [
+        "5 cm saja, karena hanya satu pembacaan",
+        "20 cm",
+        "1 m",
+        "2 m karena kecepatan dikali lima"
+      ],
+      "answer": 1,
+      "explanation": "Selang waktu 0,2 detik dikali 1 m/s sama dengan 0,2 m."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pilar manakah yang menjawab pertanyaan di mana robot berada dan bagaimana ia sampai ke tujuan?",
+      "code": "",
+      "options": [
+        "Mekanika",
+        "Navigasi",
+        "Aktuator",
+        "Transmisi roda gigi"
+      ],
+      "answer": 1,
+      "explanation": "Navigasi mencakup sensor, lokalisasi, dan perencanaan jalur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen mekanik yang menyalurkan daya dari motor ke sendi atau roda adalah",
+      "code": "",
+      "options": [
+        "End-effector",
+        "Rangka",
+        "Link",
+        "Transmisi"
+      ],
+      "answer": 3,
+      "explanation": "Roda gigi, sabuk, dan ulir adalah contoh transmisi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Sendi prismatic memberikan satu derajat kebebasan berupa gerak translasi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Sendi geser atau prismatic hanya memberi satu DOF translasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Lengan serial dengan 4 sendi revolute memiliki N = 5 link termasuk base. Menurut Grübler spasial, DOF-nya",
+      "code": "",
+      "options": [
+        "5, sama dengan jumlah link",
+        "6, batas maksimum ruang 3D",
+        "4",
+        "0, karena rantai serial kaku"
+      ],
+      "answer": 2,
+      "explanation": "DOF = 6(5 - 1 - 4) + 4 = 4."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sendi spherical pada pergelangan humanoid menyediakan",
+      "code": "",
+      "options": [
+        "1 DOF rotasi",
+        "3 DOF translasi",
+        "6 DOF sekaligus yaitu 3 rotasi dan 3 translasi",
+        "3 DOF rotasi"
+      ],
+      "answer": 3,
+      "explanation": "Sendi bola memberi tiga rotasi di satu titik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Lengan 8 DOF yang bekerja di ruang 3D disebut",
+      "code": "",
+      "options": [
+        "Holonomik",
+        "Redundan",
+        "Prismatik",
+        "Kartesian"
+      ],
+      "answer": 1,
+      "explanation": "Lebih dari 6 DOF membuat robot redundan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "n, j, f = 4, 4, 4\nprint(3 * (n - 1 - j) + f)",
+      "options": [
+        "0, karena base tidak dihitung",
+        "3, sesuai angka planar",
+        "1",
+        "4, sama dengan jumlah sendi"
+      ],
+      "answer": 2,
+      "explanation": "3 × (4 - 1 - 4) + 4 = -3 + 4 = 1, ciri mekanisme empat batang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ruang kerja berbentuk kotak (balok) dimiliki konfigurasi",
+      "code": "",
+      "options": [
+        "Kartesian P-P-P",
+        "Silindris R-P-P",
+        "SCARA R-R-P",
+        "Artikulasi R-R-R"
+      ],
+      "answer": 0,
+      "explanation": "Tiga sendi geser menghasilkan ruang kerja balok, seperti pada printer 3D."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Robot untuk pengemasan makanan berkecepatan sangat tinggi paling sering memakai konfigurasi",
+      "code": "",
+      "options": [
+        "Paralel (delta)",
+        "Kartesian gantry",
+        "Sferis",
+        "Silindris"
+      ],
+      "answer": 0,
+      "explanation": "Robot delta ringan di bagian bergerak sehingga sangat cepat."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Kinematika maju lengan planar selalu menghasilkan tepat satu posisi ujung untuk satu pasang sudut sendi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "FK adalah pemetaan satu arah dari sudut ke posisi."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran program berikut?",
+      "code": "import math\nl1, l2 = 1, 1\nt1, t2 = math.radians(90), 0\nx = l1 * math.cos(t1) + l2 * math.cos(t1 + t2)\ny = l1 * math.sin(t1) + l2 * math.sin(t1 + t2)\nprint(round(x, 1), round(y, 1))",
+      "options": [
+        "2.0 0.0",
+        "0.0 2.0",
+        "1.0 1.0 1.0",
+        "0 0"
+      ],
+      "answer": 1,
+      "explanation": "Lengan lurus ke atas sepanjang L1 + L2 = 2."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada IK lengan 2 link, bilamana tidak ada solusi sama sekali?",
+      "code": "",
+      "options": [
+        "Bila sudut θ1 dipasang tepat pada nol derajat",
+        "Bila kedua link dibuat sama panjang oleh pabrik",
+        "Bila motor sendi dipasang di dekat base lengan",
+        "Nilai cos θ2 di luar rentang -1 sampai 1"
+      ],
+      "answer": 3,
+      "explanation": "Nilai di luar rentang artinya target berada di luar jangkauan lengan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Robot beroda dengan kemudi seperti mobil yang stabil pada kecepatan tinggi disebut",
+      "code": "",
+      "options": [
+        "Diferensial",
+        "Ackermann",
+        "Mecanum",
+        "Omni tiga roda"
+      ],
+      "answer": 1,
+      "explanation": "Ackermann stabil pada kecepatan tinggi, tetapi radius beloknya terbatas."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "r, L = 0.1, 0.5\nwr, wl = 6, 4\nv = r * (wr + wl) / 2\nw = r * (wr - wl) / L\nprint(round(v, 2), round(w, 2))",
+      "options": [
+        "0.5 0.4",
+        "1.0 0.4",
+        "0.5 0.8",
+        "0.25 0.4"
+      ],
+      "answer": 0,
+      "explanation": "v = 0,1 × 10 / 2 = 0,5 dan ω = 0,1 × 2 / 0,5 = 0,4."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Galat odometri cenderung menumpuk seiring waktu karena gerak yang dijumlahkan membawa semua galat kecilnya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itulah sebabnya odometri dikoreksi oleh sensor lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Roda mecanum disebut holonomik karena",
+      "code": "",
+      "options": [
+        "Rodanya memakai ban karet yang sangat lunak dan lebar",
+        "Robot hanya memerlukan satu motor untuk semua roda",
+        "Bergerak ke segala arah tanpa berputar dulu",
+        "Rodanya tidak memerlukan lantai yang halus sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "Holonomik berarti setiap arah gerak di bidang bisa dicapai langsung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Roda gigi 20 gigi menggerakkan roda gigi 80 gigi. Rasio transmisinya",
+      "code": "",
+      "options": [
+        "0,25",
+        "20",
+        "4",
+        "60"
+      ],
+      "answer": 2,
+      "explanation": "i = N2 / N1 = 80 / 20 = 4."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "i = 30\nt_in = 0.05\neta = 0.8\nprint(round(t_in * i * eta, 2))",
+      "options": [
+        "1.5",
+        "0.04",
+        "37.5",
+        "1.2"
+      ],
+      "answer": 3,
+      "explanation": "0,05 × 30 × 0,8 = 1,2 N·m."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Backlash adalah celah antar gigi yang membuat poros keluaran sempat diam saat arah putaran berbalik.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Celah ini menurunkan akurasi pada gerak presisi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ciri utama transmisi sabuk dan puli adalah",
+      "code": "",
+      "options": [
+        "Hampir tanpa backlash dan sangat ringkas",
+        "Senyap dan mampu memindahkan daya ke jarak jauh",
+        "Rasio sangat besar dalam satu tingkat saja",
+        "Mengubah putaran menjadi gerak linear presisi"
+      ],
+      "answer": 1,
+      "explanation": "Sabuk senyap dan fleksibel dalam jarak antar poros."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa pneumatik sulit dipakai untuk kontrol posisi presisi?",
+      "code": "",
+      "options": [
+        "Gaya yang dihasilkan selalu terlalu besar",
+        "Udara tidak bisa mengalir ke silinder kecil",
+        "Pneumatik hanya bekerja di luar ruangan",
+        "Udara dapat ditekan sehingga gerakannya lentur dan sulit ditahan tepat"
+      ],
+      "answer": 3,
+      "explanation": "Kompresibilitas udara memberi kelenturan tetapi menyulitkan pemosisian akurat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Motor yang efisien, awet, bersifat komutasi elektronik, dan umum pada drone adalah",
+      "code": "",
+      "options": [
+        "BLDC",
+        "Motor DC bersikat",
+        "Stepper",
+        "Servo analog hobi"
+      ],
+      "answer": 0,
+      "explanation": "BLDC memakai komutasi elektronik sehingga tidak ada sikat yang aus."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "ts, w0, w = 0.5, 60, 30\ntorsi = ts * (1 - w / w0)\nprint(torsi * w)",
+      "options": [
+        "15.0",
+        "30.0",
+        "7.5",
+        "0.25"
+      ],
+      "answer": 2,
+      "explanation": "Torsi 0,25 dikali 30 rad/s sama dengan 7,5 W."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Stepper umum yang bergerak 1,8 derajat per langkah memerlukan 200 langkah penuh untuk satu putaran.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "360 dibagi 1,8 sama dengan 200."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa menahan motor DC pada kondisi stall dalam waktu lama berbahaya?",
+      "code": "",
+      "options": [
+        "Arus mencapai maksimum sehingga belitan dapat terlalu panas",
+        "Kecepatan meningkat tanpa batas",
+        "Tegangan suplai otomatis naik dua kali lipat",
+        "Magnet motor berubah menjadi tidak permanen secara seketika"
+      ],
+      "answer": 0,
+      "explanation": "Pada stall, arus tertinggi dan hampir seluruh daya menjadi panas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi utama driver H-bridge pada rantai penggerak motor adalah",
+      "code": "",
+      "options": [
+        "Mengukur sudut poros sebagai umpan balik",
+        "Menguatkan arus dan membalik arah putaran",
+        "Menghitung perintah gerak dari peta",
+        "Menurunkan kecepatan dengan roda gigi"
+      ],
+      "answer": 1,
+      "explanation": "H-bridge memberi arus besar ke motor dan memungkinkan arah putaran dibalik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Frekuensi PWM motor biasanya dipilih 15 sampai 25 kHz agar",
+      "code": "",
+      "options": [
+        "Tegangan efektif menjadi dua kali lipat",
+        "Encoder tidak perlu dipasang lagi",
+        "Motor memutar ke arah sebaliknya",
+        "Tidak terdengar sebagai dengung oleh telinga manusia"
+      ],
+      "answer": 3,
+      "explanation": "Frekuensi di atas pendengaran mencegah motor berdenging."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "duty = 0.4\nsuplai = 12\nprint(round(duty * suplai, 1))",
+      "options": [
+        "48.0",
+        "0.4",
+        "4.8",
+        "12.4"
+      ],
+      "answer": 2,
+      "explanation": "Tegangan efektif = duty × suplai = 4,8 V."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Suku derivatif pada PID peka terhadap derau pembacaan sensor.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Turunan memperbesar perubahan cepat, termasuk derau."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "kp, ki = 3, 0.5\ne, dt = 2, 0.2\nintegral = 0\nintegral += e * dt\nprint(round(kp * e + ki * integral, 2))",
+      "options": [
+        "6.00",
+        "6.4 V",
+        "6.2",
+        "0.4"
+      ],
+      "answer": 2,
+      "explanation": "Integral = 0,4, sehingga u = 6 + 0,2 = 6,2."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Series Elastic Actuator memasang pegas di antara motor dan beban untuk",
+      "code": "",
+      "options": [
+        "Menyerap benturan dan mengukur gaya dari defleksi",
+        "Menaikkan efisiensi gearbox hingga lebih dari 100 persen",
+        "Menggantikan seluruh sensor posisi pada sendi robot",
+        "Membuat motor tetap bekerja walau tanpa suplai listrik"
+      ],
+      "answer": 0,
+      "explanation": "Pegas membuat sentuhan lebih aman dan defleksinya dapat diukur sebagai gaya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Shape Memory Alloy cocok bila kamu memerlukan aktuator",
+      "code": "",
+      "options": [
+        "Berkecepatan tinggi dan bergaya sangat besar",
+        "Berasal dari tekanan oli",
+        "Bergerak per langkah 1,8 derajat",
+        "Senyap dan ringan, dengan gerak yang lambat"
+      ],
+      "answer": 3,
+      "explanation": "SMA memendek saat dipanaskan, senyap dan ringan tetapi lambat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kelemahan LiDAR yang paling disebut pada materi adalah",
+      "code": "",
+      "options": [
+        "Tidak bisa mengukur jarak",
+        "Hanya bekerja di luar ruangan",
+        "Mahal dan lemah pada kaca serta cermin",
+        "Memerlukan sinyal satelit"
+      ],
+      "answer": 2,
+      "explanation": "Laser dapat tembus atau terpantul tidak wajar pada kaca dan cermin."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa sudut hasil integrasi giroskop perlahan melenceng?",
+      "code": "",
+      "options": [
+        "Giroskop memang tidak dapat mengukur kecepatan sudut",
+        "Gravitasi mengubah ukuran fisik sensor sedikit demi sedikit",
+        "Frekuensi PWM motor terlalu tinggi",
+        "Bias kecil ikut terintegralkan sehingga drift"
+      ],
+      "answer": 3,
+      "explanation": "Galat konstan yang diintegralkan tumbuh terus seiring waktu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "GNSS umumnya memberi akurasi sentimeter dan bekerja baik di dalam gedung.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Akurasi GNSS umumnya meter dan sinyalnya hilang di dalam gedung."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa keluaran program berikut?",
+      "code": "import math\nticks, tpr, r = 1000, 500, 0.05\nprint(round(ticks / tpr * 2 * math.pi * r, 2))",
+      "options": [
+        "0.63",
+        "0.31",
+        "1.26 m",
+        "6.28"
+      ],
+      "answer": 0,
+      "explanation": "Dua putaran dikali keliling 0,314 m sama dengan 0,63 m."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Extended Kalman Filter pada robot dipakai untuk",
+      "code": "",
+      "options": [
+        "Menaikkan torsi keluaran gearbox pada sendi",
+        "Membangkitkan sinyal PWM untuk driver motor",
+        "Mengubah roda diferensial menjadi roda mecanum",
+        "Memadukan odometri, IMU, dan GPS sesuai kepercayaan"
+      ],
+      "answer": 3,
+      "explanation": "EKF memadukan beberapa sensor dengan memperhitungkan ketidakpastiannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "A* berbeda dari Dijkstra karena A* menambahkan",
+      "code": "",
+      "options": [
+        "Roda gigi planetary",
+        "Heuristik jarak ke tujuan",
+        "Sensor ultrasonik",
+        "Rumus Grübler"
+      ],
+      "answer": 1,
+      "explanation": "Heuristik mengarahkan pencarian sehingga lebih sedikit sel dijelajahi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "RRT lebih cocok dibanding pencarian grid biasa untuk",
+      "code": "",
+      "options": [
+        "Ruang berdimensi tinggi",
+        "Robot yang hanya maju lurus",
+        "Kalibrasi diameter roda",
+        "Pembacaan encoder satu kanal"
+      ],
+      "answer": 0,
+      "explanation": "RRT mengambil sampel acak sehingga skalabel pada ruang berdimensi tinggi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "SLAM adalah teknik untuk",
+      "code": "",
+      "options": [
+        "Menghitung rasio transmisi optimal",
+        "Mengatur duty cycle PWM",
+        "Membangun peta sambil menentukan posisi di dalamnya",
+        "Menyetel gain PID otomatis"
+      ],
+      "answer": 2,
+      "explanation": "SLAM berarti Simultaneous Localization and Mapping."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Yang termasuk perencana lokal pada Nav2 adalah",
+      "code": "",
+      "options": [
+        "DWA, TEB, atau MPC",
+        "Dijkstra",
+        "RRT",
+        "robot_localization"
+      ],
+      "answer": 0,
+      "explanation": "Perencana lokal memilih kecepatan aman jangka pendek berdasarkan costmap."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada ROS 2, program kecil dengan satu tugas, misalnya membaca LiDAR, disebut",
+      "code": "",
+      "options": [
+        "Topic",
+        "Service",
+        "Node",
+        "Costmap"
+      ],
+      "answer": 2,
+      "explanation": "Node adalah satuan program dasar dan saling bertukar data lewat topic."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "NVIDIA Jetson dipilih pada robot terutama karena",
+      "code": "",
+      "options": [
+        "Dapat langsung menggantikan motor penggerak roda",
+        "Tidak memerlukan daya listrik sama sekali saat bekerja",
+        "Hanya berfungsi sebagai roda gigi transmisi robot",
+        "Memiliki GPU untuk persepsi AI di komputer edge"
+      ],
+      "answer": 3,
+      "explanation": "Jetson adalah komputer edge dengan GPU."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam alur navigasi otonom, tahap yang datang tepat setelah lokalisasi adalah",
+      "code": "",
+      "options": [
+        "Sensor",
+        "Perencanaan",
+        "Aktuator",
+        "Persepsi"
+      ],
+      "answer": 1,
+      "explanation": "Urutannya sensor, persepsi, lokalisasi, perencanaan, kontrol, aktuator."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "OpenCV pada robot terutama dipakai untuk",
+      "code": "",
+      "options": [
+        "Mengendalikan arus motor",
+        "Visi komputer seperti deteksi fitur dan kalibrasi kamera",
+        "Menghitung rasio gearbox",
+        "Menyimpan peta occupancy grid ke baterai"
+      ],
+      "answer": 1,
+      "explanation": "OpenCV adalah pustaka visi komputer."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk node yang menuntut performa tinggi dan waktu-nyata pada ROS 2, bahasa yang umum dipilih adalah",
+      "code": "",
+      "options": [
+        "Python",
+        "HTML",
+        "C++",
+        "SQL"
+      ],
+      "answer": 2,
+      "explanation": "Python cocok untuk prototipe, C++ untuk node berkinerja tinggi."
+    }
+  ],
+  "prerequisites": [
+    "pemrograman-mikrokontroler"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Navigator Robot Diferensial",
+    "brief": "Bangun modul **Navigator Robot Diferensial** dari potongan yang kamu pelajari: kinematika roda, odometri, dan pengendali sederhana menuju titik target.\n\nFitur wajib:\n\n- Perintah gerak `(v, w)` diubah menjadi kecepatan roda.\n- Pose `(x, y, th)` diperbarui dari kecepatan roda dengan odometri Euler.\n- Selisih sudut dinormalkan ke rentang -pi sampai pi supaya robot berbelok lewat sisi terpendek.\n- Pengendali proporsional memberi perintah menuju target dan berhenti saat sudah dekat.\n- Simulasi menjalankan pengendali berulang sampai robot sampai di target.\n\nContoh: dari pose `(0, 0, 0)` dengan target `(1, 1)`, robot harus berbelok ke kiri dulu lalu maju sampai mendekati `(1, 1)`.",
+    "prompt": "Lengkapi fungsi roda_dari_perintah, odometri, normalisasi_sudut, jarak_dan_sudut, perintah_menuju, dan simulasi agar robot diferensial dapat bergerak ke titik target.",
+    "starter": {
+      "code": "def roda_dari_perintah(v, w, r, l):\n    \"\"\"Kembalikan (wr, wl) dalam rad/s untuk perintah (v, w).\"\"\"\n    pass\n\n\ndef odometri(pose, wr, wl, r, l, dt):\n    \"\"\"Kembalikan pose baru (x, y, th) dari kecepatan roda, metode Euler.\"\"\"\n    pass\n\n\ndef normalisasi_sudut(a):\n    \"\"\"Kembalikan sudut a (radian) ke rentang (-pi, pi].\"\"\"\n    pass\n\n\ndef jarak_dan_sudut(pose, target):\n    \"\"\"Kembalikan (jarak ke target, selisih sudut ternormalisasi antara arah target dan th).\"\"\"\n    pass\n\n\ndef perintah_menuju(pose, target):\n    \"\"\"Kembalikan (v, w). Berhenti (0, 0) bila jarak < 0.05.\n    Bila |selisih sudut| > 0.5: v = 0. Selain itu v = min(0.5, jarak).\n    w selalu 2.0 * selisih sudut.\"\"\"\n    pass\n\n\ndef simulasi(pose, target, langkah=2000, dt=0.05):\n    \"\"\"Ulangi: perintah -> roda -> odometri (pakai R dan L dari setup).\n    Berhenti lebih awal bila jarak < 0.05. Kembalikan pose akhir.\"\"\"\n    pass\n"
+    },
+    "solution": {
+      "code": "def roda_dari_perintah(v, w, r, l):\n    return (2 * v + w * l) / (2 * r), (2 * v - w * l) / (2 * r)\n\n\ndef odometri(pose, wr, wl, r, l, dt):\n    x, y, th = pose\n    v = r * (wr + wl) / 2\n    w = r * (wr - wl) / l\n    return x + v * math.cos(th) * dt, y + v * math.sin(th) * dt, th + w * dt\n\n\ndef normalisasi_sudut(a):\n    while a > math.pi:\n        a -= 2 * math.pi\n    while a <= -math.pi:\n        a += 2 * math.pi\n    return a\n\n\ndef jarak_dan_sudut(pose, target):\n    x, y, th = pose\n    dx, dy = target[0] - x, target[1] - y\n    return math.hypot(dx, dy), normalisasi_sudut(math.atan2(dy, dx) - th)\n\n\ndef perintah_menuju(pose, target):\n    jarak, selisih = jarak_dan_sudut(pose, target)\n    if jarak < 0.05:\n        return 0.0, 0.0\n    v = 0.0 if abs(selisih) > 0.5 else min(0.5, jarak)\n    return v, 2.0 * selisih\n\n\ndef simulasi(pose, target, langkah=2000, dt=0.05):\n    for _ in range(langkah):\n        if jarak_dan_sudut(pose, target)[0] < 0.05:\n            break\n        v, w = perintah_menuju(pose, target)\n        wr, wl = roda_dari_perintah(v, w, R, L)\n        pose = odometri(pose, wr, wl, R, L, dt)\n    return pose\n"
+    },
+    "setup": "import math\n\nR = 0.05\nL = 0.2\n\ndef dekat(a, b, tol=1e-6):\n    return all(abs(p - q) < tol for p, q in zip(a, b))",
+    "tests": [
+      {
+        "name": "roda_dari_perintah() mengubah (0.5, 1) menjadi roda 12 dan 8",
+        "check": "dekat(roda_dari_perintah(0.5, 1, R, L), (12, 8))"
+      },
+      {
+        "name": "roda_dari_perintah() berputar di tempat memberi roda berlawanan",
+        "check": "dekat(roda_dari_perintah(0, 1, R, L), (2, -2))"
+      },
+      {
+        "name": "odometri() maju lurus mengikuti sumbu x",
+        "check": "dekat(odometri((0, 0, 0), 10, 10, R, L, 0.1), (0.05, 0, 0))"
+      },
+      {
+        "name": "odometri() memperbarui sudut saat roda berbeda",
+        "check": "dekat(odometri((0, 0, 0), 12, 8, R, L, 0.1), (0.05, 0, 0.1))"
+      },
+      {
+        "name": "normalisasi_sudut() membungkus ke rentang pi",
+        "check": "abs(normalisasi_sudut(3 * math.pi / 2) + math.pi / 2) < 1e-9 and abs(normalisasi_sudut(-3 * math.pi / 2) - math.pi / 2) < 1e-9"
+      },
+      {
+        "name": "jarak_dan_sudut() menghitung jarak dan selisih arah",
+        "check": "dekat(jarak_dan_sudut((0, 0, 0), (3, 4)), (5, math.atan2(4, 3)))"
+      },
+      {
+        "name": "jarak_dan_sudut() memilih sisi putar terpendek",
+        "check": "abs(jarak_dan_sudut((0, 0, math.radians(170)), (-1, -0.2))[1] - normalisasi_sudut(math.atan2(-0.2, -1) - math.radians(170))) < 1e-9 and abs(jarak_dan_sudut((0, 0, math.radians(170)), (-1, -0.2))[1]) < math.pi"
+      },
+      {
+        "name": "perintah_menuju() berhenti saat sudah dekat",
+        "check": "perintah_menuju((1, 1, 0), (1.02, 1)) == (0.0, 0.0)"
+      },
+      {
+        "name": "perintah_menuju() hanya berputar bila sudut jauh melenceng",
+        "check": "perintah_menuju((0, 0, 0), (0, 2)) == (0.0, 2.0 * math.pi / 2)"
+      },
+      {
+        "name": "perintah_menuju() maju dengan batas 0,5",
+        "check": "perintah_menuju((0, 0, 0), (3, 0)) == (0.5, 0.0)"
+      },
+      {
+        "name": "simulasi() sampai di dekat target di depan",
+        "check": "jarak_dan_sudut(simulasi((0, 0, 0), (1, 1)), (1, 1))[0] < 0.06"
+      },
+      {
+        "name": "simulasi() juga menjangkau target di belakang robot",
+        "check": "jarak_dan_sudut(simulasi((0, 0, 0), (-1, -1)), (-1, -1))[0] < 0.06"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "robot-dan-siklus-sense-think-act",
+      "title": "Robot dan Siklus Sense-Think-Act",
+      "est_minutes": 20,
+      "slide_from": 1,
+      "slide_to": 3,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu robot bergerak dan apa bedanya dengan mesin yang hanya mengikuti urutan tetap.\n- Menyebut tiga pilar materi ini: mekanika, aktuator, dan navigasi.\n- Menjelaskan siklus Sense - Think - Act beserta contoh komponen di tiap tahap.\n- Memahami mengapa kecepatan siklus mempengaruhi kualitas gerak robot.\n\n## Apa itu robot\n\nRobot adalah mesin yang bisa merasakan keadaan di sekitarnya, memutuskan apa yang harus dilakukan, lalu menggerakkan dirinya atau benda lain untuk mencapai tujuan. Tiga kata kerja itu, merasakan, memutuskan, dan bergerak, adalah inti dari semua robot, dari robot penyedot debu di rumah sampai lengan las di pabrik mobil.\n\nPerhatikan bedanya dengan mesin biasa. Mesin cuci mengikuti program yang sudah tetap: isi air, putar, kuras. Ia tidak peduli apakah pakaian sudah bersih atau belum. Robot sejati memakai **umpan balik**: hasil gerakannya diukur, lalu dipakai untuk menentukan gerakan berikutnya. Karena itu sensor adalah bagian yang tidak bisa dipisahkan dari robot.\n\nPada materi sebelumnya kamu sudah belajar memrogram mikrokontroler, membaca sensor, dan menggerakkan keluaran. Di materi ini kamu naik satu tingkat: bagaimana semua itu dirangkai menjadi tubuh yang bergerak dan punya tujuan.\n\n## Tiga pilar robot bergerak\n\nMateri ini membagi pembahasan menjadi tiga pilar yang saling bergantung.\n\n| Pilar | Pertanyaan yang dijawab | Contoh topik |\n| --- | --- | --- |\n| Mekanika | Seperti apa bentuk tubuh robot dan apa yang bisa digerakkannya | Rangka, sendi, derajat kebebasan, kinematika, roda, transmisi |\n| Aktuator | Dari mana tenaga gerak berasal dan bagaimana mengendalikannya | Motor DC, stepper, servo, driver, PWM, PID |\n| Navigasi | Di mana robot berada dan bagaimana ia sampai ke tujuan | Sensor, odometri, SLAM, perencanaan jalur, ROS 2 |\n\n![Tiga pilar robot: mekanika, aktuator, navigasi](slide:2)\n\nKetiganya tidak berdiri sendiri. Mekanika dan aktuator menentukan **apa yang mungkin** dilakukan robot. Robot dengan dua roda diferensial tidak akan bisa bergerak menyamping, sebagus apa pun programnya. Sebaliknya, navigasi menentukan **apa yang sebenarnya dilakukan**: robot yang mekaniknya mampu tetap akan menabrak dinding bila tidak tahu posisinya sendiri.\n\n## Siklus Sense - Think - Act\n\nHampir semua robot bekerja dalam satu lingkaran yang terus berulang.\n\n1. **Sense (merasakan).** Sensor membaca kondisi diri dan lingkungan. Contohnya posisi putaran roda dari encoder, percepatan dari IMU, jarak ke dinding dari sensor ultrasonik, atau citra dari kamera.\n2. **Think (berpikir).** Komputer atau mikrokontroler memperkirakan posisi, merencanakan jalur, dan menghitung perintah gerak. Di sinilah algoritma seperti PID, filter, dan perencana jalur berjalan.\n3. **Act (bertindak).** Aktuator mengubah perintah menjadi gaya dan gerak melalui struktur mekanik: motor memutar roda, servo menggerakkan lengan.\n\nSetelah bertindak, keadaan dunia berubah, sehingga robot kembali ke tahap Sense untuk melihat hasilnya. Inilah yang disebut **loop tertutup**.\n\nStruktur sederhana ini mudah kamu kenali di kode mikrokontroler. Pola dasarnya kira-kira seperti ini:\n\n```python\nwhile True:\n    jarak = baca_sensor_jarak()        # Sense\n    if jarak < 20:                      # Think\n        perintah = \"belok\"\n    else:\n        perintah = \"maju\"\n    jalankan_motor(perintah)            # Act\n```\n\nKode di atas hanya kerangka, bukan program yang bisa langsung dijalankan, tetapi tiga komentarnya menunjukkan di mana tiap tahap berada. Robot yang rumit hanya memperbanyak dan memperhalus isi tiap tahap. Misalnya, tahap Think pada robot gudang berisi lokalisasi, perencanaan global, dan penghindaran rintangan lokal sekaligus.\n\n## Seberapa cepat siklus harus berjalan\n\nSiklus ini berulang puluhan hingga ribuan kali per detik, tergantung bagian mana yang dibicarakan. Pengendali motor (PID) sering berjalan ratusan hingga ribuan kali per detik karena motor bereaksi cepat. Pembacaan LiDAR dan pembaruan peta biasanya jauh lebih lambat, misalnya sekitar 10 kali per detik. Perencana jalur global bahkan hanya dijalankan sesekali.\n\nJadi robot sebenarnya punya beberapa lingkaran bersarang dengan kecepatan berbeda: lingkaran cepat untuk menjaga motor tetap pada kecepatan yang diminta, dan lingkaran lambat untuk keputusan tingkat tinggi. Lingkaran cepat disebut juga lingkaran dalam, dan ia harus tetap stabil walaupun lingkaran luarnya terlambat satu atau dua siklus.\n\nKalau siklus terlalu lambat, robot bereaksi terlambat. Bayangkan robot beroda yang melaju 0,5 m/s dengan siklus penghindaran rintangan hanya 2 kali per detik. Di antara dua pembacaan, robot sudah menempuh 25 cm tanpa melihat apa pun. Dinding yang muncul di antara dua pembacaan baru terdeteksi saat jarak sudah sangat dekat.\n\n## Contoh: robot penyapu lantai\n\nGunakan robot penyapu lantai untuk memetakan ketiga tahap.\n\n- **Sense:** sensor tebing membaca apakah lantai di depan masih ada, sensor tumbukan membaca benturan, encoder roda menghitung putaran.\n- **Think:** prosesor memutuskan apakah ia harus berbalik, menyusuri dinding, atau kembali ke dock pengisian.\n- **Act:** dua motor roda bergerak dengan kecepatan berbeda untuk berbelok, motor lain memutar sikat.\n\nRobot kelas bawah hanya memakai aturan sederhana dan bergerak acak. Robot kelas atas memakai LiDAR atau kamera untuk membuat peta rumah. Perbedaannya ada di kualitas tahap Sense dan Think, bukan di prinsip dasarnya.\n\n## Kesalahan umum pemula\n\n- **Mengira motor yang kuat sudah cukup.** Tanpa sensor dan umpan balik, robot hanya menebak hasil gerakannya.\n- **Menyamakan robot dengan program.** Robot adalah gabungan mekanik, elektronik, dan perangkat lunak. Masalah gerak sering berasal dari mekanik, misalnya roda selip atau gearbox longgar, bukan dari kode.\n- **Memulai dari navigasi tingkat tinggi.** Pastikan dulu satu roda bisa berputar pada kecepatan yang diminta sebelum mencoba membuat robot mengikuti jalur.\n- **Mengabaikan batas waktu siklus.** Perhitungan yang terlalu berat di dalam lingkaran cepat membuat kontrol motor tersendat.\n\n## Peta belajar\n\nBab-bab berikutnya mengikuti urutan pilar tadi. Kamu mulai dari mekanika: komponen tubuh, derajat kebebasan, konfigurasi lengan, kinematika, robot beroda, dan transmisi. Lalu masuk ke aktuator: jenis penggerak, motor listrik, driver, PWM, encoder, dan PID. Terakhir, navigasi: sensor, lokalisasi, SLAM, perencanaan jalur, dan perangkat lunak seperti ROS 2. Beberapa bab memuat latihan kode Python untuk logika murni, seperti kinematika, odometri, dan PID sederhana. Latihan itu tidak memerlukan robot sungguhan sehingga bisa dicoba langsung di browser.\n\n## Rangkuman\n\n- Robot merasakan, memutuskan, dan bergerak dengan memakai umpan balik, bukan sekadar mengikuti urutan tetap.\n- Tiga pilar robot bergerak adalah mekanika, aktuator, dan navigasi.\n- Mekanika dan aktuator menentukan apa yang mungkin, navigasi menentukan apa yang dilakukan.\n- Siklus Sense - Think - Act berulang terus, dan tiap bagian robot boleh berjalan pada kecepatan siklus yang berbeda.\n- Siklus yang terlalu lambat membuat robot bereaksi terlambat terhadap perubahan lingkungan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah robot penyapu terus menabrak kaki meja padahal sensor jaraknya berfungsi dan motornya kuat. Siklus pembacaan sensornya hanya 1 kali per detik. Apa penyebab paling masuk akal?",
+          "code": "",
+          "options": [
+            "Tahap Sense terlalu jarang sehingga robot bereaksi terlambat",
+            "Motor roda terlalu kuat sehingga sensor tidak sempat membaca ulang kondisi sekitar",
+            "Rangka robot terlalu ringan untuk membawa seluruh komponen elektronik",
+            "Robot tidak memiliki tahap Act karena memakai dua roda saja"
+          ],
+          "answer": 0,
+          "explanation": "Pada kecepatan tertentu, satu pembacaan per detik berarti robot menempuh jarak jauh tanpa melihat apa pun. Reaksinya selalu terlambat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Lengan robot di pabrik hanya mengulang urutan gerak yang sama tanpa sensor apa pun. Menurut definisi di bab ini, apa yang kurang?",
+          "code": "",
+          "options": [
+            "Aktuator yang lebih kuat dari yang dipakai sekarang",
+            "Umpan balik dari sensor",
+            "Rangka yang lebih kaku dan lebih ringan sekaligus",
+            "Transmisi roda gigi dengan rasio yang lebih besar"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa umpan balik, gerakan tidak dikoreksi oleh hasil pengukuran. Itu lebih mirip mesin otomatis daripada robot yang adaptif."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim kamu menaruh algoritma PID motor dan perencana jalur global dalam satu lingkaran yang berjalan 5 kali per detik, lalu motor terasa bergoyang. Apa perbaikan paling tepat?",
+          "code": "",
+          "options": [
+            "Percepat perencana jalur global menjadi ribuan kali per detik",
+            "Hapus sensor encoder supaya perhitungan lebih ringan",
+            "Pisahkan PID ke lingkaran cepat dan biarkan perencana berjalan lebih lambat",
+            "Ganti semua motor dengan motor yang lebih besar"
+          ],
+          "answer": 2,
+          "explanation": "Kontrol motor perlu lingkaran dalam yang cepat, sedangkan perencana global cukup berjalan sesekali."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Mekanika dan aktuator menentukan gerak apa yang mungkin dilakukan robot, sedangkan navigasi menentukan gerak apa yang dipilih.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Itu pembagian peran tiga pilar pada materi ini."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "komponen-mekanik-dan-dof",
+      "title": "Komponen Mekanik dan Derajat Kebebasan",
+      "est_minutes": 25,
+      "slide_from": 4,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Menyebutkan enam komponen mekanik tubuh robot dan fungsinya.\n- Menjelaskan derajat kebebasan (DOF) dan mengapa 6 DOF adalah batas minimum di ruang 3D.\n- Membedakan sendi revolute, prismatic, dan spherical.\n- Menghitung DOF mekanisme dengan rumus Grübler.\n\n## Enam komponen mekanik\n\nSebelum membahas gerak, kenali dulu bagian-bagian fisik robot. Hampir semua robot tersusun dari enam komponen berikut.\n\n| Komponen | Fungsi | Contoh |\n| --- | --- | --- |\n| Rangka (chassis) | Menopang semua komponen; harus kaku namun ringan | Pelat akrilik, profil aluminium, cetakan 3D |\n| Link (lengan) | Bagian kaku yang menghubungkan dua sendi | Segmen lengan robot |\n| Sendi (joint) | Memungkinkan gerak relatif antar link, berupa putar atau geser | Engsel berpenggerak servo |\n| End-effector | Alat di ujung lengan | Gripper, pengelas, cangkir hisap vakum |\n| Transmisi | Menyalurkan daya dari motor ke sendi | Roda gigi, sabuk, ulir |\n| Lokomosi | Alat berpindah tempat | Roda, trek, kaki |\n\n![Enam komponen mekanik tubuh robot](slide:5)\n\nRangka harus kaku karena kelenturan rangka berarti posisi ujung lengan tidak bisa dipercaya. Namun rangka juga harus ringan karena massa berlebih membuat motor bekerja lebih keras dan menguras baterai lebih cepat. Itulah sebabnya perancang robot sering membuat kompromi: material ringan, tetapi berbentuk sedemikian rupa supaya tetap kaku, misalnya profil berongga atau rusuk penguat.\n\n## Derajat kebebasan\n\n**Derajat kebebasan (degrees of freedom, DOF)** adalah jumlah gerak independen yang dimiliki sebuah benda atau mekanisme. Sebuah benda tegar bebas di ruang 3D punya enam: tiga translasi dan tiga rotasi.\n\n- Translasi: bergeser sepanjang sumbu x, y, dan z.\n- Rotasi: berputar mengelilingi sumbu x (roll), sumbu y (pitch), dan sumbu z (yaw).\n\nItu sebabnya **6 DOF adalah jumlah minimum** agar ujung lengan bisa ditempatkan pada posisi dan orientasi sembarang di ruang 3D. Tiga DOF mengatur posisi, tiga lainnya mengatur orientasi. Lengan industri umum memang memiliki 6 sumbu.\n\nBagaimana kalau jumlahnya lebih dari 6. Robot dengan lebih dari 6 DOF disebut **redundan**. Kelebihannya, ia dapat mencapai target yang sama dengan banyak bentuk lengan, sehingga bisa menghindari rintangan atau batas sendi sambil tetap mencapai titik tujuan. Tentu perhitungan geraknya lebih rumit.\n\nSebaliknya, robot dengan DOF kurang dari 6 tetap berguna bila tugasnya terbatas. Lengan SCARA yang menyusun komponen di bidang datar tidak perlu memutar benda ke segala arah.\n\n## Jenis sendi\n\n| Sendi | Singkatan | DOF | Gerak | Contoh |\n| --- | --- | --- | --- | --- |\n| Revolute | R | 1 rotasi | Berputar pada satu sumbu | Siku lengan robot, paling umum |\n| Prismatic | P | 1 translasi | Bergeser lurus | Aktuator linear, sumbu Z mesin CNC |\n| Spherical | S | 3 rotasi | Berputar bebas seperti sendi bola | Pergelangan atau pinggul robot humanoid |\n\nDalam praktik, sendi bola sering dibuat dari tiga sendi revolute yang sumbunya bertemu di satu titik. Karena lebih mudah dikontrol dan digerakkan motor, cara ini jauh lebih umum daripada sendi bola mekanis sungguhan.\n\n## Rumus Grübler\n\nUntuk mengetahui DOF sebuah mekanisme dari strukturnya, pakai rumus **Grübler**. Bentuk spasial (3D) adalah:\n\n```\nDOF = 6(N - 1 - J) + Σ f_i\n```\n\n- N adalah jumlah link termasuk base (tanah).\n- J adalah jumlah sendi.\n- f_i adalah DOF tiap sendi.\n\nUntuk mekanisme planar (bidang datar), angka 6 diganti menjadi 3.\n\nContoh 1, lengan serial 6 sendi revolute. Ada 6 link bergerak ditambah 1 base sehingga N = 7, J = 6, dan semua f_i = 1 sehingga Σ f_i = 6.\n\n```\nDOF = 6(7 - 1 - 6) + 6 = 6(0) + 6 = 6\n```\n\nContoh 2, lengan planar 2 link dengan dua sendi revolute. N = 3 (base dan dua link), J = 2, Σ f_i = 2.\n\n```\nDOF = 3(3 - 1 - 2) + 2 = 2\n```\n\nContoh 3, mekanisme empat batang (four-bar linkage) di bidang datar. N = 4, J = 4, Σ f_i = 4.\n\n```\nDOF = 3(4 - 1 - 4) + 4 = 3(-1) + 4 = 1\n```\n\nSatu motor saja cukup untuk menggerakkan mekanisme ini, karena DOF-nya 1. Rantai serial selalu memberi hasil sederhana: DOF sama dengan jumlah DOF semua sendinya. Rumus Grübler menjadi berguna pada rantai tertutup, seperti robot paralel, di mana jumlah sendi lebih banyak dan intuisi saja tidak cukup.\n\nCatatan kehati-hatian: rumus ini hanya memperhitungkan jumlah dan jenis sendi, bukan geometri khusus. Pada susunan tertentu, misalnya sumbu-sumbu yang kebetulan sejajar, hasil sebenarnya bisa berbeda dari rumus. Anggap rumus ini sebagai perkiraan awal yang perlu diperiksa pada desain nyata.\n\n## Hubungan DOF dengan aktuator\n\nPada lengan serial, tiap DOF biasanya digerakkan satu aktuator. Lengan 6 DOF berarti sedikitnya enam motor atau servo, enam driver, dan enam sensor posisi. Setiap DOF tambahan menaikkan biaya, berat, dan beban komputasi. Karena itu kamu memilih DOF sesuai tugas: tidak lebih dari yang diperlukan.\n\n## Latihan kode: menghitung DOF\n\nCoba terapkan rumus Grübler lewat latihan di bawah. Latihan ini hanya menghitung angka, tidak memerlukan robot.\n\n## Kesalahan umum\n\n- **Menghitung base sebagai bukan link.** Dalam rumus Grübler, tanah ikut dihitung sebagai satu link. Lupa menghitungnya membuat hasil keliru.\n- **Mencampur rumus planar dan spasial.** Gunakan 3 untuk gerak di bidang datar dan 6 untuk gerak di ruang.\n- **Menyamakan jumlah sendi dengan DOF.** Sendi bola satu buah sudah memberi 3 DOF, bukan 1.\n- **Menganggap makin banyak DOF makin baik.** Lebih banyak DOF berarti lebih mahal dan lebih sulit dikontrol.\n\n## Rangkuman\n\n- Enam komponen mekanik robot: rangka, link, sendi, end-effector, transmisi, dan lokomosi.\n- DOF adalah jumlah gerak independen; ruang 3D butuh 6 DOF (3 translasi dan 3 rotasi) untuk posisi dan orientasi sembarang.\n- Lebih dari 6 DOF disebut redundan dan memberi keluwesan menghindari rintangan.\n- Sendi revolute memberi 1 rotasi, prismatic 1 translasi, spherical 3 rotasi.\n- Rumus Grübler spasial: DOF = 6(N - 1 - J) + Σ f_i, dan untuk planar 6 diganti 3.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah mekanisme planar punya 5 link termasuk base dan 5 sendi revolute dalam rantai tertutup. Berapa DOF-nya menurut Grübler planar?",
+          "code": "",
+          "options": [
+            "1",
+            "3",
+            "5",
+            "2"
+          ],
+          "answer": 3,
+          "explanation": "DOF = 3(5 - 1 - 5) + 5 = -3 + 5 = 2."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu merancang lengan yang harus menaruh gelas pada posisi dan kemiringan sembarang di ruang 3D. Berapa DOF minimum yang dibutuhkan?",
+          "code": "",
+          "options": [
+            "6",
+            "3",
+            "4",
+            "5"
+          ],
+          "answer": 0,
+          "explanation": "Tiga DOF untuk posisi (x, y, z) dan tiga untuk orientasi (roll, pitch, yaw)."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot dengan 7 DOF dipakai di ruang sempit yang penuh rintangan. Mengapa kelebihan satu DOF itu berguna?",
+          "code": "",
+          "options": [
+            "Robot menjadi pasti lebih murah karena memakai lebih banyak motor",
+            "Target yang sama bisa dicapai dengan beberapa bentuk lengan, sehingga rintangan dapat dihindari",
+            "Perhitungan geraknya otomatis lebih sederhana dari lengan 6 DOF",
+            "Robot tidak memerlukan sensor posisi sama sekali"
+          ],
+          "answer": 1,
+          "explanation": "Robot redundan punya kelonggaran sehingga satu titik tujuan dapat dicapai dengan bentuk lengan yang berbeda."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu butuh gerak lurus untuk menggeser kepala printer sepanjang satu sumbu. Jenis sendi yang paling cocok adalah",
+          "code": "",
+          "options": [
+            "Prismatic",
+            "Revolute",
+            "Spherical",
+            "Sendi bola tiga sumbu"
+          ],
+          "answer": 0,
+          "explanation": "Prismatic menghasilkan 1 DOF translasi, persis gerak lurus yang dibutuhkan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dalam rumus Grübler, base (tanah) tidak dihitung sebagai link.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Base dihitung sebagai satu link dalam N."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung DOF dengan rumus Grübler",
+          "prompt": "Lengkapi dua fungsi:\n\n- `dof_spasial(n, j, total_f)` mengembalikan DOF mekanisme 3D: `6 * (n - 1 - j) + total_f`.\n- `dof_planar(n, j, total_f)` mengembalikan DOF mekanisme planar dengan angka 3 menggantikan 6.\n\nContoh: lengan 6R memiliki `n=7`, `j=6`, `total_f=6`, hasilnya 6.",
+          "starter": {
+            "code": "def dof_spasial(n, j, total_f):\n    # TODO: 6 * (n - 1 - j) + total_f\n    pass\n\n\ndef dof_planar(n, j, total_f):\n    # TODO: sama, tetapi angka 3\n    pass\n"
+          },
+          "solution": {
+            "code": "def dof_spasial(n, j, total_f):\n    return 6 * (n - 1 - j) + total_f\n\n\ndef dof_planar(n, j, total_f):\n    return 3 * (n - 1 - j) + total_f\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Lengan 6R punya 6 DOF",
+              "check": "dof_spasial(7, 6, 6) == 6"
+            },
+            {
+              "name": "Lengan planar 2R punya 2 DOF",
+              "check": "dof_planar(3, 2, 2) == 2"
+            },
+            {
+              "name": "Four-bar planar punya 1 DOF",
+              "check": "dof_planar(4, 4, 4) == 1"
+            },
+            {
+              "name": "Lengan 5R spasial punya 5 DOF",
+              "check": "dof_spasial(6, 5, 5) == 5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "konfigurasi-sendi-dan-kinematika",
+      "title": "Konfigurasi Sendi dan Kinematika",
+      "est_minutes": 30,
+      "slide_from": 7,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Mengenali enam konfigurasi manipulator dan bentuk ruang kerjanya.\n- Membaca kode konfigurasi seperti R-R-P atau P-P-P.\n- Menghitung kinematika maju (FK) lengan planar 2 link.\n- Menjelaskan kinematika balik (IK), dua solusinya, dan kasus tanpa solusi.\n\n## Konfigurasi sendi menentukan ruang kerja\n\nTiga sendi pertama dari base menentukan **posisi** ujung lengan, sedangkan sendi pergelangan (wrist) menentukan **orientasi**. Dari kombinasi sendi revolute (R) dan prismatic (P) pada tiga sendi pertama itulah lahir beberapa konfigurasi klasik.\n\n| Konfigurasi | Sendi | Ruang kerja | Aplikasi khas |\n| --- | --- | --- | --- |\n| Kartesian | P-P-P | Kotak (balok) | Printer 3D, CNC, gantry pick-and-place |\n| Silindris | R-P-P | Silinder berongga | Penanganan material, perakitan sederhana |\n| Sferis (polar) | R-R-P | Bola berongga | Las titik, robot industri generasi awal |\n| SCARA | R-R-P | Silinder datar | Perakitan elektronik cepat di bidang datar |\n| Artikulasi | R-R-R (+ wrist) | Bola kompleks | Las, pengecatan, robot industri 6 sumbu |\n| Paralel (delta) | Rantai tertutup | Kubah kecil | Pengemasan makanan berkecepatan sangat tinggi |\n\n![Tabel konfigurasi sendi dan ruang kerjanya](slide:7)\n\nRuang kerja (workspace) adalah kumpulan titik yang bisa dijangkau ujung lengan. Perhatikan bahwa sferis dan SCARA sama-sama berkode R-R-P tetapi ruang kerjanya berbeda. Alasannya, kode itu hanya memberi jenis sendi, sedangkan arah sumbunya tidak tertulis. Pada SCARA, kedua sumbu putar vertikal dan sumbu geser juga vertikal, sehingga hasilnya silinder datar. Pada robot sferis, sumbu putar kedua mendatar sehingga lengan bisa mengayun naik turun.\n\nSedikit pedoman memilih:\n\n- **Kartesian** mudah dihitung dan sangat presisi, tetapi memakan tempat besar dibanding area kerjanya.\n- **Artikulasi** paling luwes dan hemat tempat, tetapi perhitungannya paling rumit.\n- **SCARA** kaku di arah vertikal dan cepat di bidang datar.\n- **Delta** memiliki massa bergerak yang ringan karena motornya berada di base, sehingga bisa sangat cepat untuk benda ringan.\n\n## Kinematika: dari sudut sendi ke posisi dan sebaliknya\n\nKinematika mempelajari gerak tanpa mempersoalkan gaya. Dua pertanyaan pokoknya berlawanan arah.\n\n- **Kinematika maju (forward kinematics, FK):** jika sudut sendi diketahui, di mana ujung lengan berada.\n- **Kinematika balik (inverse kinematics, IK):** jika posisi ujung yang diinginkan diketahui, berapa sudut sendi yang harus dipasang.\n\nKita pakai lengan planar dua link: link pertama sepanjang L1 berputar sebesar θ1 dari sumbu x, dan link kedua sepanjang L2 berputar sebesar θ2 relatif terhadap link pertama.\n\n## Kinematika maju\n\n```\nx = L1·cos(θ1) + L2·cos(θ1 + θ2)\ny = L1·sin(θ1) + L2·sin(θ1 + θ2)\n```\n\nMasing-masing link menyumbang vektor panjang tertentu. Arah link kedua adalah jumlah kedua sudut karena sudut θ2 diukur relatif terhadap link pertama. FK selalu memberi **tepat satu jawaban** untuk satu pasang sudut.\n\nContoh. Misalkan L1 = 1, L2 = 1, θ1 = 0, dan θ2 = 90 derajat. Maka:\n\n```\nx = 1·cos(0) + 1·cos(90°) = 1 + 0 = 1\ny = 1·sin(0) + 1·sin(90°) = 0 + 1 = 1\n```\n\nUjung lengan berada di (1, 1). Dalam kode Python, fungsi `math.cos` dan `math.sin` memakai satuan radian, jadi sudut dalam derajat harus dikonversi dengan `math.radians`.\n\n```python\nimport math\n\ndef fk(l1, l2, t1, t2):\n    x = l1 * math.cos(t1) + l2 * math.cos(t1 + t2)\n    y = l1 * math.sin(t1) + l2 * math.sin(t1 + t2)\n    return x, y\n\nprint(fk(1, 1, 0, math.radians(90)))\n```\n\nHasilnya mendekati (1.0, 1.0), dengan sedikit galat pembulatan pada angka yang seharusnya nol.\n\n## Kinematika balik\n\nIK lebih sulit karena arahnya terbalik. Untuk lengan 2 link, rumusnya:\n\n```\ncos(θ2) = (x² + y² - L1² - L2²) / (2·L1·L2)\nθ1 = atan2(y, x) - atan2(L2·sin(θ2), L1 + L2·cos(θ2))\n```\n\nLangkah menghitung:\n\n1. Hitung nilai cos(θ2) dari rumus pertama.\n2. Bila nilainya di luar rentang -1 sampai 1, **tidak ada solusi**: target terlalu jauh atau terlalu dekat.\n3. Bila di dalam rentang, θ2 = arccos(nilai) atau θ2 = -arccos(nilai). Keduanya sah.\n4. Untuk tiap θ2, hitung θ1 dari rumus kedua.\n\nItulah mengapa IK bisa memiliki **dua solusi**: konfigurasi siku atas dan siku bawah, seperti tangan yang menyentuh titik yang sama dengan siku menekuk ke arah berbeda. Pada kasus khusus, saat lengan terentang lurus penuh, kedua solusi menyatu menjadi satu.\n\nSyarat keterjangkauan praktisnya mudah: jarak target dari base harus berada antara |L1 - L2| dan L1 + L2. Dengan L1 = 1 dan L2 = 1, target dengan jarak 2 masih terjangkau tepat dengan lengan lurus, sedangkan jarak 2,1 tidak mungkin.\n\nUntuk lengan dengan banyak sendi, IK jarang punya rumus tertutup sesederhana ini. Perangkat lunak robot sering memakai metode numerik yang mencari sudut secara iteratif. Hasilnya bisa bergantung pada tebakan awal, dan tidak selalu cepat.\n\n## Mengapa IK penting\n\nPerintah manusia atau perencana jalur biasanya berbentuk posisi: \"pindahkan gripper ke titik ini\". Motor, sebaliknya, hanya mengerti sudut. IK adalah penerjemahnya. Di dalam kontroler lengan robot, IK dihitung terus-menerus selama gerakan berlangsung, sehingga kecepatan dan ketahanannya sangat penting. Selain itu, hasil IK harus diperiksa terhadap batas sudut tiap sendi dan kemungkinan tabrakan dengan badan robot sendiri.\n\n## Latihan kode\n\nLatihan berikut meminta FK dan pemeriksaan keterjangkauan. Fungsi `math` sudah tersedia lewat setup.\n\n## Kesalahan umum\n\n- **Memakai derajat pada fungsi trigonometri Python.** `math.sin` dan `math.cos` memerlukan radian.\n- **Lupa menjumlahkan θ1 dan θ2 pada link kedua.** Sudut θ2 relatif terhadap link pertama, bukan terhadap sumbu x.\n- **Mengira IK pasti ada jawabannya.** Target di luar jangkauan tidak memiliki solusi.\n- **Mengira hanya satu solusi.** Selalu periksa solusi siku atas dan bawah, lalu pilih yang aman terhadap rintangan dan batas sendi.\n\n## Rangkuman\n\n- Tiga sendi pertama menentukan posisi, sendi pergelangan menentukan orientasi.\n- Konfigurasi klasik: Kartesian, silindris, sferis, SCARA, artikulasi, dan paralel, masing-masing dengan bentuk ruang kerja khas.\n- FK menghitung posisi ujung dari sudut sendi dan selalu punya satu jawaban.\n- IK menghitung sudut dari posisi ujung; bisa punya dua solusi atau tidak punya solusi.\n- Target terjangkau bila jaraknya dari base berada di antara |L1 - L2| dan L1 + L2.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Lengan 2 link dengan L1 = 2 dan L2 = 1. Apakah titik yang berjarak 3,5 dari base bisa dijangkau?",
+          "code": "",
+          "options": [
+            "Bisa, bila sudut θ2 diubah menjadi negatif",
+            "Bisa, karena jarak minimum adalah 1",
+            "Tidak, karena jarak minimum adalah 3,5",
+            "Tidak, jarak maksimum hanya 3"
+          ],
+          "answer": 3,
+          "explanation": "Jangkauan maksimum adalah L1 + L2 = 3. Jarak 3,5 berada di luar ruang kerja."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perencana jalur memberi titik tujuan (x, y) ke lengan planar. Fungsi apa yang mengubahnya menjadi sudut motor?",
+          "code": "",
+          "options": [
+            "Kinematika maju",
+            "Rumus Grübler",
+            "Rasio transmisi",
+            "Kinematika balik"
+          ],
+          "answer": 3,
+          "explanation": "IK menerjemahkan posisi menjadi sudut sendi yang harus dipasang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah pabrik merakit papan sirkuit dengan gerak cepat di bidang datar dan menekan komponen ke bawah. Konfigurasi yang paling cocok adalah",
+          "code": "",
+          "options": [
+            "Silindris dengan sumbu mendatar",
+            "Artikulasi 6 sumbu",
+            "Paralel dengan kubah besar",
+            "SCARA"
+          ],
+          "answer": 3,
+          "explanation": "SCARA kaku di arah vertikal dan cepat di bidang datar, sehingga umum untuk perakitan elektronik."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Untuk target yang sama, perhitungan IK lengan 2 link menghasilkan dua pasang sudut. Kenapa itu terjadi?",
+          "code": "",
+          "options": [
+            "Salah satu pasangan sudut pasti keliru dan harus dibuang",
+            "Rumus IK selalu menghasilkan dua jawaban tanpa makna fisik",
+            "Sensor posisi memberi dua pembacaan yang berbeda",
+            "Ada konfigurasi siku atas dan siku bawah yang mencapai titik sama"
+          ],
+          "answer": 3,
+          "explanation": "Siku dapat menekuk ke dua arah sambil tetap menyentuh titik yang sama."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Fungsi math.sin pada Python menerima sudut dalam derajat.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Python memakai radian. Konversi dengan math.radians."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "FK dan keterjangkauan lengan 2 link",
+          "prompt": "Lengkapi dua fungsi, sudut dalam radian:\n\n- `fk(l1, l2, t1, t2)` mengembalikan tuple `(x, y)` ujung lengan.\n- `terjangkau(l1, l2, x, y)` mengembalikan `True` bila jarak titik dari base berada di antara `abs(l1 - l2)` dan `l1 + l2` (batas termasuk, dengan toleransi `1e-9`).",
+          "starter": {
+            "code": "def fk(l1, l2, t1, t2):\n    # TODO: rumus FK dengan math.cos dan math.sin\n    pass\n\n\ndef terjangkau(l1, l2, x, y):\n    # TODO: jarak = math.hypot(x, y)\n    pass\n"
+          },
+          "solution": {
+            "code": "def fk(l1, l2, t1, t2):\n    x = l1 * math.cos(t1) + l2 * math.cos(t1 + t2)\n    y = l1 * math.sin(t1) + l2 * math.sin(t1 + t2)\n    return x, y\n\n\ndef terjangkau(l1, l2, x, y):\n    d = math.hypot(x, y)\n    return abs(l1 - l2) - 1e-9 <= d <= l1 + l2 + 1e-9\n"
+          },
+          "setup": "import math\n\ndef dekat(a, b):\n    return all(abs(p - q) < 1e-6 for p, q in zip(a, b))",
+          "tests": [
+            {
+              "name": "Sudut nol menghasilkan lengan lurus",
+              "check": "dekat(fk(1, 1, 0, 0), (2, 0))"
+            },
+            {
+              "name": "θ2 90 derajat memberi titik (1, 1)",
+              "check": "dekat(fk(1, 1, 0, math.pi / 2), (1, 1))"
+            },
+            {
+              "name": "θ1 90 derajat memberi titik (0, 2)",
+              "check": "dekat(fk(1, 1, math.pi / 2, 0), (0, 2))"
+            },
+            {
+              "name": "Titik di jangkauan maksimum masih terjangkau",
+              "check": "terjangkau(1, 1, 2, 0) is True"
+            },
+            {
+              "name": "Titik terlalu jauh tidak terjangkau",
+              "check": "terjangkau(1, 1, 2.1, 0) is False"
+            },
+            {
+              "name": "Titik terlalu dekat tidak terjangkau",
+              "check": "terjangkau(2, 1, 0.5, 0) is False"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "robot-beroda-dan-kinematika-diferensial",
+      "title": "Robot Beroda dan Kinematika Diferensial",
+      "est_minutes": 25,
+      "slide_from": 9,
+      "slide_to": 9,
+      "body": "## Tujuan\n\n- Membandingkan robot diferensial, Ackermann, omni/mecanum, dan berkaki.\n- Menghitung kecepatan linear dan sudut robot diferensial dari kecepatan kedua roda.\n- Menghitung kecepatan roda dari perintah gerak (kinematika balik diferensial).\n- Memperbarui posisi robot dengan odometri sederhana.\n\n## Jenis lokomosi robot beroda\n\nCara robot berpindah tempat ditentukan pilihan lokomosinya. Empat jenis yang paling sering muncul adalah sebagai berikut.\n\n| Jenis | Ciri | Kelebihan | Kekurangan |\n| --- | --- | --- | --- |\n| Diferensial | Dua roda independen ditambah caster | Murah, bisa berputar di tempat | Tidak bisa bergerak menyamping |\n| Ackermann | Kemudi seperti mobil | Stabil di kecepatan tinggi | Radius belok terbatas |\n| Omni / Mecanum | Roller miring pada roda | Gerak ke segala arah (holonomik) | Sensitif pada lantai kasar |\n| Berkaki | Melangkah dengan kaki | Bisa melewati rintangan dan tangga | Kontrol keseimbangan jauh lebih kompleks |\n\n![Jenis lokomosi dan model diferensial](slide:9)\n\nIstilah **holonomik** berarti robot bisa bergerak ke arah mana pun di bidang tanpa harus berputar dulu. Robot diferensial dan Ackermann nonholonomik: ada arah yang tidak bisa dituju secara langsung. Mobil, misalnya, tidak bisa bergeser menyamping untuk masuk ke tempat parkir sempit.\n\nRobot diferensial paling populer di dunia pendidikan dan riset karena strukturnya sederhana: dua motor, satu roda caster penyeimbang. Itu juga sebabnya bab ini memakainya sebagai contoh utama.\n\n## Model kinematika diferensial\n\nMisalkan jari-jari roda r, jarak antara kedua roda L, dan kecepatan sudut roda kanan serta kiri ωR dan ωL dalam radian per detik. Kecepatan linear v (maju) dan kecepatan sudut ω (putar badan) adalah:\n\n```\nv = r (ωR + ωL) / 2\nω = r (ωR - ωL) / L\n```\n\nArti fisiknya mudah dibaca:\n\n- Bila kedua roda berputar sama (ωR = ωL), selisihnya nol sehingga ω = 0 dan robot melaju lurus.\n- Bila ωR = -ωL, jumlahnya nol sehingga v = 0 dan robot **berputar di tempat**.\n- Bila hanya satu roda berputar, robot berbelok sambil maju dengan lengkung.\n\nContoh. r = 0,05 m dan L = 0,2 m. Kedua roda berputar 10 rad/s:\n\n```\nv = 0,05 (10 + 10) / 2 = 0,5 m/s\nω = 0,05 (10 - 10) / 0,2 = 0 rad/s\n```\n\nBila roda kanan 12 rad/s dan kiri 8 rad/s, maka v tetap 0,5 m/s tetapi ω = 0,05 (4) / 0,2 = 1 rad/s ke kiri. Sudut positif berarti berputar berlawanan arah jarum jam.\n\n## Dari perintah gerak ke kecepatan roda\n\nPada praktiknya perencana memberi perintah (v, ω), dan kontroler harus menghitung kecepatan roda. Dengan menyelesaikan dua persamaan tadi:\n\n```\nωR = (2v + ω·L) / (2r)\nωL = (2v - ω·L) / (2r)\n```\n\nCek dengan contoh sebelumnya: v = 0,5, ω = 1, L = 0,2, r = 0,05.\n\n```\nωR = (1,0 + 0,2) / 0,1 = 12 rad/s\nωL = (1,0 - 0,2) / 0,1 = 8 rad/s\n```\n\nHasilnya cocok. Nilai ini lalu dikirim sebagai setpoint ke pengendali motor tiap roda, yang akan kamu bahas di bab PID.\n\n## Odometri: memperkirakan posisi dari gerak roda\n\nPose robot di bidang dinyatakan oleh (x, y, θ). Jika v dan ω konstan selama waktu pendek dt, pembaruan paling sederhana (metode Euler) adalah:\n\n```\nx  ← x + v·cos(θ)·dt\ny  ← y + v·sin(θ)·dt\nθ  ← θ + ω·dt\n```\n\n```python\nimport math\n\ndef odometri(x, y, th, v, w, dt):\n    x += v * math.cos(th) * dt\n    y += v * math.sin(th) * dt\n    th += w * dt\n    return x, y, th\n\npose = (0.0, 0.0, 0.0)\nfor _ in range(10):\n    pose = odometri(*pose, 0.5, 0.0, 0.1)\nprint(pose)\n```\n\nSetelah 10 langkah 0,1 detik dengan v = 0,5 m/s, robot maju sekitar 0,5 m di sepanjang sumbu x. Metode Euler cukup baik bila dt kecil dan robot tidak berputar cepat. Untuk gerak melengkung tajam dengan dt besar, galatnya menumpuk. Perbaikan yang umum adalah memakai sudut tengah, yaitu θ + ω·dt/2, untuk menghitung arah gerak pada langkah itu.\n\nIngat bahwa odometri hanya perkiraan. Roda yang selip, diameter roda yang sedikit berbeda dari ukuran nominal, dan jarak roda yang tidak persis sama dengan nilai L membuat galat menumpuk dari waktu ke waktu. Karena itu, kalibrasi r dan L pada robot sungguhan penting: ukur jarak tempuh nyata untuk jumlah putaran tertentu, lalu koreksi nilainya.\n\n## Memilih jenis lokomosi\n\nTidak ada jenis lokomosi yang terbaik untuk semua keadaan. Setiap pilihan menukar satu kelebihan dengan kekurangan lain, dan pilihan itu mempengaruhi cara kamu menulis program navigasi nanti.\n\nPertimbangkan tiga hal sebelum memilih: medan, kebutuhan manuver, dan kerumitan kontrol.\n\n- Lantai rata dalam gedung dengan ruang sempit: diferensial atau mecanum.\n- Jalan luas dengan kecepatan lebih tinggi: Ackermann.\n- Medan kasar atau tangga: berkaki atau trek, dengan konsekuensi kontrol yang jauh lebih sulit.\n\n## Latihan kode\n\nLatihan di bawah menggabungkan kinematika diferensial maju dan balik.\n\n## Kesalahan umum\n\n- **Memakai diameter sebagai jari-jari.** Rumus meminta r, setengah diameter.\n- **Satuan tidak konsisten.** Jaga agar r dan L sama-sama dalam meter, dan ω dalam rad/s.\n- **Mencampur rpm dengan rad/s.** Satu rpm sama dengan 2π/60 rad/s.\n- **Menganggap odometri akurat selamanya.** Galat selalu menumpuk, jadi perlu dikoreksi sensor lain.\n\n## Rangkuman\n\n- Empat lokomosi umum: diferensial, Ackermann, omni/mecanum, dan berkaki, masing-masing dengan kompromi.\n- Robot diferensial: v = r(ωR + ωL)/2 dan ω = r(ωR - ωL)/L.\n- Perintah (v, ω) diubah menjadi kecepatan roda dengan ωR = (2v + ω·L)/(2r) dan ωL = (2v - ω·L)/(2r), dengan L sebagai jarak antar roda.\n- Odometri memperbarui pose dengan x, y, θ dari v, ω, dan dt, dan galatnya menumpuk.\n- Kalibrasi jari-jari roda dan jarak roda mengurangi galat odometri.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot diferensial dengan roda kanan dan kiri berputar 5 rad/s berlawanan arah (ωR = 5, ωL = -5). Gerakan robot adalah",
+          "code": "",
+          "options": [
+            "Berputar di tempat",
+            "Maju lurus dengan kecepatan 5 rad/s",
+            "Berbelok sambil maju dengan radius besar",
+            "Diam karena kedua roda saling meniadakan sehingga tidak ada gerak sama sekali"
+          ],
+          "answer": 0,
+          "explanation": "Jumlah kecepatan roda nol sehingga v = 0, sedangkan selisihnya tidak nol sehingga ω tidak nol."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Gudang bersih berlantai halus butuh robot yang bisa bergeser menyamping ke ruang sempit tanpa berputar. Pilihan terbaik adalah",
+          "code": "",
+          "options": [
+            "Roda mecanum",
+            "Diferensial dengan caster",
+            "Ackermann seperti mobil",
+            "Roda tunggal berbentuk bola yang menumpu seluruh badan"
+          ],
+          "answer": 0,
+          "explanation": "Mecanum holonomik sehingga bisa bergeser ke segala arah, asal lantainya halus."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dengan r = 0,1 m dan L = 0,4 m, perintah v = 0,4 m/s dan ω = 0 menghasilkan kecepatan roda",
+          "code": "",
+          "options": [
+            "4 rad/s pada kedua roda",
+            "2 rad/s pada kiri dan 6 rad/s pada kanan",
+            "0,4 rad/s pada kedua roda",
+            "8 rad/s pada kedua roda"
+          ],
+          "answer": 0,
+          "explanation": "ω = 0 berarti kedua roda sama: ω roda = v / r = 0,4 / 0,1 = 4 rad/s."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah setengah jam, posisi odometri robot meleset 1 meter dari posisi sebenarnya padahal motor dan sensor bekerja normal. Penyebab paling mungkin?",
+          "code": "",
+          "options": [
+            "Rumus odometri hanya berlaku untuk robot di bawah satu menit",
+            "Motor otomatis menambah kecepatan seiring waktu",
+            "Galat kecil seperti roda selip menumpuk terus",
+            "Encoder berhenti membaca setelah 30 menit"
+          ],
+          "answer": 2,
+          "explanation": "Odometri menjumlahkan gerak dan semua galat kecil ikut menumpuk."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Robot diferensial bisa bergerak langsung menyamping tanpa berputar.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Robot diferensial nonholonomik: ia tidak bisa bergeser menyamping langsung."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Kinematika diferensial dan odometri",
+          "prompt": "Lengkapi tiga fungsi, semua satuan SI dan sudut dalam radian:\n\n- `maju(wr, wl, r, l)` mengembalikan `(v, w)` dari kecepatan sudut roda kanan `wr` dan kiri `wl`.\n- `balik(v, w, r, l)` mengembalikan `(wr, wl)` dari perintah gerak.\n- `odometri(x, y, th, v, w, dt)` mengembalikan pose baru `(x, y, th)` dengan metode Euler.",
+          "starter": {
+            "code": "def maju(wr, wl, r, l):\n    # TODO: v = r*(wr+wl)/2, w = r*(wr-wl)/l\n    pass\n\n\ndef balik(v, w, r, l):\n    # TODO: wr = (2v + w*l)/(2r), wl = (2v - w*l)/(2r)\n    pass\n\n\ndef odometri(x, y, th, v, w, dt):\n    # TODO: x += v*cos(th)*dt, y += v*sin(th)*dt, th += w*dt\n    pass\n"
+          },
+          "solution": {
+            "code": "def maju(wr, wl, r, l):\n    return r * (wr + wl) / 2, r * (wr - wl) / l\n\n\ndef balik(v, w, r, l):\n    return (2 * v + w * l) / (2 * r), (2 * v - w * l) / (2 * r)\n\n\ndef odometri(x, y, th, v, w, dt):\n    return x + v * math.cos(th) * dt, y + v * math.sin(th) * dt, th + w * dt\n"
+          },
+          "setup": "import math\n\ndef dekat(a, b):\n    return all(abs(p - q) < 1e-6 for p, q in zip(a, b))",
+          "tests": [
+            {
+              "name": "Kedua roda 10 rad/s memberi v 0,5 dan w 0",
+              "check": "dekat(maju(10, 10, 0.05, 0.2), (0.5, 0))"
+            },
+            {
+              "name": "Roda 12 dan 8 memberi w 1",
+              "check": "dekat(maju(12, 8, 0.05, 0.2), (0.5, 1))"
+            },
+            {
+              "name": "Berputar di tempat memberi v 0",
+              "check": "dekat(maju(5, -5, 0.05, 0.2), (0, 2.5))"
+            },
+            {
+              "name": "Perintah v 0,5 dan w 1 memberi roda 12 dan 8",
+              "check": "dekat(balik(0.5, 1, 0.05, 0.2), (12, 8))"
+            },
+            {
+              "name": "Odometri maju lurus ke sumbu x",
+              "check": "dekat(odometri(0, 0, 0, 0.5, 0, 0.1), (0.05, 0, 0))"
+            },
+            {
+              "name": "Odometri menghadap sumbu y",
+              "check": "dekat(odometri(1, 1, math.pi / 2, 1, 0.5, 0.2), (1, 1.2, math.pi / 2 + 0.1))"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transmisi-dan-rasio-gear",
+      "title": "Transmisi dan Rasio Gear",
+      "est_minutes": 20,
+      "slide_from": 10,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menghitung rasio transmisi dari jumlah gigi dua roda gigi.\n- Menghitung kecepatan dan torsi keluaran gearbox, termasuk efek efisiensi.\n- Membandingkan jenis transmisi: spur, planetary, harmonic drive, sabuk, dan ulir.\n- Memilih rasio gear berdasarkan beban dan kecepatan yang dibutuhkan.\n\n## Mengapa robot butuh transmisi\n\nMotor listrik kecil biasanya berputar cepat tetapi lemah. Sebagian besar sendi robot justru memerlukan gerak lambat dengan gaya besar. **Transmisi** menjembatani keduanya: ia menukar kecepatan dengan torsi.\n\nHukum dasarnya sederhana. Daya mekanik P = τ·ω, di mana τ adalah torsi dan ω kecepatan sudut. Gearbox ideal tidak menambah daya, hanya menukarnya. Bila kecepatan turun 50 kali, torsi naik sekitar 50 kali. Dalam kenyataan ada gesekan sehingga sebagian daya hilang menjadi panas.\n\n## Rumus rasio gear\n\nMisalkan roda gigi penggerak (input) memiliki N1 gigi dan roda gigi yang digerakkan (output) memiliki N2 gigi. Rasio transmisi i dan keluarannya:\n\n```\ni = N2 / N1\nω_out = ω_in / i\nτ_out = τ_in · i · η\n```\n\nη (eta) adalah efisiensi, bilangan antara 0 dan 1.\n\nContoh dari deck: motor 0,1 N·m dengan gearbox 50:1 dan efisiensi 80 persen.\n\n```\nτ_out = 0,1 × 50 × 0,8 = 4 N·m\n```\n\nTorsi keluaran menjadi 40 kali lipat dari torsi motor, sedangkan kecepatannya turun 50 kali. Perhatikan bahwa efisiensi hanya memengaruhi torsi pada rumus ini, bukan kecepatan: kecepatan ditentukan oleh perbandingan gigi.\n\n![Transmisi menukar kecepatan dengan torsi](slide:10)\n\nContoh lain. Motor berputar 3000 rpm dengan roda gigi 12 gigi menggerakkan roda gigi 60 gigi. Rasionya i = 60/12 = 5, sehingga kecepatan keluaran 3000/5 = 600 rpm. Bila torsi motor 0,2 N·m dan efisiensi 90 persen, torsi keluaran 0,2 × 5 × 0,9 = 0,9 N·m.\n\nRoda gigi kedua yang lebih besar memperlambat dan menguatkan. Sebaliknya, bila penggerak lebih besar daripada yang digerakkan, rasio kurang dari 1: kecepatan naik, torsi turun. Konfigurasi ini jarang dipakai pada robot kecuali memang butuh kecepatan.\n\n## Gearbox bertingkat\n\nRasio besar biasanya dicapai dengan beberapa tingkat yang dirangkai. Rasio total adalah **hasil kali** rasio tiap tingkat, dan efisiensi total adalah hasil kali efisiensi tiap tingkat. Dua tingkat dengan rasio 5 dan 10 dan efisiensi 0,9 per tingkat menghasilkan rasio 50 dan efisiensi 0,9 × 0,9 = 0,81. Ini menjelaskan mengapa gearbox rasio sangat besar cenderung kurang efisien.\n\n## Jenis transmisi\n\n| Jenis | Ciri utama | Pemakaian |\n| --- | --- | --- |\n| Roda gigi lurus (spur) | Sederhana dan efisien; rasio per tingkat terbatas | Gearbox roda sederhana |\n| Planetary | Rasio besar dalam bentuk ringkas | Umum pada gearmotor |\n| Harmonic drive | Hampir tanpa backlash | Sendi robot presisi |\n| Sabuk dan puli | Senyap, dapat memindahkan daya ke jarak jauh | Printer 3D, sumbu XY |\n| Ulir (lead / ball screw) | Mengubah putaran menjadi gerak linear presisi | Mesin CNC, aktuator linear |\n\n**Backlash** adalah celah kecil antara gigi yang berpasangan. Saat arah putaran berbalik, poros keluaran sempat diam sejenak sebelum gigi bertemu lagi. Pada lengan presisi, celah ini menyebabkan posisi tidak akurat, itulah alasan harmonic drive dipilih untuk sendi presisi.\n\n## Memilih rasio\n\nSebagai contoh, robot beroda berbobot 4 kg dengan roda berjari-jari 5 cm. Misalkan kamu menginginkan percepatan wajar pada lantai rata. Kamu lalu menghitung torsi roda yang dibutuhkan, kemudian membaginya dengan torsi motor dikalikan efisiensi untuk mendapat rasio minimum. Rasio yang terlalu besar membuat robot sangat kuat tetapi lambat, sedangkan rasio terlalu kecil membuat motor mudah macet saat menanjak atau mengangkat beban.\n\nKecepatan roda maksimum juga harus diperiksa. Dengan motor 6000 rpm tanpa beban dan gearbox 50:1, kecepatan roda tanpa beban sekitar 120 rpm. Dengan roda berjari-jari 0,05 m, kecepatan linear sekitar 120 × 2π / 60 × 0,05 ≈ 0,63 m/s. Nilai ini baru batas atas, karena motor di bawah beban berputar lebih lambat.\n\nSelain itu, perhatikan **torsi stall** gearbox. Torsi stall motor yang dikalikan rasio bisa melebihi kekuatan roda gigi plastik di dalam gearbox murah. Roda gigi bisa patah bila poros keluaran ditahan paksa saat motor menyala. Banyak servo murah rusak dengan cara ini.\n\n## Contoh perhitungan lengkap\n\nSebuah lengan kecil perlu mengangkat beban sehingga sendinya butuh torsi sekitar 6 N·m. Motor yang tersedia hanya menghasilkan 0,12 N·m pada titik kerja normal. Gearbox planetary yang dijual berefisiensi sekitar 0,75.\n\nRasio minimum: i = 6 / (0,12 × 0,75) ≈ 66,7. Dalam praktik kamu memilih rasio standar berikutnya yang tersedia, misalnya 100:1, supaya ada margin keamanan. Dengan rasio itu, torsi keluaran menjadi 0,12 × 100 × 0,75 = 9 N·m. Kecepatan sendi turun seratus kali. Jika motor berputar 3000 rpm pada titik kerja itu, sendi berputar 30 rpm, atau satu putaran penuh setiap dua detik. Kamu perlu memeriksa apakah kecepatan itu cukup untuk tugas lengan. Bila tidak, naikkan kemampuan motor, bukan sekadar menurunkan rasio, karena penurunan rasio membuat torsi sendi tidak cukup.\n\nContoh ini menunjukkan pola pikir umum: mulai dari torsi dan kecepatan yang dibutuhkan di sendi, lalu mundur ke arah motor.\n\n## Latihan kode\n\nLatihan berikut menghitung keluaran gearbox sederhana.\n\n## Kesalahan umum\n\n- **Menukar N1 dan N2.** Rasio i = N2 / N1, yaitu gigi output dibagi gigi input.\n- **Mengalikan efisiensi ke kecepatan.** Efisiensi mengurangi torsi atau daya, bukan memengaruhi rasio kecepatan.\n- **Menjumlahkan rasio gearbox bertingkat.** Rasio tiap tingkat dikalikan, bukan dijumlahkan.\n- **Mengabaikan backlash.** Pada gerak presisi, celah gigi menimbulkan galat posisi.\n\n## Rangkuman\n\n- Transmisi menukar kecepatan dengan torsi, dan daya P = τ·ω tidak bertambah.\n- i = N2/N1, ω_out = ω_in / i, τ_out = τ_in · i · η.\n- Pada gearbox bertingkat, rasio dan efisiensi total merupakan hasil kali tiap tingkat.\n- Spur sederhana, planetary ringkas, harmonic drive nyaris tanpa backlash, sabuk senyap, ulir menghasilkan gerak linear.\n- Pilih rasio dengan memeriksa torsi dan kecepatan keluaran sekaligus.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Roda gigi penggerak 10 gigi menggerakkan roda gigi 40 gigi. Motor berputar 2000 rpm. Kecepatan keluarannya",
+          "code": "",
+          "options": [
+            "8000 rpm",
+            "500 rpm",
+            "200 rpm",
+            "2000 rpm dengan torsi yang lebih besar saja"
+          ],
+          "answer": 1,
+          "explanation": "i = 40/10 = 4, sehingga kecepatan keluaran = 2000/4 = 500 rpm."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Gearmotor planetary 100:1 dengan efisiensi 70 persen dipasang pada motor bertorsi 0,05 N·m. Torsi keluaran yang dihitung adalah",
+          "code": "",
+          "options": [
+            "5 N·m",
+            "3,5 N·m",
+            "0,0035 N·m",
+            "7 N·m"
+          ],
+          "answer": 1,
+          "explanation": "τ_out = 0,05 × 100 × 0,7 = 3,5 N·m."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Lengan presisi sering berbalik arah dan posisinya bergeser sedikit tiap kali arah berubah. Transmisi yang sebaiknya dipertimbangkan adalah",
+          "code": "",
+          "options": [
+            "Roda gigi lurus murah dengan celah gigi besar",
+            "Sabuk panjang yang sengaja dikendurkan",
+            "Rasio kecil agar poros berputar lebih cepat",
+            "Harmonic drive dengan backlash sangat kecil"
+          ],
+          "answer": 3,
+          "explanation": "Harmonic drive hampir tanpa backlash sehingga cocok untuk sendi presisi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu merangkai dua gearbox 4:1 dan 5:1 dengan efisiensi 0,9 masing-masing. Rasio dan efisiensi totalnya",
+          "code": "",
+          "options": [
+            "9:1 dengan efisiensi 0,9",
+            "20:1 dengan efisiensi 0,81",
+            "20:1 dengan efisiensi 1,8",
+            "1,25:1 dengan efisiensi 0,81"
+          ],
+          "answer": 1,
+          "explanation": "Rasio dikalikan (4 x 5 = 20) dan efisiensi dikalikan (0,9 x 0,9 = 0,81)."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Gearbox mengurangi kecepatan dan menaikkan torsi tanpa mengubah daya, kecuali kehilangan akibat gesekan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Daya P = τ·ω dipertahankan pada gearbox ideal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung keluaran gearbox",
+          "prompt": "Lengkapi tiga fungsi:\n\n- `rasio(n_input, n_output)` mengembalikan `n_output / n_input`.\n- `kecepatan_keluar(w_in, i)` mengembalikan `w_in / i`.\n- `torsi_keluar(t_in, i, eta)` mengembalikan `t_in * i * eta`.\n\nContoh: motor 0,1 N·m, rasio 50, efisiensi 0,8 menghasilkan 4 N·m.",
+          "starter": {
+            "code": "def rasio(n_input, n_output):\n    # TODO\n    pass\n\n\ndef kecepatan_keluar(w_in, i):\n    # TODO\n    pass\n\n\ndef torsi_keluar(t_in, i, eta):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def rasio(n_input, n_output):\n    return n_output / n_input\n\n\ndef kecepatan_keluar(w_in, i):\n    return w_in / i\n\n\ndef torsi_keluar(t_in, i, eta):\n    return t_in * i * eta\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "12 gigi ke 60 gigi memberi rasio 5",
+              "check": "abs(rasio(12, 60) - 5) < 1e-9"
+            },
+            {
+              "name": "3000 rpm dengan rasio 5 menjadi 600",
+              "check": "abs(kecepatan_keluar(3000, 5) - 600) < 1e-9"
+            },
+            {
+              "name": "Contoh gearbox 50:1 memberi 4 N·m",
+              "check": "abs(torsi_keluar(0.1, 50, 0.8) - 4) < 1e-9"
+            },
+            {
+              "name": "Efisiensi 90 persen pada rasio 5",
+              "check": "abs(torsi_keluar(0.2, 5, 0.9) - 0.9) < 1e-9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "aktuator-dan-motor-listrik",
+      "title": "Aktuator dan Motor Listrik",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Membandingkan aktuator listrik, hidrolik, dan pneumatik.\n- Menjelaskan cara kerja dan pemakaian motor DC, BLDC, stepper, dan servo.\n- Membaca karakteristik motor DC: torsi stall, kecepatan tanpa beban, dan titik daya maksimum.\n- Menghitung torsi dan daya dengan model linear motor DC.\n\n## Apa itu aktuator\n\nAktuator adalah komponen yang mengubah energi, entah listrik, fluida bertekanan, atau material khusus, menjadi gerak. Di siklus Sense - Think - Act, aktuator memegang tahap Act. Pilihan aktuator menentukan kekuatan, ketelitian, dan kecepatan sebuah robot.\n\n## Tiga keluarga aktuator\n\n| Keluarga | Kelebihan | Kekurangan | Contoh |\n| --- | --- | --- | --- |\n| Listrik | Presisi tinggi, mudah dikontrol, bersih, senyap | Rasio daya terhadap berat sedang | Motor DC, BLDC, stepper, servo |\n| Hidrolik | Gaya sangat besar, kaku dan responsif di bawah beban | Rawan bocor, butuh pompa | Ekskavator, robot berkaki berat |\n| Pneumatik | Cepat dan murah, lentur alami karena udara dapat ditekan | Sulit mengontrol posisi dengan tepat | Gripper, soft robot, otomasi pabrik |\n\n![Tiga keluarga aktuator](slide:12)\n\nPada robot pendidikan dan robot servis, aktuator listrik hampir selalu menjadi pilihan karena praktis: cukup baterai dan kabel. Hidrolik dipilih saat gaya yang dibutuhkan jauh melampaui kemampuan motor listrik seukuran itu. Pneumatik unggul untuk gerakan buka-tutup yang cepat, misalnya gripper pada lini pabrik, karena udara kompresibel membuat sentuhannya lebih lembut. Namun karena kompresibel pula, mengontrol posisi pneumatik yang tepat sulit.\n\n## Empat motor listrik yang umum\n\n**Motor DC (brushed).** Kecepatannya kira-kira sebanding dengan tegangan, sehingga mudah dikontrol dengan PWM. Kelemahannya, sikat arang menggesek komutator dan aus seiring waktu. Cocok untuk robot pendidikan dan roda kecil.\n\n**BLDC (brushless DC).** Komutasi dilakukan elektronik, bukan sikat. Hasilnya efisien, awet, dan rapat daya tinggi. Syaratnya: motor butuh driver khusus seperti ESC atau pengendali FOC. Ini pilihan umum pada drone dan sendi robot modern.\n\n**Stepper.** Bergerak per langkah tetap, umumnya 1,8 derajat, atau 200 langkah per putaran penuh. Posisi dapat diatur tanpa encoder selama motor tidak kelebihan beban. Jika beban terlalu berat, motor bisa kehilangan langkah tanpa memberi tahu. Stepper banyak dipakai pada printer 3D, mesin CNC, dan meja XY. Banyak driver mendukung microstepping untuk gerak lebih halus, tetapi ketepatan posisi tiap mikrolangkah tidak selalu setara dengan satu langkah penuh.\n\n**Servo.** Satu paket berisi motor, gearbox, sensor posisi, dan kontroler. Perintahnya berupa sudut. Servo hobi umumnya dikendalikan sinyal PWM berfrekuensi sekitar 50 Hz dengan lebar pulsa sekitar 1 sampai 2 ms. Rentang persis berbeda antar merek, jadi cek lembar data. Servo cocok untuk gripper dan robot humanoid kecil.\n\nCara memilih singkat:\n\n- Perlu putaran kontinu berkecepatan dan efisiensi tinggi: BLDC.\n- Perlu murah dan sederhana: motor DC dengan encoder bila posisi dibutuhkan.\n- Perlu posisi presisi tanpa umpan balik pada beban ringan: stepper.\n- Perlu sudut tertentu dengan wiring sederhana: servo.\n\n## Karakteristik motor DC\n\nSelama motor DC bekerja, ada dua titik ekstrem.\n\n- **Torsi stall (τ_stall):** torsi terbesar, terjadi saat poros tertahan dan kecepatan nol. Arus pada kondisi ini juga maksimum, sehingga menahan motor lama-lama bisa membuat belitan terlalu panas.\n- **Kecepatan tanpa beban (ω₀):** kecepatan tertinggi saat torsi nol.\n\nModel linear ideal menghubungkan keduanya:\n\n```\nτ = τ_stall (1 - ω/ω₀)\n```\n\nDaya mekanik keluaran adalah P = τ·ω. Jika disubstitusi:\n\n```\nP = τ_stall (1 - ω/ω₀) ω\n```\n\nPersamaan ini berbentuk parabola terhadap ω dengan puncak di ω = ω₀/2. Pada titik itu torsi tepat setengah τ_stall, dan daya maksimum adalah P_maks = τ_stall · ω₀ / 4.\n\nContoh. Motor dengan τ_stall = 0,4 N·m dan ω₀ = 100 rad/s. Pada ω = 50 rad/s, torsi = 0,4 × 0,5 = 0,2 N·m dan daya = 0,2 × 50 = 10 W. Rumus P_maks = 0,4 × 100 / 4 = 10 W, cocok.\n\nNamun daya maksimum bukan titik kerja terbaik. Motor biasanya dioperasikan **di atas separuh kecepatan tanpa beban** demi efisiensi, karena di daerah daya maksimum banyak energi listrik terbuang menjadi panas. Efisiensi motor tertinggi terjadi pada kecepatan tinggi dan beban ringan. Motor nyata sedikit menyimpang dari model linear akibat gesekan dan pemanasan.\n\nImplikasinya pada desain: jangan memilih motor yang bekerja mendekati torsi stall untuk beban rutin. Pilih motor dan gearbox sehingga beban normal berada di kisaran torsi yang jauh di bawah stall, dan simpan torsi stall sebagai cadangan untuk percepatan atau tanjakan.\n\n## Contoh memilih motor untuk roda\n\nMisalkan robot 3 kg butuh dua roda berjari-jari 0,04 m. Pada percepatan normal, tiap roda perlu torsi sekitar 0,25 N·m. Kamu menimbang dua kandidat gearmotor DC. Kandidat A memiliki torsi stall 0,3 N·m pada roda, kandidat B 1,2 N·m. Kandidat A akan bekerja hampir di batas stall, sehingga mudah macet di karpet atau tanjakan kecil dan arusnya tinggi. Kandidat B bekerja pada sekitar seperlima torsi stall dan masih punya cadangan besar.\n\nSebaliknya, kandidat B lebih mahal dan lebih berat, serta kecepatan tanpa bebannya mungkin lebih rendah bila gearbox-nya berasio tinggi. Jadi periksa juga kecepatan roda yang kamu butuhkan. Keputusan yang baik selalu memeriksa torsi dan kecepatan sekaligus, lalu menyisakan margin.\n\n## Latihan kode\n\nLatihan berikut memakai model linear motor DC dan sudut stepper.\n\n## Kesalahan umum\n\n- **Menahan motor sampai stall dalam waktu lama.** Arus tertinggi menyebabkan panas berlebih.\n- **Mengira stepper selalu akurat.** Tanpa umpan balik, kelebihan beban membuat langkah hilang tanpa tanda.\n- **Menyamakan BLDC dengan motor DC biasa.** BLDC tidak bisa dihubungkan langsung ke baterai, ia memerlukan driver.\n- **Memilih motor hanya dari daya maksimum.** Titik daya maksimum bukan titik efisiensi terbaik.\n\n## Rangkuman\n\n- Aktuator listrik, hidrolik, dan pneumatik masing-masing punya kelebihan: presisi, gaya besar, atau kecepatan murah.\n- Motor DC mudah dikontrol, BLDC efisien dan awet, stepper presisi per langkah, servo menerima perintah sudut.\n- Model linear motor DC: τ = τ_stall(1 - ω/ω₀).\n- Daya P = τ·ω memuncak pada setengah kecepatan tanpa beban, dengan P_maks = τ_stall · ω₀ / 4.\n- Hindari stall berkepanjangan dan pilih titik kerja jauh dari torsi stall.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah ekskavator mini harus mengangkat tanah dengan gaya sangat besar dan tetap kaku saat dibebani. Keluarga aktuator yang paling sesuai adalah",
+          "code": "",
+          "options": [
+            "Pneumatik",
+            "Motor servo hobi",
+            "Hidrolik",
+            "Piezoelektrik"
+          ],
+          "answer": 2,
+          "explanation": "Hidrolik menghasilkan gaya sangat besar dan kaku di bawah beban, itulah alasan dipakai pada ekskavator."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Printer 3D kamu tiba-tiba menggeser seluruh lapisan beberapa milimeter ke satu sisi di tengah pencetakan, padahal tidak ada encoder. Dugaan kuat penyebabnya adalah",
+          "code": "",
+          "options": [
+            "Stepper kehilangan langkah karena kelebihan beban",
+            "Motor BLDC kehilangan komutasi karena sikatnya aus",
+            "Servo mendapat sinyal PWM berfrekuensi 50 Hz",
+            "Gearbox planetary memiliki rasio terlalu besar"
+          ],
+          "answer": 0,
+          "explanation": "Stepper tanpa umpan balik tidak menyadari langkah yang hilang saat kelebihan beban."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Motor DC memiliki torsi stall 0,6 N·m dan kecepatan tanpa beban 80 rad/s. Berapa daya maksimum model linearnya?",
+          "code": "",
+          "options": [
+            "12 W",
+            "48 W",
+            "24 W",
+            "6 W"
+          ],
+          "answer": 0,
+          "explanation": "P_maks = τ_stall · ω₀ / 4 = 0,6 × 80 / 4 = 12 W."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin lengan gripper berhenti di sudut 60 derajat dengan wiring paling sederhana dan tanpa menulis kontrol umpan balik sendiri. Pilihan paling praktis adalah",
+          "code": "",
+          "options": [
+            "Motor DC tanpa encoder",
+            "Motor BLDC tanpa ESC",
+            "Servo",
+            "Stepper tanpa driver"
+          ],
+          "answer": 2,
+          "explanation": "Servo sudah berisi sensor posisi dan kontroler, sehingga cukup diberi perintah sudut."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada motor DC ideal, daya keluaran paling besar terjadi saat poros tertahan penuh (stall).",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Saat stall kecepatan nol sehingga daya mekanik nol. Daya maksimum ada pada separuh kecepatan tanpa beban."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Model linear motor DC dan sudut stepper",
+          "prompt": "Lengkapi empat fungsi:\n\n- `torsi(ts, w, w0)` mengembalikan `ts * (1 - w / w0)`.\n- `daya(ts, w, w0)` mengembalikan torsi dikali `w`.\n- `daya_maks(ts, w0)` mengembalikan `ts * w0 / 4`.\n- `sudut_stepper(langkah, langkah_per_putaran)` mengembalikan sudut dalam derajat untuk jumlah langkah tertentu.\n\nContoh: stepper 200 langkah per putaran, 50 langkah menghasilkan 90 derajat.",
+          "starter": {
+            "code": "def torsi(ts, w, w0):\n    # TODO\n    pass\n\n\ndef daya(ts, w, w0):\n    # TODO: torsi * w\n    pass\n\n\ndef daya_maks(ts, w0):\n    # TODO\n    pass\n\n\ndef sudut_stepper(langkah, langkah_per_putaran):\n    # TODO: 360 * langkah / langkah_per_putaran\n    pass\n"
+          },
+          "solution": {
+            "code": "def torsi(ts, w, w0):\n    return ts * (1 - w / w0)\n\n\ndef daya(ts, w, w0):\n    return torsi(ts, w, w0) * w\n\n\ndef daya_maks(ts, w0):\n    return ts * w0 / 4\n\n\ndef sudut_stepper(langkah, langkah_per_putaran):\n    return 360 * langkah / langkah_per_putaran\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Torsi nol saat kecepatan tanpa beban",
+              "check": "abs(torsi(0.4, 100, 100)) < 1e-9"
+            },
+            {
+              "name": "Torsi separuh pada setengah kecepatan",
+              "check": "abs(torsi(0.4, 50, 100) - 0.2) < 1e-9"
+            },
+            {
+              "name": "Daya pada 50 rad/s adalah 10 W",
+              "check": "abs(daya(0.4, 50, 100) - 10) < 1e-9"
+            },
+            {
+              "name": "Daya maksimum sama dengan puncak parabola",
+              "check": "abs(daya_maks(0.4, 100) - daya(0.4, 50, 100)) < 1e-9"
+            },
+            {
+              "name": "50 langkah pada stepper 200 langkah adalah 90 derajat",
+              "check": "abs(sudut_stepper(50, 200) - 90) < 1e-9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "driver-pwm-encoder-dan-pid",
+      "title": "Driver, PWM, Encoder, dan Kontrol PID",
+      "est_minutes": 35,
+      "slide_from": 15,
+      "slide_to": 17,
+      "body": "## Tujuan\n\n- Menjelaskan rantai penggerak: mikrokontroler, driver H-bridge, motor, dan encoder.\n- Menghitung tegangan efektif PWM dan menerjemahkan sudut servo menjadi lebar pulsa.\n- Menjelaskan peran suku P, I, dan D pada kontrol PID.\n- Menulis satu langkah perhitungan PID diskrit.\n- Mengenali empat aktuator generasi baru dan alasan pemakaiannya.\n\n## Rantai penggerak motor\n\nMikrokontroler tidak bisa menggerakkan motor secara langsung, karena pin keluarannya hanya menyalurkan arus kecil, biasanya puluhan miliampere. Diperlukan rantai komponen berikut.\n\n1. **Mikrokontroler** menghitung perintah dan membangkitkan sinyal PWM.\n2. **Driver H-bridge** menguatkan arus dan membalik arah putaran.\n3. **Motor** mengubah daya listrik menjadi torsi.\n4. **Encoder** mengukur sudut dan kecepatan sebagai umpan balik ke mikrokontroler.\n\n![Rantai penggerak motor](slide:15)\n\nDriver H-bridge tersusun dari empat saklar (transistor) berbentuk huruf H dengan motor di tengah. Dengan menyalakan pasangan saklar diagonal tertentu, arus mengalir ke motor dalam satu arah, dan dengan pasangan diagonal lain arus mengalir berlawanan. Karena itu satu driver bisa memutar motor maju dan mundur. Pastikan driver kuat arus sesuai motor, terutama arus stall, dan perhatikan proteksi terhadap lonjakan tegangan saat motor dimatikan.\n\n## PWM\n\n**PWM (pulse width modulation)** menyalakan dan mematikan tegangan sangat cepat. Rasio waktu menyala terhadap periode disebut **duty cycle**. Tegangan efektif yang dirasakan motor kira-kira:\n\n```\nV_efektif = duty × V_suplai\n```\n\nDuty 25 persen pada aki 12 V menghasilkan rata-rata 3 V. Motor, karena induktansinya, bereaksi pada rata-rata ini, bukan pada denyut cepatnya. Frekuensi PWM untuk motor biasanya 15 sampai 25 kHz, di atas pendengaran manusia, agar motor tidak berdenging. Frekuensi lebih rendah, misalnya ratusan hertz, sering menimbulkan suara mendengung.\n\nUntuk servo hobi, PWM bukan mengatur tegangan, melainkan menyampaikan **sudut lewat lebar pulsa**. Pada pemetaan umum, periode 20 ms (50 Hz) dengan pulsa 1000 mikrodetik untuk sudut 0 dan 2000 mikrodetik untuk sudut 180 derajat. Pemetaan linear:\n\n```\npulsa = 1000 + (sudut / 180) × 1000\n```\n\nSudut 90 derajat menghasilkan 1500 mikrodetik. Beberapa servo memakai rentang 500 sampai 2500, jadi baca lembar data dan kalibrasi.\n\n## Encoder\n\nEncoder memasang cakram bergaris pada poros, lalu sensor menghitung denyutnya. Dari jumlah denyut (ticks) kamu menghitung sudut: sudut = ticks / ticks_per_putaran × 360 derajat. Encoder kuadratur memiliki dua kanal berselisih fase, sehingga arah putaran pun bisa diketahui. Bab berikutnya membahas pemakaiannya untuk odometri.\n\n## Dari hitungan encoder ke kecepatan\n\nUmpan balik kecepatan diperoleh dengan menghitung selisih ticks dalam selang waktu tetap: kecepatan sudut = (Δticks / ticks_per_putaran) × 2π / dt, dalam rad/s. Selang waktu yang terlalu pendek membuat hitungan kasar karena hanya beberapa ticks yang tertangkap, sedangkan selang yang terlalu panjang membuat umpan balik terlambat. Pada praktiknya, selang 10 sampai 50 milidetik sering menjadi kompromi, tetapi nilai terbaik bergantung pada resolusi encoder dan kecepatan motor. Hasil pengukuran ini yang menjadi masukan error pada PID kecepatan.\n\n## Kontrol PID\n\nKontrol umpan balik mengukur keluaran, membandingkannya dengan target (setpoint), lalu mengoreksi. Selisih keduanya disebut error: e(t) = setpoint - ukuran.\n\nKeluaran kontroler PID:\n\n```\nu(t) = Kp·e(t) + Ki·∫e(t)dt + Kd·de(t)/dt\n```\n\n- **P (proporsional):** bereaksi sebanding error saat ini. Terlalu besar membuat sistem berosilasi.\n- **I (integral):** menjumlahkan error dari waktu ke waktu sehingga menghapus error tunak (steady-state). Terlalu besar menimbulkan overshoot.\n- **D (derivatif):** meredam laju perubahan error. Peka terhadap derau sensor.\n\nPada mikrokontroler, integral dan turunan didekati diskrit dengan selang waktu dt:\n\n```python\ndef pid_langkah(kp, ki, kd, error, integral, error_lalu, dt):\n    integral += error * dt\n    turunan = (error - error_lalu) / dt\n    u = kp * error + ki * integral + kd * turunan\n    return u, integral\n```\n\nContoh. Kp = 2, Ki = 1, Kd = 0,5, error = 4, integral awal 0, error sebelumnya 2, dt = 0,1. Integral menjadi 0,4. Turunan = (4 - 2)/0,1 = 20. Maka u = 8 + 0,4 + 10 = 18,4.\n\nBeberapa hal praktis. Pertama, **integral windup**: bila aktuator sudah jenuh (PWM 100 persen) tetapi error masih ada, integral terus menumpuk dan menyebabkan overshoot besar kemudian. Batasi nilai integral. Kedua, turunan memperbesar derau, jadi sering diberi filter. Ketiga, banyak aplikasi cukup memakai PI atau bahkan P saja, misalnya kontrol kecepatan motor.\n\nTuning kasar yang sering dipakai: mulai dari semua gain nol, naikkan Kp sampai respons cepat tanpa osilasi berlebihan, tambahkan Kd bila ada overshoot, lalu tambahkan Ki sedikit untuk menghapus error tersisa. Alat bantu simulasi seperti MATLAB/Simulink atau pustaka Python python-control membantu mencoba parameter sebelum diuji pada robot.\n\n## Aktuator generasi baru\n\nAktuator klasik, yaitu motor kaku dengan gearbox berasio besar, sangat baik untuk presisi tetapi keras saat bertabrakan. Gearbox berasio besar juga sulit digerakkan balik oleh gaya luar, sehingga benturan bisa merusak roda gigi atau melukai orang di dekatnya.\n\nRobot yang bekerja berdekatan dengan manusia membutuhkan gerak yang lebih lunak dan aman. Empat teknologi berikut berkembang untuk itu.\n\n- **Series Elastic Actuator (SEA):** pegas dipasang di antara motor dan beban. Pegas menyerap benturan, dan defleksinya bisa diukur untuk mengetahui gaya.\n- **Soft pneumatic actuator:** ruang elastomer yang mengembang saat diberi tekanan, cocok untuk gripper yang memegang buah atau benda rapuh.\n- **Shape Memory Alloy (SMA):** kawat paduan nikel-titanium yang memendek saat dipanaskan. Senyap dan ringan, tetapi lambat.\n- **Piezoelektrik:** gerak berskala mikrometer dengan respons sangat cepat, untuk mikro-robot dan pemosisian presisi.\n\n## Kesalahan umum\n\n- **Menghubungkan motor langsung ke pin mikrokontroler.** Pakai driver yang sesuai arus motor.\n- **Frekuensi PWM terlalu rendah.** Motor berdengung dan arusnya bergelombang.\n- **Gain Kp terlalu besar sejak awal.** Mulai kecil dan naikkan bertahap.\n- **Membiarkan integral tumbuh tanpa batas.** Beri batas atas dan bawah.\n\n## Rangkuman\n\n- Rantai penggerak: mikrokontroler, driver H-bridge, motor, encoder.\n- Tegangan efektif PWM = duty × tegangan suplai; frekuensi motor biasa 15 sampai 25 kHz.\n- Servo hobi memetakan sudut ke lebar pulsa, umumnya 1000 sampai 2000 mikrodetik pada 50 Hz, dan perlu dikalibrasi.\n- PID: P bereaksi pada error sekarang, I menghapus error tunak, D meredam perubahan.\n- SEA, soft pneumatic, SMA, dan piezoelektrik membuat aktuator lebih aman, lentur, atau presisi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Motor 12 V dikendalikan PWM dengan duty cycle 75 persen dari suplai 12 V. Tegangan rata-rata yang dirasakan motor sekitar",
+          "code": "",
+          "options": [
+            "12 V",
+            "6 V",
+            "9 V",
+            "0,75 V"
+          ],
+          "answer": 2,
+          "explanation": "V_efektif = 0,75 × 12 = 9 V."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot beroda selalu berhenti sedikit sebelum setpoint kecepatan, selisihnya kecil tetapi tetap. Suku PID yang paling tepat untuk menghapusnya adalah",
+          "code": "",
+          "options": [
+            "Derivatif",
+            "Proporsional saja dengan gain nol",
+            "Filter derau pada encoder",
+            "Integral"
+          ],
+          "answer": 3,
+          "explanation": "Suku integral mengumpulkan error kecil yang bertahan dan menghapus error tunak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah kamu menaikkan Kd sangat besar, motor mengeluarkan getaran halus dan kontrol tampak liar. Sensor encoder kamu cukup berderau. Penjelasan terbaik adalah",
+          "code": "",
+          "options": [
+            "Suku integral terlalu kecil sehingga error tunak bertambah",
+            "Frekuensi PWM terlalu tinggi sehingga motor bergetar",
+            "Suku derivatif memperbesar derau sensor",
+            "Driver H-bridge membalik polaritas secara acak"
+          ],
+          "answer": 2,
+          "explanation": "Turunan bereaksi terhadap perubahan cepat, termasuk derau acak pada pembacaan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu memberi servo hobi pulsa 1500 mikrodetik pada 50 Hz dengan pemetaan 1000 sampai 2000 mikrodetik untuk 0 sampai 180 derajat. Sudut yang diharapkan",
+          "code": "",
+          "options": [
+            "0 derajat",
+            "180 derajat",
+            "45 derajat",
+            "90 derajat"
+          ],
+          "answer": 3,
+          "explanation": "1500 berada di tengah rentang 1000 sampai 2000, jadi sudutnya 90 derajat."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Frekuensi PWM motor yang dipilih di atas pendengaran manusia membantu menghindari dengung motor.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Frekuensi 15 sampai 25 kHz berada di atas jangkauan pendengaran umum."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "PWM dan sudut servo",
+          "prompt": "Lengkapi tiga fungsi:\n\n- `tegangan_efektif(duty_persen, v_suplai)` mengembalikan tegangan rata-rata PWM, `duty_persen` bernilai 0 sampai 100.\n- `pulsa_servo(sudut)` mengembalikan lebar pulsa dalam mikrodetik: 1000 untuk 0 derajat dan 2000 untuk 180 derajat, linear. Sudut di luar 0 sampai 180 dibatasi ke ujung rentang.\n- `duty_servo(pulsa_us)` mengembalikan duty cycle dalam persen untuk periode 20000 mikrodetik.",
+          "starter": {
+            "code": "def tegangan_efektif(duty_persen, v_suplai):\n    # TODO\n    pass\n\n\ndef pulsa_servo(sudut):\n    # TODO: batasi sudut ke 0..180 lalu petakan linear\n    pass\n\n\ndef duty_servo(pulsa_us):\n    # TODO: pulsa / 20000 * 100\n    pass\n"
+          },
+          "solution": {
+            "code": "def tegangan_efektif(duty_persen, v_suplai):\n    return duty_persen / 100 * v_suplai\n\n\ndef pulsa_servo(sudut):\n    sudut = max(0, min(180, sudut))\n    return 1000 + sudut / 180 * 1000\n\n\ndef duty_servo(pulsa_us):\n    return pulsa_us / 20000 * 100\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Duty 25 persen pada 12 V memberi 3 V",
+              "check": "abs(tegangan_efektif(25, 12) - 3) < 1e-9"
+            },
+            {
+              "name": "Duty 100 persen memberi tegangan penuh",
+              "check": "abs(tegangan_efektif(100, 7.4) - 7.4) < 1e-9"
+            },
+            {
+              "name": "Sudut 0 dan 90 dipetakan ke 1000 dan 1500",
+              "check": "pulsa_servo(0) == 1000 and abs(pulsa_servo(90) - 1500) < 1e-9"
+            },
+            {
+              "name": "Sudut di luar rentang dibatasi",
+              "check": "pulsa_servo(200) == 2000 and pulsa_servo(-10) == 1000"
+            },
+            {
+              "name": "Pulsa 1500 berduty 7,5 persen",
+              "check": "abs(duty_servo(1500) - 7.5) < 1e-9"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Satu langkah PID",
+          "prompt": "Tulis `pid_langkah(kp, ki, kd, error, integral, error_lalu, dt)` yang mengembalikan tuple `(u, integral_baru)`:\n\n- `integral_baru = integral + error * dt`\n- `turunan = (error - error_lalu) / dt`\n- `u = kp * error + ki * integral_baru + kd * turunan`\n\nTambahan: batasi `integral_baru` ke rentang -10 sampai 10 (anti-windup) sebelum dipakai menghitung `u`.",
+          "starter": {
+            "code": "def pid_langkah(kp, ki, kd, error, integral, error_lalu, dt):\n    # TODO: perbarui integral, batasi -10..10, hitung turunan dan u\n    pass\n"
+          },
+          "solution": {
+            "code": "def pid_langkah(kp, ki, kd, error, integral, error_lalu, dt):\n    integral = max(-10, min(10, integral + error * dt))\n    turunan = (error - error_lalu) / dt\n    u = kp * error + ki * integral + kd * turunan\n    return u, integral\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "P murni mengalikan error",
+              "check": "pid_langkah(2, 0, 0, 3, 0, 3, 0.1)[0] == 6"
+            },
+            {
+              "name": "Integral bertambah error kali dt",
+              "check": "abs(pid_langkah(0, 1, 0, 4, 0, 4, 0.1)[1] - 0.4) < 1e-9"
+            },
+            {
+              "name": "Contoh lengkap menghasilkan u 18,4",
+              "check": "abs(pid_langkah(2, 1, 0.5, 4, 0, 2, 0.1)[0] - 18.4) < 1e-9"
+            },
+            {
+              "name": "Integral dibatasi sampai 10",
+              "check": "pid_langkah(0, 1, 0, 100, 9.5, 100, 1)[1] == 10"
+            },
+            {
+              "name": "Integral dibatasi sampai -10",
+              "check": "pid_langkah(0, 1, 0, -100, -9.5, -100, 1)[1] == -10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sensor-navigasi",
+      "title": "Sensor untuk Navigasi Robot",
+      "est_minutes": 25,
+      "slide_from": 18,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menyebut tiga pertanyaan dasar navigasi robot.\n- Membandingkan enam jenis sensor navigasi beserta kelemahan masing-masing.\n- Menghitung jarak tempuh dari hitungan encoder roda.\n- Menjelaskan mengapa sensor perlu dipadukan dan memakai filter komplementer sederhana.\n\n## Tiga pertanyaan navigasi\n\nNavigasi menjawab tiga pertanyaan berurutan.\n\n1. **Di mana aku.** Ini masalah lokalisasi.\n2. **Ke mana tujuanku.** Ini ditentukan misi, misalnya rak nomor 12 di gudang.\n3. **Bagaimana ke sana.** Ini masalah perencanaan jalur dan kontrol gerak.\n\nSemua jawaban bergantung pada data sensor. Bab ini membahas sensor, dua bab berikutnya membahas lokalisasi dan perencanaan.\n\n## Tidak ada sensor yang sempurna\n\nSetiap sensor punya kekuatan dan kelemahan, sehingga robot yang andal memadukan beberapa sekaligus.\n\n| Sensor | Yang diukur | Kelemahan utama |\n| --- | --- | --- |\n| Encoder roda | Putaran roda, dipakai untuk odometri | Galat menumpuk saat roda selip |\n| IMU | Percepatan dan kecepatan sudut (akselerometer dan giroskop) | Drift saat diintegrasikan |\n| LiDAR | Jarak dengan pemindaian laser 2D atau 3D | Mahal; lemah pada kaca dan cermin |\n| Kamera RGB-D | Citra warna ditambah kedalaman, misalnya Intel RealSense | Peka cahaya; komputasi berat |\n| GNSS / GPS | Posisi global di luar ruangan | Akurasi meter; hilang di dalam gedung |\n| Ultrasonik / IR | Jarak dekat yang murah | Resolusi rendah dan sudut pandang lebar |\n\n![Perbandingan sensor navigasi](slide:19)\n\nPerhatikan polanya: sensor yang murah dan cepat (encoder, IMU) cenderung drift atau galat menumpuk, sedangkan sensor yang memberi acuan absolut (GPS, LiDAR terhadap peta) lebih lambat, lebih mahal, atau tidak tersedia di semua tempat. Memadukan keduanya adalah ide inti fusi sensor.\n\n## Encoder roda\n\nEncoder memberi hitungan ticks. Jarak tempuh satu roda:\n\n```\njarak = ticks / ticks_per_putaran × 2π × r\n```\n\nContoh. Encoder 360 ticks per putaran pada roda berjari-jari 0,05 m. Hitungan 720 ticks sama dengan dua putaran, jadi jarak = 2 × 2π × 0,05 ≈ 0,628 m. Dari jarak kedua roda, kecepatan linear dan perubahan arah dapat dihitung, lalu dimasukkan ke odometri seperti pada bab robot beroda. Satu detail: banyak motor memiliki encoder di poros motor, sebelum gearbox. Dalam hal itu, ticks per putaran roda sama dengan ticks per putaran motor dikali rasio gearbox.\n\nRoda selip membuat encoder tetap menghitung putaran padahal robot tidak bergerak, sehingga odometri melebihkan jarak. Karena itu odometri hanya dipercaya untuk jangka pendek.\n\n## IMU dan drift\n\nIMU berisi akselerometer dan giroskop. Giroskop mengukur kecepatan sudut. Mengintegralkannya menghasilkan sudut, tetapi galat kecil yang konstan (bias) ikut terintegralkan sehingga sudut perlahan melenceng. Inilah **drift**. Integral ganda dari akselerometer untuk mendapat posisi jauh lebih buruk: galat kecil menjadi galat posisi yang membesar kuadratik terhadap waktu.\n\nAkselerometer sendiri, bila robot diam atau bergerak pelan, bisa memberi sudut kemiringan dari arah gravitasi. Pembacaannya tidak drift, tetapi berderau dan terganggu getaran serta percepatan robot.\n\nKedua sifat itu saling melengkapi, dan itulah dasar **filter komplementer**:\n\n```\nsudut = α × (sudut_lama + gyro × dt) + (1 - α) × sudut_akselerometer\n```\n\nNilai α dekat 1, misalnya 0,98: untuk jangka pendek kamu mempercayai giroskop yang halus, sedangkan akselerometer perlahan menarik hasil kembali ke acuan yang tidak drift.\n\n## LiDAR dan kamera\n\n**LiDAR** memancarkan laser dan mengukur waktu pantulnya. Akurat untuk jarak, tetapi permukaan kaca dan cermin bisa tidak terbaca atau salah terbaca, dan harganya relatif tinggi dibanding sensor lain. **Kamera RGB-D** memberi warna dan kedalaman sehingga cocok untuk mengenali objek, namun peka terhadap cahaya dan butuh komputasi berat.\n\nSensor ultrasonik dan inframerah murah dan mudah dipasang pada mikrokontroler. Ultrasonik memiliki sudut pandang lebar sehingga arah objek tidak pasti, dan permukaan yang menyerap atau memantulkan suara dengan sudut miring dapat membuat pembacaan tidak akurat. Sensor inframerah dipengaruhi cahaya matahari dan warna permukaan.\n\n## GNSS\n\nGNSS (termasuk GPS) memberi posisi global tanpa drift jangka panjang, tetapi akurasi umumnya beberapa meter dan sinyal hilang di dalam gedung atau di bawah naungan lebat. Untuk robot luar ruangan yang butuh ketelitian lebih tinggi, ada teknik koreksi tambahan, tetapi itu di luar cakupan materi ini.\n\n## Kalibrasi dan sinkronisasi\n\nMemiliki banyak sensor belum cukup. Tiap sensor perlu dikalibrasi, misalnya bias giroskop diukur saat robot diam, dan posisi pemasangan sensor terhadap pusat robot dicatat dengan teliti. Selain itu, data dari sensor berbeda tiba pada waktu berbeda. Jika pembacaan LiDAR terlambat 100 milidetik sementara robot melaju 0,5 m/s, posisi pindaian meleset sekitar 5 cm. Karena itu sistem robot menyertakan stempel waktu pada setiap pembacaan dan menyelaraskannya sebelum dipadukan.\n\n## Memilih kombinasi sensor\n\nTidak ada kombinasi yang cocok untuk semua robot. Beberapa contoh pola umum:\n\n- Robot pendidikan lantai dalam: encoder roda, ultrasonik atau IR, kadang IMU.\n- Robot gudang: encoder, IMU, dan LiDAR 2D untuk lokalisasi terhadap peta.\n- Robot lapangan luar ruangan: encoder, IMU, GNSS, dan kamera.\n\nPilih sensor dari kebutuhan lingkungan dan anggaran, lalu rencanakan cara memadukannya.\n\n## Latihan kode\n\nLatihan berikut menghitung jarak dari encoder dan memadukan sudut IMU.\n\n## Kesalahan umum\n\n- **Mempercayai encoder saat roda selip.** Odometri bisa berbohong di lantai licin.\n- **Mengintegralkan akselerometer untuk posisi.** Galatnya membesar sangat cepat.\n- **Memakai LiDAR di ruang berkaca tanpa pemeriksaan.** Kaca dapat membuat pembacaan hilang.\n- **Lupa rasio gearbox saat menghitung ticks.** Encoder pada poros motor perlu dikoreksi rasio.\n\n## Rangkuman\n\n- Navigasi menjawab: di mana aku, ke mana tujuanku, dan bagaimana ke sana.\n- Enam sensor utama: encoder, IMU, LiDAR, kamera RGB-D, GNSS, ultrasonik atau IR; semuanya punya kelemahan.\n- Jarak dari encoder = ticks / ticks per putaran × 2π × r.\n- Integrasi giroskop drift, sedangkan akselerometer berderau; filter komplementer memadukan keduanya.\n- Robot andal memadukan sensor yang saling menutupi kelemahan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot gudang berjalan di lantai licin dan posisi odometrinya melebihi jarak sebenarnya. Sensor mana yang menyebabkan perkiraan keliru dan mengapa?",
+          "code": "",
+          "options": [
+            "IMU, karena giroskop tidak bisa mengukur rotasi",
+            "GPS, karena bekerja baik di dalam gedung",
+            "Encoder roda, karena roda berputar tanpa memindahkan robot",
+            "Kamera RGB-D, karena tidak memiliki kedalaman"
+          ],
+          "answer": 2,
+          "explanation": "Pada roda selip, encoder tetap menghitung putaran sehingga jarak terlalu besar."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin tahu sudut kemiringan robot yang stabil untuk jangka pendek tetapi tidak melenceng untuk jangka panjang. Pendekatan yang cocok adalah",
+          "code": "",
+          "options": [
+            "Mengintegralkan akselerometer dua kali",
+            "Memadukan giroskop dan akselerometer dengan filter komplementer",
+            "Memakai giroskop saja selama berjam-jam",
+            "Memakai ultrasonik sebagai pengganti IMU"
+          ],
+          "answer": 1,
+          "explanation": "Giroskop halus tetapi drift, akselerometer tidak drift tetapi berderau. Kombinasi menutupi kelemahan keduanya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Encoder 500 ticks per putaran dipasang pada roda berjari-jari 0,1 m (setelah gearbox). Hitungan 1000 ticks berarti jarak sekitar",
+          "code": "",
+          "options": [
+            "1,26 m",
+            "0,63 m",
+            "6,28 m",
+            "0,2 m"
+          ],
+          "answer": 0,
+          "explanation": "Dua putaran: 2 × 2π × 0,1 ≈ 1,26 m."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot servis dipakai di lobi gedung berdinding kaca penuh. LiDAR 2D robot sering kehilangan dinding. Tindakan yang paling masuk akal adalah",
+          "code": "",
+          "options": [
+            "Mengganti seluruh roda dengan roda mecanum",
+            "Menambah sensor lain seperti kamera atau fitur pada peta",
+            "Menaikkan frekuensi PWM motor",
+            "Mematikan encoder agar tidak mengganggu LiDAR"
+          ],
+          "answer": 1,
+          "explanation": "Kaca melemahkan LiDAR. Menambah sensor dengan prinsip berbeda adalah cara umum menutupinya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "GPS biasanya cukup untuk menentukan posisi robot dengan akurasi sentimeter di dalam gedung.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "GPS biasanya berakurasi meter dan sinyalnya hilang di dalam gedung."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Jarak encoder dan filter komplementer",
+          "prompt": "Lengkapi dua fungsi:\n\n- `ticks_ke_jarak(ticks, ticks_per_putaran, r)` mengembalikan jarak tempuh roda dalam meter.\n- `filter_komplementer(sudut_lama, gyro, dt, sudut_acc, alpha)` mengembalikan sudut baru: `alpha * (sudut_lama + gyro * dt) + (1 - alpha) * sudut_acc`.\n\nContoh: 720 ticks pada encoder 360 ticks per putaran dan r = 0,05 menghasilkan sekitar 0,628 m.",
+          "starter": {
+            "code": "def ticks_ke_jarak(ticks, ticks_per_putaran, r):\n    # TODO: ticks / ticks_per_putaran * 2 * pi * r\n    pass\n\n\ndef filter_komplementer(sudut_lama, gyro, dt, sudut_acc, alpha):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def ticks_ke_jarak(ticks, ticks_per_putaran, r):\n    return ticks / ticks_per_putaran * 2 * math.pi * r\n\n\ndef filter_komplementer(sudut_lama, gyro, dt, sudut_acc, alpha):\n    return alpha * (sudut_lama + gyro * dt) + (1 - alpha) * sudut_acc\n"
+          },
+          "setup": "import math",
+          "tests": [
+            {
+              "name": "Dua putaran pada r 0,05 adalah 0,628 m",
+              "check": "abs(ticks_ke_jarak(720, 360, 0.05) - 0.6283185) < 1e-5"
+            },
+            {
+              "name": "Nol ticks berarti nol jarak",
+              "check": "ticks_ke_jarak(0, 360, 0.05) == 0"
+            },
+            {
+              "name": "Satu putaran penuh sama dengan keliling roda",
+              "check": "abs(ticks_ke_jarak(500, 500, 0.1) - 2 * math.pi * 0.1) < 1e-9"
+            },
+            {
+              "name": "Filter dengan alpha 1 hanya memakai gyro",
+              "check": "abs(filter_komplementer(10, 5, 0.1, 40, 1) - 10.5) < 1e-9"
+            },
+            {
+              "name": "Filter alpha 0,98 memadukan keduanya",
+              "check": "abs(filter_komplementer(10, 5, 0.1, 12, 0.98) - 10.53) < 1e-9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "lokalisasi-slam-dan-perencanaan-jalur",
+      "title": "Lokalisasi, SLAM, dan Perencanaan Jalur",
+      "est_minutes": 35,
+      "slide_from": 20,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Membedakan tiga tingkat lokalisasi: odometri, fusi sensor (EKF), dan SLAM.\n- Menjelaskan ide fusi sensor berdasarkan tingkat kepercayaan.\n- Menjelaskan loop closure pada SLAM.\n- Membedakan perencana global dan lokal serta menyebut algoritma khasnya.\n- Mencari jalur terpendek pada grid dengan pencarian melebar (BFS).\n\n## Tiga tingkat lokalisasi\n\nLokalisasi menjawab pertanyaan \"di mana aku\". Ada tiga tingkat kecanggihan.\n\n1. **Odometri.** Menjumlahkan gerak roda atau IMU. Cepat dan sederhana, tetapi error menumpuk (drift).\n2. **Fusi sensor (EKF).** Extended Kalman Filter menggabungkan odometri, IMU, dan GPS berdasarkan tingkat kepercayaan masing-masing.\n3. **SLAM.** Simultaneous Localization and Mapping: robot membuat peta sambil menentukan posisinya di dalam peta itu, serta mengoreksi drift dengan loop closure.\n\n![Pindaian LiDAR dan tingkat lokalisasi](slide:20)\n\nPada ROS 2, paket yang sering dipakai adalah `robot_localization` untuk EKF, `slam_toolbox` untuk SLAM, dan AMCL untuk lokalisasi pada peta yang sudah ada.\n\n## Fusi sensor: percaya pada yang lebih pasti\n\nMisalkan dua sensor mengukur posisi yang sama, tetapi yang satu lebih berderau. Cara cerdas memadukannya adalah memberi bobot lebih besar pada yang lebih pasti. Ukuran ketidakpastian dinyatakan sebagai varians: makin kecil varians, makin dipercaya. Untuk dua pengukuran x1 dan x2 dengan varians v1 dan v2, estimasi gabungannya:\n\n```\nx = (x1/v1 + x2/v2) / (1/v1 + 1/v2)\n```\n\nVarians gabungan lebih kecil daripada keduanya, yaitu 1 / (1/v1 + 1/v2). Contoh. Odometri menyebut posisi 10,0 m dengan varians 4. GPS menyebut 12,0 m dengan varians 1. Hasil gabungannya (10/4 + 12/1) / (1/4 + 1) = 14,5 / 1,25 = 11,6 m. Hasilnya lebih dekat ke GPS yang lebih pasti.\n\nKalman filter melakukan ide serupa secara berulang: tahap prediksi memakai model gerak (misalnya odometri), tahap koreksi memadukan pengukuran sensor berdasarkan ketidakpastian. Extended Kalman Filter memperluasnya untuk model yang tidak linear, seperti gerak robot dengan sudut. Detail matematikanya cukup panjang, jadi untuk awal pahami saja gambaran besarnya: prediksi, lalu koreksi, berulang.\n\n## SLAM dan loop closure\n\nSLAM dibutuhkan saat robot belum punya peta. Masalahnya seperti telur dan ayam: untuk menentukan posisi butuh peta, untuk menyusun peta butuh posisi. SLAM memecahkannya dengan memperbarui keduanya bersamaan.\n\nSelama robot bergerak, galat odometri menumpuk sehingga peta mulai melenceng. Ketika robot kembali ke tempat yang pernah dilihat dan mengenalinya, itulah **loop closure**. Algoritma lalu menyesuaikan seluruh lintasan dan peta supaya kedua pengamatan cocok. Dengan loop closure, drift yang menumpuk dapat dikoreksi.\n\n## Lokalisasi pada peta yang sudah ada\n\nBila peta sudah tersedia, robot tidak perlu SLAM lagi. AMCL (Adaptive Monte Carlo Localization) menyebar banyak dugaan posisi yang disebut partikel di peta. Tiap partikel dinilai berdasarkan seberapa cocok pindaian LiDAR yang seharusnya terlihat dari posisi itu dengan pindaian nyata. Partikel yang cocok dipertahankan dan digandakan, yang tidak cocok dibuang. Setelah beberapa siklus, partikel berkumpul di sekitar posisi sebenarnya. Pendekatan ini cukup tahan terhadap ketidakpastian awal, meski tetap bisa gagal di koridor panjang yang tampak sama di seluruh bagian.\n\n## Perencanaan jalur\n\nSetelah posisi dan tujuan diketahui, robot butuh rute. Perencanaan dibagi dua lapis.\n\n| Lapis | Algoritma khas | Peta yang dipakai | Frekuensi |\n| --- | --- | --- | --- |\n| Global | Dijkstra, A* (heuristik jarak), RRT untuk ruang berdimensi tinggi | Peta lengkap | Sesekali |\n| Lokal | DWA, TEB, MPC | Costmap yang diperbarui sensor langsung | Sering |\n\nPerencana global menghitung rute utuh dari awal ke tujuan di peta. Perencana lokal memilih kecepatan aman untuk beberapa detik ke depan sambil menghindari rintangan yang baru muncul, misalnya orang yang melintas. Stack navigasi ROS 2 bernama **Nav2** menggabungkan planner, controller, dan costmap.\n\n**Occupancy grid** membagi lantai menjadi sel kotak: kosong atau terhalang. Pada gambar slide, A* menjelajahi sel berwarna biru dan menemukan jalur terpendek berwarna oranye. A* menambah heuristik jarak ke tujuan pada Dijkstra supaya pencarian lebih terarah dan menjelajahi lebih sedikit sel, tanpa kehilangan jalur terpendek selama heuristiknya tidak melebihkan jarak sebenarnya.\n\nSebagai pemanasan, pencarian melebar (BFS) pada grid dengan langkah berbiaya sama menemukan jalur terpendek dalam jumlah langkah. Kode di bawah memakai antrean dan menandai sel yang sudah dikunjungi:\n\n```python\nfrom collections import deque\n\ndef bfs(grid, awal, tujuan):\n    antre = deque([(awal, 0)])\n    lihat = {awal}\n    while antre:\n        (r, c), d = antre.popleft()\n        if (r, c) == tujuan:\n            return d\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            baris, kolom = r + dr, c + dc\n            if 0 <= baris < len(grid) and 0 <= kolom < len(grid[0]) and grid[baris][kolom] == 0 and (baris, kolom) not in lihat:\n                lihat.add((baris, kolom))\n                antre.append(((baris, kolom), d + 1))\n    return -1\n```\n\nPada grid, angka 0 berarti sel kosong dan 1 berarti rintangan.\n\n## Latihan kode\n\nLatihan berikut menerapkan fusi sensor dua sumber dan pencarian jalur pada grid. Karena BFS sudah muncul pada contoh, tantangan ada pada menulisnya sendiri tanpa menyalin.\n\n## Kesalahan umum\n\n- **Mengabaikan ketidakpastian saat memadukan sensor.** Rata-rata biasa memperlakukan semua sensor sama pasti.\n- **Menjalankan perencana global tiap siklus kontrol.** Itu boros, dan cukup dijalankan sesekali.\n- **Tidak memperbarui costmap lokal.** Rintangan baru tidak terlihat dan robot menabrak.\n- **Mengira SLAM tidak pernah salah.** Pada lingkungan yang berulang atau sepi fitur, SLAM bisa tersesat.\n\n## Rangkuman\n\n- Lokalisasi bertingkat: odometri, fusi sensor EKF, dan SLAM dengan loop closure.\n- Fusi sensor memberi bobot lebih besar pada sensor yang lebih pasti.\n- Loop closure mengoreksi drift saat robot mengenali tempat yang pernah dilalui.\n- Perencana global (Dijkstra, A*, RRT) mencari rute di peta lengkap, perencana lokal (DWA, TEB, MPC) menghindari rintangan langsung.\n- Nav2 pada ROS 2 menggabungkan planner, controller, dan costmap.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot mengelilingi gedung dan kembali ke lobi, tetapi petanya menunjukkan lobi dua kali di lokasi berbeda. Mekanisme SLAM yang memperbaikinya adalah",
+          "code": "",
+          "options": [
+            "Odometri tambahan pada roda belakang",
+            "Penambahan gain integral pada PID",
+            "Loop closure",
+            "Perubahan rasio gearbox"
+          ],
+          "answer": 2,
+          "explanation": "Loop closure mengenali tempat yang pernah dilalui lalu menyesuaikan lintasan dan peta."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Odometri menyebut posisi 5 m dengan varians 9, GPS menyebut 8 m dengan varians 1. Hasil fusi akan",
+          "code": "",
+          "options": [
+            "Tepat 6,5 m sebagai rata-rata biasa",
+            "Lebih dekat ke 5 m karena odometri datang lebih dulu",
+            "Lebih dekat ke 8 m karena GPS lebih pasti",
+            "Tidak bisa dihitung karena sensor berbeda satuan"
+          ],
+          "answer": 2,
+          "explanation": "Bobot berbanding terbalik dengan varians: (5/9 + 8) / (1/9 + 1) = 7,7 m."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang pekerja tiba-tiba melintas di depan robot gudang yang sedang mengikuti rute global. Komponen mana yang pertama bereaksi?",
+          "code": "",
+          "options": [
+            "Perencana global yang menghitung ulang seluruh peta gudang",
+            "Encoder roda yang menghitung ulang diameter roda",
+            "Perencana lokal dengan costmap yang diperbarui sensor",
+            "Gearbox yang mengubah rasionya otomatis"
+          ],
+          "answer": 2,
+          "explanation": "Perencana lokal (misalnya DWA) memilih kecepatan aman berdasarkan costmap langsung."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada grid berukuran 3x3 tanpa rintangan, BFS dari sudut kiri atas ke sudut kanan bawah menghasilkan jumlah langkah",
+          "code": "",
+          "options": [
+            "2",
+            "4",
+            "3",
+            "9"
+          ],
+          "answer": 1,
+          "explanation": "Perlu 2 langkah ke bawah dan 2 ke kanan, jadi 4 langkah."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "EKF dan SLAM sama-sama hanya bekerja bila robot sudah memiliki peta lengkap sejak awal.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "SLAM justru membangun peta sambil melokalisasi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Fusi dua sensor",
+          "prompt": "Tulis `fusi(x1, v1, x2, v2)` yang mengembalikan tuple `(x, v)`:\n\n- `x = (x1/v1 + x2/v2) / (1/v1 + 1/v2)`\n- `v = 1 / (1/v1 + 1/v2)`\n\nContoh: `fusi(10, 4, 12, 1)` menghasilkan `(11.6, 0.8)`.",
+          "starter": {
+            "code": "def fusi(x1, v1, x2, v2):\n    # TODO: bobot berbanding terbalik dengan varians\n    pass\n"
+          },
+          "solution": {
+            "code": "def fusi(x1, v1, x2, v2):\n    w1, w2 = 1 / v1, 1 / v2\n    return (x1 * w1 + x2 * w2) / (w1 + w2), 1 / (w1 + w2)\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Contoh odometri dan GPS menghasilkan 11,6",
+              "check": "abs(fusi(10, 4, 12, 1)[0] - 11.6) < 1e-9"
+            },
+            {
+              "name": "Varians gabungan 0,8",
+              "check": "abs(fusi(10, 4, 12, 1)[1] - 0.8) < 1e-9"
+            },
+            {
+              "name": "Varians sama menghasilkan rata-rata",
+              "check": "abs(fusi(2, 1, 4, 1)[0] - 3) < 1e-9"
+            },
+            {
+              "name": "Varians gabungan lebih kecil dari keduanya",
+              "check": "fusi(0, 2, 1, 3)[1] < 2"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Jalur terpendek pada grid",
+          "prompt": "Tulis `langkah_terpendek(grid, awal, tujuan)` yang mengembalikan jumlah langkah minimum pada grid (0 kosong, 1 rintangan) dengan gerak atas, bawah, kiri, kanan. Bila tujuan tidak terjangkau, kembalikan `-1`. `awal` dan `tujuan` berupa tuple `(baris, kolom)`.",
+          "starter": {
+            "code": "from collections import deque\n\n\ndef langkah_terpendek(grid, awal, tujuan):\n    # TODO: BFS dengan antrean dan himpunan sel yang sudah dikunjungi\n    return -1\n"
+          },
+          "solution": {
+            "code": "from collections import deque\n\n\ndef langkah_terpendek(grid, awal, tujuan):\n    antre = deque([(awal, 0)])\n    lihat = {awal}\n    while antre:\n        (r, c), d = antre.popleft()\n        if (r, c) == tujuan:\n            return d\n        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n            b, k = r + dr, c + dc\n            if 0 <= b < len(grid) and 0 <= k < len(grid[0]) and grid[b][k] == 0 and (b, k) not in lihat:\n                lihat.add((b, k))\n                antre.append(((b, k), d + 1))\n    return -1\n"
+          },
+          "setup": "G1 = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]\nG2 = [[0, 1, 0], [0, 1, 0], [0, 0, 0]]\nG3 = [[0, 1, 0], [1, 1, 0], [0, 0, 0]]",
+          "tests": [
+            {
+              "name": "Grid kosong 3x3 sudut ke sudut 4 langkah",
+              "check": "langkah_terpendek(G1, (0, 0), (2, 2)) == 4"
+            },
+            {
+              "name": "Awal sama dengan tujuan 0 langkah",
+              "check": "langkah_terpendek(G1, (1, 1), (1, 1)) == 0"
+            },
+            {
+              "name": "Mengitari rintangan 6 langkah",
+              "check": "langkah_terpendek(G2, (0, 0), (0, 2)) == 6"
+            },
+            {
+              "name": "Terkurung rintangan menghasilkan -1",
+              "check": "langkah_terpendek(G3, (0, 0), (2, 2)) == -1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "ekosistem-perangkat-lunak-dan-sistem-otonom",
+      "title": "Ekosistem Perangkat Lunak dan Sistem Otonom",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menyebut peran ROS 2, Gazebo, OpenCV, Python, C++, Ubuntu, NVIDIA Jetson, dan Raspberry Pi.\n- Menjelaskan konsep node, topic, dan service pada ROS 2.\n- Menggambarkan alur navigasi otonom dari sensor sampai aktuator.\n- Merancang langkah belajar selanjutnya: robot diferensial sederhana dan simulasi.\n\n## Ekosistem perangkat lunak robot\n\nRobot modern bukan hanya mekanik. Sebagian besar kerumitannya ada di perangkat lunak, dan sebagian besar perangkat lunak itu tersedia sebagai komponen siap pakai.\n\n| Alat | Peran |\n| --- | --- |\n| ROS 2 | Middleware: node, topic, service, dan ribuan paket siap pakai |\n| Gazebo | Simulator fisika 3D untuk menguji robot sebelum dibangun |\n| OpenCV | Pustaka visi komputer: deteksi fitur, kalibrasi kamera |\n| Python | Prototipe cepat, skrip, dan AI |\n| C++ | Node berperforma tinggi dan waktu-nyata |\n| Ubuntu | Sistem operasi utama tempat ROS 2 dijalankan |\n| NVIDIA Jetson | Komputer edge dengan GPU untuk persepsi berbasis AI |\n| Raspberry Pi | Komputer papan tunggal murah untuk robot kecil |\n\n![Ekosistem perangkat lunak robot](slide:22)\n\nPembagian peran yang lazim: mikrokontroler (Arduino, ESP32, STM32) menangani kontrol motor waktu-nyata, sedangkan komputer papan tunggal atau Jetson menjalankan ROS 2 dan logika tingkat tinggi. Keduanya berkomunikasi lewat serial atau jaringan.\n\n## ROS 2 dalam tiga konsep\n\nROS (Robot Operating System) pada dasarnya bukan sistem operasi, melainkan kerangka kerja komunikasi dan kumpulan alat.\n\n- **Node:** program kecil dengan satu tugas, misalnya membaca LiDAR atau menghitung PID.\n- **Topic:** saluran publikasi-langganan bernama. Satu node menerbitkan data, node lain berlangganan, misalnya topic `/scan` untuk data LiDAR.\n- **Service:** permintaan dan jawaban sesekali, misalnya meminta peta tersimpan.\n\nKeuntungan terbesarnya adalah modularitas. Karena setiap tahap hanya berhubungan lewat topic, kamu bisa mengganti algoritma lokalisasi tanpa mengubah perencana jalur, atau mengganti robot asli dengan simulasi Gazebo tanpa mengubah kode navigasi. Contoh kerangka node sederhana dengan Python (rclpy), hanya sebagai gambaran dan tidak dijalankan di latihan:\n\n```python\nimport rclpy\nfrom rclpy.node import Node\nfrom std_msgs.msg import String\n\nclass Pewarta(Node):\n    def __init__(self):\n        super().__init__(\"pewarta\")\n        self.pub = self.create_publisher(String, \"kabar\", 10)\n        self.create_timer(1.0, self.kirim)\n\n    def kirim(self):\n        self.pub.publish(String(data=\"halo robot\"))\n\nrclpy.init()\nrclpy.spin(Pewarta())\n```\n\nDetail instalasi bergantung pada distribusi ROS 2 yang kamu pakai, jadi ikuti dokumentasi resmi distribusi itu.\n\n## Satu alur navigasi otonom\n\nSekarang semua pilar bertemu dalam satu alur.\n\n1. **Sensor:** LiDAR, kamera, IMU, encoder.\n2. **Persepsi:** deteksi rintangan, pembuatan costmap.\n3. **Lokalisasi:** EKF, AMCL, atau SLAM.\n4. **Perencanaan:** jalur global ditambah jalur lokal.\n5. **Kontrol:** PID dan kinematika roda.\n6. **Aktuator:** motor, driver, dan transmisi.\n\nContoh dari deck: robot antar di gudang. LiDAR memperbarui costmap 10 kali per detik. AMCL mencocokkan pindaian dengan peta gudang. A* menyusun rute ke rak. DWA menghindari pekerja yang melintas. Terakhir, PID menggerakkan dua motor BLDC melalui gearbox planetary.\n\nPerhatikan bagaimana hampir semua bab sebelumnya muncul. Kinematika diferensial menerjemahkan perintah (v, ω) menjadi kecepatan roda. PID memastikan roda mengikuti kecepatan itu. Transmisi mengubah putaran motor menjadi torsi roda. Encoder memberi odometri, IMU dan LiDAR mengoreksinya. Pada ROS 2, tiap tahap berjalan sebagai node terpisah yang bertukar data lewat topic, sehingga mudah diganti dan diuji.\n\n## Memilih komputer untuk robot\n\nPemilihan komputer bergantung pada beban kerja. Robot kecil yang hanya mengikuti garis atau menghindari rintangan cukup memakai mikrokontroler. Robot dengan ROS 2, kamera, dan SLAM 2D biasanya memerlukan komputer papan tunggal seperti Raspberry Pi atau perangkat sejenis. Bila kamu menjalankan jaringan saraf untuk mengenali objek dari kamera secara waktu-nyata, komputer edge dengan GPU seperti NVIDIA Jetson lebih masuk akal. Selain kemampuan komputasi, pertimbangkan konsumsi daya, karena komputer yang lebih kuat mengurangi waktu operasi baterai, serta ketersediaan dukungan ROS 2 pada platform itu.\n\nPembagian ini juga melatih disiplin desain: jangan menaruh perhitungan berat di mikrokontroler yang mengurus motor, dan jangan menaruh kontrol motor waktu-nyata di komputer yang waktu eksekusinya tidak pasti.\n\n## Menelusuri kegagalan\n\nKarena sistem berlapis, kegagalan perlu ditelusuri dari bawah ke atas.\n\n- Robot tidak bergerak lurus: periksa kalibrasi roda, kontrol motor, lalu odometri.\n- Robot tersesat di koridor panjang: periksa kualitas sensor dan lokalisasi.\n- Robot berhenti di depan rintangan yang sebenarnya tidak ada: periksa costmap dan data LiDAR.\n- Robot menabrak orang: periksa frekuensi perencana lokal dan jarak pengereman.\n\nDengan memeriksa lapisan terendah dulu, kamu menghindari menyalahkan algoritma tinggi untuk masalah mekanik atau sensor.\n\n## Batasan yang perlu kamu ingat\n\nSemua rumus di kelas ini adalah model yang disederhanakan. Robot nyata punya roda yang selip, motor yang tidak linear, sensor yang berderau, dan struktur yang sedikit lentur. Karena itu, hasil perhitungan selalu perlu diuji dan dikalibrasi pada perangkat keras. Anggap model sebagai titik awal yang baik, bukan jawaban akhir.\n\n## Langkah selanjutnya\n\nRingkasan deck menutup dengan saran praktis: bangun robot diferensial sederhana, lalu uji navigasinya di simulator sebelum turun ke lantai. Urutan yang disarankan:\n\n1. Rakit robot dua roda dengan motor, driver, dan encoder.\n2. Tulis kontrol kecepatan PID untuk tiap roda.\n3. Hitung odometri dan bandingkan dengan jarak ukur nyata.\n4. Tambahkan sensor jarak untuk menghindari rintangan.\n5. Pindahkan logika ke ROS 2 dan uji di simulator sebelum mencoba di ruangan nyata.\n\nProyek akhir kelas ini adalah versi mini dari tahap 2 sampai 4, berupa perhitungan kinematika, odometri, dan pengendali menuju target dalam Python murni.\n\n## Rangkuman\n\n- ROS 2 menyediakan node, topic, dan service sebagai kerangka komunikasi antar tahap robot.\n- Gazebo menguji robot di simulasi, OpenCV mengolah citra, Python untuk prototipe, C++ untuk performa tinggi.\n- Mikrokontroler menangani kontrol waktu-nyata, Jetson atau Raspberry Pi menangani logika tingkat tinggi.\n- Alur otonom: sensor, persepsi, lokalisasi, perencanaan, kontrol, aktuator.\n- Telusuri kegagalan dari lapisan terendah, dan uji di simulator sebelum turun ke lantai.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim kamu ingin mengganti algoritma lokalisasi dengan yang baru tanpa mengubah perencana jalur. Keuntungan arsitektur ROS 2 yang membantu adalah",
+          "code": "",
+          "options": [
+            "Semua tahap harus ditulis ulang dalam satu program besar",
+            "Tiap tahap berjalan sebagai node terpisah yang bertukar data lewat topic",
+            "ROS 2 otomatis memilih motor yang cocok",
+            "Seluruh kode harus memakai bahasa C++ saja"
+          ],
+          "answer": 1,
+          "explanation": "Modularitas node dan topic memungkinkan satu tahap diganti tanpa menyentuh tahap lain."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu belum punya robot fisik dan ingin menguji program navigasi dulu. Alat yang paling sesuai adalah",
+          "code": "",
+          "options": [
+            "Gazebo",
+            "OpenCV",
+            "H-bridge",
+            "Encoder kuadratur"
+          ],
+          "answer": 0,
+          "explanation": "Gazebo adalah simulator fisika 3D untuk menguji robot sebelum dibangun."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Robot antar gudang berhenti mendadak di koridor kosong. Costmap menunjukkan rintangan padat di depannya, padahal tidak ada apa pun. Langkah pertama yang masuk akal",
+          "code": "",
+          "options": [
+            "Naikkan rasio gearbox menjadi dua kali lipat",
+            "Ganti motor BLDC dengan motor stepper",
+            "Periksa data mentah LiDAR dan pembaruan costmap",
+            "Matikan perencana global selamanya"
+          ],
+          "answer": 2,
+          "explanation": "Rintangan palsu di costmap biasanya berasal dari data sensor atau konfigurasi costmap."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pembagian tugas yang lazim pada robot dengan ROS 2 dan motor adalah",
+          "code": "",
+          "options": [
+            "Mikrokontroler menjalankan SLAM dan Jetson mengatur PWM motor",
+            "Mikrokontroler untuk kontrol motor waktu-nyata, komputer papan tunggal untuk logika tingkat tinggi",
+            "Raspberry Pi hanya dipakai sebagai baterai",
+            "Ubuntu dipakai untuk menggantikan driver H-bridge"
+          ],
+          "answer": 1,
+          "explanation": "Kontrol waktu-nyata cocok di mikrokontroler, sedangkan logika berat cocok di komputer tertanam."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Topic pada ROS 2 adalah saluran publikasi-langganan sehingga banyak node bisa membaca data yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Satu node menerbitkan ke topic dan beberapa node dapat berlangganan."
+        }
+      ],
+      "exercises": []
+    }
+  ]
+}

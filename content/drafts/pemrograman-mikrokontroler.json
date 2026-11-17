@@ -1,0 +1,2005 @@
+{
+  "title": "Pemrograman Mikrokontroler: Dari Register sampai Sistem IoT",
+  "description": "Belajar pemrograman mikrokontroler dari dasar: arsitektur MCU, toolchain, manipulasi bit, GPIO, ADC, PWM, interrupt, UART, I2C, SPI, daya, RTOS, dan debugging.",
+  "summary": "Mikrokontroler adalah komputer lengkap dalam satu chip: CPU, memori, dan periferal berada di satu tempat, sehingga cukup murah dan hemat daya untuk ditanam di mesin cuci, sensor, sampai ECU mobil. Kelas ini mengajakmu memahami cara berpikir di balik sistem embedded, bukan hanya menyalin contoh kode Arduino.\n\nKamu mulai dari arsitektur dan keluarga MCU, alur toolchain dari kode sampai flashing, lalu manipulasi bit pada register. Setelah itu kamu memakai GPIO, ADC, dan PWM untuk berhubungan dengan dunia nyata, memakai timer dan interrupt agar sistem responsif, dan memahami UART, I2C, serta SPI untuk berbicara dengan sensor dan modul.\n\nDi bagian akhir kamu membahas manajemen daya, RTOS, studi kasus monitoring suhu IoT, serta teknik debugging. Contoh perangkat keras ditulis sebagai kode C++ atau MicroPython untuk dibaca, sedangkan latihan interaktif memodelkan logikanya dalam Python: operasi bit, konversi ADC, PWM, debounce, nilai timer, waktu serial, histeresis, dan umur baterai.",
+  "tips": [
+    "Selalu cek tegangan logika (3,3 V atau 5 V) dan batas arus pin di datasheet sebelum menyambung komponen baru.",
+    "Tulis dan uji logika murni (rumus, mesin status, filter) di komputer dulu, baru terjemahkan ke kode perangkat keras.",
+    "Ubah satu hal pada satu waktu lalu flash ulang, supaya kamu tahu perubahan mana yang memperbaiki atau merusak.",
+    "Pasang LED heartbeat dan log serial sejak awal proyek; keduanya murah dan menghemat banyak waktu mencari bug.",
+    "Gunakan millis() dan interrupt alih-alih delay() agar program tetap bisa mengerjakan tugas lain.",
+    "Simpan proyek di Git dengan commit kecil agar mudah kembali ke versi yang masih bekerja."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu sistem embedded?",
+      "back": "Sistem komputer khusus yang tertanam dalam perangkat untuk satu fungsi tertentu, sering dengan batasan waktu nyata, memori, dan daya."
+    },
+    {
+      "front": "Tiga ciri sistem embedded?",
+      "back": "Fungsi spesifik, real-time (respons tepat waktu dan dapat diprediksi), dan sumber daya terbatas."
+    },
+    {
+      "front": "Apa yang membedakan MCU dari MPU?",
+      "back": "MCU menyatukan CPU, Flash, RAM, dan periferal dalam satu chip; MPU hanya CPU dengan memori dan I/O di chip terpisah."
+    },
+    {
+      "front": "Apa itu bare-metal?",
+      "back": "Program berjalan langsung di atas perangkat keras tanpa sistem operasi."
+    },
+    {
+      "front": "Fungsi Flash, SRAM, dan EEPROM?",
+      "back": "Flash menyimpan program, SRAM menyimpan variabel saat berjalan (hilang saat daya mati), EEPROM menyimpan data kecil permanen."
+    },
+    {
+      "front": "Apa itu memory-mapped I/O?",
+      "back": "Periferal diakses lewat register yang dipetakan ke alamat memori."
+    },
+    {
+      "front": "Apa ciri arsitektur Harvard?",
+      "back": "Bus instruksi dan bus data terpisah sehingga fetch dan akses data dapat berjalan bersamaan."
+    },
+    {
+      "front": "Sebutkan lima tahap alur pengembangan MCU.",
+      "back": "Tulis kode, kompilasi, linking, flashing, dan debugging."
+    },
+    {
+      "front": "Kenapa main() tidak boleh return pada program bare-metal?",
+      "back": "Tidak ada OS yang mengambil alih; program harus bertahan di super loop agar perilaku chip tetap terdefinisi."
+    },
+    {
+      "front": "Fungsi kata kunci volatile?",
+      "back": "Memaksa compiler membaca variabel dari memori setiap kali, penting untuk register periferal dan variabel yang diubah ISR."
+    },
+    {
+      "front": "Rumus set, clear, toggle, dan baca bit n?",
+      "back": "REG |= (1<<n); REG &= ~(1<<n); REG ^= (1<<n); (REG>>n)&1."
+    },
+    {
+      "front": "Padanan Arduino untuk DDRx, PORTx, PINx?",
+      "back": "pinMode(), digitalWrite(), dan digitalRead()."
+    },
+    {
+      "front": "Rumus resistor pembatas LED?",
+      "back": "R = (Vcc - Vf) / I."
+    },
+    {
+      "front": "Apa itu pull-up dan efeknya pada pembacaan tombol?",
+      "back": "Resistor yang menarik pin ke HIGH; tombol ke GND membuat nilai terbaca LOW saat ditekan."
+    },
+    {
+      "front": "Kenapa tombol perlu debounce?",
+      "back": "Kontak mekanis memantul beberapa milidetik sehingga satu tekanan dapat terbaca berkali-kali."
+    },
+    {
+      "front": "Rumus konversi ADC ke tegangan?",
+      "back": "V = ADC × Vref / 2^bit; untuk 10-bit dan 5 V, resolusi sekitar 4,88 mV."
+    },
+    {
+      "front": "Apa itu duty cycle dan hubungannya dengan tegangan rata-rata?",
+      "back": "Waktu HIGH dibagi periode; tegangan rata-rata sama dengan duty dikali tegangan puncak."
+    },
+    {
+      "front": "Rentang nilai analogWrite pada Arduino?",
+      "back": "0 sampai 255, dengan 255 berarti duty 100 persen."
+    },
+    {
+      "front": "Rumus nilai pembanding timer CTC?",
+      "back": "OCR = f_cpu / (prescaler × f_target) - 1."
+    },
+    {
+      "front": "Aturan emas ISR?",
+      "back": "Singkat: set flag volatile, proses di loop utama, dan hindari delay() serta Serial.print()."
+    },
+    {
+      "front": "Ciri UART?",
+      "back": "Dua jalur TX dan RX, asinkron dengan baud rate yang disepakati, point-to-point."
+    },
+    {
+      "front": "Ciri I2C?",
+      "back": "Dua jalur SDA dan SCL, sinkron, banyak perangkat dengan alamat 7-bit, 100 atau 400 kHz."
+    },
+    {
+      "front": "Ciri SPI?",
+      "back": "Empat jalur MOSI, MISO, SCK, CS; sangat cepat, master-slave dengan chip select per slave."
+    },
+    {
+      "front": "Fungsi watchdog timer?",
+      "back": "Mereset MCU otomatis jika program macet dan tidak memberi makan watchdog tepat waktu."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi utama memori Flash pada mikrokontroler adalah",
+      "code": "",
+      "options": [
+        "Menyimpan variabel sementara dengan akses tercepat",
+        "Menyimpan program yang tetap ada saat daya mati",
+        "Mengatur frekuensi clock dan tegangan kerja",
+        "Menghubungkan pin I/O ke luar dengan resistor"
+      ],
+      "answer": 1,
+      "explanation": "Flash adalah memori non-volatile untuk program."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Mikrokontroler menyatukan CPU, memori, dan periferal dalam satu chip.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itu definisi dasar MCU dibanding MPU."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah timbangan digital murah memakai baterai AA dan hanya menampilkan angka berat. Chip yang paling sesuai adalah",
+      "code": "",
+      "options": [
+        "Mikroprosesor Cortex-A dengan Linux penuh, supaya bisa multitasking",
+        "Server dengan RAM puluhan gigabyte untuk menyimpan riwayat",
+        "GPU yang dapat menjalankan ribuan thread paralel",
+        "Mikrokontroler hemat daya"
+      ],
+      "answer": 3,
+      "explanation": "Tugas spesifik, baterai, dan harga rendah cocok untuk MCU."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada AVR, ekspresi yang tepat untuk menyalakan bit 2 PORTD tanpa mengubah bit lain adalah",
+      "code": "",
+      "options": [
+        "PORTD |= (1 << 2);",
+        "PORTD = (1 << 2);",
+        "PORTD &= ~(1 << 2);",
+        "PORTD ^= 0x00;"
+      ],
+      "answer": 0,
+      "explanation": "OR dengan mask hanya menyalakan bit yang dituju."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil ekspresi di bawah jika nilai x awal adalah 0b00001010",
+      "code": "x & 0b00001100",
+      "options": [
+        "0b00001100 karena dua bit menyala",
+        "0b00001010",
+        "0b00001000",
+        "0b11110101"
+      ],
+      "answer": 2,
+      "explanation": "Operator AND dengan 0b00001100 mempertahankan bit 3 dan bit 2; bit 3 menyala, bit 2 tidak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tombol dipasang dengan INPUT_PULLUP. Kondisi if yang benar untuk mendeteksi tombol ditekan adalah",
+      "code": "",
+      "options": [
+        "digitalRead(pin) == HIGH",
+        "analogRead(pin) > 1023",
+        "digitalWrite(pin) == LOW",
+        "digitalRead(pin) == LOW"
+      ],
+      "answer": 3,
+      "explanation": "Pull-up membuat pin HIGH saat idle dan LOW saat tombol menyambungkan ke GND."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Arduino Uno membaca analogRead(A1) = 1023. Tegangan pin sekitar",
+      "code": "",
+      "options": [
+        "Tepat 0 V",
+        "Hampir 5 V",
+        "Sekitar 2,5 V atau setengah dari Vref",
+        "Sekitar 10 V karena nilainya sepuluh bit"
+      ],
+      "answer": 1,
+      "explanation": "Nilai maksimum ADC mendekati Vref, sekitar 5 V pada Uno."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "analogWrite() pada Arduino Uno menghasilkan tegangan analog murni dari DAC.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Uno memakai PWM; keluarannya digital yang berdenyut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah LED diredupkan dengan analogWrite(9, 128) dari Uno 5 V. Rata-rata tegangannya sekitar",
+      "code": "",
+      "options": [
+        "Sekitar 0,5 V karena nilai 128 dibagi 255",
+        "5 V",
+        "2,5 V",
+        "128 V"
+      ],
+      "answer": 2,
+      "explanation": "128/255 sekitar 50 persen dari 5 V."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah ISR berisi delay(100) dan Serial.print. Perbaikan yang tepat adalah",
+      "code": "",
+      "options": [
+        "Ubah ISR menjadi hanya set flag volatile lalu proses di loop utama",
+        "Naikkan nilai delay sampai 1000",
+        "Hapus kata kunci volatile dari flag",
+        "Tambahkan lebih banyak Serial.print supaya terlihat"
+      ],
+      "answer": 0,
+      "explanation": "ISR harus singkat dan bebas dari fungsi lambat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua sensor I2C memakai alamat 0x40 yang sama dan keduanya dipasang pada satu jalur. Masalah yang terjadi adalah",
+      "code": "",
+      "options": [
+        "Baud rate keduanya menjadi berbeda otomatis",
+        "Pin CS menjadi aktif untuk dua perangkat sekaligus",
+        "Tabrakan alamat sehingga master tidak dapat memilih salah satunya",
+        "Jalur UART berpindah ke mode paritas genap"
+      ],
+      "answer": 2,
+      "explanation": "Alamat pada I2C harus unik per jalur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada ESP32 yang bekerja pada logika 3,3 V, hal yang perlu diperhatikan saat menyambung modul 5 V adalah",
+      "code": "",
+      "options": [
+        "Sinyal 5 V bisa merusak pin; periksa spesifikasi atau pakai level shifter",
+        "Tidak ada, semua pin selalu toleran 5 V",
+        "Hanya baud rate yang perlu diubah",
+        "Cukup menambah resistor LED pada tiap pin"
+      ],
+      "answer": 0,
+      "explanation": "Pin ESP32 bekerja pada 3,3 V dan tidak seharusnya menerima sinyal 5 V langsung."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perangkat yang paling jelas memakai sistem embedded dengan satu fungsi tetap adalah",
+      "code": "",
+      "options": [
+        "Laptop untuk pemrograman",
+        "Pengendali mesin cuci",
+        "Komputer server kampus dengan banyak layanan",
+        "Tablet yang dapat memasang aplikasi apa saja"
+      ],
+      "answer": 1,
+      "explanation": "Mesin cuci memakai chip tertanam untuk satu fungsi tertentu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Sebagian besar prosesor di dunia adalah prosesor embedded, bukan CPU untuk PC.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Perangkat embedded jauh lebih banyak jumlahnya daripada PC."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Makna real-time pada sistem embedded adalah",
+      "code": "",
+      "options": [
+        "Program selalu memakai jam digital yang tampil di layar",
+        "Respons selalu dalam batas waktu yang dapat diprediksi",
+        "Setiap instruksi dijalankan secepat clock tertinggi",
+        "Data selalu dikirim ke cloud setiap detik"
+      ],
+      "answer": 1,
+      "explanation": "Real-time menuntut ketepatan waktu yang dapat diprediksi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Arduino adalah nama sebuah chip mikrokontroler.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Arduino adalah papan dan ekosistem; chip-nya misalnya ATmega328P."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Isi memori SRAM setelah daya dimatikan adalah",
+      "code": "",
+      "options": [
+        "Tersimpan permanen sampai ditimpa",
+        "Dipindahkan otomatis ke Flash",
+        "Hilang",
+        "Dipindahkan ke EEPROM karena sifatnya cadangan"
+      ],
+      "answer": 2,
+      "explanation": "SRAM bersifat volatile."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Data kalibrasi kecil yang harus bertahan walau listrik padam paling cocok disimpan di",
+      "code": "",
+      "options": [
+        "SRAM",
+        "Stack",
+        "Register ADC",
+        "EEPROM"
+      ],
+      "answer": 3,
+      "explanation": "EEPROM menyimpan data kecil permanen."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan utama ESP32 pada proyek IoT adalah",
+      "code": "",
+      "options": [
+        "Hanya memakai core 8-bit sederhana",
+        "Tidak memerlukan catu daya",
+        "Wi-Fi dan Bluetooth terintegrasi",
+        "Tidak memiliki pin GPIO sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "ESP32 memiliki Wi-Fi dan Bluetooth di dalam chipnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pernyataan yang benar tentang RP2040 adalah",
+      "code": "",
+      "options": [
+        "Memiliki dua core Cortex-M0+ dan blok PIO yang dapat diprogram",
+        "Berbasis core AVR 8-bit dengan RAM 2 KB",
+        "Hanya dapat diprogram memakai assembly dan tidak mendukung bahasa tingkat tinggi apa pun",
+        "Menjalankan Linux penuh bawaan pabrik"
+      ],
+      "answer": 0,
+      "explanation": "RP2040 dual Cortex-M0+ dengan PIO fleksibel."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Papan logika 5 V dan modul logika 3,3 V boleh langsung disambung tanpa memeriksa spesifikasi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Sinyal 5 V dapat merusak pin 3,3 V; periksa datasheet atau gunakan level shifter."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kriteria yang BUKAN termasuk pemilihan mikrokontroler menurut materi adalah",
+      "code": "",
+      "options": [
+        "Jumlah dan jenis I/O",
+        "Konsumsi daya",
+        "Warna papan sirkuit",
+        "Biaya dan ekosistem"
+      ],
+      "answer": 2,
+      "explanation": "Kriterianya: I/O, memori, konektivitas, daya, serta biaya dan ekosistem."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Compiler arm-none-eabi-gcc dipakai untuk menghasilkan kode bagi",
+      "code": "",
+      "options": [
+        "Mikrokontroler ARM Cortex-M",
+        "Hanya prosesor Intel pada PC",
+        "Hanya board AVR 8-bit",
+        "Hanya modul Bluetooth tanpa CPU"
+      ],
+      "answer": 0,
+      "explanation": "Itu cross-compiler untuk target ARM bare-metal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tahap yang memindahkan program ke Flash melalui bootloader USB, ISP, atau SWD disebut",
+      "code": "",
+      "options": [
+        "Linking",
+        "Flashing",
+        "Kompilasi",
+        "Debugging"
+      ],
+      "answer": 1,
+      "explanation": "Flashing menulis program ke Flash chip."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tujuan menggunakan build system seperti PlatformIO, Make, atau CMake adalah",
+      "code": "",
+      "options": [
+        "Menghilangkan kebutuhan compiler sama sekali",
+        "Membuat proses build konsisten dan dapat diotomasi",
+        "Menggantikan fungsi Flash",
+        "Membuat program otomatis bebas bug"
+      ],
+      "answer": 1,
+      "explanation": "Build system menjaga hasil build konsisten antarkomputer."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada Arduino, bagian kode yang dijalankan terus-menerus setelah setup() adalah",
+      "code": "",
+      "options": [
+        "main() yang ditulis pengguna",
+        "ISR()",
+        "pinMode()",
+        "loop()"
+      ],
+      "answer": 3,
+      "explanation": "loop() adalah super loop yang disembunyikan di balik framework."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada program bare-metal, main() sebaiknya diizinkan selesai setelah semua tugas dikerjakan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "main() tidak boleh return; harus ada super loop."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Nilai x setelah eksekusi kode di bawah pada mikrokontroler 8-bit adalah",
+      "code": "uint8_t x = 255;\nx++;",
+      "options": [
+        "256",
+        "255",
+        "0",
+        "-1"
+      ],
+      "answer": 2,
+      "explanation": "uint8_t berputar dari 255 kembali ke 0 (overflow)."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ekspresi untuk membalik bit 4 pada register REG adalah",
+      "code": "",
+      "options": [
+        "REG |= (1 << 4);",
+        "REG &= (1 << 4);",
+        "REG = ~REG;",
+        "REG ^= (1 << 4);"
+      ],
+      "answer": 3,
+      "explanation": "XOR dengan mask membalik satu bit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ekspresi untuk membaca bit ke-6 dari REG sebagai 0 atau 1 adalah",
+      "code": "",
+      "options": [
+        "REG & 6",
+        "(REG >> 6) & 1",
+        "REG | (1 << 6)",
+        "REG >> 6 << 6"
+      ],
+      "answer": 1,
+      "explanation": "Geser ke kanan lalu AND dengan 1 mengambil satu bit."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Setelah eksekusi, nilai REG adalah",
+      "code": "REG = 0b00001100;\nREG &= ~(1 << 3);",
+      "options": [
+        "0b00001100",
+        "0b00000000",
+        "0b00000100",
+        "0b11110111"
+      ],
+      "answer": 2,
+      "explanation": "AND dengan ~(1<<3) menghapus bit 3 sehingga hanya bit 2 yang tersisa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan MicroPython dibanding C/C++ menurut materi adalah",
+      "code": "",
+      "options": [
+        "REPL interaktif tanpa proses compile",
+        "Konsumsi memori lebih kecil dari 1 KB",
+        "Timing lebih presisi pada orde mikrodetik",
+        "Didukung pada semua MCU 8-bit"
+      ],
+      "answer": 0,
+      "explanation": "MicroPython menawarkan REPL tanpa compile, tetapi butuh memori lebih besar."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "MicroPython umumnya cocok dijalankan pada MCU 8-bit dengan RAM sangat kecil.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "MicroPython butuh ratusan KB flash dan puluhan KB RAM, sehingga memakai MCU 32-bit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan C/C++ tetap menjadi standar industri embedded adalah",
+      "code": "",
+      "options": [
+        "Tidak memerlukan compiler",
+        "Tidak mengenal register",
+        "Efisien dan dekat dengan hardware",
+        "Hanya berjalan pada ESP32"
+      ],
+      "answer": 2,
+      "explanation": "C/C++ efisien dalam memori dan kecepatan serta dekat dengan hardware."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Register AVR yang menentukan arah pin (input atau output) adalah",
+      "code": "",
+      "options": [
+        "PINx",
+        "PORTx",
+        "SREG",
+        "DDRx"
+      ],
+      "answer": 3,
+      "explanation": "DDRx: 1 berarti output, 0 berarti input."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Arus per pin GPIO yang disarankan pada materi adalah di sekitar",
+      "code": "",
+      "options": [
+        "2 A",
+        "20 mA",
+        "200 A",
+        "0 mA"
+      ],
+      "answer": 1,
+      "explanation": "Deck menyarankan membatasi arus pin sekitar 20 mA."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Resistor LED untuk Vcc 3,3 V, Vf 2,0 V, dan arus 10 mA adalah",
+      "code": "",
+      "options": [
+        "13 ohm",
+        "1,3 kiloohm",
+        "330 kiloohm",
+        "130 ohm"
+      ],
+      "answer": 3,
+      "explanation": "R = (3,3 - 2,0) / 0,01 = 130 ohm."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada pin yang mengambang (floating), pembacaan digital biasanya",
+      "code": "",
+      "options": [
+        "Acak karena menangkap noise",
+        "Selalu LOW karena resistor internal pasti aktif secara bawaan",
+        "Selalu HIGH",
+        "Selalu bernilai 512"
+      ],
+      "answer": 0,
+      "explanation": "Tanpa pull-up atau pull-down, level pin tidak terdefinisi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pull-down menarik pin ke LOW lewat resistor dan tombol disambungkan ke Vcc.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pull-down menjaga LOW saat idle; tombol ditekan membuat pin HIGH."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rentang waktu stabil yang umum dipakai pada debounce software adalah",
+      "code": "",
+      "options": [
+        "1 sampai 2 mikrodetik",
+        "5 sampai 10 detik",
+        "20 sampai 50 ms",
+        "Tepat 1 menit"
+      ],
+      "answer": 2,
+      "explanation": "Deck menyebut 20 sampai 50 ms."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan debounce memakai millis(), bukan delay(), adalah",
+      "code": "",
+      "options": [
+        "millis() membuat tombol lebih keras",
+        "delay() hanya bekerja pada ESP32",
+        "millis() mengganti pull-up internal",
+        "Program tetap dapat mengerjakan tugas lain"
+      ],
+      "answer": 3,
+      "explanation": "delay() membekukan program, millis() tidak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Resolusi ADC 10-bit pada Vref 5 V adalah sekitar",
+      "code": "",
+      "options": [
+        "48,8 mV",
+        "4,88 mV",
+        "0,488 mV",
+        "5 mV tepat dari 1000 langkah"
+      ],
+      "answer": 1,
+      "explanation": "5 V / 1024 sekitar 4,88 mV."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rumus konversi nilai ADC ke tegangan pada deck adalah",
+      "code": "",
+      "options": [
+        "V = ADC dikali Vref lalu dikurang 1024",
+        "V = Vref / ADC",
+        "V = ADC × Vref / 1024",
+        "V = ADC × 1024 / Vref"
+      ],
+      "answer": 2,
+      "explanation": "Nilai ADC 10-bit dikalikan Vref lalu dibagi 1024."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai analogRead(A0) = 512 pada Uno 5 V berarti tegangan sekitar",
+      "code": "",
+      "options": [
+        "2,5 V",
+        "0,5 V",
+        "5 V",
+        "512 mV tepat"
+      ],
+      "answer": 0,
+      "explanation": "512 × 5 / 1024 = 2,5 V."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "ADC pada ESP32 umumnya memiliki resolusi",
+      "code": "",
+      "options": [
+        "8-bit, sehingga nilai 0 sampai 255",
+        "1-bit, sehingga hanya 0 atau 1",
+        "12-bit, sehingga nilai 0 sampai 4095",
+        "32-bit, sehingga nilai sampai 4 miliar"
+      ],
+      "answer": 2,
+      "explanation": "ESP32 memakai ADC 12-bit; perhatikan nonlinearitas dan kalibrasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Duty cycle 25% pada sinyal PWM 5 V menghasilkan tegangan rata-rata sekitar",
+      "code": "",
+      "options": [
+        "1,25 V",
+        "Sekitar 0,25 V saja",
+        "2,5 V",
+        "3,75 V"
+      ],
+      "answer": 0,
+      "explanation": "0,25 × 5 V = 1,25 V."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai analogWrite yang menghasilkan duty sekitar 100%",
+      "code": "",
+      "options": [
+        "100",
+        "1023",
+        "256 tepat sebagai batas atas",
+        "255"
+      ],
+      "answer": 3,
+      "explanation": "analogWrite menerima 0 sampai 255."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada servo hobi, posisi sudut diatur lewat lebar pulsa sekitar 1 sampai 2 ms yang diulang tiap 20 ms.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itu sinyal servo standar 50 Hz."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk menghasilkan nada pada buzzer, hal yang diubah adalah",
+      "code": "",
+      "options": [
+        "Tegangan referensi ADC",
+        "Frekuensi, dengan duty sekitar 50%",
+        "Jumlah pin DDRx",
+        "Nilai baud rate"
+      ],
+      "answer": 1,
+      "explanation": "Nada ditentukan frekuensi sinyal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pengendali motor DC yang aman dari pin PWM MCU memakai",
+      "code": "",
+      "options": [
+        "Sambungan langsung dari pin ke motor",
+        "Driver H-bridge seperti L298N",
+        "Resistor pull-up pada kabel motor",
+        "Kristal clock tambahan"
+      ],
+      "answer": 1,
+      "explanation": "Motor butuh arus besar sehingga harus lewat driver."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keuntungan interrupt dibanding polling adalah",
+      "code": "",
+      "options": [
+        "CPU selalu menunggu tanpa jeda",
+        "Tidak diperlukan ISR sama sekali",
+        "Variabel tidak perlu volatile",
+        "CPU hanya bekerja saat ada event"
+      ],
+      "answer": 3,
+      "explanation": "Polling memboroskan CPU, interrupt bereaksi saat event terjadi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan kejadian interrupt yang benar adalah",
+      "code": "",
+      "options": [
+        "Event, simpan konteks, ISR, pulihkan konteks, lanjut program utama",
+        "ISR, event, lanjut program, simpan konteks",
+        "Pulihkan konteks, jalankan ISR, tunggu event berikutnya, lalu reset total chip",
+        "Program berhenti permanen, lalu ISR berjalan"
+      ],
+      "answer": 0,
+      "explanation": "CPU menyimpan konteks, menjalankan ISR, lalu memulihkannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada 16 MHz dengan prescaler 256, OCR1A = 62499 menghasilkan interupsi",
+      "code": "",
+      "options": [
+        "10 Hz",
+        "62499 Hz",
+        "1 Hz",
+        "16 MHz"
+      ],
+      "answer": 2,
+      "explanation": "16 MHz / 256 = 62500 hitungan per detik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Isi blok ISR yang ideal menurut materi adalah",
+      "code": "",
+      "options": [
+        "Menunggu 1 detik memakai delay()",
+        "Mengirim seluruh log lewat Serial.print",
+        "Menghitung rata-rata ribuan sampel",
+        "Set flag saja"
+      ],
+      "answer": 3,
+      "explanation": "ISR harus singkat dan memproses hal berat di loop utama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Variabel yang diubah ISR dan dibaca program utama sebaiknya dideklarasikan volatile.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Agar compiler tidak menyimpan nilai lama di register."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Protokol serial yang memakai satu pasang TX dan RX serta baud rate adalah",
+      "code": "",
+      "options": [
+        "I2C",
+        "UART",
+        "SPI",
+        "CAN tanpa jalur data"
+      ],
+      "answer": 1,
+      "explanation": "UART asinkron dengan TX dan RX."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada SPI, jalur yang dipakai untuk memilih slave tertentu adalah",
+      "code": "",
+      "options": [
+        "CS (chip select)",
+        "SDA, jalur data dua arah milik I2C",
+        "TX",
+        "SCL"
+      ],
+      "answer": 0,
+      "explanation": "Tiap slave punya jalur CS sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pesan 100 byte dikirim lewat UART 9600 baud 8N1. Waktu kirimnya sekitar",
+      "code": "",
+      "options": [
+        "10,4 ms",
+        "1040 ms",
+        "104 ms",
+        "10,4 detik"
+      ],
+      "answer": 2,
+      "explanation": "100 × 10 bit / 9600 sekitar 0,104 detik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Teknik yang paling berguna untuk melihat bentuk sinyal I2C atau SPI adalah",
+      "code": "",
+      "options": [
+        "Serial monitor",
+        "Logic analyzer",
+        "Flag optimasi pada compiler GCC",
+        "Watchdog"
+      ],
+      "answer": 1,
+      "explanation": "Logic analyzer menampilkan gelombang digital nyata."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Watchdog timer berguna untuk",
+      "code": "",
+      "options": [
+        "Menambah kecepatan clock CPU sampai dua kali lipat dari nilai awal",
+        "Mereset chip otomatis bila program macet",
+        "Menyimpan program ke EEPROM",
+        "Mengubah prioritas task"
+      ],
+      "answer": 1,
+      "explanation": "Watchdog menjaga keandalan dengan reset otomatis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam FreeRTOS, alat yang dipakai agar task berbagi data aman adalah",
+      "code": "",
+      "options": [
+        "Hanya variabel global tanpa kontrol",
+        "Kristal clock",
+        "Resistor pull-up",
+        "Queue, semaphore, dan mutex"
+      ],
+      "answer": 3,
+      "explanation": "Itulah alat sinkronisasi task pada RTOS."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menurut studi kasus, kipas dinyalakan dengan histeresis 1 °C pada batas 30 °C. Kipas mati ketika suhu",
+      "code": "",
+      "options": [
+        "Turun di bawah 29 °C",
+        "Turun di bawah 30 °C",
+        "Naik di atas 31 °C",
+        "Tepat 30 °C"
+      ],
+      "answer": 0,
+      "explanation": "Ambang mati adalah 30 dikurangi 1, yaitu 29 °C."
+    }
+  ],
+  "prerequisites": [
+    "dasar-elektronika-dan-komponen"
+  ],
+  "chapters": [
+    {
+      "slug": "sistem-embedded-dan-mikrokontroler",
+      "title": "Sistem Embedded dan Mikrokontroler",
+      "est_minutes": 20,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu sistem embedded dan tiga cirinya: fungsi spesifik, real-time, dan sumber daya terbatas.\n- Menyebutkan contoh sistem embedded di sekitarmu.\n- Membedakan mikrokontroler (MCU) dari mikroprosesor (MPU) berdasarkan integrasi, memori, daya, dan sistem operasi.\n- Menjelaskan kenapa kita memilih MCU, bukan komputer penuh, untuk tugas kontrol sederhana.\n\n## Komputer yang tidak terlihat seperti komputer\n\nSaat mendengar kata komputer, kamu mungkin membayangkan laptop atau ponsel. Padahal komputer yang paling banyak jumlahnya justru yang tidak pernah kamu sebut komputer. Mesin cuci yang berhenti memutar saat pintunya dibuka, remote TV, timbangan digital, lampu lalu lintas, dan ECU di mobil, semuanya dikendalikan oleh sebuah chip kecil yang menjalankan satu program tanpa henti.\n\nChip itulah inti dari **sistem embedded**, yaitu sistem komputer khusus yang tertanam (embedded) di dalam sebuah perangkat untuk menjalankan satu fungsi tertentu. Pengguna biasanya tidak menginstal aplikasi baru ke dalamnya. Program ditulis sekali oleh pembuat produk, ditanam di chip, lalu berjalan selama perangkat menyala.\n\nDeck pelajaran ini menyebut contoh seperti mesin cuci, smartwatch, ECU mobil, router Wi-Fi, alat medis, dan sensor IoT. Coba lihat sekelilingmu sekarang. Berapa perangkat yang punya lampu indikator atau layar kecil tetapi tidak bisa kamu pasangi aplikasi? Hampir pasti semuanya berisi sistem embedded.\n\n[Lihat slide perbandingan MCU dan MPU](slide:4)\n\n## Tiga ciri sistem embedded\n\n**1. Fungsi spesifik.** PC melakukan banyak hal: mengetik, menonton, bermain game. Sistem embedded dirancang untuk satu tugas utama. Pengendali mesin cuci hanya mengurus air, putaran drum, dan pengunci pintu. Karena tugasnya sempit, perangkat kerasnya boleh sederhana dan murah.\n\n**2. Real-time.** Respons harus tepat waktu dan dapat diprediksi. Bayangkan sistem airbag. Yang penting bukan seberapa cepat rata-ratanya, tetapi apakah ia selalu bereaksi dalam batas waktu yang dijanjikan. Terlambat sedikit sama dengan gagal. Di dunia embedded, ketepatan waktu sama pentingnya dengan ketepatan hasil.\n\n**3. Sumber daya terbatas.** Memori hanya KB sampai MB, bukan GB. Daya sering dari baterai kecil, dan biaya per unit harus rendah karena produknya dibuat jutaan buah. Akibatnya kamu belajar menulis kode yang hemat: memilih tipe data sekecil yang cukup, menghindari alokasi memori yang tidak perlu, dan mematikan bagian yang sedang tidak dipakai.\n\nSatu catatan penting: sebagian besar prosesor di dunia adalah prosesor embedded, bukan CPU untuk PC. Jadi kemampuan memprogram MCU membuka pintu ke bidang yang sangat luas, dari otomasi rumah sampai peralatan industri.\n\n## Apa itu mikrokontroler\n\n**Mikrokontroler (MCU)** adalah komputer lengkap dalam satu chip. Di dalamnya ada CPU, memori Flash untuk menyimpan program, RAM untuk variabel, dan periferal seperti pin input/output, timer, ADC, serta antarmuka komunikasi. Kamu cukup memberi catu daya, lalu program yang tersimpan di Flash langsung berjalan.\n\nBandingkan dengan **mikroprosesor (MPU)**. Mikroprosesor hanya berisi CPU. Memori dan perangkat input/output berada di chip terpisah yang harus dipasang di papan sirkuit. Karena itu sistem berbasis MPU lebih besar, lebih mahal, dan lebih boros daya, tetapi jauh lebih bertenaga.\n\n| Aspek | Mikrokontroler (MCU) | Mikroprosesor (MPU) |\n| --- | --- | --- |\n| Integrasi | CPU + Flash + RAM + periferal dalam satu chip | Hanya CPU; memori dan I/O di chip terpisah |\n| Memori | KB hingga beberapa MB | GB (RAM eksternal) |\n| Konsumsi daya | Sangat rendah (µA sampai mA) | Tinggi (watt) |\n| Sistem operasi | Bare-metal atau RTOS | OS penuh (Linux, Windows) |\n| Contoh | ATmega328P, STM32, ESP32 | Intel Core, Cortex-A (Raspberry Pi) |\n\nPerhatikan contoh Raspberry Pi pada tabel. Chip utamanya berbasis Cortex-A sehingga termasuk kelas mikroprosesor yang menjalankan Linux. Sebaliknya, papan Arduino Uno memakai ATmega328P, sebuah mikrokontroler. Dua papan itu sama-sama kecil dan populer di kalangan pelajar, tetapi cara memprogramnya sangat berbeda.\n\n## Bare-metal dan RTOS\n\nPada tabel tadi ada istilah **bare-metal**. Artinya programmu berjalan langsung di atas perangkat keras tanpa sistem operasi. Kamulah yang mengatur urutan semua pekerjaan lewat satu program utama. Untuk kebanyakan proyek kecil, ini sudah cukup dan paling hemat sumber daya.\n\nPilihan lain adalah **RTOS** (real-time operating system), sistem operasi ringan yang membagi program menjadi beberapa tugas berprioritas. Kita akan membahasnya di bab tentang daya dan RTOS. Untuk saat ini cukup ingat bahwa MCU biasanya bare-metal atau RTOS, sedangkan MPU menjalankan OS penuh.\n\n## Contoh: memilih chip untuk lampu taman\n\nMisalkan kamu diminta membuat lampu taman yang menyala otomatis saat gelap. Fungsinya satu: baca sensor cahaya, lalu nyalakan LED. Kamu punya dua pilihan.\n\nPilihan pertama, memakai papan berbasis mikroprosesor dengan Linux. Kamu mendapat banyak fitur, tetapi harus menunggu boot sampai puluhan detik, dayanya sampai watt sehingga baterai cepat habis, dan harganya lebih mahal.\n\nPilihan kedua, memakai MCU. Perangkat menyala dalam sekejap, program kecil muat di Flash, dan arusnya bisa turun sampai orde mikroampere saat tidur. Untuk tugas sesederhana ini, MCU jelas pilihan yang masuk akal. Memakai komputer penuh untuk mengedipkan LED mirip memakai truk untuk membawa sebungkus nasi.\n\nSebaliknya, kalau produkmu perlu menampilkan antarmuka grafis kompleks, memutar video, atau menjalankan banyak aplikasi, MPU dengan OS penuh lebih tepat. Batas antara keduanya memang tidak kaku, dan beberapa MCU modern sudah cukup kuat untuk tugas yang dulu butuh MPU. Namun pola umumnya tetap sama: tugas spesifik dan hemat daya cocok untuk MCU.\n\n## Kesalahan umum pemula\n\n- Mengira mikrokontroler sama dengan papan Arduino. Arduino adalah papan pengembangan dan ekosistem perangkat lunak, sedangkan mikrokontrolernya adalah chip di atas papan itu.\n- Mengira MCU lebih lemah berarti lebih buruk. Ia memang tidak secepat PC, tetapi dirancang untuk hal lain: murah, hemat daya, dan tepat waktu.\n- Menganggap real-time berarti secepat mungkin. Yang dimaksud adalah dapat diprediksi dan selalu memenuhi tenggat.\n- Lupa bahwa memori sangat terbatas. Array besar yang tidak masalah di PC bisa langsung menghabiskan RAM 2 KB.\n\n## Latihan berpikir\n\n1. Sebutkan lima perangkat di rumahmu yang menurutmu berisi sistem embedded, lalu tuliskan satu fungsi utama tiap perangkat.\n2. Untuk masing-masing perangkat itu, tebak apakah lebih cocok memakai MCU atau MPU, dan alasannya.\n3. Jelaskan dengan kalimatmu sendiri kenapa respons yang selalu 10 ms lebih baik dari respons yang rata-rata 2 ms tetapi kadang 500 ms pada sistem rem.\n\n## Rangkuman\n\n- Sistem embedded adalah komputer khusus yang tertanam dalam perangkat dengan fungsi spesifik, tuntutan real-time, dan sumber daya terbatas.\n- Mikrokontroler menyatukan CPU, Flash, RAM, dan periferal dalam satu chip; mikroprosesor hanya CPU dengan memori dan I/O terpisah.\n- MCU hemat daya (µA sampai mA) dan biasanya bare-metal atau RTOS; MPU boros daya (watt) dan menjalankan OS penuh.\n- Pilih MCU untuk tugas kontrol yang spesifik, murah, dan hemat daya; pilih MPU untuk tugas berat dengan OS penuh.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah pabrik membuat pengendali pintu otomatis yang hanya membaca sensor gerak lalu menggerakkan motor, dengan baterai kecil dan harga rendah. Pendekatan yang paling masuk akal adalah",
+          "code": "",
+          "options": [
+            "Memakai PC lengkap dengan Windows agar fiturnya banyak",
+            "Memakai server dengan RAM berukuran GB untuk menyimpan semua data gerak",
+            "Memakai mikrokontroler yang menjalankan satu program kontrol",
+            "Memakai mikroprosesor tanpa memori supaya hemat biaya komponen"
+          ],
+          "answer": 2,
+          "explanation": "Tugas sempit, daya kecil, dan biaya rendah adalah ciri kasus yang cocok untuk MCU."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada sistem rem anti-blokir, mana pernyataan yang paling tepat tentang ciri real-time",
+          "code": "",
+          "options": [
+            "Respons harus selalu muncul dalam batas waktu yang bisa diprediksi",
+            "Respons boleh kadang terlambat asalkan rata-ratanya cepat",
+            "Program harus berjalan secepat mungkin tanpa memperhatikan jadwal",
+            "Sistem real-time hanya berarti memakai jam digital di layar"
+          ],
+          "answer": 0,
+          "explanation": "Real-time menuntut ketepatan waktu yang dapat diprediksi, bukan sekadar cepat."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Raspberry Pi dengan chip Cortex-A dan Linux termasuk kelas mikroprosesor, bukan mikrokontroler murni.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Cortex-A menjalankan OS penuh dengan memori eksternal, sehingga masuk kelas MPU."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rina melihat chip yang berisi CPU, Flash, RAM, dan pewaktu sekaligus. Chip tersebut paling tepat disebut",
+          "code": "",
+          "options": [
+            "Mikroprosesor, karena hanya berisi satu inti CPU yang kuat",
+            "Chipset PC, karena menghubungkan banyak komponen luar",
+            "Memori Flash, karena fungsi utamanya hanya menyimpan data",
+            "Mikrokontroler, karena CPU, memori, dan periferal ada dalam satu chip"
+          ],
+          "answer": 3,
+          "explanation": "Integrasi CPU, memori, dan periferal dalam satu chip adalah definisi mikrokontroler."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang teman bilang Arduino adalah nama mikrokontroler. Koreksi yang paling tepat adalah",
+          "code": "",
+          "options": [
+            "Arduino memang chip, hanya saja namanya berbeda untuk tiap negara",
+            "Arduino adalah papan dan ekosistem; mikrokontrolernya chip seperti ATmega328P",
+            "Arduino adalah sistem operasi yang diinstal ke dalam mikroprosesor",
+            "Arduino adalah bahasa pemrograman yang menggantikan C"
+          ],
+          "answer": 1,
+          "explanation": "ATmega328P adalah chip pada Arduino Uno; Arduino sendiri adalah papan, library, dan alat pengembangannya."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "arsitektur-dan-keluarga-mcu",
+      "title": "Arsitektur dan Keluarga Mikrokontroler",
+      "est_minutes": 22,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Menyebutkan komponen utama di dalam sebuah mikrokontroler dan fungsi masing-masing.\n- Membedakan Flash, SRAM, dan EEPROM berdasarkan sifat penyimpanannya.\n- Menjelaskan memory-mapped I/O dan arsitektur Harvard dengan bahasamu sendiri.\n- Mengenali keluarga MCU populer (AVR, PIC, STM32, ESP32, RP2040) dan memilih salah satunya berdasarkan kebutuhan.\n\n## Anatomi sebuah mikrokontroler\n\nBuka sebuah mikrokontroler secara imajiner, lalu kamu akan menemukan beberapa blok yang saling terhubung lewat **bus internal**, yaitu jalur bersama untuk alamat, data, dan kontrol.\n\n- **CPU core** berisi ALU (unit aritmetika dan logika) serta register. Di sinilah instruksi dieksekusi.\n- **Clock dan reset** menentukan irama kerja dan kondisi awal saat chip dinyalakan.\n- **Interrupt controller** mengatur kejadian yang boleh menyela program utama.\n- **Memori**: Flash, SRAM, dan EEPROM.\n- **Periferal**: GPIO, timer, ADC, UART, serta antarmuka SPI dan I2C.\n\n[Lihat diagram anatomi MCU](slide:5)\n\nSemua blok itu berbagi bus yang sama. CPU bertindak seperti manajer yang memberi perintah, sedangkan memori dan periferal adalah tim yang mengerjakan tugas spesifik.\n\n## Tiga jenis memori\n\nPemula sering bingung kenapa MCU punya beberapa jenis memori sekaligus. Jawabannya, tiap jenis punya sifat dan peran berbeda.\n\n| Memori | Isi | Saat daya mati |\n| --- | --- | --- |\n| Flash | Program (kode) | Tetap tersimpan (non-volatile) |\n| SRAM | Variabel dan stack saat program berjalan | Hilang (volatile) |\n| EEPROM | Data permanen kecil, misalnya nilai kalibrasi | Tetap tersimpan |\n\n**Flash** menyimpan programmu. Saat kamu menekan tombol Upload, file hasil kompilasi dituliskan ke Flash. Kapasitasnya paling besar, tetapi jumlah siklus tulisnya terbatas sehingga bukan tempat untuk menyimpan data yang sering berubah.\n\n**SRAM** adalah tempat kerja. Variabel lokal, variabel global, dan stack hidup di sini. Pada ATmega328P kapasitasnya hanya 2 KB, jadi array besar atau string panjang bisa cepat menghabiskannya. Begitu daya dimatikan, isinya hilang.\n\n**EEPROM** cocok untuk data kecil yang harus bertahan, misalnya kalibrasi sensor atau pengaturan terakhir pengguna. Menulisnya relatif lambat dan jumlah tulisnya terbatas, jadi tulis hanya saat nilai benar-benar berubah.\n\nContoh praktis: kamu membuat termostat dengan batas suhu yang bisa diubah pengguna. Nilai batas disimpan di EEPROM agar tidak kembali ke awal setelah listrik padam. Suhu yang terbaca setiap detik cukup berada di variabel SRAM.\n\n## Memory-mapped I/O dan arsitektur Harvard\n\nBagaimana CPU memerintah periferal seperti pin atau timer? Pada kebanyakan MCU, periferal diakses lewat **register yang dipetakan ke alamat memori** (memory-mapped I/O). Menulis angka ke alamat tertentu berarti mengubah perilaku periferal tersebut. Itulah alasan kode embedded sering terlihat seperti operasi bit pada nama register, topik yang kita bahas di bab berikutnya.\n\nBanyak MCU juga memakai **arsitektur Harvard**: bus instruksi dan bus data dipisah. Akibatnya, CPU dapat mengambil instruksi berikutnya sambil membaca atau menulis data pada saat yang sama. Dibandingkan satu bus bersama, cara ini meningkatkan kinerja pada clock yang sama. Perlu hati-hati: istilah ini menggambarkan kecenderungan umum, dan rincian implementasinya berbeda antarfamili.\n\n## Keluarga mikrokontroler populer\n\nTidak ada satu MCU terbaik. Kamu memilih yang paling cocok dengan kebutuhan. Berikut lima keluarga yang sering ditemui.\n\n| MCU | Core | Clock | Flash / RAM | Keunggulan |\n| --- | --- | --- | --- | --- |\n| ATmega328P | AVR 8-bit | 16 MHz | 32 KB / 2 KB | Sederhana, ekosistem Arduino |\n| PIC16F877A | PIC 8-bit | 20 MHz | 8K word / 368 B | Populer di industri dan pendidikan |\n| STM32F103 | ARM Cortex-M3 32-bit | 72 MHz | 64 KB / 20 KB | Performa tinggi, periferal lengkap |\n| ESP32 | Xtensa LX6 dual-core | 240 MHz | 4 MB* / 520 KB | Wi-Fi dan Bluetooth terintegrasi |\n| RP2040 | Dual Cortex-M0+ | 133 MHz | sampai 16 MB* / 264 KB | PIO fleksibel, harga sangat murah |\n\n\\* Flash eksternal (SPI) pada modul atau board.\n\nBeberapa catatan agar tabel itu hidup:\n\n- **ATmega328P** adalah otak Arduino Uno. Core 8-bit sederhana dengan 2 KB RAM membuatnya mudah dipahami, dan ia bekerja pada logika 5 V di papan Uno.\n- **PIC16F877A** punya program yang diukur dalam word, bukan byte, sehingga angka 8K word tidak boleh langsung dibaca sebagai 8 KB.\n- **STM32F103** memakai core ARM 32-bit dan banyak periferal. Ia cocok saat 8-bit sudah terasa sesak.\n- **ESP32** punya Wi-Fi dan Bluetooth di dalam chip, sehingga populer untuk IoT. Pin logikanya bekerja pada 3,3 V.\n- **RP2040** punya dua core dan blok PIO yang bisa diprogram untuk membuat protokol sendiri. Harganya sangat murah dan logikanya juga 3,3 V.\n\nSatu hal yang sering dilupakan: tegangan logika. Papan 5 V dan 3,3 V tidak boleh dihubungkan langsung tanpa memeriksa spesifikasi, karena sinyal 5 V dapat merusak pin 3,3 V. Cek datasheet atau gunakan level shifter.\n\n## Memilih mikrokontroler yang tepat\n\nAda lima pertanyaan yang bisa kamu ajukan sebelum memilih chip.\n\n1. **Jumlah dan jenis I/O.** Berapa pin GPIO, kanal ADC, kanal PWM, dan antarmuka yang dibutuhkan?\n2. **Memori.** Seberapa besar program dan datanya?\n3. **Konektivitas.** Perlu Wi-Fi, BLE, CAN, atau USB?\n4. **Konsumsi daya.** Apakah ada mode sleep, dan perangkat memakai baterai?\n5. **Biaya dan ekosistem.** Berapa harga chip, dan apakah library serta komunitasnya cukup besar?\n\nLihat kriteria pemilihan MCU\n\n### Studi kecil: tiga proyek, tiga pilihan\n\n- **Pengatur lampu belajar sederhana.** Hanya butuh satu tombol dan satu keluaran PWM. ATmega328P sudah lebih dari cukup, dan banyak tutorialnya.\n- **Stasiun cuaca yang mengirim data lewat Wi-Fi.** Konektivitas menjadi syarat utama, sehingga ESP32 masuk akal.\n- **Pengendali motor dengan banyak timer dan perhitungan cepat.** Core 32-bit seperti STM32 lebih nyaman dipakai.\n\nPerhatikan bahwa tiap keputusan berawal dari kebutuhan, bukan dari merek yang sedang populer. Kebiasaan ini akan menghemat uang dan waktu.\n\n## Kesalahan umum pemula\n\n- Memilih chip paling kuat untuk semua proyek. Chip yang lebih besar biasanya lebih mahal dan lebih boros daya.\n- Mengabaikan RAM. Banyak program gagal bukan karena Flash penuh, tetapi karena SRAM habis.\n- Menulis data yang sering berubah ke EEPROM atau Flash sehingga umur memori cepat berkurang.\n- Menganggap angka clock langsung menentukan performa. Lebar core dan periferal juga berpengaruh.\n\n## Latihan berpikir\n\n1. Tentukan memori yang tepat (Flash, SRAM, atau EEPROM) untuk: kode program, hasil pembacaan suhu terakhir, dan nilai kalibrasi sensor.\n2. Kamu butuh 12 kanal ADC dan Bluetooth untuk perangkat berbaterai. Sebutkan dua hal yang akan kamu cek di datasheet sebelum memilih chip.\n3. Jelaskan kenapa ESP32 dan Arduino Uno tidak boleh langsung disambung pin ke pin tanpa pemeriksaan tegangan.\n\n## Rangkuman\n\n- MCU terdiri dari CPU, clock dan reset, interrupt controller, memori, dan periferal yang terhubung lewat bus internal.\n- Flash menyimpan program, SRAM menyimpan variabel saat berjalan, dan EEPROM menyimpan data kecil yang harus bertahan.\n- Periferal diakses lewat register yang dipetakan ke memori, dan banyak MCU memakai arsitektur Harvard dengan bus instruksi dan data terpisah.\n- AVR, PIC, STM32, ESP32, dan RP2040 punya karakter masing-masing; pilih berdasarkan I/O, memori, konektivitas, daya, serta biaya dan ekosistem.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah alat menyimpan batas suhu pilihan pengguna dan harus tetap ingat setelah listrik padam. Tempat yang paling tepat adalah",
+          "code": "",
+          "options": [
+            "Variabel biasa di SRAM yang selalu dibaca saat program berjalan",
+            "EEPROM",
+            "Register timer yang diatur lewat interrupt controller",
+            "Stack yang dibuat otomatis setiap fungsi dipanggil"
+          ],
+          "answer": 1,
+          "explanation": "EEPROM menyimpan data kecil secara permanen, sedangkan SRAM hilang saat daya mati."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kode program Arduino hasil kompilasi disimpan di bagian memori mana saat kamu menekan Upload",
+          "code": "",
+          "options": [
+            "SRAM, karena program harus cepat diakses oleh CPU",
+            "Register ADC, karena program dibaca sebagai sinyal analog",
+            "EEPROM, karena ukurannya paling besar di semua MCU",
+            "Flash, yang tidak hilang saat daya mati"
+          ],
+          "answer": 3,
+          "explanation": "Flash adalah memori non-volatile untuk program."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada memory-mapped I/O, periferal diakses dengan membaca dan menulis register yang dipetakan ke alamat memori.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Itulah pengertian memory-mapped I/O: register periferal punya alamat seperti memori."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Proyek stasiun cuaca perlu mengirim data lewat Wi-Fi dengan satu chip saja. Kandidat yang paling cocok dari daftar berikut adalah",
+          "code": "",
+          "options": [
+            "ESP32",
+            "ATmega328P, karena ada Wi-Fi bawaan di dalam chip",
+            "PIC16F877A, karena memorinya dihitung dalam word",
+            "RP2040 murni tanpa modul tambahan apa pun"
+          ],
+          "answer": 0,
+          "explanation": "ESP32 memiliki Wi-Fi dan Bluetooth terintegrasi di chipnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa keuntungan utama arsitektur Harvard dibanding satu bus bersama",
+          "code": "",
+          "options": [
+            "Program otomatis tersimpan di EEPROM setelah dijalankan",
+            "Semua periferal dapat bekerja tanpa memerlukan clock",
+            "Instruksi dan data dapat diambil bersamaan lewat bus terpisah",
+            "Daya konsumsi chip selalu turun sampai nol"
+          ],
+          "answer": 2,
+          "explanation": "Bus instruksi dan data yang terpisah memungkinkan fetch dan akses data berjalan paralel."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "toolchain-dan-struktur-program",
+      "title": "Toolchain dan Struktur Program C Embedded",
+      "est_minutes": 22,
+      "slide_from": 8,
+      "slide_to": 9,
+      "body": "## Tujuan\n\n- Menyebutkan lima tahap alur pengembangan: tulis kode, kompilasi, linking, flashing, dan debugging.\n- Menjelaskan fungsi file .o, .elf, .hex, dan .bin.\n- Menjelaskan struktur program embedded: inisialisasi lalu super loop.\n- Menjelaskan kegunaan tipe data berukuran pasti dan kata kunci volatile.\n\n## Dari teks ke chip\n\nSaat kamu menulis kode di komputer, MCU tidak bisa langsung membacanya. Chip hanya mengerti kode mesin dalam bentuk angka biner. Jembatannya adalah **toolchain**, yaitu rangkaian alat yang mengubah teks programmu menjadi sesuatu yang bisa dijalankan chip. Alur lengkapnya ada lima tahap.\n\n[Lihat alur toolchain](slide:8)\n\n**1. Tulis kode.** Kamu memakai editor atau IDE seperti Arduino IDE, PlatformIO, STM32CubeIDE, atau MPLAB X. IDE biasanya membungkus tahap berikutnya sehingga cukup satu tombol.\n\n**2. Kompilasi.** Compiler seperti `avr-gcc` untuk AVR atau `arm-none-eabi-gcc` untuk ARM Cortex-M mengubah setiap file sumber menjadi file objek berekstensi `.o`. Penting dicatat, compiler untuk MCU berjalan di PC kamu tetapi menghasilkan kode untuk chip yang berbeda. Proses ini disebut cross-compilation.\n\n**3. Linking.** Linker menggabungkan semua file objek dan library menjadi satu berkas `.elf`. Dari sini dibuat format yang siap ditulis ke chip, yaitu `.hex` atau `.bin`. Linker juga menentukan di alamat mana kode dan data diletakkan di memori.\n\n**4. Flashing.** File hasil dipindahkan ke Flash MCU. Caranya bisa lewat bootloader USB (seperti pada Arduino), ISP, atau SWD dan JTAG. Bootloader adalah program kecil di chip yang menerima program baru lewat port serial atau USB, sedangkan SWD dan JTAG adalah antarmuka debug yang juga bisa dipakai untuk menulis program.\n\n**5. Debugging.** Kamu menguji hasilnya memakai serial monitor, debugger, atau logic analyzer. Bila ada yang salah, kamu kembali ke tahap pertama.\n\n### Siklus yang berulang\n\nSeluruh alur ini diulang berkali-kali: edit, build, flash, uji. Karena itu proses build sebaiknya konsisten dan dapat diotomasi dengan build system seperti PlatformIO, Make, atau CMake. Dengan begitu, rekan setimmu yang membuka proyek di komputer lain mendapat hasil yang sama.\n\nBayangkan dua orang membangun proyek yang sama. Satu memakai versi compiler lama dan satu memakai versi baru, lalu hasil kerjanya berbeda tanpa ada yang tahu sebabnya. Build system yang mengunci versi toolchain mencegah masalah semacam ini.\n\n## Struktur program: inisialisasi dan super loop\n\nHampir semua program bare-metal punya dua bagian. Berikut contoh klasik untuk AVR yang mengedipkan LED di pin PB5.\n\n```c\n#include <avr/io.h>\n#include <util/delay.h>\n\nint main(void) {\n    /* 1. Inisialisasi (sekali) */\n    DDRB |= (1 << DDB5);        // PB5 sebagai output\n\n    /* 2. Super loop (selamanya) */\n    while (1) {\n        PORTB ^= (1 << PORTB5); // toggle LED\n        _delay_ms(500);\n    }\n}\n```\n\nLihat contoh program super loop\n\nBagian pertama adalah **inisialisasi**. Di sini kamu mengatur clock, arah pin, periferal, dan interrupt sekali saja di awal. Bagian kedua adalah **super loop**, yaitu `while (1)` yang tidak pernah berakhir. Di komputer biasa, program selesai lalu OS mengambil alih kembali. Di MCU tidak ada yang mengambil alih, sehingga `main()` tidak boleh return. Bila `main()` selesai, perilaku chip tidak terdefinisi dengan baik, dan hasilnya bisa berupa reset berulang atau program liar.\n\nPada Arduino, bentuk ini disembunyikan. `setup()` adalah bagian inisialisasi yang dijalankan sekali, dan `loop()` adalah super loop yang dipanggil terus-menerus. Fungsi `main()` yang asli ada di dalam framework dan tidak terlihat olehmu.\n\n```cpp\nvoid setup() {\n  pinMode(LED_BUILTIN, OUTPUT);   // dijalankan sekali\n}\n\nvoid loop() {\n  digitalWrite(LED_BUILTIN, HIGH);\n  delay(500);\n  digitalWrite(LED_BUILTIN, LOW);\n  delay(500);\n}\n```\n\nDua kode di atas melakukan hal yang sama. Yang satu menulis register langsung, yang lain memakai fungsi bantu Arduino.\n\n## Tipe data pasti\n\nDi PC, `int` biasanya 32 bit. Di MCU 8-bit seperti AVR, `int` umumnya 16 bit, dan ukuran tipe lain bisa berbeda antarplatform. Karena kode embedded sering berurusan dengan register berukuran tertentu, kita memakai tipe dari `<stdint.h>`:\n\n| Tipe | Ukuran | Rentang |\n| --- | --- | --- |\n| `uint8_t` | 8 bit tanpa tanda | 0 sampai 255 |\n| `int16_t` | 16 bit bertanda | -32768 sampai 32767 |\n| `uint32_t` | 32 bit tanpa tanda | 0 sampai 4.294.967.295 |\n\nTipe seperti ini membuat ukuran data jelas dan menghemat SRAM. Menyimpan angka 0 sampai 100 dalam `uint8_t` lebih hemat daripada `int` 16 bit, dan sering kali lebih cepat di MCU 8-bit.\n\nSatu jebakan klasik: `uint8_t x = 255; x++;` menghasilkan 0, bukan 256, karena nilainya berputar (overflow). Selalu pilih tipe yang cukup besar untuk nilai terbesar yang mungkin muncul.\n\n## volatile: memberi tahu compiler agar tidak terlalu pintar\n\nCompiler suka mengoptimalkan. Bila ia melihat sebuah variabel tidak diubah di dalam loop, ia boleh menyimpan nilainya di register CPU dan tidak membacanya ulang dari memori. Itu aman untuk variabel biasa, tetapi berbahaya untuk dua kasus:\n\n- register periferal yang nilainya bisa berubah oleh perangkat keras sendiri;\n- variabel yang diubah di dalam ISR (rutin interupsi) lalu dibaca di program utama.\n\n```c\nvolatile uint8_t tombol_ditekan = 0;   // diubah oleh ISR\n\nwhile (!tombol_ditekan) {\n    // tunggu\n}\n```\n\nTanpa `volatile`, compiler dapat menyimpulkan bahwa `tombol_ditekan` tidak pernah berubah di dalam loop, lalu membuat loop yang tidak pernah keluar. Dengan `volatile`, ia wajib membaca nilainya dari memori setiap kali. Kita akan bertemu lagi dengan pola ini saat membahas interrupt.\n\n## Kesalahan umum pemula\n\n- Menaruh kode di luar `while (1)` dan heran kenapa program hanya berjalan sekali.\n- Membiarkan `main()` selesai pada program bare-metal.\n- Memakai `int` untuk semua variabel sehingga SRAM terbuang atau ukurannya tidak sesuai dugaan.\n- Lupa `volatile` pada variabel yang dibagi dengan ISR.\n- Mengubah banyak hal sekaligus sebelum flash, sehingga sulit mencari sumber bug.\n\n## Latihan berpikir\n\n1. Urutkan lima tahap alur pengembangan dan sebutkan satu alat untuk tiap tahap.\n2. Ubah contoh `main()` AVR menjadi bentuk `setup()` dan `loop()` dengan menunjuk bagian mana yang masuk ke fungsi mana.\n3. Mengapa `uint8_t jumlah = 200; jumlah += 100;` tidak menghasilkan 300, dan berapa nilainya sekarang.\n\n## Rangkuman\n\n- Toolchain mengubah kode sumber menjadi file yang bisa dijalankan chip lewat tahap tulis, kompilasi, linking, flashing, dan debugging.\n- Compiler menghasilkan file objek .o, linker menggabungkannya menjadi .elf, lalu dibuat .hex atau .bin untuk ditulis ke Flash.\n- Program embedded terdiri dari inisialisasi sekali di awal dan super loop yang tidak pernah berakhir; pada Arduino keduanya menjadi setup() dan loop().\n- Pakai tipe pasti dari stdint.h dan tandai register serta variabel bersama ISR dengan volatile.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah kompilasi, kamu punya beberapa file .o dan library. Tahap yang menggabungkannya menjadi satu berkas .elf adalah",
+          "code": "",
+          "options": [
+            "Flashing ke bootloader USB atau ISP",
+            "Debugging memakai serial monitor dan logic analyzer",
+            "Penulisan kode di editor atau IDE yang kamu pakai",
+            "Linking"
+          ],
+          "answer": 3,
+          "explanation": "Linker menggabungkan objek dan library menjadi .elf."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah program bare-metal kadang reset sendiri tanpa sebab setelah baris terakhir main() tercapai. Dugaan paling masuk akal adalah",
+          "code": "",
+          "options": [
+            "Compiler salah menerjemahkan semua baris menjadi kode mesin",
+            "main() selesai karena tidak ada super loop yang menahannya",
+            "Flash terlalu besar sehingga program tidak boleh dijalankan",
+            "Pin output bekerja pada tegangan yang terlalu rendah"
+          ],
+          "answer": 1,
+          "explanation": "Pada MCU, main() tidak boleh return; harus ada while(1) agar program berjalan terus."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada Arduino, setup() dijalankan sekali dan loop() dipanggil berulang tanpa henti.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "setup() adalah inisialisasi, loop() adalah super loop yang disembunyikan di balik framework."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Variabel flag diubah di dalam ISR dan dibaca di loop utama. Kata kunci yang perlu ditambahkan pada deklarasinya adalah",
+          "code": "",
+          "options": [
+            "static const",
+            "register unsigned",
+            "volatile",
+            "extern inline"
+          ],
+          "answer": 2,
+          "explanation": "volatile memaksa compiler membaca nilai dari memori setiap kali, sehingga perubahan oleh ISR terlihat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menyimpan angka hasil bagi 0 sampai 100 dan ingin hemat SRAM pada AVR. Tipe yang paling pas adalah",
+          "code": "",
+          "options": [
+            "uint8_t",
+            "uint32_t, karena lebih besar sehingga lebih aman dipakai",
+            "float, supaya angka desimal selalu bisa disimpan",
+            "int64_t, karena rentangnya mencakup seluruh bilangan"
+          ],
+          "answer": 0,
+          "explanation": "uint8_t menampung 0 sampai 255 dengan satu byte, cukup untuk angka sampai 100."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "manipulasi-bit-dan-pilihan-bahasa",
+      "title": "Manipulasi Bit dan Pilihan Bahasa",
+      "est_minutes": 25,
+      "slide_from": 10,
+      "slide_to": 12,
+      "body": "## Tujuan\n\n- Mengubah, menghapus, membalik, dan membaca satu bit register dengan operator bitwise C.\n- Menjelaskan kenapa operasi read-modify-write menjaga bit lain tetap aman.\n- Membandingkan C/C++ dan MicroPython dari sisi memori, kecepatan, dan kecocokan.\n- Membaca program kedip LED di Arduino C++ dan MicroPython.\n\n## Register dan bit\n\nDi bab sebelumnya kamu tahu periferal diatur lewat register. Sebuah register 8-bit berisi delapan sakelar kecil bernomor 7 sampai 0. Tiap bit bisa bernilai 0 atau 1, dan biasanya mengendalikan satu hal tertentu, misalnya satu pin output.\n\nPerhatikan register PORTB berikut. Kita ingin menyalakan bit 3 tanpa mengganggu bit lain.\n\n| Bit | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| Sebelum | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |\n| Sesudah | 0 | 0 | 1 | 0 | 1 | 0 | 0 | 1 |\n\nHanya bit 3 yang berubah dari 0 menjadi 1. Kalau kamu menulis angka langsung seperti `PORTB = 0b00001000`, bit lain ikut terhapus. Cara aman adalah read-modify-write: baca nilai lama, ubah satu bit saja, tulis kembali.\n\n[Lihat tabel manipulasi bit](slide:10)\n\n```c\nPORTB |= (1 << 3);   // set bit 3, bit lain tetap\n```\n\n## Lima operasi dasar\n\nEkspresi `(1 << n)` membuat angka yang hanya bit ke-n bernilai 1. Misalnya `(1 << 3)` adalah `0b00001000` atau 8. Angka ini disebut **mask**. Dengan mask itu kamu mendapatkan lima operasi.\n\n| Operasi | Ekspresi C |\n| --- | --- |\n| Set bit n | `REG \\|= (1 << n);` |\n| Clear bit n | `REG &= ~(1 << n);` |\n| Toggle bit n | `REG ^= (1 << n);` |\n| Baca bit n | `(REG >> n) & 1` |\n| Mask beberapa bit | `REG & 0x0F` |\n\nMari telusuri satu per satu dengan `REG = 0b00100001` (33).\n\n- **Set bit 3.** `REG | 0b00001000` menjadi `0b00101001`. Operator OR memaksa bit itu menjadi 1 dan tidak mengganggu yang lain.\n- **Clear bit 0.** `~(1 << 0)` adalah `0b11111110`. Operator AND dengan nilai itu menjadikan bit 0 bernilai 0, sisanya tetap. Hasilnya `0b00100000`.\n- **Toggle bit 5.** XOR dengan `0b00100000` membalik bit 5, dari 1 menjadi 0.\n- **Baca bit 5.** Geser ke kanan lima kali, lalu AND dengan 1. Hasilnya 1 bila bit tersebut menyala, selain itu 0.\n- **Mask empat bit rendah.** `REG & 0x0F` mengambil bit 3 sampai 0 saja.\n\nIngat pola sederhana ini: **OR untuk set, AND dengan negasi untuk clear, XOR untuk toggle, geser lalu AND untuk membaca**. Menghafal empat pola itu menyelesaikan sebagian besar masalah register.\n\nBeberapa bit sekaligus juga bisa diatur dengan menggabungkan mask, misalnya `REG |= (1 << 2) | (1 << 4);` untuk menyalakan bit 2 dan bit 4 dalam satu baris.\n\n## Latihan kode: operasi bit murni\n\nKamu bisa memodelkan perilaku ini di Python tanpa perangkat keras. Pada latihan di bawah, fungsi menerima nilai register sebagai bilangan bulat dan mengembalikan nilai baru.\n\n## Dua bahasa untuk satu tugas\n\nKamu sudah melihat C untuk AVR. Pilihan lain yang makin populer adalah **MicroPython**, versi ringkas Python yang berjalan di MCU. Keduanya punya tempat masing-masing.\n\n| Aspek | C / C++ | MicroPython |\n| --- | --- | --- |\n| Eksekusi | Dikompilasi ke kode mesin | Bytecode dijalankan interpreter |\n| Memori | Bisa kurang dari 1 KB; muat di MCU 8-bit | Butuh ratusan KB flash dan puluhan KB RAM |\n| Kecepatan dan timing | Sangat cepat, waktu dapat diprediksi | Jauh lebih lambat; ada jeda garbage collector |\n| MCU yang didukung | Hampir semua (AVR, PIC, ARM, ESP32) | MCU 32-bit: ESP32, RP2040, sebagian STM32 |\n| Alur kerja | Edit, compile, flash | REPL interaktif, tanpa compile |\n| Cocok untuk | Produk akhir, real-time, hemat daya | Belajar, prototipe cepat, IoT sederhana |\n\nLihat perbandingan C/C++ dan MicroPython\n\nKesimpulannya bukan siapa yang menang. C/C++ tetap menjadi standar industri karena efisien dan dekat dengan hardware. MicroPython berguna untuk belajar dan membuat prototipe di board 32-bit seperti ESP32 dan Raspberry Pi Pico. Jeda garbage collector pada MicroPython berarti ia kurang cocok untuk tugas dengan tenggat waktu ketat dalam orde mikrodetik.\n\n## Kedip LED dalam dua bahasa\n\nBerikut program yang sama dalam dua gaya, dengan LED pada GPIO2 ESP32.\n\n```cpp\nconst int LED = 2;   // GPIO2\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED, !digitalRead(LED));\n  delay(500);\n}\n```\n\n```python\nfrom machine import Pin\nimport time\n\nled = Pin(2, Pin.OUT)   # GPIO2\nwhile True:\n    led.value(not led.value())\n    time.sleep_ms(500)\n```\n\nLogikanya identik: atur pin sebagai output, lalu balik levelnya di dalam loop tanpa akhir. Perbedaannya ada pada alur kerja. Versi C++ harus dikompilasi dan di-flash, sedangkan versi MicroPython bisa kamu ketik baris demi baris di REPL dan langsung melihat hasilnya.\n\nPerhatikan juga bahwa pada contoh C++ kita memakai `digitalRead(LED)` untuk pin keluaran. Pada banyak papan hal ini menghasilkan status keluaran terakhir yang diset, tetapi perilakunya bergantung pada platform. Cara yang lebih jelas dan portabel adalah menyimpan status dalam variabel sendiri, misalnya `bool nyala = false;`, lalu membaliknya.\n\n## Memilih untuk proyekmu\n\nAjukan tiga pertanyaan. Apakah chipnya 8-bit dengan RAM beberapa KB, jika ya maka C/C++ adalah satu-satunya pilihan realistis. Apakah kamu butuh prototipe cepat di ESP32 atau RP2040, jika ya MicroPython mempercepat eksperimen. Apakah produknya harus hemat daya dan tepat waktu, jika ya condongkan ke C/C++.\n\n## Kesalahan umum pemula\n\n- Menulis `REG = (1 << n)` padahal maksudnya `REG |= (1 << n)`, sehingga bit lain terhapus.\n- Lupa tanda kurung pada `(1 << n)` sehingga urutan operator membuat hasil keliru.\n- Mengira `~` dan `!` sama. Tilde membalik semua bit, sedangkan tanda seru membalik nilai logika.\n- Mencoba menjalankan MicroPython di MCU 8-bit kecil yang tidak punya cukup memori.\n\n## Rangkuman\n\n- Operasi read-modify-write mengubah satu bit tanpa mengganggu bit lain pada register yang sama.\n- Set memakai OR, clear memakai AND dengan negasi mask, toggle memakai XOR, dan baca memakai geser lalu AND 1.\n- C/C++ unggul pada memori, kecepatan, dan timing; MicroPython unggul pada kemudahan belajar dan prototipe di MCU 32-bit.\n- Program kedip LED punya logika yang sama di kedua bahasa: atur pin output, lalu balik levelnya tiap setengah detik.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "PORTB bernilai 0b00100001 dan kamu ingin mematikan bit 0 tanpa mengubah bit lain. Ekspresi yang tepat adalah",
+          "code": "",
+          "options": [
+            "PORTB |= (1 << 0) | (1 << 5);",
+            "PORTB ^= 0xFF;",
+            "PORTB &= ~(1 << 0);",
+            "PORTB = (1 << 0);"
+          ],
+          "answer": 2,
+          "explanation": "AND dengan negasi mask menghapus satu bit saja."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim ingin membalik LED di PB5 setiap iterasi loop tanpa membaca dulu. Operator yang paling ringkas adalah",
+          "code": "",
+          "options": [
+            "XOR dengan (1 << 5)",
+            "AND dengan (1 << 5), karena menggeser bit ke kiri",
+            "OR dengan 0xFF, karena menyalakan seluruh bit register",
+            "Penugasan langsung bernilai 0 agar semua pin padam"
+          ],
+          "answer": 0,
+          "explanation": "REG ^= (1 << n) membalik bit n setiap kali dijalankan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menulis PORTB = (1 << 3) mengubah bit 3 saja dan membiarkan bit lain apa adanya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Penugasan langsung menimpa seluruh register; bit lain menjadi 0. Gunakan |=."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prototipe cepat di ESP32 dengan banyak percobaan interaktif lewat REPL paling cocok memakai",
+          "code": "",
+          "options": [
+            "Assembly murni agar tiap instruksi bisa dikendalikan",
+            "C++ dengan alur compile dan flash setiap perubahan",
+            "Bahasa pemrograman PLC yang tidak butuh interpreter",
+            "MicroPython"
+          ],
+          "answer": 3,
+          "explanation": "MicroPython punya REPL tanpa compile dan cocok untuk belajar dan prototipe."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa hasil ekspresi berikut jika nilai REG = 0b00101001",
+          "code": "(REG >> 5) & 1",
+          "options": [
+            "0, karena bit 5 tidak menyala",
+            "1",
+            "5",
+            "8"
+          ],
+          "answer": 1,
+          "explanation": "REG >> 5 menghasilkan 0b001, dan AND dengan 1 memberi 1, jadi bit 5 menyala."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Alat bantu register",
+          "prompt": "Modelkan register 8-bit sebagai bilangan bulat. Lengkapi empat fungsi:\n\n- `set_bit(reg, n)` mengembalikan `reg` dengan bit ke-n menjadi 1.\n- `clear_bit(reg, n)` mengembalikan `reg` dengan bit ke-n menjadi 0.\n- `toggle_bit(reg, n)` membalik bit ke-n.\n- `baca_bit(reg, n)` mengembalikan 0 atau 1.\n\nContoh: `set_bit(0b00100001, 3)` menghasilkan `0b00101001`.",
+          "starter": {
+            "code": "def set_bit(reg, n):\n    # TODO: pakai OR dengan (1 << n)\n    pass\n\n\ndef clear_bit(reg, n):\n    # TODO: pakai AND dengan ~(1 << n)\n    pass\n\n\ndef toggle_bit(reg, n):\n    # TODO: pakai XOR\n    pass\n\n\ndef baca_bit(reg, n):\n    # TODO: geser ke kanan lalu AND 1\n    pass\n"
+          },
+          "solution": {
+            "code": "def set_bit(reg, n):\n    return reg | (1 << n)\n\n\ndef clear_bit(reg, n):\n    return reg & ~(1 << n)\n\n\ndef toggle_bit(reg, n):\n    return reg ^ (1 << n)\n\n\ndef baca_bit(reg, n):\n    return (reg >> n) & 1\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Set bit 3 pada 0b00100001",
+              "check": "set_bit(0b00100001, 3) == 0b00101001"
+            },
+            {
+              "name": "Set bit yang sudah 1 tidak mengubah apa pun",
+              "check": "set_bit(0b00100001, 0) == 0b00100001"
+            },
+            {
+              "name": "Clear bit 0 pada 0b00100001",
+              "check": "clear_bit(0b00100001, 0) == 0b00100000"
+            },
+            {
+              "name": "Toggle bit 5 dua kali kembali ke nilai awal",
+              "check": "toggle_bit(0b00100001, 5) == 0b00000001 and toggle_bit(toggle_bit(33, 5), 5) == 33"
+            },
+            {
+              "name": "Baca bit mengembalikan 0 atau 1",
+              "check": "baca_bit(0b00100001, 5) == 1 and baca_bit(0b00100001, 4) == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "gpio-input-digital-dan-debounce",
+      "title": "GPIO, Input Digital, dan Debounce",
+      "est_minutes": 25,
+      "slide_from": 13,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menjelaskan tiga register GPIO (DDRx, PORTx, PINx) dan padanannya di Arduino.\n- Menghitung resistor pembatas arus untuk LED.\n- Membedakan pull-up dan pull-down serta memakai INPUT_PULLUP.\n- Menjelaskan kenapa tombol perlu debounce dan menerapkannya dengan millis().\n\n## GPIO: gerbang ke dunia luar\n\n**GPIO** (general purpose input/output) adalah pin serbaguna yang bisa kamu atur sebagai keluaran untuk menyalakan sesuatu atau sebagai masukan untuk membaca sesuatu. Hampir semua proyek dimulai dari sini: LED, tombol, buzzer, relay.\n\nPada AVR, tiap port dikendalikan oleh tiga register. Di sisi Arduino, ada fungsi yang membungkusnya.\n\n| Register | Fungsi | Padanan Arduino |\n| --- | --- | --- |\n| DDRx | Arah pin: 1 = output, 0 = input | `pinMode()` |\n| PORTx | Tulis HIGH/LOW (atau aktifkan pull-up) | `digitalWrite()` |\n| PINx | Baca level logika pin | `digitalRead()` |\n\nHuruf x diganti nama port, misalnya DDRB, PORTB, dan PINB. Untuk menyalakan LED di PB5 kamu mengatur bit 5 DDRB menjadi 1, lalu menulis bit 5 PORTB. Itu langsung memakai teknik manipulasi bit dari bab sebelumnya.\n\n[Lihat rangkaian dasar GPIO](slide:13)\n\n## Rangkaian LED yang benar\n\nRangkaian dasar LED adalah pin, resistor, LED, lalu GND. Resistor wajib ada. LED bukan beban yang membatasi arus sendiri. Tanpa resistor, arus naik sampai LED atau pin rusak.\n\nRumusnya memakai hukum Ohm:\n\n`R = (Vcc - Vf) / I`\n\ndengan Vcc tegangan pin, Vf tegangan maju LED, dan I arus yang kamu inginkan. Contoh: Vcc = 5 V, LED merah dengan Vf sekitar 2 V, arus 15 mA. Maka R = (5 - 2) / 0,015 = 200 ohm. Nilai standar terdekat di atasnya, misalnya 220 ohm, aman dipakai dan sedikit meredupkan nyala.\n\nPada ESP32 dengan logika 3,3 V, hasilnya berbeda: (3,3 - 2) / 0,01 = 130 ohm untuk arus 10 mA. Nilai Vf berbeda antarwarna LED, jadi cek datasheet bila perlu angka pasti.\n\nAturan arus: batasi arus tiap pin di sekitar 20 mA (nilai pada deck, batas rinci bergantung chip). Jangan menyambungkan beban besar seperti motor atau relay langsung ke pin. Pakai transistor atau driver sebagai penguat, sehingga pin hanya memberi sinyal kecil.\n\n## Input digital: masalah pin mengambang\n\nMembaca tombol terlihat gampang, tetapi ada jebakan. Jika tombol hanya menyambungkan pin ke 5 V atau tidak menyambung ke apa pun, pin tidak punya level jelas saat tombol dilepas. Kondisi ini disebut **floating**, dan pembacaannya acak karena pin menangkap noise.\n\nSolusinya adalah resistor:\n\n- **Pull-up.** Pin ditarik ke HIGH secara default. Tombol menyambungkan pin ke GND, sehingga ditekan berarti LOW. Arduino menyediakan resistor internal lewat `pinMode(pin, INPUT_PULLUP)`.\n- **Pull-down.** Pin ditarik ke LOW lewat resistor sekitar 10 kΩ ke GND. Tombol menyambungkan ke Vcc, sehingga ditekan berarti HIGH.\n\n```cpp\nconst int BTN = 2;\nvoid setup() {\n  pinMode(BTN, INPUT_PULLUP);   // tanpa resistor luar\n  pinMode(LED_BUILTIN, OUTPUT);\n}\nvoid loop() {\n  bool ditekan = (digitalRead(BTN) == LOW);   // logika terbalik\n  digitalWrite(LED_BUILTIN, ditekan);\n}\n```\n\nPerhatikan logika terbalik pada pull-up: LOW berarti tombol ditekan. Pemula sering terkecoh karena mengira HIGH berarti ditekan.\n\n## Debounce: tombol yang berbohong\n\nTombol mekanis tidak berpindah dari terbuka ke tertutup dengan mulus. Kontaknya memantul (bounce) selama beberapa milidetik, sehingga satu tekanan terbaca sebagai beberapa tekanan cepat. Jika programmu menghitung tekanan, angka bisa melonjak tiga atau lima sekaligus.\n\nLihat kode debounce\n\nAda dua cara meredamnya.\n\n**Debounce hardware.** Filter RC dan Schmitt trigger meredam pantulan sebelum sinyal sampai ke pin. Cara ini tidak membebani CPU tetapi menambah komponen.\n\n**Debounce software.** Kamu menerima perubahan hanya setelah level stabil selama 20 sampai 50 ms. Berikut pola dari deck:\n\n```cpp\nint r = digitalRead(BTN);\nif (r != last) t0 = millis();          // level berubah, mulai hitung ulang\nif (millis() - t0 > 50) state = r;     // stabil lebih dari 50 ms\nlast = r;\n```\n\nPenjelasan alurnya:\n\n- `r` adalah pembacaan mentah saat ini, sedangkan `last` pembacaan sebelumnya.\n- Setiap kali `r` berbeda dari `last`, timer `t0` diulang dari awal.\n- Hanya bila `r` bertahan lebih dari 50 ms tanpa berubah, nilai itu diterima sebagai `state`.\n\nKuncinya memakai `millis()`, bukan `delay()`. `delay(50)` membekukan seluruh program, sehingga tugas lain berhenti. Dengan `millis()` loop tetap berputar bebas dan hanya membandingkan waktu.\n\n## Latihan kode: model debounce\n\nDi Python kita bisa memodelkan logika yang sama. Input berupa daftar sampel `(waktu_ms, level)`. Keluarannya adalah status stabil terakhir.\n\n## Mendeteksi tepi, bukan level\n\nSering kamu ingin aksi terjadi sekali saat tombol baru ditekan, bukan terus-menerus selama ditahan. Caranya mendeteksi tepi (edge): bandingkan `state` sekarang dengan `state_lalu`. Bila dulu HIGH dan sekarang LOW (pada pull-up), itulah momen tekan.\n\n```cpp\nif (state_lalu == HIGH && state == LOW) {\n  hitung++;               // satu kali per tekanan\n}\nstate_lalu = state;\n```\n\nKombinasi debounce dan deteksi tepi inilah yang membuat penghitung tombol bekerja akurat.\n\n## Kesalahan umum pemula\n\n- Tidak memakai resistor pada LED atau memakai nilai yang terlalu kecil.\n- Membiarkan pin input mengambang, lalu bingung kenapa nilainya acak.\n- Salah membaca logika pull-up: LOW berarti ditekan.\n- Memakai `delay()` untuk debounce dalam program yang butuh tugas lain berjalan.\n- Menyambung motor atau relay langsung ke pin GPIO.\n\n## Rangkuman\n\n- DDRx mengatur arah pin, PORTx menulis level, dan PINx membaca level; padanan Arduino-nya pinMode, digitalWrite, dan digitalRead.\n- LED butuh resistor pembatas dengan R = (Vcc - Vf) / I, dan beban besar harus lewat transistor atau driver.\n- Pin input harus punya level jelas lewat pull-up atau pull-down; INPUT_PULLUP memakai resistor internal dan membuat logika terbalik.\n- Debounce software menerima perubahan hanya setelah level stabil sekitar 20 sampai 50 ms, memakai millis() agar program tidak terblokir.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tombol dipasang antara pin 2 dan GND dengan pinMode(2, INPUT_PULLUP). Saat tombol ditekan, digitalRead(2) mengembalikan",
+          "code": "",
+          "options": [
+            "HIGH, karena tombol mengalirkan tegangan 5 V ke pin",
+            "LOW",
+            "Nilai acak, karena pin tidak punya resistor luar",
+            "Nilai tetap 255 karena tombol ditekan"
+          ],
+          "answer": 1,
+          "explanation": "Pull-up menjaga pin HIGH; tombol menyambungkannya ke GND sehingga terbaca LOW."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada Arduino Uno 5 V, LED dengan Vf 2 V ingin dialiri sekitar 10 mA. Resistor yang paling mendekati adalah",
+          "code": "",
+          "options": [
+            "30 ohm",
+            "1 ohm",
+            "3 kiloohm",
+            "300 ohm"
+          ],
+          "answer": 3,
+          "explanation": "R = (5 - 2) / 0,01 = 300 ohm."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Debounce software dengan delay(50) tidak mengganggu tugas lain karena program tetap bisa berjalan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "delay() membekukan program; gunakan millis() agar tugas lain tetap berjalan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Penghitung tombol kadang naik 3 untuk satu kali tekan. Penyebab utama dan perbaikan yang tepat adalah",
+          "code": "",
+          "options": [
+            "Kontak memantul; terima perubahan hanya setelah stabil 20-50 ms",
+            "Resistor LED kurang besar; ganti dengan nilai yang lebih tinggi sehingga arus turun",
+            "Nilai baud rate salah; naikkan hingga 115200 bps",
+            "SRAM penuh; pindahkan hitungan ke Flash"
+          ],
+          "answer": 0,
+          "explanation": "Bouncing mekanis menghasilkan beberapa transisi; debounce menyaringnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah relay 12 V ingin dikendalikan dari pin MCU. Pendekatan yang benar adalah",
+          "code": "",
+          "options": [
+            "Menghubungkan koil relay langsung ke pin karena itu hanya sebuah beban",
+            "Menaikkan DDRx agar pin mampu memberi arus lebih besar",
+            "Memakai transistor atau driver agar arus beban tidak melewati pin",
+            "Menambahkan delay pada digitalWrite agar arus lebih kecil"
+          ],
+          "answer": 2,
+          "explanation": "Beban besar wajib memakai transistor atau driver; pin hanya mengirim sinyal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung resistor LED",
+          "prompt": "Lengkapi `resistor_led(vcc, vf, arus_ma)` yang mengembalikan nilai resistor dalam ohm (bulat) dengan `R = (vcc - vf) / I`. Contoh: `resistor_led(5, 2, 15)` menghasilkan `200`.\n\nLengkapi juga `arus_aman(arus_ma)` yang mengembalikan `True` bila arus tidak lebih dari 20 mA.",
+          "starter": {
+            "code": "def resistor_led(vcc, vf, arus_ma):\n    # TODO: ubah mA ke A lalu pakai (vcc - vf) / I\n    pass\n\n\ndef arus_aman(arus_ma):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def resistor_led(vcc, vf, arus_ma):\n    return round((vcc - vf) / (arus_ma / 1000))\n\n\ndef arus_aman(arus_ma):\n    return arus_ma <= 20\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "5 V, 2 V, 15 mA menghasilkan 200 ohm",
+              "check": "resistor_led(5, 2, 15) == 200"
+            },
+            {
+              "name": "3,3 V, 2 V, 10 mA menghasilkan 130 ohm",
+              "check": "resistor_led(3.3, 2, 10) == 130"
+            },
+            {
+              "name": "5 V, 2 V, 10 mA menghasilkan 300 ohm",
+              "check": "resistor_led(5, 2, 10) == 300"
+            },
+            {
+              "name": "Batas arus 20 mA",
+              "check": "arus_aman(20) is True and arus_aman(35) is False"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Debounce stabil 50 ms",
+          "prompt": "Lengkapi `debounce(sampel, tunggu)`. `sampel` adalah daftar `(waktu_ms, level)` berurutan, `level` bernilai 0 atau 1. Status awal `state = 0`. Ikuti pola deck: bila level berbeda dari sampel sebelumnya, catat `t0 = waktu`. Bila `waktu - t0 > tunggu`, set `state = level`. Kembalikan `state` setelah sampel terakhir. Sampel sebelumnya awal adalah 0 dan `t0` awal 0.",
+          "starter": {
+            "code": "def debounce(sampel, tunggu):\n    state = 0\n    last = 0\n    t0 = 0\n    for waktu, level in sampel:\n        # TODO: ikuti pola deck\n        pass\n    return state\n"
+          },
+          "solution": {
+            "code": "def debounce(sampel, tunggu):\n    state = 0\n    last = 0\n    t0 = 0\n    for waktu, level in sampel:\n        if level != last:\n            t0 = waktu\n        if waktu - t0 > tunggu:\n            state = level\n        last = level\n    return state\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tekan stabil lebih dari 50 ms diterima",
+              "check": "debounce([(0,0),(10,1),(30,1),(70,1),(100,1)], 50) == 1"
+            },
+            {
+              "name": "Pantulan singkat diabaikan",
+              "check": "debounce([(0,0),(10,1),(15,0),(20,1),(25,0),(100,0)], 50) == 0"
+            },
+            {
+              "name": "Tanpa sampel tetap 0",
+              "check": "debounce([], 50) == 0"
+            },
+            {
+              "name": "Tekan lalu lepas stabil kembali ke 0",
+              "check": "debounce([(0,1),(100,1)], 50) == 1 and debounce([(0,1),(100,1),(110,0),(130,0),(200,0)], 50) == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "adc-dan-pwm",
+      "title": "ADC dan PWM: Menjembatani Analog dan Digital",
+      "est_minutes": 28,
+      "slide_from": 15,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan fungsi ADC dan menghitung resolusi serta tegangan dari nilai pembacaan.\n- Mengonversi nilai analogRead() menjadi tegangan dan sebaliknya.\n- Menjelaskan PWM, duty cycle, dan tegangan rata-ratanya.\n- Menyebutkan empat pemakaian PWM: LED, motor DC, servo, dan buzzer.\n\n## Dunia nyata itu analog\n\nSuhu, cahaya, dan tekanan berubah mulus, bukan hanya nol atau satu. Sensor biasanya mengubahnya menjadi tegangan yang berubah halus pula. Namun CPU hanya mengerti angka. Di sinilah **ADC** (analog to digital converter) bekerja: ia mengukur tegangan di sebuah pin lalu mengubahnya menjadi bilangan bulat.\n\nJumlah bit ADC menentukan seberapa halus pembagiannya. ADC 10-bit pada ATmega328P punya 2^10 = 1024 level. Pada Arduino, `analogRead(A0)` mengembalikan nilai 0 sampai 1023. Nilai 0 berarti 0 V dan nilai 1023 mendekati tegangan referensi (Vref).\n\n[Lihat ringkasan ADC](slide:15)\n\n## Rumus yang harus kamu hafal\n\n`V = ADC × Vref / 1024`\n\nUntuk Vref 5 V, satu langkah ADC bernilai 5 / 1024 = 0,00488 V atau sekitar **4,88 mV**. Itulah resolusinya: perubahan tegangan yang lebih kecil dari itu tidak akan terlihat sebagai perubahan angka.\n\nContoh: `analogRead(A0)` mengembalikan 512. Tegangannya 512 × 5 / 1024 = 2,5 V, tepat setengah dari Vref. Contoh lain, pembacaan 205 berarti 205 × 5 / 1024 = 1,0 V (dibulatkan).\n\nPembagi 1024 dipakai pada deck dan umum dijumpai pada Arduino Uno. Secara matematis, nilai maksimum 1023 sesuai dengan sedikit di bawah Vref. Beberapa referensi memakai pembagi 1023, selisihnya kecil, tetapi pilih satu rumus dan konsisten.\n\nChip lain punya resolusi berbeda. ESP32 punya ADC 12-bit (nilai 0 sampai 4095) dan tegangan kerjanya 3,3 V. Pada ESP32 perlu hati-hati: kurva ADC-nya tidak sepenuhnya linier dan butuh kalibrasi bila presisi penting. RP2040 memiliki ADC 12-bit juga. Selalu cek datasheet untuk jumlah bit, Vref, dan rentang tegangan masukan yang diizinkan.\n\n## Dari tegangan ke besaran fisik\n\nBanyak sensor sederhana memberi tegangan yang sebanding dengan besaran. Contoh umum: sensor suhu analog yang memberi 10 mV per derajat Celsius. Maka suhu = tegangan dalam mV / 10.\n\nAlurnya selalu tiga langkah: baca nilai ADC, ubah ke tegangan, lalu ubah ke satuan fisik.\n\n```cpp\nint adc = analogRead(A0);\nfloat volt = adc * 5.0 / 1024.0;\nfloat suhu = volt * 100.0;     // 10 mV per derajat\n```\n\nPerhatikan `5.0` bukan `5`. Pada C, `adc * 5 / 1024` memakai bilangan bulat dan memotong pecahan, sehingga hasilnya salah. Memakai `5.0` memaksa perhitungan desimal.\n\nSensor juga sering dipasang lewat **pembagi tegangan**. Dua resistor R1 dan R2 menghasilkan `Vout = Vin × R2 / (R1 + R2)`. Cara ini dipakai untuk menurunkan tegangan agar sesuai rentang ADC, atau untuk membaca sensor resistif seperti LDR.\n\n## Latihan kode: konversi ADC\n\nDua fungsi murni di bawah menghubungkan nilai ADC dan tegangan. Dengan model sederhana ini kamu bisa memeriksa perhitungan sebelum menyentuh perangkat keras.\n\n## PWM: keluaran analog dari pin digital\n\nKebanyakan pin MCU hanya bisa HIGH atau LOW. Bagaimana meredupkan LED atau mengatur kecepatan motor? Triknya adalah **PWM** (pulse width modulation): pin dihidupkan dan dimatikan sangat cepat, dan lebar waktu HIGH diatur.\n\n**Duty cycle** (D) = waktu HIGH dibagi periode. Jika D = 50% pada 5 V, rata-rata tegangan yang dirasakan beban sekitar 2,5 V. Jika D = 25%, rata-rata sekitar 1,25 V. LED dan motor bereaksi pada rata-rata ini, bukan pada tiap denyut, karena denyutnya terlalu cepat untuk dirasakan mata atau inersia motor.\n\n`V_rata = D × V`\n\nLihat penjelasan PWM\n\nPada Arduino, `analogWrite(pin, nilai)` menerima nilai 0 sampai 255. Nilai 0 berarti duty 0%, 255 berarti 100%, dan 128 sekitar 50%. Duty dalam persen = nilai / 255 × 100. Pada Arduino Uno hanya pin tertentu yang mendukung PWM (bertanda ~, yaitu 3, 5, 6, 9, 10, dan 11), dan frekuensinya sekitar 490 Hz pada kebanyakan pin.\n\nPerhatikan bahwa `analogWrite` pada Uno bukan DAC sungguhan. Keluarannya tetap digital yang berdenyut. Jika kamu memerlukan tegangan analog halus, tambahkan filter RC atau gunakan DAC.\n\n## Empat pemakaian PWM\n\n- **Meredupkan LED.** `analogWrite(pin, 0-255)`. Semakin besar nilai, semakin terang.\n- **Kecepatan motor DC.** Lewat driver H-bridge seperti L298N. Jangan menyambung motor langsung ke pin MCU.\n- **Posisi servo.** Pulsa 1 sampai 2 ms yang diulang setiap 20 ms (50 Hz). Lebar pulsa menentukan sudut, bukan duty cycle umum, jadi biasanya dipakai library Servo. Nilai persisnya bisa berbeda antarmerek servo, sehingga cek datasheet.\n- **Nada atau buzzer.** Frekuensi diubah untuk mengubah nada, sedangkan duty dijaga sekitar 50%.\n\nPerbedaan penting: pada LED dan motor kamu mengatur **duty** dengan frekuensi tetap. Pada buzzer kamu mengatur **frekuensi** dengan duty tetap. Pada servo yang dipakai adalah **lebar pulsa** dalam periode 20 ms.\n\n## Contoh gabungan: potensiometer mengatur kecerahan\n\n```cpp\nvoid setup() {\n  pinMode(9, OUTPUT);\n}\nvoid loop() {\n  int adc = analogRead(A0);          // 0..1023\n  int pwm = adc / 4;                 // 0..255\n  analogWrite(9, pwm);\n}\n```\n\nSatu nilai 10-bit dikecilkan menjadi 8-bit dengan membagi 4 karena 1024 / 256 = 4. Perhatikan skala kedua sisi: ADC 0 sampai 1023, PWM 0 sampai 255. Pada Arduino ada juga fungsi `map(nilai, dari_rendah, dari_tinggi, ke_rendah, ke_tinggi)` yang melakukan pemetaan linear umum.\n\n## Kesalahan umum pemula\n\n- Menulis `adc * 5 / 1024` dengan bilangan bulat sehingga pecahan terpotong.\n- Menyambungkan sinyal di atas Vref atau di atas tegangan kerja chip ke pin ADC.\n- Mengira PWM menghasilkan tegangan analog murni.\n- Menyambung motor langsung ke pin PWM tanpa driver.\n- Memakai `analogWrite` pada pin yang tidak mendukung PWM.\n\n## Rangkuman\n\n- ADC mengubah tegangan menjadi bilangan; ADC 10-bit punya 1024 level, dan V = ADC × Vref / 1024 dengan resolusi sekitar 4,88 mV pada 5 V.\n- Setelah tegangan didapat, ubah ke satuan fisik memakai karakteristik sensor, dan hati-hati dengan pembagian bilangan bulat.\n- PWM mengatur rata-rata tegangan lewat duty cycle; V_rata = D × V.\n- analogWrite menerima 0 sampai 255; PWM dipakai untuk LED, motor DC lewat driver, servo (pulsa 1 sampai 2 ms tiap 20 ms), dan buzzer.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Arduino Uno (Vref 5 V) membaca analogRead(A0) = 256. Tegangan pada pin tersebut sekitar",
+          "code": "",
+          "options": [
+            "0,25 V, karena 256 dibagi 1000",
+            "2,5 V",
+            "5 V",
+            "1,25 V"
+          ],
+          "answer": 3,
+          "explanation": "256 × 5 / 1024 = 1,25 V."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah LED diberi analogWrite(9, 64) dari Uno 5 V. Rata-rata tegangannya sekitar",
+          "code": "",
+          "options": [
+            "5 V, karena pin menghasilkan level HIGH",
+            "1,25 V, karena duty sekitar 25%",
+            "0,64 V, karena nilai 64 dibagi 100",
+            "3,75 V, karena duty sekitar 75%"
+          ],
+          "answer": 1,
+          "explanation": "64 / 255 sekitar 25%, jadi rata-rata sekitar 1,25 V."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Resolusi ADC 10-bit pada Vref 5 V adalah sekitar 4,88 mV per langkah.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "5 V / 1024 sama dengan sekitar 4,88 mV."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Untuk membuat servo bergerak ke sudut tertentu, hal yang diatur pada sinyal kontrolnya adalah",
+          "code": "",
+          "options": [
+            "Tegangan DC dari 0 sampai 5 V pada pin",
+            "Jumlah bit ADC yang dibaca oleh MCU",
+            "Lebar pulsa 1-2 ms dalam periode sekitar 20 ms",
+            "Nilai pull-up pada pin sinyal servo"
+          ],
+          "answer": 2,
+          "explanation": "Servo membaca lebar pulsa dalam periode 50 Hz."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa isi variabel suhu setelah kode ini dijalankan jika adc = 205 dan sensor memberi 10 mV per derajat",
+          "code": "float volt = adc * 5.0 / 1024.0;\nfloat suhu = volt * 100.0;",
+          "options": [
+            "Sekitar 10,0 derajat",
+            "Sekitar 100 derajat karena dikali 100 dua kali",
+            "Sekitar 1,0 derajat",
+            "Sekitar 205 derajat"
+          ],
+          "answer": 0,
+          "explanation": "205 × 5 / 1024 sekitar 1,0 V, dikali 100 menghasilkan sekitar 10 derajat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Konversi ADC dan tegangan",
+          "prompt": "Lengkapi tiga fungsi:\n\n- `adc_ke_volt(adc, vref=5.0, bit=10)` mengembalikan `adc * vref / 2**bit`.\n- `volt_ke_adc(volt, vref=5.0, bit=10)` mengembalikan nilai ADC bulat (`int`, dipotong ke bawah) dan tidak melebihi `2**bit - 1`.\n- `resolusi_mv(vref=5.0, bit=10)` mengembalikan resolusi dalam mV.\n\nContoh: `adc_ke_volt(512)` menghasilkan `2.5`.",
+          "starter": {
+            "code": "def adc_ke_volt(adc, vref=5.0, bit=10):\n    # TODO\n    pass\n\n\ndef volt_ke_adc(volt, vref=5.0, bit=10):\n    # TODO: int(), batasi sampai 2**bit - 1\n    pass\n\n\ndef resolusi_mv(vref=5.0, bit=10):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def adc_ke_volt(adc, vref=5.0, bit=10):\n    return adc * vref / 2**bit\n\n\ndef volt_ke_adc(volt, vref=5.0, bit=10):\n    return min(int(volt * 2**bit / vref), 2**bit - 1)\n\n\ndef resolusi_mv(vref=5.0, bit=10):\n    return vref / 2**bit * 1000\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "ADC 512 pada 5 V adalah 2,5 V",
+              "check": "adc_ke_volt(512) == 2.5"
+            },
+            {
+              "name": "ADC 12-bit pada 3,3 V: 2048 menjadi 1,65 V",
+              "check": "abs(adc_ke_volt(2048, 3.3, 12) - 1.65) < 1e-9"
+            },
+            {
+              "name": "2,5 V kembali menjadi 512",
+              "check": "volt_ke_adc(2.5) == 512"
+            },
+            {
+              "name": "Tegangan sama dengan Vref dibatasi 1023",
+              "check": "volt_ke_adc(5.0) == 1023"
+            },
+            {
+              "name": "Resolusi 10-bit pada 5 V sekitar 4,88 mV",
+              "check": "round(resolusi_mv(), 2) == 4.88"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Duty cycle PWM",
+          "prompt": "Lengkapi:\n\n- `duty_persen(nilai)` mengubah nilai `analogWrite` 0-255 menjadi persen (float).\n- `tegangan_rata(nilai, vcc=5.0)` mengembalikan rata-rata tegangan keluaran.\n- `pwm_dari_persen(persen)` mengembalikan nilai 0-255 (dibulatkan dengan `round`), dibatasi ke rentang 0-255.\n\nContoh: `duty_persen(255)` menghasilkan `100.0`.",
+          "starter": {
+            "code": "def duty_persen(nilai):\n    # TODO\n    pass\n\n\ndef tegangan_rata(nilai, vcc=5.0):\n    # TODO: duty x vcc\n    pass\n\n\ndef pwm_dari_persen(persen):\n    # TODO: round, lalu batasi 0..255\n    pass\n"
+          },
+          "solution": {
+            "code": "def duty_persen(nilai):\n    return nilai / 255 * 100\n\n\ndef tegangan_rata(nilai, vcc=5.0):\n    return nilai / 255 * vcc\n\n\ndef pwm_dari_persen(persen):\n    return max(0, min(255, round(persen / 100 * 255)))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "255 sama dengan 100 persen",
+              "check": "duty_persen(255) == 100.0 and duty_persen(0) == 0.0"
+            },
+            {
+              "name": "Nilai 51 adalah 20 persen",
+              "check": "abs(duty_persen(51) - 20.0) < 1e-9"
+            },
+            {
+              "name": "Nilai 51 pada 5 V rata-rata 1 V",
+              "check": "abs(tegangan_rata(51) - 1.0) < 1e-9"
+            },
+            {
+              "name": "50 persen menjadi 128",
+              "check": "pwm_dari_persen(50) == 128"
+            },
+            {
+              "name": "Persen di luar rentang dibatasi",
+              "check": "pwm_dari_persen(150) == 255 and pwm_dari_persen(-10) == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "timer-dan-interrupt",
+      "title": "Timer dan Interrupt",
+      "est_minutes": 25,
+      "slide_from": 17,
+      "slide_to": 17,
+      "body": "## Tujuan\n\n- Membedakan polling dan interrupt serta menyebutkan keunggulan interrupt.\n- Menjelaskan alur eksekusi ISR dari kejadian sampai program utama berlanjut.\n- Menghitung nilai register pembanding timer untuk frekuensi interupsi tertentu.\n- Menerapkan aturan ISR singkat: set flag di ISR, proses di loop utama.\n\n## Menunggu itu boros\n\nBayangkan kamu menunggu paket. Cara pertama, kamu berdiri di depan pintu dan mengecek setiap detik apakah kurir sudah datang. Cara kedua, kamu mengerjakan hal lain dan kurir akan membunyikan bel. Cara pertama disebut **polling**, cara kedua **interrupt**.\n\nPolling berarti program berulang kali membaca status sebuah pin atau periferal. Cara ini sederhana, tetapi memboroskan CPU dan bisa melewatkan kejadian singkat kalau program sedang sibuk mengerjakan hal lain. Interrupt membalik arahnya: perangkat keras yang memberi tahu CPU saat ada kejadian, dan CPU hanya bereaksi pada saat itu.\n\n[Lihat diagram alur interrupt](slide:17)\n\nPemicu interrupt bisa berupa:\n\n- **timer** yang mencapai nilai tertentu atau overflow;\n- **perubahan level atau tepi** pada sebuah pin;\n- **data masuk** pada UART, selesainya konversi ADC, dan sebagainya.\n\n## Alur kerja sebuah interrupt\n\nUrutannya selalu sama, dan kamu perlu hafal agar bisa menalar masalah timing.\n\n1. Program utama sedang berjalan.\n2. Terjadi event, misalnya timer mencapai nilai pembanding atau pin berubah.\n3. CPU menyimpan konteks (posisi program dan register penting) lalu melompat ke **ISR** (interrupt service routine).\n4. ISR dijalankan. Harus singkat.\n5. Konteks dipulihkan dan program utama melanjutkan tepat dari tempat ia disela.\n\nKarena konteks dipulihkan, program utama tidak menyadari bahwa ia sempat diinterupsi, kecuali lewat variabel yang diubah ISR atau lewat waktu yang bertambah sedikit.\n\n## Contoh: interupsi 1 Hz dari Timer1\n\nKita ingin sebuah kejadian setiap satu detik tanpa memakai `delay()`. Pada ATmega328P dengan clock 16 MHz, Timer1 bisa diatur mode CTC (clear timer on compare match) dengan prescaler 256.\n\n```c\nvolatile uint8_t tick = 0;\n\nISR(TIMER1_COMPA_vect) {   // dipanggil tiap 1 s\n    tick = 1;              // set flag saja\n}\n\n// 16 MHz / 256 = 62500 tick per detik\n// OCR1A = 62499  ->  interupsi 1 Hz\n```\n\nMari hitung kenapa angkanya 62499.\n\n- Prescaler 256 membagi clock: 16.000.000 / 256 = 62.500 hitungan per detik.\n- Untuk satu detik, timer harus menghitung 62.500 langkah, mulai dari 0.\n- Karena hitungan dimulai dari 0, nilai pembandingnya 62.500 - 1 = 62.499.\n\nRumus umumnya:\n\n`OCR = f_cpu / (prescaler × f_target) - 1`\n\nPada AVR, OCR1A adalah register 16-bit, jadi nilainya maksimal 65535. Nilai 62499 muat. Jika hasil hitungan melebihi batas itu, pilih prescaler yang lebih besar. Untuk 10 Hz dengan prescaler 256 hasilnya 16.000.000 / (256 × 10) - 1 = 6249.\n\nDetail pemilihan bit register (mode CTC, prescaler, dan mengaktifkan interupsi) berbeda antarfamili dan versi chip. Saat memprogramnya, rujuk datasheet chip yang kamu pakai atau library timer yang sudah teruji.\n\n## Aturan emas ISR\n\nISR berjalan di tengah program lain, sehingga ada aturan ketat:\n\n- **Singkat.** Selama ISR jalan, kejadian lain mungkin tertahan. Idealnya hanya mengubah satu flag.\n- **Proses berat di loop utama.** ISR set flag, loop utama membacanya lalu mengerjakan tugas panjang.\n- **Hindari `delay()` dan `Serial.print()` di dalam ISR.** Keduanya bergantung pada interupsi atau butuh waktu lama dan bisa membuat program macet.\n- **Gunakan `volatile`** untuk variabel yang dibagi dengan program utama.\n\nPola yang benar terlihat seperti ini:\n\n```c\nvolatile uint8_t tick = 0;\n\nISR(TIMER1_COMPA_vect) { tick = 1; }\n\nint main(void) {\n    /* inisialisasi timer dan interrupt di sini */\n    while (1) {\n        if (tick) {\n            tick = 0;          // reset flag\n            baca_sensor();     // kerja berat di luar ISR\n            tampilkan();\n        }\n    }\n}\n```\n\nPerhatikan bahwa loop utama membersihkan flag setelah menangani kejadian. Bila lupa, blok `if` akan terus dijalankan.\n\nSatu jebakan lanjut: variabel yang lebih besar dari lebar register CPU (misalnya `uint16_t` pada AVR 8-bit) dibaca dalam beberapa instruksi. Jika ISR mengubahnya di tengah pembacaan, kamu bisa mendapat nilai setengah lama setengah baru. Saat membaca nilai seperti itu di program utama, nonaktifkan interupsi sebentar, salin nilainya, lalu aktifkan lagi.\n\n## Interrupt dari pin\n\nSelain timer, interrupt sering dipicu oleh perubahan level pada pin. Pada Arduino kamu mendaftarkan fungsi dengan `attachInterrupt()` dan memilih jenis pemicunya: `RISING` (naik dari LOW ke HIGH), `FALLING` (turun dari HIGH ke LOW), atau `CHANGE` (keduanya).\n\n```cpp\nvolatile uint16_t pulsa = 0;\n\nvoid hitungPulsa() {\n  pulsa++;                       // singkat, hanya menambah penghitung\n}\n\nvoid setup() {\n  pinMode(2, INPUT_PULLUP);\n  attachInterrupt(digitalPinToInterrupt(2), hitungPulsa, FALLING);\n}\n```\n\nPada Arduino Uno hanya pin 2 dan 3 yang mendukung jenis interrupt ini lewat `attachInterrupt()`, sedangkan board lain punya aturan sendiri, jadi cek dokumentasi board yang kamu pakai. Contoh pemakaian: menghitung putaran roda dari sensor, atau mencatat pulsa dari flow meter. Ingat masalah bounce dari bab sebelumnya: tombol mekanis yang dipasang ke interrupt pin akan memicu ISR berkali-kali kalau kontaknya memantul.\n\n## Polling atau interrupt\n\nInterrupt bukan jawaban untuk segalanya. Jika sebuah kejadian cukup lambat dan kamu memang sedang menunggu, polling sederhana lebih mudah dibuat dan dilacak. Interrupt unggul untuk kejadian yang singkat atau tak terduga, misalnya sinyal dari encoder putar atau data masuk. Penggunaan berlebihan membuat program sulit diprediksi karena urutan eksekusinya bergantung pada waktu kejadian.\n\nTimer juga tidak hanya untuk interrupt. Ia dipakai membangkitkan PWM, mengukur durasi pulsa, dan menghitung pulsa dari luar. Konsep pembagi clock yang sama berlaku di semua kegunaan itu.\n\n## Kesalahan umum pemula\n\n- Menaruh `delay()` atau `Serial.print()` di dalam ISR.\n- Lupa `volatile` pada variabel flag.\n- Lupa mereset flag di loop utama.\n- Lupa mengurangi 1 pada nilai pembanding sehingga frekuensinya meleset sedikit.\n- Membuat ISR panjang yang menunda semua tugas lain.\n\n## Rangkuman\n\n- Polling memboroskan CPU; interrupt membuat CPU bereaksi hanya saat ada event dari timer, pin, atau periferal lain.\n- Alurnya: event terjadi, konteks disimpan, ISR berjalan, konteks dipulihkan, program utama lanjut.\n- Nilai pembanding timer dihitung dengan OCR = f_cpu / (prescaler × f_target) - 1; untuk 16 MHz, prescaler 256, dan 1 Hz hasilnya 62499.\n- ISR harus sesingkat mungkin: set flag volatile, proses di loop utama, dan jangan memakai delay() atau Serial.print() di dalamnya.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah alat mengecek tombol dalam loop yang juga menjalankan perhitungan lama, sehingga tekanan singkat sering terlewat. Perbaikan yang paling masuk akal adalah",
+          "code": "",
+          "options": [
+            "Menambah delay 500 ms di tiap iterasi loop",
+            "Mengganti pull-up dengan resistor 1 megaohm",
+            "Memakai interrupt pin untuk mencatat kejadian tekan",
+            "Menurunkan clock CPU supaya loop lebih lambat"
+          ],
+          "answer": 2,
+          "explanation": "Interrupt mencatat kejadian saat terjadi, tidak bergantung pada kapan loop sempat mengecek."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kode berikut ada di dalam ISR. Bagian mana yang melanggar aturan ISR",
+          "code": "ISR(TIMER1_COMPA_vect) {\n  tick = 1;\n  Serial.print(\"hai\");\n}",
+          "options": [
+            "Serial.print di dalam ISR",
+            "tick = 1",
+            "Penggunaan nama ISR dengan vektor timer",
+            "Variabel tick bertipe volatile uint8_t"
+          ],
+          "answer": 0,
+          "explanation": "Serial.print lambat dan bergantung pada interupsi sehingga tidak boleh dipakai di ISR."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada ATmega328P 16 MHz dengan prescaler 256, OCR1A = 62499 menghasilkan interupsi sekitar 1 Hz.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "16 MHz / 256 = 62500 hitungan per detik, dikurangi 1 karena hitungan mulai dari 0."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu butuh interupsi 10 Hz dari clock 16 MHz dengan prescaler 256. Nilai OCR yang benar adalah",
+          "code": "",
+          "options": [
+            "62499",
+            "625",
+            "25000",
+            "6249"
+          ],
+          "answer": 3,
+          "explanation": "16.000.000 / (256 × 10) - 1 = 6249."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah ISR selesai, apa yang terjadi pada program utama",
+          "code": "",
+          "options": [
+            "Program utama mulai lagi dari baris pertama main()",
+            "Program utama melanjutkan dari tempat ia disela setelah konteks dipulihkan",
+            "Program utama berhenti sampai MCU di-reset ulang",
+            "Program utama melompat ke ISR berikutnya tanpa kembali"
+          ],
+          "answer": 1,
+          "explanation": "Konteks disimpan saat masuk ISR lalu dipulihkan saat keluar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung nilai pembanding timer",
+          "prompt": "Lengkapi:\n\n- `ocr(f_cpu, prescaler, f_target)` mengembalikan `f_cpu / (prescaler * f_target) - 1` sebagai bilangan bulat (`round`).\n- `frekuensi(f_cpu, prescaler, ocr_nilai)` mengembalikan frekuensi interupsi sebenarnya: `f_cpu / (prescaler * (ocr_nilai + 1))`.\n- `prescaler_terkecil(f_cpu, f_target, batas=65535)` mencoba prescaler `[1, 8, 64, 256, 1024]` berurutan dan mengembalikan yang pertama dengan `ocr <= batas`, atau `None` bila tak ada.\n\nContoh: `ocr(16_000_000, 256, 1)` menghasilkan `62499`.",
+          "starter": {
+            "code": "def ocr(f_cpu, prescaler, f_target):\n    # TODO\n    pass\n\n\ndef frekuensi(f_cpu, prescaler, ocr_nilai):\n    # TODO\n    pass\n\n\ndef prescaler_terkecil(f_cpu, f_target, batas=65535):\n    # TODO: coba [1, 8, 64, 256, 1024]\n    pass\n"
+          },
+          "solution": {
+            "code": "def ocr(f_cpu, prescaler, f_target):\n    return round(f_cpu / (prescaler * f_target) - 1)\n\n\ndef frekuensi(f_cpu, prescaler, ocr_nilai):\n    return f_cpu / (prescaler * (ocr_nilai + 1))\n\n\ndef prescaler_terkecil(f_cpu, f_target, batas=65535):\n    for p in [1, 8, 64, 256, 1024]:\n        if ocr(f_cpu, p, f_target) <= batas:\n            return p\n    return None\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "1 Hz pada 16 MHz prescaler 256 memberi 62499",
+              "check": "ocr(16_000_000, 256, 1) == 62499"
+            },
+            {
+              "name": "10 Hz pada prescaler 256 memberi 6249",
+              "check": "ocr(16_000_000, 256, 10) == 6249"
+            },
+            {
+              "name": "Frekuensi kembali menjadi 1 Hz",
+              "check": "frekuensi(16_000_000, 256, 62499) == 1.0"
+            },
+            {
+              "name": "1 Hz membutuhkan prescaler 256",
+              "check": "prescaler_terkecil(16_000_000, 1) == 256"
+            },
+            {
+              "name": "1 kHz cukup dengan prescaler 1",
+              "check": "prescaler_terkecil(16_000_000, 1000) == 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "protokol-uart-i2c-spi",
+      "title": "Protokol Komunikasi: UART, I2C, dan SPI",
+      "est_minutes": 28,
+      "slide_from": 18,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Membedakan UART, I2C, dan SPI dari jumlah jalur, sinkronisasi, kecepatan, dan topologi.\n- Menyebutkan nama jalur tiap protokol (TX/RX, SDA/SCL, MOSI/MISO/SCK/CS).\n- Menghitung waktu pengiriman data serial dari baud rate.\n- Memilih protokol yang tepat untuk GPS, sensor, OLED, dan kartu SD.\n\n## Kenapa butuh protokol\n\nMikrokontroler jarang bekerja sendirian. Ia membaca sensor, menampilkan data di layar, menyimpan ke kartu memori, atau berbicara dengan modul GPS. Semua perangkat itu harus bertukar byte dengan cara yang disepakati bersama. Kesepakatan itulah yang disebut **protokol komunikasi**. Pada MCU, tiga protokol serial yang paling sering dijumpai adalah UART, I2C, dan SPI. Ketiganya mengirim bit satu per satu lewat sedikit kabel, berbeda dengan jalur paralel yang butuh banyak pin.\n\n[Lihat perbandingan UART, I2C, SPI](slide:18)\n\n| Aspek | UART | I2C | SPI |\n| --- | --- | --- | --- |\n| Jalur | 2: TX, RX | 2: SDA, SCL | 4: MOSI, MISO, SCK, CS |\n| Sinkronisasi | Asinkron (baud rate) | Sinkron (clock) | Sinkron (clock) |\n| Kecepatan | 9.600 sampai 115.200 bps | 100 / 400 kHz | Hingga puluhan MHz |\n| Topologi | Point-to-point | Multi-device, alamat 7-bit | Master-slave, chip select |\n| Contoh | GPS, modul Bluetooth | Sensor BME280, OLED | Kartu SD, layar TFT |\n\n## UART: dua kabel, tanpa clock\n\nUART memakai dua jalur: TX (kirim) dan RX (terima). Sambungannya silang: TX perangkat A ke RX perangkat B, dan sebaliknya. Jangan lupa menyatukan GND kedua perangkat.\n\nKarena tidak ada jalur clock, kedua sisi harus sudah sepakat soal kecepatan, yaitu **baud rate**, misalnya 9600 atau 115200. Jika tidak sama, data yang diterima menjadi karakter acak. Itu keluhan klasik pemula: serial monitor menampilkan simbol aneh karena baud rate di kode dan di monitor berbeda.\n\nSatu byte dikirim sebagai sebuah frame. Format umum **8N1** berarti 8 bit data, tanpa paritas, dan 1 bit stop. Ditambah satu bit start, satu frame berisi 10 bit untuk membawa 8 bit data. Jadi pada 9600 baud, kecepatan efektif sekitar 960 byte per detik, bukan 1200.\n\nContoh waktu kirim: pesan 20 byte pada 9600 baud memerlukan 20 × 10 / 9600 sekitar 0,0208 detik atau 20,8 ms. Pada 115200 baud, waktu yang sama turun sekitar 1,7 ms.\n\nUART bersifat point-to-point: satu pasang perangkat per port. Itulah cocoknya untuk GPS dan modul Bluetooth yang mengirim aliran teks. Tegangan logika juga penting: papan 5 V dan modul 3,3 V tidak boleh disambung langsung tanpa memeriksa spesifikasi.\n\n```cpp\nvoid setup() {\n  Serial.begin(9600);          // harus sama dengan serial monitor\n}\nvoid loop() {\n  Serial.println(\"halo\");\n  delay(1000);\n}\n```\n\n## I2C: banyak perangkat, dua kabel\n\nI2C memakai dua jalur bersama: **SDA** untuk data dan **SCL** untuk clock. Satu master bisa berbicara dengan banyak perangkat pada jalur yang sama karena tiap perangkat punya **alamat 7-bit**. Master menyebut alamat dulu, lalu hanya perangkat yang bersangkutan yang menjawab.\n\nRentang alamat 7-bit adalah 0 sampai 127, jadi secara teori sampai 128 alamat meski sebagian dicadangkan. Dua sensor yang alamatnya sama tidak dapat berbagi satu jalur tanpa trik seperti pengalih (multiplexer) atau mengubah alamat lewat pin pemilih bila modulnya menyediakan.\n\nKecepatan standar adalah 100 kHz dan mode cepat 400 kHz. Karena sinyalnya sinkron, tidak ada baud rate untuk disepakati. Master yang menentukan irama lewat SCL.\n\nDetail rangkaian yang sering terlupa: jalur I2C bersifat open-drain, sehingga SDA dan SCL perlu **resistor pull-up** ke tegangan logika. Banyak modul sensor sudah membawa pull-up di papannya. Bila jalurnya panjang atau kecepatannya tinggi, nilai pull-up perlu diperiksa dengan spesifikasi perangkat.\n\n```cpp\n#include <Wire.h>\n\nvoid setup() {\n  Wire.begin();\n  Serial.begin(9600);\n  for (byte alamat = 8; alamat < 120; alamat++) {\n    Wire.beginTransmission(alamat);\n    if (Wire.endTransmission() == 0) {\n      Serial.print(\"Perangkat di 0x\");\n      Serial.println(alamat, HEX);\n    }\n  }\n}\nvoid loop() {}\n```\n\nProgram pemindai alamat seperti di atas berguna saat kamu tidak tahu alamat sensor yang baru dibeli. Sensor BME280 dan layar OLED sering ditemui pada jalur I2C yang sama.\n\n## SPI: cepat, dengan chip select\n\nSPI memakai empat jalur: **MOSI** (data dari master ke slave), **MISO** (data dari slave ke master), **SCK** (clock), dan **CS** (chip select). Tiap slave punya jalur CS sendiri. Master menurunkan CS slave yang ingin diajak bicara, lalu menggeser data lewat SCK.\n\nKarena data mengalir di dua arah sekaligus pada jalur terpisah dan tanpa overhead alamat, SPI jauh lebih cepat, bisa mencapai puluhan MHz. Pengorbanannya adalah jumlah kabel: tiap slave tambahan menambah satu pin CS. Itulah kenapa SPI dipilih untuk perangkat yang butuh kecepatan tinggi seperti kartu SD dan layar TFT, sedangkan I2C dipilih saat pin terbatas dan kecepatan sedang sudah cukup.\n\n## Memilih protokol\n\nGunakan alur sederhana:\n\n1. Perangkat hanya berbicara dengan satu MCU dan mengirim aliran teks (GPS, modul Bluetooth)? Pakai **UART**.\n2. Banyak sensor lambat sampai sedang dan pin MCU terbatas (BME280, OLED)? Pakai **I2C**.\n3. Butuh kecepatan tinggi dan pin masih cukup (kartu SD, TFT)? Pakai **SPI**.\n\nSatu proyek biasanya memakai ketiganya sekaligus. Stasiun cuaca bisa memakai I2C untuk sensor, SPI untuk kartu SD, dan UART untuk modul GPS.\n\n## Latihan kode: waktu kirim serial\n\nWaktu kirim, kecepatan efektif, dan jumlah byte yang muat dalam rentang waktu tertentu bisa dimodelkan dengan rumus sederhana. Latihan di bawah memakai frame 10 bit (8N1) sebagai bawaan.\n\n## Kesalahan umum pemula\n\n- Baud rate di kode berbeda dengan serial monitor.\n- Menyambung TX ke TX dan RX ke RX, bukan secara silang.\n- Lupa menyatukan GND antarperangkat.\n- Menaruh dua perangkat I2C beralamat sama pada satu jalur.\n- Menghubungkan modul 3,3 V ke jalur 5 V tanpa level shifter.\n- Menganggap CS pada SPI opsional padahal ia memilih perangkat mana yang aktif.\n\n## Rangkuman\n\n- UART memakai TX dan RX tanpa clock; kedua sisi harus sepakat pada baud rate, dan format 8N1 membutuhkan 10 bit per byte.\n- I2C memakai SDA dan SCL dengan alamat 7-bit sehingga banyak perangkat berbagi dua kabel, dengan kecepatan umum 100 atau 400 kHz.\n- SPI memakai MOSI, MISO, SCK, dan CS per slave, sangat cepat, tetapi butuh lebih banyak pin.\n- Pilih UART untuk GPS dan Bluetooth, I2C untuk sensor dan OLED, SPI untuk kartu SD dan layar TFT.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Serial monitor menampilkan karakter acak padahal kode memakai Serial.begin(9600). Penyebab yang paling mungkin adalah",
+          "code": "",
+          "options": [
+            "Kartu SD belum dipasang pada jalur SPI",
+            "Baud rate pada serial monitor tidak sama dengan 9600",
+            "Alamat I2C sensor bertabrakan dengan OLED",
+            "Pin CS tidak ditarik ke tegangan tinggi"
+          ],
+          "answer": 1,
+          "explanation": "UART asinkron, jadi kedua sisi harus memakai baud rate yang sama."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah proyek memakai dua sensor dan satu OLED, tetapi pin MCU hanya tersisa dua. Protokol yang paling cocok adalah",
+          "code": "",
+          "options": [
+            "SPI, karena tiap perangkat tidak butuh pin tambahan sama sekali",
+            "UART, karena satu port UART dapat melayani banyak sensor sekaligus",
+            "Tidak ada yang cocok sehingga proyek tidak bisa dibuat",
+            "I2C"
+          ],
+          "answer": 3,
+          "explanation": "I2C hanya butuh SDA dan SCL untuk banyak perangkat beralamat berbeda."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada UART 8N1, setiap byte data dikirim memakai 10 bit di jalur.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Ada 1 bit start, 8 bit data, dan 1 bit stop."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menyambung modul GPS ke MCU lewat UART. Sambungan yang benar adalah",
+          "code": "",
+          "options": [
+            "TX modul ke RX MCU, RX modul ke TX MCU, dan GND disatukan",
+            "TX modul ke TX MCU dan RX modul ke RX MCU",
+            "SDA modul ke TX MCU dan SCL modul ke RX MCU",
+            "MOSI modul ke RX MCU dan MISO modul ke TX MCU"
+          ],
+          "answer": 0,
+          "explanation": "UART disambung silang dan butuh GND bersama."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Layar TFT yang membutuhkan kecepatan transfer tinggi biasanya dihubungkan lewat",
+          "code": "",
+          "options": [
+            "I2C, karena kecepatan 100 kHz paling tinggi",
+            "UART 9600 baud, karena paling sederhana",
+            "SPI, karena clock-nya bisa sampai puluhan MHz",
+            "1-Wire, karena hanya butuh satu kabel saja"
+          ],
+          "answer": 2,
+          "explanation": "SPI mendukung kecepatan sangat tinggi sehingga cocok untuk layar TFT dan kartu SD."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung waktu kirim serial",
+          "prompt": "Lengkapi:\n\n- `waktu_kirim_ms(jumlah_byte, baud, bit_per_frame=10)` mengembalikan waktu kirim dalam milidetik.\n- `byte_per_detik(baud, bit_per_frame=10)` mengembalikan kecepatan efektif dalam byte per detik.\n- `baud_cukup(byte_per_siklus, siklus_ms, baud, bit_per_frame=10)` mengembalikan `True` bila data sebanyak `byte_per_siklus` dapat terkirim dalam `siklus_ms` milidetik.\n\nContoh: `waktu_kirim_ms(20, 9600)` menghasilkan sekitar `20.83`.",
+          "starter": {
+            "code": "def waktu_kirim_ms(jumlah_byte, baud, bit_per_frame=10):\n    # TODO\n    pass\n\n\ndef byte_per_detik(baud, bit_per_frame=10):\n    # TODO\n    pass\n\n\ndef baud_cukup(byte_per_siklus, siklus_ms, baud, bit_per_frame=10):\n    # TODO: bandingkan waktu kirim dengan siklus_ms\n    pass\n"
+          },
+          "solution": {
+            "code": "def waktu_kirim_ms(jumlah_byte, baud, bit_per_frame=10):\n    return jumlah_byte * bit_per_frame / baud * 1000\n\n\ndef byte_per_detik(baud, bit_per_frame=10):\n    return baud / bit_per_frame\n\n\ndef baud_cukup(byte_per_siklus, siklus_ms, baud, bit_per_frame=10):\n    return waktu_kirim_ms(byte_per_siklus, baud, bit_per_frame) <= siklus_ms\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "20 byte pada 9600 baud sekitar 20,83 ms",
+              "check": "round(waktu_kirim_ms(20, 9600), 2) == 20.83"
+            },
+            {
+              "name": "1 byte pada 115200 baud sekitar 0,087 ms",
+              "check": "round(waktu_kirim_ms(1, 115200), 3) == 0.087"
+            },
+            {
+              "name": "9600 baud setara 960 byte per detik",
+              "check": "byte_per_detik(9600) == 960"
+            },
+            {
+              "name": "Frame 11 bit memperlambat pengiriman",
+              "check": "round(byte_per_detik(9600, 11), 1) == 872.7"
+            },
+            {
+              "name": "100 byte tiap 50 ms tidak cukup pada 9600 baud",
+              "check": "baud_cukup(100, 50, 9600) is False and baud_cukup(100, 50, 115200) is True"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "daya-rtos-dan-studi-kasus",
+      "title": "Manajemen Daya, RTOS, dan Studi Kasus IoT",
+      "est_minutes": 28,
+      "slide_from": 19,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Menyebutkan empat cara menghemat daya pada mikrokontroler dan memperkirakan umur baterai.\n- Menjelaskan konsep RTOS: task, prioritas, scheduler preemptive, dan alat sinkronisasi.\n- Menentukan kapan cukup bare-metal dan kapan perlu RTOS.\n- Menelusuri alur program sistem monitoring suhu IoT dengan rata-rata sampel dan histeresis.\n\n## Hemat daya: dari mA ke µA\n\nPerangkat berbaterai hidup atau mati karena manajemen dayanya. MCU yang terus berjalan penuh bisa menghabiskan baterai dalam hitungan hari, sedangkan MCU yang lebih banyak tidur bisa bertahan berbulan-bulan. Empat cara utama dari materi kita:\n\n1. **Mode sleep atau deep sleep saat idle.** CPU dihentikan ketika tidak ada pekerjaan.\n2. **Bangun lewat interrupt atau timer (RTC).** Tidur bukan berarti mati; satu event bisa membangunkannya.\n3. **Matikan periferal yang tidak dipakai.** ADC, timer, atau modul radio yang menganggur tetap menarik arus.\n4. **Turunkan frekuensi clock dan tegangan.** Konsumsi daya naik seiring clock dan tegangan.\n\nTargetnya adalah arus rata-rata turun dari orde mA ke orde µA. Angka pastinya bergantung chip dan mode, sehingga lihat tabel konsumsi arus pada datasheet.\n\n[Lihat manajemen daya dan RTOS](slide:19)\n\n### Menghitung umur baterai\n\nPendekatan paling kasar: umur (jam) = kapasitas baterai (mAh) / arus rata-rata (mA). Contoh: baterai 1000 mAh dengan arus rata-rata 20 mA bertahan sekitar 50 jam. Jika sistem tidur 99% waktunya, arus rata-ratanya turun drastis.\n\nMisalkan saat aktif arus 40 mA selama 1 detik dan saat tidur 0,01 mA selama 59 detik dalam siklus 60 detik. Arus rata-rata = (40 × 1 + 0,01 × 59) / 60 = sekitar 0,68 mA. Dengan baterai 1000 mAh, umurnya sekitar 1480 jam atau sekitar 62 hari, jauh lebih baik dibanding 25 jam bila selalu aktif pada 40 mA. Angka ini hanya perkiraan: self-discharge baterai, suhu, dan efisiensi regulator tidak ikut dihitung.\n\nKesimpulan penting: perbesar porsi waktu tidur, bukan hanya perkecil arus aktif.\n\n## RTOS: banyak tugas, satu CPU\n\nSuper loop cocok untuk proyek kecil. Namun begitu ada banyak tugas dengan tenggat berbeda, misalnya membaca sensor setiap 100 ms, memperbarui layar, dan melayani Wi-Fi, loop tunggal menjadi sulit diatur. Satu tugas lambat bisa menunda semuanya.\n\n**RTOS** (real-time operating system) seperti FreeRTOS memecah program menjadi beberapa **task** berprioritas. Ide-ide kuncinya:\n\n- **Task.** Fungsi yang berjalan seolah-olah punya CPU sendiri, biasanya dengan loop sendiri.\n- **Scheduler preemptive.** Penjadwal dapat menghentikan task berprioritas rendah dan menjalankan task berprioritas tinggi bila perlu, sehingga tenggat penting terjamin.\n- **Queue, semaphore, mutex.** Alat sinkronisasi agar task bertukar data dan berbagi sumber daya tanpa saling merusak.\n\nFreeRTOS tersedia sebagai bawaan di ESP-IDF untuk ESP32, jadi di ESP32 kamu sering memakai RTOS tanpa menyadarinya.\n\n```c\nvoid taskSensor(void *p) {\n  for (;;) {\n    float suhu = bacaSuhu();\n    xQueueSend(antrian, &suhu, 0);      // kirim ke task lain\n    vTaskDelay(pdMS_TO_TICKS(2000));    // tidur 2 detik\n  }\n}\n```\n\nPenjelasan singkat: task membaca sensor, mengirim hasilnya ke queue, lalu `vTaskDelay` menyerahkan CPU ke task lain selama dua detik. Tidak seperti `delay()` pada bare-metal, penundaan di RTOS tidak membuang waktu CPU.\n\n### Kapan memakai RTOS\n\nRTOS menambah memori, kompleksitas, dan kemungkinan bug baru seperti deadlock. Jangan memakainya hanya karena terdengar canggih. Pakailah ketika:\n\n- ada banyak tugas yang harus berjalan seolah-olah paralel;\n- ada tenggat berbeda dengan prioritas yang jelas;\n- kamu memakai konektivitas seperti Wi-Fi yang sudah bergantung pada RTOS.\n\nBila hanya membaca satu sensor dan mengedipkan LED, super loop sudah cukup.\n\n## Studi kasus: monitoring suhu IoT\n\nMari gabungkan semua materi menjadi satu sistem. Komponennya:\n\n- **Sensor DS18B20** (antarmuka 1-Wire; deck juga menyebut jalur ADC untuk varian sensor analog) mengukur suhu.\n- **ESP32** membaca, menyaring, dan menjalankan logika kontrol.\n- **OLED 0,96 inci** (I²C) menampilkan suhu secara lokal.\n- **Cloud lewat MQTT** menerima data untuk dashboard via Wi-Fi.\n- **Relay dan kipas** aktif bila suhu melewati 30 °C.\n\nLihat arsitektur sistem monitoring suhu\n\nAlur program utamanya: baca sensor tiap 2 detik, rata-rata 5 sampel, tampilkan, kirim ke cloud, lalu kendalikan kipas dengan histeresis 1 °C.\n\n### Rata-rata 5 sampel\n\nSensor sesekali menghasilkan lonjakan sesaat akibat noise. Rata-rata bergerak dari 5 sampel terakhir meratakan lonjakan itu. Contoh: sampel 29, 30, 29, 35, 30 memberi rata-rata 30,6. Satu lonjakan 35 hanya menaikkan rata-rata sekitar 1 °C, bukan 5 °C. Harganya adalah respons yang agak tertunda.\n\n### Histeresis kipas\n\nTanpa histeresis, kipas dinyalakan saat suhu di atas 30 dan dimatikan saat di bawah 30. Jika suhu bergoyang di sekitar 30, relay menyala dan mati berulang kali dan cepat aus. Dengan histeresis 1 °C aturannya:\n\n- Kipas **menyala** bila suhu lebih dari 30 °C.\n- Kipas **mati** bila suhu kurang dari 29 °C (30 dikurangi 1).\n- Di antara 29 dan 30, kipas **mempertahankan** keadaan sebelumnya.\n\nIni adalah mesin status sederhana dengan dua keadaan, menyala dan mati, dan transisi yang bergantung pada dua ambang berbeda.\n\n```cpp\nbool kipas = false;\n\nvoid kontrolKipas(float suhu) {\n  if (suhu > 30.0) kipas = true;\n  else if (suhu < 29.0) kipas = false;\n  digitalWrite(PIN_RELAY, kipas);\n}\n```\n\nPerhatikan bahwa tidak ada `else` terakhir. Di zona 29 sampai 30, nilai `kipas` tidak disentuh, dan itulah inti histeresis.\n\n## Latihan kode: dua blok studi kasus\n\nModel Python di bawah memisahkan logika murni dari perangkat keras: rata-rata bergerak, kontrol kipas, dan perkiraan umur baterai. Bagian murni seperti ini mudah diuji sebelum diterjemahkan ke C++.\n\n## Kesalahan umum pemula\n\n- Membiarkan periferal menyala saat MCU tidur.\n- Menghitung umur baterai hanya dari arus aktif.\n- Memakai RTOS pada proyek yang cukup dengan super loop.\n- Mengabaikan histeresis sehingga relay bergetar di sekitar ambang.\n- Mengirim data ke cloud tiap loop tanpa jeda sehingga boros daya dan bandwidth.\n\n## Rangkuman\n\n- Hemat daya dicapai lewat sleep, bangun dengan interrupt atau timer, mematikan periferal, dan menurunkan clock serta tegangan; porsi waktu tidur sangat menentukan umur baterai.\n- RTOS memecah program menjadi task berprioritas dengan scheduler preemptive serta queue, semaphore, dan mutex.\n- Pakai RTOS saat banyak tugas dan tenggat berbeda; super loop cukup untuk proyek kecil.\n- Sistem monitoring suhu memakai rata-rata 5 sampel untuk menyaring noise dan histeresis 1 °C agar kipas tidak berganti keadaan terus-menerus.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah logger suhu harus bertahan berbulan-bulan dengan baterai kecil. Strategi yang paling efektif adalah",
+          "code": "",
+          "options": [
+            "Menaikkan clock agar tugas selesai lebih cepat lalu terus menyala",
+            "Menyalakan semua periferal supaya siap kapan saja diperlukan",
+            "Membaca sensor tanpa jeda untuk akurasi sebaik mungkin",
+            "Tidur dalam deep sleep dan bangun periodik lewat timer RTC"
+          ],
+          "answer": 3,
+          "explanation": "Waktu tidur yang dominan menurunkan arus rata-rata ke orde µA."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada kontrol kipas dengan batas 30 °C dan histeresis 1 °C, kipas sedang menyala dan suhu turun ke 29,5 °C. Yang terjadi adalah",
+          "code": "",
+          "options": [
+            "Kipas mati karena suhu sudah di bawah 30",
+            "Kipas tetap menyala",
+            "Kipas berkedip menyala dan mati bergantian",
+            "Kipas mati karena suhu di atas 29"
+          ],
+          "answer": 1,
+          "explanation": "Kipas baru mati bila suhu di bawah 29 °C; di zona 29-30 keadaan dipertahankan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Scheduler preemptive pada RTOS dapat menghentikan task berprioritas rendah demi task berprioritas lebih tinggi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Itulah arti preemptive: penjadwal dapat menyela task yang sedang berjalan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mana yang paling tepat sebagai alasan memakai RTOS",
+          "code": "",
+          "options": [
+            "Supaya kode otomatis memakai lebih sedikit RAM",
+            "Karena RTOS selalu membuat program lebih cepat dari bare-metal",
+            "Ada banyak tugas dengan tenggat dan prioritas berbeda",
+            "Agar tidak perlu lagi menulis fungsi inisialisasi sama sekali"
+          ],
+          "answer": 2,
+          "explanation": "RTOS berguna untuk mengatur banyak tugas dengan prioritas; ia menambah overhead, bukan menguranginya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sampel suhu terakhir adalah 29, 30, 29, 35, 30. Rata-rata lima sampel tersebut adalah",
+          "code": "",
+          "options": [
+            "30,6",
+            "35, nilai tertinggi pada sampel",
+            "29,5",
+            "32,2"
+          ],
+          "answer": 0,
+          "explanation": "(29+30+29+35+30) / 5 = 153 / 5 = 30,6."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Rata-rata dan kontrol kipas",
+          "prompt": "Lengkapi:\n\n- `rata_rata_bergerak(data, n=5)` mengembalikan daftar rata-rata dari `n` sampel terakhir pada tiap posisi (bila data baru kurang dari `n`, pakai semua data yang ada).\n- `kontrol_kipas(menyala, suhu, batas=30.0, histeresis=1.0)` mengembalikan keadaan baru: `True` bila `suhu > batas`, `False` bila `suhu < batas - histeresis`, selain itu tetap `menyala`.\n\nContoh: `kontrol_kipas(True, 29.5)` menghasilkan `True`.",
+          "starter": {
+            "code": "def rata_rata_bergerak(data, n=5):\n    # TODO: pakai irisan data[max(0, i - n + 1): i + 1]\n    pass\n\n\ndef kontrol_kipas(menyala, suhu, batas=30.0, histeresis=1.0):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def rata_rata_bergerak(data, n=5):\n    hasil = []\n    for i in range(len(data)):\n        jendela = data[max(0, i - n + 1): i + 1]\n        hasil.append(sum(jendela) / len(jendela))\n    return hasil\n\n\ndef kontrol_kipas(menyala, suhu, batas=30.0, histeresis=1.0):\n    if suhu > batas:\n        return True\n    if suhu < batas - histeresis:\n        return False\n    return menyala\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Rata-rata lima sampel terakhir",
+              "check": "abs(rata_rata_bergerak([29, 30, 29, 35, 30])[-1] - 30.6) < 1e-9"
+            },
+            {
+              "name": "Awal data memakai sampel yang ada",
+              "check": "rata_rata_bergerak([10, 20]) == [10.0, 15.0]"
+            },
+            {
+              "name": "Jendela menggeser sampel lama",
+              "check": "rata_rata_bergerak([1, 2, 3, 4], 2) == [1.0, 1.5, 2.5, 3.5]"
+            },
+            {
+              "name": "Suhu di atas batas menyalakan kipas",
+              "check": "kontrol_kipas(False, 30.5) is True"
+            },
+            {
+              "name": "Zona histeresis mempertahankan keadaan",
+              "check": "kontrol_kipas(True, 29.5) is True and kontrol_kipas(False, 29.5) is False"
+            },
+            {
+              "name": "Suhu di bawah ambang bawah mematikan kipas",
+              "check": "kontrol_kipas(True, 28.9) is False"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Perkiraan umur baterai",
+          "prompt": "Lengkapi `arus_rata_ma(arus_aktif, detik_aktif, arus_tidur, detik_tidur)` yang mengembalikan arus rata-rata dalam mA pada satu siklus, lalu `umur_hari(kapasitas_mah, arus_ma)` yang mengembalikan umur baterai dalam hari (`kapasitas / arus / 24`).\n\nContoh: `arus_rata_ma(40, 1, 0.01, 59)` sekitar `0.68`.",
+          "starter": {
+            "code": "def arus_rata_ma(arus_aktif, detik_aktif, arus_tidur, detik_tidur):\n    # TODO: rata-rata tertimbang oleh durasi\n    pass\n\n\ndef umur_hari(kapasitas_mah, arus_ma):\n    # TODO\n    pass\n"
+          },
+          "solution": {
+            "code": "def arus_rata_ma(arus_aktif, detik_aktif, arus_tidur, detik_tidur):\n    total = detik_aktif + detik_tidur\n    return (arus_aktif * detik_aktif + arus_tidur * detik_tidur) / total\n\n\ndef umur_hari(kapasitas_mah, arus_ma):\n    return kapasitas_mah / arus_ma / 24\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Arus rata-rata siklus 1 detik aktif dan 59 detik tidur",
+              "check": "abs(arus_rata_ma(40, 1, 0.01, 59) - 0.6765) < 1e-6"
+            },
+            {
+              "name": "Selalu aktif sama dengan arus aktif",
+              "check": "arus_rata_ma(20, 10, 0.5, 0) == 20"
+            },
+            {
+              "name": "1000 mAh pada 20 mA sekitar 2,08 hari",
+              "check": "round(umur_hari(1000, 20), 2) == 2.08"
+            },
+            {
+              "name": "Tidur panjang memperpanjang umur secara drastis",
+              "check": "umur_hari(1000, arus_rata_ma(40, 1, 0.01, 59)) > 50 * umur_hari(1000, 40)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "debugging-dan-praktik-terbaik",
+      "title": "Debugging dan Praktik Terbaik",
+      "est_minutes": 22,
+      "slide_from": 21,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menyebutkan enam teknik debugging dan praktik terbaik pada sistem embedded.\n- Memilih alat debugging yang tepat untuk gejala tertentu.\n- Menjelaskan fungsi watchdog timer dan cara memakainya dengan benar.\n- Menyusun ulang inti materi pemrograman mikrokontroler dari awal sampai akhir.\n\n## Debugging di MCU itu berbeda\n\nDi PC kamu bisa menjalankan debugger dengan nyaman, membuka log panjang, dan program yang crash biasanya menampilkan pesan error. Di MCU, program yang salah sering kali hanya diam: LED tidak menyala, layar kosong, atau chip reset terus-menerus tanpa tanda. Kamu tidak punya layar kesalahan, sehingga kamu harus membuat sendiri jendela untuk mengintip ke dalam sistem.\n\nKabar baiknya, ada enam alat dan kebiasaan yang saling melengkapi. Memilih yang tepat menghemat berjam-jam.\n\n[Lihat daftar teknik debugging](slide:21)\n\n## Enam alat dan kebiasaan\n\n### 1. Logging serial\n\nCara paling murah: kirim nilai variabel dan status ke serial monitor lewat UART.\n\n```cpp\nSerial.begin(115200);\nSerial.print(\"adc=\");\nSerial.print(adc);\nSerial.print(\" volt=\");\nSerial.println(volt, 2);\n```\n\nCara ini cocok untuk melihat nilai sensor atau alur program. Kelemahannya: mencetak butuh waktu, jadi hasilnya bisa mengubah timing. Jangan mencetak di dalam ISR. Hapus atau matikan log saat produk jadi supaya tidak memperlambat sistem.\n\n### 2. LED indikator\n\nLED adalah log termurah. Satu LED berkedip pelan sebagai **heartbeat** menandakan program masih hidup. Beberapa kedipan pendek bisa menjadi kode error cepat, misalnya tiga kedipan berarti sensor tidak terdeteksi. Cara ini sangat berguna saat serial belum berfungsi.\n\n### 3. Debugger SWD/JTAG\n\nDebugger perangkat keras memberi kendali penuh: kamu bisa memasang breakpoint, menghentikan program di baris tertentu, melihat (watch) isi variabel, dan melangkah baris demi baris. Pada chip ARM, SWD memerlukan hanya dua kabel sinyal selain GND. Alat ini mahal dalam hal waktu belajar, tetapi menyelesaikan bug yang sulit dilacak lewat log, misalnya variabel yang rusak diam-diam.\n\n### 4. Logic analyzer\n\nBila masalahnya ada di komunikasi, lihat sinyalnya langsung. Logic analyzer merekam level digital pada beberapa pin dan menampilkan bentuk gelombang I²C, SPI, UART, atau PWM. Kamu bisa melihat apakah alamat I2C yang dikirim benar, apakah baud rate sesuai, atau lebar pulsa servo tepat 1 sampai 2 ms. Banyak perangkat lunak logic analyzer bahkan menerjemahkan sinyal menjadi byte yang terbaca.\n\n### 5. Watchdog timer\n\nBagaimana jika program macet di dalam loop tak berujung di lapangan, tempat tidak ada orang yang bisa menekan reset? **Watchdog timer** adalah timer perangkat keras yang akan mereset MCU jika tidak \"diberi makan\" tepat waktu. Programmu harus secara berkala mereset hitungan watchdog selama berjalan normal. Bila program macet, hitungan tidak pernah direset, watchdog habis, dan chip restart otomatis.\n\n```cpp\n// pseudokode\nkonfigurasi_watchdog(2000);       // batas 2 detik\nwhile (1) {\n  kerjakan_tugas();\n  beri_makan_watchdog();          // dipanggil hanya jika tugas sehat\n}\n```\n\nHal yang sering salah: memanggil `beri_makan_watchdog()` di dalam ISR atau di tempat yang selalu dijalankan walau tugas utama macet. Itu mengalahkan tujuan watchdog. Beri makan hanya ketika bagian-bagian penting program terbukti berjalan. Selain itu, setelah reset oleh watchdog, simpan penyebab reset bila chip menyediakannya agar masalah di lapangan bisa dilacak.\n\n### 6. Modular dan Git\n\nPisahkan kode menjadi modul: driver sensor, logika kontrol, dan tampilan masing-masing dalam berkas sendiri. Driver yang terpisah mudah diganti saat sensor berubah, dan logika murni mudah diuji di PC. Gunakan Git untuk mengelola versi supaya kamu selalu bisa kembali ke versi yang bekerja. Commit kecil dengan pesan yang jelas membuat pencarian sumber bug jauh lebih singkat.\n\n## Memilih alat berdasarkan gejala\n\n| Gejala | Alat pertama yang dicoba |\n| --- | --- |\n| Nilai sensor aneh | Logging serial |\n| Tidak jelas apakah program hidup | LED heartbeat |\n| Variabel rusak atau program lompat ke tempat salah | Debugger SWD/JTAG |\n| Sensor I2C tidak menjawab | Logic analyzer, lalu pemindai alamat |\n| Perangkat macet di lapangan | Watchdog timer |\n| Bug muncul setelah banyak perubahan | Git: bandingkan versi |\n\nIngat prinsip kerja yang efisien: ubah satu hal pada satu waktu, uji, lalu lanjut. Jika kamu mengubah lima hal sekaligus, kamu tidak tahu mana yang memperbaiki atau merusak.\n\n## Merangkum perjalanan kita\n\nInilah inti pemrograman mikrokontroler yang sudah kamu pelajari, sejalan dengan rangkuman deck.\n\n- **MCU = CPU + memori + periferal dalam satu chip.** Memahami Flash, SRAM, dan EEPROM menentukan apa yang disimpan di mana.\n- **C dan manipulasi bit adalah bahasa utama hardware.** Set, clear, toggle, dan baca bit mengendalikan register.\n- **GPIO, ADC, dan PWM menghubungkan ke dunia nyata.** Dari LED dan tombol sampai sensor dan motor.\n- **Interrupt dan timer membuat sistem responsif.** ISR singkat, proses berat di loop utama.\n- **UART, I2C, dan SPI untuk sensor dan modul.** Tiap protokol punya tempat yang cocok.\n\nKalimat penutup deck patut diingat: kuasai register dan periferal, lalu bangun sistem yang andal, hemat daya, dan tepat waktu. Andal berarti tetap berjalan, termasuk saat ada gangguan, yang dibantu watchdog dan debugging yang rapi. Hemat daya berarti tidur saat idle. Tepat waktu berarti memakai timer, interrupt, atau RTOS dengan benar.\n\n## Langkah berikutnya\n\nPilih satu papan, misalnya Arduino Uno atau ESP32, lalu bangun proyek kecil yang menggabungkan minimal tiga hal: satu masukan (tombol atau sensor), satu keluaran (LED, PWM, atau relay), dan satu komunikasi (serial atau OLED). Catat setiap bug yang kamu temui dan alat yang menyelesaikannya. Kebiasaan itu akan melatih intuisi debugging lebih cepat daripada membaca teori saja.\n\n## Rangkuman\n\n- Pada MCU, program yang salah sering diam saja, jadi kamu butuh log serial, LED indikator, debugger, dan logic analyzer sebagai jendela ke dalam sistem.\n- Debugger SWD/JTAG memberi breakpoint, watch variabel, dan step per baris; logic analyzer menampilkan sinyal I2C, SPI, UART, dan PWM secara nyata.\n- Watchdog timer mereset chip otomatis bila program macet, asalkan hanya diberi makan ketika tugas utama sehat.\n- Kode yang modular dengan versi dikelola Git memudahkan pelacakan bug; ubah satu hal pada satu waktu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sensor I2C baru tidak memberi respons dan kamu ragu apakah alamat yang dikirim benar. Alat yang paling cepat memperlihatkannya adalah",
+          "code": "",
+          "options": [
+            "Mengganti resistor LED pada jalur PWM",
+            "Menaikkan prescaler timer sampai 1024",
+            "Logic analyzer yang menampilkan alamat dan acknowledge di jalur I2C",
+            "Menurunkan clock CPU menjadi setengahnya"
+          ],
+          "answer": 2,
+          "explanation": "Logic analyzer menampilkan sinyal I2C nyata, termasuk alamat yang dikirim."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Alat yang dipasang di lapangan kadang macet dan tidak ada yang bisa menekan reset. Perlindungan yang tepat adalah",
+          "code": "",
+          "options": [
+            "Watchdog timer yang mereset chip jika tidak diberi makan tepat waktu",
+            "Menambah delay panjang di setiap loop",
+            "Memindahkan semua variabel ke EEPROM",
+            "Mematikan seluruh interrupt agar program stabil"
+          ],
+          "answer": 0,
+          "explanation": "Watchdog mereset MCU otomatis bila program tidak mereset hitungannya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Memanggil fungsi beri-makan watchdog di dalam ISR timer yang selalu berjalan menjamin watchdog melindungi tugas utama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "ISR tetap berjalan walau tugas utama macet sehingga watchdog tidak pernah memicu reset."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Program kamu terasa hidup tetapi tidak ada layar dan serial belum berfungsi. Cara termurah untuk memastikan program masih berjalan adalah",
+          "code": "",
+          "options": [
+            "Menjalankan debugger SWD tanpa memasang kabel apa pun",
+            "Memasang RTOS agar ada task pemantau",
+            "Menulis ulang program dalam MicroPython",
+            "Membuat LED heartbeat yang berkedip pelan"
+          ],
+          "answer": 3,
+          "explanation": "LED heartbeat adalah indikator hidup yang paling sederhana."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa Serial.print sebaiknya tidak dipakai berlebihan pada kode yang butuh timing ketat",
+          "code": "",
+          "options": [
+            "Serial.print menghapus nilai variabel yang dicetak",
+            "Mencetak memakan waktu sehingga dapat mengubah timing program",
+            "Serial.print mengubah baud rate secara otomatis",
+            "Serial.print hanya berfungsi bila ada watchdog aktif"
+          ],
+          "answer": 1,
+          "explanation": "Mengirim teks lewat UART lambat dan bisa mengganggu ketepatan waktu."
+        }
+      ],
+      "exercises": []
+    }
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Pengendali Kipas Termostat",
+    "brief": "Bangun logika murni **termostat IoT mini** seperti studi kasus monitoring suhu: baca nilai ADC, ubah menjadi suhu, haluskan dengan rata-rata bergerak, lalu kendalikan kipas dengan histeresis.\n\nFitur wajib:\n\n- `adc_ke_suhu(adc, vref=3.3, bit=12, mv_per_c=10)` mengubah nilai ADC menjadi suhu dalam derajat Celsius untuk sensor yang memberi `mv_per_c` mV per derajat.\n- `class Termostat(batas=30.0, histeresis=1.0, n=5)` dengan metode `update(suhu)` yang menyimpan maksimal `n` sampel terakhir, menghitung rata-rata, memperbarui `self.kipas` (mulai `False`), lalu mengembalikan tuple `(rata_rata, kipas)`. Kipas menyala bila rata-rata lebih dari `batas`, mati bila kurang dari `batas - histeresis`, selain itu keadaan dipertahankan.\n- `jalankan(daftar_suhu, **opsi)` memberi tiap suhu ke satu `Termostat` baru dan mengembalikan daftar keadaan kipas.\n- `format_status(suhu, kipas)` mengembalikan teks seperti `Suhu 30.6 C | Kipas ON`.\n\nContoh: `jalankan([29, 31, 29.5, 28.5, 31], n=1)` menghasilkan `[False, True, True, False, True]`.",
+    "prompt": "Lengkapi adc_ke_suhu, class Termostat, jalankan, dan format_status agar suhu dari ADC dirata-rata dan kipas dikendalikan dengan histeresis.",
+    "starter": {
+      "code": "def adc_ke_suhu(adc, vref=3.3, bit=12, mv_per_c=10):\n    # TODO: ADC -> volt -> mV -> derajat\n    pass\n\n\nclass Termostat:\n    def __init__(self, batas=30.0, histeresis=1.0, n=5):\n        self.batas = batas\n        self.histeresis = histeresis\n        self.n = n\n        self.data = []\n        self.kipas = False\n\n    def update(self, suhu):\n        # TODO: simpan maksimal n sampel, hitung rata-rata, atur kipas\n        pass\n\n\ndef jalankan(daftar_suhu, **opsi):\n    # TODO: satu Termostat baru, kembalikan daftar keadaan kipas\n    pass\n\n\ndef format_status(suhu, kipas):\n    # TODO: \"Suhu 30.6 C | Kipas ON\"\n    pass\n"
+    },
+    "solution": {
+      "code": "def adc_ke_suhu(adc, vref=3.3, bit=12, mv_per_c=10):\n    volt = adc * vref / 2**bit\n    return volt * 1000 / mv_per_c\n\n\nclass Termostat:\n    def __init__(self, batas=30.0, histeresis=1.0, n=5):\n        self.batas = batas\n        self.histeresis = histeresis\n        self.n = n\n        self.data = []\n        self.kipas = False\n\n    def update(self, suhu):\n        self.data.append(suhu)\n        self.data = self.data[-self.n:]\n        rata = sum(self.data) / len(self.data)\n        if rata > self.batas:\n            self.kipas = True\n        elif rata < self.batas - self.histeresis:\n            self.kipas = False\n        return rata, self.kipas\n\n\ndef jalankan(daftar_suhu, **opsi):\n    t = Termostat(**opsi)\n    return [t.update(s)[1] for s in daftar_suhu]\n\n\ndef format_status(suhu, kipas):\n    return f\"Suhu {suhu:.1f} C | Kipas {'ON' if kipas else 'OFF'}\"\n"
+    },
+    "setup": "",
+    "tests": [
+      {
+        "name": "ADC 0 berarti suhu 0",
+        "check": "adc_ke_suhu(0) == 0"
+      },
+      {
+        "name": "ADC 512 pada 5 V 10-bit menghasilkan 250",
+        "check": "adc_ke_suhu(512, 5.0, 10) == 250.0"
+      },
+      {
+        "name": "ADC 12-bit 3,3 V: 2048 menghasilkan 165",
+        "check": "abs(adc_ke_suhu(2048) - 165.0) < 1e-6"
+      },
+      {
+        "name": "Rata-rata pertama sama dengan sampelnya",
+        "check": "Termostat().update(29) == (29.0, False)"
+      },
+      {
+        "name": "Rata-rata lima sampel terakhir",
+        "check": "(lambda t: [t.update(s) for s in (29, 30, 29, 35, 30)][-1])(Termostat())[0] == 30.6 or abs((lambda t: [t.update(s) for s in (29, 30, 29, 35, 30)][-1])(Termostat())[0] - 30.6) < 1e-9"
+      },
+      {
+        "name": "Jendela dibatasi n sampel",
+        "check": "abs((lambda t: [t.update(s) for s in (10, 20, 30)][-1])(Termostat(n=2))[0] - 25.0) < 1e-9"
+      },
+      {
+        "name": "Kipas menyala di atas batas",
+        "check": "Termostat(n=1).update(31)[1] is True"
+      },
+      {
+        "name": "Histeresis mempertahankan keadaan",
+        "check": "jalankan([29, 31, 29.5, 28.5, 31], n=1) == [False, True, True, False, True]"
+      },
+      {
+        "name": "Kipas menyala setelah rata-rata melewati batas",
+        "check": "jalankan([29, 30, 29, 35, 30]) == [False, False, False, True, True]"
+      },
+      {
+        "name": "Format status",
+        "check": "format_status(30.6, True) == 'Suhu 30.6 C | Kipas ON' and format_status(28.04, False) == 'Suhu 28.0 C | Kipas OFF'"
+      }
+    ]
+  }
+}
