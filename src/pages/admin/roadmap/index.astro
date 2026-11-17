@@ -1,8 +1,9 @@
 ---
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus, Route } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import StatusBadge from "@/components/admin/StatusBadge";
 import { field, primaryButton } from "@/components/admin/editor";
+import { chip, tile } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../../components/AppShell.astro";
 import Base from "../../../layouts/Base.astro";
@@ -11,51 +12,87 @@ import { adminOnly } from "../../../lib/guard";
 const user = await adminOnly(Astro);
 if (user instanceof Response) return user;
 
-const { data: tracks } = await (await createClient())
+type Track = {
+  slug: string;
+  title: string;
+  description: string | null;
+  status: string;
+  track_nodes: { position: number; topics: { title: string } | null }[];
+};
+const { data } = await (await createClient())
   .from("tracks")
-  .select("slug, title, status, track_nodes(count)")
+  .select("slug, title, description, status, track_nodes(position, topics(title))")
   .order("created_at");
+const tracks = (data ?? []) as unknown as Track[];
+const published = tracks.filter((t) => t.status === "published").length;
 ---
 
 <Base title="Roadmap" description="Susun track dari topik yang sudah terbit, atur prasyaratnya, lalu terbitkan." noindex>
   <AppShell set="admin" email={user.email}>
-    <div class="mx-auto max-w-3xl">
-      <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Roadmap</h1>
-      {!tracks?.length ? (
+    <div class="mx-auto max-w-5xl">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Roadmap</h1>
+          <p class="mt-2 text-sm text-zinc-400">{tracks.length} track, {published} terbit. Susun dari topik yang sudah terbit, atur prasyarat, lalu terbitkan.</p>
+        </div>
+        <a href="#baru" class={`${primaryButton} min-h-11 px-5 text-sm`}><Plus aria-hidden className="size-4" />Track baru</a>
+      </div>
+
+      {!tracks.length ? (
         <p class="mt-6 text-zinc-400">Belum ada track. Buat yang pertama di bawah.</p>
       ) : (
-        <ul class="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-          {tracks.map((t) => (
-            <li>
-              <a href={`/admin/roadmap/${t.slug}`} class="group flex min-h-16 items-center gap-4 py-3 focus-visible:outline-2 focus-visible:outline-accent">
-                <span class="min-w-0 flex-1">
-                  <span class="block font-medium group-hover:text-accent">{t.title}</span>
-                  <span class="font-mono text-xs text-zinc-500">{t.slug}</span>
-                </span>
-                <span class="text-sm text-zinc-400 tabular-nums">{t.track_nodes[0]?.count ?? 0} topik</span>
-                <StatusBadge status={t.status} />
-              </a>
-            </li>
-          ))}
+        <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+          {tracks.map((t, i) => {
+            const nodes = t.track_nodes.toSorted((a, b) => a.position - b.position);
+            return (
+              <li>
+                <a href={`/admin/roadmap/${t.slug}`} class="group flex h-full flex-col gap-4 rounded-[28px] bg-zinc-900 p-5 shadow-soft transition-shadow hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-accent">
+                  <div class="flex items-start gap-3">
+                    <span aria-hidden class={`grid size-11 shrink-0 place-items-center rounded-2xl ${tile(i)}`}><Route className="size-5" /></span>
+                    <div class="min-w-0 flex-1">
+                      <h2 class="font-bold tracking-tight group-hover:text-accent">{t.title}</h2>
+                      <p class="truncate font-mono text-xs text-zinc-500">{t.slug}</p>
+                    </div>
+                    <StatusBadge status={t.status} />
+                  </div>
+                  {t.description && <p class="line-clamp-2 text-sm text-zinc-400">{t.description}</p>}
+                  <div class="mt-auto">
+                    <p class="mb-2 text-xs text-zinc-500 tabular-nums">{nodes.length} topik</p>
+                    <ol class="flex flex-wrap items-center gap-1.5">
+                      {nodes.slice(0, 4).map((n, k) => (
+                        <li class="flex items-center gap-1.5">
+                          {k > 0 && <ChevronRight aria-hidden className="size-3 text-zinc-600" />}
+                          <span class={`${chip} min-h-7 bg-zinc-800 px-2.5 text-xs`}>{n.topics?.title ?? "?"}</span>
+                        </li>
+                      ))}
+                      {nodes.length > 4 && <li class="text-xs text-zinc-500">+{nodes.length - 4}</li>}
+                    </ol>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      <h2 class="mt-12 text-xl font-bold tracking-tight">Track baru</h2>
-      <ActionForm client:load action="buatTrack" className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label class="text-sm text-zinc-400">
-          Judul
-          <input name="title" required class={`${field} mt-1`} placeholder="Frontend Dasar" />
-        </label>
-        <label class="text-sm text-zinc-400">
-          Slug
-          <input name="slug" required pattern="[a-z0-9\-]+" class={`${field} mt-1 font-mono`} placeholder="frontend-dasar" />
-        </label>
-        <label class="text-sm text-zinc-400 sm:col-span-2">
-          Deskripsi
-          <textarea name="description" rows={2} class={`${field} mt-1`} />
-        </label>
-        <button class={`${primaryButton} sm:col-span-2 sm:justify-self-end`}><Plus aria-hidden className="size-4" />Buat track</button>
-      </ActionForm>
+      <section id="baru" aria-labelledby="track-baru" class="mt-10 scroll-mt-6 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+        <h2 id="track-baru" class="text-xl font-bold tracking-tight">Track baru</h2>
+        <ActionForm client:load action="buatTrack" className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="text-sm text-zinc-400">
+            Judul
+            <input name="title" required class={`${field} mt-1`} placeholder="Frontend Dasar" />
+          </label>
+          <label class="text-sm text-zinc-400">
+            Slug
+            <input name="slug" required pattern="[a-z0-9\-]+" class={`${field} mt-1 font-mono`} placeholder="frontend-dasar" />
+          </label>
+          <label class="text-sm text-zinc-400 sm:col-span-2">
+            Deskripsi
+            <textarea name="description" rows={2} class={`${field} mt-1`} />
+          </label>
+          <button class={`${primaryButton} sm:col-span-2 sm:justify-self-end`}><Plus aria-hidden className="size-4" />Buat track</button>
+        </ActionForm>
+      </section>
     </div>
   </AppShell>
 </Base>

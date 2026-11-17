@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, LoaderCircle, RotateCcw, XCircle } from "lucide-re
 import { useEffect, useState, useTransition } from "react";
 import { importErrorText } from "@/lib/import-errors";
 import { createClient } from "@/lib/supabase/client";
+import { chip } from "@/components/ui/styles";
 import { smallButton } from "./editor";
 import { rpc } from "@/lib/rpc";
 
@@ -34,9 +35,19 @@ const RECENT = 6;
 const active = (j: Job) => j.status === "queued" || j.status === "rendering" || j.status === "drafting";
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+const FILTERS = [
+  ["semua", "Semua", () => true],
+  ["jalan", "Berjalan", (j: Job) => active(j)],
+  ["siap", "Draf siap", (j: Job) => j.status === "done"],
+  ["gagal", "Gagal", (j: Job) => j.status === "failed"],
+] as const;
+
+const TILE = { queued: "bg-zinc-800", rendering: "bg-tile-butter", drafting: "bg-tile-butter", done: "bg-tile-mint", failed: "bg-tile-pink" };
+
 export default function JobList({ initial, models }: { initial: Job[]; models: string[] }) {
   const [jobs, setJobs] = useState(initial);
   const [message, setMessage] = useState("");
+  const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("semua");
   const [pending, start] = useTransition();
   const running = jobs.some(active);
 
@@ -59,72 +70,92 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
     });
   }
 
+  const test = FILTERS.find((f) => f[0] === filter)![2];
+  const shown = jobs.filter(test);
+
   return (
-    <section aria-labelledby="riwayat" className="flex flex-col gap-3">
-      <h2 id="riwayat" className="text-xl font-bold tracking-tight">Riwayat impor</h2>
+    <section aria-labelledby="riwayat" className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="riwayat" className="text-xl font-bold tracking-tight">Riwayat impor</h2>
+        <div role="group" aria-label="Saring riwayat" className="flex flex-wrap gap-2">
+          {FILTERS.map(([key, label, t]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={filter === key}
+              onClick={() => setFilter(key)}
+              className={`${chip} min-h-10 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary" : "bg-zinc-800 hover:bg-zinc-700"}`}
+            >
+              {label}<span className="tabular-nums opacity-70">{jobs.filter(t).length}</span>
+            </button>
+          ))}
+        </div>
+      </div>
       <p aria-live="polite" className="sr-only">{message}</p>
       {message && <p className="text-sm text-zinc-400">{message}</p>}
-      {jobs.length === 0 ? (
-        <p className="text-sm text-zinc-400">Belum ada impor. Unggah deck pertama di atas.</p>
+      {shown.length === 0 ? (
+        <p className="rounded-[28px] bg-zinc-900 p-8 text-center text-sm text-zinc-400 shadow-soft">
+          {jobs.length === 0 ? "Belum ada impor. Unggah deck pertama di atas." : "Tidak ada impor dengan status ini."}
+        </p>
       ) : (
         <>
-        <ul className="divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-          {jobs.slice(0, RECENT).map((j) => {
-            const { label, Icon, tone } = STATUS[j.status];
-            return (
-              <li key={j.id} className="grid gap-x-4 gap-y-2 py-4 sm:grid-cols-[1fr_auto]">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{j.original_name || j.slug}</p>
-                  <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-zinc-500">
-                    <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
-                    <span className="font-mono">{j.model}</span>
-                  </p>
-                  <p className={`mt-2 flex items-center gap-1.5 text-sm ${tone}`}>
-                    <Icon aria-hidden className={`size-4 ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
-                    {label}
-                  </p>
-                  {j.status === "failed" && (
-                    <div className="mt-1 text-sm text-zinc-300">
-                      {importErrorText(j.error)}
-                      <details className="mt-1 text-xs text-zinc-500">
-                        <summary className="cursor-pointer hover:text-zinc-300">Detail teknis</summary>
-                        <p className="mt-1 break-all font-mono">{j.error}</p>
-                      </details>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-start gap-2">
-                  {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</a>}
-                  {j.status === "failed" && (
-                    <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={pending || running} onRetry={(m) => ulang(j, m)} />
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        {jobs.length > RECENT && (
-          <details className="rounded-[28px] bg-zinc-900 px-5 py-3 shadow-soft">
-            <summary className="min-h-11 cursor-pointer list-none py-2.5 text-sm text-zinc-400 hover:text-zinc-50 [&::-webkit-details-marker]:hidden">
-              Impor lama ({jobs.length - RECENT})
-            </summary>
-            <ul className="divide-y divide-zinc-800">
-              {jobs.slice(RECENT).map((j) => (
-                <li key={j.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
-                  <span className="min-w-0 truncate">{j.original_name || j.slug}</span>
-                  <span className="flex items-center gap-3 text-xs text-zinc-500">
-                    <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
-                    <span className={STATUS[j.status].tone}>{STATUS[j.status].label}</span>
-                    {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className="text-accent hover:underline">Tinjau</a>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
+          <ul className="grid gap-3">
+            {shown.slice(0, RECENT).map((j) => <JobCard key={j.id} j={j} models={models} disabled={pending || running} onRetry={(m) => ulang(j, m)} />)}
+          </ul>
+          {shown.length > RECENT && (
+            <details className="rounded-[28px] bg-zinc-900 px-5 py-3 shadow-soft">
+              <summary className="min-h-11 cursor-pointer list-none py-2.5 text-sm text-zinc-400 hover:text-zinc-50 [&::-webkit-details-marker]:hidden">
+                Impor lama ({shown.length - RECENT})
+              </summary>
+              <ul className="divide-y divide-zinc-800">
+                {shown.slice(RECENT).map((j) => (
+                  <li key={j.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
+                    <span className="min-w-0 truncate">{j.original_name || j.slug}</span>
+                    <span className="flex items-center gap-3 text-xs text-zinc-500">
+                      <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
+                      <span className={STATUS[j.status].tone}>{STATUS[j.status].label}</span>
+                      {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className="text-accent hover:underline">Tinjau</a>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
     </section>
+  );
+}
+
+function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; disabled: boolean; onRetry: (m: string) => void }) {
+  const { label, Icon, tone } = STATUS[j.status];
+  return (
+    <li className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-[28px] bg-zinc-900 p-4 shadow-soft sm:p-5">
+      <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-2xl ${TILE[j.status]}`}>
+        <Icon className={`size-5 ${tone} ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
+      </span>
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="truncate font-medium">{j.original_name || j.slug}</p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+          <span className={`font-semibold ${tone}`}>{label}</span>
+          <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 font-mono">{j.model}</span>
+        </p>
+        {j.status === "failed" && (
+          <div className="mt-2 text-sm text-zinc-300">
+            {importErrorText(j.error)}
+            <details className="mt-1 text-xs text-zinc-500">
+              <summary className="cursor-pointer hover:text-zinc-300">Detail teknis</summary>
+              <p className="mt-1 break-all font-mono">{j.error}</p>
+            </details>
+          </div>
+        )}
+      </div>
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</a>}
+        {j.status === "failed" && <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={disabled} onRetry={onRetry} />}
+      </div>
+    </li>
   );
 }
 

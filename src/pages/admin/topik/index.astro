@@ -1,5 +1,5 @@
 ---
-import { FileUp, Search } from "lucide-react";
+import { ChevronRight, FileUp, LayoutGrid, List, Search } from "lucide-react";
 import StatusBadge from "@/components/admin/StatusBadge";
 import Ring from "@/components/ui/Ring";
 import { card, chip, primaryButton, tile } from "@/components/ui/styles";
@@ -29,6 +29,7 @@ type Row = {
 };
 
 const tab = Astro.url.searchParams.get("tab") ?? "";
+const view = Astro.url.searchParams.get("tampil") === "list" ? "list" : "grid";
 const q = Astro.url.searchParams.get("q")?.trim() ?? "";
 const { data } = await (await createClient())
   .from("topics")
@@ -40,9 +41,13 @@ const inTab = (t: Row, key: string) =>
   key === "tinjau" ? !!t.draft_summary : key === "terbit" ? t.status === "published" : key === "draf" ? t.status === "draft" : true;
 const needle = q.toLowerCase();
 const topics = all.filter((t) => inTab(t, tab) && (!needle || t.title.toLowerCase().includes(needle) || t.slug.includes(needle)));
-const href = (key: string) => `/admin/topik?${new URLSearchParams({ ...(key && { tab: key }), ...(q && { q }) })}`;
+const href = (key: string, v = view) => `/admin/topik?${new URLSearchParams({ ...(key && { tab: key }), ...(q && { q }), ...(v === "list" && { tampil: "list" }) })}`;
+const cover = (t: Row) => {
+  const first = t.slides.toSorted((a, b) => a.index - b.index)[0];
+  return first ? { src: slideUrl(first.path).replace(/slide-\d+\.avif$/, "cover.avif"), fallback: slideUrl(first.path) } : null;
+};
+const chapters = (t: Row) => ({ live: t.chapters.filter((c) => c.status === "published").length, total: t.chapters.filter((c) => c.status !== "archived").length });
 ---
-
 <Base title="Topik" description="Daftar topik dan draf yang menunggu tinjauan." noindex>
   <AppShell set="admin" email={user.email}>
     <div class="mx-auto max-w-6xl">
@@ -57,40 +62,81 @@ const href = (key: string) => `/admin/topik?${new URLSearchParams({ ...(key && {
         </p>
       ) : (
         <>
-          <nav aria-label="Saring topik" class="scrollbar-thin mt-6 flex gap-6 overflow-x-auto border-b border-zinc-800">
+          <nav aria-label="Saring topik" class="mt-6 flex flex-wrap gap-2">
             {TABS.map((t) => {
               const on = t.key === tab;
               return (
                 <a
                   href={href(t.key)}
                   aria-current={on ? "page" : undefined}
-                  class={`-mb-px flex min-h-11 shrink-0 items-center gap-2 border-b-2 text-sm ${on ? "border-accent font-semibold text-zinc-50" : "border-transparent text-zinc-400 hover:text-zinc-50"}`}
+                  class={`${chip} min-h-10 gap-2 px-4 text-sm ${on ? "bg-primary font-semibold text-on-primary" : "bg-zinc-800 hover:bg-zinc-700"}`}
                 >
                   {t.label}
-                  <span class="rounded-full bg-zinc-800 px-2 text-xs tabular-nums">{all.filter((x) => inTab(x, t.key)).length}</span>
+                  <span class="tabular-nums opacity-70">{all.filter((x) => inTab(x, t.key)).length}</span>
                 </a>
               );
             })}
           </nav>
 
-          <form class="mt-5 flex flex-wrap items-center gap-3">
-            {tab && <input type="hidden" name="tab" value={tab} />}
-            <p class="text-sm font-semibold tabular-nums">{topics.length} topik</p>
-            <label class="flex min-h-11 flex-1 items-center gap-2 rounded-full bg-zinc-900 px-4 shadow-soft focus-within:ring-2 focus-within:ring-accent sm:max-w-xs">
-              <Search aria-hidden className="size-4 text-zinc-500" />
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <form class="flex min-w-0 flex-1 basis-64 items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
+              {tab && <input type="hidden" name="tab" value={tab} />}
+              {view === "list" && <input type="hidden" name="tampil" value="list" />}
+              <Search aria-hidden className="size-4 shrink-0 text-zinc-500" />
               <span class="sr-only">Cari topik</span>
-              <input name="q" type="search" value={q} placeholder="Cari judul atau slug" class="w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
-            </label>
-          </form>
+              <input name="q" type="search" value={q} placeholder="Cari judul atau slug" class="min-h-12 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
+            </form>
+            <p class="text-sm tabular-nums text-zinc-400">{topics.length} topik</p>
+            <div role="group" aria-label="Tampilan" class="flex gap-1 rounded-2xl bg-zinc-800 p-1">
+              {[["grid", "Kartu", LayoutGrid], ["list", "Daftar", List]].map(([key, label, Icon]) => (
+                <a href={href(tab, key as "grid" | "list")} aria-label={`Tampilan ${label}`} aria-current={view === key ? "true" : undefined} class={`grid size-10 place-items-center rounded-xl focus-visible:outline-2 focus-visible:outline-accent ${view === key ? "bg-zinc-900 text-zinc-50 shadow-soft" : "text-zinc-400 hover:text-zinc-50"}`}>
+                  <Icon aria-hidden className="size-4" />
+                </a>
+              ))}
+            </div>
+          </div>
 
           {topics.length === 0 ? (
             <p class="mt-8 text-zinc-400">Tidak ada topik yang cocok. <a href="/admin/topik" class="text-accent hover:underline">Tampilkan semua</a></p>
-          ) : (
-            <ul class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          ) : view === "list" ? (
+            <ul class="mt-5 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-3 shadow-soft sm:px-4">
               {topics.map((t, i) => {
-                const first = t.slides.toSorted((a, b) => a.index - b.index)[0];
-                const live = t.chapters.filter((c) => c.status === "published").length;
-                const total = t.chapters.filter((c) => c.status !== "archived").length;
+                const c = cover(t);
+                const { live, total } = chapters(t);
+                return (
+                  <li>
+                    <a href={`/admin/topik/${t.slug}`} class="group flex min-h-20 items-center gap-3 py-3 focus-visible:outline-2 focus-visible:outline-accent sm:gap-4">
+                      <span class={`relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl sm:w-28 ${tile(i)}`}>
+                        {c && <img src={c.src} data-fallback={c.fallback} onerror="this.onerror=null;this.src=this.dataset.fallback" alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" />}
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="line-clamp-2 font-semibold group-hover:text-accent">{t.title}</span>
+                        <span class="block truncate font-mono text-xs text-zinc-500">{t.slug}</span>
+                        <span class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 sm:hidden">
+                          <span class="tabular-nums">{t.slides.length} slide</span>
+                          <span class="tabular-nums">{total ? `${live}/${total} bab` : "belum ada bab"}</span>
+                        </span>
+                      </span>
+                      <span class="hidden w-28 shrink-0 text-xs text-zinc-400 sm:block">
+                        <span class="flex justify-between"><span>Bab</span><span class="tabular-nums">{total ? `${live}/${total}` : "-"}</span></span>
+                        <span aria-hidden class="mt-1 block h-1.5 overflow-hidden rounded-full bg-zinc-800"><span class="block h-full rounded-full bg-brand" style={`width:${total ? Math.round((live / total) * 100) : 0}%`}></span></span>
+                      </span>
+                      <span class="hidden w-20 shrink-0 text-right text-xs tabular-nums text-zinc-400 md:block">{t.slides.length} slide</span>
+                      <span class="flex shrink-0 flex-col items-end gap-1">
+                        <StatusBadge status={t.status} />
+                        {t.draft_summary && <span class={`${chip} min-h-6 bg-tile-butter px-2 text-[11px]`}>Tinjau</span>}
+                      </span>
+                      <ChevronRight aria-hidden className="size-4 shrink-0 text-zinc-500 group-hover:text-accent" />
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <ul class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {topics.map((t, i) => {
+                const c = cover(t);
+                const { live, total } = chapters(t);
                 return (
                   <li>
                     <a
@@ -98,31 +144,21 @@ const href = (key: string) => `/admin/topik?${new URLSearchParams({ ...(key && {
                       class={`group flex h-full flex-col p-2 transition-shadow hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${card}`}
                     >
                       <div class={`relative aspect-[2/1] overflow-hidden rounded-[22px] ${tile(i)}`}>
-                        {first && (
-                          <img
-                            src={slideUrl(first.path).replace(/slide-\d+\.avif$/, "cover.avif")}
-                            data-fallback={slideUrl(first.path)}
-                            onerror="this.onerror=null;this.src=this.dataset.fallback"
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            class="absolute inset-0 size-full object-cover"
-                          />
-                        )}
+                        {c && <img src={c.src} data-fallback={c.fallback} onerror="this.onerror=null;this.src=this.dataset.fallback" alt="" loading="lazy" decoding="async" class="absolute inset-0 size-full object-cover" />}
                         <span class={`${chip} absolute top-3 left-3 bg-zinc-900/90 tabular-nums`}>{t.slides.length} slide</span>
                         {t.draft_summary && <span class={`${chip} absolute top-3 right-3 bg-tile-butter`}>Menunggu tinjauan</span>}
                       </div>
-                      <div class="flex flex-1 flex-col px-3 pt-4 pb-3">
-                        <h2 class="text-lg leading-snug font-bold tracking-tight group-hover:text-accent">{t.title}</h2>
-                        <div class="mt-4 mb-4 flex items-center gap-3">
-                          <Ring value={live} max={total} className="size-10" />
+                      <div class="flex flex-1 flex-col px-3 pt-3 pb-3">
+                        <h2 class="text-base leading-snug font-bold tracking-tight group-hover:text-accent">{t.title}</h2>
+                        <div class="mt-3 mb-3 flex items-center gap-3">
+                          <Ring value={live} max={total} className="size-9" />
                           <p class="text-sm">
                             <span class="block text-xs text-zinc-500">Bab terbit</span>
                             <span class="font-semibold tabular-nums">{total ? `${live} dari ${total}` : "Belum ada bab"}</span>
                           </p>
                         </div>
                         <div class="mt-auto flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
-                          <span class="truncate text-xs text-zinc-500">{t.slug}</span>
+                          <span class="truncate font-mono text-xs text-zinc-500">{t.slug}</span>
                           <StatusBadge status={t.status} />
                         </div>
                       </div>

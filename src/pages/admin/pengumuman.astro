@@ -12,16 +12,21 @@ const user = await adminOnly(Astro);
 if (user instanceof Response) return user;
 
 type Row = {
-  id: string; title: string; body: string; audience: "all" | "student" | "admin";
+  id: string; title: string; body: string; audience: "all" | "student" | "admin" | "users"; user_ids: string[];
   on_web: boolean; on_email: boolean; email_sent: number; email_failed: number; created_at: string;
 };
 const { data } = await (await createClient())
   .from("announcements")
-  .select("id, title, body, audience, on_web, on_email, email_sent, email_failed, created_at")
+  .select("id, title, body, audience, user_ids, on_web, on_email, email_sent, email_failed, created_at")
   .order("created_at", { ascending: false })
   .limit(30);
 const items = (data ?? []) as Row[];
-const who = { all: "Semua", student: "Siswa", admin: "Admin" } as const;
+const { data: all } = await (await createClient()).rpc("admin_users");
+const people = ((all ?? []) as { user_id: string; email: string; display_name: string | null; confirmed: boolean }[])
+  .filter((u) => u.confirmed)
+  .map((u) => ({ id: u.user_id, name: u.display_name || u.email.split("@")[0], email: u.email }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+const who = (a: Row) => ({ all: "Semua", student: "Siswa", admin: "Admin", users: `${a.user_ids.length} pengguna` })[a.audience];
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 ---
 
@@ -31,7 +36,7 @@ const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", 
       <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Pengumuman</h1>
       <p class="mt-2 text-sm text-zinc-400">Tampil sebagai kartu di Dashboard murid, dikirim ke email, atau keduanya.</p>
 
-      <div class="mt-6"><PengumumanForm client:load /></div>
+      <div class="mt-6"><PengumumanForm client:load people={people} /></div>
 
       <h2 class="mt-10 text-xl font-bold tracking-tight">Riwayat</h2>
       {!items.length ? (
@@ -45,7 +50,7 @@ const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", 
                 <p class="mt-0.5 line-clamp-2 text-sm text-zinc-400">{a.body}</p>
                 <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
                   <time datetime={a.created_at}>{when.format(new Date(a.created_at))}</time>
-                  <span class={`${chip} min-h-6 bg-zinc-800 px-2`}>{who[a.audience]}</span>
+                  <span class={`${chip} min-h-6 bg-zinc-800 px-2`}>{who(a)}</span>
                   {a.on_web && <span class="inline-flex items-center gap-1"><Globe aria-hidden className="size-3.5" />Website</span>}
                   {a.on_email && (
                     <span class="inline-flex items-center gap-1">

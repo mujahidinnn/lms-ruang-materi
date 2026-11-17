@@ -1,7 +1,9 @@
 ---
+import { Search } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import StatusBadge from "@/components/admin/StatusBadge";
 import { field, smallButton } from "@/components/admin/editor";
+import { chip } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../../components/AppShell.astro";
 import Base from "../../../layouts/Base.astro";
@@ -33,6 +35,8 @@ const { data } = await (await createClient())
   .select("id, status, duration_minutes, max_attempts, pass_score, question_count, topics(slug, title), exam_questions(status)")
   .order("created_at");
 const exams = (data ?? []) as unknown as Exam[];
+const bankOf = (e: Exam) => e.exam_questions.filter((q) => q.status === "published").length;
+const short = exams.filter((e) => bankOf(e) < 2 * e.question_count);
 ---
 
 <Base title="Ujian" description="Atur durasi, percobaan, nilai lulus dan jumlah soal tiap ujian." noindex>
@@ -42,6 +46,19 @@ const exams = (data ?? []) as unknown as Exam[];
       <p class="mt-2 text-sm text-zinc-400">
         Soal dan kuncinya diedit di halaman topik. Bank soal yang terbit harus minimal dua kali jumlah soal per percobaan.
       </p>
+      {exams.length > 0 && (
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <label class="flex min-w-0 flex-1 basis-60 items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
+            <Search aria-hidden className="size-4 shrink-0 text-zinc-500" />
+            <span class="sr-only">Cari ujian</span>
+            <input id="cari-ujian" type="search" placeholder="Cari ujian" class="min-h-12 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
+          </label>
+          <p class="text-sm tabular-nums text-zinc-400">{exams.length} ujian</p>
+          <button type="button" id="saring-bank" aria-pressed="false" class={`${chip} min-h-10 cursor-pointer bg-zinc-800 hover:bg-zinc-700 aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-on-primary`}>
+            Bank kurang<span class="tabular-nums opacity-70">{short.length}</span>
+          </button>
+        </div>
+      )}
       {!exams.length ? (
         <p class="mt-6 text-zinc-400">Belum ada ujian. Ujian dibuat saat <a href="/admin/impor" class="text-accent hover:underline">mengimpor deck</a>.</p>
       ) : (
@@ -56,7 +73,7 @@ const exams = (data ?? []) as unknown as Exam[];
               const bank = e.exam_questions.filter((q) => q.status === "published").length;
               const drafts = e.exam_questions.filter((q) => q.status === "draft").length;
               return (
-                <li class="py-4 md:grid md:grid-cols-[minmax(0,1fr)_repeat(4,5rem)_6rem] md:items-center md:gap-3 md:py-3">
+                <li data-title={e.topics.title.toLowerCase()} data-short={bank < 2 * e.question_count ? "1" : undefined} class="py-4 md:grid md:grid-cols-[minmax(0,1fr)_repeat(4,5rem)_6rem] md:items-center md:gap-3 md:py-3">
                   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <a href={`/admin/topik/${e.topics.slug}#ujian`} class="font-medium hover:text-accent">{e.topics.title}</a>
                     <StatusBadge status={e.status} />
@@ -78,8 +95,33 @@ const exams = (data ?? []) as unknown as Exam[];
               );
             })}
           </ul>
+          <p id="ujian-kosong" hidden class="py-8 text-center text-sm text-zinc-400">Tidak ada ujian yang cocok.</p>
         </div>
       )}
     </div>
   </AppShell>
 </Base>
+
+<script>
+  // Search and the "bank kurang" filter, on the rows already in the page.
+  const box = document.querySelector<HTMLInputElement>("#cari-ujian");
+  const only = document.querySelector<HTMLButtonElement>("#saring-bank");
+  const rows = [...document.querySelectorAll<HTMLElement>("li[data-title]")];
+  const none = document.querySelector<HTMLElement>("#ujian-kosong");
+  const apply = () => {
+    const q = (box?.value ?? "").trim().toLowerCase();
+    const warn = only?.getAttribute("aria-pressed") === "true";
+    let n = 0;
+    for (const r of rows) {
+      const show = (r.dataset.title ?? "").includes(q) && (!warn || r.dataset.short === "1");
+      r.hidden = !show;
+      if (show) n++;
+    }
+    if (none) none.hidden = n > 0;
+  };
+  box?.addEventListener("input", apply);
+  only?.addEventListener("click", () => {
+    only.setAttribute("aria-pressed", String(only.getAttribute("aria-pressed") !== "true"));
+    apply();
+  });
+</script>

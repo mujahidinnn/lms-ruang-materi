@@ -1,32 +1,65 @@
 ---
+import { ExternalLink, Menu, X } from "lucide-react";
 import Logo from "@/components/brand/Logo";
 import SideNav, { type NavSet } from "@/components/app/SideNav";
 import SignOutButton from "./SignOutButton.astro";
 import ThemeButton from "./ThemeButton.astro";
 
-// Signed-in screens: a white sidebar on the left from lg, a top bar with a
-// scrolling link row on phones. The page passes the signed-in email.
+// Signed-in screens: a sidebar from lg; on phones a top bar with a menu
+// button that opens the same links in a drawer. The page passes the email.
 type Props = { set: NavSet; email: string };
 const { set, email } = Astro.props;
+const brand = "flex items-center gap-2 rounded-full focus-visible:outline-2 focus-visible:outline-accent";
+const badge = "rounded-full bg-tile-lavender px-2 py-0.5 text-xs font-medium";
+const row = "flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 text-left text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent";
 ---
 
 <div class="flex flex-1 flex-col lg:flex-row">
-  <aside class="flex flex-wrap items-center gap-x-2 gap-y-3 bg-zinc-900 px-4 py-3 shadow-soft lg:sticky lg:top-0 lg:h-dvh lg:w-64 lg:shrink-0 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-8 lg:px-4 lg:py-6">
-    <a href="/" aria-label="Ruang Materi, beranda" class="flex items-center gap-2 rounded-full focus-visible:outline-2 focus-visible:outline-accent">
-      <Logo />
-      {set === "admin" && <span class="rounded-full bg-tile-lavender px-2 py-0.5 text-xs font-medium">admin</span>}
-    </a>
-    <div class="ml-auto flex items-center gap-2 lg:order-last lg:mt-auto lg:ml-0 lg:flex-col lg:items-stretch">
-      <div class="flex items-center gap-2 text-sm lg:flex-col lg:items-stretch">
-        <span class="hidden truncate px-4 text-zinc-500 lg:block">{email}</span>
-        <SignOutButton class="min-h-11 w-full rounded-2xl px-4 text-left text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent" />
+  <header class="sticky top-0 z-30 flex items-center justify-between gap-3 bg-zinc-900 px-4 py-2.5 shadow-soft lg:hidden">
+    <a href="/" aria-label="Ruang Materi, beranda" class={brand}><Logo />{set === "admin" && <span class={badge}>admin</span>}</a>
+    <button type="button" data-menu-open aria-label="Buka menu" aria-haspopup="dialog" class="grid size-11 cursor-pointer place-items-center rounded-full bg-zinc-800 text-zinc-50 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent"><Menu aria-hidden className="size-5" /></button>
+  </header>
+
+  <aside class="hidden bg-zinc-900 px-4 py-6 shadow-soft lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-64 lg:shrink-0 lg:flex-col lg:gap-8">
+    <a href="/" aria-label="Ruang Materi, beranda" class={brand}><Logo />{set === "admin" && <span class={badge}>admin</span>}</a>
+    <SideNav set={set} path={Astro.url.pathname} />
+    <div class="mt-auto grid grid-cols-[minmax(0,1fr)] gap-1">
+      <div class="mb-2 flex items-center gap-3 rounded-2xl bg-zinc-800/60 p-3">
+        <span aria-hidden class="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-sm font-bold text-on-primary">{email.charAt(0).toUpperCase()}</span>
+        <p class="min-w-0 text-xs"><span class="block truncate text-zinc-50">{email}</span><span class="text-zinc-500">Admin</span></p>
       </div>
-      <div class="lg:px-2"><ThemeButton /></div>
-    </div>
-    {/* Second row on phones, under brand and Keluar. */}
-    <div class="order-last w-full lg:order-none">
-      <SideNav set={set} path={Astro.url.pathname} />
+      <a href="/dasbor" class={row}><ExternalLink aria-hidden className="size-4" />Lihat situs</a>
+      <SignOutButton class={row} label />
+      <div class="px-2 pt-1"><ThemeButton /></div>
     </div>
   </aside>
-  <main class="w-full min-w-0 flex-1 px-4 py-8 sm:px-8 lg:py-10"><slot /></main>
+
+  <dialog id="admin-menu" aria-label="Menu admin" class="m-0 mr-auto h-dvh max-h-none w-[min(20rem,86vw)] rounded-r-[28px] border-0 bg-zinc-900 p-0 text-zinc-50 shadow-soft backdrop:bg-black/50 backdrop:backdrop-blur-sm">
+    <div class="flex h-full flex-col gap-6 p-4">
+      <div class="flex items-center justify-between">
+        <a href="/" aria-label="Ruang Materi, beranda" class={brand}><Logo />{set === "admin" && <span class={badge}>admin</span>}</a>
+        <button type="button" data-menu-close aria-label="Tutup menu" class="grid size-11 cursor-pointer place-items-center rounded-full bg-zinc-800 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent"><X aria-hidden className="size-5" /></button>
+      </div>
+      <SideNav set={set} path={Astro.url.pathname} />
+      <div class="mt-auto grid grid-cols-[minmax(0,1fr)] gap-1">
+        <p class="truncate px-4 pb-2 text-xs text-zinc-500">{email}</p>
+        <a href="/dasbor" class={row}><ExternalLink aria-hidden className="size-4" />Lihat situs</a>
+        <SignOutButton class={row} label />
+        <div class="px-2 pt-1"><ThemeButton /></div>
+      </div>
+    </div>
+  </dialog>
+
+  <main class="w-full min-w-0 flex-1 px-4 py-6 sm:px-8 lg:py-10"><slot /></main>
 </div>
+
+<script>
+  // Phone drawer: native dialog (Esc and focus trap), closed by the X, a
+  // click on the backdrop or on a link.
+  const menu = document.querySelector<HTMLDialogElement>("#admin-menu");
+  document.querySelector("[data-menu-open]")?.addEventListener("click", () => menu?.showModal());
+  menu?.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement;
+    if (t === menu || t.closest("[data-menu-close], a")) menu.close();
+  });
+</script>

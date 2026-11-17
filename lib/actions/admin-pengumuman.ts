@@ -13,7 +13,8 @@ const content = z.object({
   link,
 });
 const send = content.extend({
-  audience: z.enum(["all", "student", "admin"]),
+  audience: z.enum(["all", "student", "admin", "users"]),
+  userIds: z.array(z.uuid()).max(200, "Paling banyak 200 pengguna sekali kirim.").default([]),
   web: z.boolean(),
   email: z.boolean(),
 });
@@ -39,20 +40,21 @@ export async function kirimPengumuman(input: unknown): Promise<Result> {
   await requireAdmin();
   const parsed = send.safeParse(input);
   if (!parsed.success) return { error: first(parsed.error) };
-  const { title, body, link, audience, web, email } = parsed.data;
+  const { title, body, link, audience, userIds, web, email } = parsed.data;
   if (!web && !email) return { error: "Pilih minimal satu cara kirim: website atau email." };
+  if (audience === "users" && userIds.length === 0) return { error: "Pilih minimal satu pengguna." };
 
   const db = await createClient();
   const { data: row, error } = await db
     .from("announcements")
-    .insert({ title, body, link_url: link || null, audience, on_web: web, on_email: email })
+    .insert({ title, body, link_url: link || null, audience, user_ids: audience === "users" ? userIds : [], on_web: web, on_email: email })
     .select("id")
     .single();
   if (error || !row) return { error: "Gagal menyimpan pengumuman." };
 
   let note = web ? "Tampil di Dashboard murid." : "";
   if (email) {
-    const { data: rcpt } = await db.rpc("announce_recipients", { p_audience: audience });
+    const { data: rcpt } = await db.rpc("announce_recipients", { p_audience: audience, p_ids: audience === "users" ? userIds : [] });
     const to = ((rcpt ?? []) as { email: string }[]).map((r) => r.email);
     try {
       const { sent, failed } = to.length ? await sendEmails(to, title, announcementHtml({ title, body, link })) : { sent: 0, failed: 0 };

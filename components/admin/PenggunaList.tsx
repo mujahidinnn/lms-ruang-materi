@@ -1,6 +1,6 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { ClipboardList, Clock, Search, ShieldMinus, ShieldPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { chip } from "@/components/ui/styles";
 import ActionForm from "./ActionForm";
@@ -20,6 +20,7 @@ export type Person = {
   joined: string;
   joinedAt: number;
   seen: string;
+  seenFull: string;
   seenAt: number;
 };
 
@@ -29,7 +30,7 @@ const FILTERS = [
   ["siswa", "Siswa", (p: Person) => !p.admin],
   ["undangan", "Belum diterima", (p: Person) => p.pending],
 ] as const;
-const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir masuk"], ["nama", "Nama A-Z"]] as const;
+const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir akses"], ["nama", "Nama A-Z"]] as const;
 
 export default function PenggunaList({ people }: { people: Person[] }) {
   const [q, setQ] = useState("");
@@ -77,7 +78,7 @@ export default function PenggunaList({ people }: { people: Person[] }) {
       ) : (
         <ul className="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
           {shown.map((p) => (
-            <li key={p.id} className="grid items-center gap-x-4 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_5rem_11rem_15.5rem]">
+            <li key={p.id} className="grid items-center gap-x-4 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_5rem_12rem_17.5rem]">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={p.name} src={p.avatar} admin={p.admin} />
                 <div className="min-w-0">
@@ -87,11 +88,18 @@ export default function PenggunaList({ people }: { people: Person[] }) {
               </div>
               <span className={`${chip} w-fit ${p.admin ? "bg-tile-mint text-zinc-50" : "bg-zinc-800"}`}>{p.admin ? "Admin" : "Siswa"}</span>
               <div className="text-sm leading-snug">
-                <p className={p.pending ? "text-accent-warm" : "text-zinc-300"}>{p.pending ? "Undangan belum diterima" : p.seen}</p>
+                {p.pending ? (
+                  <p className="text-accent-warm">Undangan belum diterima</p>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-zinc-300" title={p.seenFull ? `Terakhir akses ${p.seenFull}` : undefined}>
+                    <Clock aria-hidden className="size-3.5 shrink-0 text-zinc-500" />
+                    <span className="sr-only">Terakhir akses: </span>{p.seen}
+                  </p>
+                )}
                 <p className="text-xs text-zinc-500">Daftar {p.joined}, {p.provider === "google" ? "Google" : "email"}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                <a href={`/admin/pengguna/${p.id}`} className={smallButton}>Rekap</a>
+                <a href={`/admin/pengguna/${p.id}`} className={smallButton}><ClipboardList aria-hidden className="size-4" />Rekap</a>
                 {!p.me && (
                   <ActionForm
                     action="gantiRole"
@@ -102,7 +110,7 @@ export default function PenggunaList({ people }: { people: Person[] }) {
                   >
                     <input type="hidden" name="user_id" value={p.id} />
                     <input type="hidden" name="role" value={p.admin ? "student" : "admin"} />
-                    <button className={smallButton}>{p.admin ? "Jadikan siswa" : "Jadikan admin"}</button>
+                    <button className={smallButton}>{p.admin ? <ShieldMinus aria-hidden className="size-4" /> : <ShieldPlus aria-hidden className="size-4" />}{p.admin ? "Jadikan siswa" : "Jadikan admin"}</button>
                   </ActionForm>
                 )}
               </div>

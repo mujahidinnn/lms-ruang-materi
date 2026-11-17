@@ -1,7 +1,6 @@
 ---
-import { FileSearch, FileUp, Users } from "lucide-react";
-import ProgressStat from "@/components/admin/ProgressStat";
-import { primaryButton } from "@/components/admin/editor";
+import { Award, BookOpen, ClipboardCheck, FileSearch, FileUp, Megaphone, TriangleAlert, Users } from "lucide-react";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -10,77 +9,169 @@ import { adminOnly } from "../../lib/guard";
 const user = await adminOnly(Astro);
 if (user instanceof Response) return user;
 
-// Same window as the 10-a-day limit in check_import_limits().
-const oneDayAgo = new Date(Date.now() - 864e5).toISOString();
+type Overview = {
+  users: { total: number; admins: number; active7: number; new7: number };
+  topics: { published: number; draft: number; waiting: number };
+  chapters: number;
+  exercises: number;
+  exams: { attempts: number; attempts7: number; passed: number; avg_score: number | null };
+  certificates: number;
+  imports: { today: number; failed7: number; running: number };
+  signups: { id: string; email: string; created_at: string }[];
+  popular: { slug: string; title: string; learners: number }[];
+  activity: { day: string; n: number }[];
+};
+
 const db = await createClient();
-const [topics, waiting, today, people] = await Promise.all([
-  db.from("topics").select("status"),
+const [{ data }, { data: waiting }] = await Promise.all([
+  db.rpc("admin_overview"),
   db.from("topics").select("slug, title").not("draft_summary", "is", null).order("title"),
-  // Hand-written imports (claude:manual) are outside the cap.
-  db.from("import_jobs").select("id", { count: "exact", head: true }).gte("created_at", oneDayAgo).or("provider.neq.claude,model.neq.manual"),
-  db.rpc("admin_users"),
 ]);
-const users = (people.data ?? []) as { role: string; last_sign_in_at: string | null }[];
-const weekAgo = Date.now() - 7 * 864e5;
-const activeWeek = users.filter((u) => u.last_sign_in_at && Date.parse(u.last_sign_in_at) > weekAgo).length;
-const all = topics.data ?? [];
-const published = all.filter((t) => t.status === "published").length;
-const [next, ...rest] = waiting.data ?? [];
+const o = (data ?? null) as Overview | null;
+if (!o) return Astro.rewrite("/404");
+
+const drafts = waiting ?? [];
+const peak = Math.max(1, ...o.activity.map((a) => a.n));
+const topLearners = Math.max(1, ...o.popular.map((p) => p.learners));
+const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const today = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date());
+const joined = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+
+const alerts = [
+  drafts.length > 0 && { text: `${drafts.length} draf menunggu tinjauan`, href: `/admin/topik/${drafts[0].slug}`, action: "Tinjau" },
+  o.imports.failed7 > 0 && { text: `${o.imports.failed7} impor gagal dalam 7 hari`, href: "/admin/impor", action: "Lihat" },
+  o.imports.running > 0 && { text: `${o.imports.running} impor sedang berjalan`, href: "/admin/impor", action: "Pantau" },
+].filter(Boolean) as { text: string; href: string; action: string }[];
+
+const stats = [
+  { label: "Pengguna", value: o.users.total, note: `${o.users.active7} aktif 7 hari, ${o.users.new7} baru`, href: "/admin/pengguna", Icon: Users, tone: "bg-tile-mint" },
+  { label: "Kelas terbit", value: o.topics.published, note: `${o.topics.draft} masih draf`, href: "/admin/topik", Icon: BookOpen, tone: "bg-tile-lavender" },
+  { label: "Ujian dikerjakan", value: o.exams.attempts, note: o.exams.attempts ? `rata-rata ${o.exams.avg_score ?? 0}, ${o.exams.passed} lulus` : "belum ada", href: "/admin/ujian", Icon: ClipboardCheck, tone: "bg-tile-sky" },
+  { label: "Sertifikat", value: o.certificates, note: `${o.chapters} bab, ${o.exercises} latihan kode`, href: "/admin/topik", Icon: Award, tone: "bg-tile-peach" },
+];
+const card = "rounded-[28px] bg-zinc-900 shadow-soft";
 ---
 
-<Base title="Admin" description="Kelola materi Ruang Materi." noindex>
+<Base title="Ringkasan" description="Kondisi Ruang Materi: pengguna, kelas, ujian, aktivitas belajar dan impor." noindex>
   <AppShell set="admin" email={user.email}>
-    <div class="mx-auto max-w-4xl">
-      <div class="flex flex-col gap-8">
-        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Ringkasan</h1>
+    <div class="mx-auto flex max-w-5xl flex-col gap-6">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Ringkasan</h1>
+          <p class="mt-1 text-sm text-zinc-400">{today}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a href="/admin/pengumuman" class={secondaryButton}><Megaphone aria-hidden className="size-4" />Kirim pengumuman</a>
+          <a href="/admin/impor" class={`${primaryButton} min-h-11 px-5 text-sm`}><FileUp aria-hidden className="size-4" />Impor deck</a>
+        </div>
+      </div>
 
-        <section aria-labelledby="fokus" class="rounded-[28px] bg-tile-lavender p-6 sm:p-8">
-          {next ? (
-            <>
-              <p class="text-sm text-accent">{rest.length + 1} draf menunggu tinjauan</p>
-              <h2 id="fokus" class="mt-2 text-2xl font-bold tracking-tight">{next.title}</h2>
-              <p class="mt-1 max-w-prose text-zinc-400">Periksa ringkasan, tips dan soal dari model, lalu terbitkan.</p>
-              <a href={`/admin/topik/${next.slug}`} class={`${primaryButton} mt-6`}><FileSearch aria-hidden className="size-4" />Tinjau draf</a>
-            </>
-          ) : (
-            <>
-              <h2 id="fokus" class="text-2xl font-bold tracking-tight">Semua draf sudah ditinjau</h2>
-              <p class="mt-1 max-w-prose text-zinc-400">Impor deck baru untuk menambah materi.</p>
-              <a href="/admin/impor" class={`${primaryButton} mt-6`}><FileUp aria-hidden className="size-4" />Impor deck</a>
-            </>
-          )}
+      {alerts.length > 0 && (
+        <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Perlu perhatian">
+          {alerts.map((a) => (
+            <li>
+              <a href={a.href} class="flex min-h-14 items-center gap-3 rounded-2xl bg-tile-butter px-4 text-sm font-medium ring-1 ring-zinc-800 hover:ring-accent focus-visible:outline-2 focus-visible:outline-accent">
+                <TriangleAlert aria-hidden className="size-4 shrink-0" />
+                <span class="flex-1">{a.text}</span>
+                <span class="text-xs underline underline-offset-2">{a.action}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map(({ label, value, note, href, Icon, tone }) => (
+          <a href={href} class={`${card} group flex flex-col gap-3 p-4 hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-accent sm:p-5`}>
+            <span aria-hidden class={`grid size-10 place-items-center rounded-2xl ${tone}`}><Icon className="size-5" /></span>
+            <div>
+              <dt class="text-sm text-zinc-400">{label}</dt>
+              <dd class="text-3xl font-bold tabular-nums">{value}</dd>
+              <p class="mt-0.5 text-xs text-zinc-500">{note}</p>
+            </div>
+          </a>
+        ))}
+      </dl>
+
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section aria-labelledby="aktivitas" class={`${card} p-5 sm:p-6`}>
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="aktivitas" class="text-lg font-bold tracking-tight">Aktivitas belajar</h2>
+            <p class="text-xs text-zinc-500">murid aktif per hari, 14 hari</p>
+          </div>
+          <ol class="mt-5 flex h-40 items-end gap-1.5" aria-label="Murid aktif per hari">
+            {o.activity.map((a, i) => (
+              <li class="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${dayName.format(new Date(a.day))}: ${a.n} murid`}>
+                <span class="mb-1 text-center text-[10px] tabular-nums text-zinc-500">{a.n || ""}</span>
+                <span class={`block w-full rounded-t-lg ${i === o.activity.length - 1 ? "bg-primary" : "bg-brand/70"} ${a.n ? "" : "bg-zinc-800"}`} style={`height:${a.n ? Math.max(10, (a.n / peak) * 100) : 4}%`}></span>
+              </li>
+            ))}
+          </ol>
+          <div class="mt-2 flex justify-between text-[11px] text-zinc-500">
+            <span>{dayName.format(new Date(o.activity[0].day))}</span><span>hari ini</span>
+          </div>
         </section>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-          <ProgressStat label="Topik terbit" value={published} max={all.length} />
-          <ProgressStat label="Impor otomatis 24 jam terakhir" value={today.count ?? 0} max={10} />
-        </div>
-
-        <a href="/admin/pengguna" class="group flex items-center gap-4 rounded-3xl bg-zinc-900 p-5 shadow-soft hover:ring-2 hover:ring-accent/40 focus-visible:outline-2 focus-visible:outline-accent">
-          <span aria-hidden class="grid size-12 shrink-0 place-items-center rounded-2xl bg-tile-mint"><Users className="size-5" /></span>
-          <p class="min-w-0 flex-1">
-            <span class="block text-sm text-zinc-400">Pengguna</span>
-            <span class="text-xl font-semibold tabular-nums">{users.length}</span>
-            <span class="text-sm text-zinc-500"> akun, {users.filter((u) => u.role === "admin").length} admin, {activeWeek} aktif 7 hari terakhir</span>
-          </p>
-          <span class="text-sm text-zinc-500 group-hover:text-accent">Kelola</span>
-        </a>
-
-        {rest.length > 0 && (
-          <section aria-labelledby="antrean">
-            <h2 id="antrean" class="text-xl font-bold tracking-tight">Draf lain</h2>
-            <ul class="mt-3 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-              {rest.map((t) => (
+        <section aria-labelledby="populer" class={`${card} p-5 sm:p-6`}>
+          <h2 id="populer" class="text-lg font-bold tracking-tight">Kelas paling banyak dibuka</h2>
+          {o.popular.length === 0 ? (
+            <p class="mt-4 text-sm text-zinc-400">Belum ada murid yang membuka kelas.</p>
+          ) : (
+            <ol class="mt-4 grid gap-3">
+              {o.popular.map((p) => (
                 <li>
-                  <a href={`/admin/topik/${t.slug}`} class="flex min-h-12 items-center justify-between gap-4 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
-                    {t.title}
-                    <span class="text-sm text-zinc-500">Tinjau</span>
+                  <a href={`/admin/topik/${p.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
+                    <p class="flex justify-between gap-3 text-sm"><span class="truncate group-hover:text-accent">{p.title}</span><span class="shrink-0 tabular-nums text-zinc-400">{p.learners} murid</span></p>
+                    <div aria-hidden class="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full bg-brand" style={`width:${(p.learners / topLearners) * 100}%`}></div></div>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section aria-labelledby="daftar" class={`${card} p-5 sm:p-6`}>
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="daftar" class="text-lg font-bold tracking-tight">Pendaftar terbaru</h2>
+            <a href="/admin/pengguna" class="text-sm text-accent hover:underline">Semua</a>
+          </div>
+          <ul class="mt-3 divide-y divide-zinc-800">
+            {o.signups.map((s) => (
+              <li>
+                <a href={`/admin/pengguna/${s.id}`} class="flex min-h-12 items-center justify-between gap-3 text-sm hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+                  <span class="truncate">{s.email}</span>
+                  <time datetime={s.created_at} class="shrink-0 text-xs text-zinc-500">{joined.format(new Date(s.created_at))}</time>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section aria-labelledby="impor" class={`${card} p-5 sm:p-6`}>
+          <div class="flex items-baseline justify-between gap-3">
+            <h2 id="impor" class="text-lg font-bold tracking-tight">Impor</h2>
+            <a href="/admin/impor" class="text-sm text-accent hover:underline">Buka</a>
+          </div>
+          <p class="mt-3 text-sm text-zinc-400">Impor otomatis 24 jam terakhir</p>
+          <p class="text-2xl font-bold tabular-nums">{o.imports.today} <span class="text-sm font-normal text-zinc-500">dari 10</span></p>
+          <div aria-hidden class="mt-2 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full bg-brand" style={`width:${Math.min(100, o.imports.today * 10)}%`}></div></div>
+          {drafts.length > 0 ? (
+            <ul class="mt-4 divide-y divide-zinc-800">
+              {drafts.slice(0, 4).map((t) => (
+                <li>
+                  <a href={`/admin/topik/${t.slug}`} class="flex min-h-11 items-center justify-between gap-3 text-sm hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+                    <span class="truncate">{t.title}</span>
+                    <span class="inline-flex shrink-0 items-center gap-1 text-xs text-zinc-500"><FileSearch aria-hidden className="size-3.5" />Tinjau</span>
                   </a>
                 </li>
               ))}
             </ul>
-          </section>
-        )}
+          ) : (
+            <p class="mt-4 text-sm text-zinc-400">Semua draf sudah ditinjau.</p>
+          )}
+        </section>
       </div>
     </div>
   </AppShell>
