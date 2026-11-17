@@ -26,8 +26,8 @@ Ruang Materi mengubah slide kuliah atau pelatihan (PowerPoint) menjadi kelas int
 
 | | |
 | --- | --- |
-| **17 kelas**, 661 slide | HTML, CSS, JavaScript, React, Vue, Node.js, Express, SQL, Python, Git, Figma, dan lainnya |
-| **3 roadmap** | Frontend Web, Git dan kolaborasi, Backend Dasar |
+| **25 kelas** | HTML, CSS, JavaScript, React, Vue, Node.js, Express, SQL, Python, Git, Figma, jaringan dan server, MikroTik, elektronika, mikrokontroler, IoT, dan lainnya |
+| **5 roadmap** | Frontend Web, Git dan kolaborasi, Backend Dasar, Infrastruktur dan Sistem, Elektronika dan IoT |
 | **100% gratis** | Semua materi bisa dibaca tanpa akun. Akun hanya untuk menyimpan progres |
 
 ![Beranda Ruang Materi](docs/screenshots/beranda.jpg)
@@ -58,7 +58,9 @@ Kuis di akhir setiap bab memberi umpan balik instan: efek dan suara saat benar, 
 
 ### Latihan kode, flashcard, dan ujian
 
-- **Latihan kode** ditulis dan dijalankan langsung di browser (HTML/CSS, JavaScript, Express, Python), lalu dicek otomatis oleh tes.
+- **Latihan kode** ditulis dan dijalankan langsung di browser (HTML/CSS, JavaScript, Express, Python lewat Pyodide), lalu dicek otomatis oleh tes.
+- **Simulator MikroTik**: perintah RouterOS diketik dan dijalankan di browser terhadap router tiruan, tanpa perangkat asli.
+- **Diagram** jaringan dan elektronika (SVG) disisipkan di bab dengan `gambar:<nama>`.
 - **Flashcard** dengan jadwal berulang (sistem Leitner): kartu yang lupa muncul lagi besok, yang sudah hafal jaraknya makin lama.
 - **Ujian akhir** dengan timer, jawaban yang tersimpan otomatis, dan penilaian di server, bukan di browser.
 
@@ -103,13 +105,13 @@ Data yang disimpan sesedikit mungkin dan mengikuti UU Pelindungan Data Pribadi (
 | Data dan login | Supabase: Postgres dengan RLS, fungsi database untuk penilaian, Auth (email, password, Google), Storage untuk slide |
 | Hosting | Vercel (region Seoul), service worker untuk mode offline |
 | Impor materi | GitHub Actions merender `.pptx` dan meminta LLM menyusun draf bab, soal, dan flashcard |
-| Editor kode | CodeMirror 6, dengan runner untuk HTML, JavaScript, Express, dan Python |
+| Editor kode | CodeMirror 6, dengan runner untuk HTML, JavaScript, Express, Python (Pyodide), dan RouterOS (MikroTik) |
 | Tes | Vitest, Playwright (end-to-end), pgTAP (keamanan database) |
 
 ## Cara Kerja
 
 - **Konten** ada di Supabase: topik, slide, tips, flashcard, dan soal di database; gambar slide (AVIF, 3200px dan 1600px) di Storage `slides/<slug>/<folder>/`.
-- **Impor**: admin mengunggah `.pptx` di `/admin/impor`. GitHub Actions (`.github/workflows/import-deck.yml`) merender slide dan meminta LLM (Gemini atau OpenRouter) membuat draf ringkasan, tips, flashcard, dan soal. Draf ditinjau lalu diterbitkan di `/admin/topik`.
+- **Impor**: admin mengunggah `.pptx` di `/admin/impor`. GitHub Actions (`.github/workflows/import-deck.yml`) merender slide dan meminta LLM (Gemini atau OpenRouter) membuat draf ringkasan, tips, flashcard, dan soal. Draf ditinjau lalu diterbitkan di `/admin/topik`. Kelas yang ditulis tangan: `npm run deck:text -- <slug>`, tulis `content/drafts/<slug>.json`, lalu `draft:check`, `import:manual`, `publish:topic`.
 - **Kelas**: tiap topik adalah kelas berisi bab: bacaan markdown dengan contoh kode dan slide yang disisipkan, kuis singkat per bab, lalu latihan, flashcard, dan ujian akhir. Bab disusun AI dari deck dan bisa ditulis atau diedit admin.
 - **Belajar**: murid masuk lewat tautan email atau kata sandi. Progres, review flashcard, dan ujian dinilai di database (RLS dan fungsi Postgres), bukan di browser.
 
@@ -149,8 +151,9 @@ npx supabase test db
 - `lib/`: helper tanpa React (`content.ts`, `dal.ts`, `exam.ts`, `leitner.ts`, `level.ts`, `roadmap.ts`, `supabase/`).
 - `supabase/migrations/`: skema, RLS, fungsi. `supabase/tests/`: smoke test keamanan (pgTAP).
 - `worker/`: worker impor deck yang dijalankan GitHub Actions.
-- `scripts/`: `db-push`, `draft-decks`, `backfill-slide-variants`, `ilustrasi` (menggambar ilustrasi di `public/ilustrasi/`).
-- `public/sw.js`: service worker untuk mode offline.
+- `scripts/`: `db-push`, `draft-decks`, `backfill-slide-variants`, `ilustrasi` (menggambar ilustrasi di `public/ilustrasi/`), `praktik` (membangun diagram SVG di `public/praktik/`), `deck-text`, `publish-topic`.
+- `content/drafts/`: draf kelas tulis tangan (JSON).
+- `public/sw.js`: service worker untuk mode offline. Naikkan `VERSION`-nya kalau diagram atau aset ber-cache berubah.
 - `docs/screenshots/`: gambar untuk README ini.
 
 ## Skrip
@@ -165,6 +168,10 @@ npx supabase test db
 | `npm run test:e2e`                 | Test end-to-end Playwright sebagai tamu (`E2E_BASE_URL`, default localhost:4321) |
 | `npm run db:push`                  | Kirim migrasi ke database produksi lewat session pooler                          |
 | `npm run draft:decks -- <slug>...` | Buat draf materi dari deck migrasi                                               |
+| `npm run deck:text -- <slug>`      | Ambil teks deck untuk menulis kelas                                              |
+| `npm run draft:check -- <slug>`    | Validasi `content/drafts/<slug>.json`                                            |
+| `npm run import:manual -- <slug>`  | Impor draf tulis tangan ke database                                              |
+| `npm run publish:topic -- <slug>`  | Terbitkan topik                                                                  |
 
 CI (`.github/workflows/ci.yml`) menjalankan typecheck, lint, Vitest, dan smoke test database di setiap push. `.github/workflows/e2e.yml` menjalankan test end-to-end ke setiap deploy produksi Vercel.
 
