@@ -77,14 +77,14 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
     <section aria-labelledby="riwayat" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="riwayat" className="text-xl font-bold tracking-tight">Riwayat impor</h2>
-        <div role="group" aria-label="Saring riwayat" className="flex flex-wrap gap-2">
+        <div role="group" aria-label="Saring riwayat" className="scrollbar-thin -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
           {FILTERS.map(([key, label, t]) => (
             <button
               key={key}
               type="button"
               aria-pressed={filter === key}
               onClick={() => setFilter(key)}
-              className={`${chip} min-h-10 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
+              className={`${chip} min-h-10 shrink-0 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
             >
               {label}<span className="tabular-nums opacity-70">{jobs.filter(t).length}</span>
             </button>
@@ -134,7 +134,7 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
       <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-2xl ${TILE[j.status]}`}>
         <Icon className={`size-5 ${tone} ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
       </span>
-      <div className="min-w-0 flex-1 basis-56">
+      <div className={`min-w-0 flex-1 ${j.status === "done" ? "basis-32" : "basis-56"}`}>
         <p className="truncate font-medium">{j.original_name || j.slug}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
           <span className={`font-semibold ${tone}`}>{label}</span>
@@ -151,7 +151,7 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
           </div>
         )}
       </div>
-      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+      <div className={`flex flex-wrap items-center gap-2 sm:w-auto ${j.status === "done" ? "ml-auto" : "w-full"}`}>
         {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</a>}
         {j.status === "failed" && <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={disabled} onRetry={onRetry} />}
       </div>

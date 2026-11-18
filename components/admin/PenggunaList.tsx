@@ -120,33 +120,33 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
 
   return (
     <>
-      <ActionForm action="undangPengguna" className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="min-w-56 flex-1">
+      <ActionForm action="undangPengguna" className="mt-4 flex items-center gap-2 sm:mt-6 sm:flex-wrap sm:gap-3">
+        <label className="min-w-0 flex-1 sm:min-w-56">
           <span className="sr-only">Email yang diundang</span>
-          <input type="email" name="email" required placeholder="Undang lewat email, mis. nama@gmail.com" className={field} />
+          <input type="email" name="email" required placeholder="Undang lewat email" className={field} />
         </label>
         <button type="submit" className={`${smallButton} min-h-12`}>Kirim undangan</button>
       </ActionForm>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="relative min-w-56 flex-1">
+      <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-4 sm:gap-3">
+        <label className="relative min-w-56 basis-full flex-1 sm:basis-auto">
           <span className="sr-only">Cari nama atau email</span>
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-500" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau email" className={`${field} pl-11`} />
         </label>
-        <div className="w-full sm:w-64"><Select prefix label="Urutkan" value={sort} options={SORTS} onChange={(v) => setSort(v as typeof sort)} /></div>
+        <div className="min-w-0 flex-1 sm:w-64 sm:flex-none"><Select prefix label="Urutkan" value={sort} options={SORTS} onChange={(v) => setSort(v as typeof sort)} /></div>
         <button type="button" onClick={refresh} disabled={busy} className={`${chip} min-h-12 cursor-pointer gap-2 bg-zinc-800 hover:bg-zinc-700`}>
           <RefreshCw aria-hidden className={`size-4 ${busy ? "animate-spin" : ""}`} />
           Segarkan
         </button>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring">
+      <div className="scrollbar-thin -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Saring">
         {FILTERS.map(([key, label, test]) => (
           <button
             key={key}
             type="button"
             aria-pressed={filter === key}
             onClick={() => setFilter(key)}
-            className={`${chip} min-h-10 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
+            className={`${chip} min-h-10 shrink-0 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
           >
             {label}
             <span className="tabular-nums opacity-70">{people.filter(test).length}</span>
@@ -160,17 +160,17 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
           <button type="button" className="text-accent hover:underline" onClick={() => { setQ(""); setFilter("semua"); }}>Reset pencarian</button>
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
+        <ul className="mt-4 divide-y divide-zinc-800 rounded-3xl bg-zinc-900 px-4 shadow-soft sm:rounded-[28px] sm:px-5">
           {shown.map((p) => (
-            <li key={p.id} className="grid items-center gap-x-4 gap-y-3 py-4 sm:grid-cols-[minmax(0,1fr)_5rem_12rem_17.5rem]">
-              <div className="flex min-w-0 items-center gap-3">
+            <li key={p.id} className="relative grid items-center gap-x-4 gap-y-2 py-3 sm:gap-y-3 sm:py-4 sm:grid-cols-[minmax(0,1fr)_5rem_12rem_17.5rem]">
+              <div className="flex min-w-0 items-center gap-3 max-sm:pr-16">
                 <Avatar name={p.name} src={p.avatar} admin={p.admin} />
                 <div className="min-w-0">
                   <p className="truncate font-medium"><a href={`/admin/pengguna/${p.id}`} className="hover:text-accent">{p.name}</a>{p.me && <span className="ml-2 text-xs font-normal text-zinc-500">kamu</span>}</p>
                   <p className="truncate text-sm text-zinc-400">{p.email}</p>
                 </div>
               </div>
-              <span className={`${chip} w-fit ${p.admin ? "bg-tile-mint text-zinc-50" : "bg-zinc-800"}`}>{p.admin ? "Admin" : "Siswa"}</span>
+              <span className={`${chip} w-fit max-sm:absolute max-sm:top-3 max-sm:right-0 ${p.admin ? "bg-tile-mint text-zinc-50" : "bg-zinc-800"}`}>{p.admin ? "Admin" : "Siswa"}</span>
               <div className="text-sm leading-snug">
                 {p.pending ? (
                   <p className="text-accent-warm">Undangan belum diterima</p>

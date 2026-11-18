@@ -63,7 +63,7 @@ export default function ImporForm({ models }: { models: string[] }) {
         onDragOver={(e) => (e.preventDefault(), setDragging(true))}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => (e.preventDefault(), setDragging(false), pick(e.dataTransfer.files[0]))}
-        className={`flex min-h-64 flex-1 cursor-pointer flex-col items-center justify-center gap-3 rounded-[28px] border-2 border-dashed px-6 py-12 text-center shadow-soft transition-colors focus-within:outline-2 focus-within:outline-accent ${
+        className={`flex min-h-40 flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[28px] border-2 border-dashed px-6 py-6 sm:min-h-64 sm:gap-3 sm:py-12 text-center shadow-soft transition-colors focus-within:outline-2 focus-within:outline-accent ${
           dragging ? "border-zinc-50 bg-tile-mint" : "border-zinc-700 bg-zinc-900 hover:border-brand hover:bg-tile-sky"
         }`}
       >

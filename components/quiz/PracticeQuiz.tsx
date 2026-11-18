@@ -170,7 +170,7 @@ export default function PracticeQuiz({
         <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${((i + (checked ? 1 : 0)) / set.length) * 100}%` }} />
       </div>
 
-      <h2 className="mt-8 text-2xl leading-snug font-bold tracking-tight text-balance">{q.prompt}</h2>
+      <h2 className="mt-5 text-xl leading-snug sm:mt-8 sm:text-2xl font-bold tracking-tight text-balance">{q.prompt}</h2>
       {q.code && (
         <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
