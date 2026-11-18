@@ -993,7 +993,7 @@ UI. The UI only hides actions the database would refuse.
   `auth.uid()`. It deletes the auth user (learner tables cascade). Learners
   cannot upload, so they own no Storage objects.
 - Every rule that protects data gets a case in
-  `supabase/tests/security_smoke.sql`. Run it on the local stack
+  `supabase/tests/security_smoke.sql` (referral rules: `referral.sql`). Run it on the local stack
   (`npx supabase start`, `db reset`, `test db`), then `npm run db:push`.
   The test rolls back, so it can also run against the remote project with
   `supabase test db --db-url`.
