@@ -3,7 +3,7 @@ import ArrowBadge from "@/components/ui/ArrowBadge";
 import { card, mutedChip } from "@/components/ui/styles";
 import type { TrackSummary } from "@/lib/content";
 
-const SHOWN = 4;
+const SHOWN = 3;
 const STEP_TONES = ["bg-matcha-100", "bg-matcha-200", "bg-matcha-300", "bg-matcha-50"];
 
 // A track as its path: one dot per topic on a line, up to twelve.
@@ -23,15 +23,15 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         <span className={`${mutedChip} mt-5 self-start tabular-nums`}>{track.nodeCount} kelas</span>
         <h3 className="mt-3 text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>
         <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-zinc-400">{track.description}</p>
-        {/* The path itself: the first classes in order, each a sticker. */}
-        <ol aria-label="Urutan kelas" className="mt-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs font-bold text-noir">
+        {/* The path itself: the first classes in order. */}
+        <ol aria-label="Urutan kelas" className="mt-6 space-y-2 border-t border-zinc-800 pt-4 text-sm font-semibold text-noir">
           {track.steps.slice(0, SHOWN).map((title, i) => (
-            <li key={title} className="flex items-center gap-1.5">
-              {i > 0 && <span aria-hidden className="text-zinc-500">→</span>}
-              <span className={`rounded-full border-2 border-noir px-2.5 py-1 ${STEP_TONES[i % STEP_TONES.length]} ${i % 2 ? "rotate-2" : "-rotate-2"}`}>{title}</span>
+            <li key={title} className="flex items-center gap-2.5">
+              <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-full border-2 border-noir text-[11px] tabular-nums ${STEP_TONES[i % STEP_TONES.length]}`}>{i + 1}</span>
+              <span className="truncate">{title}</span>
             </li>
           ))}
-          {track.steps.length > SHOWN && <li className="rounded-full bg-zinc-800 px-2.5 py-1 text-zinc-300">+{track.steps.length - SHOWN} lagi</li>}
+          {track.steps.length > SHOWN && <li className="pl-[34px] text-xs font-medium text-zinc-400">+{track.steps.length - SHOWN} kelas lagi</li>}
         </ol>
       </a>
     </li>
