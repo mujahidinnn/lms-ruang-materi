@@ -20,6 +20,16 @@ export async function gantiRole(_: { error?: string; ok?: string }, form: FormDa
   return { ok: "Role diubah." };
 }
 
+export async function hapusPengguna(_: { error?: string; ok?: string }, form: FormData) {
+  await requireAdmin();
+  const parsed = z.uuid().safeParse(form.get("user_id"));
+  if (!parsed.success) return { error: "Data tidak valid." };
+  const { error } = await (await createClient()).rpc("admin_delete_user", { target: parsed.data });
+  if (error) return { error: error.code === "P0001" ? error.message : "Gagal menghapus pengguna." };
+  refresh();
+  return { ok: "Pengguna dihapus." };
+}
+
 // The Pengguna list reloads itself through this, so Online stays current.
 export async function daftarPengguna() {
   const admin = await requireAdmin();

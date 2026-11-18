@@ -5,6 +5,7 @@
 // On a form or a submit button, no script needed (installConfirmForms):
 //   data-confirm="Judul" data-confirm-text="..." data-confirm-action="Hapus" data-confirm-danger
 //   data-confirm-if="usia=" asks only when field usia has that value.
+//   data-confirm-twice="Teks" asks a second time ("Yakin?") with that text.
 
 // nudge: the cancel button is the one we hope for (styled and focused as the
 // main action), as in "Coba kuis dulu" against "Lewati saja".
@@ -80,12 +81,14 @@ export function installConfirmForms() {
       }
       e.preventDefault();
       e.stopImmediatePropagation();
+      const action = el.dataset.confirmAction;
+      const again = el.dataset.confirmTwice;
       confirmDialog({
         title: el.dataset.confirm!,
         text: el.dataset.confirmText,
-        action: el.dataset.confirmAction,
+        action,
         danger: "confirmDanger" in el.dataset,
-      }).then((ok) => {
+      }).then((ok) => ok && (again === undefined || confirmDialog({ title: "Yakin?", text: again, action, danger: true }))).then((ok) => {
         if (!ok) return;
         confirmed.add(form);
         form.requestSubmit(submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement ? submitter : undefined);

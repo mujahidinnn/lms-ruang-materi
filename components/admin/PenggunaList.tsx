@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Clock, RefreshCw, Search, ShieldMinus, ShieldPlus } from "lucide-react";
+import { ClipboardList, Clock, MoreHorizontal, RefreshCw, Search, ShieldMinus, ShieldPlus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { chip } from "@/components/ui/styles";
 import type { Person } from "@/lib/pengguna";
@@ -19,6 +19,57 @@ const FILTERS = [
   ["undangan", "Belum diterima", (p: Person) => p.pending],
 ] as const;
 const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir akses"], ["nama", "Nama A-Z"]] as const;
+
+const ITEM = "flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-sm hover:bg-zinc-800 focus-visible:bg-zinc-800 focus-visible:outline-none";
+
+// "Aksi" dropdown: change role, delete. Forms stay mounted while it is open,
+// so the confirm dialog (lib/confirm.ts) can submit them.
+function RowMenu({ p }: { p: Person }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !root.current?.contains(e.target as Node) && !(e.target as Element).closest("dialog") && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  return (
+    <div ref={root} className="relative">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`Aksi untuk ${p.name}`} onClick={() => setOpen((o) => !o)} className={smallButton}>
+        <MoreHorizontal aria-hidden className="size-4" />Aksi
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 shadow-soft">
+          <ActionForm
+            action="gantiRole"
+            data-confirm={p.admin ? `Jadikan ${p.name} siswa?` : `Jadikan ${p.name} admin?`}
+            data-confirm-text={p.admin ? "Akses ke halaman admin dicabut." : "Admin bisa mengubah dan menerbitkan semua materi."}
+            data-confirm-action={p.admin ? "Jadikan siswa" : "Jadikan admin"}
+            data-confirm-danger={p.admin ? true : undefined}
+            data-confirm-twice={p.admin ? undefined : "Sekali jadi admin, dia bisa mengubah dan menerbitkan semua materi."}
+          >
+            <input type="hidden" name="user_id" value={p.id} />
+            <input type="hidden" name="role" value={p.admin ? "student" : "admin"} />
+            <button role="menuitem" className={ITEM}>{p.admin ? <ShieldMinus aria-hidden className="size-4" /> : <ShieldPlus aria-hidden className="size-4" />}{p.admin ? "Jadikan siswa" : "Jadikan admin"}</button>
+          </ActionForm>
+          <ActionForm
+            action="hapusPengguna"
+            data-confirm={`Hapus ${p.name}?`}
+            data-confirm-text="Akun beserta progres belajarnya dihapus permanen."
+            data-confirm-action="Hapus pengguna"
+            data-confirm-danger
+            data-confirm-twice="Ini tidak bisa dibatalkan. Akun dan progres belajarnya hilang selamanya."
+          >
+            <input type="hidden" name="user_id" value={p.id} />
+            <button role="menuitem" className={`${ITEM} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus pengguna</button>
+          </ActionForm>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PenggunaList({ people: first }: { people: Person[] }) {
   const [q, setQ] = useState("");
@@ -124,19 +175,7 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 <a href={`/admin/pengguna/${p.id}`} className={smallButton}><ClipboardList aria-hidden className="size-4" />Rekap</a>
-                {!p.me && (
-                  <ActionForm
-                    action="gantiRole"
-                    data-confirm={p.admin ? `Jadikan ${p.name} siswa?` : `Jadikan ${p.name} admin?`}
-                    data-confirm-text={p.admin ? "Akses ke halaman admin dicabut." : "Admin bisa mengubah dan menerbitkan semua materi."}
-                    data-confirm-action={p.admin ? "Jadikan siswa" : "Jadikan admin"}
-                    data-confirm-danger={p.admin ? true : undefined}
-                  >
-                    <input type="hidden" name="user_id" value={p.id} />
-                    <input type="hidden" name="role" value={p.admin ? "student" : "admin"} />
-                    <button className={smallButton}>{p.admin ? <ShieldMinus aria-hidden className="size-4" /> : <ShieldPlus aria-hidden className="size-4" />}{p.admin ? "Jadikan siswa" : "Jadikan admin"}</button>
-                  </ActionForm>
-                )}
+                {!p.me && <RowMenu p={p} />}
               </div>
             </li>
           ))}
