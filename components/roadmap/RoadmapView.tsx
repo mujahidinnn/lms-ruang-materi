@@ -67,16 +67,18 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             </div>
           </div>
         )}
-        <ol className={`space-y-2 ${node ? "lg:hidden" : ""}`}>
+        <ol className={`relative space-y-3 before:absolute before:inset-y-5 before:left-2 before:w-0.5 before:rounded-full before:bg-zinc-700 lg:before:hidden ${node ? "lg:hidden" : ""}`}>
           {placed.map((n) => {
             const state = states[n.id] ?? "belum";
             return (
-              <li key={n.id}>
+              <li key={n.id} className="relative pl-7 before:absolute before:top-1/2 before:left-2 before:h-0.5 before:w-5 before:bg-zinc-700 lg:pl-0 lg:before:hidden">
                 <button
                   id={`node-${n.id}`}
                   type="button"
                   onClick={() => pick(n.id)}
-                  className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-zinc-900 px-4 py-2 text-left shadow-soft hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 px-4 py-2 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    state === "selesai" ? "border-transparent bg-tile-mint" : state === "sedang" ? "border-transparent bg-tile-lavender" : "border-transparent bg-zinc-900 hover:bg-zinc-800"
+                  } ${n.optional ? "!border-dashed !border-zinc-700" : ""}`}
                 >
                   <StateIcon state={state} />
                   <span className="min-w-0 flex-1 font-medium">{n.title}</span>
