@@ -51,7 +51,14 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
 
   return (
     <>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <ActionForm action="undangPengguna" className="mt-6 flex flex-wrap items-center gap-3">
+        <label className="min-w-56 flex-1">
+          <span className="sr-only">Email yang diundang</span>
+          <input type="email" name="email" required placeholder="Undang lewat email, mis. nama@gmail.com" className={field} />
+        </label>
+        <button type="submit" className={`${smallButton} min-h-12`}>Kirim undangan</button>
+      </ActionForm>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <label className="relative min-w-56 flex-1">
           <span className="sr-only">Cari nama atau email</span>
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-zinc-500" />
