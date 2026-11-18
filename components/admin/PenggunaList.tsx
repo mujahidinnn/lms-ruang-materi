@@ -146,7 +146,7 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
             type="button"
             aria-pressed={filter === key}
             onClick={() => setFilter(key)}
-            className={`${chip} min-h-10 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary" : "bg-zinc-800 hover:bg-zinc-700"}`}
+            className={`${chip} min-h-10 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
           >
             {label}
             <span className="tabular-nums opacity-70">{people.filter(test).length}</span>
