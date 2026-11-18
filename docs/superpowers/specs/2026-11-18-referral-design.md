@@ -1,6 +1,6 @@
 # Kode referral (ajak teman)
 
-Status: draf, menunggu persetujuan. Pilihan teknis di bawah adalah keputusan Claude, bukan hasil diskusi, kecuali yang tertulis "diminta".
+Status: disetujui dengan perubahan dari pemilik (2026-11-18: tanpa hadiah; admin melihat siapa mengajak siapa dan siapa diajak siapa). Pilihan teknis di bawah adalah keputusan Claude, bukan hasil diskusi, kecuali yang tertulis "diminta".
 
 ## Maksud
 
@@ -11,11 +11,12 @@ Murid bisa mengajak teman tanpa server mengirim email undangan (hemat kuota Rese
 - Tiap murid punya satu kode unik dan link `/daftar?ref=KODE`.
 - Sistem mencatat siapa mengajak siapa.
 - Murid melihat berapa temannya yang sudah bergabung.
+- Admin melihat di halaman Pengguna: "diajak oleh siapa" dan "mengajak siapa saja" untuk tiap akun.
 
 ## Bukan tujuan
 
-- Hadiah atau poin (belum diminta; data `referred_by` cukup untuk menambahkannya nanti).
-- Papan peringkat, tampilan di halaman admin Pengguna (bisa menyusul).
+- Hadiah atau poin (diminta tidak ada).
+- Papan peringkat.
 - Undangan lewat email oleh murid.
 
 ## Anti-tujuan
@@ -35,6 +36,7 @@ Gagal kalau: murid bisa menambah jumlah ajakan dengan akun palsu atau akun sendi
 - Callback masuk (`src/pages/masuk/callback.ts`): setelah sesi terbentuk, bila ada `rm-ref`, panggil RPC `claim_referral(code)`, lalu hapus cookie apa pun hasilnya.
 - `claim_referral` (security definer, hanya `authenticated`): menolak bila `referred_by` sudah terisi, kode tidak ditemukan, kode milik sendiri, atau akun dibuat lebih dari 1 hari lalu. Karena berjalan setelah callback, email sudah terkonfirmasi.
 - `/profil`: bagian "Ajak teman" berisi kode, tombol salin link, dan jumlah teman yang bergabung (hitungan `referred_by = id sendiri`, lewat RPC supaya murid tidak bisa membaca profil orang lain).
+- Admin: `admin_users()` mendapat kolom `referred_by_name` dan `referral_count` (fungsi dibuat ulang karena tipe kembaliannya berubah). Daftar Pengguna menampilkan satu baris kecil "Diajak {nama}" dan "Mengajak {n} orang"; halaman `/admin/pengguna/[id]` menampilkan daftar nama yang diajak dan yang mengajaknya.
 - Tidak ada email yang dikirim di jalur ini.
 
 ## Diserahkan ke pembangun
