@@ -11,13 +11,12 @@ export function announcementHtml({ title, body, link }: { title: string; body: s
   const intro = body
     .split(/\n{2,}/)
     .map((p) => esc(p).replace(/\n/g, "<br>"))
-    .join('</p><p style="margin:12px 0 0 0;font-size:15px;line-height:1.6;color:#cfd0c4;">');
+    .join('</p><p style="margin:12px 0 0 0;font-size:16px;line-height:1.65;color:#3a3b35;">');
   const url = link ? (link.startsWith("/") ? SITE_URL + link : link) : null;
   return emailLayout({
     site: SITE_URL,
     title: esc(title),
     intro,
-    art: "mulai",
     chip: "Pengumuman",
     button: url ? { label: "Buka di Ruang Materi", url: esc(url) } : undefined,
     footnote: `Kamu menerima email ini karena punya akun Ruang Materi. Matikan email pengumuman kapan saja di <a href="${SITE_URL}/profil" style="color:#46681c;">pengaturan profil</a>.`,
