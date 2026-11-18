@@ -18,6 +18,12 @@ export function parseDiagramRef(src: string): string | null {
   return new RegExp(`^gambar:(${DIAGRAM_NAME})$`).exec(src)?.[1] ?? null;
 }
 
+// `![judul](sim:nama)` embeds an interactive simulation, a component named in
+// components/belajar/sim/index.ts.
+export function parseSimRef(src: string): string | null {
+  return new RegExp(`^sim:(${DIAGRAM_NAME})$`).exec(src)?.[1] ?? null;
+}
+
 export function diagramSrc(name: string): string {
   return `/praktik/${name}.svg`;
 }
