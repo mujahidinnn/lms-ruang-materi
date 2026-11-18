@@ -3,9 +3,9 @@
 import type { NodeState, PlacedNode, RoadmapEdge } from "@/lib/roadmap";
 import StateIcon from "./StateIcon";
 
-const W = 124;
+const W = 132;
 const H = 48;
-const GAP_X = 20; // six columns fit beside the 20rem list at 1280px
+const GAP_X = 14; // six columns fit beside the 20rem list at 1280px
 const GAP_Y = 20;
 
 const x = (n: PlacedNode) => n.column * (W + GAP_X);
@@ -64,7 +64,7 @@ export default function RoadmapGraph({
               tabIndex={-1}
               onClick={() => onSelect?.(n.id)}
               style={{ left: x(n), top: y(n), width: W, height: H }}
-              className={`absolute flex items-center gap-2 rounded-2xl border-2 px-3 text-left text-sm transition-colors ${
+              className={`absolute flex items-center gap-1.5 rounded-2xl border-2 px-2.5 text-left text-[13px] transition-colors ${
                 selected === n.id
                   ? "border-zinc-50 bg-zinc-900 text-zinc-50 ring-4 ring-primary"
                   : state === "selesai"
