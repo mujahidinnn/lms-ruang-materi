@@ -12,19 +12,19 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
     <li>
       <a
         href={`/roadmap/${track.slug}`}
-        className={`group flex h-full flex-col p-6 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${card}`}
+        className={`group flex h-full flex-col p-5 transition-transform sm:p-6 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${card}`}
       >
-        <div className="flex items-start justify-between gap-3">
-          <span className="grid size-14 -rotate-6 place-items-center rounded-[20px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
-            <TrackIcon slug={track.slug} className="size-9" />
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 -rotate-6 place-items-center rounded-2xl sm:size-14 sm:rounded-[20px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
+            <TrackIcon slug={track.slug} className="size-7 sm:size-9" />
           </span>
-          <ArrowBadge />
+          <span className={`${mutedChip} tabular-nums`}>{track.nodeCount} kelas</span>
+          <span className="ml-auto"><ArrowBadge /></span>
         </div>
-        <span className={`${mutedChip} mt-5 self-start tabular-nums`}>{track.nodeCount} kelas</span>
-        <h3 className="mt-3 text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>
-        <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-zinc-400">{track.description}</p>
+        <h3 className="mt-3 text-xl sm:text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>
+        <p className="mt-1 line-clamp-2 flex-1 text-sm sm:mt-2 leading-relaxed text-zinc-400">{track.description}</p>
         {/* The path itself: the first classes in order. */}
-        <ol aria-label="Urutan kelas" className="mt-6 space-y-2 border-t border-zinc-800 pt-4 text-sm font-semibold text-noir">
+        <ol aria-label="Urutan kelas" className="mt-4 space-y-1.5 border-t border-zinc-800 pt-3 sm:mt-6 sm:space-y-2 sm:pt-4 text-sm font-semibold text-noir">
           {track.steps.slice(0, SHOWN).map((title, i) => (
             <li key={title} className="flex items-center gap-2.5">
               <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-full border-2 border-noir text-[11px] tabular-nums ${STEP_TONES[i % STEP_TONES.length]}`}>{i + 1}</span>

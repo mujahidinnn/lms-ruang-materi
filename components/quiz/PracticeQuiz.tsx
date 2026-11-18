@@ -106,7 +106,7 @@ export default function PracticeQuiz({
 
   if (prep && set.length === 0) {
     return (
-      <div className="rounded-[32px] bg-tile-butter p-6 sm:p-8">
+      <div className="rounded-[32px] bg-tile-butter p-5 sm:p-8">
         <p className="text-2xl font-bold tracking-tight">Try out sebelum ujian</p>
         <p className="mt-2 max-w-xl text-zinc-300">
           {Math.min(prep.size, questions.length)} soal acak dari latihan dan kuis tiap bab. Kunci dan pembahasan langsung muncul setelah kamu menjawab. Lulus di nilai {prep.passScore}, sama seperti ujian.
@@ -120,7 +120,7 @@ export default function PracticeQuiz({
     const correct = set.length - wrong.length;
     const { score, win } = setResult(correct, set.length, prep?.passScore);
     return (
-      <div aria-live="polite" className={`rounded-[32px] p-6 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
+      <div aria-live="polite" className={`rounded-[32px] p-5 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
         {win && <Pesta className="size-14 [--icon-tint:var(--color-matcha-500)]" />}
         <p className="mt-2 text-5xl font-bold tracking-tight tabular-nums">
           {prep ? `Nilai ${score}` : `${correct} dari ${set.length} benar`}
