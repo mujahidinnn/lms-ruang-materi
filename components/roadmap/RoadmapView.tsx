@@ -111,8 +111,10 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
               </div>
               <p className="mt-1 flex items-center gap-1.5 text-sm text-zinc-400">
                 <StateIcon state={states[node.id] ?? "belum"} />
-                {states[node.id] ?? "belum"}
-                {node.optional && <span className="text-zinc-500">, opsional</span>}
+                <span>
+                  {states[node.id] ?? "belum"}
+                  {node.optional && <span className="text-zinc-500">, opsional</span>}
+                </span>
                 {scores[node.topicId] !== undefined && <span className="ml-auto tabular-nums">Nilai ujian {scores[node.topicId]}</span>}
               </p>
               {open.length > 0 && (
