@@ -3,8 +3,10 @@ import Select from "@/components/ui/Select";
 import { Trash2 } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import { field } from "@/components/admin/editor";
+import AjakTeman from "@/components/profil/AjakTeman";
 import ExportButton from "@/components/dashboard/ExportButton";
 import { card, primaryButton } from "@/components/ui/styles";
+import { SITE_URL } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import SiteHeader from "../components/SiteHeader.astro";
 import Base from "../layouts/Base.astro";
@@ -15,11 +17,12 @@ const ZONES = [...INDONESIA, ...Intl.supportedValuesOf("timeZone").filter((z) =>
 
 const user = await signedIn(Astro);
 if (user instanceof Response) return user;
-const { data: p } = await (await createClient())
-  .from("profiles")
-  .select("display_name, timezone, guardian_consent, age_group, announce_email")
-  .eq("user_id", user.id)
-  .single();
+const db = await createClient();
+const [{ data: p }, { data: refRow }] = await Promise.all([
+  db.from("profiles").select("display_name, timezone, guardian_consent, age_group, announce_email").eq("user_id", user.id).single(),
+  db.rpc("my_referral").maybeSingle(),
+]);
+const ref = refRow as { code: string; joined: number } | null;
 const zone = p?.timezone ?? "Asia/Jakarta";
 ---
 
@@ -67,6 +70,16 @@ const zone = p?.timezone ?? "Asia/Jakarta";
           <button class={`${primaryButton} justify-self-start`}>Simpan</button>
         </ActionForm>
       </section>
+
+      {ref && (
+        <section aria-labelledby="ajak" class={`p-6 sm:p-8 ${card}`}>
+          <h2 id="ajak" class="text-xl font-bold tracking-tight">Ajak teman</h2>
+          <p class="mt-1 text-sm text-zinc-400">
+            Bagikan link ini. Temanmu mendaftar lewat link itu dan tercatat sebagai ajakanmu. Tidak ada email yang dikirim.
+          </p>
+          <AjakTeman client:load code={ref.code} joined={ref.joined} origin={SITE_URL} />
+        </section>
+      )}
 
       <section id="sandi" aria-labelledby="sandi-judul" class={`scroll-mt-6 p-6 sm:p-8 ${card}`}>
         <h2 id="sandi-judul" class="text-xl font-bold tracking-tight">Password</h2>
