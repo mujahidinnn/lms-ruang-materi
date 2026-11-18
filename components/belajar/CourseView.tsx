@@ -5,6 +5,7 @@ import { Kartu, Slide } from "@/components/ui/icons";
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
 import { chip, primaryButton } from "@/components/ui/styles";
+import Art from "@/components/ui/Art";
 import { totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
@@ -27,7 +28,8 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
           <ChevronLeft aria-hidden className="size-4" />Semua kelas
         </a>
-        <header className="mt-2 rounded-[32px] bg-tile-lavender p-6 sm:p-10">
+        <header className="mt-2 grid items-center gap-8 rounded-[32px] bg-tile-lavender p-6 sm:p-10 md:grid-cols-[minmax(0,1fr)_20rem]">
+          <div>
           <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
           </h1>
@@ -58,6 +60,8 @@ export default function CourseView({ topic }: { topic: Topic }) {
             <Presentation aria-hidden className="size-4" />
             Versi slide
           </a>
+          </div>
+          <div className="overflow-hidden rounded-[24px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
         </header>
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}
