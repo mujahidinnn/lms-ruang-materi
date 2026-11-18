@@ -1,0 +1,129 @@
+---
+import { Award, CircleCheck } from "lucide-react";
+import { chip } from "@/components/ui/styles";
+import { slideUrl } from "@/lib/slides";
+
+type Topic = {
+  cover_path: string | null;
+  slug: string; title: string; last_at: string | null; state: string | null; last_slide: number | null;
+  chapters_done: number; chapters_total: number; exercises_passed: number; exercises_total: number;
+  chapters: { title: string; done_at: string | null }[]; attempts: { score: number; passed: boolean; at: string }[];
+  exam_best: number | null; exam_tries: number; exam_passed: boolean; project_passed: boolean; certificate: boolean;
+};
+export type Recap = { days: number; last_day: string | null; practice_sessions: number; practice_correct: number; practice_total: number; flashcards: number; flash_due: number; flash_boxes: Record<string, number>; recent_days: string[]; practice_recent: { title: string; correct: number; total: number; at: string }[]; topics: Topic[] };
+
+const { recap: r } = Astro.props as { recap: Recap };
+const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+const fmt = (iso: string | null) => (iso ? date.format(new Date(iso)) : "-");
+const accuracy = r.practice_total ? Math.round((r.practice_correct / r.practice_total) * 100) : null;
+const stats = [
+  ["Hari belajar", String(r.days), r.last_day ? `terakhir ${fmt(r.last_day)}` : "belum ada"],
+  ["Sesi latihan", String(r.practice_sessions), accuracy === null ? "belum ada" : `${accuracy}% benar`],
+  ["Flashcard", String(r.flashcards), "kartu dipelajari"],
+  ["Sertifikat", String(r.topics.filter((t) => t.certificate).length), `dari ${r.topics.length} kelas dibuka`],
+];
+const active = new Set(r.recent_days);
+const days30 = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 864e5).toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" }));
+const boxes = [1, 2, 3, 4, 5].map((b) => [b, r.flash_boxes[b] ?? 0] as const);
+const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+---
+
+      <dl class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map(([label, value, note]) => (
+          <div class="rounded-[24px] bg-zinc-900 p-4 shadow-soft">
+            <dt class="text-xs text-zinc-500">{label}</dt>
+            <dd class="mt-1 text-3xl font-bold tabular-nums">{value}</dd>
+            <p class="text-xs text-zinc-500">{note}</p>
+          </div>
+        ))}
+      </dl>
+
+      <section class="mt-3 grid gap-3 sm:grid-cols-2" aria-label="Aktivitas">
+        <div class="rounded-[24px] bg-zinc-900 p-4 shadow-soft">
+          <h2 class="text-sm font-semibold">Aktif 30 hari terakhir <span class="font-normal text-zinc-500">({r.recent_days.length} hari)</span></h2>
+          <div class="mt-3 flex gap-[3px]" role="img" aria-label={`${r.recent_days.length} dari 30 hari aktif`}>
+            {days30.map((d) => <span title={d} class={`h-6 flex-1 rounded-sm ${active.has(d) ? "bg-brand" : "bg-zinc-800"}`}></span>)}
+          </div>
+          <h2 class="mt-5 text-sm font-semibold">Flashcard <span class="font-normal text-zinc-500">({r.flash_due} jatuh tempo)</span></h2>
+          <ul class="mt-2 flex gap-2 text-xs text-zinc-400">
+            {boxes.map(([b, n]) => <li class="flex-1 rounded-xl bg-zinc-800 py-1.5 text-center">Kotak {b}<br /><span class="text-base font-bold tabular-nums text-zinc-50">{n}</span></li>)}
+          </ul>
+        </div>
+        <div class="rounded-[24px] bg-zinc-900 p-4 shadow-soft">
+          <h2 class="text-sm font-semibold">Latihan terakhir</h2>
+          {r.practice_recent.length ? (
+            <ul class="mt-2 divide-y divide-zinc-800 text-sm">
+              {r.practice_recent.map((p) => (
+                <li class="flex items-center justify-between gap-3 py-2"><span class="min-w-0 truncate">{p.title}<span class="block text-xs text-zinc-500">{fmt(p.at)}</span></span><span class="tabular-nums">{p.correct}/{p.total}</span></li>
+              ))}
+            </ul>
+          ) : <p class="mt-2 text-sm text-zinc-500">Belum ada.</p>}
+        </div>
+      </section>
+
+<slot />
+
+      <h2 class="mt-8 text-xl font-bold tracking-tight">Kelas yang dibuka</h2>
+      {!r.topics.length ? (
+        <p class="mt-3 rounded-[28px] bg-zinc-900 p-8 text-center text-zinc-400 shadow-soft">Belum membuka kelas apa pun.</p>
+      ) : (
+        <ul class="mt-3 grid gap-3">
+          {r.topics.map((t) => (
+            <li class="flex flex-col gap-4 rounded-[28px] bg-zinc-900 p-4 shadow-soft sm:flex-row sm:p-5">
+              <a href={`/kelas/${t.slug}`} tabindex="-1" aria-hidden="true" class="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-tile-sky sm:h-24 sm:w-44">
+                {t.cover_path && (
+                  <img
+                    src={slideUrl(t.cover_path).replace(/slide-\d+\.avif$/, "cover.avif")}
+                    data-fallback={slideUrl(t.cover_path)}
+                    onerror="this.onerror=null;this.src=this.dataset.fallback"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    class="absolute inset-0 size-full object-cover"
+                  />
+                )}
+              </a>
+              <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <a href={`/kelas/${t.slug}`} class="font-semibold hover:text-accent">{t.title}</a>
+                <span class={`${chip} ${t.state === "selesai" ? "bg-tile-mint text-zinc-50" : "bg-zinc-800"}`}>{t.state === "selesai" ? "Selesai" : t.state === "dilewati" ? "Dilewati" : "Sedang belajar"}</span>
+                {t.certificate && <span class={`${chip} bg-tile-mint text-zinc-50`}><Award aria-hidden className="size-3.5" />Sertifikat</span>}
+                <span class="ml-auto text-xs text-zinc-500">{t.last_slide ? `slide ${t.last_slide}, ` : ""}aktif {fmt(t.last_at)}</span>
+              </div>
+              <div class="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2">
+                <div>
+                  <p class="flex justify-between text-sm"><span class="text-zinc-400">Bab selesai</span><span class="tabular-nums">{t.chapters_done}/{t.chapters_total}</span></p>
+                  <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full bg-brand" style={`width:${pct(t.chapters_done, t.chapters_total)}%`}></div></div>
+                </div>
+                {t.exercises_total > 0 && (
+                  <div>
+                    <p class="flex justify-between text-sm"><span class="text-zinc-400">Latihan kode</span><span class="tabular-nums">{t.exercises_passed}/{t.exercises_total}</span></p>
+                    <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full bg-brand" style={`width:${pct(t.exercises_passed, t.exercises_total)}%`}></div></div>
+                  </div>
+                )}
+              </div>
+              <p class="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-400">
+                <span>
+                  Ujian:{" "}
+                  {t.exam_tries ? (
+                    <span class={t.exam_passed ? "text-accent" : "text-accent-warm"}>{t.exam_passed ? "lulus" : "belum lulus"}</span><span class="tabular-nums"> (terbaik {t.exam_best ?? 0}, {t.exam_tries}x)</span>
+                  ) : "belum dicoba"}
+                </span>
+                <span class="inline-flex items-center gap-1">Proyek: {t.project_passed ? <><CircleCheck aria-hidden className="size-3.5 text-accent" /><span class="text-accent">lulus</span></> : "belum"}</span>
+              </p>
+              <details class="mt-3 text-sm">
+                <summary class="min-h-11 cursor-pointer py-2 text-zinc-400 hover:text-zinc-50">Rincian bab dan ujian</summary>
+                <ul class="grid gap-1.5">
+                  {t.chapters.map((c) => (
+                    <li class="flex justify-between gap-3"><span class={c.done_at ? "" : "text-zinc-500"}>{c.title}</span><span class="shrink-0 text-xs text-zinc-500">{c.done_at ? fmt(c.done_at) : "belum"}</span></li>
+                  ))}
+                </ul>
+                {t.attempts.length > 0 && (
+                  <p class="mt-3 text-zinc-400">Percobaan ujian: {t.attempts.map((a) => <span class={`mr-2 tabular-nums ${a.passed ? "text-accent" : "text-accent-warm"}`} title={fmt(a.at)}>{a.score}</span>)}</p>
+                )}
+              </details>
+            </div>
+            </li>
+          ))}
+        </ul>
+      )}
