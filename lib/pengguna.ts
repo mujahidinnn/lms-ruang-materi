@@ -15,6 +15,8 @@ export type Person = {
   seenFull: string;
   online: boolean;
   seenAt: number;
+  referredBy: string | null;
+  invited: number;
 };
 
 type Row = {
@@ -28,6 +30,8 @@ type Row = {
   last_sign_in_at: string | null;
   last_active_at: string | null;
   confirmed: boolean;
+  referred_by_name: string | null;
+  referral_count: number;
 };
 
 const fmt = new Intl.DateTimeFormat("id-ID", {
@@ -80,5 +84,7 @@ export async function loadPeople(meId: string): Promise<Person[]> {
     online:
       !!r.last_active_at && Date.now() - Date.parse(r.last_active_at) < 6 * 6e4,
     seenAt: r.last_active_at ? Date.parse(r.last_active_at) : 0,
+    referredBy: r.referred_by_name,
+    invited: r.referral_count,
   }));
 }

@@ -116,6 +116,11 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
                   </>
                 )}
                 <p className="mt-0.5 text-xs text-zinc-500">Daftar {p.joined} · {p.provider.split(",").map((v) => (v === "google" ? "Google" : v === "email" ? "Email" : v)).join(" + ")}</p>
+                {(p.referredBy || p.invited > 0) && (
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {[p.referredBy && `Diajak ${p.referredBy}`, p.invited > 0 && `Mengajak ${p.invited} orang`].filter(Boolean).join(" · ")}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 <a href={`/admin/pengguna/${p.id}`} className={smallButton}><ClipboardList aria-hidden className="size-4" />Rekap</a>
