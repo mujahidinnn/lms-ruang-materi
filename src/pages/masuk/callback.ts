@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import type { APIRoute } from "astro";
 import { NEXT_COOKIE } from "@/lib/actions/masuk";
+import { parseRef, REF_COOKIE } from "@/lib/referral";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,6 +49,12 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
       await supabase.from("profiles").update(age ? { display_name: name, age_group: age, guardian_consent: true } : { display_name: name }).eq("user_id", data.user.id);
     }
   }
+
+  // An invite code kept from /daftar is claimed once, whatever the answer
+  // (own code, too old, unknown: the learner just carries on).
+  const ref = parseRef(cookies.get(REF_COOKIE)?.value);
+  if (ref) await supabase.rpc("claim_referral", { code: ref });
+  cookies.delete(REF_COOKIE, { path: "/" });
 
   // Where they were going: the link's own ?next=, else the cookie set when
   // the email was sent (same browser), else the dashboard.
