@@ -108,8 +108,14 @@ export async function lupaPassword(_prev: MasukState, form: FormData): Promise<M
 }
 
 export async function keluar() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await (await createClient()).auth.signOut();
+  currentRequest().cookies.delete("rm-admin", { path: "/" });
+  redirect("/");
+}
+
+// Ends every session of this account (other phones and browsers too).
+export async function keluarSemua() {
+  await (await createClient()).auth.signOut({ scope: "global" });
   currentRequest().cookies.delete("rm-admin", { path: "/" });
   redirect("/");
 }
