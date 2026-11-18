@@ -22,6 +22,8 @@ const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir akses"], ["nama",
 
 const ITEM = "flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-sm hover:bg-zinc-800 focus-visible:bg-zinc-800 focus-visible:outline-none";
 
+const info = (p: Person) => `${p.email} · ${p.admin ? "Admin" : "Siswa"} · daftar ${p.joined}.`;
+
 // "Aksi" dropdown: change role, delete. Forms stay mounted while it is open,
 // so the confirm dialog (lib/confirm.ts) can submit them.
 function RowMenu({ p }: { p: Person }) {
@@ -45,10 +47,11 @@ function RowMenu({ p }: { p: Person }) {
           <ActionForm
             action="gantiRole"
             data-confirm={p.admin ? `Jadikan ${p.name} siswa?` : `Jadikan ${p.name} admin?`}
-            data-confirm-text={p.admin ? "Akses ke halaman admin dicabut." : "Admin bisa mengubah dan menerbitkan semua materi."}
+            data-confirm-text={p.admin ? "Akses ke halaman admin dicabut." : `${info(p)} Dia akan bisa mengubah, menerbitkan, dan menghapus semua materi, serta mengelola pengguna lain.`}
             data-confirm-action={p.admin ? "Jadikan siswa" : "Jadikan admin"}
             data-confirm-danger={p.admin ? true : undefined}
-            data-confirm-twice={p.admin ? undefined : "Sekali jadi admin, dia bisa mengubah dan menerbitkan semua materi."}
+            data-confirm-twice-title={`Benar-benar jadikan ${p.name} admin?`}
+            data-confirm-twice={p.admin ? undefined : "Beri akses admin hanya ke orang yang kamu percaya. Kamu bisa mencabutnya lagi kapan saja."}
           >
             <input type="hidden" name="user_id" value={p.id} />
             <input type="hidden" name="role" value={p.admin ? "student" : "admin"} />
@@ -57,10 +60,11 @@ function RowMenu({ p }: { p: Person }) {
           <ActionForm
             action="hapusPengguna"
             data-confirm={`Hapus ${p.name}?`}
-            data-confirm-text="Akun beserta progres belajarnya dihapus permanen."
+            data-confirm-text={`${info(p)} Akun akan dihapus beserta progres belajar, nilai ujian, dan sertifikatnya.${p.invited > 0 ? ` ${p.invited} orang yang dia ajak tetap ada, tapi tidak lagi tercatat diajak olehnya.` : ""}`}
             data-confirm-action="Hapus pengguna"
             data-confirm-danger
-            data-confirm-twice="Ini tidak bisa dibatalkan. Akun dan progres belajarnya hilang selamanya."
+            data-confirm-twice-title={`Hapus ${p.name} selamanya?`}
+            data-confirm-twice="Data tidak bisa dikembalikan. Untuk punya akun lagi, orang ini harus daftar atau diundang ulang."
           >
             <input type="hidden" name="user_id" value={p.id} />
             <button role="menuitem" className={`${ITEM} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus pengguna</button>
