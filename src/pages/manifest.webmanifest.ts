@@ -6,7 +6,7 @@ export const GET: APIRoute = () =>
     {
       id: "/",
       name: SITE_NAME,
-      short_name: SITE_NAME,
+      short_name: "RuangMateri",
       description: SITE_DESCRIPTION,
       lang: "id",
       // The landing sends signed-in learners on to /dasbor.
