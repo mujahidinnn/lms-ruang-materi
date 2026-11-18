@@ -1,6 +1,6 @@
 import Markdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { diagramSrc, parseDiagramRef, resolveSlideRef } from "@/lib/chapters";
+import { diagramSrc, parseDiagramRef, parseSimRef, resolveSlideRef } from "@/lib/chapters";
 import { mediumSrc, type Slide } from "@/lib/slides";
 import { Children, isValidElement, type ReactNode } from "react";
 import { headingId } from "@/lib/toc";
@@ -31,9 +31,12 @@ export default function MarkdownBase({
     <div className={`prose-chapter ${className}`}>
       <Markdown
         remarkPlugins={[remarkGfm]}
-        urlTransform={(url) => (url.startsWith("slide:") || url.startsWith("gambar:") ? url : defaultUrlTransform(url))}
+        urlTransform={(url) => (url.startsWith("slide:") || url.startsWith("gambar:") || url.startsWith("sim:") ? url : defaultUrlTransform(url))}
         components={{
           img: ({ src, alt }) => {
+            // Hydrated in the browser by ReaderScripts; this text is the fallback.
+            const sim = typeof src === "string" ? parseSimRef(src) : null;
+            if (sim) return <span data-sim={sim} data-title={alt} className="my-5 block rounded-2xl bg-zinc-900 p-5 text-sm text-zinc-400 shadow-soft">Simulasi interaktif: {alt || sim}</span>;
             const diagram = typeof src === "string" ? parseDiagramRef(src) : null;
             if (diagram) {
               return (
