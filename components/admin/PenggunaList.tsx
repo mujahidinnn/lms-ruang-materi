@@ -22,7 +22,8 @@ const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir akses"], ["nama",
 
 const ITEM = "flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 text-left text-sm hover:bg-zinc-800 focus-visible:bg-zinc-800 focus-visible:outline-none";
 
-const info = (p: Person) => `${p.email} · ${p.admin ? "Admin" : "Siswa"} · daftar ${p.joined}.`;
+const info = (p: Person) =>
+  [`Email: ${p.email}`, `Role: ${p.admin ? "Admin" : "Siswa"}`, `Daftar: ${p.joined}`, `Akses terakhir: ${p.pending ? "belum pernah" : p.seenFull || p.seen}`, `Mengajak: ${p.invited} orang`].join("\n");
 
 // "Aksi" dropdown: change role, delete. Forms stay mounted while it is open,
 // so the confirm dialog (lib/confirm.ts) can submit them.
@@ -47,7 +48,7 @@ function RowMenu({ p }: { p: Person }) {
           <ActionForm
             action="gantiRole"
             data-confirm={p.admin ? `Jadikan ${p.name} siswa?` : `Jadikan ${p.name} admin?`}
-            data-confirm-text={p.admin ? "Akses ke halaman admin dicabut." : `${info(p)} Dia akan bisa mengubah, menerbitkan, dan menghapus semua materi, serta mengelola pengguna lain.`}
+            data-confirm-text={p.admin ? `${info(p)}\n\nAkses ke halaman admin dicabut.` : `${info(p)}\n\nDia akan bisa mengubah, menerbitkan, dan menghapus semua materi, serta mengelola pengguna lain.`}
             data-confirm-action={p.admin ? "Jadikan siswa" : "Jadikan admin"}
             data-confirm-danger={p.admin ? true : undefined}
             data-confirm-twice-title={`Benar-benar jadikan ${p.name} admin?`}
@@ -60,7 +61,7 @@ function RowMenu({ p }: { p: Person }) {
           <ActionForm
             action="hapusPengguna"
             data-confirm={`Hapus ${p.name}?`}
-            data-confirm-text={`${info(p)} Akun akan dihapus beserta progres belajar, nilai ujian, dan sertifikatnya.${p.invited > 0 ? ` ${p.invited} orang yang dia ajak tetap ada, tapi tidak lagi tercatat diajak olehnya.` : ""}`}
+            data-confirm-text={`${info(p)}\n\nAkun dihapus beserta progres belajar, nilai ujian, dan sertifikatnya.${p.invited > 0 ? " Orang yang dia ajak tetap ada, tapi tidak lagi tercatat diajak olehnya." : ""}`}
             data-confirm-action="Hapus pengguna"
             data-confirm-danger
             data-confirm-twice-title={`Hapus ${p.name} selamanya?`}

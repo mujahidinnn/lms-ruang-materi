@@ -28,7 +28,7 @@ export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Bat
     form.append(h);
     if (text) {
       const p = document.createElement("p");
-      p.className = "-mt-3 text-sm leading-relaxed text-zinc-400";
+      p.className = "-mt-3 text-sm leading-relaxed whitespace-pre-line text-zinc-400";
       p.textContent = text;
       form.append(p);
     }
