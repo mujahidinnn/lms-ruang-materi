@@ -105,10 +105,10 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
                       <span className="sr-only">Terakhir akses: </span>
                       <span className={p.online ? "font-semibold text-accent" : ""}>{p.online ? "Online" : p.seen}</span>
                     </p>
-                    {p.seenFull && <p className="text-xs text-zinc-500">{p.seenFull}</p>}
+                    {p.seenFull && !p.online && <p className="mt-0.5 text-xs text-zinc-500">Akses terakhir {p.seenFull}</p>}
                   </>
                 )}
-                <p className="text-xs text-zinc-500">Daftar {p.joined}, {p.provider === "google" ? "Google" : "email"}</p>
+                <p className="mt-0.5 text-xs text-zinc-500">Daftar {p.joined} · {p.provider === "google" ? "Google" : "Email"}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 <a href={`/admin/pengguna/${p.id}`} className={smallButton}><ClipboardList aria-hidden className="size-4" />Rekap</a>
