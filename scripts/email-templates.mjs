@@ -5,6 +5,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 const REF = "uxvjbadahlfzslhzobpu";
 const SITE = "https://ruang-materi.mujahidin.my.id";
+// Go template choice on user_metadata: invited by an admin, via a friend's link, or neither.
+const pick = (invited, ref, plain) => `{{ if .Data.invited }}${invited}{{ else if .Data.ref }}${ref}{{ else }}${plain}{{ end }}`;
 const link = (type) => `{{ .SiteURL }}/masuk/callback?token_hash={{ .TokenHash }}&type=${type}`;
 
 import { emailLayout } from "../lib/email-layout.mjs";
@@ -17,9 +19,18 @@ const T = {
   magic_link: { file: "magic_link", subject: "Masuk ke Ruang Materi", chip: "Masuk", title: "Masuk ke Ruang Materi",
     intro: "Klik tombol di bawah untuk masuk. Tautan bisa dibuka di perangkat mana pun.",
     button: { label: "Masuk sekarang", url: link("email") }, meta: ["Berlaku 1 jam", "Sekali pakai"], fallback: true, note: ignore },
-  confirmation: { file: "confirmation", subject: "Konfirmasi email kamu di Ruang Materi", chip: "Selamat datang", title: "Satu langkah lagi",
-    intro: "Terima kasih sudah mendaftar. Konfirmasi emailmu supaya progres belajarmu tersimpan.",
-    button: { label: "Konfirmasi email", url: link("email") }, meta: ["Berlaku 24 jam"], fallback: true, note: ignore },
+  // Sent once, to an unconfirmed sign-up. user_metadata (.Data) tells how the
+  // account came about: invited by an admin, or through a friend's link.
+  confirmation: { file: "confirmation",
+    subject: pick("Kamu diundang ke Ruang Materi", "Temanmu mengajakmu ke Ruang Materi", "Konfirmasi email kamu di Ruang Materi"),
+    chip: pick("Undangan", "Diajak teman", "Selamat datang"),
+    title: pick("Kamu diundang bergabung", "Temanmu mengajakmu bergabung", "Satu langkah lagi"),
+    intro: pick(
+      "Admin Ruang Materi mengundangmu belajar. Konfirmasi emailmu untuk membuat akunmu.",
+      "Temanmu mengajakmu belajar di Ruang Materi. Konfirmasi emailmu untuk mulai.",
+      "Terima kasih sudah mendaftar. Konfirmasi emailmu supaya progres belajarmu tersimpan.",
+    ),
+    button: { label: pick("Terima undangan", "Konfirmasi email", "Konfirmasi email"), url: link("email") }, meta: ["Berlaku 24 jam"], fallback: true, note: ignore },
   recovery: { file: "recovery", subject: "Buat kata sandi baru Ruang Materi", chip: "Kata sandi", title: "Buat kata sandi baru",
     intro: "Kami menerima permintaan untuk mengatur ulang kata sandimu. Klik tombol untuk membuat yang baru.",
     button: { label: "Buat kata sandi baru", url: link("recovery") }, meta: ["Berlaku 1 jam", "Sekali pakai"], fallback: true, note: ignore },

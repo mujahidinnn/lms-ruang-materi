@@ -39,7 +39,7 @@ export async function undangPengguna(_: { error?: string; ok?: string }, form: F
   });
   const { error } = await anon.auth.signInWithOtp({
     email: parsed.data,
-    options: { shouldCreateUser: true, emailRedirectTo: `${SITE_URL}/masuk/callback?next=${encodeURIComponent("/dasbor")}` },
+    options: { shouldCreateUser: true, data: { invited: true }, emailRedirectTo: `${SITE_URL}/masuk/callback?next=${encodeURIComponent("/dasbor")}` },
   });
   if (error?.status === 429) return { error: "Terlalu sering. Tunggu sebentar, lalu coba lagi." };
   if (error) return { error: "Undangan gagal dikirim. Coba lagi sebentar lagi." };
