@@ -28,13 +28,13 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
           <ChevronLeft aria-hidden className="size-4" />Semua kelas
         </a>
-        <header className="mt-2 grid items-center gap-8 rounded-[32px] bg-tile-lavender p-6 sm:p-10 md:grid-cols-[minmax(0,1fr)_20rem]">
+        <header className="mt-0 grid items-center gap-5 rounded-[28px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[32px] sm:p-10 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
-          <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl">
+          <h1 className="text-3xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
           </h1>
           <p className="mt-3 max-w-2xl text-zinc-300">{topic.description}</p>
-          <ul className="mt-5 flex flex-wrap gap-2">
+          <ul className="mt-3 flex flex-wrap gap-2 sm:mt-5">
             <li className={`${chip} bg-zinc-900/70 tabular-nums`}>
               {chapters.length} bab
             </li>
@@ -48,20 +48,20 @@ export default function CourseView({ topic }: { topic: Topic }) {
           </ul>
           <a
             href={`/belajar/${topic.slug}/${resume.slug}`}
-            className={`${primaryButton} mt-7`}
+            className={`${primaryButton} mt-5 sm:mt-7`}
           >
             <Play aria-hidden className="size-4" />
             {started ? `Lanjutkan: ${resume.title}` : "Mulai bab 1"}
           </a>
           <a
             href={`/belajar/${topic.slug}/slide`}
-            className="mt-7 ml-2 inline-flex min-h-12 items-center gap-2 rounded-full bg-zinc-900 px-5 font-semibold shadow-soft hover:bg-zinc-800"
+            className="mt-5 ml-2 inline-flex sm:mt-7 min-h-12 items-center gap-2 rounded-full bg-zinc-900 px-5 font-semibold shadow-soft hover:bg-zinc-800"
           >
             <Presentation aria-hidden className="size-4" />
             Versi slide
           </a>
           </div>
-          <div className="overflow-hidden rounded-[24px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
+          <div className="hidden overflow-hidden rounded-[24px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:block md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
         </header>
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}
