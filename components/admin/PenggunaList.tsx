@@ -1,7 +1,7 @@
 "use client";
 
-import { ClipboardList, Clock, Search, ShieldMinus, ShieldPlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ClipboardList, Clock, RefreshCw, Search, ShieldMinus, ShieldPlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { chip } from "@/components/ui/styles";
 import ActionForm from "./ActionForm";
 import Avatar from "./Avatar";
@@ -38,6 +38,24 @@ export default function PenggunaList({ people }: { people: Person[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("semua");
   const [sort, setSort] = useState<(typeof SORTS)[number][0]>("baru");
 
+  // The list is rendered by the server, so refreshing reloads the page;
+  // search, filter and sort are kept in sessionStorage across that reload.
+  // Every 4 minutes while the tab is visible, so Online stays current.
+  useEffect(() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem("pengguna-view") ?? "null");
+      if (v) { setQ(v.q); setFilter(v.filter); setSort(v.sort); }
+    } catch {}
+    const t = setInterval(() => { if (!document.hidden) refresh(); }, 24e4);
+    return () => clearInterval(t);
+  }, []);
+  const view = useRef({ q, filter, sort });
+  view.current = { q, filter, sort };
+  function refresh() {
+    try { sessionStorage.setItem("pengguna-view", JSON.stringify(view.current)); } catch {}
+    location.reload();
+  }
+
   const shown = useMemo(() => {
     const test = FILTERS.find((f) => f[0] === filter)![2];
     const term = q.trim().toLowerCase();
@@ -55,6 +73,10 @@ export default function PenggunaList({ people }: { people: Person[] }) {
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau email" className={`${field} pl-11`} />
         </label>
         <div className="w-full sm:w-64"><Select prefix label="Urutkan" value={sort} options={SORTS} onChange={(v) => setSort(v as typeof sort)} /></div>
+        <button type="button" onClick={refresh} className={`${chip} min-h-12 cursor-pointer gap-2 bg-zinc-800 hover:bg-zinc-700`}>
+          <RefreshCw aria-hidden className="size-4" />
+          Segarkan
+        </button>
       </div>
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring">
         {FILTERS.map(([key, label, test]) => (
