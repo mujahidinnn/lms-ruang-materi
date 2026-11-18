@@ -1,5 +1,6 @@
 import { currentRequest, redirect } from "@/lib/request";
 import { z } from "zod";
+import { claimRef, parseRef, REF_COOKIE } from "@/lib/referral";
 import { safeNext } from "@/lib/safe-next";
 import { SITE_URL } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
@@ -69,7 +70,8 @@ export async function daftar(_prev: MasukState, form: FormData): Promise<MasukSt
   const { nama, password, usia } = parsed.data;
   if (password && password.length < 8) return fail("Password minimal 8 karakter.");
   const next = safeNext(parsed.data.next, "/dasbor");
-  const data = { display_name: nama, age_group: usia };
+  const ref = parseRef(currentRequest().cookies.get(REF_COOKIE)?.value);
+  const data = { display_name: nama, age_group: usia, ...(ref && { ref }) };
   const supabase = await createClient();
 
   if (!password) {
@@ -89,6 +91,9 @@ export async function daftar(_prev: MasukState, form: FormData): Promise<MasukSt
   if (res.user && res.user.identities?.length === 0) return fail("Email ini sudah terdaftar. Masuk saja.");
   if (!res.session) return { status: "sent", kind: "konfirmasi", email: parsed.data.email };
   await supabase.from("profiles").update({ display_name: nama, age_group: usia, guardian_consent: true }).eq("user_id", res.user!.id);
+  // No confirmation email: the callback never runs, so claim the invite here.
+  await claimRef(supabase, ref);
+  currentRequest().cookies.delete(REF_COOKIE, { path: "/" });
   redirect(next);
 }
 

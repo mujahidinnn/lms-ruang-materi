@@ -1,13 +1,14 @@
 begin;
-select plan(13);
+select plan(14);
 
 -- ana mengajak budi. cici's account is old. admin reads the relations.
-insert into auth.users (id, email, created_at) values
-  ('00000000-0000-0000-0000-0000000000a1', 'ana@contoh.id', now()),
-  ('00000000-0000-0000-0000-0000000000a2', 'budi@contoh.id', now()),
-  ('00000000-0000-0000-0000-0000000000a3', 'cici@contoh.id', now() - interval '2 days'),
-  ('00000000-0000-0000-0000-0000000000a4', 'dedi@contoh.id', now()),
-  ('00000000-0000-0000-0000-0000000000a5', 'admin-ref@contoh.id', now());
+insert into auth.users (id, email, created_at, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000a1', 'ana@contoh.id', now(), now()),
+  ('00000000-0000-0000-0000-0000000000a2', 'budi@contoh.id', now(), now()),
+  ('00000000-0000-0000-0000-0000000000a3', 'cici@contoh.id', now() - interval '2 days', now() - interval '2 days'),
+  ('00000000-0000-0000-0000-0000000000a4', 'dedi@contoh.id', now(), now()),
+  ('00000000-0000-0000-0000-0000000000a5', 'admin-ref@contoh.id', now(), now()),
+  ('00000000-0000-0000-0000-0000000000a6', 'eko@contoh.id', now(), null);
 update public.profiles set role = 'admin' where user_id = '00000000-0000-0000-0000-0000000000a5';
 
 select matches((select referral_code from public.profiles where user_id = '00000000-0000-0000-0000-0000000000a1'),
@@ -42,6 +43,13 @@ select is(public.claim_referral((select code from codes where user_id = '0000000
   'an account older than a day cannot claim');
 select throws_ok($$ update public.profiles set referred_by = '00000000-0000-0000-0000-0000000000a1' where user_id = '00000000-0000-0000-0000-0000000000a3' $$,
   '42501', null, 'a learner cannot write referred_by directly');
+reset role;
+
+-- eko never confirmed his email: no claim
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a6", "role": "authenticated"}';
+select is(public.claim_referral((select code from codes where user_id = '00000000-0000-0000-0000-0000000000a1')), false,
+  'an unconfirmed account cannot claim');
 reset role;
 
 -- ana sees one joined friend

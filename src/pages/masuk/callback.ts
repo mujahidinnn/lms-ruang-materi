@@ -1,7 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import type { APIRoute } from "astro";
 import { NEXT_COOKIE } from "@/lib/actions/masuk";
-import { parseRef, REF_COOKIE } from "@/lib/referral";
+import { claimRef, refFrom, REF_COOKIE } from "@/lib/referral";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,6 +40,10 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   // a new learner skips /mulai. A Google account brings its name (full_name)
   // but no age, so /mulai then asks only for the age, the name filled in.
   const { data } = await supabase.auth.getUser();
+  // An invite code from /daftar (cookie, or the sign-up metadata when this
+  // link opened in another browser) is claimed once; the answer is ignored.
+  await claimRef(supabase, refFrom(cookies.get(REF_COOKIE)?.value, data.user?.user_metadata));
+  cookies.delete(REF_COOKIE, { path: "/" });
   const meta = data.user?.user_metadata as { display_name?: string; age_group?: string; full_name?: string; name?: string } | undefined;
   const name = (meta?.display_name ?? meta?.full_name ?? meta?.name)?.trim().slice(0, 80);
   if (data.user && name) {
@@ -49,12 +53,6 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
       await supabase.from("profiles").update(age ? { display_name: name, age_group: age, guardian_consent: true } : { display_name: name }).eq("user_id", data.user.id);
     }
   }
-
-  // An invite code kept from /daftar is claimed once, whatever the answer
-  // (own code, too old, unknown: the learner just carries on).
-  const ref = parseRef(cookies.get(REF_COOKIE)?.value);
-  if (ref) await supabase.rpc("claim_referral", { code: ref });
-  cookies.delete(REF_COOKIE, { path: "/" });
 
   // Where they were going: the link's own ?next=, else the cookie set when
   // the email was sent (same browser), else the dashboard.
