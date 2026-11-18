@@ -79,7 +79,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                   className="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-zinc-900 px-4 py-2 text-left shadow-soft hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <StateIcon state={state} />
-                  <span className="min-w-0 flex-1 truncate font-medium">{n.title}</span>
+                  <span className="min-w-0 flex-1 font-medium">{n.title}</span>
                   <span className="sr-only">, {state}</span>
                   {n.optional && <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">opsional</span>}
                   <ChevronRight aria-hidden className="size-4 text-zinc-600" />
