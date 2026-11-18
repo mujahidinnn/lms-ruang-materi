@@ -22,13 +22,19 @@ const [{ data: all }, { data: recap }, { data: rel }] = await Promise.all([
 const refs = (rel ?? []) as { relation: "invited_by" | "invited"; user_id: string; name: string; at: string }[];
 const invitedBy = refs.find((x) => x.relation === "invited_by");
 const invited = refs.filter((x) => x.relation === "invited");
-const who = ((all ?? []) as { user_id: string; email: string; display_name: string | null; role: string; avatar_url: string | null }[]).find((p) => p.user_id === id);
+const who = ((all ?? []) as { user_id: string; email: string; display_name: string | null; role: string; avatar_url: string | null; provider: string; created_at: string; last_sign_in_at: string | null; confirmed: boolean }[]).find((p) => p.user_id === id);
 if (!who || !recap) return Astro.rewrite("/404");
 const r = recap as RecapData;
 
 const name = who.display_name || who.email.split("@")[0];
 const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
 const fmt = (iso: string | null) => (iso ? date.format(new Date(iso)) : "-");
+const info: [string, string][] = [
+  ["Masuk lewat", who.provider === "google" ? "Google" : "Email"],
+  ["Bergabung", fmt(who.created_at)],
+  ["Terakhir masuk", fmt(who.last_sign_in_at)],
+  ["Email terverifikasi", who.confirmed ? "Ya" : "Belum"],
+];
 ---
 
 <Base title={`Rekap ${name}`} description="Kemajuan belajar satu murid." noindex>
@@ -46,7 +52,7 @@ const fmt = (iso: string | null) => (iso ? date.format(new Date(iso)) : "-");
         </div>
       </div>
 
-      <Recap recap={r}>
+      <Recap recap={r} info={info}>
         {(invitedBy || invited.length > 0) && (
         <section class="mt-6 rounded-[28px] bg-zinc-900 p-5 shadow-soft" aria-labelledby="ajakan">
           <h2 id="ajakan" class="text-xl font-bold tracking-tight">Ajakan</h2>
