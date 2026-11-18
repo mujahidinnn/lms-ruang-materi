@@ -35,11 +35,15 @@ const MOTIFS: Record<string, () => ReactNode> = {
   vibe: () => (<><S><path d="M12 24Q12 14 22 14H66Q76 14 76 24V50Q76 60 66 60H40L24 76V60H22Q12 60 12 50Z" {...line} fill={W} /></S><path d="M32 30L24 37 32 44M54 30L62 37 54 44" {...line} strokeWidth={4} /><S><path d="M80 52C81 64 86 69 98 70C86 71 81 76 80 88C79 76 74 71 62 70C74 69 79 64 80 52Z" fill={M3} stroke={INK} strokeWidth={4} strokeLinejoin="round" /></S></>),
   db: () => (<><S><path d="M20 24v52c0 8 13 14 30 14s30-6 30-14V24z" {...line} fill={W} /></S><S><ellipse cx="50" cy="24" rx="30" ry="12" {...line} fill={M3} /></S><path d="M20 44c0 8 13 14 30 14s30-6 30-14M20 62c0 8 13 14 30 14s30-6 30-14" {...line} /></>),
   vue: () => (<><S><path d="M10 16h22l18 32 18-32h22L50 84z" {...line} fill={W} /></S><S><path d="M32 16l18 32 18-32h-14L50 34 46 16z" {...line} fill={M3} /></S></>),
+  node: () => (<><path d="M50 10L86 30V70L50 90 14 70V30Z" {...line} fill={M3} /><path d="M50 10V90M14 30L86 70" {...line} strokeWidth={3} opacity={0.35} /><circle cx="50" cy="50" r="15" {...line} fill={W} /><path d="M44 50l4 4 8-8" {...line} strokeWidth={4} /></>),
+  api: () => (<><rect x="8" y="34" width="26" height="32" rx="8" {...line} fill={W} /><rect x="66" y="12" width="26" height="24" rx="8" {...line} fill={M3} /><rect x="66" y="64" width="26" height="24" rx="8" {...line} fill={M2} /><path d="M34 46H50Q56 46 56 36V30Q56 24 62 24M34 54H50Q56 54 56 64V70Q56 76 62 76" {...line} /><path d="M58 20l6 4-6 4M58 72l6 4-6 4" {...line} strokeWidth={4} /></>),
+  phone: () => (<><rect x="26" y="8" width="48" height="84" rx="12" {...line} fill={W} /><path d="M42 16h16" {...line} strokeWidth={4} /><g {...line} strokeWidth={3.5} transform="translate(0 4) scale(0.8) translate(12.5 12.5)"><ellipse cx="50" cy="50" rx="32" ry="12" /><ellipse cx="50" cy="50" rx="32" ry="12" transform="rotate(60 50 50)" /><ellipse cx="50" cy="50" rx="32" ry="12" transform="rotate(120 50 50)" /></g><circle cx="50" cy="54" r="6" {...line} fill={M3} /></>),
+  gitlab: () => (<><path d="M50 88L10 52 20 14 34 38H66L80 14 90 52Z" {...line} fill={M3} /><path d="M34 38L50 88 66 38" {...line} fill={W} /><circle cx="44" cy="56" r="3" fill={INK} /><circle cx="56" cy="56" r="3" fill={INK} /></>),
   book: () => (<><S><path d="M50 26Q32 16 12 22V76Q32 70 50 80Z" {...line} fill={M3} /></S><S><path d="M50 26Q68 16 88 22V76Q68 70 50 80Z" {...line} fill={W} /></S><path d="M24 36Q36 34 42 40M24 50Q36 48 42 54M58 40Q64 34 76 36M58 54Q64 48 76 50" {...line} strokeWidth={3} /></>),
 };
 
 // First keyword found in the slug picks the motif ("github" before "git").
-const KEYS: [string, string][] = [["mikrotik", "router"], ["github", "github"], ["git", "git"], ["jaringan", "jaringan"], ["administrasi", "server"], ["server", "server"], ["komputer", "komputer"], ["computational", "ct"], ["elektronika", "elektronika"], ["mikrokontroler", "mikrokontroler"], ["iot", "iot"], ["robot", "robot"], ["html-css", "web"], ["html5", "layout"], ["javascript", "js"], ["python", "python"], ["react", "react"], ["figma", "figma"], ["sdlc", "sdlc"], ["vibe", "vibe"], ["sql", "db"], ["vue", "vue"], ["express", "server"], ["node", "server"], ["dasar-pemrograman", "js"], ["frontend", "web"], ["backend", "server"], ["api", "server"], ["infrastruktur", "jaringan"], ["data", "python"], ["desain", "figma"]];
+const KEYS: [string, string][] = [["mikrotik", "router"], ["github", "github"], ["gitlab", "gitlab"], ["git", "git"], ["jaringan", "jaringan"], ["administrasi", "server"], ["server", "server"], ["komputer", "komputer"], ["computational", "ct"], ["elektronika", "elektronika"], ["mikrokontroler", "mikrokontroler"], ["iot", "iot"], ["robot", "robot"], ["html-css", "web"], ["html5", "layout"], ["javascript", "js"], ["python", "python"], ["react-native", "phone"], ["react", "react"], ["figma", "figma"], ["sdlc", "sdlc"], ["vibe", "vibe"], ["sql", "db"], ["vue", "vue"], ["express", "api"], ["node", "node"], ["dasar-pemrograman", "js"], ["frontend", "web"], ["backend", "server"], ["api", "server"], ["infrastruktur", "jaringan"], ["data", "python"], ["desain", "figma"]];
 export const motifOf = (slug: string) => KEYS.find(([k]) => slug.includes(k))?.[1] ?? "book";
 
 const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0), 2166136261);
@@ -55,12 +59,28 @@ export default function Art(props: Props) {
   const h = hash(props.seed ?? slug);
   const tone = TONES[h % 3];
   const wide = kind === "chapter";
+  const id = `a${h.toString(36)}${kind[0]}`;
   const flip = wide ? 0 : (h >> 3) & 1;
   const Motif = MOTIFS[motifOf(slug)];
-  const W_ = wide ? 640 : 320, H_ = wide ? 200 : 180;
-  const mx = wide ? 120 : 160, size = wide ? 1.5 : 1.7;
-  const blobR = wide ? 120 : 100;
-  const id = `a${h.toString(36)}${kind[0]}`;
+  if (wide && "number" in props) {
+    const id2 = `${id}s`;
+    return (
+      <svg viewBox="0 0 640 110" role="img" aria-label={`Ilustrasi bab ${props.number}`} className={`block w-full ${className ?? "h-auto"}`} preserveAspectRatio="xMidYMid slice">
+        <defs><pattern id={id2} width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.3" fill={INK} opacity="0.18" /></pattern></defs>
+        <rect width="640" height="110" fill={tone} />
+        <rect width="640" height="110" fill={`url(#${id2})`} />
+        <rect x="18" y="14" width="150" height="82" rx="22" fill={W} stroke={INK} strokeWidth="4" />
+        <text x="93" y="82" textAnchor="middle" fontSize="68" fontWeight="800" fill={INK} style={{ fontFamily: "inherit" }}>{String(props.number).padStart(2, "0")}</text>
+        {props.total ? <text x="190" y="62" fontSize="17" fontWeight="800" fill={INK} style={{ fontFamily: "inherit" }}>bab {props.number} dari {props.total}</text> : null}
+        <path d="M190 78H330" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeDasharray="1 11" />
+        <Spark x={400} y={34} s={0.8} /><Spark x={340} y={90} s={0.5} />
+        <g transform={`translate(${640 - 100} 12) scale(0.86)`}>{Motif()}</g>
+      </svg>
+    );
+  }
+  const W_ = 320, H_ = 180;
+  const mx = 160, size = 1.45;
+  const blobR = 100;
   return (
     <svg viewBox={`0 0 ${W_} ${H_}`} role="img" aria-label={`Ilustrasi ${slug.replaceAll("-", " ")}`} className={`block w-full ${className ?? "h-auto"}`} preserveAspectRatio="xMidYMid slice">
       <defs>
@@ -74,14 +94,12 @@ export default function Art(props: Props) {
         <Spark x={wide ? 250 : 40} y={36} s={1.1} />
         <Spark x={W_ - 40} y={H_ - 40} s={0.8} />
         <Spark x={wide ? 40 : W_ - 50} y={H_ - 30} s={0.6} />
+        {/* small floating bits, placed from the hash so each class differs */}
+        <circle cx={wide ? 300 : 40 + (h % 30)} cy={wide ? 150 : 140 - (h % 20)} r="7" fill={M3} stroke={INK} strokeWidth="3" />
+        <path d={`M${W_ - 70 - (h % 25)} ${28 + (h % 14)}h14M${W_ - 63 - (h % 25)} ${21 + (h % 14)}v14`} stroke={INK} strokeWidth="4" strokeLinecap="round" />
+        <rect x={wide ? 330 : 72 + (h % 20)} y={wide ? 40 : 22 + (h % 12)} width="14" height="14" rx="4" fill={W} stroke={INK} strokeWidth="3" transform={`rotate(${15 + (h % 30)} ${wide ? 337 : 79 + (h % 20)} ${wide ? 47 : 29 + (h % 12)})`} />
         <g transform={`translate(${mx - 50 * size} ${H_ / 2 - 50 * size}) scale(${size})`}>{Motif()}</g>
       </g>
-      {wide && "number" in props && (
-        <g>
-          <text x={W_ - 28} y={H_ - 28} textAnchor="end" fontSize="150" fontWeight="800" fill="none" stroke={INK} strokeWidth="3" style={{ fontFamily: "inherit" }}>{String(props.number).padStart(2, "0")}</text>
-          {props.total ? <text x={W_ - 30} y={34} textAnchor="end" fontSize="18" fontWeight="800" fill={INK} style={{ fontFamily: "inherit" }}>dari {props.total} bab</text> : null}
-        </g>
-      )}
       {kind === "track" && (
         <g>
           <path d={`M30 ${H_ - 30}Q90 ${H_ - 90} 150 ${H_ - 50}T290 40`} {...line} strokeDasharray="1 12" strokeWidth="6" />
