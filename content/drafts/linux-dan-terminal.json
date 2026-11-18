@@ -1,0 +1,1995 @@
+{
+  "title": "Linux dan Terminal",
+  "description": "Kuasai terminal Linux dari nol: filesystem, perintah dasar, grep dan find, izin, pipe dan redirect, proses, apt, pengguna, shell scripting, dan SSH.",
+  "summary": "Kelas ini membawamu dari ketakutan pada layar hitam sampai nyaman bekerja di terminal Linux. Kamu mulai dari peta filesystem dan navigasi, lalu perintah harian untuk membuat, menyalin, memindah, membaca, dan mencari berkas dengan grep dan find. Setiap bab menekankan kebiasaan aman, misalnya melihat dulu sebelum menghapus.\n\nBagian tengah kelas membahas hal yang membedakan pengguna biasa dari administrator: izin dan kepemilikan, pipe dan redirect untuk merangkai perkakas kecil menjadi alat besar, pengelolaan proses dan sinyal, paket dengan apt, serta pengguna, grup, dan sudo. Bagian akhir mengajarkan shell scripting untuk mengotomatiskan tugas dan SSH untuk mengelola server jarak jauh.\n\nLatihan kode memakai Python untuk menirukan logika perintah (penghitung path, grep mini, chmod simbolik, pembaca passwd), dan proyek akhirnya membangun terminal mini dengan sistem berkas virtual. Kelas ini dasar bagi Administrasi Server dan Keamanan serta kelas Docker dan deployment.",
+  "tips": [
+    "Ketik sendiri setiap perintah di terminal, jangan hanya membaca. Mesin virtual atau WSL cukup untuk berlatih dengan aman.",
+    "Sebelum perintah yang menghapus atau mengubah banyak berkas, jalankan versi baca-saja dulu (ls atau find tanpa -delete) dan cek pwd.",
+    "Biasakan membuka man atau --help sebelum menjalankan perintah yang kamu salin dari internet.",
+    "Pakai Tab untuk melengkapi dan Ctrl+R untuk mencari riwayat; keduanya menghemat ratusan ketukan per hari.",
+    "Beri izin sesempit mungkin: 644 untuk berkas, 755 untuk skrip, 600 untuk rahasia, dan hindari chmod 777.",
+    "Simpan perintah yang kamu ulang tiga kali sebagai skrip kecil, awali dengan set -euo pipefail, dan kutip semua variabel."
+  ],
+  "prerequisites": [
+    "dasar-komputer-dan-os"
+  ],
+  "flashcards": [
+    {
+      "front": "Apa beda terminal dan shell?",
+      "back": "Terminal adalah jendela tempat mengetik, shell (mis. Bash) adalah program yang membaca dan menjalankan perintahmu."
+    },
+    {
+      "front": "Apa arti tanda $ dan # pada prompt?",
+      "back": "$ berarti pengguna biasa, # berarti sesi root dengan hak penuh."
+    },
+    {
+      "front": "Apa itu path absolut dan path relatif?",
+      "back": "Absolut diawali / dan menunjuk lokasi tetap; relatif dihitung dari folder kerja saat ini."
+    },
+    {
+      "front": "Apa arti ., .., ~, dan - pada navigasi?",
+      "back": "Folder ini, folder induk, folder rumah, dan folder sebelumnya (untuk cd)."
+    },
+    {
+      "front": "Folder apa untuk konfigurasi, log, dan berkas sementara?",
+      "back": "/etc untuk konfigurasi, /var/log untuk log, /tmp untuk berkas sementara."
+    },
+    {
+      "front": "Mengapa rm berbahaya?",
+      "back": "Tidak ada tempat sampah: berkas terhapus langsung dan sulit dipulihkan."
+    },
+    {
+      "front": "Apa fungsi opsi -r pada cp?",
+      "back": "Menyalin folder beserta seluruh isinya secara rekursif."
+    },
+    {
+      "front": "Apa bedanya cat, less, head, dan tail?",
+      "back": "cat mencetak semuanya, less membaca per halaman, head baris awal, tail baris akhir."
+    },
+    {
+      "front": "Apa fungsi tail -f?",
+      "back": "Terus menampilkan baris baru yang masuk ke berkas, andalan memantau log langsung."
+    },
+    {
+      "front": "Apa yang dilakukan shell terhadap pola *.txt?",
+      "back": "Memperluasnya menjadi daftar nama berkas yang cocok sebelum perintah dijalankan."
+    },
+    {
+      "front": "Apa beda grep dan find?",
+      "back": "grep mencari baris berdasarkan isi berkas; find mencari berkas berdasarkan nama, tipe, ukuran, atau umur."
+    },
+    {
+      "front": "Apa fungsi opsi -i, -v, dan -n pada grep?",
+      "back": "Abaikan huruf besar kecil, balik pencocokan, dan tampilkan nomor baris."
+    },
+    {
+      "front": "Mengapa pola -name pada find harus dikutip?",
+      "back": "Agar shell tidak memperluasnya lebih dulu sehingga pola sampai ke find apa adanya."
+    },
+    {
+      "front": "Bagaimana membaca izin rwxr-xr--?",
+      "back": "Pemilik rwx (7), grup r-x (5), lainnya r-- (4), jadi 754."
+    },
+    {
+      "front": "Apa nilai oktal r, w, dan x?",
+      "back": "r = 4, w = 2, x = 1; jumlahkan per kelompok pemilik, grup, lainnya."
+    },
+    {
+      "front": "Apa arti w pada sebuah folder?",
+      "back": "Boleh membuat, menghapus, dan mengganti nama entri di dalamnya."
+    },
+    {
+      "front": "Berapa izin umum berkas, skrip, kunci privat SSH?",
+      "back": "644 untuk berkas biasa, 755 untuk skrip, 600 untuk kunci privat."
+    },
+    {
+      "front": "Apa fungsi umask 022?",
+      "back": "Berkas baru berizin 644 dan folder baru 755."
+    },
+    {
+      "front": "Apa beda >, >>, 2>, dan 2>&1?",
+      "back": "Timpa stdout, tambah stdout, alihkan stderr, dan gabungkan stderr ke stdout."
+    },
+    {
+      "front": "Mengapa uniq -c harus didahului sort?",
+      "back": "uniq hanya menggabungkan baris duplikat yang bersebelahan."
+    },
+    {
+      "front": "Mengapa sudo echo x > berkas gagal?",
+      "back": "Redirect dikerjakan shell milikmu; gunakan echo x | sudo tee berkas."
+    },
+    {
+      "front": "Apa beda SIGTERM dan SIGKILL?",
+      "back": "SIGTERM (15) meminta berhenti dengan sopan, SIGKILL (9) memaksa dan tidak bisa ditangkap."
+    },
+    {
+      "front": "Apa arti kode keluar 0 dan $??",
+      "back": "0 berarti sukses, selain itu gagal; $? menyimpan kode perintah terakhir."
+    },
+    {
+      "front": "Apa beda apt update dan apt upgrade?",
+      "back": "update menyegarkan daftar paket, upgrade menaikkan versi paket yang terpasang."
+    },
+    {
+      "front": "Apa beda apt remove dan apt purge?",
+      "back": "purge ikut menghapus berkas konfigurasi sistem paket, remove tidak."
+    },
+    {
+      "front": "Apa beda df dan du?",
+      "back": "df menunjukkan pemakaian per partisi, du menjumlahkan ukuran folder."
+    },
+    {
+      "front": "Apa isi tujuh kolom /etc/passwd?",
+      "back": "Nama, x, UID, GID, keterangan, folder rumah, dan shell."
+    },
+    {
+      "front": "Mengapa usermod -aG memakai -a?",
+      "back": "Tanpa -a, daftar grup tambahan lama terganti seluruhnya."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu berada di /var/log/nginx. Perintah mana yang membawamu ke /var?",
+      "code": "",
+      "options": [
+        "cd ..",
+        "cd ~",
+        "cd -/var",
+        "cd ../.."
+      ],
+      "answer": 3,
+      "explanation": "Dua tingkat naik dari /var/log/nginx adalah /var. `cd ..` hanya sampai /var/log, dan `~` menuju folder rumah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana path absolut?",
+      "code": "",
+      "options": [
+        "etc/ssh/sshd_config",
+        "./ssh/sshd_config",
+        "~/ssh/sshd_config (folder rumah pengguna)",
+        "/etc/ssh/sshd_config"
+      ],
+      "answer": 3,
+      "explanation": "Path absolut selalu diawali / dan tidak bergantung folder kerja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu ingin menyalin folder proyek beserta seluruh isinya ke proyek-lama. Perintah yang tepat?",
+      "code": "",
+      "options": [
+        "cp -r proyek proyek-lama",
+        "cp proyek proyek-lama",
+        "mv -r proyek proyek-lama lalu rm proyek",
+        "cat proyek > proyek-lama"
+      ],
+      "answer": 0,
+      "explanation": "Folder membutuhkan -r pada cp. Tanpa itu cp menolak dengan pesan omitting directory."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Wildcard `*` pada `ls *` tidak menampilkan berkas yang namanya diawali titik.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Berkas tersembunyi tidak dicocokkan oleh * kecuali pola diawali titik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang menampilkan berkas tersembunyi beserta izin dan ukuran terbaca manusia?",
+      "code": "",
+      "options": [
+        "ls -R",
+        "ls -d",
+        "ls -lah",
+        "ls -S"
+      ],
+      "answer": 2,
+      "explanation": "-l tampilan panjang, -a termasuk tersembunyi, -h ukuran terbaca manusia."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Izin 640 pada sebuah berkas berarti...",
+      "code": "",
+      "options": [
+        "pemilik baca dan tulis, grup baca dan tulis, lainnya baca",
+        "pemilik baca dan tulis, grup baca, lainnya tidak punya akses",
+        "pemilik baca dan tulis, grup baca, dan orang lain boleh membaca juga",
+        "pemilik baca saja, grup tulis, lainnya tidak punya akses"
+      ],
+      "answer": 1,
+      "explanation": "6 = rw-, 4 = r--, 0 = ---, untuk pemilik, grup, dan lainnya berurutan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Folder rumah pribadi di server bersama sebaiknya berizin...",
+      "code": "",
+      "options": [
+        "750 atau 700",
+        "777",
+        "666",
+        "555"
+      ],
+      "answer": 0,
+      "explanation": "Folder pribadi tidak perlu diakses semua orang. 777 membuka tulis untuk seluruh sistem dan 666 tanpa x membuat folder tidak bisa dimasuki."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah mana yang membuang pesan galat tetapi tetap menampilkan keluaran normal?",
+      "code": "",
+      "options": [
+        "find / -name \"*.conf\" >/dev/null",
+        "find / -name \"*.conf\" 1>/dev/null 2>&1 | cat",
+        "find / -name \"*.conf\" 2>/dev/null",
+        "find / -name \"*.conf\" 1>&2"
+      ],
+      "answer": 2,
+      "explanation": "2> mengalihkan stderr ke /dev/null. Bentuk > ke /dev/null justru membuang keluaran normal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pipeline mana yang menghitung berapa baris di auth.log berisi kata Failed?",
+      "code": "",
+      "options": [
+        "wc -l | grep Failed auth.log",
+        "grep -v Failed auth.log | sort",
+        "cat Failed | wc auth.log",
+        "grep Failed auth.log | wc -l"
+      ],
+      "answer": 3,
+      "explanation": "grep menyaring baris, wc -l menghitung hasilnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara paling aman menghentikan server yang macet dengan PID 4821?",
+      "code": "",
+      "options": [
+        "kill -9 4821 sebagai langkah pertama",
+        "kill 4821, lalu kill -9 4821 hanya bila masih hidup",
+        "rm -f /proc/4821 lalu bersihkan sisa prosesnya dengan reboot",
+        "chmod 000 /proc/4821"
+      ],
+      "answer": 1,
+      "explanation": "SIGTERM memberi waktu untuk membereskan diri; SIGKILL adalah cadangan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu ingin memeriksa isi tiga baris pertama berkas hasil.csv. Perintah mana?",
+      "code": "",
+      "options": [
+        "tail -n 3 hasil.csv",
+        "wc -l hasil.csv",
+        "head -n 3 hasil.csv",
+        "cat hasil.csv | tail -n 3 lalu balik urutannya"
+      ],
+      "answer": 2,
+      "explanation": "head menampilkan awal berkas, tail akhir, dan wc menghitung."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Perintah `apt upgrade` sebaiknya dijalankan tanpa `apt update` agar daftar paket tidak berubah.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. update menyegarkan daftar paket; tanpa itu upgrade bekerja dengan katalog usang."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "benar_salah",
+      "prompt": "Terminal dan shell adalah dua hal yang sama: jendela dan penerjemah perintah menyatu dalam satu program.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Terminal adalah jendelanya, shell (misalnya Bash) adalah program yang membaca dan menjalankan perintah di dalamnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Server produksi tidak punya layar grafis. Cara paling lazim mengelolanya?",
+      "code": "",
+      "options": [
+        "Memasang monitor dan mouse di ruang server tiap kali",
+        "Masuk lewat jaringan dengan SSH dan bekerja di terminal teks",
+        "Mengunduh installer grafis dari situs pengembang",
+        "Menunggu server mengirim email berisi laporan"
+      ],
+      "answer": 1,
+      "explanation": "Server umumnya dikelola jarak jauh lewat SSH dengan antarmuka teks."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Folder mana yang menyimpan log sistem dan layanan?",
+      "code": "",
+      "options": [
+        "/var/log",
+        "/etc/log",
+        "/home/log",
+        "/usr/log"
+      ],
+      "answer": 0,
+      "explanation": "Data yang berubah seperti log berada di /var, khususnya /var/log."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah `cd /etc` lalu `cd /var/log`, perintah `cd -` membawamu ke...",
+      "code": "",
+      "options": [
+        "/etc",
+        "/var",
+        "/home",
+        "/var/log"
+      ],
+      "answer": 0,
+      "explanation": "cd - kembali ke folder sebelumnya, yaitu /etc."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Untuk melihat berkas konfigurasi SSH server kamu perlu mencarinya di /dev.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Konfigurasi berada di /etc/ssh; /dev berisi berkas perangkat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Yang terjadi bila `cp data.txt cadangan.txt` dijalankan padahal cadangan.txt sudah ada dan berisi data penting?",
+      "code": "",
+      "options": [
+        "cp berhenti dan menanyakan konfirmasi",
+        "cadangan.txt otomatis diganti namanya",
+        "cp menggabungkan isi kedua berkas",
+        "cadangan.txt tertimpa tanpa pertanyaan"
+      ],
+      "answer": 3,
+      "explanation": "cp menimpa diam-diam kecuali memakai -i atau -n."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu menjalankan `rm -rf /tmp/build /` karena salah mengetik spasi. Mengapa ini berbahaya?",
+      "code": "",
+      "options": [
+        "Spasi membuat rm menjadi mode interaktif",
+        "Ada dua target dan salah satunya akar sistem",
+        "rm -rf hanya berjalan di folder rumah",
+        "Perintah itu hanya menghapus berkas tersembunyi"
+      ],
+      "answer": 1,
+      "explanation": "Spasi memisahkan argumen sehingga / ikut menjadi target. Distro modern menolak, tetapi kebiasaan teliti tetap wajib."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas di folder: a1.txt, a2.txt, a10.txt, b1.txt. Hasil `ls [ab]1.txt`?",
+      "code": "",
+      "options": [
+        "a1.txt dan b1.txt",
+        "a1.txt, a10.txt, dan b1.txt",
+        "Semua berkas txt",
+        "a1.txt dan a2.txt"
+      ],
+      "answer": 0,
+      "explanation": "Kurung siku cocok dengan satu karakter dari himpunan, lalu angka 1 dan .txt."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang mencari berkas bernama nginx.conf di seluruh sistem sambil menyembunyikan pesan Permission denied?",
+      "code": "",
+      "options": [
+        "grep -r nginx.conf / 2>/dev/null | head -n 1",
+        "find / -name nginx.conf 2>&1",
+        "locate -r nginx.conf 1>/dev/null",
+        "find / -name \"nginx.conf\" 2>/dev/null"
+      ],
+      "answer": 3,
+      "explanation": "find mencari nama berkas, dan 2>/dev/null membuang stderr tempat pesan izin muncul."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "`grep -c Failed auth.log` mencetak...",
+      "code": "",
+      "options": [
+        "Semua baris yang mengandung Failed",
+        "Nama berkas yang mengandung Failed",
+        "Jumlah baris yang mengandung Failed",
+        "Jumlah kata Failed di seluruh berkas"
+      ],
+      "answer": 2,
+      "explanation": "-c hanya menghitung baris yang cocok. Jika satu baris memuat dua kata Failed, tetap dihitung satu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "`find . -name \"*.log\" -delete` aman dijalankan tanpa mengujinya lebih dulu karena find hanya menampilkan hasil.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. -delete benar-benar menghapus. Jalankan dulu tanpa -delete untuk melihat apa yang cocok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana perintah yang mencari kata ssh di semua berkas .conf di bawah /etc dan hanya mencetak nama berkasnya?",
+      "code": "",
+      "options": [
+        "grep -c ssh /etc/*.conf",
+        "grep -rl \"ssh\" /etc --include=\"*.conf\"",
+        "find /etc -name ssh -l",
+        "grep -v ssh /etc --include=.conf"
+      ],
+      "answer": 1,
+      "explanation": "-r menelusuri folder, -l hanya mencetak nama berkas, --include membatasi jenis."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Izin deploy.sh yang tampil sebagai `-rwxr-xr--` bila ditulis dalam oktal adalah...",
+      "code": "-rwxr-xr-- 1 budi tim 843 Mar 3 09:05 deploy.sh",
+      "options": [
+        "754",
+        "755",
+        "744 (rwxr--r--)",
+        "745"
+      ],
+      "answer": 0,
+      "explanation": "rwx = 7, r-x = 5, r-- = 4, jadi 754."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Folder bersama /srv/tim ingin agar berkas baru otomatis mewarisi grup tim. Bit khusus yang cocok?",
+      "code": "",
+      "options": [
+        "setuid pada folder",
+        "sticky bit pada folder (chmod +t) agar semua berkas mewarisi grup",
+        "setgid pada folder (chmod g+s)",
+        "chmod 000 pada folder"
+      ],
+      "answer": 2,
+      "explanation": "setgid pada folder membuat isi baru mewarisi grup folder."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Server web gagal menulis unggahan di /var/www/situs setelah berkas disalin dengan sudo. Perbaikan yang tepat?",
+      "code": "",
+      "options": [
+        "sudo chmod -R 777 /var/www/situs agar semua orang boleh menulis",
+        "sudo umask 000",
+        "sudo rm -rf /var/www/situs",
+        "sudo chown -R www-data:www-data /var/www/situs"
+      ],
+      "answer": 3,
+      "explanation": "Berkas dimiliki root sehingga www-data tidak bisa menulis. Ganti pemilik, bukan membuka izin untuk semua orang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Folder punya izin r-- untuk grup saja (tanpa x). Anggota grup yang menjalankan `ls folder` lalu `cd folder` akan mengalami...",
+      "code": "",
+      "options": [
+        "Keduanya berhasil tanpa masalah",
+        "ls dapat menampilkan nama, tetapi cd ditolak",
+        "Keduanya ditolak",
+        "ls menampilkan nama dan ukuran lengkap, lalu cd berhasil masuk ke folder"
+      ],
+      "answer": 1,
+      "explanation": "r pada folder membuat daftar nama terbaca, x diperlukan untuk masuk dan mengakses isi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tujuan `find / -perm -4000 -type f 2>/dev/null` bagi administrator adalah...",
+      "code": "",
+      "options": [
+        "Menghapus berkas lama",
+        "Mencari berkas lebih besar dari 4 GB",
+        "Mencari semua berkas yang bisa ditulis oleh siapa pun di seluruh sistem",
+        "Mengaudit berkas setuid yang berjalan dengan hak pemilik"
+      ],
+      "answer": 3,
+      "explanation": "Bit setuid (4000) menjalankan program dengan hak pemilik; berkas yang tak seharusnya ada di daftar ini adalah risiko keamanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil `ls /etc /tidak-ada > semua.txt 2>&1` ialah...",
+      "code": "",
+      "options": [
+        "Hanya daftar /etc masuk semua.txt",
+        "Daftar /etc dan pesan galat sama-sama masuk semua.txt",
+        "Hanya daftar /etc masuk semua.txt, sedangkan galat tetap tampil di layar",
+        "Tidak ada yang masuk berkas"
+      ],
+      "answer": 1,
+      "explanation": "2>&1 mengarahkan stderr ke tujuan yang sama dengan stdout, yaitu semua.txt."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil `awk '{print $1}' log | sort | uniq -c | sort -rn | head -n 1` menunjukkan...",
+      "code": "",
+      "options": [
+        "Baris pertama berkas log apa adanya",
+        "Jumlah total baris di berkas log dikurangi baris yang duplikat saja",
+        "Nilai kolom pertama yang paling sering muncul beserta jumlahnya",
+        "Nilai kolom pertama yang paling jarang muncul"
+      ],
+      "answer": 2,
+      "explanation": "Rangkaian itu menghitung kemunculan lalu mengambil jumlah terbesar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi `xargs rm` di akhir pipeline `find . -name \"*.tmp\" | xargs rm`?",
+      "code": "",
+      "options": [
+        "Mengurutkan hasil find",
+        "Menyalin berkas .tmp ke /dev/null",
+        "Memeriksa izin tiap berkas .tmp",
+        "Mengubah baris hasil find menjadi argumen untuk rm"
+      ],
+      "answer": 3,
+      "explanation": "rm tidak membaca nama berkas dari stdin, jadi xargs menjembatani."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom STAT bernilai Z pada ps menunjukkan proses yang...",
+      "code": "",
+      "options": [
+        "sudah selesai tetapi entrinya belum dibersihkan induknya (zombie)",
+        "sedang berjalan di CPU",
+        "sedang tidur menunggu masukan atau menunggu operasi disk selesai tanpa bisa diganggu",
+        "dihentikan Ctrl+Z"
+      ],
+      "answer": 0,
+      "explanation": "Zombie adalah proses yang telah berakhir namun masih tercatat karena induk belum membaca status keluarnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa `ps aux | grep nginx` hampir selalu menampilkan satu baris tambahan?",
+      "code": "",
+      "options": [
+        "nginx selalu berjalan dua kali",
+        "ps menambahkan baris ringkasan jumlah proses di akhir keluaran",
+        "Baris perintah grep nginx itu sendiri ikut cocok",
+        "grep menduplikasi hasil"
+      ],
+      "answer": 2,
+      "explanation": "grep adalah proses yang baris perintahnya memuat kata nginx. pgrep menghindari hal ini."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang menjalankan perintah di latar belakang dan mengabaikan SIGHUP agar bertahan setelah terminal ditutup?",
+      "code": "",
+      "options": [
+        "./tugas.sh | bg",
+        "nohup ./tugas.sh > tugas.log 2>&1 &",
+        "./tugas.sh & exit tanpa nohup",
+        "kill -STOP ./tugas.sh"
+      ],
+      "answer": 1,
+      "explanation": "nohup mengabaikan SIGHUP, & menaruhnya di latar belakang, dan log dialihkan agar tidak hilang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Layanan membaca ulang konfigurasi tanpa berhenti ketika diberi sinyal...",
+      "code": "",
+      "options": [
+        "SIGHUP",
+        "SIGKILL",
+        "SIGSTOP",
+        "SIGINT"
+      ],
+      "answer": 0,
+      "explanation": "Banyak layanan menafsirkan SIGHUP sebagai perintah muat ulang konfigurasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua perintah dipisah `&&`. Perintah kedua dijalankan jika...",
+      "code": "",
+      "options": [
+        "perintah pertama gagal",
+        "perintah pertama selesai apa pun hasilnya",
+        "perintah pertama berjalan lebih dari satu detik",
+        "perintah pertama berakhir dengan kode keluar 0"
+      ],
+      "answer": 3,
+      "explanation": "&& hanya melanjutkan ketika yang sebelumnya sukses."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu ingin memeriksa apakah layanan nginx aktif dan membaca beberapa baris log terakhirnya. Perintah yang cocok?",
+      "code": "",
+      "options": [
+        "ps -ef --forest",
+        "systemctl status nginx",
+        "df -h nginx",
+        "kill -0 nginx"
+      ],
+      "answer": 1,
+      "explanation": "status menampilkan keadaan aktif, PID utama, dan beberapa baris log terakhir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah `apt install nginx` tanpa error, kamu menyadari konfigurasinya ingin dibersihkan total. Perintah?",
+      "code": "",
+      "options": [
+        "sudo apt update nginx",
+        "sudo apt full-upgrade nginx",
+        "sudo apt purge nginx",
+        "sudo dpkg -l nginx"
+      ],
+      "answer": 2,
+      "explanation": "purge menghapus program beserta konfigurasi sistemnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang menunjukkan berkas mana saja yang dipasang oleh paket nginx?",
+      "code": "",
+      "options": [
+        "dpkg -L nginx",
+        "dpkg -S nginx",
+        "apt policy nginx",
+        "apt autoremove nginx"
+      ],
+      "answer": 0,
+      "explanation": "dpkg -L daftar berkas milik paket; dpkg -S sebaliknya mencari paket pemilik berkas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Skrip instalasi di internet menyarankan `curl https://situs.example/pasang.sh | sudo bash`. Sikap yang tepat?",
+      "code": "",
+      "options": [
+        "Langsung jalankan karena sudo membuatnya aman",
+        "Jalankan di server produksi agar cepat diuji",
+        "Tambahkan chmod 777 sebelum menjalankan",
+        "Unduh dulu, baca isinya, baru jalankan bila yakin"
+      ],
+      "answer": 3,
+      "explanation": "Perintah itu menjalankan kode asing dengan hak root tanpa pemeriksaan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Sebuah baris di /etc/passwd berbunyi `sari:x:1001:1001:Sari:/home/sari:/bin/bash`. UID Sari adalah...",
+      "code": "sari:x:1001:1001:Sari:/home/sari:/bin/bash",
+      "options": [
+        "1001",
+        "x",
+        "/home/sari",
+        "Sari"
+      ],
+      "answer": 0,
+      "explanation": "UID adalah kolom ketiga."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Admin ingin membuat akun dengan folder rumah lewat skrip otomatis. Perintah yang cocok?",
+      "code": "",
+      "options": [
+        "passwd -m dewi",
+        "adduser -r dewi tanpa argumen lain",
+        "useradd -m -s /bin/bash dewi",
+        "mkdir /home/dewi saja"
+      ],
+      "answer": 2,
+      "explanation": "useradd tingkat rendah dan -m membuat folder rumah. mkdir saja tidak membuat akun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Seorang pengguna tak boleh login lagi tetapi datanya harus disimpan. Langkah yang tepat?",
+      "code": "",
+      "options": [
+        "Langsung userdel -r agar akun dan semua datanya bersih sebelum ada yang menanyakannya lagi",
+        "Kunci akun dengan passwd -l atau ganti shell ke nologin, jangan langsung userdel -r",
+        "chmod 777 folder rumahnya",
+        "Biarkan akun aktif dan ganti sandi saja"
+      ],
+      "answer": 1,
+      "explanation": "Mengunci akun mempertahankan data untuk keperluan serah terima."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa `visudo` dipakai untuk mengedit aturan sudo?",
+      "code": "",
+      "options": [
+        "Ia membuat sudo berjalan lebih cepat",
+        "Ia menambahkan semua pengguna biasa ke grup sudo secara otomatis setiap kali dibuka",
+        "Ia mengenkripsi berkas sudoers",
+        "Ia memeriksa sintaks sebelum menyimpan agar sudo tidak rusak"
+      ],
+      "answer": 3,
+      "explanation": "Kesalahan sintaks di sudoers dapat menonaktifkan sudo untuk semua orang."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Skrip berikut menampilkan apa jika dijalankan dengan `./cek.sh a b c`?",
+      "code": "#!/usr/bin/env bash\necho \"$#\"",
+      "options": [
+        "a",
+        "cek.sh",
+        "0",
+        "3"
+      ],
+      "answer": 3,
+      "explanation": "$# menghitung jumlah argumen, yaitu tiga."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada `if [ -f \"$berkas\" ]; then`, uji `-f` bernilai benar jika...",
+      "code": "",
+      "options": [
+        "path itu ada dan berupa folder",
+        "path itu ada dan berupa berkas biasa",
+        "berkas dapat ditulis",
+        "berkas kosong"
+      ],
+      "answer": 1,
+      "explanation": "-f berkas biasa, -d folder, -e apa pun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Baris cron `30 2 * * * /home/budi/backup.sh` berarti...",
+      "code": "",
+      "options": [
+        "Dijalankan setiap 30 menit",
+        "Dijalankan tiap tanggal 2 pukul 30",
+        "Dijalankan setiap hari pukul 02.30",
+        "Dijalankan hanya hari Selasa"
+      ],
+      "answer": 2,
+      "explanation": "Kolom: menit 30, jam 2, setiap tanggal, bulan, dan hari."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Skrip memakai `set -u` dan baris `rm -rf \"$FOLDER\"/*` tetapi FOLDER belum terdefinisi. Dengan -u, apa yang terjadi?",
+      "code": "",
+      "options": [
+        "Skrip berhenti dengan galat variabel belum terdefinisi sebelum rm berjalan",
+        "rm tetap berjalan dan menghapus seluruh isi akar sistem tanpa ada peringatan apa pun",
+        "rm berjalan di folder kosong dengan tenang",
+        "Bash otomatis memberi nilai /tmp"
+      ],
+      "answer": 0,
+      "explanation": "-u menjadikan variabel yang belum diset sebagai galat; tanpa itu \"$FOLDER\"/* menjadi /*, ancaman besar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa kunci privat SSH sebaiknya memakai passphrase?",
+      "code": "",
+      "options": [
+        "Agar server tidak memerlukan kunci publik",
+        "Agar ssh tidak lagi memakai enkripsi pada saluran koneksinya ke server",
+        "Agar kunci yang tercuri tidak langsung bisa dipakai",
+        "Agar kunci bisa dibagikan lewat email"
+      ],
+      "answer": 2,
+      "explanation": "Passphrase mengenkripsi kunci privat di disk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Izin yang benar untuk folder ~/.ssh dan kunci privat id_ed25519 adalah...",
+      "code": "",
+      "options": [
+        "777 untuk ~/.ssh dan 666 untuk kunci privat",
+        "755 untuk ~/.ssh dan 644 untuk kunci privat",
+        "600 untuk ~/.ssh dan 700 untuk kunci privat",
+        "700 untuk ~/.ssh dan 600 untuk kunci privat"
+      ],
+      "answer": 3,
+      "explanation": "SSH menolak kunci yang bisa dibaca orang lain, dan folder harus dapat dimasuki hanya oleh pemilik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebelum menonaktifkan login sandi di sshd_config, langkah pengaman yang benar?",
+      "code": "",
+      "options": [
+        "Buka sesi SSH cadangan dan pastikan login dengan kunci berfungsi dari sesi lain",
+        "Hapus semua kunci publik di server lalu restart layanan SSH agar konfigurasinya bersih kembali dari awal",
+        "Restart server tanpa memeriksa konfigurasi",
+        "Nonaktifkan SSH lalu aktifkan lagi besok"
+      ],
+      "answer": 0,
+      "explanation": "Salah konfigurasi dapat mengunci kamu dari server; sesi cadangan menyelamatkanmu."
+    }
+  ],
+  "chapters": [
+    {
+      "slug": "filesystem-dan-navigasi",
+      "title": "Terminal, Filesystem, dan Navigasi",
+      "est_minutes": 22,
+      "slide_from": 3,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu terminal, shell, dan Bash, serta kapan terminal lebih unggul dari antarmuka grafis.\n- Membaca struktur pohon direktori Linux dan fungsi folder pentingnya (`/etc`, `/home`, `/var`, `/tmp`, `/usr`).\n- Berpindah folder dengan `pwd`, `ls`, dan `cd` memakai path absolut maupun relatif.\n- Memakai pintasan `~`, `.`, `..`, dan `-` tanpa tersesat.\n\n## Terminal, shell, dan Bash\n\nTiga istilah ini sering dicampur. **Terminal** adalah jendela tempat kamu mengetik dan membaca teks. **Shell** adalah program di dalam jendela itu yang membaca perintahmu lalu menyuruh sistem menjalankannya. **Bash** adalah shell yang paling umum di Linux; ada juga `zsh` dan `fish`, tetapi dasarnya mirip.\n\nSaat terminal terbuka kamu melihat *prompt* seperti ini:\n\n```bash\nbudi@laptop:~$\n```\n\nArtinya: pengguna `budi`, di komputer bernama `laptop`, sedang berada di folder `~` (rumah), dan tanda `$` menunjukkan kamu pengguna biasa. Jika tandanya `#`, kamu sedang menjadi `root`, administrator tertinggi. Biasakan membaca prompt sebelum mengetik perintah yang berbahaya.\n\nMengapa repot belajar teks kalau ada klik? Karena hampir semua server tidak punya layar grafis. Kamu masuk lewat jaringan dan hanya dapat teks. Perintah juga bisa disimpan, diulang, dan dijadikan skrip, sehingga tugas yang butuh 40 klik menjadi satu baris.\n\nSetiap perintah punya bentuk umum:\n\n```bash\nperintah -opsi argumen\n```\n\nContohnya `ls -l /etc`: perintahnya `ls`, opsinya `-l` (tampilan panjang), argumennya `/etc` (folder yang dilihat). Linux membedakan huruf besar dan kecil, jadi `ls` dan `LS` adalah dua hal berbeda, dan yang kedua tidak dikenal.\n\n## Pohon direktori: semuanya berawal dari `/`\n\nWindows punya banyak drive (`C:`, `D:`). Linux punya satu pohon yang akarnya `/` (dibaca *root*). Flashdisk, hard disk kedua, bahkan partisi lain *dipasang* (mount) ke cabang tertentu pohon itu. Hasilnya, kamu tidak pernah berpikir \"di drive mana\", cukup \"di path mana\".\n\n![Pohon direktori Linux dan fungsi folder utamanya](slide:4)\n\nFolder yang paling sering kamu temui:\n\n| Folder | Isinya |\n| --- | --- |\n| `/home` | Folder pribadi tiap pengguna, misalnya `/home/budi` |\n| `/root` | Folder pribadi pengguna root (bukan di dalam `/home`) |\n| `/etc` | Berkas konfigurasi sistem dan layanan, berupa teks |\n| `/var` | Data yang berubah: log di `/var/log`, cache, antrean surat |\n| `/tmp` | Berkas sementara, boleh dihapus kapan saja |\n| `/usr` | Program dan pustaka yang dipasang (`/usr/bin`, `/usr/lib`) |\n| `/bin`, `/sbin` | Perintah dasar; pada distro modern keduanya tautan ke `/usr/bin` dan `/usr/sbin` |\n| `/dev` | Berkas khusus untuk perangkat keras, mis. `/dev/sda` |\n| `/proc` | Jendela ke informasi proses dan kernel, dibuat langsung oleh kernel |\n| `/mnt`, `/media` | Tempat memasang disk tambahan atau flashdisk |\n\nPembagian ini mengikuti standar FHS (Filesystem Hierarchy Standard), jadi sebagian besar distro menyusunnya mirip. Satu prinsip yang layak diingat: **\"semuanya adalah berkas\"**. Konfigurasi adalah berkas teks, perangkat tampil sebagai berkas di `/dev`, dan informasi sistem tampil sebagai berkas di `/proc`.\n\n## Di mana aku? `pwd` dan `ls`\n\n`pwd` (*print working directory*) mencetak folder tempatmu berada.\n\n```bash\n$ pwd\n/home/budi\n```\n\n`ls` menampilkan isi folder. Opsi yang paling berguna:\n\n```bash\n$ ls\nDesktop  Documents  Downloads  proyek\n\n$ ls -l\ntotal 16\ndrwxr-xr-x 2 budi budi 4096 Mar  3 09:10 Desktop\ndrwxr-xr-x 2 budi budi 4096 Mar  3 09:10 Documents\n-rw-r--r-- 1 budi budi  220 Mar  3 09:00 catatan.txt\n\n$ ls -a          # termasuk berkas tersembunyi (diawali titik)\n$ ls -lh         # ukuran mudah dibaca: 4.0K, 12M, 1.3G\n$ ls -lt         # urut berdasarkan waktu ubah, terbaru di atas\n```\n\nBerkas yang namanya diawali titik, seperti `.bashrc` atau `.ssh`, disembunyikan secara bawaan. Itu bukan fitur keamanan, hanya cara supaya konfigurasi pribadi tidak memenuhi tampilan. Kolom `ls -l` akan kita bahas penuh di bab izin; untuk sekarang, huruf `d` di awal berarti direktori dan `-` berarti berkas biasa.\n\n## Pindah folder dengan `cd`\n\n```bash\n$ cd Documents        # masuk ke folder Documents (relatif)\n$ pwd\n/home/budi/Documents\n$ cd /var/log         # lompat ke path absolut\n$ cd ..               # naik satu tingkat ke /var\n$ cd ~                # pulang ke /home/budi (cd tanpa argumen sama saja)\n$ cd -                # kembali ke folder sebelumnya\n```\n\nPerhatikan perbedaan dua jenis path:\n\n- **Path absolut** diawali `/` dan selalu menunjuk lokasi yang sama dari mana pun kamu berdiri, contohnya `/etc/hostname`.\n- **Path relatif** tidak diawali `/` dan dihitung dari folder kerja saat ini. `Documents/laporan.txt` hanya benar bila kamu berada di folder yang memuat `Documents`.\n\nSimbol khusus yang wajib hafal:\n\n| Simbol | Arti |\n| --- | --- |\n| `.` | folder saat ini |\n| `..` | folder induk (satu tingkat di atas) |\n| `~` | folder rumah pengguna (`/home/budi`) |\n| `-` | folder sebelumnya (hanya untuk `cd`) |\n\nContoh perhitungan. Kamu berada di `/home/budi/proyek/web`. Maka `../..` menunjuk `/home/budi`, dan `../../Downloads` menunjuk `/home/budi/Downloads`. Di `/`, folder induk adalah `/` itu sendiri, jadi `cd ..` berulang kali tidak akan keluar dari akar.\n\n### Kasus: path dengan spasi\n\nLinux mengizinkan spasi di nama folder, tetapi shell memakai spasi untuk memisahkan argumen. Perintah `cd Tugas Akhir` dibaca sebagai dua argumen dan gagal. Ada dua cara aman:\n\n```bash\n$ cd \"Tugas Akhir\"\n$ cd Tugas\\ Akhir\n```\n\nSolusi jangka panjangnya: biasakan memberi nama berkas tanpa spasi, misalnya `tugas-akhir` atau `tugas_akhir`.\n\n## Tab, riwayat, dan kebiasaan hemat ketukan\n\nTiga kebiasaan ini membuat terminal terasa cepat:\n\n1. **Tab** melengkapi nama berkas atau perintah. Ketik `cd Doc` lalu Tab, jadi `cd Documents/`. Tekan Tab dua kali untuk melihat semua kemungkinan bila ada lebih dari satu.\n2. **Panah atas** menampilkan perintah sebelumnya. `Ctrl+R` mencari di riwayat: ketik sebagian kata dan Bash menampilkan perintah lama yang cocok.\n3. **`Ctrl+C`** menghentikan perintah yang sedang berjalan, **`Ctrl+L`** membersihkan layar (sama dengan `clear`), dan **`Ctrl+D`** menutup sesi di prompt kosong.\n\nPerintah `history` menampilkan daftar riwayat bernomor, dan `!42` mengulang perintah nomor 42. Hati-hati: riwayat ikut menyimpan apa pun yang kamu ketik, termasuk sandi yang tak sengaja diketik sebagai perintah.\n\n## Mencari bantuan: `man` dan `--help`\n\nKamu tidak perlu menghafal semua opsi. Hampir setiap perintah punya dokumentasi sendiri:\n\n```bash\n$ ls --help | less    # ringkasan opsi\n$ man ls              # manual lengkap; q untuk keluar, / untuk mencari\n$ type cd             # cd adalah perintah bawaan shell atau program?\n```\n\nManual dibagi per bagian nomor; `man 5 passwd` membuka dokumentasi format berkas `/etc/passwd`, sedangkan `man passwd` membuka perintah `passwd`. Saat menemukan perintah baru di internet, kebiasaan terbaik adalah membuka `man`-nya dulu sebelum menyalin dan menjalankannya.\n\n## Jebakan umum pemula\n\n- Mengetik `cd` ke berkas, bukan folder: galatnya `Not a directory`.\n- Lupa bahwa `/home/budi/Documents` dan `Documents` adalah dua jenis path yang berlaku berbeda tergantung folder kerja.\n- Mengira `~` bekerja di dalam tanda kutip. Pada `cd \"~/proyek\"` tilde tidak diperluas, sehingga yang dicari folder literal bernama `~`. Tulis `cd ~/proyek` atau `cd \"$HOME/proyek\"`.\n- Menjalankan perintah dari folder yang salah. Kebiasaan sehat: cek `pwd` sebelum perintah yang mengubah banyak berkas.\n\n## Rangkuman\n\n- Terminal adalah jendelanya, shell adalah penerjemah perintah, Bash adalah shell yang paling umum.\n- Linux hanya punya satu pohon yang berakar di `/`; konfigurasi ada di `/etc`, data pengguna di `/home`, log di `/var/log`.\n- `pwd` menunjukkan posisi, `ls -la` menampilkan isi lengkap, `cd` berpindah.\n- Path absolut diawali `/`; path relatif dihitung dari folder kerja; `.`, `..`, `~`, dan `-` adalah pintasan utama.\n- Gunakan Tab, panah atas, `Ctrl+R`, `man`, dan `--help` agar tidak perlu menghafal.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu berada di /home/budi/proyek/web. Perintah `cd ../../Downloads` membawamu ke folder...",
+          "code": "",
+          "options": [
+            "/home/Downloads",
+            "/home/budi/proyek/Downloads",
+            "/home/budi/Downloads",
+            "/Downloads"
+          ],
+          "answer": 2,
+          "explanation": "Satu `..` naik ke /home/budi/proyek, dua `..` naik ke /home/budi, lalu masuk Downloads. Tiga jawaban lain salah menghitung tingkat naik."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prompt terminal menampilkan `root@srv:/etc#`. Apa artinya?",
+          "code": "",
+          "options": [
+            "Sesi berjalan sebagai root dan folder kerjanya /etc",
+            "Sesi pengguna biasa karena tanda # menandai komentar",
+            "Sesi root dengan folder kerja folder rumah /root",
+            "Sesi pengguna biasa bernama root di folder /etc"
+          ],
+          "answer": 0,
+          "explanation": "Tanda # menunjukkan sesi root, sedangkan bagian setelah titik dua adalah folder kerja saat ini. Pengguna biasa memakai tanda $."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di Linux, folder `Documents` dan folder `documents` dianggap nama yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Linux membedakan huruf besar dan kecil, jadi keduanya dua folder berbeda."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu perlu membuka berkas konfigurasi layanan seperti Nginx atau SSH. Folder mana yang paling tepat dicari lebih dulu?",
+          "code": "",
+          "options": [
+            "/tmp",
+            "/etc",
+            "/dev",
+            "/proc"
+          ],
+          "answer": 1,
+          "explanation": "Konfigurasi sistem dan layanan berupa berkas teks di /etc. /tmp berisi berkas sementara, /dev berkas perangkat, dan /proc informasi proses dari kernel."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung path absolut",
+          "prompt": "Terminal menghitung path relatif dari folder kerja. Tulis `path_absolut(cwd, path, home=\"/home/budi\")` yang mengembalikan path absolut bersih.\n\n- Path yang diawali `~` memakai `home`.\n- Path yang tidak diawali `/` dihitung dari `cwd`.\n- `.` diabaikan, `..` naik satu tingkat, dan di akar `..` tetap di `/`.\n- Garis miring ganda dirapikan.\n\nContoh: `path_absolut(\"/home/budi/proyek/web\", \"../..\")` menghasilkan `\"/home/budi\"`.",
+          "starter": {
+            "code": "def path_absolut(cwd, path, home=\"/home/budi\"):\n    # 1. ganti ~ dengan home\n    # 2. bila path relatif, awali dengan cwd\n    # 3. pecah di \"/\" dan proses \".\" serta \"..\" memakai list\n    pass\n"
+          },
+          "solution": {
+            "code": "def path_absolut(cwd, path, home=\"/home/budi\"):\n    if path == \"~\" or path.startswith(\"~/\"):\n        path = home + path[1:]\n    if not path.startswith(\"/\"):\n        path = cwd + \"/\" + path\n    bagian = []\n    for p in path.split(\"/\"):\n        if p in (\"\", \".\"):\n            continue\n        if p == \"..\":\n            if bagian:\n                bagian.pop()\n        else:\n            bagian.append(p)\n    return \"/\" + \"/\".join(bagian)\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Dua tingkat naik dari proyek/web",
+              "check": "path_absolut('/home/budi/proyek/web', '../..') == '/home/budi'"
+            },
+            {
+              "name": "Path relatif dihitung dari cwd",
+              "check": "path_absolut('/home/budi', 'Documents/laporan.txt') == '/home/budi/Documents/laporan.txt'"
+            },
+            {
+              "name": "Tilde diganti folder rumah",
+              "check": "path_absolut('/etc', '~/catatan') == '/home/budi/catatan'"
+            },
+            {
+              "name": "Di akar, .. tetap di akar",
+              "check": "path_absolut('/', '../..') == '/'"
+            },
+            {
+              "name": "Titik dan .. di tengah path dirapikan",
+              "check": "path_absolut('/var/log', './nginx/../syslog') == '/var/log/syslog'"
+            },
+            {
+              "name": "Path absolut tidak memakai cwd dan garis miring ganda dirapikan",
+              "check": "path_absolut('/home/budi', '/etc//hosts') == '/etc/hosts'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "perintah-dasar-berkas",
+      "title": "Perintah Dasar: Membuat, Menyalin, dan Membaca Berkas",
+      "est_minutes": 22,
+      "slide_from": 5,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Membuat, menyalin, memindah, mengganti nama, dan menghapus berkas serta folder dari terminal.\n- Memahami bahwa `rm` tidak punya tempat sampah dan menerapkan kebiasaan menghapus yang aman.\n- Membaca isi berkas dengan `cat`, `less`, `head`, `tail`, dan `wc`.\n- Memakai wildcard `*`, `?`, dan `[...]` untuk menunjuk banyak berkas sekaligus.\n\n## Membuat berkas dan folder\n\n`touch` membuat berkas kosong. Jika berkasnya sudah ada, isinya tidak diubah; hanya waktu modifikasinya diperbarui.\n\n```bash\n$ mkdir proyek\n$ cd proyek\n$ touch catatan.txt\n$ mkdir -p src/components/ui     # -p membuat seluruh rantai folder sekaligus\n$ ls -R\n.:\ncatatan.txt  src\n\n./src:\ncomponents\n\n./src/components:\nui\n\n./src/components/ui:\n```\n\nTanpa `-p`, `mkdir src/components/ui` gagal dengan `No such file or directory` bila `src/components` belum ada. Opsi `-p` juga membuat `mkdir` tidak mengeluh jika foldernya sudah ada, sehingga cocok dipakai di skrip yang dijalankan berulang kali.\n\nUntuk mengisi berkas cepat tanpa editor, pakai `echo` dengan pengalihan (dibahas lengkap di bab pipe dan redirect):\n\n```bash\n$ echo \"halo linux\" > salam.txt\n```\n\nUntuk edit sungguhan, `nano` adalah pilihan ramah pemula: `nano salam.txt`, ubah isi, `Ctrl+O` lalu Enter untuk menyimpan, `Ctrl+X` untuk keluar. `vim` lebih bertenaga tetapi butuh latihan; minimal ketahui cara keluarnya: tekan `Esc`, ketik `:q!`, lalu Enter.\n\n## Menyalin dengan `cp`\n\nBentuknya `cp sumber tujuan`.\n\n```bash\n$ cp salam.txt salam-cadangan.txt        # salin berkas dengan nama baru\n$ cp salam.txt ~/Documents/               # salin ke folder lain, nama tetap\n$ cp -r src src-lama                      # -r: salin folder beserta isinya\n$ cp -i salam.txt ~/Documents/            # -i: tanya dulu bila akan menimpa\n$ cp -a src /backup/                      # -a: arsip, menjaga izin dan waktu\n```\n\nDua hal yang sering membingungkan. Pertama, `cp` **menimpa tujuan tanpa bertanya** kecuali kamu memakai `-i`. Kedua, folder tidak bisa disalin tanpa `-r`; `cp src dst` pada folder menghasilkan `omitting directory 'src'`.\n\n## Memindah dan mengganti nama dengan `mv`\n\nDi Linux, memindah dan mengganti nama adalah operasi yang sama: berkas diberi alamat baru.\n\n```bash\n$ mv salam.txt sapa.txt          # ganti nama\n$ mv sapa.txt ~/Documents/       # pindah ke folder lain\n$ mv sapa.txt ~/Documents/hi.txt # pindah sekaligus ganti nama\n$ mv src-lama arsip              # folder tidak butuh -r\n```\n\n`mv` dalam satu partisi hanya mengubah catatan nama sehingga seketika, bahkan untuk folder berisi gigabyte. Antar partisi berbeda, `mv` menyalin lalu menghapus asalnya. Sama seperti `cp`, `mv` menimpa tanpa bertanya; `mv -i` menambah konfirmasi, dan `mv -n` menolak menimpa.\n\n## Menghapus dengan `rm`: tidak ada tempat sampah\n\nIni bagian paling penting bab ini. `rm` menghapus langsung. Tidak ada Recycle Bin, dan memulihkan berkas yang terhapus sulit bahkan sering mustahil.\n\n```bash\n$ rm catatan.txt              # hapus satu berkas\n$ rm -i *.log                 # tanya satu per satu\n$ rmdir folder-kosong         # hanya menghapus folder yang kosong\n$ rm -r src-lama              # hapus folder beserta isinya\n$ rm -rf build                # paksa, tanpa tanya dan tanpa keluhan\n```\n\nKebiasaan aman:\n\n1. **Lihat dulu, hapus kemudian.** Jalankan `ls pola` untuk melihat apa saja yang cocok, lalu ulangi perintah yang sama dengan `rm` di depannya.\n2. **Hati-hati dengan spasi.** `rm -rf /tmp/build /` (ada spasi tambahan) menghapus dua target, salah satunya akar sistem. Distro modern menolak `rm -rf /` kecuali dengan `--no-preserve-root`, tetapi `rm -rf ~` atau `rm -rf *` di folder yang salah tetap fatal.\n3. **Pakai `-i` atau `-I`** untuk operasi besar. `rm -I` hanya bertanya sekali bila akan menghapus lebih dari tiga berkas atau menghapus rekursif.\n4. **Cek `pwd`** sebelum `rm *`.\n\nBanyak orang menambahkan alias `alias rm='rm -i'` di `~/.bashrc`. Boleh, tetapi jangan bergantung padanya: di server lain alias itu tidak ada.\n\n## Membaca isi berkas\n\n| Perintah | Kegunaan |\n| --- | --- |\n| `cat berkas` | Cetak seluruh isi ke layar; cocok untuk berkas pendek |\n| `less berkas` | Baca halaman demi halaman; `Spasi` maju, `b` mundur, `/kata` mencari, `q` keluar |\n| `head -n 5 berkas` | Lima baris pertama |\n| `tail -n 5 berkas` | Lima baris terakhir |\n| `tail -f berkas` | Terus menampilkan baris baru yang ditambahkan, andalan memantau log |\n| `wc berkas` | Hitung baris, kata, dan byte |\n\n```bash\n$ cat daftar.txt\napel\njeruk\nmangga\n$ head -n 2 daftar.txt\napel\njeruk\n$ wc daftar.txt\n 3  3 18 daftar.txt\n$ wc -l daftar.txt\n3 daftar.txt\n```\n\nUntuk berkas berukuran ratusan megabyte seperti log, **jangan** `cat`; layarmu akan banjir. Gunakan `less`, atau `tail -n 100` untuk melihat ujungnya. Saat memantau layanan yang sedang bermasalah, `tail -f /var/log/syslog` memperlihatkan kejadian secara langsung; hentikan dengan `Ctrl+C`.\n\nDua perintah pelengkap: `file berkas` menebak jenis isi berkas (teks, gambar, program), dan `stat berkas` menampilkan ukuran, izin, dan tiga stempel waktu.\n\n## Wildcard: menunjuk banyak berkas sekaligus\n\nSebelum perintah dijalankan, shell **memperluas** pola wildcard menjadi daftar nama berkas yang cocok. Programnya sendiri (`ls`, `rm`) tidak pernah melihat tanda bintang.\n\n| Pola | Cocok dengan |\n| --- | --- |\n| `*` | nol atau lebih karakter apa pun |\n| `?` | tepat satu karakter apa pun |\n| `[abc]` | satu karakter dari himpunan itu |\n| `[0-9]` | satu digit |\n| `{a,b}` | bukan wildcard sungguhan: brace expansion menjadi `a` dan `b` |\n\nMisalkan folder berisi `a1.txt`, `a2.txt`, `a10.txt`, `b1.txt`, `catatan.md`:\n\n```bash\n$ ls *.txt\na1.txt  a10.txt  a2.txt  b1.txt\n$ ls a?.txt\na1.txt  a2.txt\n$ ls [ab]1.txt\na1.txt  b1.txt\n$ ls a*\na1.txt  a10.txt  a2.txt\n$ cp laporan.{txt,bak}       # sama dengan: cp laporan.txt laporan.bak\n```\n\nPerhatikan `a10.txt` muncul sebelum `a2.txt`: urutan alfabet membandingkan karakter satu per satu, bukan angka sebagai nilai. Jebakan lain: berkas tersembunyi (diawali titik) **tidak** ikut dicocokkan oleh `*`.\n\n### Kasus: log menumpuk\n\nFolder `/tmp/hasil` berisi ratusan berkas `laporan-2024-01.csv` sampai `laporan-2024-12.csv`, dan kamu ingin hapus bulan Januari sampai September saja. Pola `laporan-2024-0[1-9].csv` menunjuk tepat sembilan berkas itu. Jalankan `ls laporan-2024-0[1-9].csv` dulu untuk memastikan, lalu ubah `ls` menjadi `rm`.\n\n## Rangkuman\n\n- `touch` dan `mkdir -p` membuat; `cp -r` menyalin folder; `mv` memindah sekaligus mengganti nama.\n- `cp` dan `mv` menimpa tanpa bertanya; tambahkan `-i` atau `-n` bila ragu.\n- `rm` tidak punya tempat sampah. Lihat dengan `ls` dulu, periksa `pwd`, dan waspadai spasi di dekat `/` atau `*`.\n- `cat`, `less`, `head`, `tail`, dan `wc` membaca berkas; `tail -f` memantau log langsung.\n- Wildcard `*`, `?`, `[...]` diperluas oleh shell sebelum perintah dijalankan, dan tidak mencocokkan berkas tersembunyi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Folder berisi laporan1.txt, laporan2.txt, laporan10.txt, dan catatan.md. Berkas apa saja yang dihapus oleh `rm laporan?.txt`?",
+          "code": "",
+          "options": [
+            "Ketiga berkas laporan",
+            "laporan1.txt, laporan2.txt, dan catatan.md",
+            "Hanya laporan10.txt",
+            "laporan1.txt dan laporan2.txt"
+          ],
+          "answer": 3,
+          "explanation": "Tanda tanya cocok dengan tepat satu karakter, sehingga laporan10.txt yang memakai dua karakter tidak ikut."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin menghapus semua berkas .log di folder tetapi ragu pada polanya. Langkah paling aman?",
+          "code": "",
+          "options": [
+            "Jalankan ls dengan pola yang sama, lalu ganti ls dengan rm bila hasilnya benar",
+            "Pakai rm -rf supaya tidak ada pertanyaan",
+            "Pindahkan semuanya ke /tmp karena folder itu otomatis menjadi tempat sampah yang bisa dipulihkan",
+            "Ubah izin folder menjadi 777 dulu"
+          ],
+          "answer": 0,
+          "explanation": "ls memperlihatkan persis apa yang akan terkena. rm -rf justru menghilangkan pengaman, dan /tmp bukan tempat sampah yang dapat dipulihkan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menjalankan `mv` di dalam satu partisi yang sama dapat memindahkan folder berukuran puluhan gigabyte hampir seketika.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Dalam satu partisi, mv hanya mengubah catatan nama atau lokasi, bukan menyalin isi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Layanan bermasalah dan log-nya sangat besar. Kamu hanya ingin melihat 20 baris paling akhir. Perintah mana yang tepat?",
+          "code": "",
+          "options": [
+            "head -n 20 /var/log/syslog",
+            "cat /var/log/syslog",
+            "wc -l /var/log/syslog",
+            "tail -n 20 /var/log/syslog"
+          ],
+          "answer": 3,
+          "explanation": "tail menampilkan bagian akhir. head menampilkan awal, cat membanjiri layar, dan wc hanya menghitung baris."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "wc, head, dan tail",
+          "prompt": "Tiruan tiga perintah baca berkas. Masukannya `teks` (string dengan `\\n` di akhir tiap baris).\n\n- `wc(teks)` mengembalikan tuple `(baris, kata, byte)`; baris dihitung dari jumlah karakter `\\n`, byte dari encoding UTF-8.\n- `head(teks, n=10)` mengembalikan `n` baris pertama (tetap dengan `\\n`).\n- `tail(teks, n=10)` mengembalikan `n` baris terakhir; `n=0` menghasilkan string kosong.\n\nContoh: `wc(\"apel\\njeruk\\nmangga\\n\")` menghasilkan `(3, 3, 18)`.",
+          "starter": {
+            "code": "def wc(teks):\n    pass\n\n\ndef head(teks, n=10):\n    pass\n\n\ndef tail(teks, n=10):\n    pass\n"
+          },
+          "solution": {
+            "code": "def wc(teks):\n    return teks.count(\"\\n\"), len(teks.split()), len(teks.encode(\"utf-8\"))\n\n\ndef head(teks, n=10):\n    return \"\".join(teks.splitlines(keepends=True)[:n])\n\n\ndef tail(teks, n=10):\n    if n <= 0:\n        return \"\"\n    return \"\".join(teks.splitlines(keepends=True)[-n:])\n"
+          },
+          "setup": "DATA = 'apel\\njeruk\\nmangga\\n'\n",
+          "tests": [
+            {
+              "name": "wc menghitung baris, kata, dan byte",
+              "check": "wc(DATA) == (3, 3, 18)"
+            },
+            {
+              "name": "wc teks kosong",
+              "check": "wc('') == (0, 0, 0)"
+            },
+            {
+              "name": "head mengambil dua baris pertama",
+              "check": "head(DATA, 2) == 'apel\\njeruk\\n'"
+            },
+            {
+              "name": "head dengan n bawaan mengembalikan semuanya bila baris sedikit",
+              "check": "head(DATA) == DATA"
+            },
+            {
+              "name": "tail mengambil dua baris terakhir",
+              "check": "tail(DATA, 2) == 'jeruk\\nmangga\\n'"
+            },
+            {
+              "name": "tail dengan n=0 menghasilkan string kosong",
+              "check": "tail(DATA, 0) == ''"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "mencari-dengan-grep-dan-find",
+      "title": "Mencari dengan grep dan find",
+      "est_minutes": 22,
+      "slide_from": 7,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Mencari teks di dalam berkas dengan `grep` beserta opsi `-i`, `-v`, `-n`, `-r`, `-c`, dan `-E`.\n- Mencari berkas berdasarkan nama, tipe, ukuran, dan umur dengan `find`.\n- Menggabungkan `find` dengan `-exec` untuk bertindak atas hasilnya.\n- Membedakan wildcard shell dari regular expression, dan memahami tanda kutip.\n\n## Dua jenis pencarian\n\nAda dua pertanyaan berbeda: \"berkas mana yang namanya begini?\" dan \"baris mana yang isinya begini?\". Pertanyaan pertama dijawab `find`; yang kedua dijawab `grep`. Keduanya adalah perkakas harian administrator, dan hampir selalu bertemu lagi dengan pipe di bab berikutnya.\n\n## `grep`: mencari baris yang cocok\n\nBentuk dasar: `grep pola berkas`. Contoh berkas `auth.log` kecil:\n\n```text\nMar 03 02:14 srv sshd[1]: Failed password for root from 203.0.113.9\nMar 03 02:15 srv sshd[1]: Failed password for admin from 203.0.113.9\nMar 03 08:30 srv sshd[2]: Accepted password for budi from 192.0.2.10\nMar 03 08:31 srv sudo: budi : TTY=pts/0 ; COMMAND=/usr/bin/apt update\n```\n\n```bash\n$ grep Failed auth.log\nMar 03 02:14 srv sshd[1]: Failed password for root from 203.0.113.9\nMar 03 02:15 srv sshd[1]: Failed password for admin from 203.0.113.9\n$ grep -c Failed auth.log          # hanya hitung baris yang cocok\n2\n$ grep -n Accepted auth.log        # tampilkan nomor baris\n3:Mar 03 08:30 srv sshd[2]: Accepted password for budi from 192.0.2.10\n$ grep -i failed auth.log          # abaikan huruf besar/kecil\n$ grep -v sshd auth.log            # kebalikan: baris yang TIDAK cocok\nMar 03 08:31 srv sudo: budi : TTY=pts/0 ; COMMAND=/usr/bin/apt update\n```\n\nOpsi yang layak dihafal:\n\n| Opsi | Fungsi |\n| --- | --- |\n| `-i` | abaikan perbedaan huruf besar dan kecil |\n| `-v` | balik: tampilkan baris yang tidak cocok |\n| `-n` | sertakan nomor baris |\n| `-c` | cetak jumlah baris yang cocok saja |\n| `-r` | cari rekursif di semua berkas dalam folder |\n| `-l` | cetak hanya nama berkas yang mengandung kecocokan |\n| `-w` | cocokkan hanya sebagai kata utuh |\n| `-A 2` / `-B 2` / `-C 2` | sertakan 2 baris sesudah / sebelum / sekitar kecocokan |\n| `-E` | regex yang diperluas: `+`, `?`, alternatif, dan kurung tanpa perlu garis miring terbalik |\n\nMencari di seluruh proyek, misalnya semua tempat yang menyebut `TODO`:\n\n```bash\n$ grep -rn \"TODO\" src/\nsrc/app.py:12:    # TODO: tangani galat jaringan\nsrc/util.py:40:    # TODO: tambah tes\n```\n\nTanda kutip sebaiknya dipakai di sekitar pola. Tanpa itu, shell bisa mengartikan spasi, tanda bintang, atau tanda kurung sebelum `grep` sempat melihatnya.\n\n### Regular expression secukupnya\n\nPola `grep` sebenarnya regular expression (regex). Tiga potong yang paling berguna:\n\n```bash\n$ grep \"^Mar 03 02\" auth.log        # ^ : awal baris\n$ grep \"10$\" auth.log               # $ : akhir baris\n$ grep -E \"Failed|Accepted\" auth.log   # | : salah satu dari dua kata\n$ grep -E \"from [0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\" auth.log\n```\n\nTitik (`.`) di regex berarti \"satu karakter apa pun\", jadi untuk mencari titik literal tulis `\\.`. Ini sumber galat klasik: `grep 192.0.2.10` juga cocok dengan `192x0y2z10`. Gunakan `grep -F 192.0.2.10` (fixed string) bila kamu ingin teks apa adanya tanpa makna khusus.\n\nIngat bahwa `*` di regex berbeda dengan `*` di wildcard shell. Di shell, `*.txt` berarti \"berkas berakhiran .txt\". Di regex, `*` berarti \"pengulangan nol kali atau lebih dari karakter sebelumnya\", sehingga `grep \"a*\"` cocok dengan hampir semua baris.\n\n## `find`: mencari berkas\n\n`find` menjelajahi pohon direktori mulai dari titik awal yang kamu beri, lalu menyaring dengan kriteria.\n\n```bash\n$ find . -name \"*.txt\"             # berdasarkan nama (pola, pakai kutip)\n$ find . -iname \"laporan*\"         # nama, tidak peka huruf besar/kecil\n$ find /var/log -type f            # f = berkas biasa, d = direktori\n$ find . -type d -name node_modules\n$ find . -size +100M               # lebih besar dari 100 MB\n$ find . -mtime -1                 # diubah dalam 24 jam terakhir\n$ find . -mtime +30                # diubah lebih dari 30 hari lalu\n$ find ~ -user budi -perm 644      # milik budi dengan izin 644\n```\n\nKriteria bisa digabung; semua harus terpenuhi (AND). Pola pada `-name` **wajib diberi kutip** supaya shell tidak memperluasnya lebih dulu. Tanpa kutip, `find . -name *.txt` bisa gagal bila folder kerja kebetulan berisi satu berkas `.txt`, karena shell mengganti `*.txt` menjadi nama berkas itu sebelum `find` berjalan.\n\nUntuk menyembunyikan galat izin ketika menjelajahi seluruh sistem, buang keluaran galat (dibahas di bab redirect):\n\n```bash\n$ find / -name \"nginx.conf\" 2>/dev/null\n/etc/nginx/nginx.conf\n```\n\n### Bertindak atas hasil: `-exec`\n\n```bash\n$ find . -name \"*.tmp\" -delete\n$ find . -name \"*.log\" -mtime +30 -exec ls -lh {} \\;\n$ find . -type f -name \"*.sh\" -exec chmod +x {} +\n```\n\n`{}` diganti nama berkas yang ditemukan. Akhiran `\\;` menjalankan perintah sekali per berkas, sedangkan `+` menggabungkan banyak berkas dalam satu panggilan sehingga lebih cepat. Selalu jalankan `find` tanpa `-delete` atau `-exec` terlebih dulu untuk melihat apa yang akan terkena, persis seperti kebiasaan `ls` sebelum `rm`.\n\n## `locate`, `which`, dan `whereis`\n\n- `locate nama` mencari di basis data indeks yang diperbarui berkala (`sudo updatedb`). Sangat cepat, tetapi berkas yang baru dibuat bisa belum tercatat.\n- `which python3` menunjukkan program mana yang dijalankan saat kamu mengetik nama itu, dengan menelusuri direktori di variabel `PATH`.\n- `whereis ls` menampilkan lokasi program, kode sumber, dan halaman manualnya.\n\nSaat dua versi program terpasang dan perilakunya aneh, `which -a python3` atau `type -a python3` memperlihatkan semua kandidat sesuai urutan `PATH`.\n\n## Menggabungkan: cari berkas, lalu cari isinya\n\nKamu sering butuh kombinasi: berkas `.conf` mana yang mengaktifkan `PermitRootLogin`?\n\n```bash\n$ grep -rn \"PermitRootLogin\" /etc/ssh/\n/etc/ssh/sshd_config:34:#PermitRootLogin prohibit-password\n$ grep -rl \"listen 80\" /etc/nginx/ --include=\"*.conf\"\n$ find /etc -name \"*.conf\" -exec grep -l \"ssh\" {} +\n```\n\n`grep -r --include=\"*.py\"` membatasi pencarian ke jenis berkas tertentu, dan `--exclude-dir=node_modules` melewati folder besar yang tidak relevan. Dua pendekatan itu hampir selalu lebih mudah dibaca daripada mengirim hasil `find` ke `grep` secara manual.\n\n## Jebakan umum\n\n- Lupa tanda kutip pada pola: `grep a b c` berarti cari `a` di berkas `b` dan `c`.\n- Menganggap `grep` tidak menemukan apa-apa padahal teksnya ada: cek huruf besar kecil (`-i`) atau spasi ekstra.\n- Mengandalkan `locate` untuk berkas yang baru dibuat; jalankan `sudo updatedb` atau pakai `find`.\n- Menjalankan `find / ...` tanpa `2>/dev/null` dan tenggelam dalam pesan `Permission denied`.\n\n## Rangkuman\n\n- `grep` mencari isi: ingat `-i`, `-v`, `-n`, `-c`, `-r`, `-l`, dan `-E`.\n- `find` mencari berkas menurut nama, tipe, ukuran, umur, dan pemilik; beri kutip pada pola `-name`.\n- `-exec ... {} \\;` atau `-exec ... {} +` menjalankan perintah atas hasil `find`; uji dulu tanpa `-delete`.\n- Wildcard shell dan regex tampak mirip tetapi berbeda: `*` berarti \"apa saja\" di shell, \"ulangi\" di regex.\n- `locate`, `which`, dan `whereis` melengkapi: cepat lewat indeks, atau menemukan lokasi program.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mana perintah yang menampilkan baris berisi kata error tanpa peduli huruf besar atau kecil, lengkap dengan nomor baris, dari app.log?",
+          "code": "",
+          "options": [
+            "grep -vn error app.log",
+            "grep -c error app.log",
+            "grep -in error app.log",
+            "grep -rl error app.log"
+          ],
+          "answer": 2,
+          "explanation": "-i mengabaikan huruf besar dan kecil, -n menambah nomor baris. -v membalik, -c hanya menghitung, -l hanya mencetak nama berkas."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu mencari berkas berakhiran .conf di /etc yang diubah dalam dua hari terakhir. Perintah yang benar?",
+          "code": "",
+          "options": [
+            "find /etc -type d -name \"*.conf\" -mtime +2",
+            "find /etc -name \"*.conf\" -mtime -2",
+            "find /etc -name *.conf -size -2",
+            "grep -r \"*.conf\" /etc -mtime -2"
+          ],
+          "answer": 1,
+          "explanation": "-name dengan pola berkutip memilih nama, -mtime -2 memilih yang diubah kurang dari dua hari lalu. grep mencari isi, bukan nama, dan tidak punya -mtime."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "`grep 192.0.2.10 log.txt` hanya akan cocok dengan alamat 192.0.2.10 persis.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Titik di regex berarti satu karakter apa saja, sehingga 192x0y2z10 juga cocok. Pakai grep -F untuk teks apa adanya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "`find . -name *.txt` tiba-tiba hanya menemukan satu berkas padahal ada banyak. Penyebab paling mungkin?",
+          "code": "",
+          "options": [
+            "find memang tidak mendukung wildcard di dalam opsi -name sehingga hanya satu yang tampil",
+            "Opsi -name hanya mencari berkas tersembunyi",
+            "Shell mengganti *.txt dengan nama berkas di folder kerja sebelum find berjalan",
+            "find memerlukan sudo untuk membaca berkas .txt"
+          ],
+          "answer": 2,
+          "explanation": "Tanpa kutip, shell memperluas pola lebih dulu. Pola pada -name harus diberi kutip agar sampai ke find apa adanya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Mini grep",
+          "prompt": "Tulis `grep(pola, baris, i=False, v=False, n=False)` yang menyaring list `baris` dan mengembalikan list baris hasil.\n\n- Cocok bila `pola` muncul sebagai potongan teks (bukan regex).\n- `i=True`: abaikan huruf besar dan kecil.\n- `v=True`: balik, ambil baris yang tidak cocok.\n- `n=True`: awali tiap hasil dengan nomor baris (mulai 1) dan titik dua, misalnya `\"3:isi baris\"`.",
+          "starter": {
+            "code": "def grep(pola, baris, i=False, v=False, n=False):\n    hasil = []\n    # tulis kode di sini\n    return hasil\n"
+          },
+          "solution": {
+            "code": "def grep(pola, baris, i=False, v=False, n=False):\n    hasil = []\n    kunci = pola.lower() if i else pola\n    for no, b in enumerate(baris, 1):\n        cocok = kunci in (b.lower() if i else b)\n        if cocok != v:\n            hasil.append(f\"{no}:{b}\" if n else b)\n    return hasil\n"
+          },
+          "setup": "LOG = [\n    'sshd: Failed password for root from 203.0.113.9',\n    'sshd: Failed password for admin from 203.0.113.9',\n    'sshd: Accepted password for budi from 192.0.2.10',\n    'sudo: budi : COMMAND=/usr/bin/apt update',\n]\n",
+          "tests": [
+            {
+              "name": "Menemukan baris yang mengandung Failed",
+              "check": "grep('Failed', LOG) == [LOG[0], LOG[1]]"
+            },
+            {
+              "name": "Peka huruf besar dan kecil secara bawaan",
+              "check": "grep('failed', LOG) == []"
+            },
+            {
+              "name": "i=True mengabaikan huruf besar dan kecil",
+              "check": "len(grep('failed', LOG, i=True)) == 2"
+            },
+            {
+              "name": "v=True mengambil baris yang tidak cocok",
+              "check": "grep('sshd', LOG, v=True) == [LOG[3]]"
+            },
+            {
+              "name": "n=True menambah nomor baris",
+              "check": "grep('Accepted', LOG, n=True) == ['3:' + LOG[2]]"
+            },
+            {
+              "name": "Tanpa kecocokan menghasilkan list kosong",
+              "check": "grep('zzz', LOG) == []"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Mini find -name",
+          "prompt": "Tulis `find_name(daftar_path, pola)` yang mengembalikan path yang **nama berkasnya** (bagian setelah `/` terakhir) cocok dengan pola wildcard shell (`*`, `?`, `[...]`). Pencocokan peka huruf besar dan kecil, dan urutan hasil mengikuti urutan masukan.\n\nPetunjuk: modul `fnmatch` punya `fnmatchcase`.",
+          "starter": {
+            "code": "import fnmatch\n\n\ndef find_name(daftar_path, pola):\n    # tulis kode di sini\n    return []\n"
+          },
+          "solution": {
+            "code": "import fnmatch\n\n\ndef find_name(daftar_path, pola):\n    return [p for p in daftar_path if fnmatch.fnmatchcase(p.rsplit(\"/\", 1)[-1], pola)]\n"
+          },
+          "setup": "PATHS = ['/etc/nginx/nginx.conf', '/etc/ssh/sshd_config', '/home/budi/a.txt', '/home/budi/a1.txt', '/home/budi/a10.txt', '/home/budi/b1.txt', '/tmp/laporan.TXT']\n",
+          "tests": [
+            {
+              "name": "*.txt memilih berkas txt kecil saja",
+              "check": "find_name(PATHS, '*.txt') == ['/home/budi/a.txt', '/home/budi/a1.txt', '/home/budi/a10.txt', '/home/budi/b1.txt']"
+            },
+            {
+              "name": "a?.txt hanya cocok dengan satu karakter di tengah",
+              "check": "find_name(PATHS, 'a?.txt') == ['/home/budi/a1.txt']"
+            },
+            {
+              "name": "*.conf menemukan nginx.conf",
+              "check": "find_name(PATHS, '*.conf') == ['/etc/nginx/nginx.conf']"
+            },
+            {
+              "name": "Hanya nama berkas yang dicocokkan, bukan nama folder",
+              "check": "find_name(PATHS, 'etc') == []"
+            },
+            {
+              "name": "[ab]1.txt memakai himpunan karakter",
+              "check": "find_name(PATHS, '[ab]1.txt') == ['/home/budi/a1.txt', '/home/budi/b1.txt']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "izin-dan-kepemilikan",
+      "title": "Izin dan Kepemilikan Berkas",
+      "est_minutes": 24,
+      "slide_from": 9,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Membaca kolom izin pada `ls -l`: tipe berkas, izin pemilik, grup, dan lainnya.\n- Mengubah izin dengan `chmod` memakai notasi simbolik maupun oktal.\n- Mengubah pemilik dengan `chown` dan `chgrp`, serta menjelaskan peran `umask`.\n- Menjelaskan arti izin `r`, `w`, `x` pada berkas dan pada direktori, termasuk bit khusus.\n\n## Siapa boleh melakukan apa\n\nLinux adalah sistem multipengguna. Setiap berkas dan folder punya satu **pemilik** (*user*), satu **grup**, dan tiga kelompok izin: untuk pemilik (**u**), untuk anggota grup (**g**), dan untuk semua orang lain (**o**). Tiap kelompok bisa mendapat tiga izin: baca (**r**), tulis (**w**), jalankan (**x**).\n\n```bash\n$ ls -l\n-rw-r--r-- 1 budi staf  220 Mar  3 09:00 catatan.txt\n-rwxr-xr-x 1 budi staf  843 Mar  3 09:05 backup.sh\ndrwxr-x--- 2 budi tim  4096 Mar  3 09:10 rahasia\nlrwxrwxrwx 1 budi budi   11 Mar  3 09:12 pintasan -> catatan.txt\n```\n\nBedah baris pertama, `-rw-r--r-- 1 budi staf 220 ...`:\n\n| Bagian | Arti |\n| --- | --- |\n| `-` | tipe: `-` berkas biasa, `d` direktori, `l` tautan simbolik |\n| `rw-` | pemilik (`budi`): boleh baca dan tulis, tidak boleh jalankan |\n| `r--` | grup (`staf`): hanya baca |\n| `r--` | orang lain: hanya baca |\n| `1` | jumlah tautan keras |\n| `budi staf` | pemilik dan grup |\n| `220` | ukuran dalam byte |\n\nAturan evaluasi yang sering terlewat: sistem memeriksa dari yang paling spesifik. Jika kamu adalah pemilik, yang berlaku hanya izin pemilik, tidak peduli apa kata izin grup. Jika bukan pemilik tetapi anggota grup, izin grup yang berlaku. Selain itu, izin \"lainnya\". Karena itu pemilik bisa saja punya izin lebih sempit daripada orang lain, meski jarang masuk akal.\n\n## Arti r, w, x pada berkas dan folder\n\n| Izin | Pada berkas | Pada direktori |\n| --- | --- | --- |\n| `r` | boleh membaca isinya | boleh melihat daftar nama isinya (`ls`) |\n| `w` | boleh mengubah isinya | boleh membuat, menghapus, dan mengganti nama entri di dalamnya |\n| `x` | boleh dijalankan sebagai program | boleh masuk (`cd`) dan mengakses entri di dalamnya |\n\nDua konsekuensi yang mengejutkan pemula:\n\n- Untuk **menghapus** berkas, yang dibutuhkan adalah izin `w` (dan `x`) pada *folder*nya, bukan pada berkasnya. Berkas berizin `000` pun bisa dihapus oleh pemilik folder yang boleh menulis.\n- Folder tanpa `x` tidak bisa dimasuki walaupun punya `r`. Folder yang punya `x` tetapi tanpa `r` bisa dimasuki bila kamu tahu nama persis isinya, tetapi `ls` akan ditolak.\n\nSelain itu, program shell tidak dapat dijalankan dengan `./backup.sh` kecuali ada `x`. Galat `Permission denied` saat menjalankan skrip hampir selalu berarti `chmod +x` belum dilakukan.\n\n## `chmod`: mengubah izin\n\n### Notasi simbolik\n\nFormat: siapa (`u`, `g`, `o`, `a` untuk semua) + operator (`+` tambah, `-` cabut, `=` tetapkan persis) + izin (`r`, `w`, `x`).\n\n```bash\n$ chmod u+x backup.sh          # pemilik boleh menjalankan\n$ chmod g-w catatan.txt        # cabut tulis dari grup\n$ chmod o-rwx rahasia          # orang lain tidak punya akses apa pun\n$ chmod a+r catatan.txt        # semua orang boleh baca\n$ chmod u=rwx,g=rx,o= skrip.sh # tetapkan persis: rwxr-x---\n$ chmod -R g+rX proyek/        # rekursif; X = x hanya untuk folder dan berkas yang sudah executable\n```\n\n### Notasi oktal\n\nTiap izin punya nilai: **r = 4, w = 2, x = 1**. Jumlahkan per kelompok, lalu tulis tiga digit berurutan untuk u, g, o.\n\n| Izin | Hitungan | Digit |\n| --- | --- | --- |\n| `rwx` | 4 + 2 + 1 | 7 |\n| `rw-` | 4 + 2 | 6 |\n| `r-x` | 4 + 1 | 5 |\n| `r--` | 4 | 4 |\n| `---` | 0 | 0 |\n\n```bash\n$ chmod 644 catatan.txt   # rw-r--r--  berkas biasa\n$ chmod 755 backup.sh     # rwxr-xr-x  skrip dan program\n$ chmod 600 kunci.pem     # rw-------  rahasia pribadi\n$ chmod 750 rahasia       # rwxr-x---  folder untuk satu tim\n```\n\nNotasi simbolik cocok untuk perubahan kecil (\"tambahkan x saja\"), oktal cocok untuk menetapkan keadaan akhir. Ada satu aturan emas: **jangan pernah memakai `chmod 777`** sebagai pemecah masalah. Itu memberi semua orang di sistem hak mengubah berkasmu, dan hampir tidak pernah benar-benar dibutuhkan. Cari tahu siapa yang kurang izin, lalu beri persis itu.\n\n## `chown` dan `chgrp`: mengubah kepemilikan\n\nHanya root yang boleh mengganti pemilik berkas. Pemilik biasa boleh mengganti grup, tetapi hanya ke grup yang ia sendiri anggotanya.\n\n```bash\n$ sudo chown budi catatan.txt          # ganti pemilik\n$ sudo chown budi:tim laporan.pdf      # ganti pemilik dan grup sekaligus\n$ sudo chown -R www-data:www-data /var/www/situs\n$ chgrp tim laporan.pdf                # ganti grup saja\n```\n\nKasus nyata: kamu menyalin situs ke `/var/www/situs` memakai `sudo`, sehingga semua berkas dimiliki `root`. Server web yang berjalan sebagai `www-data` tidak bisa menulis unggahan dan membalas galat 403 atau 500. Perbaikannya `sudo chown -R www-data:www-data /var/www/situs`, bukan `chmod 777`.\n\n## `umask`: izin bawaan berkas baru\n\nSetiap berkas baru dibuat dari izin dasar lalu dikurangi `umask`. Dasarnya 666 untuk berkas biasa (berkas baru tidak otomatis executable) dan 777 untuk folder. Dengan `umask 022`, berkas baru berizin `644` dan folder baru `755`. Dengan `umask 077`, berkas baru `600` dan folder `700`, cocok untuk akun yang menyimpan rahasia.\n\n```bash\n$ umask\n0022\n$ touch baru.txt && mkdir foldernya\n$ ls -ld baru.txt foldernya\n-rw-r--r-- 1 budi budi    0 Mar  3 10:00 baru.txt\ndrwxr-xr-x 2 budi budi 4096 Mar  3 10:00 foldernya\n```\n\nSecara teknis `umask` adalah mask bit yang dicabut, jadi pengurangan di atas benar untuk umask yang umum (022, 027, 077). Untuk umask aneh seperti 033 lebih tepat dipikirkan sebagai \"bit yang diaktifkan di umask akan dimatikan\".\n\n## Bit khusus dan sudo\n\nDi depan tiga digit biasa ada digit keempat untuk bit khusus yang cukup kamu kenali:\n\n- **setuid** (`4xxx`, tampil `s` di posisi x pemilik): program berjalan dengan hak pemilik berkas. `/usr/bin/passwd` memakainya agar pengguna biasa bisa mengubah `/etc/shadow` milik root.\n- **setgid** (`2xxx`) pada folder: berkas baru di dalamnya mewarisi grup folder, berguna untuk folder tim bersama.\n- **sticky bit** (`1xxx`, tampil `t`): pada folder bersama seperti `/tmp`, hanya pemilik berkas (atau pemilik folder, atau root) yang boleh menghapusnya. `ls -ld /tmp` menunjukkan `drwxrwxrwt`.\n\nBerkas setuid milik root yang salah ditaruh adalah celah keamanan, jadi administrator rutin mengaudit dengan `find / -perm -4000 -type f 2>/dev/null`.\n\n## Pola izin yang layak jadi kebiasaan\n\n| Objek | Izin umum |\n| --- | --- |\n| Berkas dokumen biasa | `644` |\n| Skrip atau program | `755` |\n| Folder biasa | `755` |\n| Folder rumah pribadi | `750` atau `700` |\n| Kunci privat SSH, berkas sandi | `600` |\n| Folder `.ssh` | `700` |\n\nKebiasaan sederhana: berikan **izin sesempit mungkin** yang masih membuat pekerjaan berjalan, lalu lebarkan hanya bila ada alasan.\n\n## Rangkuman\n\n- `ls -l` menunjukkan tipe, izin `rwx` untuk pemilik, grup, dan lainnya, lalu pemilik dan grup.\n- Pada folder, `x` berarti boleh masuk dan `w` berarti boleh membuat atau menghapus isi; menghapus berkas bergantung pada izin folder.\n- `chmod` bisa simbolik (`u+x`) atau oktal (r=4, w=2, x=1); hindari `777`.\n- `chown user:grup` memindahkan kepemilikan dan umumnya butuh `sudo`; `umask` menentukan izin bawaan berkas baru.\n- Bit khusus (setuid, setgid, sticky) ada untuk kasus tertentu; ketahui cara mengenalinya, jangan asal mengaktifkannya.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "backup.sh berizin -rw-r--r-- dan `./backup.sh` menghasilkan Permission denied. Perbaikan paling tepat?",
+          "code": "",
+          "options": [
+            "chmod 000 backup.sh",
+            "chown root backup.sh",
+            "umask 022",
+            "chmod u+x backup.sh"
+          ],
+          "answer": 3,
+          "explanation": "Skrip butuh izin eksekusi untuk pemiliknya. Memberi 777 akan berhasil tetapi terlalu longgar; 000 mencabut semua izin, chown dan umask tidak menambah x."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Sari bukan pemilik deploy.sh tetapi anggota grup tim. Apa yang boleh ia lakukan?",
+          "code": "drwxr-xr-x 3 budi staf 4096 Mar  3 09:10 proyek\n-rwxr-x--- 1 budi tim   843 Mar  3 09:05 deploy.sh",
+          "options": [
+            "Membaca dan menjalankan, tetapi tidak mengubah",
+            "Membaca, mengubah, dan menjalankan",
+            "Hanya membaca",
+            "Tidak ada akses sama sekali"
+          ],
+          "answer": 0,
+          "explanation": "Sari dinilai lewat izin grup, yaitu r-x. Izin pemilik rwx tidak berlaku baginya dan izin others --- tidak dipakai karena ia anggota grup."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Untuk menghapus sebuah berkas, yang menentukan adalah izin w pada berkas itu sendiri, bukan izin folder induknya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Penghapusan mengubah isi folder, sehingga izin w (dan x) pada folderlah yang menentukan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dengan umask 027, berkas teks baru yang dibuat mendapat izin...",
+          "code": "",
+          "options": [
+            "750 (rwxr-x---)",
+            "640 (rw-r-----)",
+            "660 (rw-rw----)",
+            "604 (rw----r--)"
+          ],
+          "answer": 1,
+          "explanation": "Dasar berkas 666, bit dari umask 027 dicabut: pemilik 6, grup 4, lainnya 0, sehingga 640. Angka 750 adalah hasil untuk folder."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "chmod simbolik",
+          "prompt": "Tulis `chmod(mode, ekspresi)` yang menerapkan ekspresi `chmod` simbolik pada izin oktal (string tiga digit) dan mengembalikan izin baru sebagai string tiga digit.\n\n- Ekspresi dipisah koma, misalnya `\"u+x,g-w,o=r\"`.\n- Siapa: `u`, `g`, `o`, atau `a` (semua). Bila tidak ditulis, dianggap `a`.\n- Operator: `+` menambah, `-` mencabut, `=` menetapkan persis.\n- Izin: gabungan `r`, `w`, `x`; boleh kosong pada `=`.\n\nContoh: `chmod(\"644\", \"u+x\")` menghasilkan `\"744\"`.",
+          "starter": {
+            "code": "def chmod(mode, ekspresi):\n    m = int(mode, 8)\n    # untuk tiap klausa: tentukan siapa, operator, dan nilai izin (r=4, w=2, x=1)\n    # lalu ubah m dengan |=, &= ~, atau penetapan\n    return format(m, \"03o\")\n"
+          },
+          "solution": {
+            "code": "def chmod(mode, ekspresi):\n    m = int(mode, 8)\n    for klausa in ekspresi.split(\",\"):\n        i = 0\n        while klausa[i] in \"ugoa\":\n            i += 1\n        siapa = \"ugo\" if (i == 0 or \"a\" in klausa[:i]) else klausa[:i]\n        op, izin = klausa[i], klausa[i + 1:]\n        nilai = sum({\"r\": 4, \"w\": 2, \"x\": 1}[c] for c in izin)\n        for s in siapa:\n            g = {\"u\": 6, \"g\": 3, \"o\": 0}[s]\n            if op == \"+\":\n                m |= nilai << g\n            elif op == \"-\":\n                m &= ~(nilai << g)\n            else:\n                m = (m & ~(7 << g)) | (nilai << g)\n    return format(m & 0o777, \"03o\")\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "u+x menambah eksekusi untuk pemilik",
+              "check": "chmod('644', 'u+x') == '744'"
+            },
+            {
+              "name": "go-rx mencabut dari grup dan lainnya",
+              "check": "chmod('755', 'go-rx') == '700'"
+            },
+            {
+              "name": "a+x menambah eksekusi untuk semua",
+              "check": "chmod('644', 'a+x') == '755'"
+            },
+            {
+              "name": "Beberapa klausa dengan = menetapkan persis",
+              "check": "chmod('777', 'u=rw,g=r,o=') == '640'"
+            },
+            {
+              "name": "g+r,o+r menambah baca untuk dua kelompok",
+              "check": "chmod('600', 'g+r,o+r') == '644'"
+            },
+            {
+              "name": "Tanpa siapa dianggap semua",
+              "check": "chmod('640', '+x') == '751'"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Izin bawaan dari umask",
+          "prompt": "Tulis `izin_baru(umask, jenis)` yang mengembalikan izin berkas atau folder baru sebagai string tiga digit.\n\n- `umask` berupa string oktal, misalnya `\"022\"`.\n- `jenis` adalah `\"berkas\"` (dasar 666) atau `\"folder\"` (dasar 777).\n- Hasilnya adalah dasar dengan bit milik umask dimatikan.\n\nContoh: `izin_baru(\"022\", \"berkas\")` menghasilkan `\"644\"`.",
+          "starter": {
+            "code": "def izin_baru(umask, jenis):\n    # dasar: 0o666 untuk berkas, 0o777 untuk folder\n    pass\n"
+          },
+          "solution": {
+            "code": "def izin_baru(umask, jenis):\n    dasar = 0o777 if jenis == \"folder\" else 0o666\n    return format(dasar & ~int(umask, 8), \"03o\")\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "022 pada berkas menjadi 644",
+              "check": "izin_baru('022', 'berkas') == '644'"
+            },
+            {
+              "name": "022 pada folder menjadi 755",
+              "check": "izin_baru('022', 'folder') == '755'"
+            },
+            {
+              "name": "077 pada berkas menjadi 600",
+              "check": "izin_baru('077', 'berkas') == '600'"
+            },
+            {
+              "name": "077 pada folder menjadi 700",
+              "check": "izin_baru('077', 'folder') == '700'"
+            },
+            {
+              "name": "027 pada folder menjadi 750",
+              "check": "izin_baru('027', 'folder') == '750'"
+            },
+            {
+              "name": "002 pada berkas menjadi 664",
+              "check": "izin_baru('002', 'berkas') == '664'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pipe-redirect-dan-filter",
+      "title": "Pipe, Redirect, dan Filter Teks",
+      "est_minutes": 22,
+      "slide_from": 11,
+      "slide_to": 12,
+      "body": "## Tujuan\n\n- Menjelaskan tiga aliran standar: stdin, stdout, dan stderr, beserta nomor deskriptornya.\n- Mengalihkan keluaran ke berkas dengan `>`, `>>`, `2>`, dan `&>`.\n- Merangkai perintah dengan pipe `|` serta memakai `sort`, `uniq`, `cut`, `tr`, `tee`, dan `xargs`.\n- Menyusun satu baris perintah yang merangkum log, misalnya menghitung IP yang paling sering muncul.\n\n## Tiga aliran standar\n\nSetiap program Linux, saat dijalankan, mendapat tiga \"saluran\" yang sudah terpasang:\n\n| Nama | Nomor | Arah | Bawaan |\n| --- | --- | --- | --- |\n| stdin | 0 | masukan | keyboard |\n| stdout | 1 | keluaran normal | layar |\n| stderr | 2 | pesan galat | layar |\n\nPemisahan stdout dan stderr membuat kamu bisa menyimpan hasil ke berkas sambil tetap melihat peringatan di layar. Falsafah ini yang membuat perkakas Unix kecil bisa dirangkai: satu program menulis ke stdout, program berikutnya membaca dari stdin.\n\n## Redirect: menyimpan ke berkas\n\n```bash\n$ ls /etc > daftar-etc.txt          # timpa berkas dengan keluaran\n$ echo \"baris baru\" >> catatan.txt  # tambahkan di akhir, tidak menimpa\n$ sort < nama.txt                    # ambil masukan dari berkas\n$ ls /tidak-ada 2> galat.txt         # hanya galat masuk berkas\n$ ls /etc /tidak-ada > hasil.txt 2> galat.txt   # dipisah\n$ ls /etc /tidak-ada &> semua.txt    # stdout dan stderr ke satu berkas (Bash)\n$ ls /etc /tidak-ada > semua.txt 2>&1   # bentuk setara yang lebih portabel\n$ find / -name \"*.conf\" 2>/dev/null  # buang galat\n```\n\n`/dev/null` adalah \"lubang hitam\": apa pun yang ditulis ke sana lenyap. Dua hal penting:\n\n- `>` **menimpa tanpa bertanya**. `echo salah > konfigurasi.conf` menghapus isi lama. Untuk menambahkan, pakai `>>`.\n- Urutan penting pada `2>&1`: `cmd > f 2>&1` benar, sedangkan `cmd 2>&1 > f` mengirim galat ke layar karena `2>&1` dievaluasi sebelum stdout dialihkan.\n\n### Kasus: log dan peringatan dipisah\n\nSkrip yang menulis log ke stdout dan peringatan ke stderr cukup dijalankan `./proses.sh > log.txt`. Peringatan tetap tampil di layar sehingga tidak terlewat, sementara ribuan baris biasa masuk berkas. Tanpa pemisahan, pesan penting terkubur di antara baris-baris biasa.\n\n## Pipe: stdout satu program menjadi stdin berikutnya\n\nTanda `|` menyambung keluaran perintah kiri ke masukan perintah kanan, tanpa berkas perantara.\n\n```bash\n$ ls /etc | wc -l\n218\n$ cat /var/log/auth.log | grep \"Failed\" | wc -l\n```\n\nPipe hanya membawa **stdout**. Pesan galat tetap ke layar, kecuali kamu mengalihkannya dengan `2>&1` sebelum pipe: `cmd 2>&1 | less`. Setiap tahap berjalan serentak, bukan menunggu tahap sebelumnya selesai, sehingga `tail -f log | grep ERROR` bisa menyaring log secara langsung.\n\n## Perkakas filter yang sering dipipekan\n\n| Perintah | Fungsi |\n| --- | --- |\n| `sort` | urutkan baris; `-n` numerik, `-r` terbalik, `-k2` urut menurut kolom 2, `-u` buang duplikat |\n| `uniq` | hapus baris duplikat **yang berurutan**; `-c` menghitung kemunculan |\n| `cut` | ambil kolom: `cut -d: -f1` memakai pemisah titik dua dan mengambil kolom pertama |\n| `tr` | ganti atau hapus karakter: `tr 'a-z' 'A-Z'`, `tr -d '\\r'` |\n| `head`, `tail` | ambil awal atau akhir hasil |\n| `wc -l` | hitung baris |\n| `tee` | tulis ke berkas sambil meneruskan ke layar atau pipe berikutnya |\n| `xargs` | ubah baris masukan menjadi argumen perintah |\n| `awk` | olah per kolom: `awk '{print $1}'` mencetak kolom pertama |\n\nContoh bertahap. Berkas `akses.log` berisi alamat IP di kolom pertama:\n\n```text\n203.0.113.9 GET /login\n192.0.2.10 GET /\n203.0.113.9 POST /login\n203.0.113.9 GET /admin\n198.51.100.4 GET /\n192.0.2.10 GET /css/app.css\n```\n\n```bash\n$ awk '{print $1}' akses.log\n203.0.113.9\n192.0.2.10\n203.0.113.9\n...\n$ awk '{print $1}' akses.log | sort | uniq -c\n      1 198.51.100.4\n      2 192.0.2.10\n      3 203.0.113.9\n$ awk '{print $1}' akses.log | sort | uniq -c | sort -rn | head -n 2\n      3 203.0.113.9\n      2 192.0.2.10\n```\n\nUrutan itu bisa dihafal sebagai pola: **ambil kolom, `sort`, `uniq -c`, `sort -rn`, `head`**. Perhatikan `sort` sebelum `uniq`: karena `uniq` hanya membuang duplikat yang bersebelahan, tanpa `sort` hasil hitungannya salah. `sort -rn` mengurutkan numerik dari terbesar; tanpa `-n`, angka 10 dianggap lebih kecil dari 9 secara alfabet.\n\n### `tee` dan `xargs`\n\n`tee` berguna bila kamu ingin menyimpan hasil di tengah rangkaian:\n\n```bash\n$ dmesg | grep -i usb | tee usb.txt | wc -l\n```\n\nSatu jebakan terkenal: `sudo echo \"x\" > /etc/berkas` gagal dengan `Permission denied`, karena `sudo` hanya berlaku untuk `echo`, sedangkan pengalihan `>` dikerjakan shell milikmu. Gunakan `echo \"x\" | sudo tee /etc/berkas` (atau `tee -a` untuk menambahkan).\n\n`xargs` menjembatani perintah yang menerima argumen, bukan stdin:\n\n```bash\n$ find . -name \"*.tmp\" | xargs rm\n$ find . -name \"*.log\" -print0 | xargs -0 gzip\n```\n\nBentuk pertama bermasalah bila nama berkas memuat spasi. `-print0` bersama `xargs -0` memisahkan nama dengan karakter NUL, sehingga aman untuk nama apa pun.\n\n## Here document dan substitusi perintah\n\nDua fitur kecil yang sering muncul di skrip:\n\n```bash\n$ cat <<AKHIR > salam.txt\nHalo,\nini dua baris.\nAKHIR\n\n$ tanggal=$(date +%F)       # substitusi: hasil perintah menjadi nilai\n$ echo \"backup-$tanggal.tar.gz\"\nbackup-2025-03-03.tar.gz\n```\n\nHere document (`<<AKHIR`) mengirim beberapa baris teks sebagai stdin sampai ketemu baris penutup yang sama; kata penutupnya bebas, yang umum `EOF`. Bentuk `$(perintah)` menjalankan perintah di dalamnya dan memasukkan hasilnya ke tempat itu.\n\n## Rangkuman\n\n- Tiga aliran: stdin (0), stdout (1), stderr (2); `>` menimpa, `>>` menambah, `2>` mengalihkan galat, `2>/dev/null` membuangnya.\n- Pipe `|` menyambungkan stdout ke stdin program berikutnya; galat tidak ikut kecuali `2>&1`.\n- Pola ringkas log: kolom, `sort`, `uniq -c`, `sort -rn`, `head`; `uniq` selalu butuh data yang sudah terurut.\n- `tee` menyimpan sambil meneruskan, dan `sudo tee` memperbaiki masalah `sudo echo > berkas`.\n- `xargs` mengubah baris menjadi argumen; pakai `-print0` dan `-0` untuk nama berkas berspasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "`sudo echo 'x' > /etc/hosts.baru` menghasilkan Permission denied. Mengapa?",
+          "code": "",
+          "options": [
+            "Program echo bawaan Linux tidak boleh dijalankan dengan hak root sehingga sudo selalu menolak perintah ini",
+            "Pengalihan > dikerjakan shell milikmu tanpa hak root, sudo hanya berlaku untuk echo",
+            "Berkas /etc/hosts.baru wajib dibuat dengan touch dulu",
+            "Tanda > hanya berfungsi di dalam skrip"
+          ],
+          "answer": 1,
+          "explanation": "Redirect diproses shell sebelum sudo jalan. Bentuk yang benar adalah `echo 'x' | sudo tee /etc/hosts.baru`."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hitungan per IP dari `awk '{print $1}' akses.log | uniq -c | sort -rn` salah karena log tidak terurut. Apa yang kurang?",
+          "code": "",
+          "options": [
+            "Perintah sort sebelum uniq -c",
+            "Perintah tail sebelum awk",
+            "Opsi -v pada uniq",
+            "Perintah wc -l di tengah"
+          ],
+          "answer": 0,
+          "explanation": "uniq hanya menggabungkan baris yang bersebelahan, jadi data harus diurutkan dulu dengan sort."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pipe `|` meneruskan stdout dan stderr dari program kiri ke program kanan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Pipe hanya membawa stdout. Galat tetap ke layar kecuali dialihkan dengan 2>&1."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin hasil normal `ls /etc /tidak-ada` ke hasil.txt dan galatnya ke galat.txt. Perintah yang benar?",
+          "code": "",
+          "options": [
+            "ls /etc /tidak-ada > hasil.txt > galat.txt",
+            "ls /etc /tidak-ada 2> hasil.txt > galat.txt",
+            "ls /etc /tidak-ada > hasil.txt 2> galat.txt",
+            "ls /etc /tidak-ada >> hasil.txt 2>&1"
+          ],
+          "answer": 2,
+          "explanation": "> mengalihkan stdout dan 2> mengalihkan stderr. Pilihan lain menukar berkasnya atau mencampur keduanya ke satu berkas."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "IP paling sering muncul",
+          "prompt": "Tiru `awk '{print $1}' log | sort | uniq -c | sort -rn | head -n N`. Tulis `top_ip(baris, n)` yang menerima list baris log (alamat IP adalah kata pertama tiap baris), dan mengembalikan `n` entri teratas sebagai list string `\"jumlah ip\"`.\n\n- Urutkan jumlah terbesar dulu; bila jumlah sama, urutkan IP secara abjad.\n- Baris kosong diabaikan.\n\nContoh: hasil bisa berbentuk `[\"3 203.0.113.9\", \"2 192.0.2.10\"]`.",
+          "starter": {
+            "code": "def top_ip(baris, n):\n    hitung = {}\n    # hitung kemunculan kata pertama tiap baris\n    # urutkan, lalu ambil n teratas dalam bentuk \"jumlah ip\"\n    return []\n"
+          },
+          "solution": {
+            "code": "def top_ip(baris, n):\n    hitung = {}\n    for b in baris:\n        if b.strip():\n            ip = b.split()[0]\n            hitung[ip] = hitung.get(ip, 0) + 1\n    urut = sorted(hitung.items(), key=lambda kv: (-kv[1], kv[0]))\n    return [f\"{c} {ip}\" for ip, c in urut[:n]]\n"
+          },
+          "setup": "AKSES = [\n    '203.0.113.9 GET /login',\n    '192.0.2.10 GET /',\n    '203.0.113.9 POST /login',\n    '203.0.113.9 GET /admin',\n    '198.51.100.4 GET /',\n    '192.0.2.10 GET /css/app.css',\n]\n",
+          "tests": [
+            {
+              "name": "Dua IP teratas beserta jumlahnya",
+              "check": "top_ip(AKSES, 2) == ['3 203.0.113.9', '2 192.0.2.10']"
+            },
+            {
+              "name": "n lebih besar dari jumlah IP mengembalikan semuanya",
+              "check": "len(top_ip(AKSES, 10)) == 3"
+            },
+            {
+              "name": "Masukan kosong menghasilkan list kosong",
+              "check": "top_ip([], 3) == []"
+            },
+            {
+              "name": "Baris kosong diabaikan",
+              "check": "top_ip(['', '1.1.1.1 GET /', '   '], 5) == ['1 1.1.1.1']"
+            },
+            {
+              "name": "Jumlah sama diurutkan abjad",
+              "check": "top_ip(['b.example x', 'a.example y'], 5) == ['1 a.example', '1 b.example']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "proses-dan-sinyal",
+      "title": "Proses, Sinyal, dan Pekerjaan Latar Belakang",
+      "est_minutes": 22,
+      "slide_from": 13,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu proses, PID, proses induk, dan proses latar belakang.\n- Melihat proses dengan `ps`, `top`/`htop`, dan `pgrep`, serta membaca kolom pentingnya.\n- Menghentikan proses dengan `kill`, `pkill`, dan memahami perbedaan sinyal `SIGTERM` dan `SIGKILL`.\n- Mengatur pekerjaan di shell: `&`, `jobs`, `fg`, `bg`, `nohup`, dan membaca kode keluar `$?`.\n\n## Proses: program yang sedang hidup\n\nProgram adalah berkas di disk, misalnya `/usr/bin/nginx`. **Proses** adalah program itu saat sedang berjalan di memori. Satu program bisa menjadi banyak proses sekaligus: setiap tab terminal yang kamu buka adalah proses `bash` tersendiri.\n\nSetiap proses punya:\n\n- **PID** (*process ID*), nomor unik yang diberikan kernel.\n- **PPID**, PID proses induk yang melahirkannya. Semua proses berasal dari satu leluhur, yaitu proses nomor 1 (`init` atau `systemd`).\n- **Pemilik**, yaitu pengguna yang menjalankannya; ini menentukan hak aksesnya.\n- **Status**, antara lain berjalan (R), tidur menunggu sesuatu (S), terhenti (T), atau zombie (Z).\n\nKamu bisa melihat pohon keluarga ini dengan `pstree`. Tab terminal tempatmu bekerja biasanya berada di rantai `systemd` lalu `sshd` atau aplikasi terminal, lalu `bash`, dan perintah yang kamu ketik menjadi anak `bash`.\n\n## Melihat proses: `ps`, `top`, `pgrep`\n\n```bash\n$ ps\n    PID TTY          TIME CMD\n   2210 pts/0    00:00:00 bash\n   2388 pts/0    00:00:00 ps\n```\n\nTanpa opsi, `ps` hanya menampilkan proses di terminal ini. Untuk gambaran seluruh sistem pakai:\n\n```bash\n$ ps aux\nUSER   PID %CPU %MEM    VSZ   RSS TTY   STAT START TIME COMMAND\nroot     1  0.0  0.3 168400 12632 ?     Ss   08:01 0:03 /sbin/init\nwww-data 912 0.1 0.5 55460 21020 ?     S    08:02 0:11 nginx: worker process\nbudi  2210  0.0  0.1  10168  5120 pts/0 Ss   09:10 0:00 -bash\n```\n\nKolom yang paling berguna: `%CPU` dan `%MEM` (pemakaian sumber daya), `STAT` (status), dan `COMMAND`. Untuk mencari proses tertentu, kombinasikan dengan pipe:\n\n```bash\n$ ps aux | grep nginx\n$ pgrep -a nginx          # lebih ringkas: PID dan perintahnya\n$ ps -ef --forest         # tampilan pohon induk dan anak\n```\n\n`ps aux | grep nginx` hampir selalu menampilkan baris `grep nginx` itu sendiri sebagai kecocokan tambahan. `pgrep` terhindar dari masalah ini.\n\n### `top` dan `htop`: pantauan langsung\n\n`top` menyegarkan tampilan tiap beberapa detik. Baris atas memuat *load average* tiga angka (rata-rata 1, 5, 15 menit). Sebagai patokan kasar, nilai load yang terus-menerus melebihi jumlah inti CPU berarti antrean pekerjaan menumpuk. Di dalam `top`: `P` mengurutkan menurut CPU, `M` menurut memori, `k` mematikan proses, dan `q` keluar. `htop` (perlu dipasang) lebih ramah dengan warna dan tetikus.\n\nAda juga `free -h` untuk memori, `uptime` untuk waktu hidup dan load, serta `df -h` untuk disk (dibahas di bab paket dan sistem).\n\n## Menghentikan proses: sinyal\n\n`kill` sebenarnya **mengirim sinyal**, bukan langsung \"membunuh\". Program menerima sinyal lalu bereaksi.\n\n| Sinyal | Nomor | Efek |\n| --- | --- | --- |\n| `SIGTERM` | 15 | permintaan sopan untuk berhenti; program boleh membereskan sumber daya dulu (bawaan `kill`) |\n| `SIGKILL` | 9 | dipaksa berhenti oleh kernel; tidak bisa ditangkap atau diabaikan |\n| `SIGINT` | 2 | interupsi, sama dengan `Ctrl+C` |\n| `SIGHUP` | 1 | sesi ditutup; banyak layanan menafsirkannya sebagai \"muat ulang konfigurasi\" |\n| `SIGSTOP` | 19 | hentikan sementara (tidak bisa diabaikan) |\n| `SIGCONT` | 18 | lanjutkan proses yang dihentikan |\n\n```bash\n$ kill 2388            # kirim SIGTERM\n$ kill -9 2388         # SIGKILL, hanya bila SIGTERM tidak mempan\n$ kill -HUP 912        # minta nginx membaca ulang konfigurasi\n$ pkill -f \"python3 server.py\"   # cocokkan dengan baris perintah lengkap\n$ killall firefox      # semua proses bernama firefox\n```\n\nUrutannya penting: **coba `SIGTERM` dulu, tunggu beberapa detik, baru `SIGKILL`**. Proses yang dimatikan paksa tidak sempat menutup berkas, membersihkan berkas kunci, atau menyelesaikan penulisan basis data, sehingga bisa meninggalkan data setengah jadi. Kamu hanya boleh mengirim sinyal ke proses milikmu sendiri; untuk proses milik pengguna lain dibutuhkan `sudo`.\n\n### Kasus: server dev macet di port 3000\n\nKamu menjalankan `node server.js` di tab lain yang sudah tertutup, dan sekarang muncul galat `EADDRINUSE: port 3000 sudah dipakai`. Cari pemiliknya:\n\n```bash\n$ ss -tlnp | grep :3000\nLISTEN 0 511 *:3000 *:* users:((\"node\",pid=4821,fd=19))\n$ kill 4821\n```\n\nJika setelah beberapa detik prosesnya masih ada di `ps`, barulah `kill -9 4821`.\n\n## Pekerjaan di shell: latar depan dan belakang\n\nSecara bawaan, perintah berjalan di **latar depan** dan menahan prompt sampai selesai. Beberapa kontrol:\n\n```bash\n$ sleep 300 &          # akhiran & : jalankan di latar belakang\n[1] 5102\n$ jobs                 # daftar pekerjaan sesi ini\n[1]+  Running    sleep 300 &\n$ fg %1                # bawa pekerjaan 1 ke latar depan\n$ # tekan Ctrl+Z       # hentikan sementara pekerjaan latar depan\n[1]+  Stopped    sleep 300\n$ bg %1                # lanjutkan di latar belakang\n```\n\nPekerjaan latar belakang biasa **ikut mati saat terminal ditutup**, karena menerima SIGHUP. Untuk membiarkannya hidup:\n\n```bash\n$ nohup ./hitung-berat.sh > hasil.log 2>&1 &\n```\n\n`nohup` mengabaikan SIGHUP. Untuk sesi yang bisa disambung ulang, lebih baik pakai `tmux` atau `screen`, terutama saat bekerja lewat SSH di koneksi yang tidak stabil. Layanan jangka panjang sebaiknya dikelola `systemd`, bukan `nohup`.\n\n## Kode keluar: berhasil atau gagal\n\nSetiap proses selesai dengan **kode keluar** angka. Nilai `0` berarti sukses; nilai lain berarti gagal, dengan makna yang ditentukan program. Shell menyimpan kode terakhir di `$?`.\n\n```bash\n$ ls /etc > /dev/null\n$ echo $?\n0\n$ ls /tidak-ada 2> /dev/null\n$ echo $?\n2\n$ grep \"kata\" berkas.txt; echo $?     # grep: 0 ketemu, 1 tidak ketemu, 2 galat\n```\n\nKarena itu `&&` dan `||` bisa dipakai sebagai \"jika berhasil\" dan \"jika gagal\":\n\n```bash\n$ mkdir backup && cp data.txt backup/ && echo \"selesai\"\n$ ping -c1 situs.example || echo \"tidak terjangkau\"\n```\n\nKode `130` biasanya berarti proses dihentikan `Ctrl+C` (128 + sinyal 2), dan `137` berarti dimatikan `SIGKILL` (128 + 9). Pola 128 + nomor sinyal ini membantu membaca log program yang crash.\n\n## Layanan dengan `systemctl`\n\nLayanan latar belakang (web server, SSH, basis data) dikelola `systemd`:\n\n```bash\n$ systemctl status ssh\n$ sudo systemctl restart nginx\n$ sudo systemctl enable --now nginx     # nyalakan sekarang dan otomatis saat boot\n$ journalctl -u nginx -n 50             # 50 baris log terakhir layanan itu\n```\n\nPerintah `status` adalah titik awal setiap penyelidikan: menunjukkan aktif atau gagal, PID utama, dan beberapa baris log terakhir. Penjelasan unit dan penulisan layanan sendiri dibahas lebih dalam di kelas Administrasi Server dan Keamanan.\n\n## Rangkuman\n\n- Proses adalah program yang sedang berjalan, punya PID, PPID, dan pemilik; semua keturunan dari proses 1.\n- `ps aux`, `pgrep`, `top`, dan `free -h` menunjukkan siapa memakai CPU dan memori.\n- `kill` mengirim sinyal: coba `SIGTERM` (15) dulu, `SIGKILL` (9) hanya bila macet.\n- `&`, `jobs`, `fg`, `bg`, `Ctrl+Z` mengatur pekerjaan; `nohup`, `tmux`, atau `systemd` membuatnya bertahan setelah terminal ditutup.\n- Kode keluar `$?`: 0 sukses, selain itu gagal; `&&` dan `||` bercabang berdasarkan itu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Layanan web macet tidak merespons. Langkah pertama yang paling tepat untuk menghentikannya?",
+          "code": "",
+          "options": [
+            "kill -9 PID langsung agar pasti mati, tanpa menunggu proses sempat membereskan dirinya",
+            "reboot server tanpa memeriksa proses",
+            "chmod 000 pada program layanan",
+            "kill PID, tunggu beberapa detik, lalu kill -9 bila masih hidup"
+          ],
+          "answer": 3,
+          "explanation": "SIGTERM memberi kesempatan program menutup berkas dan membersihkan diri. SIGKILL adalah jalan terakhir karena bisa meninggalkan data setengah jadi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menjalankan `./proses.sh &` lewat SSH, dan prosesnya ikut mati saat sesi terputus. Perbaikan sederhananya?",
+          "code": "",
+          "options": [
+            "Tambahkan chmod 777 pada proses.sh supaya semua sesi bisa menjalankannya sekaligus",
+            "Jalankan ulang dengan kill -9",
+            "Ganti & dengan tanda |",
+            "nohup ./proses.sh > log.txt 2>&1 &, atau jalankan di dalam tmux"
+          ],
+          "answer": 3,
+          "explanation": "Pekerjaan latar belakang biasa menerima SIGHUP saat sesi tertutup. nohup mengabaikannya dan tmux menjaga sesi tetap hidup."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berkas tidak mengandung kata zzz. Apa keluaran `echo $?` setelah perintah ini dijalankan?",
+          "code": "grep zzz berkas.txt\necho $?",
+          "options": [
+            "0",
+            "1",
+            "2",
+            "127"
+          ],
+          "answer": 1,
+          "explanation": "grep memberi kode 0 bila ada kecocokan, 1 bila tidak ada, dan 2 bila galat. Kode 127 berarti perintah tidak ditemukan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Proses yang berakhir dengan kode keluar 137 kemungkinan dimatikan oleh SIGKILL.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Kode 128 ditambah nomor sinyal: 128 + 9 = 137."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Proses boros memori",
+          "prompt": "Setiap baris keluaran `ps aux` (tanpa baris judul) berbentuk `USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND`, dan COMMAND boleh memuat spasi.\n\nTulis `boros_memori(baris, batas)` yang mengembalikan list tuple `(pid, command)` untuk proses dengan `%MEM` **lebih besar** dari `batas`, diurutkan dari pemakaian memori terbesar. `pid` bertipe int.\n\nPetunjuk: `baris.split(None, 10)` memecah menjadi 11 bagian dan membiarkan COMMAND utuh.",
+          "starter": {
+            "code": "def boros_memori(baris, batas):\n    hasil = []\n    # pecah tiap baris, bandingkan kolom %MEM (indeks 3)\n    return hasil\n"
+          },
+          "solution": {
+            "code": "def boros_memori(baris, batas):\n    hasil = []\n    for b in baris:\n        f = b.split(None, 10)\n        if len(f) < 11:\n            continue\n        mem = float(f[3])\n        if mem > batas:\n            hasil.append((mem, int(f[1]), f[10]))\n    hasil.sort(reverse=True)\n    return [(pid, cmd) for _, pid, cmd in hasil]\n"
+          },
+          "setup": "PS = [\n    'root         1  0.0  0.3 168400 12632 ?     Ss   08:01   0:03 /sbin/init',\n    'www-data   912  0.1  1.5  55460 21020 ?     S    08:02   0:11 nginx: worker process',\n    'budi      2210  2.4  4.2 910168 85120 pts/0 Sl   09:10   1:20 /usr/bin/java -jar app.jar',\n    'budi      2388  0.0  0.1  10168  5120 pts/0 R+   09:12   0:00 ps aux',\n]\n",
+          "tests": [
+            {
+              "name": "Proses di atas batas diurutkan dari terbesar",
+              "check": "boros_memori(PS, 1.0) == [(2210, '/usr/bin/java -jar app.jar'), (912, 'nginx: worker process')]"
+            },
+            {
+              "name": "Memori yang sama dengan batas tidak ikut",
+              "check": "boros_memori(PS, 4.2) == []"
+            },
+            {
+              "name": "Batas sedikit di bawahnya mengikutkan proses itu",
+              "check": "boros_memori(PS, 4.1) == [(2210, '/usr/bin/java -jar app.jar')]"
+            },
+            {
+              "name": "Batas tinggi menghasilkan list kosong",
+              "check": "boros_memori(PS, 50) == []"
+            },
+            {
+              "name": "COMMAND dengan spasi tetap utuh",
+              "check": "boros_memori(PS, 0.2)[1][1] == 'nginx: worker process'"
+            },
+            {
+              "name": "PID bertipe int",
+              "check": "isinstance(boros_memori(PS, 1.0)[0][0], int)"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Arti kode keluar",
+          "prompt": "Tulis `arti_kode(k)` yang menafsirkan kode keluar proses:\n\n- `0` menghasilkan `\"sukses\"`.\n- `1` sampai `127` menghasilkan `\"gagal\"`.\n- `129` ke atas berarti dimatikan sinyal; hasilnya `\"sinyal N\"` dengan `N = k - 128`, misalnya `137` menjadi `\"sinyal 9\"`.\n- `128` menghasilkan `\"gagal\"`.",
+          "starter": {
+            "code": "def arti_kode(k):\n    pass\n"
+          },
+          "solution": {
+            "code": "def arti_kode(k):\n    if k == 0:\n        return \"sukses\"\n    if k > 128:\n        return f\"sinyal {k - 128}\"\n    return \"gagal\"\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "0 berarti sukses",
+              "check": "arti_kode(0) == 'sukses'"
+            },
+            {
+              "name": "1 berarti gagal",
+              "check": "arti_kode(1) == 'gagal'"
+            },
+            {
+              "name": "127 (perintah tidak ada) berarti gagal",
+              "check": "arti_kode(127) == 'gagal'"
+            },
+            {
+              "name": "137 berarti sinyal 9",
+              "check": "arti_kode(137) == 'sinyal 9'"
+            },
+            {
+              "name": "130 berarti sinyal 2",
+              "check": "arti_kode(130) == 'sinyal 2'"
+            },
+            {
+              "name": "128 berarti gagal",
+              "check": "arti_kode(128) == 'gagal'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "paket-apt-dan-sistem",
+      "title": "Manajemen Paket dengan apt dan Pemeriksaan Sistem",
+      "est_minutes": 22,
+      "slide_from": 15,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu paket, repositori, dan manajer paket, serta mengapa ini lebih aman daripada mengunduh program sembarangan.\n- Memasang, memperbarui, mencari, dan menghapus paket dengan `apt` serta memeriksa paket dengan `dpkg`.\n- Membedakan `apt update`, `apt upgrade`, dan `apt full-upgrade`, serta `remove` dan `purge`.\n- Memeriksa keadaan sistem: versi distro, disk, memori, dan jaringan dengan `df`, `du`, `free`, dan `ip`.\n\n## Paket dan manajer paket\n\nDi Windows, memasang program biasanya berarti mengunduh installer dari situs. Di Linux, program dibungkus menjadi **paket** (berkas `.deb` pada keluarga Debian dan Ubuntu, `.rpm` pada Fedora dan RHEL). Paket memuat berkas program, daftar **dependensi** (pustaka lain yang dibutuhkan), dan skrip pemasangan.\n\n**Manajer paket** adalah program yang mengunduh paket dari **repositori** (gudang paket yang dikelola distro), menyelesaikan dependensi otomatis, memeriksa tanda tangan digital, lalu mencatat apa saja yang terpasang. Manfaatnya besar: satu perintah memperbarui semua perangkat lunak, dan penghapusan bersih karena sistem tahu berkas mana milik paket mana.\n\n| Keluarga distro | Manajer paket | Contoh pasang |\n| --- | --- | --- |\n| Debian, Ubuntu, Linux Mint | `apt` (dan `dpkg` di bawahnya) | `sudo apt install nginx` |\n| Fedora, RHEL, Rocky, AlmaLinux | `dnf` | `sudo dnf install nginx` |\n| Arch Linux | `pacman` | `sudo pacman -S nginx` |\n| Alpine | `apk` | `sudo apk add nginx` |\n\nBab ini memakai `apt`, yang dipakai Debian dan Ubuntu, dua distro paling umum untuk server dan belajar. Konsepnya berlaku sama di manajer lain; hanya nama perintahnya yang berbeda.\n\n## Memperbarui daftar dan sistem\n\nDua langkah yang sering tertukar:\n\n```bash\n$ sudo apt update          # unduh daftar paket terbaru dari repositori\n$ sudo apt upgrade         # pasang versi baru untuk paket yang sudah terpasang\n```\n\n`apt update` **tidak memasang apa pun**; ia hanya menyegarkan katalog agar apt tahu versi terbaru yang tersedia. `apt upgrade` baru benar-benar menaikkan versi paket, tetapi tidak akan menghapus paket atau memasang paket baru demi menyelesaikan dependensi. Untuk kasus itu ada `sudo apt full-upgrade`, yang boleh menambah atau menghapus paket bila perlu. Kebiasaan standar sebelum memasang apa pun adalah `sudo apt update` lebih dulu; tanpa itu apt bisa mencari versi yang sudah tidak ada di repositori dan gagal dengan `404 Not Found`.\n\n## Memasang, mencari, dan menghapus\n\n```bash\n$ apt search \"web server\"          # cari paket berdasarkan kata\n$ apt show nginx                   # detail: versi, ukuran, dependensi, deskripsi\n$ sudo apt install nginx           # pasang (bersama dependensinya)\n$ sudo apt install -y curl git     # beberapa paket, -y: jawab ya otomatis\n$ apt list --installed | grep nginx   # lihat paket yang terpasang\n$ apt policy nginx                 # versi terpasang dan kandidat\n$ sudo apt remove nginx            # hapus program, konfigurasi dibiarkan\n$ sudo apt purge nginx             # hapus program beserta konfigurasi sistem\n$ sudo apt autoremove              # buang dependensi yang tak lagi dibutuhkan\n```\n\nBedakan **`remove`** dan **`purge`**. `remove` menghapus berkas program tetapi mempertahankan konfigurasi di `/etc`, praktis bila kamu berencana memasang ulang. `purge` ikut membersihkan konfigurasi sistem tersebut. Berkas di folder rumah pengguna tidak disentuh oleh keduanya.\n\nPaket sebenarnya dipasang oleh `dpkg`; `apt` adalah lapisan yang mengurus unduhan dan dependensi. Perintah `dpkg` yang berguna:\n\n```bash\n$ dpkg -l | grep nginx             # daftar paket terpasang\n$ dpkg -L nginx                    # semua berkas yang dipasang paket itu\n$ dpkg -S /usr/sbin/nginx          # berkas ini milik paket apa?\n$ sudo dpkg -i unduhan.deb         # pasang berkas .deb lokal, tanpa dependensi otomatis\n$ sudo apt install ./unduhan.deb   # lebih baik: apt menyelesaikan dependensinya\n```\n\n## Repositori dan sumber tepercaya\n\nDaftar repositori berada di `/etc/apt/sources.list` dan folder `/etc/apt/sources.list.d/`. Pada Ubuntu 24.04, berkas bawaannya berformat baru `ubuntu.sources`. Repositori resmi sudah cukup untuk sebagian besar kebutuhan. Perangkat lunak yang tidak tersedia atau terlalu lama versinya kadang dipasang dari repositori pihak ketiga, misalnya repositori resmi pengembang aplikasinya.\n\nAturan keamanan yang perlu dipegang:\n\n- Tambahkan repositori hanya dari sumber yang kamu percaya, dan pasang kunci penandatangannya sesuai petunjuk resmi mereka.\n- Waspadai satu baris `curl ... | sudo bash` dari internet. Perintah itu menjalankan skrip asing dengan hak root tanpa kamu membaca isinya. Unduh dulu, baca, baru jalankan.\n- Pada Ubuntu juga ada `snap`, format paket lain yang berjalan dalam kotak pasir dan memperbarui diri otomatis: `sudo snap install nama`.\n\nPembaruan keamanan otomatis bisa diaktifkan lewat paket `unattended-upgrades`; untuk server yang jarang dilihat, itu kebiasaan baik.\n\n### Kasus: galat \"Unable to locate package\"\n\nKamu mengetik `sudo apt install htop` di instalasi baru dan mendapat `E: Unable to locate package htop`. Penyebab paling umum: daftar paket belum pernah diunduh. Jalankan `sudo apt update` lalu ulangi. Jika masih gagal, periksa ejaan dengan `apt search htop` dan pastikan repositori `universe` aktif; paket komunitas di Ubuntu berada di sana.\n\nGalat lain yang akrab: `Could not get lock /var/lib/dpkg/lock-frontend`. Artinya proses apt lain (misalnya pembaruan otomatis) sedang berjalan. Tunggu beberapa menit; jangan langsung menghapus berkas kunci kecuali kamu yakin tidak ada proses apt yang aktif (`pgrep -a apt`).\n\n## Memeriksa keadaan sistem\n\nSetelah memasang, administrator perlu tahu sistemnya. Satu set perintah yang cukup untuk menjawab sebagian besar pertanyaan:\n\n```bash\n$ cat /etc/os-release | head -n 2\nPRETTY_NAME=\"Ubuntu 24.04 LTS\"\nNAME=\"Ubuntu\"\n$ uname -r                  # versi kernel\n6.8.0-45-generic\n$ hostnamectl               # nama host, OS, kernel, arsitektur\n$ uptime                    # sudah hidup berapa lama, dan load average\n$ free -h                   # memori dan swap\n$ df -h                     # pemakaian disk per partisi\n$ du -sh /var/log           # ukuran total satu folder\n$ du -h --max-depth=1 /var | sort -h    # ukuran tiap subfolder, terurut\n$ lsblk                     # pohon disk dan partisi\n$ ip -br a                  # alamat IP ringkas per antarmuka\n```\n\nDua perintah disk yang sering dikira sama padahal berbeda: `df` bertanya \"berapa penuh partisi ini?\" (dari sudut sistem berkas), sedangkan `du` bertanya \"berapa besar folder ini?\" (dengan menjumlahkan ukuran berkas). Saat server tiba-tiba penuh, urutan standarnya: `df -h` untuk menemukan partisi yang penuh, lalu `du -h --max-depth=1` berulang kali di folder itu sampai pelaku ketemu, yang sering berupa log atau cache.\n\nKolom penting pada `df -h`:\n\n```text\nFilesystem      Size  Used Avail Use% Mounted on\n/dev/sda2        50G   46G  1.2G  98% /\ntmpfs           1.9G     0  1.9G   0% /dev/shm\n```\n\nAngka `98%` pada `/` adalah alarm. Bersihkan cache paket dengan `sudo apt clean`, putar atau hapus log lama di `/var/log`, dan cek folder besar dengan `du`.\n\n## Rangkuman\n\n- Manajer paket memasang program dari repositori, menyelesaikan dependensi, dan mencatat berkas yang dipasang; `apt` dipakai di Debian dan Ubuntu.\n- `apt update` menyegarkan katalog, `apt upgrade` menaikkan versi; jalankan `update` sebelum `install`.\n- `remove` menyimpan konfigurasi, `purge` menghapusnya, `autoremove` membuang dependensi yatim.\n- Pasang hanya dari sumber tepercaya dan hindari `curl | sudo bash` dari sumber yang tidak kamu baca.\n- `df -h`, `du -sh`, `free -h`, `uptime`, `uname -r`, dan `ip -br a` memberi gambaran cepat keadaan sistem.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di instalasi Ubuntu baru, `sudo apt install htop` menjawab `Unable to locate package htop`. Langkah pertama?",
+          "code": "",
+          "options": [
+            "sudo apt update untuk mengunduh daftar paket",
+            "sudo apt upgrade tanpa update",
+            "sudo dpkg -r htop",
+            "chmod +x /usr/bin/htop"
+          ],
+          "answer": 0,
+          "explanation": "Daftar paket belum pernah diunduh. update menyegarkan katalog, dan setelah itu install bisa menemukan paket."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa beda `apt remove nginx` dengan `apt purge nginx`?",
+          "code": "",
+          "options": [
+            "purge hanya menghapus log dan cache pengguna",
+            "remove menghapus folder rumah semua pengguna",
+            "purge juga menghapus berkas konfigurasi sistem milik paket",
+            "Keduanya identik, hanya beda nama"
+          ],
+          "answer": 2,
+          "explanation": "remove mempertahankan konfigurasi di /etc, purge membersihkannya. Berkas pribadi di folder rumah tidak disentuh oleh keduanya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Disk server mencapai 98%. Urutan penyelidikan yang tepat?",
+          "code": "",
+          "options": [
+            "Jalankan free -h dulu karena disk penuh pasti disebabkan memori, lalu restart server untuk membersihkannya",
+            "df -h untuk menemukan partisi penuh, lalu du -h --max-depth=1 menelusuri folder terbesar",
+            "Hapus seluruh /var/log tanpa melihat isinya",
+            "Jalankan apt upgrade agar ruang bertambah"
+          ],
+          "answer": 1,
+          "explanation": "df melihat sisi partisi, du menjumlahkan ukuran folder. Menghapus tanpa melihat berisiko, dan free hanya memeriksa memori."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "`apt update` langsung memasang versi terbaru semua paket yang terpasang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. update hanya menyegarkan daftar paket; yang menaikkan versi adalah apt upgrade."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Partisi yang hampir penuh",
+          "prompt": "Tulis `partisi_penuh(df_teks, batas)` yang membaca keluaran `df -h` (baris pertama adalah judul) dan mengembalikan list titik pasang (kolom terakhir) untuk partisi yang `Use%` nya **minimal** `batas` persen, sesuai urutan keluaran.",
+          "starter": {
+            "code": "def partisi_penuh(df_teks, batas):\n    hasil = []\n    # lewati baris judul, pecah tiap baris, baca kolom Use% (indeks 4)\n    return hasil\n"
+          },
+          "solution": {
+            "code": "def partisi_penuh(df_teks, batas):\n    hasil = []\n    for baris in df_teks.strip().splitlines()[1:]:\n        f = baris.split()\n        if len(f) >= 6 and int(f[4].rstrip(\"%\")) >= batas:\n            hasil.append(f[5])\n    return hasil\n"
+          },
+          "setup": "DF = '''Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda2        50G   46G  1.2G  98% /\n/dev/sda3        20G   17G  2.0G  85% /var\ntmpfs           1.9G     0  1.9G   0% /dev/shm\n'''\n",
+          "tests": [
+            {
+              "name": "Batas 90 menemukan root saja",
+              "check": "partisi_penuh(DF, 90) == ['/']"
+            },
+            {
+              "name": "Batas 80 menemukan dua partisi berurutan",
+              "check": "partisi_penuh(DF, 80) == ['/', '/var']"
+            },
+            {
+              "name": "Batas tepat 85 ikut",
+              "check": "'/var' in partisi_penuh(DF, 85)"
+            },
+            {
+              "name": "Batas 100 tidak menemukan apa pun",
+              "check": "partisi_penuh(DF, 100) == []"
+            },
+            {
+              "name": "Baris judul tidak dibaca sebagai partisi",
+              "check": "partisi_penuh(DF, 0)[0] == '/'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pengguna-grup-dan-sudo",
+      "title": "Pengguna, Grup, dan sudo",
+      "est_minutes": 22,
+      "slide_from": 17,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Membaca format `/etc/passwd`, `/etc/shadow`, dan `/etc/group`, serta memahami UID dan GID.\n- Membuat, mengubah, dan menghapus pengguna dan grup dengan `adduser`, `useradd`, `usermod`, `userdel`, dan `groupadd`.\n- Menambahkan pengguna ke grup tanpa kehilangan keanggotaan lama (`usermod -aG`).\n- Memakai `sudo` dan `su` dengan benar, serta menjelaskan mengapa login langsung sebagai root dihindari.\n\n## Siapa saja yang ada di sistem\n\nLinux mengenal pengguna lewat angka. Setiap pengguna punya **UID** (*user ID*), dan setiap grup punya **GID**. Nama hanyalah label yang ramah manusia. Kamu bisa memeriksa identitasmu dengan:\n\n```bash\n$ whoami\nbudi\n$ id\nuid=1000(budi) gid=1000(budi) groups=1000(budi),27(sudo),100(users)\n$ groups\nbudi sudo users\n```\n\nRentang UID mengikuti konvensi:\n\n| UID | Jenis |\n| --- | --- |\n| 0 | `root`, superuser dengan hak penuh |\n| 1 sampai 999 | akun sistem untuk layanan, misalnya `www-data`, `sshd`, `mysql` |\n| 1000 ke atas | pengguna biasa (manusia) |\n\nAkun sistem sengaja dipisahkan dari manusia. Server web berjalan sebagai `www-data` dan tidak punya hak apa pun di luar yang dibutuhkan. Bila server web itu dibobol, penyerang hanya mewarisi hak sempit tersebut, bukan hak root. Prinsip ini disebut *least privilege* (hak sesempit mungkin).\n\n## Berkas data akun\n\nDaftar pengguna ada di berkas teks biasa, yang boleh kamu baca.\n\n```bash\n$ grep budi /etc/passwd\nbudi:x:1000:1000:Budi Santoso:/home/budi:/bin/bash\n```\n\nTujuh kolom dipisah titik dua:\n\n| Kolom | Contoh | Arti |\n| --- | --- | --- |\n| 1 | `budi` | nama pengguna |\n| 2 | `x` | penanda bahwa hash sandi disimpan di `/etc/shadow` |\n| 3 | `1000` | UID |\n| 4 | `1000` | GID grup utama |\n| 5 | `Budi Santoso` | keterangan (GECOS), boleh kosong |\n| 6 | `/home/budi` | folder rumah |\n| 7 | `/bin/bash` | shell login |\n\nAkun layanan biasanya punya shell `/usr/sbin/nologin` atau `/bin/false`, yang menolak login interaktif. Itu cara sederhana mencegah akun `www-data` dipakai untuk masuk ke terminal.\n\nHash sandi **tidak** disimpan di `/etc/passwd` (karena berkas itu terbaca semua orang) melainkan di `/etc/shadow`, yang hanya dapat dibaca root:\n\n```bash\n$ sudo grep budi /etc/shadow\nbudi:$y$j9T$...hash-panjang...:19800:0:99999:7:::\n```\n\nKolom kedua adalah hash sandi; tanda `!` atau `*` di sana berarti akun tidak bisa login dengan sandi. Daftar grup ada di `/etc/group`, dengan format `nama:x:GID:anggota,dipisah,koma`.\n\n## Membuat dan mengelola pengguna\n\nDi Debian dan Ubuntu, ada dua keluarga perintah yang mirip namanya:\n\n- `adduser` adalah skrip ramah: menanyakan sandi, membuat folder rumah, menyalin berkas awal. Pakai ini untuk penggunaan sehari-hari.\n- `useradd` adalah alat tingkat rendah, tidak membuat folder rumah dan tidak menanyakan sandi kecuali kamu menambahkan opsi. Cocok untuk skrip otomatis.\n\n```bash\n$ sudo adduser sari                      # interaktif, membuat /home/sari\n$ sudo useradd -m -s /bin/bash -c \"Dewi\" dewi   # -m folder rumah, -s shell\n$ sudo passwd dewi                       # atur atau ganti sandi\n$ sudo passwd -l dewi                    # kunci akun (sandi dinonaktifkan)\n$ sudo usermod -s /usr/sbin/nologin dewi # ganti shell\n$ sudo userdel dewi                      # hapus akun, folder rumah tetap\n$ sudo userdel -r dewi                   # hapus akun beserta folder rumah\n```\n\nSatu prosedur yang wajib dikuasai ketika karyawan berhenti: kunci akun (`passwd -l` atau ganti shell ke `nologin`), cek apakah dia masih memegang proses atau pekerjaan terjadwal, simpan datanya bila dibutuhkan, baru hapus dengan `userdel -r`. Menghapus langsung tanpa memeriksa sering meninggalkan berkas tak bertuan yang pemiliknya hanya tampil sebagai angka UID.\n\n## Grup\n\nGrup memungkinkan sejumlah pengguna berbagi izin tanpa memberi izin ke \"semua orang\".\n\n```bash\n$ sudo groupadd tim-web\n$ sudo usermod -aG tim-web sari          # tambahkan sari ke grup tim-web\n$ id sari\nuid=1001(sari) gid=1001(sari) groups=1001(sari),1002(tim-web)\n$ sudo gpasswd -d sari tim-web           # keluarkan dari grup\n$ getent group tim-web                   # lihat anggota\n```\n\nPerhatikan opsi **`-a`** pada `usermod -aG`. `-a` berarti *append* (tambahkan). Bila kamu menulis `usermod -G tim-web sari` tanpa `-a`, daftar grup tambahan sari **diganti** seluruhnya dan ia kehilangan keanggotaan lamanya, termasuk grup `sudo`. Ini galat yang cukup sering membuat admin terkunci dari hak sudo. Satu lagi: perubahan keanggotaan grup baru berlaku pada sesi login berikutnya, jadi keluar dan masuk lagi atau pakai `newgrp tim-web`.\n\nContoh kerja sama tim: folder `/srv/web` dimiliki grup `tim-web` dengan izin `2775` (setgid supaya berkas baru mewarisi grup).\n\n```bash\n$ sudo chown root:tim-web /srv/web\n$ sudo chmod 2775 /srv/web\n```\n\nSekarang semua anggota `tim-web` bisa menulis di sana, dan berkas baru otomatis berstatus grup `tim-web`.\n\n## `su` dan `sudo`\n\nAda dua cara mendapat hak lebih tinggi.\n\n`su` (*switch user*) berganti ke pengguna lain, dan perlu sandi **pengguna tujuan**:\n\n```bash\n$ su - sari        # login sebagai sari, memuat lingkungannya (opsi - penting)\n$ su -             # login sebagai root (perlu sandi root)\n```\n\n`sudo` menjalankan **satu perintah** dengan hak pengguna lain (bawaan root), dan meminta sandi **kamu sendiri**, bukan sandi root:\n\n```bash\n$ sudo apt update\n$ sudo -u www-data touch /var/www/uji.txt   # sebagai pengguna lain\n$ sudo -l                                    # apa yang boleh aku jalankan?\n$ sudo -i                                    # shell interaktif sebagai root\n```\n\nPada Ubuntu, akun root bawaannya tidak punya sandi, jadi `su -` tidak bisa dipakai sebelum kamu mengaturnya, dan semua tugas administratif lewat `sudo`. Itu disengaja dan lebih baik, karena tiga alasan:\n\n1. **Jejak audit.** `sudo` mencatat siapa menjalankan apa di log (`/var/log/auth.log`). Login langsung sebagai root tidak menunjukkan siapa orangnya.\n2. **Hak minimum.** Hak root dipakai hanya pada perintah yang membutuhkannya, bukan sepanjang sesi.\n3. **Satu sandi yang lebih sedikit dibagi.** Mencabut akses seseorang cukup dengan menghapusnya dari grup `sudo`.\n\nSiapa yang boleh `sudo` diatur di `/etc/sudoers` dan folder `/etc/sudoers.d/`. **Jangan edit langsung dengan editor biasa.** Pakai `sudo visudo`, yang memeriksa sintaks sebelum menyimpan. Satu baris sintaks keliru bisa mematikan sudo untuk semua orang, dan kamu terkunci tanpa jalan pulang.\n\n```text\n# /etc/sudoers.d/tim-web\n%tim-web ALL=(ALL) /usr/bin/systemctl restart nginx\n```\n\nBaris di atas mengizinkan anggota grup `tim-web` (tanda `%` berarti grup) menjalankan tepat satu perintah, tidak lebih. Ini contoh hak minimum yang praktis.\n\n### Kasus: lupa tidak boleh sudo\n\nSeorang pengguna baru mendapat pesan `sari is not in the sudoers file. This incident will be reported.` Perbaikannya dari akun yang sudah punya hak: `sudo usermod -aG sudo sari`, lalu minta sari keluar dan masuk lagi. Di keluarga RHEL, grup yang dipakai bernama `wheel`, bukan `sudo`.\n\n## Rangkuman\n\n- Pengguna dikenali dengan UID: 0 root, di bawah 1000 akun sistem, 1000 ke atas manusia.\n- `/etc/passwd` memuat tujuh kolom akun, `/etc/shadow` memuat hash sandi dan hanya terbaca root, `/etc/group` memuat grup.\n- `adduser` interaktif dan ramah, `useradd` tingkat rendah; `userdel -r` juga menghapus folder rumah.\n- `usermod -aG grup pengguna` menambah grup; tanpa `-a`, keanggotaan lama terhapus.\n- `sudo` menjalankan satu perintah dengan jejak audit; sunting aturan lewat `visudo`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sari ada di grup sudo dan users. Admin menjalankan `usermod -G tim-web sari` tanpa -a. Apa akibatnya?",
+          "code": "",
+          "options": [
+            "Grup tambahan lamanya, termasuk sudo, terganti sehingga hanya tim-web tersisa",
+            "Sari ditambahkan ke tim-web dan seluruh grup lamanya, termasuk sudo, tetap utuh dan tidak berubah sama sekali",
+            "Akun sari terhapus dari sistem",
+            "Folder rumah sari berpindah ke grup tim-web"
+          ],
+          "answer": 0,
+          "explanation": "-G tanpa -a mengganti seluruh daftar grup tambahan. Itu sebabnya selalu pakai -aG saat menambah."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa kesimpulan dari baris ini di /etc/passwd?",
+          "code": "www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin",
+          "options": [
+            "Pengguna manusia biasa dengan folder rumah di /var/www dan shell bash untuk login",
+            "Akun administrator dengan UID 0",
+            "Akun yang sandinya kosong",
+            "Akun sistem untuk layanan web yang tidak bisa login interaktif"
+          ],
+          "answer": 3,
+          "explanation": "UID 33 di bawah 1000 menandakan akun sistem, dan shell nologin menolak login interaktif."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Hash sandi pengguna disimpan di /etc/passwd karena berkas itu harus terbaca semua program.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Hash disimpan di /etc/shadow yang hanya terbaca root; kolom sandi di /etc/passwd berisi x."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa admin disarankan memakai sudo ketimbang login langsung sebagai root?",
+          "code": "",
+          "options": [
+            "Karena sudo membuat perintah berjalan lebih cepat sekaligus tidak memerlukan sandi sama sekali",
+            "Karena root tidak bisa menjalankan apt",
+            "Tiap perintah tercatat atas nama pengguna dan hak tinggi dipakai hanya saat perlu",
+            "Karena sudo menghapus riwayat perintah"
+          ],
+          "answer": 2,
+          "explanation": "sudo memberi jejak audit dan hak minimum. Kecepatan perintah sama saja, dan root jelas boleh memakai apt."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Baca /etc/passwd dan /etc/group",
+          "prompt": "Tulis dua fungsi.\n\n- `pengguna_login(passwd_teks)`: list nama pengguna yang UID-nya minimal 1000 **dan** shell-nya tidak berakhiran `nologin` atau `false`, sesuai urutan berkas. Kolom dipisah titik dua; UID di kolom ketiga, shell di kolom ketujuh.\n- `anggota_grup(group_teks, grup)`: list anggota grup (kolom keempat, dipisah koma). Grup yang tidak ada atau tanpa anggota menghasilkan list kosong.",
+          "starter": {
+            "code": "def pengguna_login(passwd_teks):\n    hasil = []\n    # pecah tiap baris dengan split(\":\")\n    return hasil\n\n\ndef anggota_grup(group_teks, grup):\n    return []\n"
+          },
+          "solution": {
+            "code": "def pengguna_login(passwd_teks):\n    hasil = []\n    for baris in passwd_teks.strip().splitlines():\n        f = baris.split(\":\")\n        if len(f) == 7 and int(f[2]) >= 1000 and not f[6].endswith((\"nologin\", \"false\")):\n            hasil.append(f[0])\n    return hasil\n\n\ndef anggota_grup(group_teks, grup):\n    for baris in group_teks.strip().splitlines():\n        f = baris.split(\":\")\n        if f[0] == grup:\n            return [a for a in f[3].split(\",\") if a]\n    return []\n"
+          },
+          "setup": "PASSWD = '''root:x:0:0:root:/root:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\nbudi:x:1000:1000:Budi:/home/budi:/bin/bash\nsari:x:1001:1001:Sari:/home/sari:/bin/zsh\nnobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin\n'''\nGROUP = '''root:x:0:\nsudo:x:27:budi,sari\nkosong:x:1500:\n'''\n",
+          "tests": [
+            {
+              "name": "Hanya pengguna manusia dengan shell login",
+              "check": "pengguna_login(PASSWD) == ['budi', 'sari']"
+            },
+            {
+              "name": "Akun sistem UID rendah tidak ikut",
+              "check": "'www-data' not in pengguna_login(PASSWD)"
+            },
+            {
+              "name": "nobody dengan UID besar tetapi nologin tidak ikut",
+              "check": "'nobody' not in pengguna_login(PASSWD)"
+            },
+            {
+              "name": "Anggota grup sudo",
+              "check": "anggota_grup(GROUP, 'sudo') == ['budi', 'sari']"
+            },
+            {
+              "name": "Grup tanpa anggota",
+              "check": "anggota_grup(GROUP, 'kosong') == []"
+            },
+            {
+              "name": "Grup yang tidak ada",
+              "check": "anggota_grup(GROUP, 'hantu') == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "shell-scripting-dasar",
+      "title": "Shell Scripting Dasar",
+      "est_minutes": 26,
+      "slide_from": 19,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Menulis skrip Bash pertama: shebang, izin eksekusi, dan cara menjalankannya.\n- Memakai variabel, tanda kutip, argumen posisi (`$1`, `$#`, `$@`), dan substitusi perintah.\n- Membuat percabangan `if`, pengulangan `for` dan `while`, serta fungsi.\n- Menulis skrip yang aman: memeriksa kode keluar, `set -euo pipefail`, dan menjadwalkan skrip dengan cron.\n\n## Dari perintah ke skrip\n\nSkrip shell hanyalah berkas teks berisi perintah yang kamu ketik biasa, dijalankan berurutan. Jika kamu mengetik tiga perintah yang sama setiap hari, itu tanda sudah waktunya menjadikannya skrip.\n\n```bash\n#!/usr/bin/env bash\n# salam.sh - skrip pertama\necho \"Halo, $USER!\"\necho \"Hari ini: $(date +%A), folder kerja: $PWD\"\n```\n\nBaris pertama, `#!/usr/bin/env bash`, disebut **shebang**: memberi tahu sistem program mana yang harus menjalankan berkas ini. Baris yang diawali `#` adalah komentar. Agar bisa dijalankan langsung, berkas perlu izin eksekusi:\n\n```bash\n$ chmod +x salam.sh\n$ ./salam.sh\nHalo, budi!\nHari ini: Senin, folder kerja: /home/budi\n$ bash salam.sh        # alternatif tanpa chmod\n```\n\nAwalan `./` wajib: folder kerja saat ini tidak ada di `PATH`, sehingga menulis `salam.sh` saja membuat shell mencari program itu di tempat lain dan menjawab `command not found`.\n\n## Variabel dan tanda kutip\n\nVariabel dibuat tanpa spasi di sekitar tanda `=`, dan dibaca dengan awalan `$`.\n\n```bash\nnama=\"Budi\"\numur=17\necho \"Nama: $nama, umur: $umur\"\necho \"Tahun depan: $((umur + 1))\"      # aritmetika: $(( ))\nhari=$(date +%F)                       # substitusi perintah\nlokasi=\"/var/log\"\necho \"${lokasi}/syslog\"                # kurung kurawal memperjelas batas nama\n```\n\nKesalahan paling umum pemula: `nama = \"Budi\"` (dengan spasi). Shell membaca `nama` sebagai perintah dan `=` sebagai argumen, lalu membalas `nama: command not found`.\n\nTanda kutip menentukan perilaku:\n\n| Bentuk | Perilaku |\n| --- | --- |\n| `\"$nama\"` | kutip ganda: variabel dan substitusi tetap diperluas, spasi dijaga sebagai satu argumen |\n| `'$nama'` | kutip tunggal: teks apa adanya, tidak ada perluasan |\n| `$nama` tanpa kutip | diperluas lalu dipecah di spasi, dan wildcard bisa ikut diperluas |\n\nAturan praktis yang menyelamatkan banyak skrip: **selalu beri kutip ganda pada `\"$variabel\"`**. Jika `berkas=\"laporan akhir.txt\"`, maka `rm $berkas` menjalankan `rm laporan akhir.txt` yang menghapus dua berkas berbeda, sedangkan `rm \"$berkas\"` benar.\n\n## Argumen dan masukan\n\nSkrip menerima argumen lewat variabel khusus.\n\n| Variabel | Isi |\n| --- | --- |\n| `$0` | nama skrip |\n| `$1`, `$2`, ... | argumen pertama, kedua, dan seterusnya |\n| `$#` | jumlah argumen |\n| `$@` | semua argumen, tiap argumen tetap terpisah bila dikutip: `\"$@\"` |\n| `$?` | kode keluar perintah terakhir |\n\n```bash\n#!/usr/bin/env bash\nif [ $# -ne 1 ]; then\n  echo \"Pemakaian: $0 <nama-folder>\" >&2\n  exit 1\nfi\nmkdir -p \"$1\" && echo \"Folder $1 siap\"\n```\n\nPesan galat sebaiknya ke stderr (`>&2`), dan `exit 1` menandakan gagal sehingga skrip lain atau cron bisa mengetahuinya. Untuk input interaktif ada `read -p \"Nama: \" nama`, tetapi skrip yang akan dijadwalkan sebaiknya memakai argumen, bukan pertanyaan.\n\n## Percabangan\n\n```bash\nberkas=\"/etc/hosts\"\n\nif [ -f \"$berkas\" ]; then\n  echo \"$berkas ada\"\nelif [ -d \"$berkas\" ]; then\n  echo \"$berkas adalah folder\"\nelse\n  echo \"$berkas tidak ada\"\nfi\n```\n\n`[ ... ]` sebenarnya perintah bernama `test`, jadi **spasi di dalam kurung wajib**. Uji yang paling sering dipakai:\n\n| Uji | Arti |\n| --- | --- |\n| `-f berkas` | berkas biasa ada |\n| `-d folder` | folder ada |\n| `-e path` | path ada (berkas atau folder) |\n| `-z \"$x\"` / `-n \"$x\"` | teks kosong / tidak kosong |\n| `\"$a\" = \"$b\"` | teks sama |\n| `$a -eq $b`, `-lt`, `-gt` | perbandingan angka |\n\nUntuk teks pakai `=` atau `!=`, untuk angka pakai `-eq`, `-ne`, `-lt`, `-gt`. Bash juga menyediakan `[[ ... ]]` yang lebih longgar soal tanda kutip dan mendukung pola, tetapi hanya Bash. Pola yang berguna pada skrip: `case`.\n\n```bash\ncase \"$1\" in\n  start)   echo \"memulai\" ;;\n  stop)    echo \"menghentikan\" ;;\n  *)       echo \"pakai: $0 start atau stop\" >&2; exit 1 ;;\nesac\n```\n\n## Pengulangan\n\n```bash\nfor buah in apel jeruk mangga; do\n  echo \"Buah: $buah\"\ndone\n\nfor f in *.log; do                    # wildcard diperluas oleh shell\n  gzip \"$f\"\ndone\n\nfor i in $(seq 1 5); do echo \"ke-$i\"; done\n\nwhile read -r baris; do               # baca berkas baris demi baris\n  echo \"ip: $baris\"\ndone < daftar-ip.txt\n```\n\nPada `while read -r`, `-r` mencegah backslash ditafsirkan, dan `< daftar-ip.txt` mengalihkan isi berkas sebagai stdin loop. Hindari `for baris in $(cat berkas)`, karena memecah di setiap spasi, bukan setiap baris.\n\n## Fungsi\n\n```bash\ncadangkan() {\n  local sumber=\"$1\"\n  local tujuan=\"$2\"\n  cp -a \"$sumber\" \"$tujuan/$(basename \"$sumber\").$(date +%F)\"\n}\n\ncadangkan /etc/nginx /backup\n```\n\n`local` membatasi variabel di dalam fungsi; tanpa `local`, variabel menjadi global dan bisa menimpa nama yang sama di tempat lain. Fungsi memberi hasil lewat kode keluar (`return 0` atau `return 1`) dan lewat keluaran stdout yang bisa ditangkap dengan `hasil=$(cadangkan ...)`.\n\n## Skrip yang aman\n\nSecara bawaan Bash terus berjalan walau satu perintah gagal. Itu bisa membahayakan. Contoh nyata: `cd /folder/tidak-ada && rm -rf *` aman karena `&&`, tetapi jika kamu menulis `cd /folder/tidak-ada` baris sendiri lalu `rm -rf *` di baris berikutnya, `rm` akan berjalan di folder tempatmu masih berdiri. Tiga baris pembuka berikut mencegah banyak kecelakaan:\n\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\n```\n\n- `-e`: berhenti begitu ada perintah yang gagal.\n- `-u`: anggap variabel yang belum didefinisikan sebagai galat, bukan teks kosong.\n- `-o pipefail`: pipeline dianggap gagal bila salah satu tahapnya gagal, bukan hanya tahap terakhir.\n\nKebiasaan lain: kutip semua variabel, periksa masukan di awal, tulis galat ke stderr, dan uji dengan `bash -n skrip.sh` (cek sintaks) serta `bash -x skrip.sh` (cetak tiap perintah yang dijalankan, sangat membantu saat debug). Jika kamu rutin menulis skrip, `shellcheck` adalah linter yang mendeteksi sebagian besar kesalahan kutip dan sintaks.\n\n### Kasus: backup harian\n\n```bash\n#!/usr/bin/env bash\nset -euo pipefail\n\nsumber=\"${1:-$HOME/proyek}\"\ntujuan=\"/backup\"\nnama=\"proyek-$(date +%F).tar.gz\"\n\nmkdir -p \"$tujuan\"\ntar -czf \"$tujuan/$nama\" -C \"$(dirname \"$sumber\")\" \"$(basename \"$sumber\")\"\necho \"Backup selesai: $tujuan/$nama\"\nfind \"$tujuan\" -name \"proyek-*.tar.gz\" -mtime +7 -delete\n```\n\nSkrip ini memakai argumen opsional (`${1:-nilai-bawaan}`), membuat arsip bernama tanggal, lalu menghapus arsip yang lebih tua dari tujuh hari. Perhatikan bahwa `find ... -delete` muncul **setelah** backup baru selesai, sehingga kalau tahap backup gagal, arsip lama tidak ikut terhapus.\n\n## Penjadwalan dengan cron\n\nAgar skrip berjalan otomatis, daftarkan di `crontab`:\n\n```bash\n$ crontab -e          # sunting jadwal milikmu\n# menit jam hari-bulan bulan hari-minggu  perintah\n30 2 * * *   /home/budi/backup.sh >> /home/budi/backup.log 2>&1\n*/15 * * * * /home/budi/cek-disk.sh\n```\n\nLima kolom pertama: menit, jam, tanggal, bulan, hari dalam minggu. Baris pertama berarti \"setiap hari pukul 02.30\". Cron berjalan dengan lingkungan minimal, jadi gunakan path absolut untuk skrip dan program, dan alihkan keluaran ke berkas log agar kamu bisa melihat penyebab kegagalan. Lihat jadwal aktif dengan `crontab -l`.\n\n## Rangkuman\n\n- Skrip adalah berkas teks berisi perintah, diawali shebang dan diberi `chmod +x`, dijalankan dengan `./skrip.sh`.\n- Variabel tanpa spasi di sekitar `=`; selalu kutip `\"$variabel\"`; argumen dibaca lewat `$1`, `$#`, `\"$@\"`.\n- `if`, `case`, `for`, `while`, dan fungsi dengan `local` membentuk logika; uji dengan `[ ]` yang butuh spasi.\n- Awali skrip serius dengan `set -euo pipefail`, kirim galat ke stderr, dan pakai `exit` dengan kode jelas.\n- `crontab -e` menjadwalkan skrip; pakai path absolut dan simpan keluaran ke berkas log.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang terjadi saat Bash menjalankan baris ini?",
+          "code": "nama = \"Budi\"",
+          "options": [
+            "Galat `nama: command not found`, karena ada spasi di sekitar tanda sama dengan",
+            "Variabel nama terisi Budi dengan normal karena Bash mengabaikan spasi di sekitar tanda sama dengan",
+            "Variabel nama terisi kosong tanpa pesan",
+            "Bash mencetak Budi ke layar"
+          ],
+          "answer": 0,
+          "explanation": "Dalam penugasan variabel tidak boleh ada spasi di sekitar =. Dengan spasi, Bash menganggap nama sebagai perintah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Variabel `berkas=\"laporan akhir.txt\"`, lalu dijalankan `rm $berkas` tanpa kutip. Apa yang terjadi?",
+          "code": "",
+          "options": [
+            "rm menghapus satu berkas bernama laporan akhir.txt karena Bash mengenali nama berspasi",
+            "rm menolak karena nama berspasi tidak sah",
+            "rm mencoba menghapus dua berkas bernama laporan dan akhir.txt",
+            "rm menghapus semua berkas di folder"
+          ],
+          "answer": 2,
+          "explanation": "Tanpa kutip, nilai dipecah di spasi menjadi dua argumen. Karena itu selalu tulis rm \"$berkas\"."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Skrip berisi `cd /tidak-ada` lalu di baris berikutnya `rm -rf *`. Apa yang mencegah penghapusan di folder yang salah?",
+          "code": "",
+          "options": [
+            "Shebang di baris pertama membatalkan rm",
+            "Perintah rm -rf menolak jalan di folder rumah",
+            "Komentar dengan tanda # di atas rm",
+            "set -e di awal skrip menghentikan eksekusi saat cd gagal"
+          ],
+          "answer": 3,
+          "explanation": "Tanpa set -e Bash terus berjalan sesudah cd gagal, sehingga rm bekerja di folder tempat skrip dimulai."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Skrip jalan dengan benar saat dijalankan manual tetapi gagal saat dijadwalkan lewat cron. Kemungkinan paling umum?",
+          "code": "",
+          "options": [
+            "Cron tidak mendukung bash sama sekali, hanya mendukung sh sehingga skrip bash selalu ditolak",
+            "Cron memakai lingkungan minimal, sehingga perlu path absolut untuk skrip dan program",
+            "Skrip harus dijalankan sebagai root",
+            "Cron hanya menjalankan perintah satu baris"
+          ],
+          "answer": 1,
+          "explanation": "Cron tidak membawa PATH dan folder kerja seperti terminalmu. Gunakan path absolut dan alihkan keluaran ke log untuk melihat galatnya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Pembaca berkas .env",
+          "prompt": "Tulis `baca_env(teks)` yang mengubah isi berkas `.env` menjadi dict.\n\n- Tiap baris `KUNCI=nilai`; pisahkan di tanda `=` **pertama**.\n- Baris kosong, baris komentar (diawali `#`), dan baris tanpa `=` diabaikan.\n- Spasi di pinggir kunci dan nilai dibuang.\n- Bila nilai dikelilingi tanda kutip ganda atau tunggal, kutipnya dibuang.",
+          "starter": {
+            "code": "def baca_env(teks):\n    hasil = {}\n    # proses tiap baris dari teks.splitlines()\n    return hasil\n"
+          },
+          "solution": {
+            "code": "def baca_env(teks):\n    hasil = {}\n    for baris in teks.splitlines():\n        baris = baris.strip()\n        if not baris or baris.startswith(\"#\") or \"=\" not in baris:\n            continue\n        kunci, _, nilai = baris.partition(\"=\")\n        nilai = nilai.strip()\n        if len(nilai) >= 2 and nilai[0] == nilai[-1] and nilai[0] in \"\\\"'\":\n            nilai = nilai[1:-1]\n        hasil[kunci.strip()] = nilai\n    return hasil\n"
+          },
+          "setup": "ENV = '''# konfigurasi aplikasi\nPORT=8080\nNAMA=\"Ruang Materi\"\n\nMODE = 'produksi'\nDB_URL=postgres://u:p@host/db?sslmode=require\nbaris-tanpa-sama-dengan\n'''\n",
+          "tests": [
+            {
+              "name": "Pasangan sederhana terbaca",
+              "check": "baca_env(ENV)['PORT'] == '8080'"
+            },
+            {
+              "name": "Kutip ganda dibuang",
+              "check": "baca_env(ENV)['NAMA'] == 'Ruang Materi'"
+            },
+            {
+              "name": "Kutip tunggal dibuang",
+              "check": "baca_env(ENV)['MODE'] == 'produksi'"
+            },
+            {
+              "name": "Komentar dan baris kosong diabaikan",
+              "check": "sorted(baca_env(ENV)) == ['DB_URL', 'MODE', 'NAMA', 'PORT']"
+            },
+            {
+              "name": "Pemisahan di = pertama menjaga tanda = di nilai",
+              "check": "baca_env(ENV)['DB_URL'] == 'postgres://u:p@host/db?sslmode=require'"
+            },
+            {
+              "name": "Teks kosong menghasilkan dict kosong",
+              "check": "baca_env('') == {}"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Baris crontab harian",
+          "prompt": "Tulis `cron_harian(jam, menit, perintah)` yang menghasilkan baris crontab untuk menjalankan `perintah` setiap hari, misalnya `cron_harian(2, 30, \"/home/budi/backup.sh\")` menghasilkan `\"30 2 * * * /home/budi/backup.sh\"`.\n\nBila `jam` di luar 0 sampai 23 atau `menit` di luar 0 sampai 59, lempar `ValueError`.",
+          "starter": {
+            "code": "def cron_harian(jam, menit, perintah):\n    pass\n"
+          },
+          "solution": {
+            "code": "def cron_harian(jam, menit, perintah):\n    if not 0 <= jam <= 23 or not 0 <= menit <= 59:\n        raise ValueError(\"waktu di luar rentang\")\n    return f\"{menit} {jam} * * * {perintah}\"\n"
+          },
+          "setup": "def melempar(fn, *a):\n    try:\n        fn(*a)\n    except ValueError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Backup pukul 02.30",
+              "check": "cron_harian(2, 30, '/home/budi/backup.sh') == '30 2 * * * /home/budi/backup.sh'"
+            },
+            {
+              "name": "Tengah malam tepat",
+              "check": "cron_harian(0, 0, 'x') == '0 0 * * * x'"
+            },
+            {
+              "name": "Jam 24 ditolak",
+              "check": "melempar(cron_harian, 24, 0, 'x') is True"
+            },
+            {
+              "name": "Menit 60 ditolak",
+              "check": "melempar(cron_harian, 1, 60, 'x') is True"
+            },
+            {
+              "name": "Menit 59 jam 23 masih sah",
+              "check": "cron_harian(23, 59, 'x') == '59 23 * * * x'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "ssh-dan-akses-jarak-jauh",
+      "title": "SSH dan Akses Jarak Jauh",
+      "est_minutes": 24,
+      "slide_from": 21,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu SSH, port 22, dan cara klien memverifikasi server lewat fingerprint.\n- Masuk ke server dengan `ssh`, menyalin berkas dengan `scp` dan `rsync`, serta menjalankan perintah jarak jauh.\n- Membuat dan memasang pasangan kunci SSH (`ssh-keygen`, `ssh-copy-id`) dengan izin berkas yang benar.\n- Menulis `~/.ssh/config` dan menggunakan tunnel dasar serta praktik aman saat bekerja jarak jauh.\n\n## SSH: pintu masuk server\n\n**SSH** (*Secure Shell*) memberi terminal jarak jauh lewat jaringan dengan lalu lintas terenkripsi. Server menjalankan `sshd` yang mendengarkan di port TCP 22 secara bawaan; kamu menjalankan `ssh` sebagai klien. Hampir semua server Linux di dunia dikelola lewat SSH, dan layanan seperti Git (GitHub, GitLab) juga memakainya.\n\nBentuk dasarnya:\n\n```bash\n$ ssh budi@192.0.2.10                  # pengguna budi di server itu\n$ ssh -p 2222 budi@server.example.com  # port bukan 22\n$ ssh budi@192.0.2.10 \"uptime; df -h /\"   # jalankan perintah lalu keluar\n```\n\nKali pertama menyambung ke server, kamu akan melihat:\n\n```text\nThe authenticity of host '192.0.2.10 (192.0.2.10)' can't be established.\nED25519 key fingerprint is SHA256:Qz1f...contoh...kY8.\nAre you sure you want to continue connecting (yes/no/[fingerprint])?\n```\n\nIni bukan basa-basi. **Fingerprint** adalah sidik jari kunci server. Cocokkan dengan nilai yang diberikan administrator atau penyedia hosting lewat jalur terpisah, lalu jawab `yes`; kunci itu disimpan di `~/.ssh/known_hosts`. Sesudahnya, bila fingerprint berubah, SSH menolak dengan peringatan `REMOTE HOST IDENTIFICATION HAS CHANGED`. Penyebab sahnya biasanya server dipasang ulang; penyebab buruknya, ada pihak yang menyamar di tengah jalan (*man-in-the-middle*). Pastikan dulu penyebabnya sebelum menghapus entri lama dengan `ssh-keygen -R alamat-server`.\n\nKeluar dari sesi dengan `exit` atau `Ctrl+D`. Perhatikan prompt setelah masuk, karena nama host berubah. Salah mengira berada di server produksi saat sebenarnya di laptop (atau sebaliknya) adalah sumber kecelakaan klasik.\n\n## Login dengan kunci, bukan sandi\n\nSandi bisa ditebak oleh mesin yang mencoba jutaan kombinasi. Server publik menerima percobaan login semacam itu tiap menit. Solusinya **kunci SSH**: sepasang berkas, kunci privat yang tinggal di komputermu dan kunci publik yang dipasang di server. Server menantang kamu membuktikan memiliki kunci privat tanpa pernah mengirimkannya.\n\n```bash\n$ ssh-keygen -t ed25519 -C \"laptop-budi\"\nEnter file in which to save the key (/home/budi/.ssh/id_ed25519):\nEnter passphrase (empty for no passphrase):\n$ ls ~/.ssh\nid_ed25519  id_ed25519.pub  known_hosts\n$ ssh-copy-id budi@192.0.2.10         # pasang kunci publik di server\n$ ssh budi@192.0.2.10                 # kini masuk tanpa sandi akun\n```\n\nPegangan penting:\n\n- **`id_ed25519` adalah rahasia.** Jangan kirim lewat chat, jangan commit ke Git, jangan unggah ke server. Yang boleh dibagikan hanya `id_ed25519.pub`.\n- **Beri passphrase** pada kunci privat. Bila laptop hilang, kunci tanpa passphrase langsung bisa dipakai pencuri. `ssh-agent` menyimpan passphrase di memori sehingga tidak perlu mengetik berkali-kali.\n- Kunci publik diletakkan di server pada berkas `~/.ssh/authorized_keys`, satu kunci per baris. `ssh-copy-id` pada dasarnya menambahkan baris itu untukmu.\n\nSSH sangat ketat soal izin. Jika izin terlalu longgar, ia menolak diam-diam atau dengan peringatan `UNPROTECTED PRIVATE KEY FILE`:\n\n```bash\n$ chmod 700 ~/.ssh\n$ chmod 600 ~/.ssh/id_ed25519 ~/.ssh/authorized_keys\n$ chmod 644 ~/.ssh/id_ed25519.pub\n```\n\n### Kasus: kunci sudah dipasang tetapi masih diminta sandi\n\nGejala klasik: `ssh-copy-id` sukses, tetapi login tetap meminta sandi. Periksa di server: `ls -ld ~ ~/.ssh ~/.ssh/authorized_keys`. Jika folder rumah atau `.ssh` dapat ditulis grup atau orang lain, `sshd` menolak kunci demi keamanan. Perbaiki dengan `chmod go-w ~` dan `chmod 700 ~/.ssh`, lalu coba lagi. Jalankan klien dengan `ssh -v budi@192.0.2.10` untuk melihat tahap mana yang gagal; opsi `-v` menampilkan kunci mana yang dicoba dan alasan penolakannya.\n\n## Menyalin berkas: `scp` dan `rsync`\n\n```bash\n$ scp laporan.pdf budi@192.0.2.10:/home/budi/       # unggah ke server\n$ scp budi@192.0.2.10:/var/log/nginx/error.log .    # unduh ke folder ini\n$ scp -r proyek/ budi@192.0.2.10:/srv/               # folder (rekursif)\n$ scp -P 2222 data.csv budi@server:~/               # perhatikan P kapital untuk port\n```\n\n`scp` sederhana tetapi selalu menyalin semuanya dari awal. `rsync` lebih cerdas: hanya mengirim bagian yang berubah, sehingga jauh lebih cepat untuk sinkronisasi berulang.\n\n```bash\n$ rsync -avz proyek/ budi@192.0.2.10:/srv/proyek/\n$ rsync -avz --delete proyek/ budi@192.0.2.10:/srv/proyek/   # cermin: hapus yang tak ada di sumber\n$ rsync -avzn --delete proyek/ budi@192.0.2.10:/srv/proyek/  # -n: simulasi, tidak mengubah apa pun\n```\n\nOpsi `-a` mempertahankan izin dan waktu, `-v` menampilkan proses, `-z` mengompres. **Tanda garis miring di akhir sumber punya arti**: `proyek/` menyalin *isi* folder itu, sedangkan `proyek` tanpa garis miring menyalin folder itu sendiri sehingga tujuan berisi `proyek/proyek/...`. Dan opsi `--delete` berbahaya bila sumber salah tulis; selalu jalankan dulu dengan `-n`.\n\n## `~/.ssh/config`: nama pendek untuk server\n\nMengingat `ssh -p 2222 -i ~/.ssh/kunci-kantor budi@203.0.113.50` merepotkan. Simpan di `~/.ssh/config`:\n\n```text\nHost kantor\n    HostName 203.0.113.50\n    User budi\n    Port 2222\n    IdentityFile ~/.ssh/kunci-kantor\n\nHost *\n    ServerAliveInterval 60\n```\n\nSekarang `ssh kantor`, `scp berkas kantor:~/`, dan `rsync -av proyek/ kantor:/srv/` semuanya bekerja dengan nama pendek itu. Blok `Host *` berlaku untuk semua, misalnya agar koneksi tidak putus karena diam terlalu lama. Berkas ini juga harus berizin `600` bila isinya sensitif.\n\n## Tunnel dasar dan lompat\n\nSSH bisa meneruskan port. Contohnya, basis data di server hanya mendengarkan di `127.0.0.1:5432`, tidak terbuka ke internet. Dari laptop kamu bisa membuka terowongan:\n\n```bash\n$ ssh -L 5433:127.0.0.1:5432 kantor\n```\n\nSelama sesi itu hidup, koneksi ke `localhost:5433` di laptop diteruskan terenkripsi ke port 5432 di server. Tidak perlu membuka port basis data ke internet. Untuk masuk lewat server perantara (bastion) ke server internal, pakai `ssh -J bastion server-dalam`, atau tulis `ProxyJump bastion` di konfigurasi.\n\n## Menjaga server tetap aman\n\nDi sisi server, konfigurasinya ada di `/etc/ssh/sshd_config`. Praktik yang umum:\n\n```text\nPermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\n```\n\nSetelah mengubah, uji sintaks dengan `sudo sshd -t`, lalu `sudo systemctl reload ssh` (nama layanan `ssh` di Debian dan Ubuntu, `sshd` di keluarga RHEL). **Sebelum mematikan login sandi, buka satu sesi SSH cadangan dan pastikan login dengan kunci berhasil dari sesi lain.** Jika tidak, sebuah kesalahan kecil mengunci kamu dari server yang tidak punya layar lain.\n\nHardening yang lebih dalam seperti `fail2ban`, pembatasan pengguna, dan firewall dibahas di kelas Administrasi Server dan Keamanan; di sini kamu cukup memegang tiga hal: kunci bukan sandi, root tidak login langsung, dan semua perubahan diuji lewat sesi cadangan.\n\n## Rangkuman\n\n- SSH memberi terminal jarak jauh terenkripsi lewat port 22; cocokkan fingerprint saat pertama kali menyambung.\n- Kunci SSH (`ssh-keygen -t ed25519`, `ssh-copy-id`) lebih aman dari sandi; kunci privat adalah rahasia dan sebaiknya diberi passphrase.\n- Izin ketat: `~/.ssh` 700, kunci privat dan `authorized_keys` 600.\n- `scp` menyalin sederhana, `rsync -avz` menyinkronkan hanya perubahan; garis miring akhir pada sumber `rsync` berarti isi folder.\n- `~/.ssh/config` memberi nama pendek, `-L` meneruskan port; di server matikan login root dan sandi setelah menguji login kunci.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Saat ssh ke server lama muncul peringatan `REMOTE HOST IDENTIFICATION HAS CHANGED`. Tindakan pertama yang benar?",
+          "code": "",
+          "options": [
+            "Hapus seluruh known_hosts lalu lanjut menyambung tanpa membaca pesan, karena peringatan itu hampir pasti salah alarm",
+            "Pastikan lebih dulu penyebabnya, misalnya server dipasang ulang, sebelum mengganti entri known_hosts",
+            "Matikan pemeriksaan kunci host agar peringatan hilang",
+            "chmod 777 pada folder .ssh"
+          ],
+          "answer": 1,
+          "explanation": "Perubahan fingerprint bisa wajar tetapi bisa juga penyamaran. Verifikasi dulu lalu hapus entri spesifik dengan ssh-keygen -R."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "`ssh-copy-id` sukses tetapi login tetap meminta sandi. Penyebab umum di sisi server?",
+          "code": "",
+          "options": [
+            "Kunci publik terlalu pendek untuk dibaca sshd sehingga harus dibuat ulang dengan ukuran lebih besar",
+            "SSH hanya menerima sandi pada port 22",
+            "Izin folder rumah atau ~/.ssh terlalu longgar sehingga sshd menolak kunci",
+            "Kunci privat belum dikirim ke server"
+          ],
+          "answer": 2,
+          "explanation": "sshd menolak authorized_keys bila folder rumah atau .ssh dapat ditulis orang lain. Kunci privat tidak pernah dikirim ke server."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa beda `rsync -avz proyek/ kantor:/srv/proyek/` dengan versi tanpa garis miring di akhir `proyek`?",
+          "code": "",
+          "options": [
+            "Tanpa garis miring, tujuan berisi folder proyek di dalam proyek",
+            "Tanpa garis miring, rsync menyalin hanya berkas tersembunyi",
+            "Tanpa garis miring, rsync menghapus tujuan lebih dulu",
+            "Tidak ada bedanya sama sekali"
+          ],
+          "answer": 0,
+          "explanation": "Garis miring akhir berarti isi folder, tanpa itu berarti folder itu sendiri sehingga muncul /srv/proyek/proyek."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kunci privat id_ed25519 boleh dikirim ke administrator agar akses dipasang di server.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Yang dikirim hanya kunci publik (.pub). Kunci privat adalah rahasia dan tidak boleh keluar dari komputermu."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Baca ~/.ssh/config",
+          "prompt": "Tulis dua fungsi.\n\n- `baca_ssh_config(teks)`: ubah isi `~/.ssh/config` menjadi dict `{nama_host: {opsi_huruf_kecil: nilai}}`. Baris `Host nama` memulai blok baru; baris lain berbentuk `Opsi nilai` masuk ke blok terakhir. Baris kosong dan komentar (`#`) diabaikan. Nilai berupa string apa adanya.\n- `perintah_ssh(config, nama)`: susun perintah ssh dari blok `nama`: `ssh`, lalu `-p PORT` bila ada `port`, lalu `-i KUNCI` bila ada `identityfile`, lalu `USER@HOST` (atau hanya `HOST`). HOST adalah `hostname` bila ada, selain itu `nama` itu sendiri.\n\nContoh hasil: `\"ssh -p 2222 -i ~/.ssh/kunci-kantor budi@203.0.113.50\"`.",
+          "starter": {
+            "code": "def baca_ssh_config(teks):\n    hasil = {}\n    # bagi tiap baris dengan partition(\" \")\n    return hasil\n\n\ndef perintah_ssh(config, nama):\n    return \"ssh\"\n"
+          },
+          "solution": {
+            "code": "def baca_ssh_config(teks):\n    hasil, host = {}, None\n    for baris in teks.splitlines():\n        baris = baris.strip()\n        if not baris or baris.startswith(\"#\"):\n            continue\n        kunci, _, nilai = baris.partition(\" \")\n        kunci, nilai = kunci.lower(), nilai.strip()\n        if kunci == \"host\":\n            host = nilai\n            hasil[host] = {}\n        elif host is not None:\n            hasil[host][kunci] = nilai\n    return hasil\n\n\ndef perintah_ssh(config, nama):\n    c = config[nama]\n    bagian = [\"ssh\"]\n    if \"port\" in c:\n        bagian += [\"-p\", c[\"port\"]]\n    if \"identityfile\" in c:\n        bagian += [\"-i\", c[\"identityfile\"]]\n    tujuan = c.get(\"hostname\", nama)\n    if \"user\" in c:\n        tujuan = c[\"user\"] + \"@\" + tujuan\n    return \" \".join(bagian + [tujuan])\n"
+          },
+          "setup": "CFG = '''# server kerja\nHost kantor\n    HostName 203.0.113.50\n    User budi\n    Port 2222\n    IdentityFile ~/.ssh/kunci-kantor\n\nHost gudang\n    HostName 198.51.100.7\n\nHost *\n    ServerAliveInterval 60\n'''\n",
+          "tests": [
+            {
+              "name": "Blok host dibaca dengan opsi huruf kecil",
+              "check": "baca_ssh_config(CFG)['kantor'] == {'hostname': '203.0.113.50', 'user': 'budi', 'port': '2222', 'identityfile': '~/.ssh/kunci-kantor'}"
+            },
+            {
+              "name": "Semua nama host terbaca, termasuk wildcard",
+              "check": "list(baca_ssh_config(CFG)) == ['kantor', 'gudang', '*']"
+            },
+            {
+              "name": "Perintah lengkap dengan port dan kunci",
+              "check": "perintah_ssh(baca_ssh_config(CFG), 'kantor') == 'ssh -p 2222 -i ~/.ssh/kunci-kantor budi@203.0.113.50'"
+            },
+            {
+              "name": "Tanpa user dan port hanya host",
+              "check": "perintah_ssh(baca_ssh_config(CFG), 'gudang') == 'ssh 198.51.100.7'"
+            },
+            {
+              "name": "Tanpa hostname, nama blok dipakai sebagai host",
+              "check": "perintah_ssh({'belum-ada': {'user': 'budi'}}, 'belum-ada') == 'ssh budi@belum-ada'"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Terminal Mini",
+    "brief": "Kamu akan membangun **Terminal mini**: tiruan kecil shell Linux yang berjalan di dalam Python. Ia menyimpan sistem berkas virtual di memori dan memahami perintah dasar yang kamu pelajari di kelas ini, termasuk redirect dan pipe. Tidak ada berkas sungguhan yang disentuh.\n\n```python\nt = Terminal()\nt.run(\"pwd\")                       # \"/home/user\"\nt.run(\"mkdir -p proyek/src\")\nt.run(\"cd proyek\")\nt.run(\"echo halo linux > salam.txt\")\nt.run(\"cat salam.txt\")            # \"halo linux\"\nt.run(\"ls\")                        # \"salam.txt\\nsrc\"\nt.run(\"cat salam.txt | wc -l\")    # \"1\"\nt.run(\"rm tidak-ada\")             # \"rm: cannot remove 'tidak-ada': No such file or directory\"\n```\n\n## Keadaan awal\n\n- `self.cwd = \"/home/user\"`.\n- `self.dirs`: himpunan path folder; awalnya `/`, `/home`, dan `/home/user`.\n- `self.files`: dict `path -> isi`. Isi berupa string yang setiap barisnya diakhiri `\\n`.\n\n## `path(p)`\n\nMengembalikan path absolut bersih: `~` berarti `/home/user`, path relatif dihitung dari `self.cwd`, `.` diabaikan, `..` naik satu tingkat (di `/` tetap di `/`).\n\n## `run(baris)`\n\nKembalikan **keluaran** sebagai string **tanpa** baris baru di ujung (string kosong bila tidak ada keluaran). Pecah baris di tanda `|` menjadi tahap; keluaran tahap sebelumnya menjadi *stdin* tahap berikutnya. Tiap tahap dipecah dengan `shlex.split`, jadi tanda kutip didukung (`echo \"halo dunia\"`). Redirect `>` (timpa) dan `>>` (tambah) hanya berlaku di tahap terakhir; teks yang dialihkan ditulis ke berkas dengan `\\n` di ujung, dan keluaran `run` menjadi `\"\"`.\n\n## Perintah wajib\n\n| Perintah | Perilaku | Galat (menjadi keluaran `run`) |\n| --- | --- | --- |\n| `pwd` | cetak `self.cwd` | - |\n| `cd [dir]` | pindah folder; tanpa argumen ke `~` | `cd: X: No such file or directory`, `cd: X: Not a directory` |\n| `mkdir [-p] dir...` | buat folder; `-p` membuat seluruh rantai dan tidak mengeluh bila sudah ada | `mkdir: cannot create directory 'X': File exists` atau `...: No such file or directory` |\n| `touch berkas...` | buat berkas kosong bila belum ada | `touch: cannot touch 'X': No such file or directory` |\n| `echo kata...` | cetak kata dipisah spasi | - |\n| `cat [berkas...]` | cetak isi; tanpa argumen cetak stdin | `cat: X: No such file or directory` |\n| `ls [dir]` | nama isi folder (berkas dan folder) urut abjad, satu per baris | `ls: cannot access 'X': No such file or directory` |\n| `grep pola [berkas]` | baris yang mengandung `pola` (teks biasa); dari berkas atau stdin | - |\n| `wc -l [berkas]` | jumlah baris sebagai string; dari berkas atau stdin | - |\n| `rm berkas...` | hapus berkas | `rm: cannot remove 'X': No such file or directory`, `... Is a directory` |\n| lainnya | - | `bash: X: command not found` |\n\n`X` di pesan galat adalah argumen **persis seperti diketik** pengguna. Bila sebuah tahap menghasilkan galat, `run` langsung mengembalikan pesan itu dan tahap berikutnya tidak dijalankan.\n\n## Tips\n\n- Gunakan kembali logika path dari latihan bab 1.\n- Pisahkan \"mengerjakan satu tahap\" dan \"merangkai tahap\" menjadi metode terpisah agar redirect dan pipe mudah ditambahkan.\n- Uji sendiri dulu di bawah kode: buat `t = Terminal()` dan coba beberapa `t.run(...)` dengan `print`.",
+    "prompt": "Lengkapi class Terminal: path, run, dan perintah pwd, cd, mkdir, touch, echo, cat, ls, grep, wc, rm dengan redirect dan pipe di atas sistem berkas virtual.",
+    "starter": {
+      "code": "import shlex\n\n\nclass Terminal:\n    def __init__(self):\n        self.cwd = \"/home/user\"\n        self.dirs = {\"/\", \"/home\", \"/home/user\"}\n        self.files = {}  # path -> isi teks, tiap baris diakhiri \"\\n\"\n\n    def path(self, p):\n        \"\"\"Ubah p (boleh relatif, ~, ., ..) menjadi path absolut bersih.\"\"\"\n        pass\n\n    def run(self, baris):\n        \"\"\"Jalankan satu baris perintah (boleh berisi pipe |) dan kembalikan keluarannya.\"\"\"\n        pass\n"
+    },
+    "solution": {
+      "code": "import shlex\n\n\nclass Terminal:\n    def __init__(self):\n        self.cwd = \"/home/user\"\n        self.dirs = {\"/\", \"/home\", \"/home/user\"}\n        self.files = {}  # path -> isi teks, tiap baris diakhiri \"\\n\"\n\n    def path(self, p):\n        if p == \"~\" or p.startswith(\"~/\"):\n            p = \"/home/user\" + p[1:]\n        if not p.startswith(\"/\"):\n            p = self.cwd + \"/\" + p\n        bagian = []\n        for x in p.split(\"/\"):\n            if x in (\"\", \".\"):\n                continue\n            if x == \"..\":\n                if bagian:\n                    bagian.pop()\n            else:\n                bagian.append(x)\n        return \"/\" + \"/\".join(bagian)\n\n    def induk(self, p):\n        return p.rsplit(\"/\", 1)[0] or \"/\"\n\n    def run(self, baris):\n        tahap = baris.split(\"|\")\n        data = \"\"\n        for i, t in enumerate(tahap):\n            data = self.satu(shlex.split(t), data, i == len(tahap) - 1)\n            if data.startswith(self.GALAT):\n                return data[len(self.GALAT):]\n        return data\n\n    GALAT = \"\\x00\"\n\n    def galat(self, pesan):\n        return self.GALAT + pesan\n\n    def baca(self, nama):\n        p = self.path(nama)\n        if p in self.files:\n            return self.files[p]\n        return None\n\n    def satu(self, kata, stdin, terakhir):\n        if not kata:\n            return \"\"\n        tujuan, mode = None, None\n        for op in (\">>\", \">\"):\n            if op in kata and terakhir:\n                k = kata.index(op)\n                tujuan, mode = kata[k + 1], op\n                kata = kata[:k] + kata[k + 2:]\n                break\n        cmd, arg = kata[0], kata[1:]\n        out = self.perintah(cmd, arg, stdin)\n        if out.startswith(self.GALAT):\n            return out\n        if tujuan is not None:\n            p = self.path(tujuan)\n            if self.induk(p) not in self.dirs or p in self.dirs:\n                return self.galat(f\"bash: {tujuan}: No such file or directory\")\n            isi = out + \"\\n\" if out else \"\"\n            self.files[p] = (self.files.get(p, \"\") if mode == \">>\" else \"\") + isi\n            return \"\"\n        return out\n\n    def perintah(self, cmd, arg, stdin):\n        if cmd == \"pwd\":\n            return self.cwd\n        if cmd == \"echo\":\n            return \" \".join(arg)\n        if cmd == \"cd\":\n            tujuan = arg[0] if arg else \"~\"\n            p = self.path(tujuan)\n            if p in self.dirs:\n                self.cwd = p\n                return \"\"\n            if p in self.files:\n                return self.galat(f\"cd: {tujuan}: Not a directory\")\n            return self.galat(f\"cd: {tujuan}: No such file or directory\")\n        if cmd == \"mkdir\":\n            buat_induk = \"-p\" in arg\n            for d in [a for a in arg if a != \"-p\"]:\n                p = self.path(d)\n                if p in self.dirs or p in self.files:\n                    if buat_induk and p in self.dirs:\n                        continue\n                    return self.galat(f\"mkdir: cannot create directory '{d}': File exists\")\n                if buat_induk:\n                    sekarang = \"\"\n                    for x in p.strip(\"/\").split(\"/\"):\n                        sekarang += \"/\" + x\n                        self.dirs.add(sekarang)\n                elif self.induk(p) in self.dirs:\n                    self.dirs.add(p)\n                else:\n                    return self.galat(f\"mkdir: cannot create directory '{d}': No such file or directory\")\n            return \"\"\n        if cmd == \"touch\":\n            for f in arg:\n                p = self.path(f)\n                if self.induk(p) not in self.dirs:\n                    return self.galat(f\"touch: cannot touch '{f}': No such file or directory\")\n                self.files.setdefault(p, \"\")\n            return \"\"\n        if cmd == \"cat\":\n            if not arg:\n                return stdin\n            bagian = []\n            for f in arg:\n                isi = self.baca(f)\n                if isi is None:\n                    return self.galat(f\"cat: {f}: No such file or directory\")\n                bagian.append(isi.rstrip(\"\\n\"))\n            return \"\\n\".join(b for b in bagian if b)\n        if cmd == \"ls\":\n            nama = arg[0] if arg else \".\"\n            p = self.path(nama)\n            if p not in self.dirs:\n                return self.galat(f\"ls: cannot access '{nama}': No such file or directory\")\n            awal = p.rstrip(\"/\") + \"/\"\n            anak = {x[len(awal):].split(\"/\")[0] for x in list(self.dirs) + list(self.files) if x != p and x.startswith(awal)}\n            return \"\\n\".join(sorted(anak))\n        if cmd == \"grep\":\n            pola = arg[0]\n            if len(arg) > 1:\n                isi = self.baca(arg[1])\n                if isi is None:\n                    return self.galat(f\"grep: {arg[1]}: No such file or directory\")\n            else:\n                isi = stdin\n            return \"\\n\".join(b for b in isi.splitlines() if pola in b)\n        if cmd == \"wc\":\n            if len(arg) > 1:\n                isi = self.baca(arg[1])\n                if isi is None:\n                    return self.galat(f\"wc: {arg[1]}: No such file or directory\")\n            else:\n                isi = stdin\n            return str(len(isi.splitlines()))\n        if cmd == \"rm\":\n            for f in arg:\n                p = self.path(f)\n                if p in self.files:\n                    del self.files[p]\n                elif p in self.dirs:\n                    return self.galat(f\"rm: cannot remove '{f}': Is a directory\")\n                else:\n                    return self.galat(f\"rm: cannot remove '{f}': No such file or directory\")\n            return \"\"\n        return self.galat(f\"bash: {cmd}: command not found\")\n"
+    },
+    "setup": "def seq(*cmd):\n    t = Terminal()\n    return [t.run(c) for c in cmd]\n",
+    "tests": [
+      {
+        "name": "pwd awal dan cd absolut",
+        "check": "seq('pwd', 'cd /home', 'pwd')[0] == '/home/user' and seq('pwd', 'cd /home', 'pwd')[-1] == '/home'"
+      },
+      {
+        "name": "mkdir -p membuat rantai folder dan ls mengurutkan isi",
+        "check": "seq('mkdir -p proyek/src', 'touch proyek/a.txt', 'ls proyek')[-1] == 'a.txt\\nsrc'"
+      },
+      {
+        "name": "echo dengan > membuat berkas yang bisa dibaca cat",
+        "check": "seq('echo halo > salam.txt', 'cat salam.txt') == ['', 'halo']"
+      },
+      {
+        "name": "echo dengan >> menambah di akhir berkas",
+        "check": "seq('echo satu > f', 'echo dua >> f', 'cat f')[-1] == 'satu\\ndua'"
+      },
+      {
+        "name": "Tanda kutip menjaga spasi pada echo",
+        "check": "seq('echo \"halo   dunia\" > g', 'cat g')[-1] == 'halo   dunia'"
+      },
+      {
+        "name": "Pipe cat, grep, wc menghitung baris yang cocok",
+        "check": "seq('echo apel > b', 'echo jeruk >> b', 'echo apel pie >> b', 'cat b | grep apel | wc -l')[-1] == '2'"
+      },
+      {
+        "name": "cd ke folder yang tidak ada menghasilkan galat",
+        "check": "seq('cd tidak-ada')[0] == 'cd: tidak-ada: No such file or directory'"
+      },
+      {
+        "name": "Path relatif dan .. dihitung dari folder kerja",
+        "check": "(lambda r: r[2] == '/home/user/a/b' and r[4] == '/home/user')(seq('mkdir -p a/b', 'cd a/b', 'pwd', 'cd ../..', 'pwd'))"
+      },
+      {
+        "name": "rm menghapus berkas dan melaporkan berkas yang tidak ada",
+        "check": "seq('touch x', 'rm x', 'ls', 'rm x')[2:] == ['', \"rm: cannot remove 'x': No such file or directory\"]"
+      },
+      {
+        "name": "mkdir tanpa -p gagal bila induk tidak ada, dan cd tanpa argumen pulang",
+        "check": "seq('mkdir x/y')[0] == \"mkdir: cannot create directory 'x/y': No such file or directory\" and seq('cd /', 'cd', 'pwd')[-1] == '/home/user'"
+      },
+      {
+        "name": "Perintah tak dikenal",
+        "check": "seq('foo bar')[0] == 'bash: foo: command not found'"
+      }
+    ]
+  }
+}
