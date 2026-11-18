@@ -3,9 +3,9 @@
 import type { NodeState, PlacedNode, RoadmapEdge } from "@/lib/roadmap";
 import StateIcon from "./StateIcon";
 
-const W = 132;
+const W = 124;
 const H = 48;
-const GAP_X = 28; // five columns fit beside the 20rem list at 1280px
+const GAP_X = 20; // six columns fit beside the 20rem list at 1280px
 const GAP_Y = 20;
 
 const x = (n: PlacedNode) => n.column * (W + GAP_X);
