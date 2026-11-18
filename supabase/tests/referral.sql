@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(16);
 
 -- ana mengajak budi. cici's account is old. admin reads the relations.
 insert into auth.users (id, email, created_at, email_confirmed_at) values
@@ -8,7 +8,9 @@ insert into auth.users (id, email, created_at, email_confirmed_at) values
   ('00000000-0000-0000-0000-0000000000a3', 'cici@contoh.id', now() - interval '2 days', now() - interval '2 days'),
   ('00000000-0000-0000-0000-0000000000a4', 'dedi@contoh.id', now(), now()),
   ('00000000-0000-0000-0000-0000000000a5', 'admin-ref@contoh.id', now(), now()),
-  ('00000000-0000-0000-0000-0000000000a6', 'eko@contoh.id', now(), null);
+  ('00000000-0000-0000-0000-0000000000a6', 'eko@contoh.id', now(), null),
+  ('00000000-0000-0000-0000-0000000000a7', 'fani@contoh.id', now() - interval '3 days', now());
+update public.profiles set display_name = '' where user_id = '00000000-0000-0000-0000-0000000000a2';
 update public.profiles set role = 'admin' where user_id = '00000000-0000-0000-0000-0000000000a5';
 
 select matches((select referral_code from public.profiles where user_id = '00000000-0000-0000-0000-0000000000a1'),
@@ -52,10 +54,17 @@ select is(public.claim_referral((select code from codes where user_id = '0000000
   'an unconfirmed account cannot claim');
 reset role;
 
+-- fani signed up 3 days ago but confirmed just now: still a new learner
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a7", "role": "authenticated"}';
+select is(public.claim_referral((select code from codes where user_id = '00000000-0000-0000-0000-0000000000a1')), true,
+  'the one day window starts at confirmation');
+reset role;
+
 -- ana sees one joined friend
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a1", "role": "authenticated"}';
-select is((select joined from public.my_referral()), 1, 'the inviter sees one friend joined');
+select is((select joined from public.my_referral()), 2, 'the inviter sees both friends joined');
 select is((select count(*)::int from public.admin_user_referrals('00000000-0000-0000-0000-0000000000a2')), 0,
   'a learner gets no rows from admin_user_referrals');
 reset role;
@@ -65,7 +74,9 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-0000000000a5", "role": "authenticated"}';
 select is((select relation from public.admin_user_referrals('00000000-0000-0000-0000-0000000000a2') limit 1), 'invited_by',
   'admin sees who invited budi');
-select is((select count(*)::int from public.admin_users() where referral_count = 1 and referred_by_name is null), 1,
+select is((select name from public.admin_user_referrals('00000000-0000-0000-0000-0000000000a1') where user_id = '00000000-0000-0000-0000-0000000000a2'), 'budi',
+  'an empty display name falls back to the email name');
+select is((select count(*)::int from public.admin_users() where referral_count = 2 and referred_by_name is null), 1,
   'admin_users carries the invited count');
 reset role;
 

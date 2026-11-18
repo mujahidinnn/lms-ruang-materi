@@ -32,7 +32,7 @@ Gagal kalau: murid bisa menambah jumlah ajakan dengan akun palsu atau akun sendi
 ## Desain
 
 - `profiles.referral_code` (teks unik, 7 karakter huruf besar dan angka tanpa karakter mirip seperti 0/O, dibuat saat profil dibuat; profil lama diisi lewat migration) dan `profiles.referred_by` (uuid, boleh kosong).
-- `/daftar?ref=KODE`: server menyimpan KODE di cookie `rm-ref` (httpOnly, 30 hari) bila formatnya valid. Kode tidak dicek ke database di sini.
+- `/daftar?ref=KODE`: server menyimpan KODE di cookie `rm-ref` (httpOnly, 7 hari) bila formatnya valid. Kode tidak dicek ke database di sini.
 - Daftar tanpa link yang sama di perangkat lain: kode juga disimpan di metadata sign-up (`ref`), dipakai bila cookie tidak ada. Daftar tanpa konfirmasi email (sesi langsung) mengklaim di `daftar()`.
 - Callback masuk (`src/pages/masuk/callback.ts`): setelah sesi terbentuk, bila ada `rm-ref`, panggil RPC `claim_referral(code)`, lalu hapus cookie apa pun hasilnya.
 - `claim_referral` (security definer, hanya `authenticated`): menolak bila email belum terkonfirmasi, `referred_by` sudah terisi, kode tidak ditemukan, kode milik sendiri, atau akun dibuat lebih dari 1 hari lalu. Karena berjalan setelah callback, email sudah terkonfirmasi.
