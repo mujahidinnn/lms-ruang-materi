@@ -76,14 +76,22 @@ const ogImage = new URL("/opengraph-image.png", SITE_URL).href;
       import { encodeArgs } from "@/lib/rpc-wire";
       installConfirmForms();
       // "Last seen" for the admin Pengguna list: cached pages never reach the
-      // server, so a signed-in browser pings at most every 5 minutes.
-      try {
+      // server, and a learner can stay on one lesson page for an hour, so a
+      // signed-in browser pings on load and then while the tab is visible,
+      // at most every 4 minutes (inside the 6 minute "Online" window).
+      if ("auth" in document.documentElement.dataset) {
         const k = "ruang-materi:ping";
-        if ("auth" in document.documentElement.dataset && Date.now() - Number(localStorage.getItem(k) ?? 0) > 3e5) {
-          localStorage.setItem(k, String(Date.now()));
-          fetch("/rpc/ping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(encodeArgs([])) });
-        }
-      } catch {}
+        const ping = () => {
+          try {
+            if (document.hidden || Date.now() - Number(localStorage.getItem(k) ?? 0) < 24e4) return;
+            localStorage.setItem(k, String(Date.now()));
+            fetch("/rpc/ping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(encodeArgs([])) });
+          } catch {}
+        };
+        ping();
+        setInterval(ping, 6e4);
+        document.addEventListener("visibilitychange", ping);
+      }
       // Work done before signing in (lib/pending.ts) is sent once there is a
       // session; loaded only when something is waiting.
       try {
