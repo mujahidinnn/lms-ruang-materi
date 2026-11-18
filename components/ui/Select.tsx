@@ -29,7 +29,8 @@ export default function Select({
   const [current, setCurrent] = useState(value);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  useEffect(() => setCurrent(value), [value]);
+  const [seen, setSeen] = useState(value);
+  if (seen !== value) { setSeen(value); setCurrent(value); }
 
   useEffect(() => {
     if (!open) return;

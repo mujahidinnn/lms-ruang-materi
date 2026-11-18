@@ -37,6 +37,7 @@ const LOAD_WORKER = `(src) => {
 // ponytail: Pyodide loads afresh on every run (HTTP-cached); keep one iframe alive if runs feel slow.
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/";
 const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, base: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const g = globalThis as unknown as { importScripts(u: string): void; loadPyodide(o: object): Promise<any>; postMessage(m: unknown): void };
   g.importScripts(base + "pyodide.js");
   const py = await g.loadPyodide({ indexURL: base });

@@ -35,7 +35,7 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
     setBusy(false);
   }
   const reload = useRef(refresh);
-  reload.current = refresh;
+  useEffect(() => { reload.current = refresh; });
   useEffect(() => {
     const t = setInterval(() => { if (!document.hidden) reload.current(); }, 24e4);
     return () => clearInterval(t);

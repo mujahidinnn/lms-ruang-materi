@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useRef, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import type { MasukState } from "@/lib/actions/masuk";
 import { primaryButton } from "@/components/ui/styles";
 import { rpc } from "@/lib/rpc";
@@ -23,10 +23,10 @@ const hint = "text-xs font-normal text-zinc-500";
 export default function DaftarForm({ next }: { next: string }) {
   const [tanpaPassword, setTanpaPassword] = useState(false);
   const [usia, setUsia] = useState("");
-  const last = useRef<FormData | null>(null);
+  const [last, setLast] = useState<FormData | null>(null);
   const [state, action, pending] = useActionState<MasukState, FormData>((s, form) => {
     if (form.get("reset")) return Promise.resolve<MasukState>({ status: "idle" });
-    last.current = form;
+    setLast(form);
     return daftar(s, form) as Promise<MasukState>;
   }, { status: "idle" });
 
@@ -35,7 +35,7 @@ export default function DaftarForm({ next }: { next: string }) {
       <Terkirim
         state={state}
         busy={pending}
-        onResend={() => last.current && startTransition(() => action(last.current!))}
+        onResend={() => last && startTransition(() => action(last))}
         onBack={() => startTransition(() => { const f = new FormData(); f.set("reset", "1"); action(f); })}
       />
     );
@@ -48,12 +48,12 @@ export default function DaftarForm({ next }: { next: string }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={label}>
           Nama tampilan
-          <input name="nama" required maxLength={80} autoComplete="name" placeholder="Nama panggilan juga boleh" defaultValue={last.current?.get("nama")?.toString()} className={field} />
+          <input name="nama" required maxLength={80} autoComplete="name" placeholder="Nama panggilan juga boleh" defaultValue={last?.get("nama")?.toString()} className={field} />
           <span className={hint}>Muncul di sertifikatmu.</span>
         </label>
         <label className={label}>
           Email
-          <input name="email" type="email" required autoComplete="email" placeholder="kamu@email.com" defaultValue={last.current?.get("email")?.toString()} className={field} />
+          <input name="email" type="email" required autoComplete="email" placeholder="kamu@email.com" defaultValue={last?.get("email")?.toString()} className={field} />
         </label>
       </div>
       {!tanpaPassword && (
@@ -67,7 +67,7 @@ export default function DaftarForm({ next }: { next: string }) {
         <div className="grid grid-cols-2 gap-2">
           {USIA.map((u) => (
             <label key={u.value} className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-2xl border-2 border-transparent bg-zinc-800/60 px-3.5 text-sm font-semibold text-zinc-300 has-checked:border-noir has-checked:bg-matcha-100 has-checked:text-noir">
-              <input type="radio" name="usia" value={u.value} required defaultChecked={last.current?.get("usia") === u.value} onChange={() => setUsia(u.value)} className="size-4 shrink-0 accent-(--accent)" />
+              <input type="radio" name="usia" value={u.value} required defaultChecked={last?.get("usia") === u.value} onChange={() => setUsia(u.value)} className="size-4 shrink-0 accent-(--accent)" />
               {u.title}
             </label>
           ))}

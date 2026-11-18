@@ -190,3 +190,8 @@ const TRACK_ICONS = [
   [/elektronika|iot|robot/, Robot],
 ] as const;
 export const trackIcon = (slug: string) => TRACK_ICONS.find(([re]) => re.test(slug))?.[1] ?? Jalur;
+export function TrackIcon({ slug, className }: { slug: string; className?: string }) {
+  const Icon = trackIcon(slug); // picked from a fixed module-level list, not created here
+  // eslint-disable-next-line react-hooks/static-components
+  return <Icon className={className} />;
+}

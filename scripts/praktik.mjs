@@ -292,7 +292,6 @@ function gambarRouter() {
   b += box(930, 280, 90, 50, { r: 6, sw: 4 }) + text(975, 360, "USB", { size: 22, anchor: "middle", weight: 500 });
   b += circle(1085, 300, 14, { fill: INK }) + text(1085, 345, "reset", { size: 20, anchor: "middle", weight: 500 });
   // callouts above
-  const call = (x1, x2, y, label) => line(x1, 232, x1, y, { sw: 3 }) + line(x1, y, x2, y, { sw: 3 }) + text((x1 + x2) / 2, y - 14, label, { size: 24, anchor: "middle", weight: 800 });
   b += line(130, 232, 130, 150, { sw: 3 }) + text(130, 132, "Daya", { size: 24, anchor: "middle", weight: 800 });
   b += line(285, 232, 285, 200, { sw: 3 }) + text(285, 150, "WAN", { size: 24, anchor: "middle", weight: 800 }) + text(285, 182, "ke ISP / modem", { size: 21, anchor: "middle", weight: 500 });
   b += line(420, 232, 420, 175, { sw: 3 }) + line(420, 175, 825, 175, { sw: 3 }) + line(825, 175, 825, 232, { sw: 3 });
@@ -429,7 +428,6 @@ function gambarPpp() {
 }
 
 // ---- Elektronika, mikrokontroler, robotika, IoT ----
-const mid = { anchor: "middle" };
 const note = (y, s, w = 500) => text(600, y, s, { size: 24, anchor: "middle", weight: w });
 const res = (x, y, w, h, a, b) => box(x, y, w, h, { fill: M1, r: 10 }) + text(x + w / 2, y + h / 2 - 4, a, { size: 26, weight: 800, anchor: "middle" }) + text(x + w / 2, y + h / 2 + 26, b, S({ anchor: "middle" }));
 
@@ -501,7 +499,6 @@ function gambarHBridge() {
   let b = text(600, 62, "H-bridge: membalik arah putaran motor", { size: 42, weight: 800, anchor: "middle" });
   const hb = (x0, title, on) => {
     const L = x0 + 150, R = x0 + 410, top = 190, bot = 520, cy = 355;
-    const hot = (a, c) => (on.includes(a) && on.includes(c) ? M3 : INK);
     let s = text(x0 + 280, 140, title, { size: 28, weight: 800, anchor: "middle" });
     s += text(x0 + 280, 178, "+V", { size: 24, weight: 800, anchor: "middle" }) + line(L, top, R, top) + line(L, bot, R, bot) + text(x0 + 280, 556, "GND", { size: 24, weight: 800, anchor: "middle" });
     const sw = (x, y, n) => box(x - 35, y, 70, 60, { fill: on.includes(n) ? M3 : "#ffffff", r: 10 }) + text(x, y + 38, "S" + n, { size: 24, weight: 800, anchor: "middle" });
