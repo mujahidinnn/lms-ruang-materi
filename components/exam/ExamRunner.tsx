@@ -148,12 +148,12 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
         </p>
       )}
 
-      <h2 className="mt-8 text-2xl leading-snug font-bold tracking-tight text-balance">{q.prompt}</h2>
+      <h2 className="mt-5 text-xl leading-snug font-bold tracking-tight text-balance sm:mt-8 sm:text-2xl">{q.prompt}</h2>
       {q.code && (
         <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
 
-      <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
+      <div role="group" aria-label="Pilihan jawaban" className="mt-4 grid gap-2 sm:mt-6">
         {q.options.map((opt, n) => (
           <button
             key={n}
@@ -179,7 +179,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
         Ragu-ragu
       </label>
 
-      <div className="mt-6 flex items-center justify-between gap-3">
+      <div className="mt-4 flex items-center justify-between gap-3 sm:mt-6">
         <button
           onClick={() => setI(i - 1)}
           disabled={i === 0}
@@ -199,7 +199,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
       </div>
       <p aria-live="polite" className="mt-3 text-right text-sm text-red-500 empty:hidden">{error}</p>
 
-      <nav aria-label="Daftar soal" className="mt-10 rounded-[28px] bg-zinc-800/50 p-5">
+      <nav aria-label="Daftar soal" className="mt-6 rounded-3xl bg-zinc-800/50 p-4 sm:mt-10 sm:rounded-[28px] sm:p-5">
         <ol className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-2">
           {questions.map((qq, n) => {
             const isDoubt = doubts.includes(qq.id);

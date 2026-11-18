@@ -30,9 +30,9 @@ export default function ExamReview({ review, slug, children }: { review: Review;
       )}
       {children}
 
-      <ol className="mt-10 space-y-3">
+      <ol className="mt-6 space-y-3 sm:mt-10">
         {review.questions.map((q, n) => (
-          <li key={n} className="rounded-[28px] bg-zinc-900 p-6 shadow-soft">
+          <li key={n} className="rounded-3xl bg-zinc-900 p-5 shadow-soft sm:rounded-[28px] sm:p-6">
             <p className="text-xs text-zinc-500">Soal {n + 1}</p>
             <p className="mt-1 text-lg font-semibold">{q.prompt}</p>
             {q.code && (
