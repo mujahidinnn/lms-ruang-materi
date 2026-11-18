@@ -1,7 +1,8 @@
 "use client";
 
-import { ClipboardList, Clock, MoreHorizontal, RefreshCw, Search, ShieldMinus, ShieldPlus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ClipboardList, Clock, Loader2, MoreHorizontal, RefreshCw, Search, ShieldMinus, ShieldPlus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
 import { chip } from "@/components/ui/styles";
 import type { Person } from "@/lib/pengguna";
 import { rpc } from "@/lib/rpc";
@@ -24,6 +25,18 @@ const ITEM = "flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-x
 
 const info = (p: Person) =>
   [`Email: ${p.email}`, `Role: ${p.admin ? "Admin" : "Siswa"}`, `Daftar: ${p.joined}`, `Akses terakhir: ${p.pending ? "belum pernah" : p.seenFull || p.seen}`, `Mengajak: ${p.invited} orang`].join("\n");
+
+// Menu item that shows progress while its form runs (the confirm dialog is
+// already closed by then), and stays disabled until the page reloads.
+function Item({ icon, label, busyLabel, className = "" }: { icon: ReactNode; label: string; busyLabel: string; className?: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button role="menuitem" disabled={pending} className={`${ITEM} disabled:cursor-wait disabled:opacity-70 ${className}`}>
+      {pending ? <Loader2 aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : icon}
+      {pending ? busyLabel : label}
+    </button>
+  );
+}
 
 // "Aksi" dropdown: change role, delete. Forms stay mounted while it is open,
 // so the confirm dialog (lib/confirm.ts) can submit them.
@@ -56,7 +69,7 @@ function RowMenu({ p }: { p: Person }) {
           >
             <input type="hidden" name="user_id" value={p.id} />
             <input type="hidden" name="role" value={p.admin ? "student" : "admin"} />
-            <button role="menuitem" className={ITEM}>{p.admin ? <ShieldMinus aria-hidden className="size-4" /> : <ShieldPlus aria-hidden className="size-4" />}{p.admin ? "Jadikan siswa" : "Jadikan admin"}</button>
+            <Item icon={p.admin ? <ShieldMinus aria-hidden className="size-4" /> : <ShieldPlus aria-hidden className="size-4" />} label={p.admin ? "Jadikan siswa" : "Jadikan admin"} busyLabel="Menyimpan…" />
           </ActionForm>
           <ActionForm
             action="hapusPengguna"
@@ -68,7 +81,7 @@ function RowMenu({ p }: { p: Person }) {
             data-confirm-twice="Data tidak bisa dikembalikan. Untuk punya akun lagi, orang ini harus daftar atau diundang ulang."
           >
             <input type="hidden" name="user_id" value={p.id} />
-            <button role="menuitem" className={`${ITEM} text-red-500`}><Trash2 aria-hidden className="size-4" />Hapus pengguna</button>
+            <Item icon={<Trash2 aria-hidden className="size-4" />} label="Hapus pengguna" busyLabel="Menghapus…" className="text-red-500" />
           </ActionForm>
         </div>
       )}
