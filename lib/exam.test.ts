@@ -21,10 +21,10 @@ describe("standing", () => {
     expect([s.left, s.best, s.nextSetAt]).toEqual([1, 60, null]);
   });
 
-  it("closes a used-up set for 24 hours after the last attempt, then opens a new one", () => {
-    const full = [done(10, 40), done(5, 50), done(2, 60)];
-    expect(standing(full, 3, now)).toMatchObject({ left: 0, nextSetAt: new Date(new Date(ago(2)).getTime() + 86_400_000) });
-    const later = [done(30, 40), done(28, 50), done(25, 60)];
+  it("closes a used-up set for 15 minutes after the last attempt, then opens a new one", () => {
+    const full = [done(10, 40), done(5, 50), done(0.1, 60)];
+    expect(standing(full, 3, now)).toMatchObject({ left: 0, nextSetAt: new Date(new Date(ago(0.1)).getTime() + 900_000) });
+    const later = [done(30, 40), done(28, 50), done(0.5, 60)];
     expect(standing(later, 3, now)).toMatchObject({ left: 3, nextSetAt: null });
   });
 

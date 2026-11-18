@@ -388,8 +388,8 @@ select is(
 select throws_ok(
   $$ select public.start_exam_attempt('20000000-0000-0000-0000-000000000001') $$,
   'P0001',
-  'Percobaan habis, set baru dibuka 24 jam setelah percobaan terakhir',
-  'no fourth attempt within 24 hours'
+  'Percobaan habis, set baru dibuka 15 menit setelah percobaan terakhir',
+  'no fourth attempt within 15 minutes'
 );
 
 reset role;

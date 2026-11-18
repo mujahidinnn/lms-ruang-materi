@@ -72,7 +72,7 @@ Roadmap -> Topik -> Belajar -> Latihan -> Ujian -> Nilai
     least twice that size.
   - The review shows the score and the explanation per question. Correct
     options are shown only after a pass or after the last attempt.
-  - After the last attempt fails, a new set of `max_attempts` opens 24 hours
+  - After the last attempt fails, a new set of `max_attempts` opens 15 minutes
     later.
   - A failed result says "Belum lulus" and links to the topics to review,
     never "Gagal".
@@ -950,7 +950,7 @@ UI. The UI only hides actions the database would refuse.
   - `attempt.user_id = auth.uid()` and `submitted_at is null` on submit
   - attempts are counted under `for update` on the learner's exam row, and
     unsubmitted attempts count toward `max_attempts`
-  - after `max_attempts` failures, a new start is refused until 24 hours
+  - after `max_attempts` failures, a new start is refused until 15 minutes
     after the last submit
   - submitted answers only reference the attempt's `question_ids`
 

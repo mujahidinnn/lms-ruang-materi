@@ -18,7 +18,7 @@ export type ExamStanding = {
 };
 
 const GRACE_MS = 30_000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const COOLDOWN_MS = 15 * 60 * 1000; // keep in step with start_exam_attempt
 
 // Past the deadline and its grace, so a submit would be refused.
 export function timedOut(deadline: string, now = Date.now()): boolean {
@@ -37,7 +37,7 @@ export function standing(attempts: AttemptRow[], maxAttempts: number, now: Date)
   const n = attempts.length;
   const used = n % maxAttempts === 0 && n > 0 ? maxAttempts : n % maxAttempts;
   const lastEnd = Math.max(0, ...attempts.map((a) => new Date(a.submitted_at ?? a.deadline).getTime()));
-  const reopen = used === maxAttempts && lastEnd + DAY_MS > now.getTime() ? new Date(lastEnd + DAY_MS) : null;
+  const reopen = used === maxAttempts && lastEnd + COOLDOWN_MS > now.getTime() ? new Date(lastEnd + COOLDOWN_MS) : null;
 
   return {
     passed: attempts.some((a) => a.passed),
