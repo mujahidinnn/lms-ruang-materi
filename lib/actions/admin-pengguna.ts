@@ -1,6 +1,7 @@
 import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/dal";
+import { loadPeople } from "@/lib/pengguna";
 import { createClient } from "@/lib/supabase/server";
 
 const input = z.object({ user_id: z.uuid(), role: z.enum(["student", "admin"]) });
@@ -15,4 +16,10 @@ export async function gantiRole(_: { error?: string; ok?: string }, form: FormDa
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal mengubah role." };
   refresh();
   return { ok: "Role diubah." };
+}
+
+// The Pengguna list reloads itself through this, so Online stays current.
+export async function daftarPengguna() {
+  const admin = await requireAdmin();
+  return loadPeople(admin.id);
 }

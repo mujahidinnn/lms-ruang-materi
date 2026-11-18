@@ -3,27 +3,14 @@
 import { ClipboardList, Clock, RefreshCw, Search, ShieldMinus, ShieldPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { chip } from "@/components/ui/styles";
+import type { Person } from "@/lib/pengguna";
+import { rpc } from "@/lib/rpc";
 import ActionForm from "./ActionForm";
 import Avatar from "./Avatar";
 import Select from "@/components/ui/Select";
 import { field, smallButton } from "./editor";
 
-export type Person = {
-  id: string;
-  name: string;
-  email: string;
-  admin: boolean;
-  me: boolean;
-  pending: boolean; // invited, not accepted yet
-  provider: string;
-  avatar: string | null;
-  joined: string;
-  joinedAt: number;
-  seen: string;
-  seenFull: string;
-  online: boolean;
-  seenAt: number;
-};
+export type { Person };
 
 const FILTERS = [
   ["semua", "Semua", () => true],
@@ -33,28 +20,26 @@ const FILTERS = [
 ] as const;
 const SORTS = [["baru", "Terbaru daftar"], ["masuk", "Terakhir akses"], ["nama", "Nama A-Z"]] as const;
 
-export default function PenggunaList({ people }: { people: Person[] }) {
+export default function PenggunaList({ people: first }: { people: Person[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("semua");
   const [sort, setSort] = useState<(typeof SORTS)[number][0]>("baru");
 
-  // The list is rendered by the server, so refreshing reloads the page;
-  // search, filter and sort are kept in sessionStorage across that reload.
-  // Every 4 minutes while the tab is visible, so Online stays current.
+  // Reloads the list through an action, so search and filter stay as they
+  // are. Every 4 minutes while the tab is visible, so Online stays current.
+  const [people, setPeople] = useState(first);
+  const [busy, setBusy] = useState(false);
+  async function refresh() {
+    setBusy(true);
+    try { setPeople(await rpc("daftarPengguna")()); } catch {}
+    setBusy(false);
+  }
+  const reload = useRef(refresh);
+  reload.current = refresh;
   useEffect(() => {
-    try {
-      const v = JSON.parse(sessionStorage.getItem("pengguna-view") ?? "null");
-      if (v) { setQ(v.q); setFilter(v.filter); setSort(v.sort); }
-    } catch {}
-    const t = setInterval(() => { if (!document.hidden) refresh(); }, 24e4);
+    const t = setInterval(() => { if (!document.hidden) reload.current(); }, 24e4);
     return () => clearInterval(t);
   }, []);
-  const view = useRef({ q, filter, sort });
-  view.current = { q, filter, sort };
-  function refresh() {
-    try { sessionStorage.setItem("pengguna-view", JSON.stringify(view.current)); } catch {}
-    location.reload();
-  }
 
   const shown = useMemo(() => {
     const test = FILTERS.find((f) => f[0] === filter)![2];
@@ -73,8 +58,8 @@ export default function PenggunaList({ people }: { people: Person[] }) {
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama atau email" className={`${field} pl-11`} />
         </label>
         <div className="w-full sm:w-64"><Select prefix label="Urutkan" value={sort} options={SORTS} onChange={(v) => setSort(v as typeof sort)} /></div>
-        <button type="button" onClick={refresh} className={`${chip} min-h-12 cursor-pointer gap-2 bg-zinc-800 hover:bg-zinc-700`}>
-          <RefreshCw aria-hidden className="size-4" />
+        <button type="button" onClick={refresh} disabled={busy} className={`${chip} min-h-12 cursor-pointer gap-2 bg-zinc-800 hover:bg-zinc-700`}>
+          <RefreshCw aria-hidden className={`size-4 ${busy ? "animate-spin" : ""}`} />
           Segarkan
         </button>
       </div>
