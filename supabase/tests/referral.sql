@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 
 -- ana mengajak budi. cici's account is old. admin reads the relations.
 insert into auth.users (id, email, created_at, email_confirmed_at) values
@@ -78,6 +78,9 @@ select is((select name from public.admin_user_referrals('00000000-0000-0000-0000
   'an empty display name falls back to the email name');
 select is((select count(*)::int from public.admin_users() where referral_count = 2 and referred_by_name is null), 1,
   'admin_users carries the invited count');
+select cmp_ok((public.admin_referral_summary() ->> 'total')::int, '>=', 2, 'the dashboard counts invited learners');
+select cmp_ok((public.admin_referral_summary() -> 'top' -> 0 ->> 'n')::int, '>=', 2, 'the top inviter has at least our two friends');
+select cmp_ok(jsonb_array_length(public.admin_referral_summary() -> 'recent'), '>=', 1, 'the dashboard lists the latest invites');
 reset role;
 
 -- the inviter leaves: budi stays, the link is cleared

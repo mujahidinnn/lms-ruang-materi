@@ -1,5 +1,5 @@
 ---
-import { Award, BookOpen, ClipboardCheck, FileSearch, FileUp, Megaphone, TriangleAlert, Users } from "lucide-react";
+import { Award, BookOpen, ClipboardCheck, FileSearch, FileUp, Megaphone, TriangleAlert, UserPlus, Users } from "lucide-react";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
@@ -22,12 +22,20 @@ type Overview = {
   activity: { day: string; n: number }[];
 };
 
+type Referrals = {
+  total: number;
+  top: { id: string; name: string; n: number }[];
+  recent: { id: string; name: string; by_id: string; by: string; at: string }[];
+};
+
 const db = await createClient();
-const [{ data }, { data: waiting }] = await Promise.all([
+const [{ data }, { data: refData }, { data: waiting }] = await Promise.all([
   db.rpc("admin_overview"),
+  db.rpc("admin_referral_summary"),
   db.from("topics").select("slug, title").not("draft_summary", "is", null).order("title"),
 ]);
 const o = (data ?? null) as Overview | null;
+const ref = (refData ?? { total: 0, top: [], recent: [] }) as Referrals;
 if (!o) return Astro.rewrite("/404");
 
 const drafts = waiting ?? [];
@@ -130,6 +138,43 @@ const card = "rounded-[28px] bg-zinc-900 shadow-soft";
           )}
         </section>
       </div>
+
+      <section aria-labelledby="ajakan" class={`${card} p-5 sm:p-6`}>
+        <div class="flex items-baseline justify-between gap-3">
+          <h2 id="ajakan" class="inline-flex items-center gap-2 text-lg font-bold tracking-tight"><UserPlus aria-hidden className="size-5" />Ajakan teman</h2>
+          <p class="text-sm text-zinc-400"><span class="text-xl font-bold tabular-nums text-zinc-50">{ref.total}</span> akun daftar lewat ajakan</p>
+        </div>
+        {ref.total === 0 ? (
+          <p class="mt-3 text-sm text-zinc-400">Belum ada yang mendaftar lewat link ajakan. Murid membagikan linknya dari halaman Profil.</p>
+        ) : (
+          <div class="mt-4 grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 class="text-sm font-semibold text-zinc-300">Paling banyak mengajak</h3>
+              <ol class="mt-2 divide-y divide-zinc-800">
+                {ref.top.map((t) => (
+                  <li>
+                    <a href={`/admin/pengguna/${t.id}`} class="flex min-h-11 items-center justify-between gap-3 text-sm hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+                      <span class="truncate">{t.name}</span>
+                      <span class="shrink-0 tabular-nums text-zinc-400">{t.n} orang</span>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-zinc-300">Ajakan terbaru</h3>
+              <ul class="mt-2 divide-y divide-zinc-800">
+                {ref.recent.map((r) => (
+                  <li class="flex min-h-11 items-center justify-between gap-3 text-sm">
+                    <span class="min-w-0 truncate"><a href={`/admin/pengguna/${r.id}`} class="font-medium hover:text-accent">{r.name}</a> <span class="text-zinc-500">diajak</span> <a href={`/admin/pengguna/${r.by_id}`} class="hover:text-accent">{r.by}</a></span>
+                    <time datetime={r.at} class="shrink-0 text-xs text-zinc-500">{joined.format(new Date(r.at))}</time>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div class="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="daftar" class={`${card} p-5 sm:p-6`}>
