@@ -19,7 +19,7 @@ export function announcementHtml({ title, body, link }: { title: string; body: s
     intro,
     chip: "Pengumuman",
     button: url ? { label: "Buka di Ruang Materi", url: esc(url) } : undefined,
-    footnote: `Kamu menerima email ini karena punya akun Ruang Materi. <a href="${SITE_URL}/profil" style="color:#46681c;">Matikan pengumuman</a> kapan saja di profilmu.`,
+    footnote: `Kamu menerima email ini karena punya akun Ruang Materi. Matikan email pengumuman kapan saja di <a href="${SITE_URL}/profil" style="color:#46681c;">pengaturan profil</a>.`,
   });
 }
 
