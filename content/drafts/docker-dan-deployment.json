@@ -1,0 +1,1879 @@
+{
+  "title": "Docker dan Deployment",
+  "description": "Kemas aplikasi Node dengan Docker, jalankan bersama database lewat Compose, lalu deploy ke VPS dengan HTTPS dan pipeline GitHub Actions.",
+  "summary": "Aplikasi yang jalan di laptop belum tentu jalan di server. Di kelas ini kamu belajar kenapa container ada, bagaimana image dan container bekerja, lalu menulis Dockerfile untuk aplikasi Express: urutan layer yang ramah cache, multi-stage build, pengguna non-root, dan HEALTHCHECK.\n\nSetelah itu kamu menyimpan data dengan volume, menghubungkan container lewat network, menjalankan aplikasi beserta PostgreSQL dengan Docker Compose, dan mengelola konfigurasi serta rahasia dengan benar lewat variabel lingkungan, berkas .env, dan Compose secrets.\n\nBagian akhir membawamu ke produksi: menyiapkan VPS yang aman, memahami jebakan port Docker yang melewati firewall, memasang reverse proxy dengan HTTPS otomatis lewat Caddy atau Nginx, dan mengotomatiskan test, build, push image ke GHCR, serta deploy dengan GitHub Actions. Kamu berlatih logika konfigurasi lewat latihan JavaScript dan menutup kelas dengan proyek Pemeriksa Berkas Deploy.",
+  "tips": [
+    "Ketik ulang setiap contoh perintah di terminal sendiri dan ubah satu nilai (port, tag, nama) untuk melihat apa yang berubah, daripada hanya membaca.",
+    "Mulai dari Dockerfile paling sederhana yang jalan, lalu perbaiki satu hal sekali waktu: urutan cache, .dockerignore, USER node, baru multi-stage dan HEALTHCHECK.",
+    "Biasakan tiga pemeriksaan sebelum menyalahkan Docker: docker logs untuk melihat galat, docker compose config untuk melihat konfigurasi akhir, dan docker exec untuk melihat isi container.",
+    "Jangan pernah meng-commit .env atau menaruh rahasia di Dockerfile; sediakan .env.example dan putar kunci yang pernah bocor.",
+    "Simpan perintah deploy di compose.yaml dan workflow, bukan di ingatan atau catatan pribadi, supaya rilis bisa diulang oleh siapa pun dan di jam berapa pun."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu image Docker?",
+      "back": "Paket hanya baca berisi sistem berkas, runtime, library, dan kode yang menjadi cetakan container."
+    },
+    {
+      "front": "Apa itu container?",
+      "back": "Image yang sedang dijalankan: sebuah proses terisolasi dengan lapisan tulis sendiri di atas layer image."
+    },
+    {
+      "front": "Apa beda container dan mesin virtual?",
+      "back": "Container berbagi kernel host dan sangat ringan; mesin virtual membawa sistem operasi tamu lengkap lewat hypervisor."
+    },
+    {
+      "front": "Dua fitur kernel di balik container?",
+      "back": "Namespace (membatasi yang terlihat) dan cgroup (membatasi CPU, memori, dan sumber daya lain)."
+    },
+    {
+      "front": "Apa itu registry?",
+      "back": "Tempat menyimpan dan mengunduh image, seperti Docker Hub dan GitHub Container Registry (ghcr.io)."
+    },
+    {
+      "front": "Bagaimana membaca nama image lengkap?",
+      "back": "registry/pemilik/repositori:tag. Tanpa registry berarti Docker Hub, tanpa tag berarti latest."
+    },
+    {
+      "front": "Kenapa jangan memakai tag latest di produksi?",
+      "back": "Latest hanya nama tag yang bisa dipindah, jadi build dan rollback tidak bisa diulang dengan pasti."
+    },
+    {
+      "front": "Apa itu layer image?",
+      "back": "Lapisan hanya baca hasil satu instruksi Dockerfile; layer dipakai bersama dan di-cache saat build."
+    },
+    {
+      "front": "Perbedaan docker run dan docker start?",
+      "back": "run membuat container baru dari image lalu menjalankannya; start menghidupkan lagi container yang sudah ada."
+    },
+    {
+      "front": "Instruksi RUN dibanding CMD?",
+      "back": "RUN berjalan saat image dibangun dan hasilnya jadi layer; CMD adalah perintah yang berjalan saat container menyala."
+    },
+    {
+      "front": "Apa fungsi EXPOSE?",
+      "back": "Hanya dokumentasi port aplikasi; port dibuka ke host dengan -p atau ports: di Compose."
+    },
+    {
+      "front": "Aturan emas urutan Dockerfile?",
+      "back": "Taruh yang jarang berubah di atas (FROM, dependency) dan yang sering berubah di bawah (kode) agar cache bertahan."
+    },
+    {
+      "front": "Fungsi .dockerignore?",
+      "back": "Mengeluarkan berkas seperti node_modules, .git, dan .env dari konteks build agar image kecil dan tidak membawa rahasia."
+    },
+    {
+      "front": "Apa itu multi-stage build?",
+      "back": "Beberapa FROM dalam satu Dockerfile: stage build memakai alat berat, stage final hanya menyalin hasilnya dengan COPY --from."
+    },
+    {
+      "front": "Kenapa USER node?",
+      "back": "Menjalankan aplikasi tanpa hak root sehingga dampak celah keamanan lebih kecil."
+    },
+    {
+      "front": "Apa itu HEALTHCHECK?",
+      "back": "Perintah berkala yang memeriksa kesehatan aplikasi; gagal berulang membuat container berstatus unhealthy."
+    },
+    {
+      "front": "Named volume, bind mount, tmpfs?",
+      "back": "Named volume dikelola Docker untuk data awet; bind mount memetakan folder host; tmpfs menyimpan di memori."
+    },
+    {
+      "front": "Kenapa buat network sendiri?",
+      "back": "Network buatan menyediakan DNS sehingga container saling memanggil lewat nama dan terisolasi dari network lain."
+    },
+    {
+      "front": "Apa itu Docker Compose?",
+      "back": "Alat yang mendefinisikan banyak service, volume, dan network dalam compose.yaml lalu menjalankannya dengan docker compose up -d."
+    },
+    {
+      "front": "Beda docker compose down dan down -v?",
+      "back": "down menghapus container dan network tetapi mempertahankan volume; -v ikut menghapus volume sehingga data hilang."
+    },
+    {
+      "front": "Kenapa ARG dan ENV tidak aman untuk rahasia?",
+      "back": "Nilainya tersimpan di metadata image dan riwayat build sehingga bisa dibaca siapa pun yang punya image."
+    },
+    {
+      "front": "Kenapa port publik Docker menembus UFW?",
+      "back": "Docker memasang aturan iptables sendiri untuk port yang dipublikasikan, jadi publikasikan seminimal mungkin."
+    },
+    {
+      "front": "Apa itu reverse proxy?",
+      "back": "Server di depan aplikasi yang menerima lalu lintas publik, mengurus TLS, dan meneruskan ke aplikasi di network internal."
+    },
+    {
+      "front": "Apa fungsi trust proxy di Express?",
+      "back": "Membuat Express memercayai header X-Forwarded-* dari proxy sehingga IP dan protokol klien terbaca benar."
+    },
+    {
+      "front": "Apa itu CI dan CD?",
+      "back": "CI membangun dan menguji tiap perubahan otomatis; CD mengirim hasil yang lolos ke lingkungan target."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa perbedaan utama container dan mesin virtual?",
+      "code": "",
+      "options": [
+        "container berbagi kernel host, sedangkan mesin virtual membawa sistem operasi tamu sendiri",
+        "container selalu lebih lambat karena memakai hypervisor tambahan",
+        "mesin virtual berbagi kernel host, sedangkan container membawa kernel sendiri",
+        "keduanya identik dan hanya berbeda nama menurut penyedianya"
+      ],
+      "answer": 0,
+      "explanation": "Container memakai kernel host yang dikurung namespace dan cgroup; VM menyalakan OS tamu lengkap lewat hypervisor."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam nama image `ghcr.io/budi/toko-api:1.4.2`, bagian `1.4.2` disebut",
+      "code": "",
+      "options": [
+        "registry",
+        "digest",
+        "namespace",
+        "tag"
+      ],
+      "answer": 3,
+      "explanation": "Format registry/pemilik/repositori:tag. 1.4.2 adalah tag."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Instruksi Dockerfile yang berjalan saat image dibangun dan hasilnya disimpan sebagai layer adalah",
+      "code": "",
+      "options": [
+        "CMD",
+        "EXPOSE",
+        "RUN",
+        "USER"
+      ],
+      "answer": 2,
+      "explanation": "RUN dijalankan saat build. CMD berjalan saat container menyala, EXPOSE hanya dokumentasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas yang dipakai untuk mengeluarkan node_modules dan .env dari konteks build adalah",
+      "code": "",
+      "options": [
+        "compose.yaml",
+        ".dockerignore",
+        ".gitkeep",
+        "Dockerfile.ignore"
+      ],
+      "answer": 1,
+      "explanation": "Sintaksnya mirip .gitignore dan mencegah COPY menyentuh berkas itu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara terbaik menyimpan data database agar bertahan setelah container dihapus adalah",
+      "code": "",
+      "options": [
+        "menulis data ke lapisan tulis container saja",
+        "named volume yang dipasang di folder data database",
+        "memakai tmpfs agar data berada di memori yang cepat",
+        "menambahkan EXPOSE pada port database"
+      ],
+      "answer": 1,
+      "explanation": "Named volume dikelola Docker dan hidup di luar siklus hidup container."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di network buatan sendiri, container api memanggil container db dengan",
+      "code": "",
+      "options": [
+        "nama container atau nama service db sebagai host",
+        "IP container db yang ditulis permanen di kode",
+        "alamat localhost dengan port yang sama dengan port database di dalam container itu",
+        "nama image postgres:17-alpine sebagai host"
+      ],
+      "answer": 0,
+      "explanation": "Network buatan sendiri menyediakan DNS internal berdasarkan nama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Instruksi EXPOSE 3000 di Dockerfile otomatis membuka port 3000 ke host.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. EXPOSE hanya dokumentasi; port dibuka dengan -p atau ports: di Compose."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Perintah `docker compose down` menghapus volume bernama secara bawaan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Volume hanya terhapus bila memakai down -v."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara yang benar memberi kata sandi database ke container produksi adalah",
+      "code": "",
+      "options": [
+        "menuliskannya di baris ENV pada Dockerfile",
+        "menaruhnya sebagai ARG saat build image",
+        "lewat env_file atau Compose secrets yang tidak ikut di-commit",
+        "menyimpannya di README repositori agar tim ingat"
+      ],
+      "answer": 2,
+      "explanation": "Rahasia diberikan saat runtime dan tidak boleh tersimpan di image atau repositori."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi record A pada DNS untuk deploy aplikasi?",
+      "code": "",
+      "options": [
+        "mengenkripsi lalu lintas HTTP antara browser dan server",
+        "mengarahkan nama domain ke alamat IP server",
+        "meneruskan port 3000 ke container aplikasi",
+        "membuat sertifikat Let's Encrypt secara otomatis"
+      ],
+      "answer": 1,
+      "explanation": "Record A memetakan nama ke alamat IPv4."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dilakukan baris `needs: test` pada sebuah job GitHub Actions?",
+      "code": "",
+      "options": [
+        "membuat job menunggu job test selesai dan berhasil lebih dulu",
+        "menginstal paket bernama test di runner dan menjalankannya sebelum job lain dimulai",
+        "menjalankan job pada semua cabang secara bersamaan",
+        "menyalin hasil job test ke registry image otomatis"
+      ],
+      "answer": 0,
+      "explanation": "needs menentukan ketergantungan antar job."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Baca potongan Dockerfile ini. Apa masalah utamanya untuk cache build?",
+      "code": "FROM node:24-alpine\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD [\"node\", \"server.js\"]",
+      "options": [
+        "FROM memakai tag spesifik sehingga cache tidak pernah terpakai",
+        "WORKDIR /app membuat semua layer dibangun ulang tiap kali",
+        "CMD memakai bentuk array sehingga layer tidak dapat disimpan",
+        "COPY . . sebelum npm ci membuat cache dependency batal tiap kode berubah"
+      ],
+      "answer": 3,
+      "explanation": "Perubahan satu berkas kode mengubah layer COPY . ., dan layer sesudahnya (npm ci) dibangun ulang."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa masalah yang dijawab Docker lewat slogan 'bangun sekali, jalankan di mana saja'?",
+      "code": "",
+      "options": [
+        "perbedaan lingkungan antara laptop, server uji, dan produksi",
+        "kecepatan koneksi internet antara developer dan server",
+        "kapasitas penyimpanan laptop developer yang terbatas sehingga aplikasi harus dipindahkan ke server",
+        "kesulitan menulis kode JavaScript yang benar"
+      ],
+      "answer": 0,
+      "explanation": "Container mengemas aplikasi bersama lingkungannya sehingga perilaku seragam."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua fitur kernel Linux yang membuat container terisolasi adalah",
+      "code": "",
+      "options": [
+        "hypervisor dan bootloader",
+        "iptables dan crontab",
+        "systemd dan swap",
+        "namespace dan cgroup"
+      ],
+      "answer": 3,
+      "explanation": "Namespace membatasi apa yang terlihat, cgroup membatasi sumber daya yang dipakai."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di Windows dan macOS, Docker Desktop menjalankan container di dalam sebuah VM Linux.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar, karena container membutuhkan kernel Linux."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah untuk melihat container yang sedang berjalan adalah",
+      "code": "",
+      "options": [
+        "docker list --run",
+        "docker ps",
+        "docker show",
+        "docker status"
+      ],
+      "answer": 1,
+      "explanation": "docker ps menampilkan container berjalan; -a menampilkan semuanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bendera -d pada docker run berfungsi untuk",
+      "code": "",
+      "options": [
+        "menghapus container secara otomatis begitu prosesnya berhenti",
+        "menjalankan container di latar belakang",
+        "mengunduh image tanpa menjalankan",
+        "mengaktifkan mode debug Node"
+      ],
+      "answer": 1,
+      "explanation": "-d berarti detached; --rm yang menghapus otomatis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila tag tidak ditulis pada nama image, Docker memakai",
+      "code": "",
+      "options": [
+        "latest",
+        "stable",
+        "1.0",
+        "tag paling baru yang tersedia di registry"
+      ],
+      "answer": 0,
+      "explanation": "Tag bawaan adalah latest, yang hanya nama biasa dan tidak selalu versi terbaru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Image resmi Node pada Docker Hub sebenarnya berada pada repositori",
+      "code": "",
+      "options": [
+        "docker.io/node/node",
+        "ghcr.io/library/node",
+        "registry.docker/node",
+        "docker.io/library/node"
+      ],
+      "answer": 3,
+      "explanation": "Image resmi berada di namespace library pada Docker Hub."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Varian image `node:24-alpine` dibangun di atas",
+      "code": "",
+      "options": [
+        "Ubuntu Server lengkap dengan seluruh paket desktop dan kompiler",
+        "Windows Server Core dengan IIS",
+        "Alpine Linux yang sangat kecil dengan musl libc",
+        "Debian dengan kompiler C lengkap"
+      ],
+      "answer": 2,
+      "explanation": "Alpine kecil, tetapi paket native tertentu kadang butuh varian slim berbasis glibc."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan container dan lapisan tulisnya dihapus?",
+      "code": "",
+      "options": [
+        "setiap kali container dihentikan dengan docker stop",
+        "setiap kali image dibangun ulang dengan tag sama",
+        "ketika docker rm dijalankan pada container itu",
+        "setiap pukul 00.00 menurut pengaturan Docker"
+      ],
+      "answer": 2,
+      "explanation": "docker stop hanya menghentikan; rm menghapus container beserta lapisan tulisnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah yang membuka shell di container yang sedang berjalan bernama api adalah",
+      "code": "",
+      "options": [
+        "docker run -it api sh",
+        "docker exec -it api sh",
+        "docker attach --shell api",
+        "docker open api"
+      ],
+      "answer": 1,
+      "explanation": "exec menjalankan perintah di container yang sudah berjalan; -it memberi terminal interaktif."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sinyal yang dikirim docker stop ke proses utama sebelum memaksa berhenti adalah",
+      "code": "",
+      "options": [
+        "SIGTERM",
+        "SIGHUP",
+        "SIGINT",
+        "SIGUSR1"
+      ],
+      "answer": 0,
+      "explanation": "SIGTERM dikirim lebih dulu, lalu SIGKILL setelah batas waktu bawaan 10 detik."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Instruksi WORKDIR membuat folder kerja bila folder itu belum ada.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Benar. Instruksi berikutnya dijalankan dari folder tersebut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa `npm ci` lebih disukai daripada `npm install` di Dockerfile?",
+      "code": "",
+      "options": [
+        "selalu memasang versi terbaru setiap dependency walaupun berbeda dari yang tercatat di lockfile",
+        "tidak membutuhkan koneksi internet sama sekali",
+        "otomatis menjalankan seluruh tes proyek",
+        "memasang persis sesuai package-lock.json sehingga build bisa diulang"
+      ],
+      "answer": 3,
+      "explanation": "npm ci menolak lockfile yang tidak cocok dan hasilnya konsisten."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi instruksi EXPOSE 3000?",
+      "code": "",
+      "options": [
+        "membuka port 3000 ke internet",
+        "memetakan port 3000 ke port acak di host",
+        "mendokumentasikan port yang didengarkan aplikasi tanpa membukanya ke host",
+        "menutup semua port selain 3000"
+      ],
+      "answer": 2,
+      "explanation": "EXPOSE hanya metadata; pembukaan dilakukan oleh -p atau ports:."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bentuk CMD yang meneruskan sinyal langsung ke proses Node adalah",
+      "code": "",
+      "options": [
+        "CMD node server.js",
+        "CMD [\"node\", \"server.js\"]",
+        "CMD npm start && echo selesai",
+        "RUN node server.js"
+      ],
+      "answer": 1,
+      "explanation": "Exec form membuat Node menjadi PID 1 tanpa shell perantara."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa `COPY package*.json ./` ditaruh sebelum `COPY . .`?",
+      "code": "",
+      "options": [
+        "agar layer npm ci tetap ter-cache selama dependency tidak berubah",
+        "agar package.json disembunyikan dari aplikasi dan hanya dipakai oleh perintah build saja",
+        "agar image selalu memakai versi Node terbaru",
+        "agar COPY kedua berjalan lebih dulu secara paralel"
+      ],
+      "answer": 0,
+      "explanation": "Taruh yang jarang berubah di atas supaya cache layer bertahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian mana pada multi-stage build yang menentukan image akhir?",
+      "code": "",
+      "options": [
+        "stage terakhir dalam Dockerfile",
+        "stage pertama yang bernama build",
+        "stage dengan layer paling banyak",
+        "stage yang memakai image alpine"
+      ],
+      "answer": 0,
+      "explanation": "Hanya stage terakhir yang menjadi image hasil; stage lain dibuang kecuali disalin lewat COPY --from."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah menginstal hanya dependency produksi pada stage final adalah",
+      "code": "",
+      "options": [
+        "npm ci --only=build",
+        "npm install --global",
+        "npm prune --all",
+        "npm ci --omit=dev"
+      ],
+      "answer": 3,
+      "explanation": "--omit=dev melewati devDependencies."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa HEALTHCHECK di image Alpine sebaiknya memakai wget dan 127.0.0.1?",
+      "code": "",
+      "options": [
+        "wget lebih aman daripada curl dalam semua keadaan",
+        "127.0.0.1 membuat Docker me-restart container otomatis",
+        "Alpine tidak punya curl bawaan dan localhost bisa diterjemahkan ke IPv6",
+        "Alpine melarang penggunaan nama localhost sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "BusyBox menyediakan wget; localhost kadang menuju ::1 padahal aplikasi hanya mendengarkan IPv4."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi bila aplikasi tidak menangani SIGTERM saat docker stop?",
+      "code": "",
+      "options": [
+        "Docker menunggu tanpa batas sampai aplikasi selesai sendiri",
+        "Docker memaksa mematikannya dengan SIGKILL setelah batas waktu dan request yang berjalan terputus",
+        "container otomatis berpindah ke server lain",
+        "image dihapus dari registry untuk mencegah galat"
+      ],
+      "answer": 1,
+      "explanation": "Setelah 10 detik, Docker mengirim SIGKILL."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Kata sandi aman bila ditulis pada instruksi ARG di Dockerfile karena tidak ada saat container berjalan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Nilai ARG bisa terlihat di riwayat build image."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jenis penyimpanan yang cocok untuk kode yang sedang kamu edit saat pengembangan adalah",
+      "code": "",
+      "options": [
+        "bind mount",
+        "named volume anonim",
+        "tmpfs",
+        "layer COPY"
+      ],
+      "answer": 0,
+      "explanation": "Bind mount memetakan folder host sehingga perubahan langsung terlihat di container."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi `-p 127.0.0.1:5432:5432` berarti",
+      "code": "",
+      "options": [
+        "port 5432 terbuka ke seluruh internet",
+        "port 5432 ditutup untuk semua koneksi",
+        "port 5432 dipindahkan ke port 127",
+        "port 5432 hanya bisa dijangkau dari server itu sendiri"
+      ],
+      "answer": 3,
+      "explanation": "Mengikat ke 127.0.0.1 membatasi akses ke loopback host."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama berkas Compose yang disarankan sekarang adalah",
+      "code": "",
+      "options": [
+        "docker-compose.json",
+        "compose.ini",
+        "compose.yaml",
+        "Composefile"
+      ],
+      "answer": 2,
+      "explanation": "compose.yaml adalah nama utama; compose.yml dan docker-compose.yml tetap dikenali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk menunggu database siap sebelum api menyala, depends_on memerlukan",
+      "code": "",
+      "options": [
+        "port database yang dipublikasikan ke host",
+        "perintah sleep di dalam Dockerfile api",
+        "condition: service_healthy dan healthcheck pada service db",
+        "tag image db diganti menjadi latest"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa kondisi itu, depends_on hanya mengatur urutan start."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah Compose untuk membangun ulang image lalu menjalankan semua service di latar belakang adalah",
+      "code": "",
+      "options": [
+        "docker compose restart --build --detach",
+        "docker compose up -d --build",
+        "docker compose start --new",
+        "docker compose build --run"
+      ],
+      "answer": 1,
+      "explanation": "up -d --build membangun image dulu lalu menjalankan service."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas apa yang digabung otomatis dengan compose.yaml untuk pengaturan pengembangan?",
+      "code": "",
+      "options": [
+        "compose.override.yaml",
+        "compose.dev.json",
+        ".env.local",
+        "Dockerfile.override"
+      ],
+      "answer": 0,
+      "explanation": "Compose membaca compose.yaml lalu compose.override.yaml bila ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah yang menampilkan hasil akhir berkas Compose setelah interpolasi dan penggabungan adalah",
+      "code": "",
+      "options": [
+        "docker compose show",
+        "docker compose inspect --all",
+        "docker compose print",
+        "docker compose config"
+      ],
+      "answer": 3,
+      "explanation": "config memvalidasi dan mencetak konfigurasi akhir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas .env sebaiknya diperlakukan dengan cara",
+      "code": "",
+      "options": [
+        "di-commit agar seluruh tim memakai nilai yang sama",
+        "dicopy ke dalam image dengan COPY . . saat build",
+        "dibagikan lewat grup obrolan tim secara terbuka",
+        "dimasukkan ke .gitignore dan .dockerignore, dengan .env.example sebagai contoh"
+      ],
+      "answer": 3,
+      "explanation": "Rahasia tidak boleh masuk repositori atau image."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah untuk membuat kata sandi acak yang kuat adalah",
+      "code": "",
+      "options": [
+        "echo password123",
+        "docker secret create",
+        "openssl rand -base64 32",
+        "npm run generate"
+      ],
+      "answer": 2,
+      "explanation": "Hasilkan nilai acak dengan alat yang tepat, bukan menulis sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Compose secrets menaruh rahasia di dalam container sebagai",
+      "code": "",
+      "options": [
+        "variabel lingkungan global yang terlihat di semua proses",
+        "berkas hanya baca di /run/secrets/NAMA",
+        "bagian dari nama image",
+        "baris komentar di compose.yaml"
+      ],
+      "answer": 1,
+      "explanation": "Aplikasi membaca berkas tersebut atau memakai variabel berakhiran _FILE."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa menjalankan build image di VPS kecil kurang disarankan?",
+      "code": "",
+      "options": [
+        "build memakan CPU dan memori server, lebih baik dibangun di CI lalu ditarik",
+        "Docker melarang build di server produksi",
+        "image hasil build di server selalu lebih besar",
+        "VPS tidak bisa menjalankan docker compose pull"
+      ],
+      "answer": 0,
+      "explanation": "Bangun di CI dan di server cukup pull dan up."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada deploy ke PaaS, aplikasi Node harus membaca port dari",
+      "code": "",
+      "options": [
+        "process.env.PORT",
+        "argumen baris perintah pertama",
+        "berkas package.json",
+        "nilai tetap 3000 di kode"
+      ],
+      "answer": 0,
+      "explanation": "PaaS menentukan port lewat variabel lingkungan PORT."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Platform serverless seperti Vercel menjalankan container Docker buatanmu secara langsung.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Kamu mengunggah kode, dan platform memakai mekanismenya sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tantangan HTTP-01 Let's Encrypt membuktikan kepemilikan domain lewat",
+      "code": "",
+      "options": [
+        "email yang dikirim ke alamat admin domain",
+        "berkas yang diunggah ke registry Docker",
+        "permintaan HTTP di port 80 ke domain itu",
+        "port SSH 22 di server"
+      ],
+      "answer": 2,
+      "explanation": "Karena itu port 80 harus terbuka dan DNS sudah benar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Konfigurasi Caddy yang meneruskan domain ke container api pada port 3000 adalah",
+      "code": "",
+      "options": [
+        "server_name app.contoh.id { proxy_pass http://api:3000; }",
+        "app.contoh.id { reverse_proxy api:3000 }",
+        "listen 443 { upstream api:3000 }",
+        "app.contoh.id -> api:3000 tls auto"
+      ],
+      "answer": 1,
+      "explanation": "Caddyfile cukup menyebut domain dan reverse_proxy; sertifikat diurus otomatis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Header X-Forwarded-Proto yang ditambahkan proxy berguna agar aplikasi",
+      "code": "",
+      "options": [
+        "mengetahui nama server proxy",
+        "tahu apakah klien awalnya memakai http atau https",
+        "mengenkripsi isi cookie sesi secara otomatis sebelum dikirim kembali ke browser",
+        "memilih versi Node yang dipakai"
+      ],
+      "answer": 1,
+      "explanation": "Dengan trust proxy, req.protocol mencerminkan protokol asli klien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tempat yang tepat untuk menaruh workflow GitHub Actions dalam repositori adalah",
+      "code": "",
+      "options": [
+        ".github/workflows/",
+        "docker/workflows/",
+        "actions/ di akar repositori",
+        ".git/hooks/"
+      ],
+      "answer": 0,
+      "explanation": "GitHub membaca berkas YAML dari .github/workflows."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada docker/metadata-action, `type=sha` menghasilkan tag yang",
+      "code": "",
+      "options": [
+        "berisi nomor urut build",
+        "sama dengan nama cabang",
+        "selalu bernilai latest",
+        "diawali sha- diikuti tujuh karakter awal commit"
+      ],
+      "answer": 3,
+      "explanation": "Tag berbasis SHA unik per commit dan cocok untuk deploy."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Secret GitHub Actions diberikan kepada workflow yang dipicu pull request dari fork.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salah. Secret tidak diteruskan ke workflow dari fork supaya tidak dicuri."
+    }
+  ],
+  "prerequisites": [
+    "expressjs",
+    "administrasi-server-dan-keamanan"
+  ],
+  "chapters": [
+    {
+      "slug": "kenapa-container",
+      "title": "Kenapa Container?",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan masalah \"di laptopku jalan\" dan bagaimana container menyelesaikannya.\n- Membedakan mesin virtual dan container dari cara keduanya berbagi kernel.\n- Menyebutkan istilah inti Docker: image, container, registry, dan Docker Engine.\n- Memasang Docker dan menjalankan container pertamamu.\n\n## Masalah yang Diselesaikan Container\n\nBayangkan kamu selesai membuat API dengan Express. Di laptopmu semuanya jalan: Node 24, PostgreSQL lokal, beberapa variabel lingkungan yang kamu set sendiri. Lalu kamu kirim kode ke server, dan aplikasinya mati. Ternyata server memakai Node versi lain, library sistem yang dibutuhkan tidak ada, dan nama variabel lingkungannya salah ketik. Kalimat \"di laptopku jalan\" adalah keluhan paling tua di dunia pengembangan perangkat lunak.\n\nAkar masalahnya sederhana: aplikasi tidak hidup sendirian. Ia bergantung pada runtime, library, konfigurasi, dan sistem operasi di sekitarnya. Kalau lingkungan di tempat lain berbeda sedikit saja, perilakunya bisa berbeda. Dulu orang mengatasinya dengan dokumen instalasi panjang yang selalu ketinggalan zaman.\n\nContainer mengubah pendekatan itu. Alih-alih mengirim kode lalu berharap server cocok, kamu mengirim **kode beserta lingkungannya** dalam satu paket. Paket itu berjalan sama di laptop, di server teman, di server CI, dan di VPS produksi. Itulah janji utama Docker: bangun sekali, jalankan di mana saja yang punya Docker.\n\n## Container Bukan Mesin Virtual\n\nBanyak pemula menganggap container sebagai mesin virtual yang lebih ringan. Gambaran itu hampir benar tetapi menyesatkan, jadi pahami perbedaannya sejak awal.\n\n![Mesin virtual membawa sistem operasi tamu lengkap, container berbagi kernel host](gambar:docker-vm-vs-container)\n\nMesin virtual (VM) memakai hypervisor untuk menyalakan sistem operasi tamu lengkap, termasuk kernelnya sendiri. Tiap VM terasa seperti komputer utuh, dengan konsekuensi ukuran besar (gigabyte), waktu boot lama, dan memori yang terpakai walaupun aplikasinya kecil.\n\nContainer tidak membawa kernel sendiri. Semua container di satu mesin memakai **kernel yang sama dengan host**, tetapi masing-masing dikurung supaya merasa punya dunianya sendiri. Pengurungan itu memakai dua fitur kernel Linux:\n\n- **Namespace** membatasi apa yang bisa dilihat proses: daftar proses sendiri, network sendiri, sistem berkas sendiri, hostname sendiri.\n- **cgroup** membatasi apa yang bisa dipakai proses: berapa CPU, berapa memori.\n\nKarena tidak ada sistem operasi tambahan, container berukuran puluhan megabyte, menyala dalam hitungan detik, dan puluhan di antaranya bisa jalan di satu VPS kecil. Ada harga yang dibayar: isolasinya lebih tipis daripada VM karena kernel dipakai bersama. Container bagus untuk mengemas aplikasi, tetapi bukan pengganti batas keamanan yang kuat untuk kode tidak tepercaya.\n\nSatu catatan praktis: container Docker pada dasarnya adalah proses Linux. Di Windows dan macOS, Docker Desktop diam-diam menjalankan satu VM Linux kecil dan menaruh container di dalamnya. Di server Linux, container langsung memakai kernel host.\n\n## Istilah yang Harus Kamu Kenal\n\n| Istilah | Artinya |\n|---|---|\n| Image | Paket hanya baca berisi sistem berkas, runtime, library, dan kodemu. Seperti resep atau cetakan. |\n| Container | Image yang sedang dijalankan. Seperti kue yang dibuat dari cetakan; satu image bisa jadi banyak container. |\n| Registry | Tempat menyimpan dan mengunduh image, misalnya Docker Hub atau GitHub Container Registry. |\n| Docker Engine | Layanan di mesin yang membangun image dan menjalankan container (daemon bernama `dockerd`). |\n| Docker CLI | Perintah `docker` yang kamu ketik; ia berbicara dengan Docker Engine. |\n| Dockerfile | Berkas teks berisi langkah membuat image. |\n| Docker Compose | Alat untuk mendefinisikan dan menjalankan beberapa container sekaligus lewat satu berkas YAML. |\n\nDocker bukan satu-satunya yang ada. Format image dan container distandarkan oleh Open Container Initiative (OCI), sehingga alat lain seperti Podman memakai konsep dan banyak perintah yang sama. Apa yang kamu pelajari di kelas ini tetap berguna di sana.\n\n## Memasang Docker\n\nCara pasang tergantung sistem operasimu.\n\n- **Windows dan macOS:** pasang Docker Desktop dari situs resmi Docker. Di Windows ia memakai WSL 2, jadi aktifkan WSL dulu.\n- **Linux (Ubuntu atau Debian):** ikuti panduan resmi \"Install Docker Engine\" di dokumentasi Docker, yang menambahkan repositori apt Docker lalu memasang paket `docker-ce` dan plugin Compose. Hindari paket `docker.io` dari repositori distro bila kamu ingin versi yang lebih baru.\n\nSetelah terpasang, periksa dengan dua perintah:\n\n```bash\ndocker --version\ndocker compose version\n```\n\nDi Linux, perintah `docker` biasanya butuh `sudo`. Kamu bisa menambahkan penggunamu ke grup `docker` supaya tidak perlu `sudo`, tetapi pahami harganya: anggota grup `docker` praktis setara dengan root di mesin itu, karena ia bisa menjalankan container yang memasang folder mana pun dari host. Jangan beri akses grup itu ke sembarang pengguna.\n\n## Container Pertamamu\n\nJalankan perintah ini:\n\n```bash\ndocker run hello-world\n```\n\nDocker mencari image `hello-world` di mesin lokal. Tidak ketemu, jadi ia mengunduhnya dari Docker Hub, membuat container dari image itu, menjalankannya, mencetak pesan sambutan, lalu container berhenti karena programnya selesai. Seluruh urutan itu muncul sebagai teks di terminalmu.\n\nCoba yang lebih berguna, yaitu web server Nginx:\n\n```bash\ndocker run -d --name web -p 8080:80 nginx:alpine\n```\n\nBuka `http://localhost:8080` di browser dan kamu akan melihat halaman sambutan Nginx. Tanpa memasang Nginx, tanpa mengubah konfigurasi apa pun di mesinmu. Arti bendera yang dipakai:\n\n- `-d` (detached) menjalankan container di latar belakang.\n- `--name web` memberi nama yang mudah diingat.\n- `-p 8080:80` meneruskan port 8080 di host ke port 80 di dalam container.\n- `nginx:alpine` adalah nama image beserta tag-nya.\n\nLihat dan bersihkan:\n\n```bash\ndocker ps                # container yang sedang jalan\ndocker stop web          # hentikan\ndocker rm web            # hapus container\n```\n\nPerhatikan betapa cepatnya semuanya. Tidak ada instalasi, tidak ada sisa file di sistemmu setelah container dihapus. Itulah alasan banyak developer memakai Docker bahkan hanya untuk menjalankan database lokal.\n\n## Kapan Container Cocok dan Kapan Tidak\n\nContainer cocok untuk aplikasi web dan API, layanan pendukung seperti database dan cache, lingkungan pengembangan yang seragam satu tim, dan pipeline CI. Container kurang cocok bila kamu butuh isolasi keamanan kuat untuk kode tidak tepercaya, aplikasi desktop dengan GUI rumit, atau sistem operasi non-Linux sebagai tamu. Untuk aplikasi Node kecil di satu server, container tetap pilihan baik karena ia membuat cara deploy menjadi seragam: perintah yang sama dipakai untuk semua aplikasi.\n\n## Rangkuman\n\n- Container mengemas aplikasi bersama lingkungannya sehingga berjalan sama di mana pun, mengakhiri masalah \"di laptopku jalan\".\n- Container berbagi kernel host dan dikurung dengan namespace serta cgroup, sedangkan VM membawa sistem operasi tamu sendiri.\n- Image adalah paket hanya baca, container adalah image yang berjalan, registry adalah tempat menyimpan image.\n- Docker Engine menjalankan container, dan perintah `docker` adalah CLI-nya; Compose mengatur banyak container sekaligus.\n- `docker run -d --name web -p 8080:80 nginx:alpine` menjalankan web server tanpa memasang apa pun; `docker ps`, `stop`, dan `rm` mengelolanya.\n- Anggota grup `docker` di Linux setara root, jadi beri akses dengan hati-hati.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim kamu memakai Node 20 di laptop, sedangkan server memakai Node 18, dan fitur baru membuat aplikasi mati di produksi. Pendekatan Docker yang paling tepat mengatasinya adalah",
+          "code": "",
+          "options": [
+            "mengemas aplikasi bersama runtime Node-nya dalam image yang sama dijalankan di laptop dan server",
+            "menulis dokumen instalasi yang lebih panjang untuk administrator server",
+            "meminta semua anggota tim menurunkan Node ke versi paling lama yang ada",
+            "menyalin folder node_modules dari laptop ke server setiap kali rilis"
+          ],
+          "answer": 0,
+          "explanation": "Image membawa runtime dan library, sehingga lingkungan yang diuji sama dengan yang berjalan. Dokumen dan salin manual tidak menjamin kesamaan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah VPS kecil perlu menjalankan lima aplikasi kecil sekaligus. Kenapa container lebih hemat daripada lima mesin virtual?",
+          "code": "",
+          "options": [
+            "container tidak memakai memori sama sekali selama aplikasi berjalan",
+            "container otomatis mengompresi seluruh data aplikasi menjadi lebih kecil",
+            "container menjalankan aplikasi langsung di perangkat keras tanpa kernel",
+            "container berbagi satu kernel host sehingga tidak ada sistem operasi tamu lengkap per aplikasi"
+          ],
+          "answer": 3,
+          "explanation": "Hemat datang dari tidak adanya OS tamu per aplikasi; kernel dipakai bersama dan dipisahkan dengan namespace serta cgroup."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Container Docker di server Linux berjalan dengan kernel milik host, bukan kernel sendiri.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Itu sebabnya container start cepat, dan juga kenapa isolasinya lebih tipis daripada mesin virtual."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rekan baru bertanya apa bedanya image dan container. Jawaban yang benar adalah",
+          "code": "",
+          "options": [
+            "image adalah container yang sedang berhenti dan belum pernah dijalankan",
+            "image paket hanya baca sebagai cetakan, container adalah hasil menjalankan image itu",
+            "container adalah paket hanya baca dan tidak bisa diubah, sedangkan image adalah proses yang sedang hidup",
+            "keduanya sama; perbedaannya hanya cara mengetik nama di terminal"
+          ],
+          "answer": 1,
+          "explanation": "Satu image bisa menjadi banyak container, seperti satu cetakan menghasilkan banyak kue."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "image-dan-container",
+      "title": "Image dan Container",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Membaca nama image lengkap: registry, repositori, dan tag.\n- Menjelaskan layer image dan kenapa container bisa dibuang tanpa kehilangan image.\n- Memakai perintah dasar untuk mengelola siklus hidup container.\n- Melihat log, masuk ke container, dan membersihkan sumber daya yang tidak terpakai.\n\n## Anatomi Nama Image\n\nSetiap kali menulis `docker run nginx:alpine`, kamu memberi nama image. Nama itu punya tiga bagian:\n\n```text\nghcr.io/budi/toko-api:1.4.2\n|       |         |    |\n|       |         |    tag (versi atau varian)\n|       |         nama repositori\n|       pemilik (akun atau organisasi)\nregistry\n```\n\nAturan bawaannya penting dipahami karena sering membingungkan:\n\n- Bila registry tidak ditulis, Docker memakai **Docker Hub** (`docker.io`).\n- Image resmi di Docker Hub hidup di namespace `library`, jadi `node` sebenarnya `docker.io/library/node`.\n- Bila tag tidak ditulis, Docker memakai tag **`latest`**.\n\nTag `latest` hanyalah nama tag biasa; ia tidak otomatis berarti \"versi terbaru\". Pembuat image bisa saja memberi `latest` ke versi yang sudah usang. Di lingkungan produksi, tulis tag yang spesifik seperti `node:24-alpine` atau `postgres:17-alpine`, supaya build hari ini dan bulan depan memakai dasar yang sama. Satu tag juga bisa dipindah ke image lain oleh pemiliknya; untuk kepastian mutlak ada digest (`image@sha256:...`), tetapi di awal tag yang spesifik sudah cukup.\n\nVarian tag yang sering muncul pada image Node: `24` (berbasis Debian, besar), `24-slim` (Debian ramping), dan `24-alpine` (Alpine Linux, sangat kecil). Alpine memakai musl libc dan BusyBox; hampir semua aplikasi Node jalan normal, tetapi paket native tertentu kadang butuh `slim` supaya cocok dengan glibc.\n\n## Layer: Kenapa Image Berlapis\n\nImage bukan satu berkas besar, melainkan tumpukan **layer** hanya baca. Setiap instruksi di Dockerfile (nanti kamu pelajari) menghasilkan satu layer yang berisi selisih dari layer di bawahnya.\n\n![Image berupa layer hanya baca; container menambah satu lapisan tulis di atasnya](gambar:docker-image-layers)\n\nDua akibat penting dari desain ini:\n\n1. **Berbagi.** Sepuluh image yang sama-sama berbasis `node:24-alpine` hanya menyimpan layer dasar itu satu kali di disk, dan hanya mengunduhnya satu kali.\n2. **Cache.** Saat membangun image, Docker memakai ulang layer yang instruksinya dan inputnya tidak berubah. Itu sebabnya build kedua biasanya jauh lebih cepat.\n\nSaat kamu menjalankan container, Docker menambahkan satu **lapisan tulis** tipis di atas layer image. Semua perubahan selama container hidup, misalnya file log atau file sementara, masuk ke lapisan itu. Ketika container dihapus, lapisan tulisnya ikut lenyap, sementara image tetap utuh. Itulah kenapa membuang container itu murah, dan kenapa data penting tidak boleh disimpan di sana (solusinya volume, dibahas di bab 5).\n\n## Siklus Hidup Container\n\nContainer melewati beberapa status. Perintah yang kamu pakai berpindah di antaranya.\n\n| Perintah | Fungsi |\n|---|---|\n| `docker run` | Membuat container baru dari image lalu menjalankannya |\n| `docker ps` | Menampilkan container yang berjalan (`-a` untuk semua) |\n| `docker stop NAMA` | Meminta berhenti dengan sopan (SIGTERM), memaksa (SIGKILL) setelah 10 detik |\n| `docker start NAMA` | Menjalankan lagi container yang sudah ada dan berhenti |\n| `docker restart NAMA` | Stop lalu start |\n| `docker rm NAMA` | Menghapus container yang sudah berhenti (`-f` memaksa) |\n\nBedakan `run` dan `start`. `docker run` selalu membuat container **baru**. Kalau kamu menjalankannya dua kali dengan `--name web`, yang kedua gagal karena nama sudah dipakai. `docker start web` menghidupkan lagi container lama dengan lapisan tulis yang sama.\n\nBendera `docker run` yang paling sering dipakai:\n\n```bash\ndocker run -d --name api \\\n  -p 3000:3000 \\\n  -e NODE_ENV=production \\\n  --restart unless-stopped \\\n  toko-api:1.0\n```\n\n- `-d` jalan di latar belakang; tanpanya terminalmu terkunci dan Ctrl+C menghentikan container.\n- `-p HOST:CONTAINER` mempublikasikan port.\n- `-e KUNCI=nilai` mengisi variabel lingkungan.\n- `--restart unless-stopped` menyalakan lagi container bila crash atau bila server reboot, kecuali kamu sendiri yang menghentikannya.\n- `--rm` (tidak dipakai di atas) menghapus container otomatis saat berhenti, cocok untuk percobaan sekali pakai.\n\n## Melihat Isi dan Perilaku Container\n\nContainer yang bermasalah paling cepat didiagnosis lewat log dan masuk langsung ke dalamnya.\n\n```bash\ndocker logs api              # semua log\ndocker logs -f --tail 100 api  # ikuti log, mulai 100 baris terakhir\ndocker exec -it api sh       # buka shell di container yang sedang jalan\ndocker inspect api           # detail lengkap dalam JSON\ndocker stats                 # pemakaian CPU dan memori langsung\n```\n\n`docker logs` menampilkan apa yang ditulis aplikasi ke stdout dan stderr. Karena itu, aplikasi di container sebaiknya menulis log ke konsol (`console.log`), bukan ke file. Docker yang mengumpulkan dan mengatur log itu.\n\n`docker exec -it api sh` membuka sesi interaktif (`-i` menjaga input, `-t` memberi terminal). Pakai `sh` bila image Alpine tidak punya `bash`. Perubahan yang kamu lakukan lewat sesi ini hilang bila container dihapus, jadi gunakan hanya untuk melihat-lihat, bukan untuk \"memperbaiki\" aplikasi.\n\n## Mengelola Image dan Membersihkan\n\n```bash\ndocker pull node:24-alpine   # unduh image\ndocker image ls              # daftar image lokal\ndocker image rm node:24-alpine\ndocker system df             # berapa disk dipakai Docker\ndocker system prune          # hapus container berhenti, network dan image tak bertag\n```\n\nSeiring waktu Docker menumpuk image lama, container berhenti, dan cache build. Di VPS dengan disk kecil, ini penyebab klasik \"disk penuh\". Jalankan `docker system df` secara berkala. `docker system prune` menghapus yang jelas tidak terpakai; tambahkan `-a` untuk menghapus semua image yang tidak dipakai container mana pun, dan `--volumes` bila kamu juga ingin menghapus volume anonim. Berhati-hatilah dengan opsi kedua: volume bisa menyimpan data database.\n\n## Kesalahan yang Sering Terjadi\n\n- **Nama container sudah dipakai.** Hapus yang lama (`docker rm`) atau pakai `docker start`.\n- **Port sudah dipakai.** Host hanya bisa memberi satu port ke satu container; ganti angka sebelum titik dua, misalnya `-p 8081:80`.\n- **Container langsung berhenti.** Container hidup selama proses utamanya hidup. Lihat `docker logs NAMA` untuk tahu kenapa prosesnya selesai atau crash.\n- **Mengira data aman di container.** Setelah `docker rm`, semuanya hilang kecuali ada di volume.\n\n## Rangkuman\n\n- Nama image berbentuk `registry/pemilik/repositori:tag`; tanpa registry berarti Docker Hub, tanpa tag berarti `latest`.\n- Gunakan tag spesifik di produksi, karena `latest` hanya nama biasa dan bisa berubah.\n- Image berupa layer hanya baca yang dipakai bersama dan di-cache; container menambah satu lapisan tulis yang hilang bersama container.\n- `run` membuat container baru, `start` menghidupkan yang lama; `stop`, `rm`, dan `--restart` mengatur siklus hidupnya.\n- Diagnosis lewat `docker logs`, `docker exec -it`, `docker inspect`, dan `docker stats`.\n- Bersihkan berkala dengan `docker system df` dan `docker system prune`, dan waspadai volume yang berisi data.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tertulis `docker run -d --name web nginx` di skrip deploy lama. Setahun kemudian, container hasilnya bisa berbeda dari sebelumnya. Penyebab paling mungkin adalah",
+          "code": "",
+          "options": [
+            "tag tidak ditulis sehingga Docker memakai latest, yang menunjuk image berbeda seiring waktu",
+            "flag -d membuat Nginx memperbarui dirinya sendiri secara berkala",
+            "nama web otomatis berpindah ke image acak yang lebih baru",
+            "Docker Hub menghapus semua tag lama setiap beberapa bulan sekali"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa tag berarti latest, dan latest hanyalah tag yang bisa dipindah ke image lain. Tulis tag spesifik di produksi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menjalankan `docker run --name api toko-api:1.0` dua kali dan perintah kedua gagal. Perbaikan yang benar adalah",
+          "code": "",
+          "options": [
+            "tambahkan EXPOSE di Dockerfile agar nama boleh dipakai ulang",
+            "ganti tag image menjadi latest supaya Docker mau membuat ulang",
+            "jalankan docker system prune untuk menghapus seluruh image lokal",
+            "hapus container lama dengan docker rm atau hidupkan lagi dengan docker start api"
+          ],
+          "answer": 3,
+          "explanation": "docker run membuat container baru dan nama harus unik. Gunakan start untuk container lama atau rm lalu run lagi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Container API tiba-tiba langsung berhenti beberapa detik setelah dijalankan. Langkah diagnosis pertama yang paling berguna adalah",
+          "code": "",
+          "options": [
+            "menghapus image lalu mengunduhnya lagi tanpa melihat apa pun",
+            "menambah angka port yang dipublikasikan sampai container bertahan",
+            "membaca keluaran docker logs untuk nama container itu",
+            "memasang ulang Docker Engine di server dari awal"
+          ],
+          "answer": 2,
+          "explanation": "Container hidup selama prosesnya hidup. Log menunjukkan alasan proses itu keluar, misalnya galat konfigurasi."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Setelah `docker rm` pada sebuah container, file yang ditulis aplikasi di lapisan tulisnya ikut hilang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. Data yang harus awet harus disimpan di volume, bukan di lapisan tulis container."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Disk VPS hampir penuh dan kamu curiga Docker penyebabnya. Perintah yang menunjukkan pemakaian disk Docker adalah",
+          "code": "",
+          "options": [
+            "docker ps --size-limit",
+            "docker system df",
+            "docker network disk",
+            "docker image free"
+          ],
+          "answer": 1,
+          "explanation": "docker system df merinci disk yang dipakai image, container, volume, dan cache build."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membaca nama image",
+          "prompt": "Tulis fungsi `parseImageRef(ref)` yang memecah nama image menjadi objek `{ registry, repo, tag }`.\n\n- Tag ada setelah titik dua **terakhir** yang muncul sesudah garis miring terakhir; bila tidak ada, tag-nya `\"latest\"`.\n- Bagian pertama dianggap registry bila mengandung titik, titik dua, atau sama dengan `localhost`, dan masih ada bagian lain sesudahnya. Bila tidak, registry-nya `\"docker.io\"`.\n- Di `docker.io`, nama tanpa garis miring mendapat awalan `library/` (image resmi).\n\nContoh: `parseImageRef(\"node:24-alpine\")` menghasilkan `{ registry: \"docker.io\", repo: \"library/node\", tag: \"24-alpine\" }`.",
+          "starter": {
+            "code": "function parseImageRef(ref) {\n  // TODO: pecah tag, registry, dan repo\n}\n"
+          },
+          "solution": {
+            "code": "function parseImageRef(ref) {\n  const slash = ref.lastIndexOf(\"/\");\n  const colon = ref.lastIndexOf(\":\");\n  let tag = \"latest\";\n  let nama = ref;\n  if (colon > slash) {\n    tag = ref.slice(colon + 1);\n    nama = ref.slice(0, colon);\n  }\n  const bagian = nama.split(\"/\");\n  let registry = \"docker.io\";\n  if (bagian.length > 1 && (bagian[0].includes(\".\") || bagian[0].includes(\":\") || bagian[0] === \"localhost\")) {\n    registry = bagian.shift();\n  }\n  let repo = bagian.join(\"/\");\n  if (registry === \"docker.io\" && !repo.includes(\"/\")) repo = \"library/\" + repo;\n  return { registry, repo, tag };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "node:24-alpine memakai Docker Hub dan namespace library",
+              "check": "JSON.stringify(parseImageRef(\"node:24-alpine\")) === '{\"registry\":\"docker.io\",\"repo\":\"library/node\",\"tag\":\"24-alpine\"}'"
+            },
+            {
+              "name": "tanpa tag berarti latest",
+              "check": "parseImageRef(\"nginx\").tag === \"latest\" && parseImageRef(\"nginx\").repo === \"library/nginx\""
+            },
+            {
+              "name": "registry GHCR dengan pemilik dan tag",
+              "check": "JSON.stringify(parseImageRef(\"ghcr.io/budi/toko-api:1.4.2\")) === '{\"registry\":\"ghcr.io\",\"repo\":\"budi/toko-api\",\"tag\":\"1.4.2\"}'"
+            },
+            {
+              "name": "pemilik tanpa registry tetap Docker Hub",
+              "check": "JSON.stringify(parseImageRef(\"budi/app\")) === '{\"registry\":\"docker.io\",\"repo\":\"budi/app\",\"tag\":\"latest\"}'"
+            },
+            {
+              "name": "port registry lokal bukan tag",
+              "check": "JSON.stringify(parseImageRef(\"localhost:5000/app\")) === '{\"registry\":\"localhost:5000\",\"repo\":\"app\",\"tag\":\"latest\"}'"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Menyusun perintah docker run",
+          "prompt": "Tulis fungsi `bangunPerintahRun(opsi)` yang mengembalikan satu string perintah `docker run` dari objek `{ nama, image, ports, env, restart }`.\n\nUrutan bagian: `docker run -d`, `--name NAMA`, setiap `-p PORT` (dari array `ports`), setiap `-e KUNCI=nilai` (dari objek `env`, urutan penulisan), `--restart POLA`, dan image di paling akhir. `ports`, `env`, dan `restart` boleh tidak ada; bagian yang tidak ada dilewati. Pisahkan dengan satu spasi.\n\nContoh: `{ nama: \"api\", image: \"toko-api:1.0\", ports: [\"3000:3000\"] }` menghasilkan `docker run -d --name api -p 3000:3000 toko-api:1.0`.",
+          "starter": {
+            "code": "function bangunPerintahRun({ nama, image, ports, env, restart }) {\n  // TODO: kumpulkan bagian perintah lalu gabungkan dengan spasi\n}\n"
+          },
+          "solution": {
+            "code": "function bangunPerintahRun({ nama, image, ports = [], env = {}, restart }) {\n  const bagian = [\"docker\", \"run\", \"-d\", \"--name\", nama];\n  for (const p of ports) bagian.push(\"-p\", p);\n  for (const [k, v] of Object.entries(env)) bagian.push(\"-e\", k + \"=\" + v);\n  if (restart) bagian.push(\"--restart\", restart);\n  bagian.push(image);\n  return bagian.join(\" \");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "perintah minimal berisi nama dan image",
+              "check": "bangunPerintahRun({ nama: \"web\", image: \"nginx:alpine\" }) === \"docker run -d --name web nginx:alpine\""
+            },
+            {
+              "name": "port ditulis dengan -p",
+              "check": "bangunPerintahRun({ nama: \"api\", image: \"toko-api:1.0\", ports: [\"3000:3000\", \"9229:9229\"] }) === \"docker run -d --name api -p 3000:3000 -p 9229:9229 toko-api:1.0\""
+            },
+            {
+              "name": "variabel lingkungan ditulis dengan -e",
+              "check": "bangunPerintahRun({ nama: \"api\", image: \"x:1\", env: { NODE_ENV: \"production\", PORT: \"3000\" } }) === \"docker run -d --name api -e NODE_ENV=production -e PORT=3000 x:1\""
+            },
+            {
+              "name": "restart ditaruh sebelum image",
+              "check": "bangunPerintahRun({ nama: \"api\", image: \"x:1\", restart: \"unless-stopped\" }) === \"docker run -d --name api --restart unless-stopped x:1\""
+            },
+            {
+              "name": "semua bagian dalam urutan yang benar",
+              "check": "bangunPerintahRun({ nama: \"a\", image: \"i:2\", ports: [\"80:80\"], env: { A: \"1\" }, restart: \"always\" }) === \"docker run -d --name a -p 80:80 -e A=1 --restart always i:2\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "dockerfile-dasar",
+      "title": "Dockerfile Dasar",
+      "est_minutes": 35,
+      "slide_from": 7,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Menulis Dockerfile untuk aplikasi Express dari nol.\n- Menjelaskan fungsi FROM, WORKDIR, COPY, RUN, EXPOSE, dan CMD.\n- Mengatur urutan instruksi supaya cache layer bekerja.\n- Memakai `.dockerignore` dan membangun serta menjalankan image sendiri.\n\n## Dockerfile: Resep Membuat Image\n\nSampai sekarang kamu memakai image orang lain. Untuk mengemas aplikasimu sendiri, kamu menulis **Dockerfile**: berkas teks bernama persis `Dockerfile` (tanpa ekstensi) yang berisi instruksi berurutan. Docker membaca dari atas ke bawah, dan hampir setiap instruksi menghasilkan satu layer.\n\nMisalkan kamu punya API Express sederhana:\n\n```js\n// server.js\nimport express from \"express\";\n\nconst app = express();\napp.get(\"/health\", (req, res) => res.json({ status: \"ok\" }));\napp.get(\"/\", (req, res) => res.send(\"Halo dari container\"));\n\nconst port = process.env.PORT || 3000;\napp.listen(port, () => console.log(`Jalan di port ${port}`));\n```\n\nProyeknya berisi `package.json` (dengan `\"type\": \"module\"` dan dependency `express`), `package-lock.json`, dan `server.js`. Dockerfile pertamanya:\n\n```dockerfile\nFROM node:24-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nEXPOSE 3000\nCMD [\"node\", \"server.js\"]\n```\n\nTujuh baris, dan setiap baris punya alasan. Mari bedah satu per satu.\n\n## Instruksi Satu per Satu\n\n**`FROM node:24-alpine`** menentukan image dasar. Semua Dockerfile dimulai dengan FROM. Kamu tidak memulai dari nol, melainkan dari image yang sudah punya Node dan sistem operasi minimal.\n\n**`WORKDIR /app`** menetapkan folder kerja di dalam image. Instruksi sesudahnya dijalankan dari sana, dan Docker membuat folder itu bila belum ada. Jangan memakai `RUN cd /app`, karena `cd` hanya berlaku di satu instruksi RUN.\n\n**`COPY package*.json ./`** menyalin `package.json` dan `package-lock.json` dari folder proyekmu (konteks build) ke `/app` di image. Titik sumber selalu relatif terhadap konteks build, bukan terhadap lokasi Dockerfile di komputermu secara bebas.\n\n**`RUN npm ci`** menjalankan perintah saat **build** dan menyimpan hasilnya sebagai layer. `npm ci` memasang dependency persis sesuai `package-lock.json` dan gagal bila lockfile tidak cocok, sehingga lebih bisa diulang dibanding `npm install`.\n\n**`COPY . .`** menyalin seluruh sisa kode ke `/app`.\n\n**`EXPOSE 3000`** hanya dokumentasi: ia mencatat bahwa aplikasi mendengarkan port 3000. EXPOSE **tidak** membuka port ke host. Yang membuka adalah `-p` saat `docker run` atau `ports:` di Compose.\n\n**`CMD [\"node\", \"server.js\"]`** menentukan perintah yang dijalankan saat container menyala. Ini perintah saat **run**, bukan saat build. Bedakan dari RUN yang berjalan ketika image dibuat.\n\nDua hal tentang CMD. Pertama, tulis dalam bentuk array JSON (exec form) seperti di atas, bukan `CMD node server.js` (shell form). Dengan exec form, `node` menjadi proses utama (PID 1) sehingga menerima sinyal SIGTERM dari `docker stop` dan bisa berhenti dengan rapi. Dengan shell form, sinyal pertama-tama diterima shell. Kedua, hindari `CMD [\"npm\", \"start\"]` untuk produksi karena npm menambah satu lapisan proses yang tidak selalu meneruskan sinyal.\n\n## Urutan Instruksi dan Cache\n\nKenapa `package*.json` disalin lebih dulu, baru kode? Jawabannya cache.\n\nDocker memakai ulang sebuah layer bila instruksinya sama dan berkas yang disalinnya tidak berubah. Begitu satu layer berubah, **semua layer sesudahnya dibangun ulang**. Bandingkan dua urutan:\n\n```dockerfile\n# Buruk: setiap ubah satu baris kode, npm ci ikut jalan lagi\nCOPY . .\nRUN npm ci\n```\n\n```dockerfile\n# Baik: npm ci hanya jalan bila dependency berubah\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\n```\n\nPada urutan buruk, mengubah `server.js` membuat layer `COPY . .` berubah, sehingga `RUN npm ci` ikut dibangun ulang dan kamu menunggu unduhan puluhan megabyte setiap kali. Pada urutan baik, mengubah kode hanya membuat layer `COPY . .` dan sesudahnya yang dibangun ulang; layer `npm ci` diambil dari cache selama `package.json` dan lockfile sama. Aturan emasnya: **taruh yang jarang berubah di atas, yang sering berubah di bawah.**\n\n## .dockerignore\n\nPerintah `COPY . .` menyalin semuanya, termasuk `node_modules` dari laptopmu, folder `.git`, dan berkas `.env` berisi rahasia. Itu buruk di tiga hal: image membengkak, modul native hasil build laptopmu bisa tidak cocok dengan Linux di container, dan rahasia bocor ke dalam image.\n\nBuat berkas `.dockerignore` di samping Dockerfile:\n\n```text\nnode_modules\nnpm-debug.log\n.git\n.gitignore\n.env\n.env.*\nDockerfile\ncompose.yaml\n```\n\nSintaksnya mirip `.gitignore`. Berkas yang terdaftar tidak dikirim ke Docker sebagai bagian dari konteks build, jadi `COPY` tidak bisa menyentuhnya. Membuat `.dockerignore` adalah kebiasaan yang harus ada di setiap proyek, sama seperti `.gitignore`.\n\n## Membangun dan Menjalankan\n\n```bash\ndocker build -t toko-api:1.0 .\n```\n\n- `-t toko-api:1.0` memberi nama dan tag pada image hasil.\n- Titik di akhir adalah **konteks build**: folder yang dikirim ke Docker. Lupa titik ini adalah kesalahan paling umum.\n\nSelama build kamu akan melihat setiap langkah dan apakah ia memakai cache (`CACHED`). Jalankan build sekali lagi tanpa mengubah apa pun dan hampir semuanya `CACHED`. Setelah selesai:\n\n```bash\ndocker image ls toko-api\ndocker run -d --name api -p 3000:3000 toko-api:1.0\ncurl http://localhost:3000/health\n```\n\nHasilnya `{\"status\":\"ok\"}`. Ubah satu baris di `server.js`, bangun ulang dengan tag `1.1`, dan perhatikan bahwa `npm ci` tetap `CACHED`.\n\nUntuk melihat layer sebuah image, jalankan `docker history toko-api:1.0`. Kamu akan melihat satu baris per layer beserta ukurannya, dan terlihat jelas layer `RUN npm ci` biasanya yang paling besar.\n\n## Jebakan Umum\n\n- **Aplikasi hanya mendengarkan 127.0.0.1.** Di dalam container, `localhost` adalah container itu sendiri. Bila aplikasimu mengikat ke `127.0.0.1`, port yang dipublikasikan tidak bisa dijangkau dari host. Express memakai semua interface secara bawaan saat kamu memanggil `app.listen(port)`; bila kamu menyebut host, pakai `0.0.0.0`.\n- **Menaruh rahasia di Dockerfile.** Nilai di `ENV` dan `ARG` tersimpan di metadata image dan bisa dibaca siapa saja yang memiliki image. Bab 7 membahas cara yang benar.\n- **Lupa `.dockerignore`.** Build lambat dan image besar karena `node_modules` ikut terkirim.\n- **Mengubah berkas di container lalu heran hilang.** Perubahan harus masuk ke kode dan image dibangun ulang.\n\n## Rangkuman\n\n- Dockerfile adalah daftar instruksi berurutan; hampir tiap instruksi membuat satu layer.\n- FROM memilih image dasar, WORKDIR folder kerja, COPY menyalin berkas, RUN berjalan saat build, CMD berjalan saat container menyala.\n- EXPOSE hanya dokumentasi; port dibuka lewat `-p` atau `ports:`.\n- Salin `package*.json` dan jalankan `npm ci` sebelum `COPY . .` supaya cache dependency bertahan.\n- Gunakan CMD bentuk array (exec form) agar sinyal berhenti sampai ke Node.\n- Selalu buat `.dockerignore` untuk `node_modules`, `.git`, dan `.env`; bangun dengan `docker build -t nama:tag .`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setiap kali mengubah satu baris di server.js, build image makin lambat karena npm ci selalu dijalankan ulang. Dockerfile-nya kemungkinan memiliki urutan",
+          "code": "",
+          "options": [
+            "COPY . . lebih dulu, baru RUN npm ci",
+            "COPY package*.json lebih dulu, baru RUN npm ci, baru COPY . .",
+            "FROM, WORKDIR, lalu EXPOSE sebelum perintah lainnya",
+            "RUN npm ci dua kali supaya cache layer terisi lebih penuh"
+          ],
+          "answer": 0,
+          "explanation": "Bila semua kode disalin sebelum npm ci, perubahan kode membatalkan cache layer npm ci. Salin package*.json dulu agar cache bertahan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aplikasimu jalan di container, tetapi tidak bisa dijangkau dari browser walaupun port sudah dipublikasikan dengan -p. Penyebab yang masuk akal adalah",
+          "code": "",
+          "options": [
+            "Dockerfile tidak memakai instruksi EXPOSE sehingga port tertutup",
+            "tag image memakai huruf kecil sehingga Docker menolak koneksi",
+            "perintah CMD ditulis dalam bentuk array sehingga port berubah",
+            "aplikasi hanya mengikat diri ke 127.0.0.1 di dalam container"
+          ],
+          "answer": 3,
+          "explanation": "localhost di dalam container adalah container itu sendiri. Aplikasi harus mendengarkan semua interface agar port yang dipublikasikan bisa dijangkau."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin docker stop menghentikan aplikasi Node dengan rapi. Bentuk CMD yang tepat adalah",
+          "code": "",
+          "options": [
+            "CMD node server.js agar shell menjadi proses utama dan meneruskan sinyal ke aplikasi",
+            "RUN node server.js agar aplikasi menyala saat image dibangun",
+            "CMD [\"node\", \"server.js\"] agar Node menjadi proses utama penerima sinyal",
+            "EXPOSE node server.js agar sinyal diteruskan oleh Docker"
+          ],
+          "answer": 2,
+          "explanation": "Exec form membuat Node menjadi PID 1 sehingga SIGTERM sampai langsung ke aplikasi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Build image tiba-tiba memakan waktu lama dan image sangat besar karena berkas .env serta node_modules ikut tersalin. Solusi yang tepat adalah",
+          "code": "",
+          "options": [
+            "menambah baris EXPOSE untuk setiap folder yang ingin dilewati",
+            "membuat .dockerignore yang memuat node_modules dan .env",
+            "mengganti COPY dengan RUN cp supaya penyalinan lebih ringan",
+            "mengubah tag image agar Docker mengabaikan berkas besar"
+          ],
+          "answer": 1,
+          "explanation": ".dockerignore mengeluarkan berkas dari konteks build, sehingga COPY tidak bisa menyentuhnya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memeriksa urutan cache Dockerfile",
+          "prompt": "Tulis fungsi `urutanCacheBenar(dockerfile)` yang menerima teks Dockerfile dan mengembalikan `true` bila urutannya ramah cache: baris `COPY package...` datang **sebelum** baris `RUN npm ci` (atau `RUN npm install`), dan baris itu datang sebelum `COPY . .`.\n\nKembalikan `false` bila salah satu dari ketiga baris tidak ada atau urutannya terbalik. Abaikan spasi di awal dan akhir baris.",
+          "starter": {
+            "code": "function urutanCacheBenar(dockerfile) {\n  // TODO: cari indeks tiap baris lalu bandingkan urutannya\n}\n"
+          },
+          "solution": {
+            "code": "function urutanCacheBenar(dockerfile) {\n  const baris = dockerfile.split(\"\\n\").map((b) => b.trim());\n  const salinPaket = baris.findIndex((b) => /^COPY\\s+package/.test(b));\n  const pasang = baris.findIndex((b) => /^RUN\\s+npm\\s+(ci|install)/.test(b));\n  const salinSemua = baris.findIndex((b) => /^COPY\\s+\\.\\s+\\./.test(b));\n  if (salinPaket < 0 || pasang < 0 || salinSemua < 0) return false;\n  return salinPaket < pasang && pasang < salinSemua;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "urutan benar menghasilkan true",
+              "check": "urutanCacheBenar(\"FROM node:24-alpine\\nWORKDIR /app\\nCOPY package*.json ./\\nRUN npm ci\\nCOPY . .\\nCMD [\\\"node\\\", \\\"server.js\\\"]\") === true"
+            },
+            {
+              "name": "COPY semua sebelum npm ci menghasilkan false",
+              "check": "urutanCacheBenar(\"FROM node:24-alpine\\nCOPY . .\\nRUN npm ci\") === false"
+            },
+            {
+              "name": "RUN npm install juga dikenali",
+              "check": "urutanCacheBenar(\"COPY package.json ./\\nRUN npm install\\nCOPY . .\") === true"
+            },
+            {
+              "name": "baris yang hilang menghasilkan false",
+              "check": "urutanCacheBenar(\"FROM node:24-alpine\\nCOPY package*.json ./\\nCOPY . .\") === false"
+            },
+            {
+              "name": "spasi di awal baris diabaikan",
+              "check": "urutanCacheBenar(\"  COPY package*.json ./\\n  RUN npm ci\\n  COPY . .\") === true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "dockerfile-produksi",
+      "title": "Dockerfile untuk Produksi",
+      "est_minutes": 35,
+      "slide_from": 9,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Membuat image yang kecil dengan multi-stage build.\n- Menjalankan aplikasi sebagai pengguna non-root.\n- Menambahkan HEALTHCHECK dan menangani sinyal berhenti dengan benar.\n- Menerapkan checklist Dockerfile yang siap produksi.\n\n## Dockerfile Pertama Itu Belum Siap Produksi\n\nDockerfile di bab sebelumnya berjalan, tetapi ia punya beberapa kelemahan yang baru terasa di produksi:\n\n- `npm ci` memasang **semua** dependency, termasuk `devDependencies` seperti compiler dan alat tes yang tidak dibutuhkan saat aplikasi berjalan.\n- Image berisi kode sumber dan alat build yang tidak perlu, sehingga lebih besar dan permukaan serangannya lebih luas.\n- Aplikasi berjalan sebagai **root** di dalam container.\n- Tidak ada cara bagi Docker untuk tahu apakah aplikasi benar-benar sehat atau hanya prosesnya yang masih hidup.\n\nBab ini memperbaikinya satu per satu.\n\n## Multi-Stage Build\n\nBanyak aplikasi Node punya langkah build: TypeScript dikompilasi ke JavaScript, atau frontend dibundel. Alat untuk build itu tidak diperlukan saat aplikasi berjalan. Multi-stage build memisahkan keduanya dengan memakai beberapa `FROM` dalam satu Dockerfile.\n\n![Stage build dibuang; hanya hasil build yang disalin ke stage final](gambar:docker-multi-stage)\n\n```dockerfile\n# Stage 1: build\nFROM node:24-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\n# Stage 2: image final\nFROM node:24-alpine\nWORKDIR /app\nENV NODE_ENV=production\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY --from=build /app/dist ./dist\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"dist/server.js\"]\n```\n\nCara membacanya:\n\n- `AS build` memberi nama pada stage pertama.\n- Stage pertama memasang semua dependency dan menjalankan `npm run build` yang menghasilkan folder `dist`.\n- Stage kedua mulai lagi dari image bersih. Ia hanya memasang dependency produksi (`--omit=dev`), lalu menyalin **hanya** folder `dist` dari stage pertama lewat `COPY --from=build`.\n- Image yang dihasilkan adalah stage terakhir. Stage `build` beserta compiler dan sumbernya tidak ikut terkirim.\n\nBila aplikasimu murni JavaScript tanpa langkah build, kamu tetap bisa memakai pola ini untuk memisahkan pemasangan dependency produksi, atau cukup satu stage dengan `npm ci --omit=dev`. Jangan memaksakan multi-stage bila tidak ada yang perlu dipisah.\n\n## Pengguna Non-Root\n\nSecara bawaan proses di container berjalan sebagai root. Bila aplikasimu punya celah dan penyerang berhasil menjalankan kode, ia mendapat hak root di dalam container, yang memudahkan langkah berikutnya. Prinsip hak minimum berlaku di sini juga.\n\nImage resmi Node sudah menyediakan pengguna biasa bernama `node`. Cukup tambahkan `USER node` sebelum CMD, dan pastikan berkas yang perlu dibaca atau ditulis dimiliki pengguna itu:\n\n```dockerfile\nCOPY --chown=node:node . .\nUSER node\n```\n\nTanpa `--chown`, berkas hasil `COPY` dimiliki root dan, bila aplikasimu perlu menulis ke folder itu, akan gagal dengan `EACCES`. Port di atas 1024 (seperti 3000) bisa dibuka tanpa hak root, jadi aplikasimu tidak butuh root untuk mendengarkan port.\n\n## HEALTHCHECK: Sehat Itu Lebih dari Hidup\n\nDocker menganggap container sehat selama prosesnya berjalan. Padahal aplikasi bisa hidup tetapi macet: koneksi database putus, atau semua request menggantung. `HEALTHCHECK` memberi Docker cara memeriksa.\n\nTambahkan endpoint ringan di aplikasi:\n\n```js\napp.get(\"/health\", (req, res) => res.json({ status: \"ok\" }));\n```\n\nLalu di Dockerfile:\n\n```dockerfile\nHEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \\\n  CMD wget -qO- http://127.0.0.1:3000/health || exit 1\n```\n\nDocker menjalankan perintah itu tiap 30 detik di dalam container. Kode keluar 0 berarti sehat, 1 berarti tidak sehat. Setelah tiga kegagalan berturut-turut status berubah menjadi `unhealthy`; kamu bisa melihatnya di kolom STATUS pada `docker ps`. `--start-period` memberi waktu aplikasi menyala sebelum kegagalan dihitung.\n\nDua catatan teknis. Image Alpine punya `wget` (dari BusyBox) tetapi tidak punya `curl`, jadi pakai `wget` atau tulis pemeriksaan dengan Node. Dan tulis `127.0.0.1`, bukan `localhost`, karena di sebagian image `localhost` bisa diterjemahkan ke alamat IPv6 padahal aplikasimu hanya mendengarkan IPv4.\n\nPerlu dipahami: Docker sendiri hanya **menandai** container tidak sehat; ia tidak otomatis me-restartnya. Orkestrator atau Compose (dengan `depends_on` berkondisi, bab 6) yang memanfaatkan statusnya.\n\n## Menangani Sinyal Berhenti\n\nSaat kamu menjalankan `docker stop`, Docker mengirim SIGTERM ke proses utama dan menunggu 10 detik sebelum memaksa dengan SIGKILL. Aplikasi yang baik memakai jeda itu untuk selesai: menutup server, menuntaskan request yang sedang berjalan, menutup koneksi database.\n\n```js\nconst server = app.listen(port);\n\nprocess.on(\"SIGTERM\", () => {\n  console.log(\"SIGTERM diterima, menutup server\");\n  server.close(() => process.exit(0));\n});\n```\n\n`server.close` berhenti menerima koneksi baru dan memanggil callback setelah yang lama selesai. Ini hanya bekerja bila Node adalah proses utama (CMD exec form, seperti di bab 3). Tanpa penanganan, aplikasi dimatikan paksa setelah 10 detik dan request yang sedang berjalan terputus; saat deploy ulang, pengguna bisa melihat galat.\n\n## Memeriksa Hasilnya\n\nSetelah Dockerfile diperbaiki, bandingkan sebelum dan sesudah. Bangun keduanya dengan tag berbeda lalu lihat ukurannya:\n\n```bash\ndocker build -t toko-api:basic -f Dockerfile.basic .\ndocker build -t toko-api:prod .\ndocker image ls toko-api\ndocker run --rm toko-api:prod id\n```\n\nPerintah terakhir menjalankan `id` di dalam image dan seharusnya menampilkan `uid=1000(node)`, bukan `uid=0(root)`. Selisih ukuran image sering mencolok pada proyek yang punya compiler atau bundler besar. Kebiasaan membandingkan seperti ini membuat kamu tahu efek tiap perubahan, bukan sekadar mengikuti resep.\n\nKamu juga bisa menyetel batas sumber daya saat menjalankan container, misalnya `--memory 256m` dan `--cpus 0.5`, supaya satu aplikasi yang bocor memori tidak menghabiskan seluruh server. Batas ini memakai cgroup yang kamu kenal di bab pertama.\n\n## Checklist Dockerfile Produksi\n\n- Pakai tag image spesifik, bukan `latest`.\n- Pisahkan stage build dan stage final bila ada langkah build.\n- Pasang dependency produksi saja: `npm ci --omit=dev`.\n- Urutkan instruksi dari yang jarang berubah ke yang sering berubah.\n- Jangan jalankan sebagai root: `USER node`.\n- Jangan simpan rahasia di image, dan sertakan `.dockerignore`.\n- Tambahkan `HEALTHCHECK` ke endpoint `/health`.\n- Gunakan CMD exec form dan tangani SIGTERM.\n- Tulis log ke stdout, bukan ke file.\n\n## Rangkuman\n\n- Multi-stage build memisahkan alat build dari image final; `COPY --from=` mengambil hanya hasil yang dibutuhkan.\n- `npm ci --omit=dev` menjaga image tanpa devDependencies, dan `NODE_ENV=production` menyetel mode produksi.\n- `USER node` menjalankan aplikasi tanpa hak root; gunakan `COPY --chown` agar berkas bisa diakses.\n- HEALTHCHECK memeriksa kesehatan aplikasi lewat `/health`; pakai `wget` dan `127.0.0.1` di Alpine.\n- Docker menandai container `unhealthy` tetapi tidak me-restartnya sendiri.\n- Tangani SIGTERM dengan `server.close` supaya deploy ulang tidak memutus request yang sedang berjalan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim keamanan menemukan aplikasi Node-mu berjalan sebagai root di container. Perbaikan paling sederhana pada Dockerfile adalah",
+          "code": "",
+          "options": [
+            "menambah USER node sebelum CMD dan memakai COPY --chown bila perlu",
+            "menambah EXPOSE 1024 supaya Docker menurunkan hak proses",
+            "mengganti FROM ke image bertag latest karena image terbaru tidak pernah memakai root",
+            "menjalankan docker stop sebelum container mulai menerima request"
+          ],
+          "answer": 0,
+          "explanation": "Image resmi Node menyediakan pengguna node. USER node menurunkan hak proses dan COPY --chown menjaga berkas bisa diakses."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Image final aplikasi TypeScript-mu berisi compiler dan kode sumber yang tidak dibutuhkan saat berjalan. Cara yang tepat memperkecilnya adalah",
+          "code": "",
+          "options": [
+            "menjalankan docker system prune sebelum setiap build berlangsung",
+            "menaruh semua langkah build dalam satu RUN panjang tanpa instruksi COPY sama sekali",
+            "mengganti CMD dengan bentuk shell supaya image dikompres otomatis",
+            "multi-stage build dengan COPY --from=build hanya untuk hasil kompilasi"
+          ],
+          "answer": 3,
+          "explanation": "Stage build menampung alat build; stage final hanya menyalin hasilnya sehingga image akhir lebih kecil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Container berstatus Up tetapi semua request menggantung karena koneksi database macet. Fitur Docker yang membantu mendeteksinya adalah",
+          "code": "",
+          "options": [
+            "EXPOSE yang secara berkala menandai port aplikasi sedang bermasalah dan tidak bisa dipakai",
+            "ENV NODE_ENV=production yang menyalakan alarm bawaan",
+            "HEALTHCHECK yang memanggil endpoint /health aplikasi",
+            "WORKDIR yang memantau penggunaan memori folder kerja"
+          ],
+          "answer": 2,
+          "explanation": "HEALTHCHECK menjalankan pemeriksaan berkala dan menandai container unhealthy bila gagal berulang."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Docker secara otomatis me-restart container yang berstatus unhealthy tanpa konfigurasi tambahan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Docker hanya menandai status; restart butuh kebijakan atau orkestrator yang memanfaatkan status itu."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membaca tahap multi-stage",
+          "prompt": "Tulis fungsi `tahapBuild(dockerfile)` yang mengembalikan array objek `{ nama, base }`, satu per baris `FROM`, sesuai urutan.\n\n- `base` adalah nama image setelah `FROM`.\n- `nama` adalah kata setelah `AS` (tidak peka huruf besar-kecil), atau `null` bila tidak ada.\n\nContoh: `FROM node:24 AS build` menghasilkan `{ nama: \"build\", base: \"node:24\" }`.",
+          "starter": {
+            "code": "function tahapBuild(dockerfile) {\n  // TODO: ambil setiap baris FROM\n}\n"
+          },
+          "solution": {
+            "code": "function tahapBuild(dockerfile) {\n  const hasil = [];\n  for (const baris of dockerfile.split(\"\\n\")) {\n    const m = /^\\s*FROM\\s+(\\S+)(?:\\s+AS\\s+(\\S+))?/i.exec(baris);\n    if (m) hasil.push({ nama: m[2] || null, base: m[1] });\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "satu FROM tanpa nama",
+              "check": "JSON.stringify(tahapBuild(\"FROM node:24-alpine\\nCMD [\\\"node\\\"]\")) === '[{\"nama\":null,\"base\":\"node:24-alpine\"}]'"
+            },
+            {
+              "name": "dua tahap dengan nama",
+              "check": "JSON.stringify(tahapBuild(\"FROM node:24 AS build\\nRUN npm ci\\nFROM node:24-alpine\\nCOPY --from=build /app .\")) === '[{\"nama\":\"build\",\"base\":\"node:24\"},{\"nama\":null,\"base\":\"node:24-alpine\"}]'"
+            },
+            {
+              "name": "AS tidak peka huruf besar-kecil",
+              "check": "tahapBuild(\"from node:24 as deps\")[0].nama === \"deps\""
+            },
+            {
+              "name": "tanpa FROM menghasilkan array kosong",
+              "check": "tahapBuild(\"RUN echo halo\").length === 0"
+            }
+          ]
+        },
+        {
+          "kind": "express",
+          "title": "Endpoint /health untuk HEALTHCHECK",
+          "prompt": "Tambahkan route `GET /health` pada aplikasi di bawah. Route itu harus membalas status 200 dengan JSON `{ status: \"ok\", waktu: <string ISO> }`, di mana `waktu` adalah waktu sekarang dalam format ISO (`new Date().toISOString()`). Endpoint ini yang akan dipanggil oleh HEALTHCHECK Docker.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\n\napp.get(\"/\", (req, res) => res.send(\"Halo dari container\"));\n\n// TODO: tambahkan GET /health\n\napp.listen(3000);\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\n\napp.get(\"/\", (req, res) => res.send(\"Halo dari container\"));\n\napp.get(\"/health\", (req, res) => {\n  res.json({ status: \"ok\", waktu: new Date().toISOString() });\n});\n\napp.listen(3000);\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "GET /health membalas 200",
+              "check": "(await request(\"GET\", \"/health\")).status === 200"
+            },
+            {
+              "name": "isi status bernilai ok",
+              "check": "(await request(\"GET\", \"/health\")).body.status === \"ok\""
+            },
+            {
+              "name": "waktu berupa string ISO",
+              "check": "typeof (await request(\"GET\", \"/health\")).body.waktu === \"string\" && /^\\d{4}-\\d{2}-\\d{2}T/.test((await request(\"GET\", \"/health\")).body.waktu)"
+            },
+            {
+              "name": "route lama tetap berjalan",
+              "check": "(await request(\"GET\", \"/\")).body === \"Halo dari container\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "volume-dan-network",
+      "title": "Volume dan Network",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 12,
+      "body": "## Tujuan\n\n- Menjelaskan kenapa data di container hilang dan bagaimana volume mengatasinya.\n- Membedakan named volume, bind mount, dan tmpfs.\n- Membuat network buatan sendiri dan memakai nama container sebagai alamat.\n- Membedakan port yang dipublikasikan dengan port internal, serta mencadangkan data volume.\n\n## Container Itu Sementara\n\nDi bab 2 kamu belajar bahwa container punya lapisan tulis yang hilang ketika container dihapus. Coba buktikan dengan PostgreSQL:\n\n```bash\ndocker run -d --name db -e POSTGRES_PASSWORD=rahasia postgres:17-alpine\n# ...buat tabel dan isi data...\ndocker rm -f db\ndocker run -d --name db -e POSTGRES_PASSWORD=rahasia postgres:17-alpine\n# tabel tadi sudah tidak ada\n```\n\nSetiap kali kamu mengganti versi image atau membuat ulang container, data database lenyap. Untuk aplikasi stateless seperti API Express yang menyimpan semuanya di database, itu bukan masalah. Untuk database, upload pengguna, atau berkas apa pun yang harus awet, kamu butuh tempat penyimpanan di luar siklus hidup container: **volume**.\n\n## Tiga Cara Menyimpan Data\n\n| Jenis | Disimpan di | Cocok untuk |\n|---|---|---|\n| Named volume | Dikelola Docker (di Linux biasanya di bawah `/var/lib/docker/volumes`) | Data database, data aplikasi di produksi |\n| Bind mount | Folder yang kamu tunjuk di host | Mengedit kode dari host saat pengembangan, berkas konfigurasi |\n| tmpfs | Memori host | Data sementara yang tidak boleh menyentuh disk |\n\n**Named volume** adalah pilihan utama untuk data yang harus awet. Docker membuatnya, mengelola lokasinya, dan ia bertahan walau containernya dihapus.\n\n```bash\ndocker volume create pgdata\ndocker run -d --name db \\\n  -e POSTGRES_PASSWORD=rahasia \\\n  -v pgdata:/var/lib/postgresql/data \\\n  postgres:17-alpine\n```\n\n`-v pgdata:/var/lib/postgresql/data` berarti: pasang volume `pgdata` di folder tempat PostgreSQL menyimpan datanya. Sekarang kamu bisa `docker rm -f db`, membuat container baru dengan volume yang sama, dan data kembali ada. Catatan versi: pada image PostgreSQL 18 ke atas, lokasi data di dalam image berubah sehingga titik pasang yang direkomendasikan juga berbeda; baca dokumentasi image sesuai tag yang kamu pakai.\n\n**Bind mount** memetakan folder host langsung ke container. Cocok saat pengembangan: kamu mengedit kode di editor, dan container langsung melihat perubahannya.\n\n```bash\ndocker run --rm -p 3000:3000 \\\n  -v \"$(pwd)\":/app \\\n  -w /app node:24-alpine node --watch server.js\n```\n\nKelemahannya: bind mount bergantung pada struktur folder host, dan izin berkas bisa merepotkan. Di produksi, hindari bind mount untuk kode (kode sudah ada di image) dan pakai bind mount hanya untuk berkas konfigurasi yang memang berada di host, ditandai hanya-baca dengan `:ro`.\n\n**tmpfs** menaruh data di memori dan menghapusnya saat container berhenti. Pakai untuk cache atau berkas sementara sensitif.\n\n## Cadangan dan Perawatan Volume\n\nVolume bukan cadangan. Bila disk server rusak atau kamu salah menghapus, datanya hilang. Untuk database, cadangan yang benar adalah dump logis:\n\n```bash\ndocker exec db pg_dump -U postgres appdb > cadangan-$(date +%F).sql\n```\n\nPerintah ini menjalankan `pg_dump` di dalam container `db` dan menyimpan hasilnya sebagai berkas di host. Salin berkas itu ke tempat lain (bukan di server yang sama). Perintah penting lain:\n\n```bash\ndocker volume ls           # daftar volume\ndocker volume inspect pgdata\ndocker volume rm pgdata    # hapus volume (data hilang)\n```\n\nHati-hati dengan `docker compose down -v` dan `docker system prune --volumes`: keduanya menghapus volume, dan itu berarti menghapus data database.\n\n## Network: Container Saling Bicara\n\nSecara bawaan semua container masuk ke network `bridge` bawaan. Masalahnya, di network bawaan itu container hanya bisa saling menjangkau lewat alamat IP yang berubah-ubah, tanpa nama. Solusinya membuat **user-defined bridge network**:\n\n```bash\ndocker network create app-net\n\ndocker run -d --name db --network app-net \\\n  -e POSTGRES_PASSWORD=rahasia -v pgdata:/var/lib/postgresql/data \\\n  postgres:17-alpine\n\ndocker run -d --name api --network app-net -p 3000:3000 \\\n  -e DATABASE_URL=postgres://postgres:rahasia@db:5432/postgres \\\n  toko-api:1.0\n```\n\n![Container di satu network saling memanggil lewat nama; port dipublikasikan hanya untuk yang perlu dijangkau dari host](gambar:docker-volume-network)\n\nDi network buatan sendiri, Docker menyediakan DNS internal: container `api` bisa memanggil container `db` cukup dengan nama `db`, seperti pada `DATABASE_URL` di atas (`@db:5432`). Kamu tidak perlu tahu IP-nya. Dua container di network berbeda tidak saling melihat, jadi network juga alat isolasi sederhana.\n\n## Port: Publikasi dan Internal\n\nDua hal sering dicampuradukkan.\n\n- **Port internal**: port yang didengarkan aplikasi di dalam container (3000, 5432). Container di network yang sama bisa menjangkaunya langsung, tanpa `-p`.\n- **Port yang dipublikasikan**: `-p 8080:3000` membuka port 8080 di **host** dan meneruskannya ke port 3000 container. Hanya ini yang bisa diakses dari luar container.\n\nAturan praktisnya: **publikasikan hanya yang perlu diakses dari luar**. Database cukup berada di network yang sama dengan API; ia tidak perlu `-p 5432:5432`. Di server publik, port database yang terbuka ke internet adalah undangan untuk serangan brute force.\n\nKamu bisa membatasi publikasi ke antarmuka loopback host:\n\n```bash\n-p 127.0.0.1:5432:5432\n```\n\nDengan begitu port hanya bisa dijangkau dari server itu sendiri (misalnya lewat terowongan SSH), bukan dari internet. Ini penting karena Docker memasang aturan iptables sendiri, sehingga port yang kamu publikasikan umumnya **tidak** diblokir oleh firewall seperti UFW. Bab 8 membahas jebakan ini lebih jauh.\n\n## Contoh Utuh: Membuktikan Data Bertahan\n\nUji sendiri bahwa volume bekerja. Jalankan PostgreSQL dengan volume, buat satu tabel, hapus containernya, lalu jalankan lagi dengan volume yang sama:\n\n```bash\ndocker exec -it db psql -U postgres -c \"CREATE TABLE catatan (isi text);\"\ndocker rm -f db\ndocker run -d --name db --network app-net \\\n  -e POSTGRES_PASSWORD=rahasia -v pgdata:/var/lib/postgresql/data \\\n  postgres:17-alpine\ndocker exec -it db psql -U postgres -c \"\\\\dt\"\n```\n\nTabel `catatan` masih ada. Pengalaman kecil ini menjelaskan pembagian tugas yang akan terus kamu pakai: image dan container boleh dibuang kapan saja, sedangkan volume menyimpan keadaan yang berharga.\n\n## Rangkuman\n\n- Lapisan tulis container hilang bersama container; data yang harus awet disimpan di volume.\n- Named volume untuk data produksi, bind mount untuk kode saat pengembangan atau konfigurasi, tmpfs untuk data sementara di memori.\n- Volume bukan cadangan; buat dump database dengan `docker exec ... pg_dump` dan simpan di luar server.\n- Network buatan sendiri (`docker network create`) menyediakan DNS sehingga container saling memanggil lewat nama.\n- Port internal bisa dijangkau antar container tanpa `-p`; `-p HOST:CONTAINER` hanya untuk akses dari luar.\n- Jangan publikasikan port database ke internet; batasi dengan `127.0.0.1:` bila perlu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah `docker rm -f db` lalu menjalankan container PostgreSQL baru, semua tabel hilang. Yang seharusnya dilakukan sejak awal adalah",
+          "code": "",
+          "options": [
+            "memasang named volume pada folder data PostgreSQL",
+            "menambah flag -d agar data tersimpan di latar belakang",
+            "memakai tag latest agar database mengingat data lama",
+            "menjalankan docker stop sebelum rm supaya data otomatis tersimpan"
+          ],
+          "answer": 0,
+          "explanation": "Lapisan tulis container hilang bersama container. Named volume hidup di luar siklus hidup container."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Container api gagal terhubung ke db memakai alamat `db:5432` di network bridge bawaan. Perbaikan yang benar adalah",
+          "code": "",
+          "options": [
+            "menulis alamat IP container db secara permanen di kode aplikasi dan menjalankannya ulang",
+            "mempublikasikan port 5432 ke seluruh internet di server",
+            "mengganti nama container db menjadi localhost",
+            "membuat network buatan sendiri dan menaruh kedua container di sana"
+          ],
+          "answer": 3,
+          "explanation": "Network bridge bawaan tidak menyediakan DNS antar container; user-defined bridge menyediakannya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Port database terbuka ke internet padahal UFW tidak mengizinkannya. Kemungkinan terbesar penyebabnya adalah",
+          "code": "",
+          "options": [
+            "UFW otomatis mematikan dirinya setelah Docker dipasang di server",
+            "image PostgreSQL membuka semua port ketika tag-nya latest",
+            "container db dijalankan dengan -p 5432:5432 yang dibuka Docker lewat aturan iptables-nya sendiri",
+            "network bridge buatan sendiri menonaktifkan firewall host"
+          ],
+          "answer": 2,
+          "explanation": "Docker memasang aturan iptables untuk port yang dipublikasikan sehingga dapat melewati UFW. Jangan publikasikan port yang tidak perlu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu butuh cadangan database yang bisa dipindah ke tempat lain. Yang paling tepat adalah",
+          "code": "",
+          "options": [
+            "menyalin folder volume saat PostgreSQL sedang berjalan menulis data",
+            "docker exec ke container db menjalankan pg_dump lalu menyimpan berkasnya di luar server",
+            "mengandalkan volume saja karena volume sudah termasuk cadangan",
+            "menjalankan docker volume prune agar data dirapikan"
+          ],
+          "answer": 1,
+          "explanation": "Volume bukan cadangan. Dump logis dari pg_dump aman dan portabel, dan perlu disimpan di luar server."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Mendeteksi port yang bentrok",
+          "prompt": "Tulis fungsi `portBentrok(daftar)` yang menerima array pemetaan port gaya Docker dan mengembalikan array **port host** (angka) yang dipakai lebih dari satu kali, tanpa duplikat, terurut naik.\n\nFormat yang mungkin: `\"8080:80\"` (host:container), `\"127.0.0.1:5432:5432\"` (ip:host:container), dan `\"3000\"` (hanya port container, tidak memakai port host; abaikan). Akhiran protokol seperti `/udp` dibuang dulu. Anggap port host yang sama selalu bentrok, apa pun alamat IP-nya.",
+          "starter": {
+            "code": "function portBentrok(daftar) {\n  // TODO: ambil port host tiap entri lalu cari yang muncul lebih dari sekali\n}\n"
+          },
+          "solution": {
+            "code": "function portBentrok(daftar) {\n  const hitung = {};\n  for (const entri of daftar) {\n    const bagian = entri.split(\"/\")[0].split(\":\");\n    if (bagian.length < 2) continue;\n    const host = Number(bagian.length === 3 ? bagian[1] : bagian[0]);\n    hitung[host] = (hitung[host] || 0) + 1;\n  }\n  return Object.keys(hitung).map(Number).filter((p) => hitung[p] > 1).sort((a, b) => a - b);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "dua service memakai 8080",
+              "check": "JSON.stringify(portBentrok([\"8080:80\", \"8080:3000\", \"5432:5432\"])) === \"[8080]\""
+            },
+            {
+              "name": "tidak ada bentrokan menghasilkan array kosong",
+              "check": "portBentrok([\"80:80\", \"443:443\"]).length === 0"
+            },
+            {
+              "name": "format dengan alamat IP dibaca",
+              "check": "JSON.stringify(portBentrok([\"127.0.0.1:5432:5432\", \"5432:5432\"])) === \"[5432]\""
+            },
+            {
+              "name": "akhiran protokol dibuang",
+              "check": "JSON.stringify(portBentrok([\"53:53/udp\", \"53:53/tcp\"])) === \"[53]\""
+            },
+            {
+              "name": "port tanpa host diabaikan dan hasil terurut",
+              "check": "JSON.stringify(portBentrok([\"3000\", \"3000\", \"443:443\", \"80:80\", \"443:8443\", \"80:8080\"])) === \"[80,443]\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "docker-compose",
+      "title": "Docker Compose",
+      "est_minutes": 35,
+      "slide_from": 13,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menulis `compose.yaml` untuk aplikasi Express dengan database PostgreSQL.\n- Menjelaskan service, volume, network, dan `depends_on` dengan healthcheck.\n- Memakai perintah `docker compose` untuk menjalankan, melihat log, dan menghentikan.\n- Membedakan konfigurasi pengembangan dan produksi lewat berkas override.\n\n## Dari Perintah Panjang ke Satu Berkas\n\nDi bab sebelumnya kamu menjalankan database dan API dengan beberapa perintah `docker run` panjang. Ada tiga masalah: sulit diingat, sulit dibagikan ke rekan satu tim, dan urutannya gampang salah. **Docker Compose** menyelesaikannya: kamu mendeskripsikan seluruh aplikasi dalam satu berkas YAML, dan satu perintah menjalankan semuanya.\n\nPerhatikan: perintahnya `docker compose` (dengan spasi, plugin Compose v2). Versi lama bernama `docker-compose` (dengan tanda hubung) sudah tidak dikembangkan. Berkasnya cukup bernama `compose.yaml`; kunci `version:` di bagian atas sudah usang dan tidak perlu ditulis.\n\n## Anatomi compose.yaml\n\n```yaml\nservices:\n  api:\n    build: .\n    ports:\n      - \"3000:3000\"\n    environment:\n      DATABASE_URL: postgres://app:rahasia@db:5432/appdb\n    depends_on:\n      db:\n        condition: service_healthy\n    restart: unless-stopped\n\n  db:\n    image: postgres:17-alpine\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: rahasia\n      POSTGRES_DB: appdb\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d appdb\"]\n      interval: 5s\n      timeout: 3s\n      retries: 10\n    restart: unless-stopped\n\nvolumes:\n  pgdata:\n```\n\n![Compose menjalankan beberapa service dalam satu network dengan volume dan konfigurasi](gambar:docker-compose-stack)\n\nBagian-bagiannya:\n\n- **`services`** berisi daftar container. Nama service (`api`, `db`) sekaligus menjadi **nama host** di network yang dibuat otomatis oleh Compose, sehingga `api` memanggil database lewat `@db:5432`. Kamu tidak perlu membuat network sendiri.\n- **`build: .`** membuat image dari Dockerfile di folder ini. Alternatifnya `image:` untuk memakai image yang sudah ada. Keduanya boleh dipakai bersamaan untuk memberi nama pada hasil build.\n- **`ports`** mempublikasikan port seperti `-p`. Tulis dalam tanda kutip supaya YAML tidak salah menafsirkan angka dengan titik dua.\n- **`volumes`** di tingkat service memasang volume; di tingkat paling luar mendeklarasikan named volume `pgdata`.\n- **`restart: unless-stopped`** adalah kebijakan restart yang sama seperti di `docker run`.\n\n## depends_on dan Kesiapan\n\nPemula sering bingung: API gagal terhubung ke database padahal `db` sudah \"jalan\". Penyebabnya, `depends_on` biasa hanya menjamin urutan **menyalakan** container, bukan bahwa database sudah siap menerima koneksi. PostgreSQL butuh beberapa detik untuk inisialisasi setelah prosesnya hidup.\n\nSolusinya `condition: service_healthy` seperti pada contoh, yang menunggu healthcheck `db` lulus. `pg_isready` adalah alat bawaan PostgreSQL yang memeriksa apakah server siap. Dengan konfigurasi ini, Compose baru menyalakan `api` setelah `db` benar-benar sehat.\n\nPelajaran yang lebih umum: aplikasi yang tangguh tetap perlu mencoba ulang koneksi database saat startup, karena di produksi database bisa restart kapan pun. `depends_on` mengurangi masalah saat start awal, bukan menggantikan penanganan galat di kode.\n\n## Perintah Sehari-hari\n\n```bash\ndocker compose up -d --build   # bangun image bila perlu, jalankan semua\ndocker compose ps              # status service\ndocker compose logs -f api     # ikuti log satu service\ndocker compose exec db psql -U app appdb   # masuk ke database\ndocker compose stop            # hentikan, container tetap ada\ndocker compose down            # hentikan dan hapus container serta network\ndocker compose down -v         # sama, plus HAPUS volume (data hilang)\n```\n\nPerbedaan `down` dan `down -v` krusial. `docker compose down` menghapus container dan network tetapi **mempertahankan volume**, jadi data database aman. Tambahan `-v` menghapus volume juga. Gunakan `-v` hanya saat memang ingin memulai dari nol di mesin pengembangan.\n\nBila kamu mengubah kode lalu menjalankan `docker compose up -d` tanpa `--build`, Compose memakai image lama. Tambahkan `--build` agar image dibangun ulang, atau jalankan `docker compose build` terpisah.\n\n## Berkas Override untuk Pengembangan\n\nKonfigurasi pengembangan dan produksi biasanya berbeda: saat pengembangan kamu ingin bind mount dan auto-reload, saat produksi tidak. Compose membaca otomatis `compose.yaml` lalu `compose.override.yaml` bila ada, dan menggabungkannya.\n\n```yaml\n# compose.override.yaml (hanya di laptopmu)\nservices:\n  api:\n    command: node --watch server.js\n    volumes:\n      - ./:/app\n      - /app/node_modules\n    ports:\n      - \"9229:9229\"\n```\n\nBaris `/app/node_modules` adalah volume anonim yang menyembunyikan `node_modules` host supaya yang dipakai tetap yang terpasang di image. Di server, kamu cukup tidak membawa berkas override, atau memilih berkas secara eksplisit dengan `docker compose -f compose.yaml -f compose.prod.yaml up -d`. Dengan begitu satu basis dipakai bersama, dan perbedaan lingkungan tertulis di tempat yang jelas.\n\n## Menambah Service Pendukung\n\nKekuatan Compose terasa saat aplikasi bertambah komponen. Misalnya kamu butuh cache Redis: cukup tambahkan satu service, tanpa memasang apa pun di mesinmu.\n\n```yaml\n  cache:\n    image: redis:7-alpine\n    restart: unless-stopped\n```\n\nService `api` sekarang bisa memakai `redis://cache:6379`. Karena `cache` tidak punya `ports`, ia tidak terbuka ke luar, hanya terjangkau di network Compose. Untuk alat yang hanya kamu perlukan sesekali, seperti panel admin database, pakai `profiles`: service dengan `profiles: [\"debug\"]` tidak menyala kecuali kamu menjalankan `docker compose --profile debug up -d`. Kebiasaan ini menjaga konfigurasi produksi tetap ramping namun alat bantu tetap tersedia saat dibutuhkan.\n\nBerbagi `compose.yaml` lewat Git juga berarti rekan baru cukup menjalankan `git clone` lalu `docker compose up -d` untuk mendapatkan lingkungan yang sama persis denganmu, termasuk versi database. Itu mengurangi waktu onboarding dari setengah hari menjadi beberapa menit.\n\n## Kesalahan yang Sering Terjadi\n\n- **Indentasi YAML salah.** YAML memakai spasi, bukan tab. Satu spasi meleset mengubah arti berkas. Jalankan `docker compose config` untuk memvalidasi dan melihat hasil akhirnya.\n- **Memanggil `localhost` antar service.** Di dalam container `api`, `localhost` adalah `api` sendiri. Pakai nama service: `db`.\n- **Port database dipublikasikan tanpa sadar.** Jangan tulis `ports` pada `db` kecuali perlu.\n- **Mengira `depends_on` menunggu siap.** Tanpa `condition: service_healthy`, ia hanya mengatur urutan start.\n\n## Rangkuman\n\n- Compose mendeskripsikan seluruh aplikasi dalam `compose.yaml` dan menjalankannya dengan `docker compose up -d`.\n- Nama service menjadi nama host di network otomatis; panggil `db`, bukan `localhost`.\n- Named volume dideklarasikan di tingkat atas dan dipasang di service.\n- `depends_on` dengan `condition: service_healthy` menunggu healthcheck; kode aplikasi tetap perlu retry koneksi.\n- `down` mempertahankan volume, `down -v` menghapusnya.\n- `compose.override.yaml` atau `-f` memisahkan konfigurasi pengembangan dan produksi; `docker compose config` memvalidasi hasil akhirnya.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Api gagal start karena database belum siap menerima koneksi, padahal compose.yaml memakai depends_on: [db]. Perbaikan yang tepat adalah",
+          "code": "",
+          "options": [
+            "memberi db healthcheck dan memakai depends_on dengan condition: service_healthy",
+            "menambah baris version di bagian atas berkas Compose",
+            "menukar nama service db dan api dalam berkas Compose",
+            "mempublikasikan port 5432 agar api dapat menjangkau db"
+          ],
+          "answer": 0,
+          "explanation": "depends_on biasa hanya mengatur urutan menyalakan. Kondisi service_healthy menunggu healthcheck lulus."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rekan menjalankan `docker compose down -v` di server staging dan semua data database hilang. Penyebabnya adalah",
+          "code": "",
+          "options": [
+            "perintah down selalu menghapus image dari registry jarak jauh bersama seluruh tag-nya",
+            "Compose memformat ulang disk server setiap kali down dipakai",
+            "bendera -v hanya menampilkan log lebih rinci tanpa efek lain",
+            "bendera -v ikut menghapus volume bernama yang dipakai service"
+          ],
+          "answer": 3,
+          "explanation": "down tanpa -v mempertahankan volume. Dengan -v, volume ikut dihapus."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di dalam service api, koneksi ke `localhost:5432` gagal padahal service db berjalan. Alamat yang benar adalah",
+          "code": "",
+          "options": [
+            "127.0.0.1:5432 karena sama-sama berada di server yang sama",
+            "host.docker:5432 yang otomatis dibuat Compose untuk setiap service",
+            "db:5432, memakai nama service sebagai host",
+            "api:5432 karena database mengikuti nama service pemanggilnya"
+          ],
+          "answer": 2,
+          "explanation": "localhost di dalam container adalah container itu sendiri. Compose membuat DNS dengan nama service."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu mengubah kode lalu menjalankan `docker compose up -d` tetapi perilaku aplikasi tidak berubah. Langkah yang benar adalah",
+          "code": "",
+          "options": [
+            "menghapus berkas compose.yaml lalu membuatnya lagi dari awal dengan isi yang sama persis",
+            "menjalankan docker compose up -d --build supaya image dibangun ulang",
+            "mengubah nama service api agar Compose memuat ulang kode",
+            "menjalankan docker compose stop lalu menunggu beberapa menit"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa --build, Compose memakai image yang sudah ada. Bangun ulang agar kode baru masuk."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Urutan start service Compose",
+          "prompt": "Tulis fungsi `urutanStart(services)` yang menerima objek service gaya Compose, misalnya `{ api: { depends_on: [\"db\"] }, db: {} }`, dan mengembalikan array nama service dalam urutan start: service yang bergantung pada service lain muncul **setelahnya**.\n\n- `depends_on` boleh tidak ada.\n- Bila beberapa service sama-sama siap, pilih yang namanya paling awal menurut abjad.\n- Bila ada siklus, atau service bergantung pada nama yang tidak ada, kembalikan `null`.",
+          "starter": {
+            "code": "function urutanStart(services) {\n  // TODO: ulangi: pilih service yang semua dependensinya sudah di hasil\n}\n"
+          },
+          "solution": {
+            "code": "function urutanStart(services) {\n  const hasil = [];\n  const sisa = new Set(Object.keys(services));\n  while (sisa.size) {\n    const siap = [...sisa].sort().find((n) => (services[n].depends_on || []).every((d) => hasil.includes(d)));\n    if (!siap) return null;\n    hasil.push(siap);\n    sisa.delete(siap);\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "db dinyalakan sebelum api",
+              "check": "JSON.stringify(urutanStart({ api: { depends_on: [\"db\"] }, db: {} })) === '[\"db\",\"api\"]'"
+            },
+            {
+              "name": "rantai tiga service",
+              "check": "JSON.stringify(urutanStart({ proxy: { depends_on: [\"api\"] }, api: { depends_on: [\"db\"] }, db: {} })) === '[\"db\",\"api\",\"proxy\"]'"
+            },
+            {
+              "name": "service yang siap bersama diurutkan abjad",
+              "check": "JSON.stringify(urutanStart({ web: {}, abc: {}, api: { depends_on: [\"web\", \"abc\"] } })) === '[\"abc\",\"web\",\"api\"]'"
+            },
+            {
+              "name": "siklus menghasilkan null",
+              "check": "urutanStart({ a: { depends_on: [\"b\"] }, b: { depends_on: [\"a\"] } }) === null"
+            },
+            {
+              "name": "dependensi yang tidak ada menghasilkan null",
+              "check": "urutanStart({ api: { depends_on: [\"db\"] } }) === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "variabel-lingkungan-dan-rahasia",
+      "title": "Variabel Lingkungan dan Rahasia",
+      "est_minutes": 30,
+      "slide_from": 15,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan kenapa konfigurasi dan rahasia dipisahkan dari kode dan image.\n- Memberi variabel lingkungan lewat `-e`, `--env-file`, `environment`, dan `env_file`.\n- Mengamankan berkas `.env` dan menyimpan rahasia dengan Compose secrets.\n- Membedakan variabel build (`ARG`) dari variabel runtime (`ENV`).\n\n## Konfigurasi Tidak Boleh Masuk Kode\n\nAplikasi yang sama berjalan di tiga tempat: laptopmu, server staging, dan produksi. Yang berbeda hanya konfigurasinya: alamat database, kunci API, mode (`development` atau `production`). Prinsip dari metodologi twelve-factor app berbunyi: **simpan konfigurasi di lingkungan**, bukan di kode.\n\nAlasannya praktis. Bila alamat database ditulis di kode, kamu membangun image berbeda untuk tiap lingkungan, dan kamu tidak bisa memastikan bahwa yang diuji di staging sama dengan yang berjalan di produksi. Bila kuncinya ikut ter-commit, siapa pun yang pernah melihat repositori memilikinya selamanya, karena riwayat Git tidak pernah lupa. Dengan memisahkan konfigurasi, **satu image yang sama** bisa dijalankan di mana saja, hanya dengan nilai lingkungan berbeda.\n\nDi Node, nilai itu dibaca dari `process.env`:\n\n```js\nconst port = Number(process.env.PORT) || 3000;\nconst dbUrl = process.env.DATABASE_URL;\nif (!dbUrl) {\n  console.error(\"DATABASE_URL belum diisi\");\n  process.exit(1);\n}\n```\n\nBiasakan **gagal cepat**: bila variabel wajib tidak ada, hentikan aplikasi saat start dengan pesan jelas, jangan biarkan ia berjalan setengah rusak. Di Node 20 ke atas kamu juga bisa menjalankan `node --env-file=.env server.js` untuk memuat berkas `.env` tanpa library tambahan; di dalam container, lebih umum Docker yang mengisi lingkungan.\n\n## Memberi Variabel ke Container\n\nAda beberapa cara, dari paling sederhana:\n\n```bash\n# satu per satu\ndocker run -e NODE_ENV=production -e PORT=3000 toko-api:1.0\n\n# dari berkas\ndocker run --env-file .env toko-api:1.0\n```\n\nDi Compose:\n\n```yaml\nservices:\n  api:\n    image: ghcr.io/budi/toko-api:1.4.2\n    environment:\n      NODE_ENV: production\n    env_file:\n      - .env\n```\n\n`environment` cocok untuk nilai yang tidak rahasia dan boleh masuk repositori. `env_file` memuat banyak variabel dari berkas, yang cocok untuk nilai rahasia di server karena berkasnya tidak di-commit.\n\nCompose juga membaca berkas `.env` di folder proyek untuk **interpolasi** di `compose.yaml`. Jika `.env` berisi `TAG=1.4.2`, maka `image: ghcr.io/budi/toko-api:${TAG}` memakai nilai itu. Jangan campur dua fungsi ini: `.env` untuk interpolasi di berkas Compose berbeda dengan `env_file` yang mengirim variabel ke dalam container. Variabel hasil interpolasi tidak otomatis masuk ke container kecuali kamu menuliskannya di `environment`.\n\nFormat `.env` sederhana: satu `KUNCI=nilai` per baris, baris berawalan `#` adalah komentar, dan nilai yang mengandung spasi sebaiknya dikutip.\n\n```text\n# .env (JANGAN di-commit)\nPOSTGRES_PASSWORD=ganti-dengan-sandi-acak\nDATABASE_URL=postgres://app:ganti-dengan-sandi-acak@db:5432/appdb\nJWT_SECRET=string-acak-panjang\n```\n\n## Menjaga .env Tetap Rahasia\n\nAturan wajib:\n\n1. Masukkan `.env` ke `.gitignore` **dan** `.dockerignore`.\n2. Commit berkas contoh bernama `.env.example` yang berisi nama variabel dengan nilai palsu, supaya rekan tahu apa yang harus diisi.\n3. Di server, buat `.env` dengan izin ketat: `chmod 600 .env`.\n4. Bila rahasia pernah ter-commit, anggap sudah bocor. Menghapusnya dari commit berikutnya tidak cukup; **ganti** nilainya (rotasi).\n\nHasilkan sandi atau kunci acak yang kuat, jangan menulis sendiri:\n\n```bash\nopenssl rand -base64 32\n```\n\n## ARG dan ENV: Waktu Build dan Waktu Run\n\nDockerfile punya dua instruksi yang mirip:\n\n- `ARG` adalah variabel **saat build**, diberikan lewat `docker build --build-arg`. Ia tidak ada saat container berjalan.\n- `ENV` adalah variabel yang menempel di image dan ada saat container berjalan.\n\nKeduanya **tidak aman untuk rahasia**. Nilai `ENV` tersimpan di metadata image, dan nilai `ARG` bisa terlihat di riwayat build (`docker history`). Siapa pun yang bisa menarik image bisa membacanya. Karena itu, jangan pernah menulis kata sandi, token, atau kunci di Dockerfile. Berikan rahasia **saat runtime** lewat lingkungan atau secrets, bukan saat build. Bila build butuh kredensial, misalnya untuk paket privat, pakai fitur secret mount BuildKit (`RUN --mount=type=secret`) yang tidak meninggalkan jejak di layer.\n\n## Compose Secrets\n\nVariabel lingkungan punya kekurangan: ia muncul di `docker inspect` dan kadang bocor ke log atau halaman galat. Untuk rahasia yang lebih sensitif, Compose menyediakan **secrets** berbasis berkas:\n\n```yaml\nservices:\n  db:\n    image: postgres:17-alpine\n    environment:\n      POSTGRES_PASSWORD_FILE: /run/secrets/db_password\n    secrets:\n      - db_password\n\nsecrets:\n  db_password:\n    file: ./secrets/db_password.txt\n```\n\nCompose memasang isi berkas itu sebagai berkas hanya-baca di `/run/secrets/db_password` di dalam container. Image PostgreSQL resmi mendukung akhiran `_FILE` pada beberapa variabelnya sehingga ia membaca sandi dari berkas. Untuk aplikasi Node-mu sendiri, baca berkasnya dengan `fs.readFileSync(\"/run/secrets/db_password\", \"utf8\").trim()`. Cara ini tidak sempurna (rahasia tetap berupa berkas di server), tetapi lebih baik daripada variabel lingkungan yang tampil di mana-mana, dan merupakan kebiasaan yang sama dengan yang dipakai orkestrator besar.\n\n## Memeriksa Apa yang Sebenarnya Masuk\n\nSaat konfigurasi tidak bekerja, jangan menebak; lihat nilai yang benar-benar diterima container:\n\n```bash\ndocker compose config            # hasil akhir setelah interpolasi\ndocker compose exec api env      # variabel di dalam container\ndocker compose exec api printenv DATABASE_URL\n```\n\n`docker compose config` menampilkan berkas Compose setelah semua `${...}` diganti, sehingga salah ketik nama variabel langsung terlihat sebagai nilai kosong. Hati-hati saat menempelkan keluaran perintah ini di forum atau tiket bantuan: ia memuat nilai rahasiamu secara terbuka. Satu kebiasaan baik lain adalah mencatat di log nama variabel yang hilang, tetapi **tidak pernah** nilainya. Hal yang sama berlaku untuk halaman galat dan laporan crash: pastikan keduanya tidak mencetak seluruh isi `process.env`, karena satu tangkapan layar yang dibagikan ke rekan bisa membocorkan semua kuncimu sekaligus.\n\n## Rangkuman\n\n- Simpan konfigurasi di lingkungan supaya satu image yang sama berjalan di semua lingkungan.\n- Baca lewat `process.env` dan gagal cepat bila variabel wajib tidak ada.\n- Beri variabel lewat `-e`, `--env-file`, `environment`, atau `env_file`; `.env` untuk interpolasi Compose berbeda dengan `env_file`.\n- `.env` masuk `.gitignore` dan `.dockerignore`, sediakan `.env.example`, dan rotasi rahasia yang pernah bocor.\n- `ARG` dan `ENV` tersimpan di image; jangan taruh rahasia di Dockerfile.\n- Compose secrets menaruh rahasia sebagai berkas di `/run/secrets` dan lebih aman daripada variabel lingkungan biasa.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang magang meng-commit berkas .env berisi kunci API ke repositori publik, lalu menghapusnya di commit berikutnya. Tindakan yang benar adalah",
+          "code": "",
+          "options": [
+            "menganggap kunci bocor dan menggantinya dengan kunci baru (rotasi)",
+            "tidak melakukan apa-apa karena commit baru sudah menimpa berkas lama di seluruh riwayat",
+            "mengganti nama repositori supaya riwayat commit tidak ditemukan",
+            "menunggu sampai kunci kedaluwarsa dengan sendirinya"
+          ],
+          "answer": 0,
+          "explanation": "Riwayat Git menyimpan berkas lama. Rahasia yang pernah ter-commit harus dicabut dan diganti."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dockerfile berisi `ENV DB_PASSWORD=rahasia123` dan image didorong ke registry. Masalahnya adalah",
+          "code": "",
+          "options": [
+            "nilai ENV hanya terbaca saat build dan hilang setelah container berjalan",
+            "Docker otomatis mengenkripsi seluruh ENV yang namanya mengandung PASSWORD",
+            "registry menolak image yang memuat variabel lingkungan",
+            "nilai ENV tersimpan di metadata image sehingga siapa pun yang menarik image bisa membacanya"
+          ],
+          "answer": 3,
+          "explanation": "ENV dan ARG tidak aman untuk rahasia karena tercatat di image. Berikan rahasia saat runtime."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana satu image yang sama bisa berjalan di staging dan produksi dengan database berbeda?",
+          "code": "",
+          "options": [
+            "membangun dua image berbeda dengan alamat database ditulis di kode",
+            "menyalin berkas konfigurasi lain ke dalam image setelah dibangun",
+            "alamat database dibaca dari variabel lingkungan yang nilainya berbeda tiap lingkungan",
+            "mengubah tag image sebelum tiap deploy supaya alamatnya berganti"
+          ],
+          "answer": 2,
+          "explanation": "Konfigurasi di lingkungan (twelve-factor) memungkinkan satu image dipakai di semua lingkungan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Berkas .env yang dibaca Compose untuk interpolasi `${VAR}` otomatis menjadi variabel lingkungan di dalam setiap container.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Salah. Interpolasi hanya mengisi nilai di berkas Compose; variabel baru masuk container bila ditulis di environment atau env_file."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membaca berkas .env",
+          "prompt": "Tulis fungsi `parseEnv(teks)` yang mengubah isi berkas `.env` menjadi objek.\n\n- Satu `KUNCI=nilai` per baris; pisahkan di tanda sama dengan **pertama** (nilai boleh mengandung `=`).\n- Abaikan baris kosong, baris yang diawali `#`, dan baris tanpa `=`.\n- Buang spasi di sekitar kunci dan nilai, dan buang tanda kutip ganda atau tunggal yang membungkus seluruh nilai.",
+          "starter": {
+            "code": "function parseEnv(teks) {\n  // TODO: proses tiap baris dan isi objek hasil\n}\n"
+          },
+          "solution": {
+            "code": "function parseEnv(teks) {\n  const hasil = {};\n  for (const baris of teks.split(\"\\n\")) {\n    const b = baris.trim();\n    if (!b || b.startsWith(\"#\")) continue;\n    const i = b.indexOf(\"=\");\n    if (i < 1) continue;\n    let nilai = b.slice(i + 1).trim();\n    if (nilai.length >= 2 && (nilai[0] === '\"' || nilai[0] === \"'\") && nilai[nilai.length - 1] === nilai[0]) {\n      nilai = nilai.slice(1, -1);\n    }\n    hasil[b.slice(0, i).trim()] = nilai;\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "pasangan sederhana terbaca",
+              "check": "JSON.stringify(parseEnv(\"PORT=3000\\nNODE_ENV=production\")) === '{\"PORT\":\"3000\",\"NODE_ENV\":\"production\"}'"
+            },
+            {
+              "name": "komentar dan baris kosong diabaikan",
+              "check": "JSON.stringify(parseEnv(\"# konfigurasi\\n\\nPORT=3000\\n   # lagi\")) === '{\"PORT\":\"3000\"}'"
+            },
+            {
+              "name": "nilai yang mengandung = tetap utuh",
+              "check": "parseEnv(\"DATABASE_URL=postgres://u:p@db:5432/app?sslmode=require\").DATABASE_URL === \"postgres://u:p@db:5432/app?sslmode=require\""
+            },
+            {
+              "name": "tanda kutip pembungkus dibuang",
+              "check": "parseEnv(\"A=\\\"halo dunia\\\"\\nB='x'\").A === \"halo dunia\" && parseEnv(\"B='x'\").B === \"x\""
+            },
+            {
+              "name": "baris tanpa = diabaikan dan CRLF ditangani",
+              "check": "JSON.stringify(parseEnv(\"ASAL\\r\\nA=1\\r\\n\")) === '{\"A\":\"1\"}'"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Menyamarkan rahasia sebelum dicatat",
+          "prompt": "Tulis fungsi `samarkan(env)` yang mengembalikan **salinan** objek variabel lingkungan dengan nilai rahasia diganti `\"***\"`.\n\nSebuah kunci dianggap rahasia bila namanya mengandung `PASS`, `SECRET`, `TOKEN`, atau `KEY` (tidak peka huruf besar-kecil). Kunci lain dibiarkan. Objek asli tidak boleh berubah.",
+          "starter": {
+            "code": "function samarkan(env) {\n  // TODO: salin objek dan samarkan nilai rahasia\n}\n"
+          },
+          "solution": {
+            "code": "function samarkan(env) {\n  const hasil = {};\n  for (const [k, v] of Object.entries(env)) {\n    hasil[k] = /(PASS|SECRET|TOKEN|KEY)/i.test(k) ? \"***\" : v;\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "kata sandi dan secret disamarkan",
+              "check": "samarkan({ DB_PASSWORD: \"abc\", JWT_SECRET: \"xyz\" }).DB_PASSWORD === \"***\" && samarkan({ JWT_SECRET: \"xyz\" }).JWT_SECRET === \"***\""
+            },
+            {
+              "name": "token dan key disamarkan tanpa peduli huruf besar-kecil",
+              "check": "samarkan({ github_token: \"t\", Api_Key: \"k\" }).github_token === \"***\" && samarkan({ Api_Key: \"k\" }).Api_Key === \"***\""
+            },
+            {
+              "name": "nilai biasa dibiarkan",
+              "check": "JSON.stringify(samarkan({ NODE_ENV: \"production\", PORT: \"3000\" })) === '{\"NODE_ENV\":\"production\",\"PORT\":\"3000\"}'"
+            },
+            {
+              "name": "objek asli tidak berubah",
+              "check": "(() => { const e = { TOKEN: \"t\" }; samarkan(e); return e.TOKEN === \"t\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "deploy-ke-vps-dan-paas",
+      "title": "Deploy ke VPS dan PaaS",
+      "est_minutes": 40,
+      "slide_from": 17,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Menyiapkan VPS Ubuntu dengan pengguna biasa, kunci SSH, dan firewall.\n- Memasang Docker di server dan menjalankan aplikasi dengan Compose.\n- Menjelaskan jebakan Docker yang melewati firewall UFW.\n- Membandingkan deploy ke VPS dengan PaaS, serta melakukan update dan rollback.\n\n## Dua Jalan ke Produksi\n\nImage yang berjalan di laptop belum berarti aplikasimu online. Kamu butuh mesin yang menyala terus dengan alamat publik. Ada dua pendekatan besar.\n\n| | VPS | PaaS |\n|---|---|---|\n| Contoh | Penyedia VPS (sewa server virtual) | Railway, Render, Fly.io, dan sejenisnya |\n| Kamu urus | Sistem operasi, Docker, firewall, HTTPS, cadangan | Hampir tidak ada; cukup hubungkan repositori atau image |\n| Kontrol | Penuh | Terbatas pada fitur platform |\n| Biaya | Tetap, murah untuk beban kecil | Sering lebih mahal per sumber daya, tetapi menghemat waktu |\n| Belajar | Banyak, langsung kena ilmu server | Sedikit |\n\nPaaS (Platform as a Service) biasanya membaca Dockerfile-mu atau mendeteksi aplikasi Node, membangunnya, menjalankannya, dan memberi alamat HTTPS. Kamu mengisi variabel lingkungan di dasbor mereka, dan aplikasimu harus membaca port dari `process.env.PORT` karena platform yang menentukan port. Harga dan fitur tiap platform sering berubah, jadi bandingkan sendiri sebelum memilih. Perlu diingat juga bahwa platform serverless seperti Vercel tidak menjalankan container buatanmu; kamu mengunggah kode dan platform menanganinya dengan caranya sendiri, sehingga Docker bukan bagian dari alurnya.\n\nKelas ini fokus pada VPS karena di sana kamu belajar semua lapisannya, dan pengetahuan itu terpakai di platform mana pun.\n\n## Menyiapkan VPS\n\nAsumsikan kamu menyewa VPS Ubuntu LTS. Login pertama biasanya sebagai root lewat SSH. Langkah dasarnya:\n\n```bash\n# 1. buat pengguna biasa dengan hak sudo\nadduser deploy\nusermod -aG sudo deploy\n\n# 2. salin kunci SSH-mu (dijalankan dari laptop)\nssh-copy-id deploy@IP_SERVER\n```\n\nSetelah bisa login sebagai `deploy` dengan kunci, matikan login root dan login sandi dengan mengedit `/etc/ssh/sshd_config`: setel `PermitRootLogin no` dan `PasswordAuthentication no`, lalu `sudo systemctl restart ssh`. Uji login baru di terminal **lain** sebelum menutup sesi lama, supaya kamu tidak terkunci keluar. Server publik diserang oleh bot dalam hitungan menit setelah menyala, dan sandi lemah adalah cara masuk paling umum.\n\nAktifkan firewall UFW dengan hanya membuka yang perlu:\n\n```bash\nsudo ufw allow OpenSSH\nsudo ufw allow 80/tcp\nsudo ufw allow 443/tcp\nsudo ufw enable\n```\n\nPasang Docker lewat repositori apt resmi Docker, mengikuti panduan \"Install Docker Engine on Ubuntu\" di dokumentasi mereka. Setelah itu tambahkan pengguna `deploy` ke grup `docker` (ingat: itu setara hak root), lalu login ulang dan uji dengan `docker run hello-world`.\n\n## Jebakan: Docker Melewati UFW\n\nIni jebakan paling berbahaya bagi pemula. Docker memanipulasi aturan iptables sendiri untuk meneruskan port yang dipublikasikan. Akibatnya, bila kamu menjalankan `-p 5432:5432`, port itu **terbuka ke internet walaupun UFW tidak mengizinkannya**, karena lalu lintas itu melewati rantai aturan yang berbeda dari yang dikelola UFW.\n\nCara menghindarinya:\n\n- Jangan publikasikan port yang tidak perlu. Database cukup berada di network Compose tanpa `ports`.\n- Bila perlu akses dari server saja, ikat ke loopback: `127.0.0.1:5432:5432`.\n- Hanya reverse proxy (bab 9) yang mempublikasikan port 80 dan 443 ke dunia.\n- Periksa dari luar: dari laptop, jalankan `nmap IP_SERVER` atau alat pemindai port lain dan pastikan hanya port yang kamu inginkan terbuka.\n\n## Menjalankan Aplikasi\n\nPola paling sederhana: di server hanya ada `compose.yaml` dan `.env`, sedangkan image diambil dari registry (bab 10 menjelaskan cara mengirimnya).\n\n```bash\nssh deploy@IP_SERVER\nmkdir -p /srv/toko && cd /srv/toko\n# letakkan compose.yaml dan .env (chmod 600 .env)\ndocker compose pull\ndocker compose up -d\ndocker compose ps\ndocker compose logs -f --tail 100 api\n```\n\nAlternatif untuk percobaan awal: salin kode ke server lewat `git clone` lalu `docker compose up -d --build`. Itu bekerja, tetapi membangun image di server memakan CPU dan memori VPS kecil. Praktik yang lebih baik adalah membangun di CI dan hanya menarik hasilnya.\n\n## Update dan Rollback\n\nRilis versi baru dengan tag baru:\n\n```bash\n# di compose.yaml: image: ghcr.io/budi/toko-api:${TAG}\nTAG=1.4.3 docker compose pull api\nTAG=1.4.3 docker compose up -d api\n```\n\nCompose hanya membuat ulang service yang berubah. Ada jeda singkat saat container lama berhenti dan yang baru menyala; untuk aplikasi kecil itu biasanya dapat diterima, dan penanganan SIGTERM (bab 4) menjaga request yang berjalan tidak terputus. Zero-downtime sesungguhnya butuh dua instance di balik proxy atau orkestrator, di luar cakupan kelas ini.\n\n**Rollback** menjadi mudah karena setiap rilis punya tag: jalankan lagi dengan tag lama, misalnya `TAG=1.4.2 docker compose up -d api`. Inilah alasan lain tidak memakai `latest`: kamu tidak tahu lagi versi mana yang sebelumnya berjalan. Skema migrasi database memperumit rollback, jadi rancang perubahan skema yang kompatibel mundur.\n\n## Merawat Server\n\n- Perbarui paket sistem secara berkala: `sudo apt update && sudo apt upgrade`.\n- Putar log Docker supaya disk tidak penuh: tambahkan `logging: driver: json-file` dengan `max-size: \"10m\"` dan `max-file: \"3\"` pada service di Compose.\n- Pantau disk dengan `df -h` dan `docker system df`; bersihkan dengan `docker system prune`.\n- Jadwalkan cadangan database (`pg_dump`) dan simpan di luar server.\n- Aktifkan snapshot dari penyedia VPS bila tersedia.\n\n## Rangkuman\n\n- VPS memberi kontrol penuh dan banyak ilmu, PaaS menghemat pekerjaan operasional dengan kontrol terbatas; PaaS menentukan port lewat `PORT`.\n- Siapkan VPS: pengguna biasa, kunci SSH, matikan login root dan sandi, firewall UFW dengan 22, 80, dan 443.\n- Pasang Docker dari repositori resmi; keanggotaan grup `docker` setara root.\n- Port yang dipublikasikan Docker melewati UFW; publikasikan seminimal mungkin dan ikat ke `127.0.0.1` bila hanya untuk lokal.\n- Deploy dengan `docker compose pull` dan `up -d`; rollback dengan menjalankan tag lama.\n- Rawat server: update sistem, putar log, pantau disk, dan cadangkan data di luar server.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Baru menyewa VPS, kamu ingin mengamankan akses SSH. Urutan yang paling aman adalah",
+          "code": "",
+          "options": [
+            "buat pengguna biasa dengan kunci SSH, uji login, baru matikan login root dan sandi",
+            "matikan login root dan sandi dulu, lalu baru membuat kunci SSH",
+            "biarkan login root dengan sandi sederhana agar mudah diingat",
+            "pindahkan SSH ke port Docker supaya tidak terdeteksi bot"
+          ],
+          "answer": 0,
+          "explanation": "Uji login berkunci sebelum menutup jalan lain agar tidak terkunci keluar."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rilis 1.4.3 menyebabkan galat dan kamu harus kembali ke versi sebelumnya dengan cepat. Hal yang memudahkannya adalah",
+          "code": "",
+          "options": [
+            "image selalu bertag latest sehingga versi lama tersimpan otomatis",
+            "container lama disimpan Docker selamanya dan hidup kembali sendiri saat versi baru bermasalah",
+            "registry mengembalikan versi lama setiap kali ada galat di server",
+            "setiap rilis punya tag image tetap sehingga cukup menjalankan lagi tag 1.4.2"
+          ],
+          "answer": 3,
+          "explanation": "Tag yang tidak berubah membuat rollback sekadar menjalankan tag sebelumnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aplikasimu di-deploy ke PaaS, tetapi platform tidak bisa menjangkau aplikasi karena port 3000 ditulis tetap di kode. Perbaikan yang sesuai adalah",
+          "code": "",
+          "options": [
+            "menambah EXPOSE 3000 lagi di akhir Dockerfile aplikasi",
+            "mengganti port menjadi 80 karena PaaS selalu memakai port itu",
+            "membaca port dari process.env.PORT yang diberikan platform",
+            "menonaktifkan HEALTHCHECK supaya platform tidak memeriksa port"
+          ],
+          "answer": 2,
+          "explanation": "PaaS biasanya menentukan port lewat variabel PORT dan aplikasi harus mengikutinya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memilih tag untuk rollback",
+          "prompt": "Tulis fungsi `tagRollback(riwayat, sekarang)` yang menerima array tag image yang pernah dideploy (terlama di depan, terbaru di belakang) dan tag yang sedang berjalan. Kembalikan tag **sebelumnya yang berbeda** dari kemunculan terakhir `sekarang`.\n\nKembalikan `null` bila `sekarang` tidak ada di riwayat atau tidak ada tag lain sebelumnya.",
+          "starter": {
+            "code": "function tagRollback(riwayat, sekarang) {\n  // TODO: cari kemunculan terakhir lalu mundur ke tag yang berbeda\n}\n"
+          },
+          "solution": {
+            "code": "function tagRollback(riwayat, sekarang) {\n  const i = riwayat.lastIndexOf(sekarang);\n  if (i < 0) return null;\n  for (let j = i - 1; j >= 0; j--) {\n    if (riwayat[j] !== sekarang) return riwayat[j];\n  }\n  return null;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "mundur satu rilis",
+              "check": "tagRollback([\"1.4.0\", \"1.4.1\", \"1.4.2\"], \"1.4.2\") === \"1.4.1\""
+            },
+            {
+              "name": "deploy ulang tag yang sama dilewati",
+              "check": "tagRollback([\"1.4.1\", \"1.4.2\", \"1.4.2\"], \"1.4.2\") === \"1.4.1\""
+            },
+            {
+              "name": "rilis pertama tidak punya pendahulu",
+              "check": "tagRollback([\"1.0.0\", \"1.0.1\"], \"1.0.0\") === null"
+            },
+            {
+              "name": "tag yang tidak ada menghasilkan null",
+              "check": "tagRollback([\"1.0.0\"], \"9.9.9\") === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "reverse-proxy-dan-https",
+      "title": "Reverse Proxy dan HTTPS",
+      "est_minutes": 35,
+      "slide_from": 19,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Menjelaskan peran reverse proxy dan kenapa aplikasi Node tidak dipublikasikan langsung.\n- Mengarahkan domain ke server lewat record DNS.\n- Menyiapkan HTTPS otomatis dengan Caddy, dan memahami padanannya di Nginx.\n- Mengatur Express agar mengenali proxy (`trust proxy`) dan header yang diteruskan.\n\n## Kenapa Perlu Reverse Proxy\n\nBayangkan aplikasimu mendengarkan port 3000. Pengguna harus mengetik `http://IP:3000`, tanpa HTTPS, tanpa nama domain. Itu tidak layak untuk produksi. Solusinya **reverse proxy**: server di depan aplikasi yang menerima semua lalu lintas dari internet lalu meneruskannya ke aplikasi di belakang.\n\n![Browser terhubung lewat HTTPS ke reverse proxy, yang meneruskan HTTP ke aplikasi di network internal](gambar:docker-reverse-proxy-https)\n\nReverse proxy mengambil alih beberapa pekerjaan sekaligus:\n\n- **Terminasi TLS:** menangani sertifikat dan enkripsi HTTPS, sehingga aplikasimu cukup berbicara HTTP biasa.\n- **Satu pintu, banyak aplikasi:** beberapa aplikasi bisa berbagi port 80 dan 443, dibedakan lewat nama domain atau path.\n- **Perlindungan:** aplikasi tidak terpapar langsung ke internet, dan proxy bisa menambah batas ukuran request, kompresi, serta header keamanan.\n\nYang populer adalah **Nginx** (sangat luas dipakai, konfigurasi eksplisit) dan **Caddy** (konfigurasi sangat ringkas, HTTPS otomatis). Keduanya mudah dijalankan sebagai container.\n\n## DNS: Menghubungkan Domain ke Server\n\nDomain hanyalah nama; kamu harus memberi tahu internet ke IP mana nama itu menunjuk. Di panel DNS penyedia domainmu, buat **record A** yang menunjuk subdomain ke IP publik VPS:\n\n| Tipe | Nama | Nilai |\n|---|---|---|\n| A | app | 203.0.113.10 |\n\nDengan begitu `app.contoh.id` menunjuk ke server. Bila VPS-mu punya IPv6, tambahkan record AAAA juga. Perubahan DNS butuh waktu menyebar, dari beberapa menit sampai beberapa jam. Periksa dengan `dig app.contoh.id +short` atau `nslookup app.contoh.id`; hasilnya harus IP servermu sebelum kamu meminta sertifikat.\n\n## HTTPS dan Let's Encrypt\n\nSertifikat TLS membuktikan bahwa browser benar-benar berbicara dengan domainmu dan mengenkripsi lalu lintasnya. **Let's Encrypt** adalah otoritas sertifikat yang memberikan sertifikat gratis dan otomatis. Untuk membuktikan kamu pemilik domain, ia meminta server menjawab tantangan lewat port 80 (tantangan HTTP-01) atau lewat DNS. Karena itu **port 80 dan 443 harus terbuka dan DNS harus sudah benar**. Sertifikat berlaku sekitar 90 hari, jadi pembaruan otomatis adalah keharusan. Let's Encrypt juga membatasi jumlah permintaan; hindari mengulang permintaan gagal berkali-kali.\n\n## Caddy: HTTPS dengan Beberapa Baris\n\nCaddy meminta dan memperbarui sertifikat sendiri. Tambahkan service `proxy` ke `compose.yaml`:\n\n```yaml\nservices:\n  proxy:\n    image: caddy:2\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n    volumes:\n      - ./Caddyfile:/etc/caddy/Caddyfile:ro\n      - caddy_data:/data\n      - caddy_config:/config\n    depends_on:\n      - api\n    restart: unless-stopped\n\n  api:\n    image: ghcr.io/budi/toko-api:1.4.2\n    # tanpa ports: hanya proxy yang menjangkaunya\n    restart: unless-stopped\n\nvolumes:\n  caddy_data:\n  caddy_config:\n```\n\nDan `Caddyfile`:\n\n```text\napp.contoh.id {\n    reverse_proxy api:3000\n}\n```\n\nCuma itu. Saat Caddy menyala, ia melihat nama domain, meminta sertifikat dari Let's Encrypt, mengalihkan HTTP ke HTTPS, dan meneruskan lalu lintas ke `api:3000` lewat network Compose (nama `api` bekerja karena berada di network yang sama). Volume `caddy_data` menyimpan sertifikat; **jangan hilangkan**, atau Caddy meminta sertifikat baru setiap start dan cepat terkena batas Let's Encrypt.\n\nPerhatikan bahwa service `api` tidak punya `ports`. Aplikasimu hanya bisa dijangkau lewat proxy, dan itulah yang kamu inginkan.\n\n## Padanannya di Nginx\n\nDengan Nginx kamu menulis blok server secara eksplisit:\n\n```nginx\nserver {\n    listen 80;\n    server_name app.contoh.id;\n\n    location / {\n        proxy_pass http://api:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}\n```\n\n`proxy_pass` meneruskan ke aplikasi, dan `proxy_set_header` menambahkan header agar aplikasi tahu info aslinya. Sertifikat biasanya diurus dengan **Certbot** (`certbot --nginx -d app.contoh.id`) yang memodifikasi konfigurasi dan memasang pembaruan otomatis. Bila aplikasimu memakai WebSocket, tambahkan `proxy_http_version 1.1;` serta header `Upgrade` dan `Connection`; Caddy menanganinya otomatis. Pilih Caddy bila ingin cepat dan sederhana, Nginx bila sudah terbiasa atau butuh kontrol rinci.\n\n## Beberapa Aplikasi di Satu Server\n\nSalah satu keuntungan terbesar reverse proxy muncul saat aplikasimu bertambah. Satu VPS kecil bisa melayani beberapa aplikasi, masing-masing dengan subdomain sendiri, selama Caddy berada di network yang sama dengan semuanya:\n\n```text\napp.contoh.id {\n    reverse_proxy api:3000\n}\n\nblog.contoh.id {\n    reverse_proxy blog:2368\n}\n```\n\nSetiap blok mendapat sertifikat sendiri secara otomatis. Kamu cukup menambah record A untuk subdomain baru dan satu blok di Caddyfile, lalu memuat ulang konfigurasi dengan `docker compose exec proxy caddy reload --config /etc/caddy/Caddyfile`. Aplikasi baru tidak perlu mempublikasikan port apa pun, sehingga permukaan serangan server tetap sama kecilnya.\n\n## Express di Belakang Proxy\n\nKarena aplikasi sekarang menerima koneksi dari proxy, bukan dari klien, `req.ip` akan berisi alamat proxy dan `req.protocol` akan selalu `http`. Itu merusak pencatatan, pembatasan laju per IP, dan cookie bertanda `secure`. Beri tahu Express untuk memercayai proxy:\n\n```js\nconst app = express();\napp.set(\"trust proxy\", 1);\n```\n\nAngka `1` berarti satu lapis proxy tepercaya di depan. Dengan itu Express membaca `X-Forwarded-For` dan `X-Forwarded-Proto` dari proxy. Jangan setel `true` secara membabi buta bila aplikasi bisa dijangkau langsung dari internet, karena klien lalu bisa memalsukan header itu.\n\n## Pemeriksaan Akhir\n\n- `curl -I http://app.contoh.id` harus dialihkan (301 atau 308) ke HTTPS.\n- `curl -I https://app.contoh.id` mengembalikan 200 dengan sertifikat valid.\n- Dari luar server, port aplikasi (3000) tidak boleh terbuka.\n- Pertimbangkan header `Strict-Transport-Security` (HSTS) setelah yakin HTTPS stabil, karena browser akan menolak HTTP untuk domain itu selama masa berlakunya.\n\n## Rangkuman\n\n- Reverse proxy menerima lalu lintas publik, mengurus TLS, dan meneruskan ke aplikasi di network internal.\n- Record A mengarahkan domain ke IP server; pastikan DNS benar sebelum meminta sertifikat.\n- Let's Encrypt memberi sertifikat gratis dengan masa sekitar 90 hari dan butuh port 80 dan 443 terbuka.\n- Caddy cukup `reverse_proxy api:3000` dan mengurus sertifikat serta pengalihan HTTP ke HTTPS; simpan volume `caddy_data`.\n- Nginx memakai `proxy_pass` dan `proxy_set_header`, dengan Certbot untuk sertifikat.\n- Setel `app.set(\"trust proxy\", 1)` di Express agar IP dan protokol klien terbaca benar.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Caddy gagal mendapat sertifikat Let's Encrypt untuk app.contoh.id. Hal pertama yang perlu diperiksa adalah",
+          "code": "",
+          "options": [
+            "record A domain sudah menunjuk ke IP server dan port 80 serta 443 terbuka",
+            "apakah image aplikasi memakai tag latest atau tag versi",
+            "apakah Docker diinstal lewat apt atau lewat Docker Desktop",
+            "apakah volume pgdata sudah dibuat di server produksi"
+          ],
+          "answer": 0,
+          "explanation": "Let's Encrypt membuktikan kepemilikan domain lewat port 80 atau DNS; DNS dan firewall harus benar."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah memasang reverse proxy, log aplikasi Express selalu menampilkan IP yang sama untuk semua pengguna. Perbaikan yang tepat adalah",
+          "code": "",
+          "options": [
+            "menambah port publik langsung ke aplikasi supaya IP asli klien terlihat di setiap log",
+            "mematikan HTTPS di proxy supaya header asli tidak berubah",
+            "mengganti Express dengan server HTTP bawaan Node saja",
+            "app.set(\"trust proxy\", 1) agar Express membaca X-Forwarded-For dari proxy"
+          ],
+          "answer": 3,
+          "explanation": "Tanpa trust proxy, Express hanya melihat alamat proxy. Angka 1 menyatakan satu lapis proxy tepercaya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa service api di compose.yaml sebaiknya tidak punya ports bila sudah ada proxy di depannya?",
+          "code": "",
+          "options": [
+            "karena Compose tidak mengizinkan dua service memakai port bersamaan",
+            "karena proxy hanya bisa meneruskan ke container tanpa port internal",
+            "agar aplikasi hanya terjangkau lewat proxy dan tidak terbuka langsung ke internet",
+            "karena port akan otomatis berubah acak setiap kali container restart"
+          ],
+          "answer": 2,
+          "explanation": "Hanya proxy yang perlu dibuka ke dunia; aplikasi cukup terjangkau di network internal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membuat blok server Nginx",
+          "prompt": "Tulis fungsi `buatServerBlock({ domain, upstream })` yang mengembalikan teks konfigurasi Nginx berikut (baris dipisah \\n, indentasi 4 spasi per tingkat):\n\n- blok `server { ... }` dengan `listen 80;` dan `server_name DOMAIN;`\n- satu `location / { ... }` berisi `proxy_pass http://UPSTREAM;`\n- empat `proxy_set_header`: `Host $host`, `X-Real-IP $remote_addr`, `X-Forwarded-For $proxy_add_x_forwarded_for`, dan `X-Forwarded-Proto $scheme`.\n\nTanda kurung kurawal harus seimbang.",
+          "starter": {
+            "code": "function buatServerBlock({ domain, upstream }) {\n  // TODO: kembalikan teks konfigurasi\n  return \"\";\n}\n"
+          },
+          "solution": {
+            "code": "function buatServerBlock({ domain, upstream }) {\n  return [\n    \"server {\",\n    \"    listen 80;\",\n    \"    server_name \" + domain + \";\",\n    \"\",\n    \"    location / {\",\n    \"        proxy_pass http://\" + upstream + \";\",\n    \"        proxy_set_header Host $host;\",\n    \"        proxy_set_header X-Real-IP $remote_addr;\",\n    \"        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\",\n    \"        proxy_set_header X-Forwarded-Proto $scheme;\",\n    \"    }\",\n    \"}\",\n  ].join(\"\\n\");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "memuat server_name domain",
+              "check": "buatServerBlock({ domain: \"app.contoh.id\", upstream: \"api:3000\" }).includes(\"server_name app.contoh.id;\")"
+            },
+            {
+              "name": "memuat proxy_pass ke upstream",
+              "check": "buatServerBlock({ domain: \"a.id\", upstream: \"api:3000\" }).includes(\"proxy_pass http://api:3000;\")"
+            },
+            {
+              "name": "memuat empat header proxy",
+              "check": "(() => { const s = buatServerBlock({ domain: \"a.id\", upstream: \"x:1\" }); return [\"Host $host;\", \"X-Real-IP $remote_addr;\", \"X-Forwarded-For $proxy_add_x_forwarded_for;\", \"X-Forwarded-Proto $scheme;\"].every((h) => s.includes(\"proxy_set_header \" + h)); })()"
+            },
+            {
+              "name": "kurung kurawal seimbang dan diawali server",
+              "check": "(() => { const s = buatServerBlock({ domain: \"a.id\", upstream: \"x:1\" }); return s.startsWith(\"server {\") && s.split(\"{\").length === s.split(\"}\").length && s.split(\"{\").length === 3; })()"
+            },
+            {
+              "name": "domain dan upstream lain ikut berubah",
+              "check": "(() => { const s = buatServerBlock({ domain: \"blog.contoh.id\", upstream: \"blog:2368\" }); return s.includes(\"blog.contoh.id\") && s.includes(\"http://blog:2368;\") && !s.includes(\"api:3000\"); })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "ci-cd-github-actions",
+      "title": "CI/CD dengan GitHub Actions",
+      "est_minutes": 40,
+      "slide_from": 21,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menjelaskan CI dan CD, serta apa yang diotomatiskan pipeline sederhana.\n- Menulis workflow GitHub Actions untuk menjalankan tes, membangun, dan mengirim image ke GHCR.\n- Menyimpan rahasia di GitHub Secrets dan memakainya dengan aman.\n- Men-deploy ke VPS lewat SSH dan memberi tag image yang konsisten.\n\n## Mengotomatiskan Jalan ke Produksi\n\nSampai bab ini, tiap rilis berarti urutan manual: jalankan tes, bangun image, kirim, masuk ke server, tarik image. Manual berarti bisa lupa langkah, dan bisa salah ketik pada jam dua pagi. **CI/CD** menyerahkan urutan itu ke mesin.\n\n- **Continuous Integration (CI):** setiap perubahan kode otomatis dibangun dan dites, sehingga kerusakan ketahuan dalam menit, bukan minggu.\n- **Continuous Delivery/Deployment (CD):** hasil yang lolos otomatis dikirim ke lingkungan target.\n\n![Pipeline: git push, test, build, push image ke registry, lalu deploy ke server](gambar:docker-cicd-pipeline)\n\n**GitHub Actions** adalah layanan CI/CD yang menyatu dengan GitHub. Workflow ditulis sebagai berkas YAML di `.github/workflows/`. Satu workflow berisi **job**, tiap job berisi **step**, dan tiap job berjalan di mesin virtual (**runner**) yang baru dan bersih. Repositori publik memakai Actions gratis; untuk repositori privat ada kuota gratis per bulan yang bisa berubah, jadi cek halaman harga GitHub.\n\n## Workflow Pertama: Tes pada Setiap Push\n\n```yaml\n# .github/workflows/ci.yml\nname: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v5\n      - uses: actions/setup-node@v5\n        with:\n          node-version: 24\n          cache: npm\n      - run: npm ci\n      - run: npm test\n```\n\nBagian-bagiannya:\n\n- `on` menentukan pemicu: push ke `main` dan setiap pull request.\n- `uses: actions/checkout@v5` mengambil kodemu ke runner; tanpanya runner kosong.\n- `setup-node` memasang Node dan `cache: npm` mempercepat instalasi.\n- `run` menjalankan perintah shell. Bila perintah mengembalikan kode bukan nol, step gagal, job berhenti, dan commit ditandai merah.\n\nNomor versi seperti `@v5` menunjuk rilis mayor sebuah action; cek halaman action di GitHub Marketplace untuk versi terbaru. Untuk keamanan lebih, bisa dikunci ke commit SHA.\n\n## Membangun dan Mengirim Image ke GHCR\n\nGitHub Container Registry (`ghcr.io`) menyimpan image dan terhubung dengan akun GitHub. Kita tambahkan job kedua yang hanya jalan bila tes lolos dan hanya di branch `main`:\n\n```yaml\n  publish:\n    needs: test\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      packages: write\n    steps:\n      - uses: actions/checkout@v5\n      - uses: docker/setup-buildx-action@v3\n      - uses: docker/login-action@v3\n        with:\n          registry: ghcr.io\n          username: ${{ github.actor }}\n          password: ${{ secrets.GITHUB_TOKEN }}\n      - id: meta\n        uses: docker/metadata-action@v5\n        with:\n          images: ghcr.io/${{ github.repository }}\n          tags: |\n            type=sha\n            type=raw,value=latest\n      - uses: docker/build-push-action@v6\n        with:\n          context: .\n          push: true\n          tags: ${{ steps.meta.outputs.tags }}\n```\n\nPoin penting:\n\n- `needs: test` membuat job ini menunggu job `test`; bila tes gagal, tidak ada image yang terkirim.\n- `permissions: packages: write` memberi token izin menulis ke registry. `GITHUB_TOKEN` dibuat otomatis per run, kamu tidak perlu membuatnya.\n- `docker/metadata-action` menghitung tag untuk kita. Di sini tiap image mendapat tag berdasarkan SHA commit (jejak yang tepat ke kode) dan `latest`. Untuk rilis bertanda versi, tambahkan `type=semver,pattern={{version}}` yang membuat tag dari Git tag seperti `v1.4.2`.\n- Nama image di registry harus huruf kecil; `github.repository` bisa mengandung huruf besar bila nama akunmu begitu, jadi atur nama repositori atau ubah ke huruf kecil bila build gagal karena itu.\n\nAturan tag yang baik: **tag yang tidak berubah** (SHA atau versi) untuk deploy dan rollback, dan boleh ada `latest` sebagai kenyamanan. Server produksi sebaiknya menarik tag SHA atau versi, bukan `latest`.\n\n## Rahasia di GitHub Secrets\n\nWorkflow butuh rahasia, misalnya kunci SSH ke server. Jangan pernah menuliskannya di berkas workflow. Simpan di repositori: **Settings, Secrets and variables, Actions, New repository secret**. Lalu pakai dengan `${{ secrets.NAMA }}`.\n\nBeberapa aturan:\n\n- Nilai secret disamarkan di log, tetapi **jangan mencetaknya** dengan sengaja atau menyusunnya sehingga menghindari penyamaran.\n- Secret tidak diteruskan ke workflow dari pull request fork, supaya orang asing tidak mencurinya lewat PR.\n- Buat kunci SSH khusus untuk deploy (`ssh-keygen -t ed25519`), pasang bagian publiknya di `~/.ssh/authorized_keys` pengguna `deploy` di server, dan simpan bagian privatnya di Secrets. Bila bocor, kamu cukup mencabut satu kunci itu.\n\n## Deploy ke VPS lewat SSH\n\nJob ketiga masuk ke server dan menarik image baru:\n\n```yaml\n  deploy:\n    needs: publish\n    runs-on: ubuntu-latest\n    steps:\n      - name: Siapkan SSH\n        run: |\n          install -m 600 -D /dev/null ~/.ssh/id_ed25519\n          echo \"${{ secrets.SSH_KEY }}\" > ~/.ssh/id_ed25519\n          echo \"${{ secrets.SSH_KNOWN_HOSTS }}\" > ~/.ssh/known_hosts\n      - name: Deploy\n        run: |\n          ssh deploy@${{ secrets.SSH_HOST }} \\\n            \"cd /srv/toko && TAG=sha-${GITHUB_SHA::7} docker compose pull api && TAG=sha-${GITHUB_SHA::7} docker compose up -d api\"\n```\n\n`SSH_KNOWN_HOSTS` berisi keluaran `ssh-keyscan IP_SERVER` yang kamu jalankan sekali dari laptop dan simpan, supaya runner memverifikasi identitas server, bukan percaya buta. Perhatikan format tag: `docker/metadata-action` dengan `type=sha` menghasilkan tag `sha-` diikuti tujuh karakter awal commit, dan skrip ini memakai format yang sama. Server harus login ke GHCR sekali (`docker login ghcr.io` dengan token akses pribadi berizin `read:packages`) bila image-nya privat.\n\n## Membaca Hasil dan Memperbaiki Kegagalan\n\nSetiap run muncul di tab **Actions** repositori, lengkap dengan log tiap step. Ketika pipeline merah, baca step yang gagal dari atas ke bawah; penyebab umumnya itu-itu saja: tes gagal, izin `packages: write` terlupa, secret salah nama (nilainya kosong tanpa peringatan), atau kunci SSH yang tidak cocok dengan `authorized_keys`. Kamu bisa menambah pemicu `workflow_dispatch` pada bagian `on` agar workflow bisa dijalankan manual dari tombol di GitHub, berguna untuk mencoba deploy tanpa membuat commit kosong. Untuk mencegah dua deploy berjalan bersamaan, tambahkan blok `concurrency` dengan nama grup tetap supaya run baru menunggu yang lama selesai.\n\nPipeline ini sengaja sederhana. Ia belum punya persetujuan manual, lingkungan staging, atau migrasi database otomatis. Tambahkan secara bertahap sesuai kebutuhan; jangan membangun pipeline raksasa sebelum ada rilis yang perlu dilindungi.\n\n## Rangkuman\n\n- CI membangun dan menguji tiap perubahan; CD mengirim hasil yang lolos ke target.\n- Workflow GitHub Actions ada di `.github/workflows/*.yml` dengan struktur `on`, `jobs`, dan `steps`.\n- `needs` merangkai job sehingga image hanya dikirim bila tes lolos.\n- `docker/login-action`, `metadata-action`, dan `build-push-action` membangun dan mengirim image ke GHCR dengan `GITHUB_TOKEN` dan izin `packages: write`.\n- Simpan kunci dan token di GitHub Secrets, bukan di repo; gunakan kunci SSH khusus deploy.\n- Deploy dengan tag yang tidak berubah (SHA atau versi) supaya rollback tetap mungkin.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin image hanya dikirim ke registry bila tes lolos. Cara di GitHub Actions adalah",
+          "code": "",
+          "options": [
+            "menaruh build dan push di job terpisah dengan needs yang menunjuk job tes",
+            "menaruh perintah push sebelum langkah tes pada job yang sama",
+            "memakai tag latest sehingga registry menolak image yang rusak",
+            "menjalankan workflow hanya pada hari kerja agar tes sempat selesai sebelum image dikirim"
+          ],
+          "answer": 0,
+          "explanation": "needs membuat job menunggu job lain; job tes gagal berarti job publish tidak berjalan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Workflow gagal saat push image ke ghcr.io dengan galat izin ditolak. Penyebab paling mungkin adalah",
+          "code": "",
+          "options": [
+            "nama workflow terlalu panjang untuk dibaca oleh registry",
+            "versi Node di runner lebih baru dari versi di Dockerfile",
+            "file compose.yaml belum diunggah ke tab Actions di GitHub sebagai artefak build",
+            "job belum diberi permissions packages: write untuk GITHUB_TOKEN"
+          ],
+          "answer": 3,
+          "explanation": "Menulis ke GHCR butuh izin packages: write pada token workflow."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kunci SSH privat untuk deploy sebaiknya disimpan di",
+          "code": "",
+          "options": [
+            "berkas workflow YAML di repositori agar mudah dibaca oleh seluruh tim pengembang",
+            "folder .github di repositori supaya ikut versi kode",
+            "GitHub Secrets repositori dan dipakai lewat ${{ secrets.NAMA }}",
+            "tag image di registry supaya server dapat mengunduhnya"
+          ],
+          "answer": 2,
+          "explanation": "Rahasia tidak boleh ada di repositori. Secrets disamarkan di log dan tidak diberikan ke PR dari fork."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Tag image berbasis SHA commit memudahkan melacak image ke kode yang membuatnya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Benar. SHA tidak berubah dan menunjuk commit tertentu, sehingga cocok untuk deploy dan rollback."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Tag image dari ref Git",
+          "prompt": "Tulis fungsi `tagDariRef(ref)` yang menerima ref Git seperti yang dikirim GitHub Actions dan mengembalikan array tag image:\n\n- `refs/tags/vX.Y.Z` (X, Y, Z angka) menghasilkan `[\"X.Y.Z\", \"X.Y\", \"latest\"]`.\n- `refs/heads/main` menghasilkan `[\"latest\"]`.\n- cabang lain `refs/heads/NAMA` menghasilkan satu tag berupa NAMA dengan setiap `/` diganti `-`.\n- ref lain menghasilkan array kosong.",
+          "starter": {
+            "code": "function tagDariRef(ref) {\n  // TODO: kenali jenis ref lalu hitung tag-nya\n}\n"
+          },
+          "solution": {
+            "code": "function tagDariRef(ref) {\n  const rilis = /^refs\\/tags\\/v(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(ref);\n  if (rilis) return [rilis[1] + \".\" + rilis[2] + \".\" + rilis[3], rilis[1] + \".\" + rilis[2], \"latest\"];\n  const cabang = /^refs\\/heads\\/(.+)$/.exec(ref);\n  if (cabang) return cabang[1] === \"main\" ? [\"latest\"] : [cabang[1].replaceAll(\"/\", \"-\")];\n  return [];\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "tag rilis menghasilkan versi lengkap, minor, dan latest",
+              "check": "JSON.stringify(tagDariRef(\"refs/tags/v1.4.2\")) === '[\"1.4.2\",\"1.4\",\"latest\"]'"
+            },
+            {
+              "name": "cabang main menghasilkan latest",
+              "check": "JSON.stringify(tagDariRef(\"refs/heads/main\")) === '[\"latest\"]'"
+            },
+            {
+              "name": "garis miring pada nama cabang diganti",
+              "check": "JSON.stringify(tagDariRef(\"refs/heads/fitur/login\")) === '[\"fitur-login\"]'"
+            },
+            {
+              "name": "tag bukan semver menghasilkan array kosong",
+              "check": "tagDariRef(\"refs/tags/rilis-1\").length === 0 && tagDariRef(\"refs/pull/5/merge\").length === 0"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Mencari versi rilis terbaru",
+          "prompt": "Tulis fungsi `versiTerbaru(tags)` yang menerima array tag dan mengembalikan tag semver dengan nomor tertinggi, persis seperti tertulis di array.\n\nHanya tag berbentuk `X.Y.Z` atau `vX.Y.Z` (angka semua) yang dihitung; tag lain seperti `latest` dan `sha-abc123` diabaikan. Bandingkan sebagai **angka**, bukan teks (1.10.0 lebih baru daripada 1.9.5). Bila tidak ada tag semver, kembalikan `null`.",
+          "starter": {
+            "code": "function versiTerbaru(tags) {\n  // TODO: saring tag semver lalu cari yang tertinggi\n}\n"
+          },
+          "solution": {
+            "code": "function versiTerbaru(tags) {\n  let terbaik = null;\n  let nomorTerbaik = null;\n  for (const t of tags) {\n    const m = /^v?(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(t);\n    if (!m) continue;\n    const nomor = [Number(m[1]), Number(m[2]), Number(m[3])];\n    const lebihBaru = !nomorTerbaik || nomor[0] > nomorTerbaik[0] || (nomor[0] === nomorTerbaik[0] && (nomor[1] > nomorTerbaik[1] || (nomor[1] === nomorTerbaik[1] && nomor[2] > nomorTerbaik[2])));\n    if (lebihBaru) {\n      terbaik = t;\n      nomorTerbaik = nomor;\n    }\n  }\n  return terbaik;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "1.10.0 lebih baru daripada 1.9.5",
+              "check": "versiTerbaru([\"v1.2.0\", \"v1.10.0\", \"v1.9.5\", \"latest\", \"sha-abc123\"]) === \"v1.10.0\""
+            },
+            {
+              "name": "tag tanpa awalan v dikembalikan apa adanya",
+              "check": "versiTerbaru([\"1.0.0\", \"1.0.1\", \"0.9.9\"]) === \"1.0.1\""
+            },
+            {
+              "name": "tanpa tag semver menghasilkan null",
+              "check": "versiTerbaru([\"latest\", \"main\", \"sha-1234567\"]) === null"
+            },
+            {
+              "name": "urutan di array tidak berpengaruh",
+              "check": "versiTerbaru([\"2.0.0\", \"1.99.99\"]) === \"2.0.0\" && versiTerbaru([\"1.99.99\", \"2.0.0\"]) === \"2.0.0\""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Pemeriksa Berkas Deploy",
+    "brief": "Bangun **Pemeriksa Berkas Deploy**: dua fungsi yang membaca Dockerfile dan konfigurasi Compose lalu melaporkan kebiasaan buruk yang kamu pelajari di kelas ini. Semuanya fungsi JavaScript murni, jadi bisa dites tanpa Docker.\n\n## Yang dibangun\n\n1. `lintDockerfile(teks)` mengembalikan array kode temuan (tiap kode paling banyak sekali) dalam urutan tetap berikut:\n   - `TAG_LATEST`: ada `FROM` ke image tanpa tag atau bertag `latest`. Abaikan `scratch` dan nama tahap yang didefinisikan lebih dulu dengan `AS`.\n   - `TANPA_USER`: tidak ada `USER`, atau `USER` terakhir adalah `root` atau `0`.\n   - `RAHASIA_DI_ENV`: ada `ENV` atau `ARG` dengan nama mengandung `PASS`, `SECRET`, `TOKEN`, atau `KEY` yang **berisi nilai**.\n   - `CACHE_URUTAN`: `COPY . .` muncul sebelum `RUN npm ci` atau `RUN npm install`.\n   - `TANPA_HEALTHCHECK`: tidak ada `HEALTHCHECK`.\n   - `CMD_SHELL_FORM`: `CMD` terakhir tidak berbentuk array JSON.\n2. `lintCompose(config)` menerima objek hasil baca `compose.yaml` (`{ services: { nama: {...} } }`) dan mengembalikan array teks `KODE:nama-service`, per service berurutan:\n   - `IMAGE_LATEST`: ada `image` tanpa tag atau bertag `latest`.\n   - `PORT_DB_TERBUKA`: ada pemetaan port yang membuka port 5432, 3306, 6379, atau 27017 ke host (selain yang diikat ke `127.0.0.1`).\n   - `TANPA_RESTART`: tidak ada `restart`.\n   - `SANDI_DI_YAML`: `environment` (objek atau array `KUNCI=nilai`) punya kunci rahasia (aturan nama sama seperti di atas) dengan nilai literal. Nilai yang diawali `${`, nilai kosong, dan kunci berakhiran `_FILE` aman.\n\nFungsi bantu `instruksi` dan pola `RAHASIA` sudah disediakan. Contoh berkas yang baik tersedia sebagai `DF_BAIK`, `DF_LANJUT`, dan `COMPOSE_BAIK`; semuanya harus menghasilkan array kosong.",
+    "prompt": "Lengkapi `lintDockerfile` dan `lintCompose` sehingga setiap temuan dilaporkan dengan kode dan urutan yang tepat, dan berkas yang baik menghasilkan array kosong.",
+    "starter": {
+      "code": "// Membaca Dockerfile menjadi daftar instruksi: { nama, arg }.\n// Baris kosong dan komentar dilewati, baris lanjutan (akhiran \\) digabung.\nfunction instruksi(teks) {\n  const hasil = [];\n  let buf = \"\";\n  for (const mentah of teks.split(\"\\n\")) {\n    const baris = mentah.trim();\n    if (!buf && (baris === \"\" || baris.startsWith(\"#\"))) continue;\n    if (baris.endsWith(\"\\\\\")) {\n      buf += baris.slice(0, -1) + \" \";\n      continue;\n    }\n    const penuh = (buf + baris).trim();\n    buf = \"\";\n    const i = penuh.search(/\\s/);\n    hasil.push({ nama: (i < 0 ? penuh : penuh.slice(0, i)).toUpperCase(), arg: i < 0 ? \"\" : penuh.slice(i).trim() });\n  }\n  return hasil;\n}\n\nconst RAHASIA = /(PASS|SECRET|TOKEN|KEY)/i;\n\nfunction lintDockerfile(teks) {\n  const ins = instruksi(teks);\n  const temuan = [];\n  // TODO: periksa FROM, USER, ENV/ARG, urutan COPY dan RUN, HEALTHCHECK, CMD\n  return temuan;\n}\n\nfunction lintCompose(config) {\n  const temuan = [];\n  // TODO: periksa tiap service\n  return temuan;\n}\n"
+    },
+    "solution": {
+      "code": "// Membaca Dockerfile menjadi daftar instruksi: { nama, arg }.\n// Baris kosong dan komentar dilewati, baris lanjutan (akhiran \\) digabung.\nfunction instruksi(teks) {\n  const hasil = [];\n  let buf = \"\";\n  for (const mentah of teks.split(\"\\n\")) {\n    const baris = mentah.trim();\n    if (!buf && (baris === \"\" || baris.startsWith(\"#\"))) continue;\n    if (baris.endsWith(\"\\\\\")) {\n      buf += baris.slice(0, -1) + \" \";\n      continue;\n    }\n    const penuh = (buf + baris).trim();\n    buf = \"\";\n    const i = penuh.search(/\\s/);\n    hasil.push({ nama: (i < 0 ? penuh : penuh.slice(0, i)).toUpperCase(), arg: i < 0 ? \"\" : penuh.slice(i).trim() });\n  }\n  return hasil;\n}\n\nconst RAHASIA = /(PASS|SECRET|TOKEN|KEY)/i;\n\nconst pasangan = (arg) => {\n  if (!arg.includes(\"=\")) {\n    const i = arg.search(/\\s/);\n    return i < 0 ? [[arg, \"\"]] : [[arg.slice(0, i), arg.slice(i).trim()]];\n  }\n  return arg.split(/\\s+/).map((t) => {\n    const i = t.indexOf(\"=\");\n    return i < 0 ? [t, \"\"] : [t.slice(0, i), t.slice(i + 1)];\n  });\n};\nconst tanpaTag = (image) => {\n  const nama = image.split(\"/\").pop();\n  return !nama.includes(\":\") || nama.endsWith(\":latest\");\n};\n\nfunction lintDockerfile(teks) {\n  const ins = instruksi(teks);\n  const temuan = [];\n\n  const tahap = new Set();\n  let latest = false;\n  for (const { nama, arg } of ins) {\n    if (nama !== \"FROM\") continue;\n    const kata = arg.split(/\\s+/).filter((k) => !k.startsWith(\"--\"));\n    const image = kata[0];\n    if (image !== \"scratch\" && !tahap.has(image) && tanpaTag(image)) latest = true;\n    if (kata[1] && kata[1].toUpperCase() === \"AS\") tahap.add(kata[2]);\n  }\n  if (latest) temuan.push(\"TAG_LATEST\");\n\n  const user = ins.filter((i) => i.nama === \"USER\").pop();\n  if (!user || [\"root\", \"0\"].includes(user.arg.split(\":\")[0])) temuan.push(\"TANPA_USER\");\n\n  const bocor = ins.some((i) => (i.nama === \"ENV\" || i.nama === \"ARG\") && pasangan(i.arg).some(([k, v]) => RAHASIA.test(k) && v !== \"\"));\n  if (bocor) temuan.push(\"RAHASIA_DI_ENV\");\n\n  const salinSemua = ins.findIndex((i) => i.nama === \"COPY\" && i.arg.split(/\\s+/).filter((k) => !k.startsWith(\"--\"))[0] === \".\");\n  const pasang = ins.findIndex((i) => i.nama === \"RUN\" && /npm\\s+(ci|install)/.test(i.arg));\n  if (salinSemua >= 0 && pasang >= 0 && salinSemua < pasang) temuan.push(\"CACHE_URUTAN\");\n\n  if (!ins.some((i) => i.nama === \"HEALTHCHECK\")) temuan.push(\"TANPA_HEALTHCHECK\");\n\n  const cmd = ins.filter((i) => i.nama === \"CMD\").pop();\n  if (cmd && !cmd.arg.startsWith(\"[\")) temuan.push(\"CMD_SHELL_FORM\");\n  return temuan;\n}\n\nfunction lintCompose(config) {\n  const temuan = [];\n  for (const [nama, s] of Object.entries(config.services || {})) {\n    if (s.image && tanpaTag(s.image)) temuan.push(\"IMAGE_LATEST:\" + nama);\n\n    const terbuka = (s.ports || []).some((p) => {\n      const b = String(p).split(\"/\")[0].split(\":\");\n      if (b.length < 2 || b[0] === \"127.0.0.1\") return false;\n      return [5432, 3306, 6379, 27017].includes(Number(b[b.length - 1]));\n    });\n    if (terbuka) temuan.push(\"PORT_DB_TERBUKA:\" + nama);\n\n    if (!s.restart) temuan.push(\"TANPA_RESTART:\" + nama);\n\n    const env = Array.isArray(s.environment)\n      ? s.environment.map((e) => {\n          const i = e.indexOf(\"=\");\n          return i < 0 ? [e, \"\"] : [e.slice(0, i), e.slice(i + 1)];\n        })\n      : Object.entries(s.environment || {});\n    const sandi = env.some(([k, v]) => RAHASIA.test(k) && !k.endsWith(\"_FILE\") && v !== \"\" && v != null && !String(v).startsWith(\"$\" + \"{\"));\n    if (sandi) temuan.push(\"SANDI_DI_YAML:\" + nama);\n  }\n  return temuan;\n}\n"
+    },
+    "setup": "const DF_BAIK = [\n  \"FROM node:24-alpine AS build\",\n  \"WORKDIR /app\",\n  \"COPY package*.json ./\",\n  \"RUN npm ci\",\n  \"COPY . .\",\n  \"RUN npm run build\",\n  \"\",\n  \"FROM node:24-alpine\",\n  \"WORKDIR /app\",\n  \"COPY --from=build /app/dist ./dist\",\n  \"HEALTHCHECK CMD wget -qO- http://127.0.0.1:3000/health || exit 1\",\n  \"USER node\",\n  'CMD [\"node\", \"dist/server.js\"]',\n].join(\"\\n\");\nconst DF_LANJUT = [\n  \"FROM node:24-alpine\",\n  \"USER node\",\n  \"HEALTHCHECK --interval=30s \\\\\",\n  \"  CMD wget -qO- http://127.0.0.1:3000/health || exit 1\",\n  'CMD [\"node\", \"server.js\"]',\n].join(\"\\n\");\nconst COMPOSE_BAIK = {\n  services: {\n    api: {\n      image: \"ghcr.io/budi/toko-api:1.4.2\",\n      ports: [\"3000:3000\"],\n      environment: { DB_PASSWORD: \"${DB_PASSWORD}\", NODE_ENV: \"production\" },\n      restart: \"unless-stopped\",\n    },\n    db: {\n      image: \"postgres:17-alpine\",\n      ports: [\"127.0.0.1:5432:5432\"],\n      environment: { POSTGRES_PASSWORD_FILE: \"/run/secrets/db_password\" },\n      restart: \"unless-stopped\",\n    },\n  },\n};\n",
+    "tests": [
+      {
+        "name": "Dockerfile yang baik tidak punya temuan",
+        "check": "JSON.stringify(lintDockerfile(DF_BAIK)) === \"[]\""
+      },
+      {
+        "name": "TAG_LATEST untuk image tanpa tag atau latest, bukan untuk nama tahap",
+        "check": "lintDockerfile(\"FROM node\\nUSER node\").includes(\"TAG_LATEST\") && lintDockerfile(\"FROM node:latest\\nUSER node\").includes(\"TAG_LATEST\") && !lintDockerfile(\"FROM node:24-alpine AS b\\nFROM b\\nUSER node\").includes(\"TAG_LATEST\")"
+      },
+      {
+        "name": "TANPA_USER untuk tanpa USER atau USER root",
+        "check": "lintDockerfile(\"FROM node:24\").includes(\"TANPA_USER\") && lintDockerfile(\"FROM node:24\\nUSER root\").includes(\"TANPA_USER\") && !lintDockerfile(\"FROM node:24\\nUSER node\").includes(\"TANPA_USER\")"
+      },
+      {
+        "name": "RAHASIA_DI_ENV hanya bila nilai terisi",
+        "check": "lintDockerfile(\"FROM node:24\\nENV JWT_SECRET=abc\").includes(\"RAHASIA_DI_ENV\") && lintDockerfile(\"FROM node:24\\nARG NPM_TOKEN=xyz\").includes(\"RAHASIA_DI_ENV\") && !lintDockerfile(\"FROM node:24\\nARG NPM_TOKEN\").includes(\"RAHASIA_DI_ENV\") && !lintDockerfile(\"FROM node:24\\nENV NODE_ENV=production\").includes(\"RAHASIA_DI_ENV\")"
+      },
+      {
+        "name": "CACHE_URUTAN bila COPY . . sebelum npm ci",
+        "check": "lintDockerfile(\"FROM node:24\\nCOPY . .\\nRUN npm ci\").includes(\"CACHE_URUTAN\") && !lintDockerfile(\"FROM node:24\\nCOPY package*.json ./\\nRUN npm ci\\nCOPY . .\").includes(\"CACHE_URUTAN\")"
+      },
+      {
+        "name": "TANPA_HEALTHCHECK dan CMD_SHELL_FORM",
+        "check": "lintDockerfile(\"FROM node:24\\nCMD node server.js\").includes(\"TANPA_HEALTHCHECK\") && lintDockerfile(\"FROM node:24\\nCMD node server.js\").includes(\"CMD_SHELL_FORM\") && !lintDockerfile(DF_LANJUT).includes(\"CMD_SHELL_FORM\")"
+      },
+      {
+        "name": "urutan kode temuan Dockerfile tetap dan baris lanjutan terbaca",
+        "check": "lintDockerfile(\"FROM node\\nCMD node x.js\").join(\",\") === \"TAG_LATEST,TANPA_USER,TANPA_HEALTHCHECK,CMD_SHELL_FORM\" && lintDockerfile(DF_LANJUT).length === 0"
+      },
+      {
+        "name": "Compose yang baik tidak punya temuan",
+        "check": "lintCompose(COMPOSE_BAIK).length === 0"
+      },
+      {
+        "name": "IMAGE_LATEST dan TANPA_RESTART per service",
+        "check": "lintCompose({ services: { web: { image: \"nginx\" }, db: { image: \"postgres:17-alpine\", restart: \"always\" }, app: { build: \".\" } } }).join(\",\") === \"IMAGE_LATEST:web,TANPA_RESTART:web,TANPA_RESTART:app\""
+      },
+      {
+        "name": "PORT_DB_TERBUKA kecuali diikat ke 127.0.0.1",
+        "check": "lintCompose({ services: { db: { image: \"postgres:17\", restart: \"always\", ports: [\"5432:5432\"] } } }).join() === \"PORT_DB_TERBUKA:db\" && lintCompose({ services: { db: { image: \"postgres:17\", restart: \"always\", ports: [\"127.0.0.1:5432:5432\"] } } }).length === 0"
+      },
+      {
+        "name": "SANDI_DI_YAML untuk nilai literal, objek maupun array",
+        "check": "lintCompose({ services: { a: { image: \"x:1\", restart: \"always\", environment: { DB_PASSWORD: \"abc\" } }, b: { image: \"x:1\", restart: \"always\", environment: [\"API_KEY=k1\", \"NODE_ENV=production\"] }, c: { image: \"x:1\", restart: \"always\", environment: { DB_PASSWORD: \"${DB_PASSWORD}\", PASSWORD_FILE: \"/run/secrets/p\" } } } }).join(\",\") === \"SANDI_DI_YAML:a,SANDI_DI_YAML:b\""
+      }
+    ]
+  }
+}
