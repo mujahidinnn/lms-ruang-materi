@@ -43,9 +43,9 @@ export default function ExamReview({ review, slug, children }: { review: Review;
                 const key = q.answer === i;
                 const wrong = q.answer !== null && q.chosen === i && !key;
                 return (
-                  <li key={i} className={`flex items-center gap-2 ${key ? "text-accent" : wrong ? "text-red-500" : "text-zinc-400"}`}>
-                    {key ? <Check aria-label="kunci" className="size-4" /> : wrong ? <X aria-label="salah" className="size-4" /> : <span className="size-4" />}
-                    <span>{opt}</span>
+                  <li key={i} className={`flex items-start gap-2 ${key ? "text-accent" : wrong ? "text-red-500" : "text-zinc-400"}`}>
+                    {key ? <Check aria-label="kunci" className="mt-0.5 size-4 shrink-0" /> : wrong ? <X aria-label="salah" className="mt-0.5 size-4 shrink-0" /> : <span className="size-4 shrink-0" />}
+                    <span><span aria-hidden className="mr-1.5 font-semibold">{"ABCD"[i]}.</span>{opt}</span>
                     {q.chosen === i && <span className="text-xs text-zinc-500">(jawabanmu)</span>}
                   </li>
                 );
