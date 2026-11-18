@@ -73,7 +73,17 @@ const ogImage = new URL("/opengraph-image.png", SITE_URL).href;
     )}
     <script>
       import { installConfirmForms } from "@/lib/confirm";
+      import { encodeArgs } from "@/lib/rpc-wire";
       installConfirmForms();
+      // "Last seen" for the admin Pengguna list: cached pages never reach the
+      // server, so a signed-in browser pings at most every 5 minutes.
+      try {
+        const k = "ruang-materi:ping";
+        if ("auth" in document.documentElement.dataset && Date.now() - Number(localStorage.getItem(k) ?? 0) > 3e5) {
+          localStorage.setItem(k, String(Date.now()));
+          fetch("/rpc/ping", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(encodeArgs([])) });
+        }
+      } catch {}
       // Work done before signing in (lib/pending.ts) is sent once there is a
       // session; loaded only when something is waiting.
       try {

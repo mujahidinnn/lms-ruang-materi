@@ -1,6 +1,6 @@
 import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
-import { requireUser } from "@/lib/dal";
+import { getCurrentUser, requireUser } from "@/lib/dal";
 import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
@@ -96,4 +96,10 @@ export async function aturSandi(_: State, form: FormData): Promise<State> {
   if (error?.code === "weak_password") return { error: "Kata sandi terlalu lemah. Pakai campuran huruf dan angka." };
   if (error) return { error: "Gagal menyimpan kata sandi, coba lagi." };
   return { ok: "Kata sandi tersimpan. Lain kali bisa masuk dengan email dan kata sandi ini." };
+}
+
+// Fired by the browser on CDN-cached pages, which never reach the server:
+// getCurrentUser() records "last seen" (throttled there). No redirect when signed out.
+export async function ping() {
+  await getCurrentUser();
 }
