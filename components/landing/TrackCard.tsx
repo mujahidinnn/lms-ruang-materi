@@ -24,10 +24,10 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         <h3 className="mt-3 text-xl sm:text-2xl leading-tight font-bold tracking-tight">{track.title}</h3>
         <p className="mt-1 line-clamp-2 flex-1 text-sm sm:mt-2 leading-relaxed text-zinc-400">{track.description}</p>
         {/* The path itself: the first classes in order. */}
-        <ol aria-label="Urutan kelas" className="mt-4 space-y-1.5 border-t border-zinc-800 pt-3 sm:mt-6 sm:space-y-2 sm:pt-4 text-sm font-semibold text-noir">
+        <ol aria-label="Urutan kelas" className="mt-4 space-y-1.5 border-t border-zinc-800 pt-3 sm:mt-6 sm:space-y-2 sm:pt-4 text-sm font-semibold text-zinc-50">
           {track.steps.slice(0, SHOWN).map((title, i) => (
             <li key={title} className="flex items-center gap-2.5">
-              <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-full border-2 border-noir text-[11px] tabular-nums ${STEP_TONES[i % STEP_TONES.length]}`}>{i + 1}</span>
+              <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-full border-2 border-noir text-[11px] text-noir tabular-nums ${STEP_TONES[i % STEP_TONES.length]}`}>{i + 1}</span>
               <span className="truncate">{title}</span>
             </li>
           ))}

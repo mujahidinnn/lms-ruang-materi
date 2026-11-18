@@ -1,0 +1,2013 @@
+{
+  "title": "TypeScript",
+  "description": "Belajar TypeScript dari tipe dasar, union dan narrowing, generics, utility types, sampai tsconfig strict dan async, ditutup proyek Toko Mini.",
+  "summary": "TypeScript adalah JavaScript yang ditambah sistem tipe statis. Compiler memeriksa kodemu sebelum dijalankan, sehingga salah ketik properti, argumen yang kurang, dan nilai yang mungkin kosong ketahuan di editor, bukan di layar pengguna. Hasil akhirnya tetap JavaScript biasa, karena semua tipe dihapus saat kompilasi.\n\nKelas ini berjalan dari dasar ke praktik nyata. Kamu mulai dari alur kerja tsc dan tipe dasar, lalu fungsi, object, interface, dan type alias. Setelah itu kamu mempelajari union, tipe literal, dan narrowing yang membuat kode jujur terhadap data yang tidak pasti, disusul generics dan utility types untuk menghindari tipe yang ditulis berulang.\n\nBagian akhir membahas class dan modul, tsconfig dengan mode strict, serta pekerjaan nyata: fungsi async, data dari API, DOM, dan Node.js. Latihan kode berjalan sebagai JavaScript, jadi tiap latihan melatih logika di balik pola TypeScript, dengan tipe yang ditulis sebagai komentar JSDoc. Kelas ditutup proyek akhir Toko Mini yang dicek otomatis. Kelas ini disusun sendiri dan tidak berafiliasi dengan pihak mana pun.",
+  "tips": [
+    "Hidupkan \"strict\": true di tsconfig sejak hari pertama proyek baru; menyalakannya belakangan jauh lebih melelahkan.",
+    "Arahkan kursor ke variabel di editor untuk melihat tipe yang disimpulkan compiler; kebiasaan ini mempercepat belajar lebih dari membaca dokumentasi.",
+    "Pilih unknown daripada any untuk data yang belum pasti, lalu persempit dengan typeof, in, instanceof, atau type guard.",
+    "Jangan menulis tipe yang sama dua kali; turunkan dengan Pick, Omit, Partial, atau typeof supaya hanya ada satu sumber kebenaran.",
+    "Ingat bahwa tipe hilang di runtime: data dari API, form, atau JSON tetap perlu divalidasi dengan kode biasa atau pustaka skema.",
+    "Jalankan tsc --noEmit di CI, karena menjalankan kode (misalnya lewat tsx atau Node) tidak sama dengan memeriksa tipenya."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu TypeScript?",
+      "back": "JavaScript ditambah sistem tipe statis. Tipe diperiksa saat menulis dan mengompilasi, lalu dihapus sehingga hasilnya JavaScript biasa."
+    },
+    {
+      "front": "Compile time vs runtime",
+      "back": "Compile time: saat tsc atau editor memeriksa tipe. Runtime: saat JavaScript hasilnya berjalan, dan tipe sudah tidak ada."
+    },
+    {
+      "front": "Perintah memeriksa tipe tanpa menulis berkas",
+      "back": "npx tsc --noEmit"
+    },
+    {
+      "front": "Perintah membuat tsconfig.json",
+      "back": "npx tsc --init"
+    },
+    {
+      "front": "Beda any dan unknown",
+      "back": "any mematikan pengecekan. unknown boleh berisi apa saja tetapi harus dipersempit dulu sebelum dipakai."
+    },
+    {
+      "front": "Tipe never dipakai untuk apa?",
+      "back": "Fungsi yang tidak pernah selesai normal (selalu throw) dan pengecekan kasus union yang lengkap."
+    },
+    {
+      "front": "Kenapa const x = \"a\" bertipe \"a\" sedangkan let x = \"a\" bertipe string?",
+      "back": "const tidak bisa diubah, jadi disimpulkan tipe literal tersempit; let bisa diubah sehingga tipenya melebar."
+    },
+    {
+      "front": "Tuple",
+      "back": "Array dengan panjang dan tipe per posisi yang tetap, misalnya [string, number]."
+    },
+    {
+      "front": "Parameter opsional",
+      "back": "Ditulis dengan ?, tipenya menjadi T | undefined. Harus berada setelah parameter wajib."
+    },
+    {
+      "front": "Structural typing",
+      "back": "Kecocokan tipe ditentukan oleh bentuk (properti yang dimiliki), bukan oleh nama tipenya."
+    },
+    {
+      "front": "Beda interface dan type alias",
+      "back": "Hanya interface yang mengalami declaration merging; hanya type yang bisa menamai union, tuple, dan tipe primitif."
+    },
+    {
+      "front": "Intersection A & B",
+      "back": "Tipe yang harus memenuhi A dan B sekaligus."
+    },
+    {
+      "front": "Discriminated union",
+      "back": "Union object yang punya satu properti literal bersama (diskriminan) sehingga bentuknya bisa dipersempit dengan switch atau if."
+    },
+    {
+      "front": "Type guard buatan",
+      "back": "Fungsi dengan tipe kembalian berbentuk x is Tipe; compiler mempercayai logikanya."
+    },
+    {
+      "front": "Cara pengecekan lengkap union",
+      "back": "Di cabang default, panggil fungsi yang menerima parameter bertipe never; kasus yang terlewat menjadi error kompilasi."
+    },
+    {
+      "front": "Generics",
+      "back": "Tipe dengan parameter, misalnya function pertama<T>(a: T[]): T | undefined, agar satu fungsi bekerja untuk banyak tipe dengan tipe tetap terjaga."
+    },
+    {
+      "front": "T extends { length: number }",
+      "back": "Constraint: T boleh tipe apa pun asalkan setidaknya punya properti length bertipe number."
+    },
+    {
+      "front": "keyof T",
+      "back": "Gabungan literal dari semua nama kunci tipe T."
+    },
+    {
+      "front": "Partial<T>, Omit<T, K>, Pick<T, K>",
+      "back": "Semua properti jadi opsional; membuang kunci K; mengambil hanya kunci K."
+    },
+    {
+      "front": "Record<K, V>",
+      "back": "Object dengan kunci bertipe K dan nilai bertipe V; bila K gabungan literal, semua kunci wajib ada."
+    },
+    {
+      "front": "ReturnType<typeof f> dan Awaited<T>",
+      "back": "Tipe kembalian fungsi f; membuka tipe Promise menjadi tipe nilainya."
+    },
+    {
+      "front": "private vs #private",
+      "back": "private hanya pengecekan kompilasi (tetap bisa diakses di runtime); #nama privat sungguhan di JavaScript."
+    },
+    {
+      "front": "Apa fungsi import type?",
+      "back": "Menandai impor yang hanya tipe; dihapus sepenuhnya saat kompilasi."
+    },
+    {
+      "front": "Apa fungsi strictNullChecks?",
+      "back": "Membuat null dan undefined tipe tersendiri sehingga tidak otomatis boleh masuk ke tipe lain."
+    },
+    {
+      "front": "noUncheckedIndexedAccess",
+      "back": "Membuat hasil akses indeks array atau index signature bertipe T | undefined."
+    },
+    {
+      "front": "Tipe hasil response.json()",
+      "back": "any; terima sebagai unknown lalu validasi, jangan hanya as Tipe."
+    },
+    {
+      "front": "Tipe variabel e di catch pada mode strict",
+      "back": "unknown; persempit dengan e instanceof Error sebelum memakai e.message."
+    },
+    {
+      "front": "Tipe process.env.PORT",
+      "back": "string | undefined; tangani kemungkinan tidak ada."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tim kamu menulis let total = 0 lalu mengisinya dengan total = \"nol\". Apa yang dilakukan TypeScript?",
+      "code": "",
+      "options": [
+        "Mengizinkan karena let boleh berubah tipe sesuka hati",
+        "Menolak penugasan karena tipe total disimpulkan sebagai number",
+        "Mengubah tipe total menjadi string secara otomatis",
+        "Mengizinkan tetapi menampilkan peringatan saat dijalankan"
+      ],
+      "answer": 1,
+      "explanation": "let menyimpulkan tipe dari nilai awal dan tipenya tetap."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi mana yang tanda tangannya paling aman untuk menerima data hasil JSON.parse?",
+      "code": "",
+      "options": [
+        "function proses(data: unknown)",
+        "function proses(data: any)",
+        "function proses(data: object)",
+        "function proses(data: never)"
+      ],
+      "answer": 0,
+      "explanation": "unknown memaksa pengecekan sebelum pemakaian."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Parameter opsional ditulis dengan tanda ? dan tipenya otomatis menjadi T | undefined di dalam fungsi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Karena itu kasus undefined harus ditangani."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil narrowing pada cabang else dari kode ini?",
+      "code": "function f(nilai: string | number) {\n  if (typeof nilai === \"string\") {\n    return nilai.length;\n  } else {\n    return nilai;\n  }\n}",
+      "options": [
+        "nilai bertipe string",
+        "nilai bertipe never",
+        "nilai bertipe number",
+        "nilai tetap string | number"
+      ],
+      "answer": 2,
+      "explanation": "Setelah cabang string tertangani, sisanya hanya number."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kamu butuh tipe untuk object bantuan yang semua propertinya opsional, diturunkan dari Siswa. Pilih yang tepat.",
+      "code": "",
+      "options": [
+        "Required<Siswa>",
+        "Readonly<Siswa>",
+        "Partial<Siswa>",
+        "Pick<Siswa, never>"
+      ],
+      "answer": 2,
+      "explanation": "Partial membuat semua properti opsional."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa function pertama<T>(a: T[]): T | undefined lebih baik daripada versi yang memakai any[]?",
+      "code": "",
+      "options": [
+        "Fungsinya berjalan lebih cepat saat dieksekusi",
+        "Tipe elemen yang masuk tetap diingat pada hasil",
+        "Fungsi menolak array kosong saat kompilasi",
+        "Hasilnya selalu bertipe string"
+      ],
+      "answer": 1,
+      "explanation": "Generics menghubungkan tipe masukan dan keluaran."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Interface dan type alias sama-sama bisa dipakai untuk mendeskripsikan bentuk object.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Perbedaannya ada pada merging dan kemampuan menamai union."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi di runtime pada properti private dari TypeScript?",
+      "code": "",
+      "options": [
+        "Dihapus dari object sehingga tidak bisa dibaca",
+        "Menjadi privat sungguhan seperti #nama",
+        "Diganti dengan Symbol otomatis",
+        "Tetap ada dan bisa diakses karena hanya dicek saat kompilasi"
+      ],
+      "answer": 3,
+      "explanation": "Gunakan #nama untuk privasi sungguhan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi tsconfig mana yang membuat tsc hanya memeriksa tipe tanpa menulis berkas keluaran?",
+      "code": "",
+      "options": [
+        "outDir",
+        "skipLibCheck",
+        "target",
+        "noEmit"
+      ],
+      "answer": 3,
+      "explanation": "noEmit biasa dipakai di CI atau bila bundler menjalankan kode."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "process.env.PORT dengan @types/node bertipe number.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tipenya string | undefined."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode berikut gagal dikompilasi. Apa penyebabnya?",
+      "code": "function ambil<T, K extends keyof T>(o: T, k: K): T[K] {\n  return o[k];\n}\nambil({ nama: \"Sari\" }, \"alamat\");",
+      "options": [
+        "Fungsi tidak boleh memakai parameter tipe",
+        "Kunci \"alamat\" bukan kunci dari tipe argumen pertama",
+        "Tipe kembalian harus void",
+        "Argumen kedua harus berupa number"
+      ],
+      "answer": 1,
+      "explanation": "K dibatasi keyof T."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Respons API diubah server sehingga properti nama hilang, padahal kode memakai data as Siswa. Apa yang paling mungkin terjadi?",
+      "code": "",
+      "options": [
+        "Kode lolos kompilasi lalu gagal saat runtime di tempat memakai nama",
+        "Compiler mendeteksi perubahan tersebut saat build",
+        "TypeScript memperbaiki tipe secara otomatis",
+        "as Siswa menolak data yang tidak lengkap saat berjalan"
+      ],
+      "answer": 0,
+      "explanation": "as tidak memvalidasi apa pun saat runtime."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi utama TypeScript dibanding JavaScript?",
+      "code": "",
+      "options": [
+        "Membuat kode berjalan lebih cepat di browser",
+        "Menggantikan Node.js sebagai runtime",
+        "Memeriksa tipe sebelum kode dijalankan",
+        "Menambahkan database ke aplikasi"
+      ],
+      "answer": 2,
+      "explanation": "Tipe diperiksa saat menulis dan mengompilasi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tipe TypeScript tetap ada di JavaScript hasil kompilasi dan bisa diperiksa dengan typeof.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Semua tipe dihapus saat kompilasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah mana yang membuat berkas tsconfig.json awal?",
+      "code": "",
+      "options": [
+        "npx tsc --init",
+        "npm init typescript",
+        "tsc --create",
+        "npx tsc --config"
+      ],
+      "answer": 0,
+      "explanation": "Perintah --init menghasilkan tsconfig.json."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah kompilasi, berkas .ts menjadi apa?",
+      "code": "",
+      "options": [
+        "Berkas .json berisi daftar tipe",
+        "Berkas biner yang dijalankan compiler",
+        "Berkas .ts yang lebih kecil",
+        "Berkas .js biasa tanpa anotasi tipe"
+      ],
+      "answer": 3,
+      "explanation": "tsc menghasilkan JavaScript."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa Node.js yang menjalankan berkas .ts dengan menghapus tipe tidak menggantikan tsc --noEmit?",
+      "code": "",
+      "options": [
+        "Node tidak bisa membaca sintaks tipe sama sekali",
+        "tsc --noEmit hanya bekerja untuk berkas .js",
+        "Node memeriksa tipe tetapi lebih lambat",
+        "Penghapusan tipe tidak memeriksa kebenaran tipe, hanya membuang anotasinya"
+      ],
+      "answer": 3,
+      "explanation": "Menjalankan dan memeriksa adalah dua pekerjaan terpisah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa tipe variabel hasil dari kode berikut?",
+      "code": "const harga = [100, 200];",
+      "options": [
+        "string[]",
+        "[number, number]",
+        "number[]",
+        "any[]"
+      ],
+      "answer": 2,
+      "explanation": "Array literal angka disimpulkan sebagai number[]."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menulis tipe String (huruf kapital) sama saja dengan string untuk anotasi tipe.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Pakai string; String merujuk ke object pembungkus."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe mana yang cocok untuk pasangan nilai [nama, umur] berpanjang tetap?",
+      "code": "",
+      "options": [
+        "[string, number]",
+        "(string | number)[]",
+        "Array<any>",
+        "{ nama: string }"
+      ],
+      "answer": 0,
+      "explanation": "Tuple menetapkan panjang dan tipe tiap posisi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa perbedaan const x = \"a\" dan let y = \"a\" dalam tipe yang disimpulkan?",
+      "code": "",
+      "options": [
+        "x bertipe literal \"a\", y bertipe string",
+        "Keduanya bertipe string",
+        "x bertipe string, y bertipe literal \"a\"",
+        "Keduanya bertipe any"
+      ],
+      "answer": 0,
+      "explanation": "const tidak bisa diubah sehingga tipenya lebih sempit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan nilai bertipe unknown boleh dipakai method-nya?",
+      "code": "",
+      "options": [
+        "Selalu, seperti tipe any",
+        "Tidak pernah, dalam kondisi apa pun",
+        "Hanya di dalam fungsi async",
+        "Setelah dipersempit dengan pengecekan tipe"
+      ],
+      "answer": 3,
+      "explanation": "unknown wajib dipersempit dulu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi yang selalu melempar error cocok diberi tipe kembalian apa?",
+      "code": "",
+      "options": [
+        "void",
+        "undefined",
+        "never",
+        "unknown"
+      ],
+      "answer": 2,
+      "explanation": "never berarti fungsi tidak pernah selesai normal."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di mode strict, string tidak boleh diisi null kecuali tipenya ditulis string | null.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "strictNullChecks memisahkan null dan undefined dari tipe lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa efek type assertion value as Siswa terhadap nilai di runtime?",
+      "code": "",
+      "options": [
+        "Mengonversi value menjadi object Siswa",
+        "Tidak ada; hanya mengubah pandangan compiler",
+        "Memvalidasi bentuk value",
+        "Menyalin value ke variabel baru"
+      ],
+      "answer": 1,
+      "explanation": "Assertion tidak mengubah atau memeriksa apa pun saat runtime."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi hitung(a: number, b?: number) dipanggil hitung(5). Apa tipe b di dalam fungsi?",
+      "code": "",
+      "options": [
+        "number | undefined",
+        "number",
+        "null",
+        "never"
+      ],
+      "answer": 0,
+      "explanation": "Parameter opsional bisa undefined."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Parameter mana yang harus ditulis lebih dulu dalam daftar parameter?",
+      "code": "",
+      "options": [
+        "Parameter opsional, sebelum parameter wajib",
+        "Parameter dengan tipe terpanjang",
+        "Urutan bebas tanpa aturan",
+        "Parameter wajib, sebelum parameter opsional"
+      ],
+      "answer": 3,
+      "explanation": "Compiler menolak parameter wajib setelah yang opsional."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu contextual typing pada callback?",
+      "code": "",
+      "options": [
+        "Tipe callback ditentukan oleh nama variabelnya",
+        "Callback selalu bertipe any",
+        "Tipe parameter callback disimpulkan dari tipe fungsi yang menerimanya",
+        "Parameter callback harus selalu dianotasi"
+      ],
+      "answer": 2,
+      "explanation": "Karena itu (i) => ... sering tidak butuh anotasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Properti readonly pada tipe object mencegah apa?",
+      "code": "",
+      "options": [
+        "Pembacaan properti dari luar",
+        "Penghapusan object dari memori",
+        "Penugasan ulang properti, diperiksa saat kompilasi",
+        "Perubahan di runtime dengan pasti"
+      ],
+      "answer": 2,
+      "explanation": "readonly hanya pengecekan compile time."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah literal { id: 1, nama: \"A\", kelas: \"X\" } langsung dimasukkan ke tipe tanpa kelas dan ditolak. Ini disebut?",
+      "code": "",
+      "options": [
+        "Declaration merging",
+        "Pengecekan properti berlebih",
+        "Type erasure",
+        "Contextual typing"
+      ],
+      "answer": 1,
+      "explanation": "Hanya berlaku pada object literal langsung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Index signature [mapel: string]: number berarti apa?",
+      "code": "",
+      "options": [
+        "Kunci string apa pun menghasilkan number",
+        "Hanya kunci bernama mapel yang valid",
+        "Nilai harus berupa string",
+        "Object harus memiliki tepat satu properti"
+      ],
+      "answer": 0,
+      "explanation": "Kunci dinamis dengan nilai bertipe seragam."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Siapa yang dapat memperluas interface Konfigurasi dengan mendeklarasikannya lagi di berkas lain?",
+      "code": "",
+      "options": [
+        "Tidak ada, duplikasi interface selalu error",
+        "Hanya class yang meng-implements-nya",
+        "Hanya berkas dalam folder yang sama",
+        "Siapa saja, karena interface bernama sama digabung"
+      ],
+      "answer": 3,
+      "explanation": "Itu disebut declaration merging."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Intersection A & B menghasilkan tipe seperti apa?",
+      "code": "",
+      "options": [
+        "Tipe yang memenuhi salah satu dari A atau B",
+        "Tipe yang hanya memuat properti yang berbeda",
+        "Tipe kosong",
+        "Tipe yang harus memenuhi A dan B sekaligus"
+      ],
+      "answer": 3,
+      "explanation": "Union itu A | B."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Class dengan implements tetap harus menulis semua anggota yang diminta interface.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "implements hanya pengecekan, tidak menambahkan isi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe Id = string | number paling tepat ditulis dengan?",
+      "code": "",
+      "options": [
+        "interface",
+        "type",
+        "enum",
+        "abstract class"
+      ],
+      "answer": 1,
+      "explanation": "Hanya type yang bisa menamai union."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi menerima id: string | number dan memanggil id.toUpperCase(). Mengapa error?",
+      "code": "",
+      "options": [
+        "number tidak punya toUpperCase, jadi union belum dipersempit",
+        "Union tidak boleh memakai method apa pun",
+        "toUpperCase hanya ada untuk number",
+        "id otomatis bertipe never"
+      ],
+      "answer": 0,
+      "explanation": "Hanya anggota milik semua tipe union yang boleh dipakai langsung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe literal \"baru\" | \"selesai\" membantu karena?",
+      "code": "",
+      "options": [
+        "Nilai di luar daftar langsung ditolak dan editor memberi autocomplete",
+        "Nilainya otomatis disimpan di database",
+        "Tipe ini lebih cepat saat runtime",
+        "Nilai bisa berubah menjadi string biasa"
+      ],
+      "answer": 0,
+      "explanation": "Typo seperti \"selsai\" langsung ketahuan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Operator mana yang mempersempit union object berdasarkan keberadaan properti?",
+      "code": "",
+      "options": [
+        "as",
+        "keyof",
+        "void",
+        "in"
+      ],
+      "answer": 3,
+      "explanation": "\"meong\" in h menyempitkan union object."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe kembalian x is Siswa pada sebuah fungsi disebut?",
+      "code": "",
+      "options": [
+        "Mapped type",
+        "Index signature",
+        "Type predicate (type guard buatan)",
+        "Optional chaining"
+      ],
+      "answer": 2,
+      "explanation": "Compiler mempercayai logika predikatnya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Compiler memeriksa bahwa isi type guard buatan memang benar-benar memvalidasi tipenya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Compiler mempercayai predikat; kamu bertanggung jawab atas logikanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu diskriminan pada discriminated union?",
+      "code": "",
+      "options": [
+        "Fungsi yang membuang bentuk yang salah",
+        "Properti literal bersama yang membedakan tiap bentuk",
+        "Tipe never di cabang default",
+        "Parameter tipe generik"
+      ],
+      "answer": 1,
+      "explanation": "Contoh: properti jenis atau kind."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam switch pada union dengan default memanggil fungsi berparameter never, apa yang menandakan ada kasus terlewat?",
+      "code": "",
+      "options": [
+        "Error kompilasi di pemanggilan fungsi itu",
+        "Program berhenti saat build tanpa pesan",
+        "Kasus baru otomatis diabaikan",
+        "Fungsi mengembalikan undefined"
+      ],
+      "answer": 0,
+      "explanation": "Nilai di cabang default bukan never lagi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan parameter tipe T pada fungsi paling bermanfaat?",
+      "code": "",
+      "options": [
+        "Saat T hanya muncul sekali di tanda tangan",
+        "Saat fungsi tidak punya parameter",
+        "Saat semua parameter bertipe string",
+        "Saat T menghubungkan tipe masukan dengan tipe keluaran atau antar parameter"
+      ],
+      "answer": 3,
+      "explanation": "Jika T muncul sekali, biasanya tidak diperlukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti T extends { length: number } pada parameter tipe?",
+      "code": "",
+      "options": [
+        "T harus mewarisi class bernama length",
+        "T selalu bertipe number",
+        "T harus setidaknya punya properti length bertipe number",
+        "T tidak boleh punya properti length"
+      ],
+      "answer": 2,
+      "explanation": "extends di sini berarti batas bentuk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "keyof Siswa dengan Siswa = { nama: string; umur: number } menghasilkan?",
+      "code": "",
+      "options": [
+        "string | number",
+        "[\"nama\", \"umur\"]",
+        "\"nama\" | \"umur\"",
+        "Siswa[]"
+      ],
+      "answer": 2,
+      "explanation": "keyof menghasilkan gabungan literal nama kunci."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Utility type mana yang cocok untuk menghasilkan tipe data tanpa properti id?",
+      "code": "",
+      "options": [
+        "Pick<Siswa, \"nama\" | \"kelas\" | \"email\" | \"id\">",
+        "Omit<Siswa, \"id\">",
+        "Readonly<Siswa>",
+        "Required<Siswa>"
+      ],
+      "answer": 1,
+      "explanation": "Omit membuang kunci yang disebut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Record<\"a\" | \"b\", number> mewajibkan apa?",
+      "code": "",
+      "options": [
+        "Kedua kunci a dan b harus ada",
+        "Hanya salah satu kunci wajib ada",
+        "Nilai harus berupa string",
+        "Kunci tambahan wajib ada"
+      ],
+      "answer": 0,
+      "explanation": "Kunci gabungan literal bersifat wajib."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana mendapatkan tipe nilai yang dihasilkan fungsi async f?",
+      "code": "",
+      "options": [
+        "ReturnType<f>",
+        "keyof typeof f",
+        "Parameters<typeof f>",
+        "Awaited<ReturnType<typeof f>>"
+      ],
+      "answer": 3,
+      "explanation": "ReturnType memberi Promise, Awaited membukanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang membedakan #saldo dari private saldo pada class?",
+      "code": "",
+      "options": [
+        "Keduanya identik tanpa perbedaan apa pun",
+        "private lebih aman di runtime daripada #",
+        "# hanya berlaku di class abstrak",
+        "#saldo privat sungguhan di runtime, private hanya dicek saat kompilasi"
+      ],
+      "answer": 3,
+      "explanation": "# adalah fitur privat JavaScript."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dilakukan import type { Siswa } from \"./siswa\"?",
+      "code": "",
+      "options": [
+        "Mengimpor class Siswa beserta nilainya",
+        "Menyalin berkas siswa ke dist",
+        "Mengimpor hanya tipe, dihapus sepenuhnya saat kompilasi",
+        "Mengubah Siswa menjadi any"
+      ],
+      "answer": 2,
+      "explanation": "Impor tipe tidak menghasilkan kode JavaScript."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi berkas .d.ts adalah?",
+      "code": "",
+      "options": [
+        "Menyimpan hasil kompilasi program",
+        "Menjelaskan tipe kode JavaScript tanpa berisi kode yang berjalan",
+        "Menjalankan tsc di latar belakang",
+        "Menggantikan package.json"
+      ],
+      "answer": 1,
+      "explanation": "d.ts berisi deklarasi saja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa banyak tim menghindari enum dan memilih union literal?",
+      "code": "",
+      "options": [
+        "Union literal murni tipe, tidak menambah kode JavaScript",
+        "Enum dilarang oleh TypeScript terbaru",
+        "Union literal lebih lambat saat runtime",
+        "Enum tidak bisa dipakai di fungsi"
+      ],
+      "answer": 0,
+      "explanation": "Enum menghasilkan kode runtime."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dihidupkan oleh \"strict\": true?",
+      "code": "",
+      "options": [
+        "Satu paket pengecekan ketat seperti strictNullChecks dan noImplicitAny",
+        "Hanya pengecekan null",
+        "Hanya pelaporan error di editor",
+        "Mode kompilasi tercepat"
+      ],
+      "answer": 0,
+      "explanation": "strict mengelompokkan banyak opsi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Variabel e pada catch (e) di mode strict bertipe apa?",
+      "code": "",
+      "options": [
+        "Error",
+        "any",
+        "string",
+        "unknown"
+      ],
+      "answer": 3,
+      "explanation": "Karena apa pun bisa di-throw."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi noUncheckedIndexedAccess mengubah tipe daftar[0] dari string[] menjadi?",
+      "code": "",
+      "options": [
+        "string",
+        "never",
+        "string | undefined",
+        "string[]"
+      ],
+      "answer": 2,
+      "explanation": "Indeks bisa di luar rentang."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "skipLibCheck melewati pengecekan semua berkas .ts kode proyekmu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Hanya berkas deklarasi .d.ts."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi async function muat(): Promise<Siswa> mengembalikan nilai apa dengan return?",
+      "code": "",
+      "options": [
+        "Promise<Siswa> yang dibuat manual",
+        "Nilai bertipe Siswa, dibungkus Promise oleh JavaScript",
+        "undefined",
+        "Siswa[]"
+      ],
+      "answer": 1,
+      "explanation": "Kamu return Siswa; hasil pemanggilan adalah Promise."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara paling jujur memakai hasil respons.json() adalah?",
+      "code": "",
+      "options": [
+        "Terima sebagai unknown lalu validasi dengan type guard atau pustaka skema",
+        "Selalu tulis as Siswa tanpa pengecekan",
+        "Ubah menjadi any lalu pakai langsung",
+        "Abaikan karena fetch menjamin bentuk data"
+      ],
+      "answer": 0,
+      "explanation": "Tipe tidak ada di runtime."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Elemen hasil document.querySelector(\"#cari\") bertipe?",
+      "code": "",
+      "options": [
+        "HTMLInputElement",
+        "string",
+        "HTMLElement tanpa kemungkinan null",
+        "Element | null"
+      ],
+      "answer": 3,
+      "explanation": "Harus dipersempit dulu sebelum dipakai."
+    }
+  ],
+  "prerequisites": [
+    "javascript"
+  ],
+  "chapters": [
+    {
+      "slug": "mengenal-typescript",
+      "title": "Mengenal TypeScript",
+      "est_minutes": 25,
+      "slide_from": 3,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu TypeScript dan masalah apa yang ia selesaikan.\n- Membedakan waktu kompilasi (compile time) dari waktu berjalan (runtime).\n- Memasang TypeScript, membuat `tsconfig.json`, dan mengompilasi berkas `.ts` dengan `tsc`.\n- Memahami bahwa tipe dihapus saat kompilasi, sehingga tidak ada di JavaScript hasilnya.\n\n## Masalah yang ingin dipecahkan\n\nCoba lihat fungsi JavaScript sederhana ini.\n\n```js\nfunction hitungTotal(harga, jumlah) {\n  return harga * jumlah;\n}\n\nhitungTotal(\"15000\", 3);   // 45000, kebetulan benar\nhitungTotal(\"lima\", 3);    // NaN, tanpa peringatan apa pun\nhitungTotal(15000);        // NaN, jumlah hilang\n```\n\nJavaScript tidak protes. Kesalahan baru ketahuan ketika angka `NaN` muncul di layar pelanggan, mungkin berjam-jam setelah kode ditulis. Semakin besar proyeknya, semakin sulit melacak asal nilai yang salah itu. Kamu harus membaca banyak berkas hanya untuk tahu \"fungsi ini sebenarnya menerima apa?\".\n\n**TypeScript** adalah JavaScript yang ditambah sistem tipe statis. Kata \"statis\" artinya pengecekan dilakukan **sebelum** kode dijalankan, sambil kamu menulis. Versi TypeScript dari fungsi di atas:\n\n```ts\nfunction hitungTotal(harga: number, jumlah: number): number {\n  return harga * jumlah;\n}\n\nhitungTotal(\"lima\", 3);\n// Error: Argument of type 'string' is not assignable to parameter of type 'number'.\nhitungTotal(15000);\n// Error: Expected 2 arguments, but got 1.\n```\n\nDua kesalahan tadi sekarang muncul sebagai garis merah di editor, bahkan sebelum kamu menekan tombol run. Itulah janji utama TypeScript: **menangkap kelas kesalahan tertentu lebih awal**.\n\n## TypeScript adalah JavaScript plus tipe\n\nPoin yang sering disalahpahami: TypeScript bukan bahasa yang sama sekali baru. Semua kode JavaScript yang valid juga merupakan kode TypeScript yang valid. Kamu bisa mengganti nama `app.js` menjadi `app.ts` dan berkasnya tetap jalan (walau compiler mungkin mulai mengeluh soal tipe yang belum jelas). TypeScript menambahkan sintaks untuk **anotasi tipe**, yaitu bagian seperti `: number` setelah nama parameter.\n\nKarena itu pengetahuan JavaScript-mu tidak terbuang. Kamu tetap memakai `const`, `map`, `async/await`, dan DOM seperti biasa. Bedanya, kamu sekarang bisa memberi tahu compiler maksud kodemu.\n\nTypeScript dikembangkan dan dirawat sebagai proyek sumber terbuka. Versi barunya rilis beberapa kali setahun, dan semua yang dibahas di kelas ini berlaku untuk TypeScript 5.x ke atas.\n\n## Compile time dan runtime\n\nBrowser dan Node.js tidak mengerti anotasi tipe. Karena itu berkas `.ts` harus diubah menjadi `.js` dulu. Proses ini disebut **kompilasi** (atau transpilasi), dan alatnya adalah compiler bernama `tsc`.\n\n```ts\n// sapa.ts\nfunction sapa(nama: string): string {\n  return `Halo, ${nama}`;\n}\nconsole.log(sapa(\"Budi\"));\n```\n\nSetelah dikompilasi, hasilnya kira-kira begini:\n\n```js\n// sapa.js\nfunction sapa(nama) {\n  return `Halo, ${nama}`;\n}\nconsole.log(sapa(\"Budi\"));\n```\n\nPerhatikan bahwa semua `: string` lenyap. Ini konsep terpenting di bab ini: **tipe hanya ada saat compile time**. Di runtime, yang berjalan murni JavaScript. Akibatnya:\n\n- Kamu tidak bisa menulis `if (x instanceof number)` atau memeriksa tipe TypeScript di runtime, karena tipenya sudah tidak ada.\n- Data dari luar program (respons API, isi form, berkas JSON) tidak otomatis aman hanya karena kamu menulis tipenya. Tipe adalah **janji yang kamu berikan ke compiler**, bukan pengecekan yang berjalan saat data tiba. Kita akan membahas cara memvalidasinya di bab terakhir.\n- Compiler boleh tetap menghasilkan berkas `.js` meski ada error tipe, kecuali kamu mengatur `noEmitOnError`.\n\n## Memasang dan menjalankan tsc\n\nSyaratnya Node.js sudah terpasang. Buat folder proyek lalu jalankan:\n\n```bash\nmkdir latihan-ts && cd latihan-ts\nnpm init -y\nnpm install -D typescript\nnpx tsc --init\n```\n\nPerintah terakhir membuat berkas `tsconfig.json` berisi banyak opsi, sebagian besar berupa komentar. Untuk memulai, ubah menjadi versi ringkas ini:\n\n```json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"NodeNext\",\n    \"strict\": true,\n    \"outDir\": \"dist\"\n  },\n  \"include\": [\"src\"]\n}\n```\n\nLalu buat `src/sapa.ts` seperti contoh di atas dan jalankan:\n\n```bash\nnpx tsc\nnode dist/sapa.js\n```\n\n`tsc` membaca `tsconfig.json`, memeriksa semua berkas di `src`, melaporkan error tipe, lalu menulis hasilnya ke `dist`. Untuk mengompilasi ulang otomatis setiap berkas berubah, pakai `npx tsc --watch`.\n\nKamu juga bisa mengompilasi satu berkas langsung dengan `npx tsc src/sapa.ts`. Hati-hati: bila kamu menyebut nama berkas di command line, `tsc` mengabaikan `tsconfig.json`. Biasakan menjalankan `tsc` tanpa nama berkas supaya opsi proyek dipakai.\n\n## Menjalankan TypeScript tanpa langkah build\n\nNode.js versi baru (22.18 ke atas, dan seri 24) bisa menjalankan berkas `.ts` langsung dengan `node sapa.ts`. Node hanya **menghapus** anotasi tipe lalu menjalankan sisanya, tanpa memeriksa apakah tipenya benar. Karena itu kamu tetap perlu menjalankan `tsc --noEmit` (periksa saja, jangan tulis hasil) untuk mendapatkan pengecekan tipe, misalnya di editor atau di CI. Sintaks yang butuh transformasi nyata, seperti `enum`, tidak didukung oleh mode penghapusan ini. Tool lain seperti `tsx` atau bundler Vite punya cara sendiri untuk menjalankan TypeScript.\n\nIntinya ada dua pekerjaan yang terpisah: **menjalankan** kode (cukup menghapus tipe) dan **memeriksa** tipe (tugas `tsc` atau editor).\n\n## Editor adalah separuh pengalamannya\n\nSebagian besar manfaat harian TypeScript datang dari editor. Visual Studio Code memakai mesin TypeScript yang sama, sehingga kamu mendapat:\n\n- **Autocomplete** yang tahu properti apa saja yang ada di sebuah object.\n- **Garis merah** langsung saat tipe tidak cocok, lengkap dengan pesan error.\n- **Rename aman**: mengganti nama fungsi atau properti di seluruh proyek tanpa merusak pemakaiannya.\n- **Hover** untuk melihat tipe sebuah variabel, berguna untuk belajar apa yang disimpulkan compiler.\n\nCoba arahkan kursor ke variabel apa pun di editor. Kebiasaan \"hover untuk melihat tipe\" akan sangat membantumu di bab-bab berikut.\n\n## Kesalahan umum pemula\n\n- **Mengira tipe ikut berjalan di runtime.** Ingat, tipe dihapus. Validasi data eksternal tetap perlu kode JavaScript biasa.\n- **Menaruh `any` di mana-mana supaya error hilang.** Ini sama dengan mematikan TypeScript. Kita bahas alternatifnya di bab 2.\n- **Menjalankan `tsc nama-berkas.ts` lalu heran opsi `tsconfig.json` tidak berlaku.** Jalankan `tsc` tanpa argumen berkas.\n- **Mengabaikan error karena \"berkas .js tetap terbentuk\".** Compiler yang masih menulis hasil tidak berarti kodenya benar.\n\n## Rangkuman\n\n- TypeScript adalah JavaScript dengan sistem tipe statis yang memeriksa kode sebelum dijalankan.\n- Semua JavaScript valid adalah TypeScript valid, jadi kamu bisa mengadopsinya bertahap.\n- Tipe hanya ada saat compile time dan dihapus dari JavaScript hasil kompilasi.\n- `npm install -D typescript`, `npx tsc --init`, lalu `npx tsc` adalah alur dasarnya.\n- Node.js versi baru bisa menjalankan `.ts` dengan menghapus tipe, tetapi tidak memeriksa tipe; pengecekan tetap lewat `tsc --noEmit` atau editor.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Timmu menjalankan tsc dan muncul error tipe, tetapi folder dist tetap berisi berkas .js baru. Apa penjelasan yang tepat?",
+          "code": "",
+          "options": [
+            "Secara default tsc tetap menulis JavaScript walau ada error tipe, kecuali noEmitOnError diaktifkan",
+            "tsc selalu berhenti total ketika ada satu error tipe, jadi berkas itu sisa kompilasi lama",
+            "Error tipe hanya peringatan editor dan tidak pernah dihasilkan oleh tsc",
+            "Berkas .js terbentuk karena strict otomatis mematikan semua pengecekan"
+          ],
+          "answer": 0,
+          "explanation": "Penulisan hasil dan pengecekan tipe berjalan terpisah. noEmitOnError mengubahnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu punya interface Siswa dan ingin memastikan data dari API sesuai bentuknya saat program berjalan. Apa yang benar?",
+          "code": "",
+          "options": [
+            "Interface otomatis menolak data yang bentuknya salah ketika program berjalan",
+            "Cukup menulis as Siswa dan data akan divalidasi oleh compiler",
+            "tsc menyisipkan pengecekan interface di setiap pemanggilan fetch",
+            "Interface tidak ada di runtime, jadi kamu perlu kode pengecekan JavaScript biasa atau pustaka validasi"
+          ],
+          "answer": 3,
+          "explanation": "Semua tipe dihapus saat kompilasi, sehingga tidak bisa memeriksa data yang datang saat runtime."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin memeriksa semua tipe di proyek tanpa menulis berkas hasil sama sekali, misalnya di CI. Perintah mana yang sesuai?",
+          "code": "",
+          "options": [
+            "npx tsc --init",
+            "npm install -D typescript",
+            "npx tsc --noEmit",
+            "node --check src/app.ts"
+          ],
+          "answer": 2,
+          "explanation": "--noEmit membuat tsc hanya memeriksa dan melaporkan error."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Semua kode JavaScript yang valid juga merupakan kode TypeScript yang valid, walau compiler bisa mengeluh soal tipe yang kurang jelas.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "TypeScript adalah superset JavaScript, sehingga adopsi bisa bertahap."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "tipe-dasar-dan-inferensi",
+      "title": "Tipe Dasar dan Inferensi",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 6,
+      "body": "## Tujuan\n\n- Memakai tipe primitif `string`, `number`, `boolean`, serta array dan tuple.\n- Memahami inferensi tipe dan kapan anotasi eksplisit diperlukan.\n- Membedakan `any`, `unknown`, `void`, dan `never`.\n- Mengerti perbedaan tipe literal dari `const` dan `let`.\n\n## Menulis anotasi tipe\n\nAnotasi tipe ditulis dengan titik dua setelah nama variabel.\n\n```ts\nconst nama: string = \"Sari\";\nconst umur: number = 17;\nconst aktif: boolean = true;\n```\n\nTiga tipe di atas adalah primitif yang paling sering kamu pakai. Perhatikan penulisannya dengan huruf kecil: `string`, bukan `String`. Huruf besar merujuk ke object pembungkus bawaan JavaScript yang hampir tidak pernah kamu inginkan sebagai tipe.\n\nAda juga `bigint` untuk bilangan bulat sangat besar dan `symbol` untuk pengenal unik. Keduanya jarang dipakai di aplikasi sehari-hari. Seluruh angka di TypeScript, baik bulat maupun desimal, bertipe `number`; tidak ada tipe `int` terpisah.\n\n## Array dan tuple\n\nArray ditulis dengan tipe elemen diikuti tanda kurung siku.\n\n```ts\nconst nilai: number[] = [80, 90, 75];\nconst nama: Array<string> = [\"Sari\", \"Budi\"];   // bentuk generik, artinya sama\n\nnilai.push(100);        // aman\nnilai.push(\"seratus\");  // Error: 'string' tidak bisa masuk number[]\n```\n\nKadang kamu butuh array dengan panjang tetap dan tipe berbeda di tiap posisi. Itulah **tuple**.\n\n```ts\nconst siswa: [string, number] = [\"Sari\", 17];\nconst [namaSiswa, umurSiswa] = siswa;   // namaSiswa: string, umurSiswa: number\n\nsiswa[0];   // string\nsiswa[2];   // Error: tuple hanya punya 2 elemen\n```\n\nTuple cocok untuk pasangan nilai kecil, seperti koordinat `[x, y]` atau hasil dari fungsi yang mengembalikan dua hal. Untuk data yang punya banyak bagian, object dengan nama properti lebih mudah dibaca.\n\n## Inferensi: compiler bisa menebak\n\nKamu tidak perlu menulis tipe di mana-mana. Ketika sebuah variabel langsung diberi nilai, TypeScript **menyimpulkan** (infer) tipenya.\n\n```ts\nlet kota = \"Bogor\";       // disimpulkan: string\nlet jumlah = 3;           // disimpulkan: number\nlet lulus = true;         // disimpulkan: boolean\nconst harga = [100, 200]; // disimpulkan: number[]\n\nkota = 42;  // Error: 'number' tidak bisa masuk string\n```\n\nAturan praktisnya: **biarkan inferensi bekerja bila nilai awalnya jelas**, dan tulis anotasi bila tidak ada nilai awal atau kamu ingin tipe yang lebih lebar.\n\n```ts\nlet hasil: number;        // tanpa nilai awal, perlu anotasi\nlet data = [];            // disimpulkan sebagai array yang tipenya berkembang; lebih baik jelaskan\nconst daftar: string[] = [];\n```\n\nMenulis anotasi pada variabel yang sudah jelas, seperti `const umur: number = 17`, hanya menambah kebisingan. Anotasi yang paling berharga ada di **batas** kode, yaitu parameter fungsi dan nilai kembalian yang diekspor.\n\n## const, let, dan tipe literal\n\nPerhatikan perbedaan halus ini.\n\n```ts\nlet a = \"merah\";     // tipe: string\nconst b = \"merah\";   // tipe: \"merah\"\n```\n\nKarena `const` tidak bisa diubah, TypeScript menyimpulkan tipe yang lebih sempit: persis nilai `\"merah\"`, bukan sembarang string. Tipe seperti `\"merah\"` disebut **tipe literal**. Di bab 5 kamu akan melihat betapa berguna ini untuk membatasi nilai yang diperbolehkan.\n\n## any, unknown, void, dan never\n\nEmpat tipe khusus ini sering membingungkan, jadi mari bedakan satu per satu.\n\n**`any`** mematikan pengecekan tipe untuk sebuah nilai.\n\n```ts\nlet bebas: any = 5;\nbebas.toUpperCase();   // tidak ada error saat menulis, meledak saat dijalankan\nbebas = \"teks\";\n```\n\nDengan `any`, kamu kembali ke dunia JavaScript tanpa pengaman. Gunakan sebagai pilihan terakhir.\n\n**`unknown`** adalah versi aman dari `any`. Nilainya boleh apa saja, tetapi kamu **wajib memeriksa tipenya dulu** sebelum memakainya.\n\n```ts\nlet masukan: unknown = JSON.parse('\"halo\"');\n\nmasukan.toUpperCase();   // Error: 'masukan' is of type 'unknown'\n\nif (typeof masukan === \"string\") {\n  masukan.toUpperCase();   // aman, sudah dipersempit menjadi string\n}\n```\n\nKalau kamu menerima data yang tipenya belum pasti, pilih `unknown`. Compiler akan memaksamu memeriksa dulu.\n\n**`void`** dipakai untuk fungsi yang tidak mengembalikan nilai.\n\n```ts\nfunction catat(pesan: string): void {\n  console.log(pesan);\n}\n```\n\n**`never`** berarti \"tidak pernah ada nilai\". Dipakai untuk fungsi yang tidak pernah selesai normal, misalnya selalu melempar error atau berjalan selamanya.\n\n```ts\nfunction gagal(pesan: string): never {\n  throw new Error(pesan);\n}\n```\n\nDi bab 5 kamu akan melihat `never` dipakai untuk memastikan semua kasus sebuah union sudah tertangani.\n\n## null dan undefined\n\nDi mode `strict` (dibahas di bab 9), `null` dan `undefined` adalah tipe tersendiri dan **tidak** otomatis boleh dimasukkan ke tipe lain.\n\n```ts\nlet nama: string = null;            // Error di mode strict\nlet opsional: string | null = null; // eksplisit: boleh string atau null\n```\n\nIni menghilangkan sumber bug terbesar di JavaScript, yaitu \"Cannot read properties of undefined\". Kamu dipaksa memikirkan kasus nilai kosong sejak menulis kode.\n\n## Type assertion\n\nKadang kamu tahu lebih banyak daripada compiler. Dalam kasus itu kamu bisa memakai **type assertion** dengan `as`.\n\n```ts\nconst nilaiMentah: unknown = \"42\";\nconst panjang = (nilaiMentah as string).length;\n```\n\nAssertion tidak mengubah nilai dan tidak memeriksa apa pun saat runtime; ia hanya menyuruh compiler percaya padamu. Bila salah, program tetap meledak saat dijalankan. Pakai seperlunya, dan lebih baik persempit tipe dengan pengecekan sungguhan jika bisa.\n\n## Kesalahan umum pemula\n\n- **Menulis `String` atau `Number` dengan huruf besar** sebagai tipe. Pakai `string` dan `number`.\n- **Memakai `any` untuk membungkam error.** Pilih `unknown` lalu persempit.\n- **Menganotasi semua variabel.** Cukup anotasi bagian yang tidak bisa disimpulkan.\n- **Mengira `as` mengonversi nilai.** `as` hanya mengubah pandangan compiler, bukan data.\n\n## Rangkuman\n\n- Anotasi ditulis dengan `: tipe`; primitif utama adalah `string`, `number`, dan `boolean`.\n- Array ditulis `tipe[]`, tuple `[tipe1, tipe2]` untuk panjang dan urutan tetap.\n- Inferensi membuat sebagian besar variabel tidak perlu anotasi; tulis anotasi di batas fungsi dan saat tidak ada nilai awal.\n- `const` menyimpulkan tipe literal, `let` menyimpulkan tipe yang lebih lebar.\n- Pilih `unknown` daripada `any`; `void` untuk tanpa nilai kembalian, `never` untuk yang tak pernah selesai.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah fungsi menerima hasil JSON.parse yang bentuknya belum pasti. Tipe parameter mana yang paling aman?",
+          "code": "",
+          "options": [
+            "any, supaya compiler tidak menghalangi",
+            "unknown, lalu dipersempit dengan pengecekan sebelum dipakai",
+            "object, karena JSON selalu berupa object",
+            "never, karena bentuknya tidak diketahui"
+          ],
+          "answer": 1,
+          "explanation": "unknown memaksa pemeriksaan dulu, sedangkan any mematikan pengecekan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa tipe variabel b pada kode ini?",
+          "code": "let a = \"merah\";\nconst b = \"merah\";",
+          "options": [
+            "\"merah\", yaitu tipe literal",
+            "string, sama seperti variabel yang dibuat dengan let",
+            "any, karena tidak ada anotasi",
+            "undefined, karena belum diberi tipe eksplisit"
+          ],
+          "answer": 0,
+          "explanation": "const tidak bisa diubah, sehingga TypeScript menyimpulkan tipe tersempit."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi mana yang cocok bertipe kembalian never?",
+          "code": "",
+          "options": [
+            "Fungsi yang mencetak pesan lalu selesai",
+            "Fungsi yang mengembalikan undefined bila input kosong",
+            "Fungsi yang mengembalikan array kosong",
+            "Fungsi yang selalu melempar error dan tidak pernah selesai normal"
+          ],
+          "answer": 3,
+          "explanation": "never berarti tidak pernah ada nilai kembalian; void untuk fungsi yang selesai tanpa nilai."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kode berikut mengeluarkan error di mode strict. Mengapa?",
+          "code": "let x: unknown = 5;\nx.toFixed(2);",
+          "options": [
+            "Variabel x bernilai angka sehingga tidak punya toFixed",
+            "Mode strict melarang semua pemanggilan method",
+            "Properti yang dibaca belum diperiksa tipenya, padahal nilai unknown wajib dipersempit dulu",
+            "unknown tidak boleh diberi nilai literal"
+          ],
+          "answer": 2,
+          "explanation": "Nilai bertipe unknown tidak boleh dipakai sebelum dipersempit."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Persempit nilai unknown",
+          "prompt": "Di TypeScript, fungsi ini bertanda tangan `deskripsi(nilai: unknown): string`. Karena sandbox menjalankan JavaScript, tipenya ada di komentar. Persempit `nilai` dengan `typeof` dan kembalikan:\n\n- string: `\"teks:\"` diikuti jumlah huruf, mis. `teks:4`\n- number: `\"angka:\"` diikuti nilai dengan 2 desimal (`toFixed(2)`)\n- boolean: `\"boolean\"`\n- `null` atau `undefined`: `\"kosong\"`\n- lainnya: `\"lain\"`\n\nIngat `typeof null` bernilai `\"object\"`.",
+          "starter": {
+            "code": "/** @param {unknown} nilai @returns {string} */\nfunction deskripsi(nilai) {\n  // TODO: persempit dengan typeof, tangani null lebih dulu\n  return \"lain\";\n}\n"
+          },
+          "solution": {
+            "code": "/** @param {unknown} nilai @returns {string} */\nfunction deskripsi(nilai) {\n  if (nilai === null || nilai === undefined) return \"kosong\";\n  if (typeof nilai === \"string\") return `teks:${nilai.length}`;\n  if (typeof nilai === \"number\") return `angka:${nilai.toFixed(2)}`;\n  if (typeof nilai === \"boolean\") return \"boolean\";\n  return \"lain\";\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "String dihitung hurufnya",
+              "check": "deskripsi(\"halo\") === \"teks:4\""
+            },
+            {
+              "name": "Number dua desimal",
+              "check": "deskripsi(3.14159) === \"angka:3.14\" && deskripsi(5) === \"angka:5.00\""
+            },
+            {
+              "name": "Boolean",
+              "check": "deskripsi(false) === \"boolean\""
+            },
+            {
+              "name": "null dan undefined kosong",
+              "check": "deskripsi(null) === \"kosong\" && deskripsi(undefined) === \"kosong\""
+            },
+            {
+              "name": "Object dan array lain",
+              "check": "deskripsi({}) === \"lain\" && deskripsi([]) === \"lain\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "fungsi-dan-object-bertipe",
+      "title": "Fungsi dan Object Bertipe",
+      "est_minutes": 30,
+      "slide_from": 7,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Menulis fungsi dengan parameter, nilai kembalian, parameter opsional, dan default bertipe.\n- Mendeskripsikan bentuk object dengan tipe object, properti opsional, dan `readonly`.\n- Memakai index signature untuk kunci dinamis.\n- Memahami pengecekan properti berlebih (excess property check).\n\n## Fungsi bertipe\n\nDi fungsi, anotasi paling berguna diletakkan pada parameter. Nilai kembalian biasanya bisa disimpulkan, tetapi menuliskannya membantu pembaca dan menangkap kesalahan di dalam fungsi.\n\n```ts\nfunction tambah(a: number, b: number): number {\n  return a + b;\n}\n\nconst kali = (a: number, b: number) => a * b;   // return disimpulkan: number\n```\n\nSemua parameter **wajib** diberi nilai oleh pemanggil, kecuali kamu menandainya opsional atau memberi default.\n\n```ts\nfunction sapa(nama: string, salam?: string): string {\n  return `${salam ?? \"Halo\"}, ${nama}`;\n}\n\nsapa(\"Sari\");            // aman\nsapa(\"Sari\", \"Selamat\"); // aman\nsapa();                  // Error: butuh minimal 1 argumen\n```\n\nTanda `?` membuat tipe `salam` menjadi `string | undefined`. Itu sebabnya di dalam fungsi kamu harus menangani kemungkinan `undefined`, di sini dengan operator `??`.\n\nParameter dengan **nilai default** otomatis opsional dan tipenya disimpulkan dari default.\n\n```ts\nfunction bulatkan(angka: number, digit = 0): number {\n  const faktor = 10 ** digit;\n  return Math.round(angka * faktor) / faktor;\n}\n\nbulatkan(3.14159, 2);   // 3.14\nbulatkan(3.7);          // 4\n```\n\nParameter opsional harus berada **setelah** parameter wajib. Untuk jumlah argumen yang tidak tentu, pakai rest parameter bertipe array.\n\n```ts\nfunction jumlahkan(...angka: number[]): number {\n  return angka.reduce((total, x) => total + x, 0);\n}\njumlahkan(1, 2, 3);   // 6\n```\n\n## Tipe fungsi dan callback\n\nSebuah fungsi juga punya tipe, dan kamu bisa menuliskannya untuk parameter callback.\n\n```ts\nfunction ulangi(kali: number, aksi: (indeks: number) => void): void {\n  for (let i = 0; i < kali; i++) aksi(i);\n}\n\nulangi(3, (i) => console.log(`Putaran ${i}`));\n```\n\nPerhatikan bahwa pada `(i) => ...` kamu tidak perlu menulis tipe `i`. Karena `aksi` sudah dideklarasikan sebagai `(indeks: number) => void`, TypeScript menyimpulkan `i` adalah `number`. Ini disebut **contextual typing**.\n\nTipe `void` pada callback punya sifat khusus: callback yang dideklarasikan mengembalikan `void` boleh saja mengembalikan nilai lain, nilainya hanya diabaikan. Hal ini membuat `daftar.forEach((x) => hasil.push(x))` tetap valid.\n\n## Tipe object\n\nUntuk mendeskripsikan bentuk sebuah object, tulis daftar properti beserta tipenya.\n\n```ts\nfunction cetakSiswa(siswa: { nama: string; umur: number }): string {\n  return `${siswa.nama} (${siswa.umur})`;\n}\n\ncetakSiswa({ nama: \"Sari\", umur: 17 });   // aman\ncetakSiswa({ nama: \"Sari\" });             // Error: properti 'umur' hilang\n```\n\nBentuk yang dipakai berulang sebaiknya diberi nama dengan **type alias** (interface dibahas di bab berikutnya).\n\n```ts\ntype Siswa = {\n  readonly id: number;\n  nama: string;\n  umur: number;\n  email?: string;\n};\n\nconst s: Siswa = { id: 1, nama: \"Sari\", umur: 17 };\ns.nama = \"Sari Dewi\";   // boleh\ns.id = 2;               // Error: 'id' hanya bisa dibaca (readonly)\n```\n\nDua modifier penting di sini:\n\n- **`?`** membuat properti opsional. Tipe `email` menjadi `string | undefined`, jadi kamu harus memeriksa sebelum memakainya, misalnya `s.email?.toLowerCase()`.\n- **`readonly`** mencegah penugasan ulang properti. Ini murni pengecekan compile time; di runtime object tetap bisa diubah.\n\n## Pengecekan properti berlebih\n\nTypeScript mengecek object literal yang langsung dimasukkan ke tipe tertentu dengan lebih ketat.\n\n```ts\nconst baru: Siswa = { id: 2, nama: \"Budi\", umur: 16, kelas: \"XI\" };\n// Error: 'kelas' does not exist in type 'Siswa'\n```\n\nCompiler menganggap properti `kelas` yang tidak dikenal sebagai kemungkinan salah ketik. Tetapi bila object berasal dari variabel, pengecekan ini tidak berlaku.\n\n```ts\nconst data = { id: 2, nama: \"Budi\", umur: 16, kelas: \"XI\" };\nconst ok: Siswa = data;   // aman, karena data sudah punya semua properti yang dibutuhkan\n```\n\nInilah yang disebut **structural typing**: TypeScript tidak peduli nama tipenya, hanya bentuknya. Selama sebuah nilai punya semua properti yang diminta, ia dianggap cocok. Pengecekan properti berlebih hanyalah jaring pengaman tambahan untuk literal.\n\n## Index signature\n\nBagaimana kalau kunci object tidak diketahui sebelumnya, misalnya kamus nilai per mata pelajaran? Pakai index signature.\n\n```ts\ntype NilaiPerMapel = {\n  [mapel: string]: number;\n};\n\nconst nilai: NilaiPerMapel = { matematika: 90, fisika: 85 };\nnilai.biologi = 78;        // boleh, kunci baru\nnilai.kimia = \"bagus\";     // Error: harus number\n```\n\nIndex signature berarti \"kunci string apa pun menghasilkan number\". Waspadai konsekuensinya: `nilai.sejarah` bertipe `number` meski kuncinya mungkin tidak ada, sehingga hasilnya bisa `undefined` saat runtime. Opsi `noUncheckedIndexedAccess` di bab 9 menutup celah ini. Bila kunci yang valid sudah pasti, daftarkan saja satu per satu atau pakai `Record` (bab 7).\n\n## Fungsi yang mengembalikan object\n\nMenggabungkan semuanya, inilah fungsi yang sering kamu tulis sehari-hari.\n\n```ts\ntype Produk = { nama: string; harga: number; diskon?: number };\n\nfunction hargaAkhir(p: Produk): number {\n  const potongan = p.diskon ?? 0;\n  return p.harga - (p.harga * potongan) / 100;\n}\n\nhargaAkhir({ nama: \"Buku\", harga: 50000, diskon: 10 });   // 45000\nhargaAkhir({ nama: \"Pensil\", harga: 3000 });               // 3000\n```\n\nProperti opsional `diskon` memaksamu memikirkan kasus tanpa diskon. Itu jauh lebih aman dibanding JavaScript biasa, di mana lupa mengecek berarti `NaN`.\n\n## Kesalahan umum pemula\n\n- **Lupa bahwa properti opsional bisa `undefined`.** Gunakan `?.` dan `??`.\n- **Mengira `readonly` melindungi data di runtime.** Ia hanya diperiksa saat kompilasi.\n- **Menaruh parameter opsional sebelum parameter wajib.** Compiler menolaknya.\n- **Memakai index signature padahal kuncinya sudah pasti.** Tulis properti satu per satu agar salah ketik tertangkap.\n\n## Rangkuman\n\n- Anotasi parameter wajib ditulis, nilai kembalian boleh disimpulkan tetapi sebaiknya dijelaskan untuk fungsi yang diekspor.\n- Parameter opsional memakai `?` atau nilai default; rest parameter bertipe array.\n- Callback diberi tipe fungsi, dan parameternya dipahami lewat contextual typing.\n- Tipe object memuat properti dengan `?` (opsional) dan `readonly` (tidak bisa diubah ulang).\n- TypeScript memakai structural typing: yang dihitung adalah bentuk, dan object literal diperiksa ekstra ketat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi hargaAkhir(p: { harga: number; diskon?: number }) menghitung p.harga - p.harga * p.diskon / 100 dan mengeluarkan error. Perbaikan terbaik?",
+          "code": "",
+          "options": [
+            "Ubah tipe harga menjadi any",
+            "Tambahkan as number pada seluruh ekspresi tanpa memeriksa nilainya",
+            "Tangani diskon yang bisa undefined, misalnya dengan p.diskon ?? 0",
+            "Hapus tanda ? supaya diskon wajib walau datanya tidak punya"
+          ],
+          "answer": 2,
+          "explanation": "Properti opsional bertipe T | undefined sehingga kasus kosong harus ditangani."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa pemanggilan sapa() tanpa argumen gagal dikompilasi pada function sapa(nama: string, salam?: string)?",
+          "code": "",
+          "options": [
+            "Parameter opsional tidak boleh berada di akhir daftar",
+            "nama wajib diisi, hanya salam yang opsional",
+            "salam otomatis menjadi wajib di mode strict",
+            "Fungsi tanpa tipe kembalian tidak boleh dipanggil"
+          ],
+          "answer": 1,
+          "explanation": "Hanya parameter ber-? atau yang punya default yang boleh dilewatkan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menulis const s: Siswa = { id: 2, nama: \"Budi\", umur: 16, kelas: \"XI\" } dan muncul error padahal tipe Siswa tidak punya kelas. Apa penyebabnya?",
+          "code": "",
+          "options": [
+            "Pengecekan properti berlebih pada object literal yang langsung diberikan ke tipe tertentu",
+            "Structural typing melarang properti tambahan di segala kondisi",
+            "umur tidak boleh bertipe number",
+            "Object literal tidak bisa diberi tipe"
+          ],
+          "answer": 0,
+          "explanation": "Jika object disimpan dulu di variabel lalu diberikan, pengecekan ini tidak berlaku."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "readonly pada properti membuat nilainya mustahil diubah saat program berjalan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "readonly hanya pengecekan saat kompilasi; setelah menjadi JavaScript object tetap bisa diubah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Harga akhir dan pembulatan",
+          "prompt": "Tipe di komentar JSDoc: `Produk = { nama: string, harga: number, diskon?: number }`.\n\n- `hargaAkhir(p)` mengembalikan harga setelah diskon persen. `diskon` opsional, bila tidak ada berarti 0.\n- `bulatkan(angka, digit = 0)` membulatkan `angka` ke `digit` desimal dengan `Math.round`.\n\nContoh: `hargaAkhir({ nama: \"Buku\", harga: 50000, diskon: 10 })` bernilai `45000`; `bulatkan(3.14159, 2)` bernilai `3.14`.",
+          "starter": {
+            "code": "/** @typedef {{ nama: string, harga: number, diskon?: number }} Produk */\n\n/** @param {Produk} p @returns {number} */\nfunction hargaAkhir(p) {\n  // TODO: diskon bisa undefined\n  return p.harga;\n}\n\n/** @param {number} angka @param {number} [digit] @returns {number} */\nfunction bulatkan(angka, digit) {\n  // TODO: beri default 0 untuk digit\n  return angka;\n}\n"
+          },
+          "solution": {
+            "code": "/** @typedef {{ nama: string, harga: number, diskon?: number }} Produk */\n\n/** @param {Produk} p @returns {number} */\nfunction hargaAkhir(p) {\n  const potongan = p.diskon ?? 0;\n  return p.harga - (p.harga * potongan) / 100;\n}\n\n/** @param {number} angka @param {number} [digit] @returns {number} */\nfunction bulatkan(angka, digit = 0) {\n  const faktor = 10 ** digit;\n  return Math.round(angka * faktor) / faktor;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Diskon 10 persen",
+              "check": "hargaAkhir({ nama: \"Buku\", harga: 50000, diskon: 10 }) === 45000"
+            },
+            {
+              "name": "Tanpa diskon bukan NaN",
+              "check": "hargaAkhir({ nama: \"Pensil\", harga: 3000 }) === 3000"
+            },
+            {
+              "name": "Diskon 0 sama dengan tanpa diskon",
+              "check": "hargaAkhir({ nama: \"A\", harga: 200, diskon: 0 }) === 200"
+            },
+            {
+              "name": "Bulatkan dua desimal",
+              "check": "bulatkan(3.14159, 2) === 3.14"
+            },
+            {
+              "name": "Default digit adalah 0",
+              "check": "bulatkan(3.7) === 4 && bulatkan(2.4) === 2"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Perbarui tanpa mengubah aslinya",
+          "prompt": "Tipe: `Siswa = { id: number, nama: string, email: string }`. Tulis `perbarui(siswa, ubah)` yang meniru `Partial<Siswa>`: kembalikan object **baru** berisi data lama ditimpa `ubah`, tanpa mengubah `siswa`. Tulis juga `bekukan(siswa)` yang mengembalikan salinan beku (`Object.freeze`), setara `Readonly<Siswa>` saat runtime.",
+          "starter": {
+            "code": "function perbarui(siswa, ubah) {\n  // TODO: kembalikan object baru\n  return siswa;\n}\n\nfunction bekukan(siswa) {\n  // TODO: salinan yang dibekukan\n  return siswa;\n}\n"
+          },
+          "solution": {
+            "code": "function perbarui(siswa, ubah) {\n  return { ...siswa, ...ubah };\n}\n\nfunction bekukan(siswa) {\n  return Object.freeze({ ...siswa });\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Mengubah properti yang diberikan",
+              "check": "perbarui({ id: 1, nama: \"Sari\", email: \"s@x.id\" }, { nama: \"Dewi\" }).nama === \"Dewi\""
+            },
+            {
+              "name": "Properti lain tetap",
+              "check": "perbarui({ id: 1, nama: \"Sari\", email: \"s@x.id\" }, { nama: \"Dewi\" }).email === \"s@x.id\""
+            },
+            {
+              "name": "Aslinya tidak berubah",
+              "check": "(() => { const a = { id: 1, nama: \"Sari\", email: \"e\" }; perbarui(a, { nama: \"Z\" }); return a.nama === \"Sari\"; })()"
+            },
+            {
+              "name": "Hasil adalah object baru",
+              "check": "(() => { const a = { id: 1, nama: \"S\", email: \"e\" }; return perbarui(a, {}) !== a; })()"
+            },
+            {
+              "name": "bekukan menghasilkan object beku",
+              "check": "Object.isFrozen(bekukan({ id: 1, nama: \"S\", email: \"e\" }))"
+            },
+            {
+              "name": "bekukan tidak membekukan aslinya",
+              "check": "(() => { const a = { id: 1, nama: \"S\", email: \"e\" }; bekukan(a); return !Object.isFrozen(a); })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "interface-dan-type-alias",
+      "title": "Interface dan Type Alias",
+      "est_minutes": 30,
+      "slide_from": 9,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Mendeklarasikan interface dan memakainya untuk bentuk object.\n- Memperluas interface dengan `extends` dan menggabungkan type dengan `&`.\n- Membedakan interface dari type alias dan memilih yang tepat.\n- Menggunakan `implements` pada class dan memahami declaration merging.\n\n## Interface: memberi nama pada sebuah bentuk\n\nDi bab sebelumnya kamu menulis bentuk object dengan `type`. Cara lain adalah **interface**.\n\n```ts\ninterface Siswa {\n  readonly id: number;\n  nama: string;\n  umur: number;\n  email?: string;\n}\n\nconst s: Siswa = { id: 1, nama: \"Sari\", umur: 17 };\n```\n\nUntuk bentuk object seperti ini, `interface` dan `type` berfungsi hampir sama. Interface tidak memakai tanda `=` dan anggotanya boleh dipisah titik koma, koma, atau baris baru. Interface juga bisa mendeskripsikan method dan fungsi.\n\n```ts\ninterface Kalkulator {\n  tambah(a: number, b: number): number;\n  riwayat: number[];\n}\n\nconst kalk: Kalkulator = {\n  riwayat: [],\n  tambah(a, b) {\n    const hasil = a + b;\n    this.riwayat.push(hasil);\n    return hasil;\n  },\n};\n```\n\n## Memperluas dengan extends\n\nSering sebuah bentuk adalah versi lebih spesifik dari bentuk lain. Gunakan `extends` untuk mewarisi anggotanya.\n\n```ts\ninterface Pengguna {\n  id: number;\n  nama: string;\n}\n\ninterface Admin extends Pengguna {\n  peran: \"admin\";\n  izin: string[];\n}\n\nconst a: Admin = { id: 1, nama: \"Rina\", peran: \"admin\", izin: [\"hapus\", \"edit\"] };\n```\n\n`Admin` otomatis punya `id` dan `nama`. Sebuah interface boleh memperluas beberapa interface sekaligus dengan memisahkannya koma: `interface C extends A, B`. Jika dua induk punya properti bernama sama dengan tipe yang bertabrakan, compiler melaporkan error.\n\n## Type alias dan intersection\n\n`type` lebih fleksibel karena bisa memberi nama pada tipe apa pun, bukan hanya object.\n\n```ts\ntype Id = string | number;           // union\ntype Koordinat = [number, number];   // tuple\ntype Aksi = (pesan: string) => void; // fungsi\n```\n\nUntuk menggabungkan bentuk, `type` memakai **intersection** dengan tanda `&`. Hasilnya adalah tipe yang harus memenuhi semua bagian sekaligus.\n\n```ts\ntype Pengguna = { id: number; nama: string };\ntype Admin = Pengguna & { peran: \"admin\"; izin: string[] };\n\nconst a: Admin = { id: 1, nama: \"Rina\", peran: \"admin\", izin: [] };\n```\n\nHasilnya setara dengan versi `extends`. Perbedaannya halus: `extends` memeriksa kecocokan saat deklarasi dan memberi pesan error yang jelas bila ada konflik, sedangkan `&` pada properti yang bertabrakan dapat menghasilkan tipe `never` tanpa peringatan di tempat deklarasi.\n\n## Declaration merging\n\nPerbedaan paling nyata: interface dengan nama yang sama di satu lingkup **digabung otomatis**.\n\n```ts\ninterface Konfigurasi {\n  nama: string;\n}\ninterface Konfigurasi {\n  versi: number;\n}\n\nconst k: Konfigurasi = { nama: \"app\", versi: 2 };   // butuh keduanya\n```\n\nType alias tidak bisa begini; mendeklarasikan `type` bernama sama dua kali menghasilkan error. Kemampuan merging ini jarang kamu pakai di kode aplikasi, tetapi sangat penting bagi pustaka, misalnya saat menambahkan properti ke tipe bawaan atau tipe milik pustaka lain. Jadi kalau kamu menulis pustaka yang tipenya perlu diperluas pemakainya, pilih `interface`.\n\n## Interface atau type?\n\nTidak ada jawaban tunggal, tetapi panduan berikut cukup praktis:\n\n| Kebutuhan | Pilihan yang cocok |\n| --- | --- |\n| Bentuk object atau kontrak class | `interface` atau `type`, keduanya bisa |\n| Union, tuple, atau tipe primitif bernama | `type` (interface tidak bisa) |\n| Tipe hasil operasi tipe (utility, mapped, conditional) | `type` |\n| Tipe yang perlu diperluas pihak lain (merging) | `interface` |\n\nBanyak tim memakai aturan sederhana: `interface` untuk bentuk object publik, `type` untuk yang lain. Yang terpenting adalah konsisten di satu proyek. Jangan menghabiskan waktu berdebat; keduanya bisa diganti satu sama lain dengan mudah ketika kebutuhan berubah.\n\n## implements: kontrak untuk class\n\nClass bisa berjanji memenuhi sebuah interface dengan kata kunci `implements`.\n\n```ts\ninterface Bisadicetak {\n  cetak(): string;\n}\n\nclass Faktur implements Bisadicetak {\n  constructor(private total: number) {}\n\n  cetak(): string {\n    return `Total: Rp${this.total}`;\n  }\n}\n\nclass Salah implements Bisadicetak {\n  // Error: Class 'Salah' incorrectly implements interface 'Bisadicetak'.\n}\n```\n\nKata `implements` hanya **memeriksa** bahwa class punya semua anggota yang diminta. Ia tidak menambahkan apa pun ke class, dan tidak mempengaruhi tipe parameter method. Class boleh meng-implements lebih dari satu interface.\n\nKarena TypeScript structural, class tetap bisa dipakai di tempat yang meminta `Bisadicetak` meski tidak menulis `implements`, selama bentuknya cocok. Kata kunci itu hanya memberi pengecekan lebih awal dan dokumentasi niat.\n\n## Interface untuk fungsi dan kamus\n\nInterface juga bisa menjelaskan fungsi, lewat call signature, dan kamus lewat index signature.\n\n```ts\ninterface Pembanding {\n  (a: number, b: number): number;\n}\n\nconst urutNaik: Pembanding = (a, b) => a - b;\n\ninterface Kamus {\n  [kata: string]: string;\n}\nconst istilah: Kamus = { compiler: \"penerjemah kode\" };\n```\n\nUntuk fungsi sederhana, type alias `type Pembanding = (a: number, b: number) => number` lebih ringkas dan paling sering dipakai.\n\n## Contoh kasus: kontrak antar bagian aplikasi\n\nBayangkan aplikasi toko dengan dua bagian: pengambil data dan penampil laporan. Interface menjadi kontrak di antara keduanya, sehingga masing-masing bisa diganti tanpa mengubah yang lain.\n\n```ts\ninterface SumberData {\n  ambilProduk(): Promise<{ nama: string; harga: number }[]>;\n}\n\nasync function laporan(sumber: SumberData): Promise<string> {\n  const produk = await sumber.ambilProduk();\n  return produk.map((p) => `${p.nama}: ${p.harga}`).join(\"\\n\");\n}\n```\n\nFungsi `laporan` tidak peduli apakah datanya datang dari API, berkas, atau data palsu untuk pengujian. Selama object yang diberikan punya method `ambilProduk` dengan bentuk yang cocok, semuanya jalan. Pola ini membuat kode lebih mudah diuji, karena kamu cukup membuat object kecil yang memenuhi interface.\n\n## Kesalahan umum pemula\n\n- **Berdebat soal interface vs type terlalu lama.** Pilih satu gaya tim dan lanjutkan.\n- **Mengira `implements` memberi isi pada class.** Ia hanya pengecekan; kamu tetap menulis semua anggotanya.\n- **Mendeklarasikan interface bernama sama tanpa sadar**, sehingga keduanya tergabung dan menghasilkan syarat yang aneh.\n- **Memakai `&` pada properti yang bertabrakan** lalu heran kenapa tipenya `never`.\n\n## Rangkuman\n\n- Interface memberi nama pada bentuk object, method, atau fungsi; `extends` memperluas interface lain.\n- Type alias bisa menamai tipe apa saja, dan intersection `&` menggabungkan bentuk.\n- Hanya interface yang mengalami declaration merging, berguna untuk pustaka.\n- Untuk bentuk object keduanya bisa dipakai; pilih satu gaya yang konsisten.\n- `implements` memeriksa bahwa class memenuhi sebuah kontrak, tanpa menambahkan isinya.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menulis library yang tipe konfigurasinya perlu diperluas oleh pengguna dari berkas lain. Pilihan paling tepat?",
+          "code": "",
+          "options": [
+            "type alias, karena lebih fleksibel",
+            "enum, karena bisa diperluas",
+            "class abstrak, karena bisa diwarisi",
+            "interface, karena deklarasi bernama sama akan digabung"
+          ],
+          "answer": 3,
+          "explanation": "Hanya interface yang mendukung declaration merging."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu butuh tipe Id yang bisa berupa string atau number. Mana yang bisa dipakai?",
+          "code": "",
+          "options": [
+            "interface Id = string | number",
+            "interface Id extends string, number",
+            "type Id = string | number",
+            "class Id implements string | number"
+          ],
+          "answer": 2,
+          "explanation": "Interface hanya menggambarkan bentuk object; union perlu type alias."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dilakukan kata implements pada class Faktur implements Bisadicetak?",
+          "code": "",
+          "options": [
+            "Menyalin method dari interface ke dalam class",
+            "Memeriksa bahwa class punya semua anggota yang diminta interface, tanpa menambahkan isinya",
+            "Membuat class mewarisi implementasi dari interface",
+            "Mengubah class menjadi abstract"
+          ],
+          "answer": 1,
+          "explanation": "implements hanya pengecekan; kamu tetap menulis semua anggotanya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dua deklarasi type alias dengan nama yang sama di satu lingkup akan digabung otomatis seperti interface.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Itu menghasilkan error duplikat; hanya interface yang digabung."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Kontrak Kalkulator dan Bisadicetak",
+          "prompt": "Kontrak (interface) di komentar: `Kalkulator = { tambah(a, b): number, riwayat: number[] }` dan `Bisadicetak = { cetak(): string }`.\n\n- `buatKalkulator()` mengembalikan object yang memenuhi `Kalkulator`: `tambah` menjumlahkan dan mencatat hasilnya ke `riwayat`.\n- `cetakSemua(daftar)` menerima array object berbentuk `Bisadicetak` (cukup punya method `cetak`) dan mengembalikan array hasil `cetak()` masing-masing. Ini structural typing: tidak peduli class apa.",
+          "starter": {
+            "code": "function buatKalkulator() {\n  // TODO: kembalikan { riwayat: [], tambah(a, b) {...} }\n  return {};\n}\n\nfunction cetakSemua(daftar) {\n  // TODO\n  return [];\n}\n"
+          },
+          "solution": {
+            "code": "function buatKalkulator() {\n  return {\n    riwayat: [],\n    tambah(a, b) {\n      const hasil = a + b;\n      this.riwayat.push(hasil);\n      return hasil;\n    },\n  };\n}\n\nfunction cetakSemua(daftar) {\n  return daftar.map((x) => x.cetak());\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "tambah menjumlahkan",
+              "check": "buatKalkulator().tambah(2, 3) === 5"
+            },
+            {
+              "name": "riwayat mencatat hasil",
+              "check": "(() => { const k = buatKalkulator(); k.tambah(1, 2); k.tambah(3, 4); return JSON.stringify(k.riwayat) === \"[3,7]\"; })()"
+            },
+            {
+              "name": "Kalkulator terpisah punya riwayat terpisah",
+              "check": "(() => { const a = buatKalkulator(); const b = buatKalkulator(); a.tambah(1, 1); return b.riwayat.length === 0; })()"
+            },
+            {
+              "name": "cetakSemua memanggil cetak",
+              "check": "JSON.stringify(cetakSemua([{ cetak: () => \"a\" }, { cetak: () => \"b\" }])) === '[\"a\",\"b\"]'"
+            },
+            {
+              "name": "Class juga cocok",
+              "check": "(() => { class F { cetak() { return \"F\"; } } return cetakSemua([new F()])[0] === \"F\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "union-literal-dan-narrowing",
+      "title": "Union, Literal, dan Narrowing",
+      "est_minutes": 40,
+      "slide_from": 11,
+      "slide_to": 12,
+      "body": "## Tujuan\n\n- Memakai union type dan tipe literal untuk membatasi nilai.\n- Mempersempit (narrow) tipe dengan `typeof`, `in`, `instanceof`, dan pengecekan kesamaan.\n- Menulis type guard buatan dengan predikat `x is Tipe`.\n- Membuat discriminated union dan memastikan semua kasus tertangani dengan `never`.\n\n## Union: salah satu dari beberapa tipe\n\nTanda `|` membuat **union type**: nilainya boleh salah satu dari tipe yang disebutkan.\n\n```ts\nlet id: string | number;\nid = 101;\nid = \"A-101\";\nid = true;   // Error: boolean tidak termasuk\n```\n\nMasalah muncul ketika kamu memakai nilainya. Di dalam union, kamu hanya boleh memakai anggota yang dimiliki **semua** tipenya.\n\n```ts\nfunction tampil(id: string | number) {\n  id.toUpperCase();   // Error: number tidak punya toUpperCase\n  id.toString();      // aman, kedua tipe punya toString\n}\n```\n\nSolusinya adalah **narrowing**: mempersempit tipe lewat pengecekan, hingga compiler yakin tipe mana yang sedang kamu pegang.\n\n## Tipe literal\n\nSelain tipe umum, sebuah tipe bisa berupa satu nilai persis. Gabungkan beberapa literal dengan union untuk membuat himpunan nilai yang diperbolehkan.\n\n```ts\ntype Status = \"baru\" | \"diproses\" | \"selesai\";\n\nlet status: Status = \"baru\";\nstatus = \"selesai\";   // aman\nstatus = \"batal\";     // Error: \"batal\" bukan anggota Status\n```\n\nIni menggantikan banyak kasus yang di bahasa lain memakai enum. Typo seperti `\"selsai\"` langsung ketahuan, dan editor memberi autocomplete daftar nilainya. Literal juga bisa berupa angka atau boolean, misalnya `type Dadu = 1 | 2 | 3 | 4 | 5 | 6`.\n\nSatu jebakan: object literal yang disimpan di variabel `let` atau properti object melebar menjadi `string`.\n\n```ts\nconst opsi = { arah: \"kiri\" };       // arah: string, bukan \"kiri\"\nconst tetap = { arah: \"kiri\" } as const;   // arah: \"kiri\", readonly\n```\n\n`as const` membekukan nilai menjadi literal paling sempit dan `readonly`. Berguna untuk konfigurasi yang nilainya tidak berubah.\n\n## Narrowing dengan typeof dan kesamaan\n\nPengecekan paling dasar adalah `typeof`.\n\n```ts\nfunction format(nilai: string | number): string {\n  if (typeof nilai === \"string\") {\n    return nilai.toUpperCase();   // di sini nilai: string\n  }\n  return nilai.toFixed(2);        // di sini nilai: number\n}\n```\n\nCompiler membaca alur kode: setelah cabang `if` yang menangani `string`, sisanya pasti `number`. Cara ini juga bekerja dengan `===` dan truthiness, yang sering dipakai untuk membuang `null`.\n\n```ts\nfunction panjang(teks: string | null): number {\n  if (teks === null) return 0;\n  return teks.length;   // teks: string\n}\n\nfunction ambilNama(nama?: string) {\n  if (!nama) return \"Tamu\";\n  return nama;   // nama: string\n}\n```\n\nHati-hati dengan truthiness: `!nama` juga menganggap string kosong `\"\"` sebagai \"kosong\". Bila `\"\"` adalah nilai sah, periksa `nama === undefined` secara eksplisit.\n\n## in dan instanceof\n\nOperator `in` memeriksa apakah sebuah properti ada, dan mempersempit union object.\n\n```ts\ntype Kucing = { meong: () => void };\ntype Anjing = { gonggong: () => void };\n\nfunction bersuara(h: Kucing | Anjing) {\n  if (\"meong\" in h) h.meong();\n  else h.gonggong();\n}\n```\n\nUntuk instance class, pakai `instanceof`.\n\n```ts\nfunction pesan(e: Error | string): string {\n  return e instanceof Error ? e.message : e;\n}\n```\n\n## Type guard buatan\n\nBila logika pengecekanmu rumit, bungkus dalam fungsi dengan **type predicate**: tipe kembalian berbentuk `parameter is Tipe`.\n\n```ts\ntype Siswa = { nama: string; umur: number };\n\nfunction adalahSiswa(x: unknown): x is Siswa {\n  return (\n    typeof x === \"object\" &&\n    x !== null &&\n    typeof (x as Record<string, unknown>).nama === \"string\" &&\n    typeof (x as Record<string, unknown>).umur === \"number\"\n  );\n}\n\nconst data: unknown = JSON.parse('{\"nama\":\"Sari\",\"umur\":17}');\nif (adalahSiswa(data)) {\n  console.log(data.nama);   // data: Siswa\n}\n```\n\nIni jembatan penting antara data tak terpercaya dan tipe yang aman. Ingat bahwa compiler **mempercayai** predikatmu. Bila isi fungsi salah, misalnya lupa memeriksa `umur`, TypeScript tetap menganggap hasilnya `Siswa`. Tulis guard dengan teliti.\n\n## Discriminated union\n\nPola paling ampuh: beberapa bentuk object yang punya satu properti bersama dengan nilai literal berbeda, disebut **diskriminan**.\n\n```ts\ntype Bentuk =\n  | { jenis: \"lingkaran\"; jariJari: number }\n  | { jenis: \"persegi\"; sisi: number }\n  | { jenis: \"segitiga\"; alas: number; tinggi: number };\n\nfunction luas(b: Bentuk): number {\n  switch (b.jenis) {\n    case \"lingkaran\":\n      return Math.PI * b.jariJari ** 2;\n    case \"persegi\":\n      return b.sisi ** 2;\n    case \"segitiga\":\n      return (b.alas * b.tinggi) / 2;\n  }\n}\n```\n\nDi dalam tiap `case`, compiler tahu persis bentuk mana yang aktif, jadi `b.jariJari` hanya bisa diakses pada kasus `\"lingkaran\"`. Pola ini sangat cocok untuk status permintaan (`memuat`, `berhasil`, `gagal`), aksi dalam state management, dan hasil operasi.\n\n## Pengecekan lengkap dengan never\n\nBagaimana jika kelak kamu menambahkan `{ jenis: \"trapesium\" }` tetapi lupa memperbarui `luas`? Gunakan `never` untuk menjebaknya.\n\n```ts\nfunction pastikanHabis(x: never): never {\n  throw new Error(`Kasus tidak tertangani: ${JSON.stringify(x)}`);\n}\n\nfunction luas(b: Bentuk): number {\n  switch (b.jenis) {\n    case \"lingkaran\":\n      return Math.PI * b.jariJari ** 2;\n    case \"persegi\":\n      return b.sisi ** 2;\n    case \"segitiga\":\n      return (b.alas * b.tinggi) / 2;\n    default:\n      return pastikanHabis(b);   // Error bila ada jenis yang belum ditangani\n  }\n}\n```\n\nBila semua kasus sudah tertangani, `b` di cabang `default` bertipe `never` dan kode lolos. Begitu ada jenis baru yang terlewat, `b` bukan `never` lagi dan compiler langsung melaporkan error di titik ini. Kamu mendapat peringatan dini setiap kali union bertambah.\n\n## Kesalahan umum pemula\n\n- **Memakai truthiness untuk nilai yang boleh 0 atau `\"\"`.** Periksa `=== undefined` atau `=== null` secara eksplisit.\n- **Menulis type guard yang tidak lengkap**, sehingga compiler percaya pada kebohongan.\n- **Memakai `as` untuk memaksa tipe** alih-alih mempersempit dengan pengecekan.\n- **Lupa menambahkan diskriminan literal** (`jenis`) sehingga union tidak bisa dipersempit dengan rapi.\n\n## Rangkuman\n\n- Union `A | B` berarti salah satu tipe; hanya anggota bersama yang bisa dipakai tanpa narrowing.\n- Gabungan tipe literal membatasi nilai dengan aman dan sering menggantikan enum.\n- Narrowing memakai `typeof`, `===`, truthiness, `in`, dan `instanceof`.\n- Type guard buatan `x is Tipe` menjembatani data tak pasti ke tipe aman, asalkan logikanya benar.\n- Discriminated union dengan pengecekan `never` membuat kasus yang terlewat menjadi error kompilasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi menerima nilai: string | number dan memanggil nilai.toUpperCase() sehingga error. Perbaikan yang benar?",
+          "code": "",
+          "options": [
+            "Persempit dulu dengan if (typeof nilai === \"string\")",
+            "Ubah semua parameter menjadi any",
+            "Tambahkan ! setelah nilai",
+            "Hapus number dari union walau data memang bisa number"
+          ],
+          "answer": 0,
+          "explanation": "Narrowing dengan typeof memberi tahu compiler tipe yang aktif."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada union Bentuk dengan diskriminan jenis, apa keuntungan switch (b.jenis)?",
+          "code": "",
+          "options": [
+            "Compiler menjalankan switch lebih cepat",
+            "Properti semua bentuk bisa diakses tanpa pengecekan",
+            "Switch menggantikan kebutuhan tipe literal",
+            "Di tiap case compiler tahu bentuk persisnya, sehingga hanya properti yang relevan yang bisa diakses"
+          ],
+          "answer": 3,
+          "explanation": "Diskriminan literal memungkinkan narrowing otomatis di tiap cabang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menambah jenis baru ke union tetapi lupa memperbarui switch yang berakhir dengan default: return pastikanHabis(b). Apa yang terjadi?",
+          "code": "",
+          "options": [
+            "Program langsung berhenti saat kompilasi selesai tanpa pesan",
+            "Jenis baru otomatis ditangani oleh default",
+            "Compiler melaporkan error karena b bukan never lagi di cabang default",
+            "Tidak ada yang terjadi sampai kode dijalankan di produksi"
+          ],
+          "answer": 2,
+          "explanation": "Kasus terlewat membuat b bertipe jenis itu, bukan never."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi ambilNama(nama?: string) memakai if (!nama) return \"Tamu\". Apa jebakannya?",
+          "code": "",
+          "options": [
+            "undefined tidak tertangani",
+            "String kosong \"\" juga dianggap kosong dan ikut menjadi \"Tamu\"",
+            "Fungsi mengembalikan number",
+            "Compiler menolak operator ! pada string"
+          ],
+          "answer": 1,
+          "explanation": "Truthiness menganggap \"\", 0, dan false sebagai kosong. Periksa === undefined bila \"\" sah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Type guard adalahSiswa",
+          "prompt": "Tulis `adalahSiswa(x)`, setara `x is Siswa` untuk `Siswa = { nama: string, umur: number }`: `true` hanya jika `x` object bukan `null` dengan `nama` bertipe string dan `umur` bertipe number. Lalu `ambilSiswa(daftar)` menerima array `unknown` dan mengembalikan hanya elemen yang lolos guard.",
+          "starter": {
+            "code": "function adalahSiswa(x) {\n  // TODO: periksa object, bukan null, nama string, umur number\n  return true;\n}\n\nfunction ambilSiswa(daftar) {\n  // TODO: saring dengan adalahSiswa\n  return daftar;\n}\n"
+          },
+          "solution": {
+            "code": "function adalahSiswa(x) {\n  return typeof x === \"object\" && x !== null && typeof x.nama === \"string\" && typeof x.umur === \"number\";\n}\n\nfunction ambilSiswa(daftar) {\n  return daftar.filter(adalahSiswa);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Siswa valid lolos",
+              "check": "adalahSiswa({ nama: \"Sari\", umur: 17 }) === true"
+            },
+            {
+              "name": "null ditolak",
+              "check": "adalahSiswa(null) === false"
+            },
+            {
+              "name": "umur string ditolak",
+              "check": "adalahSiswa({ nama: \"Sari\", umur: \"17\" }) === false"
+            },
+            {
+              "name": "Nama hilang ditolak",
+              "check": "adalahSiswa({ umur: 17 }) === false"
+            },
+            {
+              "name": "Nilai primitif ditolak",
+              "check": "adalahSiswa(\"Sari\") === false && adalahSiswa(5) === false"
+            },
+            {
+              "name": "ambilSiswa menyaring",
+              "check": "ambilSiswa([{ nama: \"A\", umur: 1 }, null, 5, { nama: \"B\" }, { nama: \"C\", umur: 3 }]).length === 2"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Luas bentuk dengan pengecekan lengkap",
+          "prompt": "Union: `{ jenis: \"lingkaran\", jariJari }`, `{ jenis: \"persegi\", sisi }`, `{ jenis: \"segitiga\", alas, tinggi }`. Tulis `luas(b)` dengan `switch (b.jenis)`. Untuk `jenis` yang tidak dikenal, lempar `new Error(\"Jenis tidak dikenal: \" + b.jenis)` di cabang `default`, padanan runtime dari pengecekan `never`. Lalu `totalLuas(daftar)` menjumlahkan luas semuanya.",
+          "starter": {
+            "code": "function luas(b) {\n  // TODO: switch pada b.jenis, default melempar Error\n  return 0;\n}\n\nfunction totalLuas(daftar) {\n  // TODO\n  return 0;\n}\n"
+          },
+          "solution": {
+            "code": "function luas(b) {\n  switch (b.jenis) {\n    case \"lingkaran\":\n      return Math.PI * b.jariJari ** 2;\n    case \"persegi\":\n      return b.sisi ** 2;\n    case \"segitiga\":\n      return (b.alas * b.tinggi) / 2;\n    default:\n      throw new Error(\"Jenis tidak dikenal: \" + b.jenis);\n  }\n}\n\nfunction totalLuas(daftar) {\n  return daftar.reduce((t, b) => t + luas(b), 0);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Persegi",
+              "check": "luas({ jenis: \"persegi\", sisi: 4 }) === 16"
+            },
+            {
+              "name": "Segitiga",
+              "check": "luas({ jenis: \"segitiga\", alas: 6, tinggi: 5 }) === 15"
+            },
+            {
+              "name": "Lingkaran",
+              "check": "Math.abs(luas({ jenis: \"lingkaran\", jariJari: 1 }) - Math.PI) < 1e-9"
+            },
+            {
+              "name": "Jenis tak dikenal melempar error",
+              "check": "(() => { try { luas({ jenis: \"trapesium\" }); return false; } catch (e) { return e.message === \"Jenis tidak dikenal: trapesium\"; } })()"
+            },
+            {
+              "name": "totalLuas menjumlahkan",
+              "check": "totalLuas([{ jenis: \"persegi\", sisi: 2 }, { jenis: \"segitiga\", alas: 2, tinggi: 2 }]) === 6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "generics",
+      "title": "Generics",
+      "est_minutes": 35,
+      "slide_from": 13,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menjelaskan masalah yang dipecahkan generics dan kenapa `any` bukan jawabannya.\n- Menulis fungsi, interface, dan type generik dengan parameter tipe `<T>`.\n- Membatasi parameter tipe dengan `extends` dan memakai `keyof`.\n- Memberi nilai default pada parameter tipe dan memahami inferensi argumen tipe.\n\n## Masalah: fungsi yang sama untuk banyak tipe\n\nBayangkan kamu butuh fungsi yang mengembalikan elemen pertama sebuah array. Versi untuk angka mudah:\n\n```ts\nfunction pertamaAngka(a: number[]): number | undefined {\n  return a[0];\n}\n```\n\nLalu kamu butuh versi untuk string, lalu untuk object siswa. Menyalin fungsi untuk setiap tipe jelas buruk. Jalan pintas dengan `any` memang jalan, tetapi mengorbankan pengecekan:\n\n```ts\nfunction pertamaAny(a: any[]): any {\n  return a[0];\n}\n\nconst x = pertamaAny([1, 2, 3]);   // x: any, informasi \"ini angka\" hilang\nx.toUpperCase();                   // tidak ada error, meledak saat runtime\n```\n\nKita ingin fungsi yang bekerja untuk tipe apa pun **sambil mengingat** tipe yang masuk. Itulah tugas generics.\n\n## Parameter tipe\n\nGenerics memakai **parameter tipe**, ditulis dalam kurung sudut setelah nama fungsi. Anggap seperti variabel, tetapi untuk tipe.\n\n```ts\nfunction pertama<T>(a: T[]): T | undefined {\n  return a[0];\n}\n\nconst a = pertama([1, 2, 3]);          // a: number | undefined\nconst b = pertama([\"x\", \"y\"]);         // b: string | undefined\nconst c = pertama([{ nama: \"Sari\" }]); // c: { nama: string } | undefined\n```\n\n`T` hanyalah nama; konvensinya satu huruf kapital (`T`, `U`, `K`, `V`), tetapi nama deskriptif seperti `TItem` juga boleh. Perhatikan bahwa kamu tidak menulis `pertama<number>(...)`. TypeScript **menyimpulkan** `T` dari argumen. Kamu bisa menyebutnya eksplisit saat perlu, misalnya `pertama<string>([])`.\n\nFungsi lain yang klasik adalah `identitas`, yang mengembalikan apa pun yang diterima.\n\n```ts\nfunction identitas<T>(nilai: T): T {\n  return nilai;\n}\nidentitas(\"halo\");   // tipe: \"halo\"\nidentitas(42);       // tipe: 42\n```\n\nBisa lebih dari satu parameter tipe.\n\n```ts\nfunction pasangkan<A, B>(a: A, b: B): [A, B] {\n  return [a, b];\n}\nconst p = pasangkan(\"Sari\", 17);   // [string, number]\n```\n\n## Generics pada interface dan type\n\nParameter tipe juga bisa dipasang di interface dan type alias.\n\n```ts\ninterface Kotak<T> {\n  isi: T;\n}\n\nconst kotakAngka: Kotak<number> = { isi: 5 };\nconst kotakTeks: Kotak<string> = { isi: \"halo\" };\n\ntype Hasil<T> = { ok: true; nilai: T } | { ok: false; galat: string };\n\nfunction bagi(a: number, b: number): Hasil<number> {\n  return b === 0 ? { ok: false, galat: \"Pembagi nol\" } : { ok: true, nilai: a / b };\n}\n```\n\nKamu sebenarnya sudah sering memakai generics tanpa sadar: `Array<number>`, `Promise<string>`, dan `Record<string, number>` adalah tipe generik bawaan. Sekarang kamu bisa membuatnya sendiri.\n\nClass juga bisa generik.\n\n```ts\nclass Tumpukan<T> {\n  private isi: T[] = [];\n  dorong(x: T) { this.isi.push(x); }\n  ambil(): T | undefined { return this.isi.pop(); }\n}\n\nconst t = new Tumpukan<number>();\nt.dorong(1);\nt.dorong(\"dua\");   // Error: string bukan number\n```\n\n## Constraint dengan extends\n\nKadang kamu perlu membatasi tipe yang boleh dipakai. Misalnya fungsi yang membaca `.length`:\n\n```ts\nfunction terpanjang<T>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n  // Error: Property 'length' does not exist on type 'T'\n}\n```\n\nCompiler benar: `T` bisa saja `number`, yang tidak punya `length`. Beri batas dengan `extends`:\n\n```ts\nfunction terpanjang<T extends { length: number }>(a: T, b: T): T {\n  return a.length >= b.length ? a : b;\n}\n\nterpanjang(\"abc\", \"de\");       // \"abc\"\nterpanjang([1, 2], [1, 2, 3]); // [1, 2, 3]\nterpanjang(10, 20);            // Error: number tidak punya length\n```\n\nDi sini `extends` berarti \"harus punya bentuk setidaknya seperti ini\", bukan pewarisan class. Fungsinya tetap mengembalikan tipe persis yang masuk (`\"abc\"` atau array), bukan hanya `{ length: number }`.\n\n## keyof: kunci yang valid\n\nOperator `keyof` menghasilkan gabungan literal dari nama-nama kunci sebuah tipe.\n\n```ts\ntype Siswa = { nama: string; umur: number };\ntype KunciSiswa = keyof Siswa;   // \"nama\" | \"umur\"\n```\n\nGabungkan dengan generics untuk membuat fungsi pengambil properti yang aman.\n\n```ts\nfunction ambil<T, K extends keyof T>(obj: T, kunci: K): T[K] {\n  return obj[kunci];\n}\n\nconst s = { nama: \"Sari\", umur: 17 };\nconst n = ambil(s, \"nama\");     // string\nconst u = ambil(s, \"umur\");     // number\nambil(s, \"alamat\");             // Error: \"alamat\" bukan kunci dari s\n```\n\n`T[K]` adalah tipe nilai pada kunci `K`. Perhatikan bahwa tipe kembaliannya tepat: `string` untuk `\"nama\"`, `number` untuk `\"umur\"`, tanpa `any` sama sekali.\n\n## Parameter tipe dengan default\n\nSeperti parameter fungsi, parameter tipe boleh punya nilai default.\n\n```ts\ninterface Respons<T = unknown> {\n  status: number;\n  data: T;\n}\n\nconst mentah: Respons = { status: 200, data: \"apa saja\" };   // data: unknown\nconst siswa: Respons<{ nama: string }> = { status: 200, data: { nama: \"Sari\" } };\n```\n\nDefault berguna agar pemakai yang tidak peduli tidak perlu menulis argumen tipe.\n\n## Kapan tidak perlu generics\n\nGenerics adalah alat yang ampuh, tetapi jangan berlebihan. Pertanyaan pengujinya: apakah parameter tipe dipakai **minimal dua kali** untuk menghubungkan masukan dengan keluaran (atau antar parameter)? Jika `T` hanya muncul sekali, biasanya kamu tidak membutuhkannya.\n\n```ts\nfunction cetak<T>(x: T): void {   // T hanya muncul sekali, tidak berguna\n  console.log(x);\n}\nfunction cetakLebihBaik(x: unknown): void {\n  console.log(x);\n}\n```\n\nSemakin sederhana tipenya, semakin mudah dibaca pesan error-nya.\n\n## Kesalahan umum pemula\n\n- **Memakai `any` padahal generics bisa menjaga tipe.**\n- **Membuat generics yang tidak perlu**, dengan `T` yang hanya muncul sekali.\n- **Lupa constraint**, lalu mengakses properti yang belum tentu ada di `T`.\n- **Mengira `extends` pada constraint berarti pewarisan class.** Artinya \"setidaknya memiliki bentuk ini\".\n\n## Rangkuman\n\n- Generics membuat kode bekerja untuk banyak tipe sambil mengingat tipe yang sebenarnya.\n- Parameter tipe ditulis `<T>` pada fungsi, interface, type, dan class; argumen biasanya disimpulkan otomatis.\n- `T extends Bentuk` membatasi tipe yang diterima.\n- `keyof T` dan `T[K]` memungkinkan akses properti yang aman dan tepat tipenya.\n- Parameter tipe boleh punya default, dan sebaiknya dipakai minimal dua kali agar bermanfaat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi function pertama(a: any[]): any dipakai untuk const x = pertama([1, 2]). Apa kekurangannya dibanding versi generik?",
+          "code": "",
+          "options": [
+            "Fungsi tidak bisa dipanggil dengan array angka",
+            "x bertipe any sehingga informasi bahwa itu number hilang dan kesalahan tidak ketahuan",
+            "Versi any lebih lambat berjalan",
+            "Versi generik mengubah array menjadi tuple"
+          ],
+          "answer": 1,
+          "explanation": "Generics mengingat tipe masukan; any membuangnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi function terpanjang<T>(a: T, b: T) mengakses a.length dan error. Perbaikan yang tepat?",
+          "code": "",
+          "options": [
+            "Tambahkan constraint: T extends { length: number }",
+            "Ubah T menjadi any",
+            "Hapus parameter tipe dan tulis string",
+            "Tulis a.length as T"
+          ],
+          "answer": 0,
+          "explanation": "Constraint menjamin T punya properti length."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada ambil<T, K extends keyof T>(obj: T, kunci: K): T[K], pemanggilan ambil(s, \"alamat\") ditolak. Mengapa?",
+          "code": "",
+          "options": [
+            "Parameter kedua harus berupa number",
+            "Generics tidak boleh dipakai dengan string",
+            "keyof hanya bekerja pada class",
+            "\"alamat\" bukan salah satu kunci dari tipe s"
+          ],
+          "answer": 3,
+          "explanation": "K dibatasi oleh keyof T, sehingga hanya kunci yang ada yang diterima."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Parameter tipe T yang hanya muncul sekali di tanda tangan fungsi biasanya tidak diperlukan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Generics berguna bila T menghubungkan dua posisi atau lebih, misalnya masukan dengan keluaran."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Fungsi generik: pertama, ambil, kelompokkan",
+          "prompt": "Tanda tangan TypeScript: `pertama<T>(a: T[]): T | undefined`, `ambil<T, K extends keyof T>(obj: T, kunci: K): T[K]`, `kelompokkan<T>(a: T[], fn: (x: T) => string): Record<string, T[]>`.\n\n- `pertama` mengembalikan elemen pertama atau `undefined` untuk array kosong.\n- `ambil` mengembalikan `obj[kunci]`; bila `kunci` tidak ada di object (`in`), lempar `new Error(\"Kunci tidak ada: \" + kunci)`.\n- `kelompokkan` mengelompokkan elemen berdasarkan hasil `fn`, mis. `kelompokkan([1,2,3,4], x => x % 2 ? \"ganjil\" : \"genap\")` menghasilkan `{ ganjil: [1,3], genap: [2,4] }`.",
+          "starter": {
+            "code": "function pertama(a) {\n  // TODO\n}\n\nfunction ambil(obj, kunci) {\n  // TODO\n}\n\nfunction kelompokkan(a, fn) {\n  // TODO\n}\n"
+          },
+          "solution": {
+            "code": "function pertama(a) {\n  return a[0];\n}\n\nfunction ambil(obj, kunci) {\n  if (!(kunci in obj)) throw new Error(\"Kunci tidak ada: \" + kunci);\n  return obj[kunci];\n}\n\nfunction kelompokkan(a, fn) {\n  const hasil = {};\n  for (const x of a) {\n    const k = fn(x);\n    (hasil[k] ??= []).push(x);\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "pertama pada array berisi",
+              "check": "pertama([7, 8]) === 7 && pertama([\"a\"]) === \"a\""
+            },
+            {
+              "name": "pertama pada array kosong",
+              "check": "pertama([]) === undefined"
+            },
+            {
+              "name": "ambil kunci yang ada",
+              "check": "ambil({ nama: \"Sari\", umur: 17 }, \"umur\") === 17"
+            },
+            {
+              "name": "ambil kunci tak ada melempar",
+              "check": "(() => { try { ambil({ a: 1 }, \"b\"); return false; } catch (e) { return e.message === \"Kunci tidak ada: b\"; } })()"
+            },
+            {
+              "name": "kelompokkan ganjil genap",
+              "check": "JSON.stringify(kelompokkan([1, 2, 3, 4], (x) => (x % 2 ? \"ganjil\" : \"genap\"))) === '{\"ganjil\":[1,3],\"genap\":[2,4]}'"
+            },
+            {
+              "name": "kelompokkan array kosong",
+              "check": "Object.keys(kelompokkan([], (x) => String(x))).length === 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "utility-types",
+      "title": "Utility Types",
+      "est_minutes": 35,
+      "slide_from": 15,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Memakai utility types bawaan: `Partial`, `Required`, `Readonly`, `Pick`, `Omit`, `Record`.\n- Mengambil tipe dari fungsi dengan `ReturnType`, `Parameters`, dan `Awaited`.\n- Memakai `keyof`, `typeof`, dan indexed access untuk menurunkan tipe dari yang sudah ada.\n- Mengenal mapped type sebagai dasar utility types.\n\n## Jangan menulis tipe yang sama dua kali\n\nMisalkan kamu punya tipe `Siswa`, lalu butuh tipe untuk form edit di mana semua kolom opsional, dan tipe ringkas untuk daftar. Menulis ulang tiap versi berarti dua tempat yang harus diperbarui bila `Siswa` berubah. TypeScript menyediakan **utility types** untuk menurunkan tipe baru dari tipe yang ada, sehingga hanya ada satu sumber kebenaran.\n\nSepanjang bab ini kita pakai tipe berikut:\n\n```ts\ntype Siswa = {\n  id: number;\n  nama: string;\n  email: string;\n  kelas?: string;\n};\n```\n\n## Partial, Required, dan Readonly\n\n**`Partial<T>`** membuat semua properti menjadi opsional. Cocok untuk data pembaruan sebagian.\n\n```ts\ntype PerubahanSiswa = Partial<Siswa>;\n// { id?: number; nama?: string; email?: string; kelas?: string }\n\nfunction perbarui(s: Siswa, ubah: Partial<Siswa>): Siswa {\n  return { ...s, ...ubah };\n}\n\nperbarui({ id: 1, nama: \"Sari\", email: \"s@x.id\" }, { nama: \"Sari Dewi\" });\n```\n\n**`Required<T>`** kebalikannya: semua properti menjadi wajib, termasuk `kelas`.\n\n**`Readonly<T>`** membuat semua properti `readonly`, berguna untuk data yang tidak boleh diubah setelah dibuat.\n\n```ts\nconst tetap: Readonly<Siswa> = { id: 1, nama: \"Sari\", email: \"s@x.id\" };\ntetap.nama = \"Budi\";   // Error: hanya bisa dibaca\n```\n\nIngat, `Readonly` hanya berlaku di level pertama dan hanya saat kompilasi.\n\n## Pick dan Omit\n\n**`Pick<T, Kunci>`** mengambil sebagian properti.\n\n```ts\ntype RingkasSiswa = Pick<Siswa, \"id\" | \"nama\">;\n// { id: number; nama: string }\n```\n\n**`Omit<T, Kunci>`** membuang sebagian properti dan mengambil sisanya.\n\n```ts\ntype SiswaBaru = Omit<Siswa, \"id\">;\n// { nama: string; email: string; kelas?: string }\n```\n\n`Omit` sangat sering dipakai untuk data yang belum punya `id` karena baru akan dibuat server. Bila nanti `Siswa` mendapat properti baru, `SiswaBaru` otomatis ikut mendapatkannya.\n\n## Record: kamus bertipe\n\n**`Record<K, V>`** membuat object dengan kunci bertipe `K` dan nilai bertipe `V`.\n\n```ts\ntype Nilai = Record<string, number>;\nconst n: Nilai = { matematika: 90, fisika: 85 };\n\ntype Hari = \"senin\" | \"selasa\" | \"rabu\";\nconst jadwal: Record<Hari, string> = {\n  senin: \"Matematika\",\n  selasa: \"Fisika\",\n  rabu: \"Kimia\",\n};\n```\n\nBila `K` berupa gabungan literal seperti `Hari`, TypeScript mewajibkan **semua** kuncinya ada. Hapus `rabu` dan compiler protes. Ini cara bagus memastikan tidak ada kasus yang terlupa.\n\n## ReturnType, Parameters, dan Awaited\n\nKadang tipe yang kamu butuhkan sudah tersirat dalam sebuah fungsi. Daripada menulis ulang, ambil darinya.\n\n```ts\nfunction buatSiswa(nama: string, umur: number) {\n  return { id: Date.now(), nama, umur, aktif: true };\n}\n\ntype SiswaDibuat = ReturnType<typeof buatSiswa>;\n// { id: number; nama: string; umur: number; aktif: boolean }\n\ntype ArgumenBuat = Parameters<typeof buatSiswa>;\n// [nama: string, umur: number]\n```\n\nPerhatikan `typeof buatSiswa`. Operator `typeof` di posisi tipe mengambil tipe dari sebuah **nilai**, berbeda dengan `typeof` di runtime yang menghasilkan string. `ReturnType` butuh tipe fungsi, bukan nilai fungsinya, jadi `typeof` menjembatani.\n\n**`Awaited<T>`** membuka tipe Promise.\n\n```ts\nasync function ambilSiswa() {\n  return { id: 1, nama: \"Sari\" };\n}\n\ntype HasilAmbil = Awaited<ReturnType<typeof ambilSiswa>>;\n// { id: number; nama: string }\n```\n\nTanpa `Awaited`, `ReturnType<typeof ambilSiswa>` adalah `Promise<{...}>`. Kombinasi ini rapi untuk menurunkan tipe data hasil fungsi async.\n\n## keyof typeof dan indexed access\n\nUntuk object konstanta, kamu bisa menurunkan gabungan kuncinya.\n\n```ts\nconst peran = { admin: 1, guru: 2, siswa: 3 } as const;\n\ntype NamaPeran = keyof typeof peran;       // \"admin\" | \"guru\" | \"siswa\"\ntype KodePeran = (typeof peran)[NamaPeran]; // 1 | 2 | 3\n```\n\nBentuk `T[\"kunci\"]` disebut **indexed access type**: ambil tipe properti tertentu.\n\n```ts\ntype TipeEmail = Siswa[\"email\"];                 // string\ntype KunciTertentu = Siswa[\"id\" | \"nama\"];       // number | string\ntype ElemenArray = string[][number];             // string\n```\n\nHasilnya: kamu dapat daftar nilai yang valid dari satu sumber, bukan dua daftar yang harus dijaga sinkron secara manual.\n\n## Mapped type: dapur di balik layar\n\nSebagian besar utility types dibuat dengan **mapped type**, yaitu sintaks untuk mengulang atas kunci sebuah tipe.\n\n```ts\ntype OpsionalSemua<T> = {\n  [K in keyof T]?: T[K];\n};\n\ntype Nullable<T> = {\n  [K in keyof T]: T[K] | null;\n};\n```\n\nBaca `[K in keyof T]` sebagai \"untuk setiap kunci K dari T\". `OpsionalSemua` pada dasarnya adalah `Partial` buatan sendiri. Kamu bisa menambah atau membuang modifier dengan `?`, `-?`, `readonly`, dan `-readonly`. Kamu tidak perlu sering menulis mapped type di aplikasi biasa, tetapi memahaminya membuat pesan di editor yang tampak menakutkan jadi terbaca.\n\n## Kapan memakai yang mana\n\n| Kebutuhan | Utility |\n| --- | --- |\n| Form edit, data pembaruan sebagian | `Partial<T>` |\n| Data tanpa kolom yang dibuat server | `Omit<T, \"id\">` |\n| Tampilan ringkas untuk daftar | `Pick<T, ...>` |\n| Peta nilai per kategori | `Record<K, V>` |\n| Tipe hasil fungsi | `ReturnType`, `Awaited` |\n\n## Kesalahan umum pemula\n\n- **Menyalin tipe lalu mengubahnya sedikit**, padahal `Omit` atau `Pick` cukup.\n- **Mengira `Readonly` membekukan object di runtime.** Ia hanya pengecekan tipe.\n- **Menulis `ReturnType<buatSiswa>` tanpa `typeof`.** Fungsi adalah nilai; tipenya diambil dengan `typeof`.\n- **Lupa `Awaited`** sehingga tipe yang didapat masih berbentuk `Promise`.\n\n## Rangkuman\n\n- Utility types menurunkan tipe baru dari tipe yang ada, menjaga satu sumber kebenaran.\n- `Partial`, `Required`, `Readonly` mengubah modifier; `Pick` dan `Omit` memilih properti; `Record` membuat kamus bertipe.\n- `ReturnType`, `Parameters`, dan `Awaited` mengambil tipe dari fungsi.\n- `keyof typeof` dan `T[\"kunci\"]` menurunkan kunci dan nilai dari object konstanta.\n- Mapped type `[K in keyof T]` adalah dasar semua utility di atas.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Form edit profil mengirim hanya kolom yang diubah. Tipe mana yang cocok untuk data perubahan dari tipe Siswa?",
+          "code": "",
+          "options": [
+            "Required<Siswa>",
+            "Readonly<Siswa>",
+            "Partial<Siswa>",
+            "Record<string, Siswa>"
+          ],
+          "answer": 2,
+          "explanation": "Partial membuat semua properti opsional."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu butuh tipe data siswa baru yang belum punya id karena id dibuat server. Pilihan terbaik?",
+          "code": "",
+          "options": [
+            "Pick<Siswa, \"id\">",
+            "Omit<Siswa, \"id\">",
+            "Partial<Siswa> & { id: never }",
+            "Salin tipe Siswa lalu hapus id secara manual di berkas lain"
+          ],
+          "answer": 1,
+          "explanation": "Omit menjaga satu sumber kebenaran; perubahan pada Siswa ikut mengalir."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu memakai Record<Hari, string> dengan Hari = \"senin\" | \"selasa\" | \"rabu\" dan menghapus kunci rabu dari object. Apa yang terjadi?",
+          "code": "",
+          "options": [
+            "Compiler menolak karena semua kunci wajib ada",
+            "Tidak ada error karena Record membuat kunci opsional",
+            "Kunci rabu otomatis diisi undefined",
+            "Tipe Record berubah menjadi any"
+          ],
+          "answer": 0,
+          "explanation": "Bila K gabungan literal, semua kuncinya wajib."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana mengambil tipe data dari fungsi async function ambilSiswa() { return { id: 1 }; } sehingga hasilnya { id: number }?",
+          "code": "",
+          "options": [
+            "ReturnType<ambilSiswa>",
+            "Parameters<typeof ambilSiswa>",
+            "keyof typeof ambilSiswa",
+            "Awaited<ReturnType<typeof ambilSiswa>>"
+          ],
+          "answer": 3,
+          "explanation": "ReturnType menghasilkan Promise; Awaited membukanya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Pick, Omit, dan Record saat runtime",
+          "prompt": "Padanan runtime utility types:\n\n- `pilih(obj, kunci)` seperti `Pick`: object baru hanya dengan kunci di array `kunci` yang ada di `obj`.\n- `buang(obj, kunci)` seperti `Omit`: object baru tanpa kunci di array `kunci`.\n- `petakan(kunci, nilai)` seperti `Record<K, V>`: object dengan setiap kunci diberi `nilai`.\n\nObject asli tidak boleh berubah.",
+          "starter": {
+            "code": "function pilih(obj, kunci) {\n  // TODO\n  return {};\n}\n\nfunction buang(obj, kunci) {\n  // TODO\n  return {};\n}\n\nfunction petakan(kunci, nilai) {\n  // TODO\n  return {};\n}\n"
+          },
+          "solution": {
+            "code": "function pilih(obj, kunci) {\n  const hasil = {};\n  for (const k of kunci) if (k in obj) hasil[k] = obj[k];\n  return hasil;\n}\n\nfunction buang(obj, kunci) {\n  const hasil = { ...obj };\n  for (const k of kunci) delete hasil[k];\n  return hasil;\n}\n\nfunction petakan(kunci, nilai) {\n  return Object.fromEntries(kunci.map((k) => [k, nilai]));\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "pilih mengambil kunci tertentu",
+              "check": "JSON.stringify(pilih({ id: 1, nama: \"S\", email: \"e\" }, [\"id\", \"nama\"])) === '{\"id\":1,\"nama\":\"S\"}'"
+            },
+            {
+              "name": "pilih mengabaikan kunci yang tidak ada",
+              "check": "Object.keys(pilih({ a: 1 }, [\"a\", \"z\"])).length === 1"
+            },
+            {
+              "name": "buang menghapus kunci",
+              "check": "JSON.stringify(buang({ id: 1, nama: \"S\" }, [\"id\"])) === '{\"nama\":\"S\"}'"
+            },
+            {
+              "name": "buang tidak mengubah asli",
+              "check": "(() => { const o = { id: 1, nama: \"S\" }; buang(o, [\"id\"]); return \"id\" in o; })()"
+            },
+            {
+              "name": "petakan membuat Record",
+              "check": "JSON.stringify(petakan([\"senin\", \"selasa\"], 0)) === '{\"senin\":0,\"selasa\":0}'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "class-dan-modul",
+      "title": "Class dan Modul",
+      "est_minutes": 35,
+      "slide_from": 17,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Menulis class dengan modifier `public`, `private`, `protected`, dan `readonly`.\n- Memakai parameter properties dan `abstract class`.\n- Membedakan `private` TypeScript dari `#private` JavaScript.\n- Memakai `import`/`export` dengan `import type`, memahami berkas `.d.ts`, dan memilih antara `enum` dan union literal.\n\n## Class di TypeScript\n\nClass di TypeScript adalah class JavaScript ditambah tipe dan modifier akses. Properti harus dideklarasikan di badan class beserta tipenya.\n\n```ts\nclass Akun {\n  pemilik: string;\n  saldo: number;\n\n  constructor(pemilik: string, saldo = 0) {\n    this.pemilik = pemilik;\n    this.saldo = saldo;\n  }\n\n  setor(jumlah: number): void {\n    this.saldo += jumlah;\n  }\n}\n\nconst a = new Akun(\"Sari\", 1000);\na.setor(500);\na.saldo;   // 1500\n```\n\nDi mode `strict`, properti yang dideklarasikan tetapi tidak diisi di constructor menghasilkan error (\"has no initializer\"). Itu menjaga object selalu dalam keadaan utuh.\n\n## Modifier akses\n\nTiga modifier mengatur siapa yang boleh mengakses anggota class.\n\n- **`public`**: boleh diakses dari mana saja. Ini default.\n- **`private`**: hanya dari dalam class itu sendiri.\n- **`protected`**: dari class itu dan turunannya.\n\n```ts\nclass Akun {\n  constructor(public readonly pemilik: string, private saldo = 0) {}\n\n  setor(jumlah: number) {\n    if (jumlah <= 0) throw new Error(\"Jumlah harus positif\");\n    this.saldo += jumlah;\n  }\n\n  get total() {\n    return this.saldo;\n  }\n}\n\nconst a = new Akun(\"Sari\");\na.setor(100);\na.saldo;               // Error: 'saldo' bersifat private\na.pemilik = \"Budi\";    // Error: 'pemilik' readonly\na.total;               // 100, lewat getter\n```\n\nPenulisan `constructor(public readonly pemilik: string, private saldo = 0) {}` memakai **parameter properties**: modifier di parameter constructor otomatis mendeklarasikan properti dan mengisinya. Kamu tidak perlu menulis deklarasi dan `this.x = x` secara terpisah. Ini sangat ringkas dan umum dipakai.\n\n`readonly` pada properti class berarti hanya bisa diisi di deklarasi atau constructor.\n\n## private TypeScript vs #private\n\nAda dua cara membuat anggota privat, dan keduanya berbeda.\n\n```ts\nclass Contoh {\n  private a = 1;   // privat menurut TypeScript\n  #b = 2;          // privat menurut JavaScript\n}\n\nconst c = new Contoh();\nc.a;   // Error saat kompilasi, tetapi saat runtime properti 'a' ada dan bisa dibaca\nc.#b;  // Error di kompilasi dan di runtime\n```\n\nKata `private` dari TypeScript hanya diperiksa saat kompilasi. Setelah menjadi JavaScript, properti itu bisa diakses biasa. Sedangkan `#b` adalah fitur privat sungguhan dari JavaScript dan tidak bisa diakses dari luar, bahkan di runtime. Untuk menyembunyikan data sensitif secara nyata, pakai `#`. Untuk sekadar menunjukkan \"ini bukan bagian API publik\", `private` cukup.\n\n## Pewarisan dan abstract class\n\nClass bisa mewarisi class lain dengan `extends`. Anggota `protected` bisa dipakai di turunan.\n\n```ts\nabstract class Hewan {\n  constructor(protected nama: string) {}\n\n  abstract bersuara(): string;   // wajib diimplementasikan turunan\n\n  perkenalan(): string {\n    return `${this.nama} berkata ${this.bersuara()}`;\n  }\n}\n\nclass Kucing extends Hewan {\n  bersuara() {\n    return \"meong\";\n  }\n}\n\nconst k = new Kucing(\"Mimi\");\nk.perkenalan();         // \"Mimi berkata meong\"\nconst h = new Hewan(\"x\");   // Error: abstract class tidak bisa diinstansiasi\n```\n\n`abstract class` berfungsi sebagai kerangka: ia boleh berisi method yang sudah jadi dan method abstrak yang **wajib** diisi turunannya. Class abstrak tidak bisa dibuat langsung dengan `new`. Bila kamu hanya butuh kontrak tanpa kode, interface dengan `implements` (bab 4) sudah cukup dan lebih ringan.\n\n## Modul: import dan export\n\nTypeScript memakai sistem modul yang sama dengan JavaScript modern.\n\n```ts\n// siswa.ts\nexport interface Siswa {\n  nama: string;\n}\nexport function buat(nama: string): Siswa {\n  return { nama };\n}\nexport default class Kelas {}\n\n// app.ts\nimport Kelas, { buat, type Siswa } from \"./siswa.js\";\n```\n\nPerhatikan dua hal. Pertama, `type Siswa` pada impor menandai bahwa itu hanya tipe. Kamu juga bisa menulis seluruh baris sebagai `import type { Siswa } from \"./siswa.js\"`. Impor bertipe ini dihapus sepenuhnya saat kompilasi dan tidak menimbulkan kode JavaScript apa pun. Tanpa `type`, compiler biasanya tetap bisa menyimpulkannya, tetapi menuliskannya eksplisit lebih jelas dan aman untuk alat yang memproses berkas satu per satu, seperti bundler.\n\nKedua, di proyek Node dengan `module: NodeNext`, ekstensi impor ditulis sebagai `.js` meski berkas aslinya `.ts`, karena itulah nama berkas hasil kompilasi.\n\n## Berkas .d.ts\n\nBerkas berekstensi `.d.ts` berisi **deklarasi tipe saja**, tanpa kode yang berjalan. Berkas ini menjelaskan bentuk kode JavaScript yang sudah ada.\n\n```ts\n// pustaka-lama.d.ts\ndeclare function hitungPajak(harga: number): number;\n```\n\nKetika kamu memasang pustaka JavaScript murni, tipenya sering datang dari paket terpisah di namespace `@types`, misalnya `npm install -D @types/node`. Pustaka modern biasanya sudah menyertakan berkas `.d.ts` sendiri sehingga tidak perlu paket tambahan. Bila tidak ada tipe sama sekali, impornya dianggap `any` implisit dan menjadi error di mode `strict`.\n\n## enum atau union literal?\n\nTypeScript punya `enum`.\n\n```ts\nenum Peran {\n  Admin,\n  Guru,\n  Siswa,\n}\nconst p: Peran = Peran.Guru;   // nilai runtime: 1\n```\n\nBerbeda dengan fitur tipe lain, `enum` menghasilkan **kode JavaScript** sungguhan, sehingga tidak bisa dipakai oleh mode penghapusan tipe (erasable syntax). Banyak tim lebih memilih union literal, yang murni tipe dan tidak menambah kode.\n\n```ts\nconst PERAN = [\"admin\", \"guru\", \"siswa\"] as const;\ntype Peran = (typeof PERAN)[number];   // \"admin\" | \"guru\" | \"siswa\"\n```\n\nDengan pola ini kamu mendapat daftar nilai di runtime (`PERAN`) sekaligus tipenya, dari satu sumber. Pakai `enum` hanya bila ada alasan khusus, misalnya kode lama yang sudah memakainya.\n\n## Kesalahan umum pemula\n\n- **Mengandalkan `private` TypeScript untuk keamanan.** Ia hilang saat runtime; pakai `#` untuk privasi sungguhan.\n- **Lupa inisialisasi properti** di mode strict.\n- **Mengimpor tipe tanpa `import type`** lalu heran impornya muncul di hasil bundel.\n- **Memakai `enum` otomatis** padahal union literal lebih ringan.\n\n## Rangkuman\n\n- Class bertipe punya modifier `public`, `private`, `protected`, dan `readonly`; parameter properties meringkas constructor.\n- `private` hanya pengecekan kompilasi, sedangkan `#nama` privat sungguhan di runtime.\n- `abstract class` memberi kerangka dengan method yang wajib diisi turunan.\n- `import type` menandai impor yang hanya tipe; berkas `.d.ts` dan paket `@types` menjelaskan tipe kode JavaScript.\n- Union literal dari `as const` sering lebih baik daripada `enum`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu menulis private token: string di class dan mengira data tersembunyi dari semua kode. Mengapa itu keliru?",
+          "code": "",
+          "options": [
+            "private menghapus properti saat kompilasi",
+            "private hanya berlaku di class abstrak",
+            "private membuat properti tidak bisa diwarisi sama sekali",
+            "private hanya pengecekan kompilasi; di JavaScript hasilnya properti itu tetap bisa dibaca"
+          ],
+          "answer": 3,
+          "explanation": "Untuk privasi sungguhan di runtime pakai #token."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi modifier pada constructor(public readonly id: number, private nama: string) {}?",
+          "code": "",
+          "options": [
+            "Hanya mengubah tipe parameter menjadi opsional",
+            "Membuat constructor tidak bisa dipanggil",
+            "Otomatis mendeklarasikan properti dan mengisinya dari argumen constructor",
+            "Menjadikan kedua parameter bertipe any"
+          ],
+          "answer": 2,
+          "explanation": "Ini disebut parameter properties."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa banyak tim memilih union literal dari as const daripada enum?",
+          "code": "",
+          "options": [
+            "Enum tidak bisa dipakai di TypeScript terbaru",
+            "Union literal murni tipe dan tidak menambah kode JavaScript, sementara enum menghasilkan kode runtime",
+            "Union literal lebih lambat tetapi lebih aman",
+            "Enum tidak bisa punya nilai angka"
+          ],
+          "answer": 1,
+          "explanation": "Enum butuh transformasi, sehingga tidak cocok dengan mode penghapusan tipe."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "abstract class bisa langsung dibuat object dengan new asalkan semua method-nya sudah ditulis.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Class abstrak tidak bisa diinstansiasi, apa pun isinya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Akun dengan privasi sungguhan",
+          "prompt": "Tulis class `Akun` dengan field privat `#saldo` (bukan `private` TypeScript, supaya privat di runtime). Constructor `(pemilik, saldo = 0)` menyimpan `pemilik` sebagai properti publik. Method:\n\n- `setor(n)`: `n` harus > 0, bila tidak `throw new Error(\"Jumlah harus positif\")`.\n- `tarik(n)`: `n` > 0 dan tidak melebihi saldo, bila saldo kurang `throw new Error(\"Saldo tidak cukup\")`.\n- getter `total` mengembalikan saldo.\n\nSetiap method kembalikan saldo terbaru.",
+          "starter": {
+            "code": "class Akun {\n  // TODO: field privat #saldo, properti pemilik\n  constructor(pemilik, saldo = 0) {}\n\n  setor(n) {}\n\n  tarik(n) {}\n\n  get total() {\n    return 0;\n  }\n}\n"
+          },
+          "solution": {
+            "code": "class Akun {\n  #saldo;\n\n  constructor(pemilik, saldo = 0) {\n    this.pemilik = pemilik;\n    this.#saldo = saldo;\n  }\n\n  setor(n) {\n    if (n <= 0) throw new Error(\"Jumlah harus positif\");\n    this.#saldo += n;\n    return this.#saldo;\n  }\n\n  tarik(n) {\n    if (n <= 0) throw new Error(\"Jumlah harus positif\");\n    if (n > this.#saldo) throw new Error(\"Saldo tidak cukup\");\n    this.#saldo -= n;\n    return this.#saldo;\n  }\n\n  get total() {\n    return this.#saldo;\n  }\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Constructor menyimpan pemilik dan saldo",
+              "check": "(() => { const a = new Akun(\"Sari\", 100); return a.pemilik === \"Sari\" && a.total === 100; })()"
+            },
+            {
+              "name": "setor menambah saldo",
+              "check": "new Akun(\"S\", 100).setor(50) === 150"
+            },
+            {
+              "name": "setor nol ditolak",
+              "check": "(() => { try { new Akun(\"S\").setor(0); return false; } catch (e) { return e.message === \"Jumlah harus positif\"; } })()"
+            },
+            {
+              "name": "tarik mengurangi saldo",
+              "check": "new Akun(\"S\", 100).tarik(30) === 70"
+            },
+            {
+              "name": "tarik melebihi saldo ditolak",
+              "check": "(() => { try { new Akun(\"S\", 10).tarik(20); return false; } catch (e) { return e.message === \"Saldo tidak cukup\"; } })()"
+            },
+            {
+              "name": "Saldo tidak terbaca dari luar",
+              "check": "(() => { const a = new Akun(\"S\", 100); return a.saldo === undefined && Object.keys(a).join() === \"pemilik\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tsconfig-dan-mode-strict",
+      "title": "tsconfig dan Mode Strict",
+      "est_minutes": 30,
+      "slide_from": 19,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Membaca dan menyusun `tsconfig.json` untuk proyek kecil.\n- Menjelaskan apa yang diaktifkan oleh `strict` dan kenapa sebaiknya selalu menyala.\n- Memahami opsi `target`, `module`, `lib`, `outDir`, dan `skipLibCheck`.\n- Mengenal `noUncheckedIndexedAccess`, `noEmit`, dan memeriksa JavaScript lewat JSDoc.\n\n## tsconfig.json: pusat pengaturan\n\nBerkas `tsconfig.json` memberi tahu `tsc` dan editor cara memeriksa dan mengompilasi proyek. Perintah `npx tsc --init` membuatnya. Berikut contoh yang masuk akal untuk proyek Node modern:\n\n```json\n{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"NodeNext\",\n    \"moduleResolution\": \"NodeNext\",\n    \"strict\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src\"]\n}\n```\n\nBagian `include` (dan `exclude`) menentukan berkas mana yang ikut. Bagian `compilerOptions` berisi puluhan opsi, tetapi kamu hanya perlu memahami segelintir.\n\n## Opsi keluaran\n\n- **`target`** menentukan versi JavaScript hasil kompilasi. `ES2022` berarti fitur seperti class field dan `?.` ditulis apa adanya. Target lebih rendah (misalnya `ES2015`) membuat compiler menulis ulang fitur baru menjadi kode lama, dan hasilnya lebih panjang.\n- **`module`** menentukan sistem modul keluaran. `NodeNext` mengikuti aturan modul Node.js; proyek yang memakai bundler biasanya memakai `ESNext` bersama `moduleResolution: \"Bundler\"`.\n- **`lib`** menentukan tipe bawaan yang tersedia, misalnya `[\"ES2022\", \"DOM\"]`. Tanpa `DOM`, nama seperti `document` tidak dikenal. Bila tidak ditulis, `lib` mengikuti `target`.\n- **`outDir`** dan **`rootDir`** mengatur folder hasil dan folder sumber.\n- **`noEmit`** membuat `tsc` hanya memeriksa tipe tanpa menulis berkas. Cocok bila bundler atau Node yang menjalankan kodenya.\n- **`skipLibCheck`** melewati pengecekan berkas `.d.ts`. Mempercepat dan menghindari error dari tipe pustaka yang bukan tanggung jawabmu.\n\n## strict: satu saklar untuk banyak pengaman\n\nOpsi `\"strict\": true` mengaktifkan sekelompok pengecekan ketat sekaligus. Dua yang paling berdampak:\n\n**`strictNullChecks`**: `null` dan `undefined` tidak lagi bagian dari setiap tipe.\n\n```ts\nfunction panjang(teks: string): number {\n  return teks.length;\n}\npanjang(null);   // Error bila strictNullChecks aktif; lolos tanpa peringatan bila mati\n```\n\n```ts\nconst el = document.querySelector(\"#judul\");\nel.textContent = \"Halo\";   // Error: 'el' possibly null\nel?.setAttribute(\"id\", \"x\");   // aman\n```\n\n**`noImplicitAny`**: parameter atau variabel yang tipenya tidak bisa disimpulkan dan tidak kamu tulis menjadi error, bukan diam-diam `any`.\n\n```ts\nfunction kali(a, b) {   // Error: Parameter 'a' implicitly has an 'any' type\n  return a * b;\n}\n```\n\n`strict` juga mencakup pengecekan seperti `strictFunctionTypes`, `strictBindCallApply`, `strictPropertyInitialization`, `noImplicitThis`, `useUnknownInCatchVariables`, dan `alwaysStrict`. Sebagai contoh, dengan `useUnknownInCatchVariables` variabel di `catch (e)` bertipe `unknown`, sehingga kamu harus mempersempitnya sebelum memakai `e.message`.\n\n```ts\ntry {\n  riskan();\n} catch (e) {\n  if (e instanceof Error) console.log(e.message);\n}\n```\n\nSaran praktis: **hidupkan `strict` sejak hari pertama proyek baru.** Memigrasi proyek besar dari mode longgar ke ketat jauh lebih melelahkan daripada memulai dengan ketat. Untuk proyek lama, nyalakan opsi satu per satu dan perbaiki error bertahap.\n\n## noUncheckedIndexedAccess\n\nOpsi ini tidak termasuk dalam `strict`, tetapi sangat disarankan. Tanpanya, membaca elemen array atau index signature dianggap selalu ada.\n\n```ts\nconst nama: string[] = [\"Sari\"];\nconst x = nama[5];\nx.toUpperCase();   // tanpa opsi: tidak ada error, meledak saat runtime\n```\n\nDengan `noUncheckedIndexedAccess`, tipe `x` menjadi `string | undefined`, sehingga kamu dipaksa memeriksa dulu.\n\n```ts\nconst x = nama[5];\nif (x !== undefined) console.log(x.toUpperCase());\n```\n\nIni menambah sedikit kerja, tetapi menutup sumber bug yang sangat umum, terutama saat memakai index signature seperti `Record<string, number>` (bab 3).\n\n## Opsi lain yang sering muncul\n\n- **`esModuleInterop`**: memudahkan impor paket CommonJS dengan `import x from \"x\"`. Sudah aktif secara default pada banyak konfigurasi modern.\n- **`resolveJsonModule`**: mengizinkan `import data from \"./data.json\"` dengan tipe yang disimpulkan.\n- **`noEmitOnError`**: tidak menulis hasil bila ada error tipe.\n- **`verbatimModuleSyntax`**: mewajibkan `import type` untuk impor yang hanya tipe, membuat hasil impor dapat diprediksi.\n- **`erasableSyntaxOnly`**: melarang sintaks TypeScript yang membutuhkan transformasi (seperti `enum`), cocok bila kodenya dijalankan langsung oleh Node dengan penghapusan tipe.\n\nKamu tidak perlu menghafal semuanya. Tambahkan opsi ketika ada kebutuhan nyata, dan baca keterangan resminya.\n\n## Memeriksa JavaScript dengan JSDoc\n\nTypeScript juga bisa memeriksa berkas `.js` biasa. Aktifkan `\"checkJs\": true` (dan `\"allowJs\": true`), lalu tulis tipe lewat komentar JSDoc.\n\n```js\n// @ts-check\n\n/**\n * @param {string} nama\n * @param {number} [umur]\n * @returns {string}\n */\nfunction sapa(nama, umur) {\n  return umur ? `${nama} (${umur})` : nama;\n}\n\nsapa(42);   // Error: number tidak cocok dengan string\n```\n\nIni berguna untuk adopsi bertahap pada proyek JavaScript lama, atau saat kamu ingin tipe tanpa langkah kompilasi sama sekali. Di platform latihan kelas ini, kode yang dijalankan adalah JavaScript, jadi latihan memakai gaya ini: logika yang sama seperti di TypeScript, dengan tipe ditulis sebagai komentar JSDoc.\n\n## Satu tsconfig untuk satu tujuan\n\nProyek besar sering punya beberapa berkas tsconfig, misalnya satu dasar dan satu untuk pengujian, yang saling mewarisi dengan `\"extends\": \"./tsconfig.base.json\"`. Di proyek kecil satu berkas cukup. Bila editor tidak mengenali opsi barumu, coba muat ulang jendela editor atau pastikan memakai versi TypeScript proyek, bukan versi bawaan editor.\n\n## Mengatasi error saat menyalakan strict\n\nBila kamu menyalakan `strict` pada kode lama dan error membanjir, jangan panik. Kerjakan berurutan: mulai dari `noImplicitAny`, tulis tipe parameter yang hilang, lalu lanjut ke `strictNullChecks` dan tangani kemungkinan `null` dengan pengecekan atau `?.`. Hindari jalan pintas `// @ts-ignore` di mana-mana. Bila terpaksa menekan error di satu baris, lebih baik pakai `// @ts-expect-error` dengan komentar alasannya, karena komentar itu sendiri akan menjadi error ketika masalahnya sudah hilang, sehingga pengecualian tidak membusuk di kode.\n\n## Kesalahan umum pemula\n\n- **Membiarkan `strict` mati** karena \"terlalu banyak error\", lalu kehilangan manfaat utama TypeScript.\n- **Lupa menambahkan `DOM` ke `lib`** saat menulis kode browser.\n- **Mengira `skipLibCheck` melewati pengecekan kodemu.** Ia hanya melewati berkas `.d.ts`.\n- **Menjalankan `tsc` dengan nama berkas** sehingga `tsconfig.json` diabaikan.\n\n## Rangkuman\n\n- `tsconfig.json` mengatur berkas yang diperiksa dan cara kompilasinya.\n- `target`, `module`, `lib`, dan `outDir` mengatur keluaran; `noEmit` hanya memeriksa tipe.\n- `strict: true` menyalakan paket pengecekan ketat, termasuk `strictNullChecks` dan `noImplicitAny`; hidupkan sejak awal.\n- `noUncheckedIndexedAccess` membuat akses indeks bertipe `T | undefined`.\n- `checkJs` dengan komentar JSDoc memungkinkan pengecekan tipe pada JavaScript biasa.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Proyek lama dengan banyak error muncul setelah strict dinyalakan. Strategi yang masuk akal?",
+          "code": "",
+          "options": [
+            "Nyalakan opsi satu per satu, mulai noImplicitAny, lalu strictNullChecks, dan perbaiki bertahap",
+            "Matikan strict lagi dan tambahkan // @ts-ignore di semua baris",
+            "Ganti semua tipe dengan any",
+            "Pindahkan semua kode ke satu berkas"
+          ],
+          "answer": 0,
+          "explanation": "Migrasi bertahap menjaga kemajuan tanpa mematikan pengaman."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kode const x = daftar[5]; x.toUpperCase() lolos kompilasi padahal indeks 5 mungkin tidak ada. Opsi apa yang menutup celah ini?",
+          "code": "",
+          "options": [
+            "skipLibCheck",
+            "esModuleInterop",
+            "outDir",
+            "noUncheckedIndexedAccess"
+          ],
+          "answer": 3,
+          "explanation": "Opsi itu membuat hasil akses indeks bertipe T | undefined."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kodemu memakai document.querySelector tetapi muncul error 'Cannot find name document'. Penyebab paling mungkin?",
+          "code": "",
+          "options": [
+            "strict mematikan semua variabel global",
+            "target terlalu tinggi",
+            "lib di tsconfig tidak memuat DOM",
+            "outDir belum diisi"
+          ],
+          "answer": 2,
+          "explanation": "Tipe DOM berasal dari lib DOM."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi skipLibCheck?",
+          "code": "",
+          "options": [
+            "Melewati pengecekan semua berkas .ts proyek",
+            "Melewati pengecekan berkas deklarasi .d.ts, bukan kode proyekmu",
+            "Mematikan strictNullChecks pada pustaka",
+            "Menghapus folder node_modules"
+          ],
+          "answer": 1,
+          "explanation": "Mempercepat dan menghindari error dari tipe pustaka."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Audit tsconfig",
+          "prompt": "Tulis `auditTsconfig(opsi)` yang menerima isi `compilerOptions` (object) dan mengembalikan array pesan, dengan urutan ini:\n\n1. `opsi.strict !== true`: `\"strict belum aktif\"`\n2. `opsi.noUncheckedIndexedAccess !== true`: `\"noUncheckedIndexedAccess belum aktif\"`\n3. `opsi.target` tidak ada: `\"target belum diisi\"`\n\nKonfigurasi yang sudah baik menghasilkan array kosong. Tambahkan juga `ambilAman(arr, i)` yang meniru perilaku `noUncheckedIndexedAccess`: kembalikan `undefined` bila indeks di luar rentang (termasuk negatif atau bukan bilangan bulat).",
+          "starter": {
+            "code": "function auditTsconfig(opsi) {\n  const pesan = [];\n  // TODO: tiga pemeriksaan sesuai urutan\n  return pesan;\n}\n\nfunction ambilAman(arr, i) {\n  // TODO\n  return arr[i];\n}\n"
+          },
+          "solution": {
+            "code": "function auditTsconfig(opsi) {\n  const pesan = [];\n  if (opsi.strict !== true) pesan.push(\"strict belum aktif\");\n  if (opsi.noUncheckedIndexedAccess !== true) pesan.push(\"noUncheckedIndexedAccess belum aktif\");\n  if (opsi.target === undefined) pesan.push(\"target belum diisi\");\n  return pesan;\n}\n\nfunction ambilAman(arr, i) {\n  return Number.isInteger(i) && i >= 0 && i < arr.length ? arr[i] : undefined;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Konfigurasi bagus tanpa pesan",
+              "check": "auditTsconfig({ strict: true, noUncheckedIndexedAccess: true, target: \"ES2022\" }).length === 0"
+            },
+            {
+              "name": "Kosong menghasilkan tiga pesan berurutan",
+              "check": "JSON.stringify(auditTsconfig({})) === JSON.stringify([\"strict belum aktif\", \"noUncheckedIndexedAccess belum aktif\", \"target belum diisi\"])"
+            },
+            {
+              "name": "strict false dihitung belum aktif",
+              "check": "auditTsconfig({ strict: false, noUncheckedIndexedAccess: true, target: \"ES2020\" })[0] === \"strict belum aktif\""
+            },
+            {
+              "name": "Hanya target yang hilang",
+              "check": "JSON.stringify(auditTsconfig({ strict: true, noUncheckedIndexedAccess: true })) === '[\"target belum diisi\"]'"
+            },
+            {
+              "name": "ambilAman indeks valid",
+              "check": "ambilAman([\"a\", \"b\"], 1) === \"b\""
+            },
+            {
+              "name": "ambilAman di luar rentang",
+              "check": "ambilAman([\"a\"], 5) === undefined && ambilAman([\"a\"], -1) === undefined && ambilAman([\"a\"], 0.5) === undefined"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "async-dom-dan-node",
+      "title": "Async, DOM, dan Node",
+      "est_minutes": 40,
+      "slide_from": 21,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menulis fungsi async dengan tipe `Promise<T>` dan menangani error bertipe `unknown`.\n- Memvalidasi data dari `fetch` atau JSON alih-alih langsung mempercayai tipe.\n- Bekerja dengan DOM secara aman: elemen yang mungkin `null`, penyempitan ke `HTMLInputElement`, dan event bertipe.\n- Menyiapkan TypeScript untuk Node.js dengan `@types/node` dan `process.env`.\n\n## Promise dan async bertipe\n\nFungsi `async` selalu mengembalikan `Promise`. Tipe di dalam kurung sudut adalah tipe nilai yang akan dihasilkan.\n\n```ts\ntype Siswa = { id: number; nama: string };\n\nasync function ambilSiswa(id: number): Promise<Siswa> {\n  const respons = await fetch(`https://api.contoh.id/siswa/${id}`);\n  if (!respons.ok) throw new Error(`Gagal: ${respons.status}`);\n  return (await respons.json()) as Siswa;\n}\n\nconst s = await ambilSiswa(1);   // s: Siswa (await membuka Promise)\n```\n\nKamu menulis `Promise<Siswa>` sebagai tipe kembalian, tetapi di dalam fungsi kamu cukup `return` nilai `Siswa`; JavaScript yang membungkusnya. Pemakai memakai `await` untuk mendapat `Siswa`, atau `.then` untuk callback. Bila tidak ditulis, tipe kembalian `async` disimpulkan sebagai `Promise` dari tipe `return`-nya.\n\nBeberapa Promise paralel tetap bertipe dengan `Promise.all`.\n\n```ts\nconst [a, b] = await Promise.all([ambilSiswa(1), ambilSiswa(2)]);   // keduanya Siswa\n```\n\n## Hati-hati dengan response.json()\n\nPerhatikan `as Siswa` pada contoh sebelumnya. Hasil `respons.json()` bertipe `any`, jadi compiler tidak tahu isi sebenarnya. Menulis `as Siswa` hanya **menjanjikan** bahwa bentuknya benar. Kalau server mengubah bentuk data, tidak ada error saat kompilasi dan kode meledak di tempat yang jauh dari sumbernya.\n\nCara yang lebih jujur adalah menerima hasilnya sebagai `unknown`, lalu memvalidasi dengan type guard (bab 5).\n\n```ts\nfunction adalahSiswa(x: unknown): x is Siswa {\n  return (\n    typeof x === \"object\" &&\n    x !== null &&\n    typeof (x as { id?: unknown }).id === \"number\" &&\n    typeof (x as { nama?: unknown }).nama === \"string\"\n  );\n}\n\nasync function ambilSiswaAman(id: number): Promise<Siswa> {\n  const respons = await fetch(`https://api.contoh.id/siswa/${id}`);\n  const data: unknown = await respons.json();\n  if (!adalahSiswa(data)) throw new Error(\"Bentuk data tidak sesuai\");\n  return data;\n}\n```\n\nUntuk data kompleks, banyak proyek memakai pustaka validasi skema seperti Zod, yang menurunkan tipe TypeScript dari skema runtime sehingga keduanya tidak bisa berbeda. Prinsipnya sama: tipe di TypeScript tidak memeriksa data saat runtime, jadi kamu butuh kode yang melakukannya.\n\n## Error di catch\n\nDi mode `strict` (opsi `useUnknownInCatchVariables`), variabel `catch` bertipe `unknown`, karena di JavaScript kamu bisa `throw` apa pun, bukan hanya `Error`.\n\n```ts\ntry {\n  await ambilSiswa(99);\n} catch (e) {\n  const pesan = e instanceof Error ? e.message : String(e);\n  console.error(pesan);\n}\n```\n\nKebiasaan menyempitkan dengan `instanceof Error` membuat penanganan error lebih tangguh.\n\n## DOM dengan aman\n\nSaat menulis kode browser, pastikan `lib` di tsconfig memuat `DOM`. Fungsi seperti `querySelector` mengembalikan elemen **atau `null`**, dan tipenya umum (`Element`), bukan elemen yang spesifik.\n\n```ts\nconst input = document.querySelector(\"#cari\");\ninput.value;   // Error: 'input' mungkin null, dan Element tidak punya 'value'\n\nif (input instanceof HTMLInputElement) {\n  console.log(input.value);   // aman: input adalah HTMLInputElement\n}\n```\n\n`instanceof` mempersempit sekaligus memeriksa di runtime, jadi lebih aman daripada assertion. Kamu juga bisa memberi argumen tipe generik, `document.querySelector<HTMLInputElement>(\"#cari\")`, tetapi itu tetap hanya janji dan hasilnya masih bisa `null`.\n\nEvent juga punya tipe spesifik, dan parameter callback biasanya disimpulkan dari nama event.\n\n```ts\nconst form = document.querySelector(\"form\");\nform?.addEventListener(\"submit\", (e) => {\n  e.preventDefault();               // e: SubmitEvent\n  const data = new FormData(form);\n  console.log(data.get(\"nama\"));    // string | File | null\n});\n\ndocument.addEventListener(\"click\", (e) => {\n  console.log(e.clientX);           // e: MouseEvent\n});\n```\n\nPerhatikan `data.get(\"nama\")` bertipe `FormDataEntryValue | null`; bila kamu butuh `string`, periksa dengan `typeof`.\n\n## TypeScript di Node.js\n\nNode.js tidak datang dengan tipe bawaan di dalam TypeScript; tipenya ada di paket `@types/node`.\n\n```bash\nnpm install -D typescript @types/node\n```\n\nSetelah terpasang, `process`, `Buffer`, dan modul seperti `node:fs` dikenali.\n\n```ts\nimport { readFile } from \"node:fs/promises\";\n\nconst teks = await readFile(\"data.json\", \"utf8\");   // string\nconst port = Number(process.env.PORT ?? 3000);\n```\n\nPerhatikan `process.env.PORT` bertipe `string | undefined`. Itu benar-benar jujur: variabel lingkungan bisa saja tidak ada. Tangani dengan nilai default seperti di atas, atau lempar error saat aplikasi mulai bila variabel wajib tidak ada. Pola yang baik adalah membaca dan memvalidasi semua variabel lingkungan sekali di awal, lalu mengekspor object konfigurasi bertipe yang rapi.\n\n## Kerangka proyek Node + TypeScript\n\nSusunan minimal yang umum: folder `src` berisi kode, `tsconfig.json` dengan `outDir: \"dist\"`, dan skrip di `package.json`.\n\n```json\n{\n  \"type\": \"module\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/index.js\",\n    \"cek\": \"tsc --noEmit\"\n  }\n}\n```\n\nUntuk pengembangan, ada alat seperti `tsx` yang menjalankan berkas `.ts` langsung, atau Node baru dengan penghapusan tipe. Apa pun alatnya, jalankan `npm run cek` secara rutin dan di CI, karena menjalankan kode tidak sama dengan memeriksa tipenya.\n\n## Contoh gabungan: memuat daftar dengan status\n\nMenggabungkan discriminated union (bab 5) dengan async membuat kode antarmuka yang sulit salah.\n\n```ts\ntype Status<T> =\n  | { tahap: \"memuat\" }\n  | { tahap: \"berhasil\"; data: T }\n  | { tahap: \"gagal\"; pesan: string };\n\nasync function muatDaftar(): Promise<Status<Siswa[]>> {\n  try {\n    const respons = await fetch(\"https://api.contoh.id/siswa\");\n    const data: unknown = await respons.json();\n    if (!Array.isArray(data) || !data.every(adalahSiswa)) {\n      return { tahap: \"gagal\", pesan: \"Bentuk data tidak sesuai\" };\n    }\n    return { tahap: \"berhasil\", data };\n  } catch (e) {\n    return { tahap: \"gagal\", pesan: e instanceof Error ? e.message : \"Galat tak dikenal\" };\n  }\n}\n```\n\nPemakai fungsi ini dipaksa menangani ketiga tahap sebelum mengakses `data`, karena properti itu hanya ada pada `\"berhasil\"`. Tidak ada lagi kasus lupa menangani kegagalan.\n\n## Kesalahan umum pemula\n\n- **Mempercayai `as` untuk data API.** Validasi dulu, karena tipe tidak ada di runtime.\n- **Memakai `!` (non-null assertion) pada hasil `querySelector`** tanpa memastikan elemennya ada.\n- **Lupa `DOM` di `lib`** atau lupa `@types/node`, lalu bingung dengan error \"Cannot find name\".\n- **Menganggap `process.env.X` selalu string.** Tipenya `string | undefined`.\n\n## Rangkuman\n\n- Fungsi async bertipe `Promise<T>`, dan `await` menghasilkan `T`.\n- Hasil `json()` bertipe `any`; terima sebagai `unknown` dan validasi dengan type guard atau pustaka skema.\n- Variabel `catch` bertipe `unknown`; persempit dengan `instanceof Error`.\n- Elemen DOM bisa `null` dan bertipe umum; persempit dengan `instanceof HTMLInputElement` dan kenali event bertipe seperti `SubmitEvent`.\n- Di Node pasang `@types/node`, perlakukan `process.env` sebagai `string | undefined`, dan jalankan `tsc --noEmit` untuk pengecekan tipe.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "const data = await respons.json() lalu kamu menulis data as Siswa dan memakainya langsung. Risikonya?",
+          "code": "",
+          "options": [
+            "Compiler akan memvalidasi isi data saat kode berjalan",
+            "Bila server mengubah bentuk data, tidak ada error kompilasi dan kode gagal di tempat lain saat runtime",
+            "as Siswa mengonversi data menjadi class Siswa",
+            "json() selalu mengembalikan tipe Siswa"
+          ],
+          "answer": 1,
+          "explanation": "as hanya janji ke compiler; validasi nyata butuh kode runtime."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada blok catch (e) di mode strict, bagaimana cara aman membaca pesan error?",
+          "code": "",
+          "options": [
+            "e instanceof Error ? e.message : String(e)",
+            "e.message langsung karena e bertipe Error",
+            "(e as any).message tanpa pengecekan apa pun",
+            "e.toString() karena e bertipe string"
+          ],
+          "answer": 0,
+          "explanation": "Variabel catch bertipe unknown di mode strict."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "const el = document.querySelector(\"#cari\"); el.value menghasilkan error. Cara paling aman memperbaikinya?",
+          "code": "",
+          "options": [
+            "Ganti el menjadi any",
+            "Gunakan el! lalu tetap el.value",
+            "Hapus mode strict",
+            "Periksa if (el instanceof HTMLInputElement) sebelum memakai el.value"
+          ],
+          "answer": 3,
+          "explanation": "instanceof menyempitkan dan memeriksa di runtime."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa tipe process.env.PORT dengan @types/node?",
+          "code": "",
+          "options": [
+            "number",
+            "string",
+            "string | undefined",
+            "unknown"
+          ],
+          "answer": 2,
+          "explanation": "Variabel lingkungan bisa tidak ada, jadi hasilnya bisa undefined."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memuat data dengan status",
+          "prompt": "Tipe: `Status<T> = { tahap: \"berhasil\", data: T } | { tahap: \"gagal\", pesan: string }`. Tulis `async muatSiswa(ambil)`; `ambil` adalah fungsi async yang mengembalikan data `unknown` (seperti `respons.json()`) atau melempar error.\n\n- Bila `ambil` melempar, kembalikan `{ tahap: \"gagal\", pesan }` dengan `pesan` dari `e.message` bila `e instanceof Error`, selain itu `String(e)`.\n- Bila hasilnya bukan array object yang semuanya punya `id` number dan `nama` string, kembalikan `{ tahap: \"gagal\", pesan: \"Bentuk data tidak sesuai\" }`.\n- Selain itu `{ tahap: \"berhasil\", data }`.",
+          "starter": {
+            "code": "async function muatSiswa(ambil) {\n  // TODO: try/catch, validasi bentuk data\n  return { tahap: \"berhasil\", data: await ambil() };\n}\n"
+          },
+          "solution": {
+            "code": "async function muatSiswa(ambil) {\n  try {\n    const data = await ambil();\n    const valid =\n      Array.isArray(data) &&\n      data.every((x) => typeof x === \"object\" && x !== null && typeof x.id === \"number\" && typeof x.nama === \"string\");\n    if (!valid) return { tahap: \"gagal\", pesan: \"Bentuk data tidak sesuai\" };\n    return { tahap: \"berhasil\", data };\n  } catch (e) {\n    return { tahap: \"gagal\", pesan: e instanceof Error ? e.message : String(e) };\n  }\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Data valid berhasil",
+              "check": "(await muatSiswa(async () => [{ id: 1, nama: \"Sari\" }])).tahap === \"berhasil\""
+            },
+            {
+              "name": "Data dikembalikan apa adanya",
+              "check": "(await muatSiswa(async () => [{ id: 1, nama: \"Sari\" }])).data[0].nama === \"Sari\""
+            },
+            {
+              "name": "Error dilaporkan sebagai gagal",
+              "check": "JSON.stringify(await muatSiswa(async () => { throw new Error(\"Jaringan putus\"); })) === '{\"tahap\":\"gagal\",\"pesan\":\"Jaringan putus\"}'"
+            },
+            {
+              "name": "Throw non-Error dijadikan teks",
+              "check": "(await muatSiswa(async () => { throw \"oops\"; })).pesan === \"oops\""
+            },
+            {
+              "name": "Bentuk salah ditolak",
+              "check": "(await muatSiswa(async () => [{ id: \"1\", nama: \"Sari\" }])).pesan === \"Bentuk data tidak sesuai\""
+            },
+            {
+              "name": "Bukan array ditolak",
+              "check": "(await muatSiswa(async () => ({ id: 1, nama: \"S\" }))).tahap === \"gagal\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Membaca variabel lingkungan dengan aman",
+          "prompt": "`process.env.X` bertipe `string | undefined`. Tulis `ambilEnv(env, kunci, bawaan)` yang mengembalikan `env[kunci]` bila ada (dan tidak string kosong), selain itu `bawaan`. Tulis `ambilPort(env)`: baca `PORT` lewat `ambilEnv` dengan bawaan `\"3000\"`, ubah ke number; bila hasilnya bukan bilangan bulat 1 sampai 65535, `throw new Error(\"PORT tidak valid: \" + teks)` dengan `teks` nilai mentahnya.",
+          "starter": {
+            "code": "function ambilEnv(env, kunci, bawaan) {\n  // TODO\n  return env[kunci];\n}\n\nfunction ambilPort(env) {\n  // TODO\n  return 0;\n}\n"
+          },
+          "solution": {
+            "code": "function ambilEnv(env, kunci, bawaan) {\n  const nilai = env[kunci];\n  return nilai === undefined || nilai === \"\" ? bawaan : nilai;\n}\n\nfunction ambilPort(env) {\n  const teks = ambilEnv(env, \"PORT\", \"3000\");\n  const port = Number(teks);\n  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(\"PORT tidak valid: \" + teks);\n  return port;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Hilang memakai bawaan",
+              "check": "ambilEnv({}, \"A\", \"y\") === \"y\""
+            },
+            {
+              "name": "String kosong memakai bawaan",
+              "check": "ambilEnv({ A: \"\" }, \"A\", \"y\") === \"y\""
+            },
+            {
+              "name": "Port dari env menjadi number",
+              "check": "ambilPort({ PORT: \"8080\" }) === 8080"
+            },
+            {
+              "name": "Port bawaan 3000",
+              "check": "ambilPort({}) === 3000"
+            },
+            {
+              "name": "Port salah melempar error",
+              "check": "(() => { try { ambilPort({ PORT: \"abc\" }); return false; } catch (e) { return e.message === \"PORT tidak valid: abc\"; } })()"
+            },
+            {
+              "name": "Port di luar rentang melempar error",
+              "check": "(() => { try { ambilPort({ PORT: \"70000\" }); return false; } catch (e) { return e.message === \"PORT tidak valid: 70000\"; } })()"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Toko Mini",
+    "brief": "Bangun **Toko Mini**: logika pengelola pesanan dengan pola-pola TypeScript yang sudah kamu pelajari: validasi data `unknown`, discriminated union, fungsi generik, dan class dengan field privat. Kodenya JavaScript murni (sandbox menjalankan JavaScript), dengan tipe yang ditulis sebagai komentar JSDoc di bawah ini. Tanpa DOM dan tanpa `fetch`.\n\n## Tipe (dalam notasi TypeScript)\n\n```ts\ntype Status = \"baru\" | \"dibayar\" | \"dikirim\" | \"selesai\" | \"batal\";\ntype Item = { sku: string; jumlah: number; harga: number };\ntype Pesanan = { id: number; pelanggan: string; item: Item[]; status: Status };\ntype Aksi = { jenis: \"bayar\" } | { jenis: \"kirim\" } | { jenis: \"selesai\" } | { jenis: \"batal\" };\ntype Hasil<T> = { ok: true; nilai: T } | { ok: false; galat: string };\n```\n\n## Fungsi dan class wajib\n\n| Nama | Tugas |\n| --- | --- |\n| `parsePesanan(x)` | Terima `unknown`, kembalikan `Hasil<Pesanan>`. Galat (periksa berurutan): bukan object: `\"data bukan object\"`; `id` bukan bilangan bulat > 0: `\"id tidak valid\"`; `pelanggan` bukan string atau kosong setelah `trim()`: `\"pelanggan wajib diisi\"`; `item` bukan array berisi: `\"item kosong\"`; ada item dengan `sku` bukan string kosong, `jumlah` bukan bilangan bulat >= 1, atau `harga` bukan number >= 0: `\"item tidak valid\"`. `status` opsional (bawaan `\"baru\"`); nilai di luar `Status`: `\"status tidak dikenal\"`. `pelanggan` disimpan setelah `trim()`. |\n| `totalPesanan(p)` | Jumlah `jumlah * harga` semua item. |\n| `lanjutkan(p, aksi)` | Kembalikan pesanan **baru** (aslinya tidak berubah). Transisi: `baru` + `bayar` -> `dibayar`; `dibayar` + `kirim` -> `dikirim`; `dikirim` + `selesai` -> `selesai`; `baru` atau `dibayar` + `batal` -> `batal`. Transisi lain: `throw new Error(\"Transisi tidak diizinkan: \" + p.status + \" -> \" + aksi.jenis)`. `jenis` tak dikenal: `throw new Error(\"Aksi tidak dikenal\")`. |\n| `kelompokkan(daftar, fn)` | Generik: `{ [kunci]: elemen[] }` berdasarkan `fn(elemen)`. |\n| `class Toko` | Field privat `#pesanan`. `tambah(x)`: `parsePesanan`; bila sah dan `id` belum ada, simpan dan kembalikan hasilnya; id kembar: `{ ok: false, galat: \"id sudah ada\" }`. `ambil(id)`: pesanan atau `undefined`. `proses(id, aksi)`: `{ ok: true, nilai }` dengan pesanan baru yang disimpan, atau `{ ok: false, galat }` (pesan galat dari `lanjutkan`; id tidak ada: `\"pesanan tidak ditemukan\"`). `laporan()`: `{ jumlah, pendapatan, perStatus }`; `pendapatan` menjumlahkan total pesanan berstatus `dibayar`, `dikirim`, atau `selesai`; `perStatus` menghitung pesanan per status. |\n\n## Contoh\n\n```js\nconst toko = new Toko();\ntoko.tambah({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] });\ntoko.proses(1, { jenis: \"bayar\" });          // { ok: true, nilai: { ..., status: \"dibayar\" } }\ntoko.proses(1, { jenis: \"selesai\" });        // { ok: false, galat: \"Transisi tidak diizinkan: dibayar -> selesai\" }\ntoko.laporan();                              // { jumlah: 1, pendapatan: 10000, perStatus: { dibayar: 1 } }\n```",
+    "prompt": "Bangun logika pengelola pesanan Toko Mini sesuai brief: validasi, transisi status, pengelompokan, dan class Toko.",
+    "starter": {
+      "code": "/** @typedef {\"baru\"|\"dibayar\"|\"dikirim\"|\"selesai\"|\"batal\"} Status */\nconst STATUS = [\"baru\", \"dibayar\", \"dikirim\", \"selesai\", \"batal\"];\n\n/** @param {unknown} x @returns {{ok: true, nilai: object} | {ok: false, galat: string}} */\nfunction parsePesanan(x) {\n  // TODO: validasi berurutan, kembalikan { ok, nilai } atau { ok: false, galat }\n}\n\nfunction totalPesanan(p) {\n  // TODO\n}\n\nfunction lanjutkan(p, aksi) {\n  // TODO: kembalikan pesanan baru, atau lempar Error\n}\n\nfunction kelompokkan(daftar, fn) {\n  // TODO\n}\n\nclass Toko {\n  // TODO: field privat #pesanan, tambah, ambil, proses, laporan\n}\n"
+    },
+    "solution": {
+      "code": "/** @typedef {\"baru\"|\"dibayar\"|\"dikirim\"|\"selesai\"|\"batal\"} Status */\nconst STATUS = [\"baru\", \"dibayar\", \"dikirim\", \"selesai\", \"batal\"];\n\nconst gagal = (galat) => ({ ok: false, galat });\n\n/** @param {unknown} x @returns {{ok: true, nilai: object} | {ok: false, galat: string}} */\nfunction parsePesanan(x) {\n  if (typeof x !== \"object\" || x === null) return gagal(\"data bukan object\");\n  if (!Number.isInteger(x.id) || x.id <= 0) return gagal(\"id tidak valid\");\n  if (typeof x.pelanggan !== \"string\" || x.pelanggan.trim() === \"\") return gagal(\"pelanggan wajib diisi\");\n  if (!Array.isArray(x.item) || x.item.length === 0) return gagal(\"item kosong\");\n  const itemValid = x.item.every(\n    (i) =>\n      typeof i === \"object\" && i !== null &&\n      typeof i.sku === \"string\" && i.sku !== \"\" &&\n      Number.isInteger(i.jumlah) && i.jumlah >= 1 &&\n      typeof i.harga === \"number\" && i.harga >= 0\n  );\n  if (!itemValid) return gagal(\"item tidak valid\");\n  const status = x.status ?? \"baru\";\n  if (!STATUS.includes(status)) return gagal(\"status tidak dikenal\");\n  return { ok: true, nilai: { id: x.id, pelanggan: x.pelanggan.trim(), item: x.item.map((i) => ({ sku: i.sku, jumlah: i.jumlah, harga: i.harga })), status } };\n}\n\nfunction totalPesanan(p) {\n  return p.item.reduce((t, i) => t + i.jumlah * i.harga, 0);\n}\n\nconst ALUR = { bayar: { baru: \"dibayar\" }, kirim: { dibayar: \"dikirim\" }, selesai: { dikirim: \"selesai\" }, batal: { baru: \"batal\", dibayar: \"batal\" } };\n\nfunction lanjutkan(p, aksi) {\n  const tabel = ALUR[aksi.jenis];\n  if (!tabel) throw new Error(\"Aksi tidak dikenal\");\n  const baru = tabel[p.status];\n  if (!baru) throw new Error(\"Transisi tidak diizinkan: \" + p.status + \" -> \" + aksi.jenis);\n  return { ...p, status: baru };\n}\n\nfunction kelompokkan(daftar, fn) {\n  const hasil = {};\n  for (const x of daftar) (hasil[fn(x)] ??= []).push(x);\n  return hasil;\n}\n\nclass Toko {\n  #pesanan = [];\n\n  tambah(x) {\n    const hasil = parsePesanan(x);\n    if (!hasil.ok) return hasil;\n    if (this.#pesanan.some((p) => p.id === hasil.nilai.id)) return gagal(\"id sudah ada\");\n    this.#pesanan.push(hasil.nilai);\n    return hasil;\n  }\n\n  ambil(id) {\n    return this.#pesanan.find((p) => p.id === id);\n  }\n\n  proses(id, aksi) {\n    const indeks = this.#pesanan.findIndex((p) => p.id === id);\n    if (indeks === -1) return gagal(\"pesanan tidak ditemukan\");\n    try {\n      const baru = lanjutkan(this.#pesanan[indeks], aksi);\n      this.#pesanan[indeks] = baru;\n      return { ok: true, nilai: baru };\n    } catch (e) {\n      return gagal(e instanceof Error ? e.message : String(e));\n    }\n  }\n\n  laporan() {\n    const berbayar = [\"dibayar\", \"dikirim\", \"selesai\"];\n    const perStatus = {};\n    let pendapatan = 0;\n    for (const p of this.#pesanan) {\n      perStatus[p.status] = (perStatus[p.status] ?? 0) + 1;\n      if (berbayar.includes(p.status)) pendapatan += totalPesanan(p);\n    }\n    return { jumlah: this.#pesanan.length, pendapatan, perStatus };\n  }\n}\n"
+    },
+    "setup": "",
+    "tests": [
+      {
+        "name": "parsePesanan menerima data sah, merapikan pelanggan, status bawaan baru",
+        "check": "(() => { const r = parsePesanan({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] }); return r.ok === true && r.nilai.pelanggan === \"Sari\" && r.nilai.status === \"baru\" && r.nilai.id === 1; })()"
+      },
+      {
+        "name": "parsePesanan menolak bukan object dan id salah",
+        "check": "parsePesanan(null).galat === \"data bukan object\" && parsePesanan(\"x\").galat === \"data bukan object\" && parsePesanan({ id: 0, pelanggan: \"A\", item: [] }).galat === \"id tidak valid\""
+      },
+      {
+        "name": "parsePesanan memeriksa pelanggan dan item",
+        "check": "parsePesanan({ id: 1, pelanggan: \"  \", item: [] }).galat === \"pelanggan wajib diisi\" && parsePesanan({ id: 1, pelanggan: \"A\", item: [] }).galat === \"item kosong\""
+      },
+      {
+        "name": "parsePesanan menolak item dan status tidak valid",
+        "check": "parsePesanan({ id: 1, pelanggan: \"A\", item: [{ sku: \"A\", jumlah: 0, harga: 1 }] }).galat === \"item tidak valid\" && parsePesanan({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }], status: \"lain\" }).galat === \"status tidak dikenal\""
+      },
+      {
+        "name": "totalPesanan menjumlahkan jumlah kali harga",
+        "check": "totalPesanan({ item: [{ sku: \"A\", jumlah: 2, harga: 5000 }, { sku: \"B\", jumlah: 1, harga: 2500 }] }) === 12500"
+      },
+      {
+        "name": "lanjutkan menjalankan alur normal tanpa mengubah aslinya",
+        "check": "(() => { const p = { id: 1, status: \"baru\", item: [] }; const q = lanjutkan(p, { jenis: \"bayar\" }); const r = lanjutkan(q, { jenis: \"kirim\" }); return q.status === \"dibayar\" && r.status === \"dikirim\" && p.status === \"baru\" && lanjutkan(r, { jenis: \"selesai\" }).status === \"selesai\"; })()"
+      },
+      {
+        "name": "lanjutkan membatalkan pesanan baru atau dibayar",
+        "check": "lanjutkan({ status: \"baru\" }, { jenis: \"batal\" }).status === \"batal\" && lanjutkan({ status: \"dibayar\" }, { jenis: \"batal\" }).status === \"batal\""
+      },
+      {
+        "name": "lanjutkan menolak transisi dan aksi yang salah",
+        "check": "(() => { const e = (f) => { try { f(); return \"\"; } catch (x) { return x.message; } }; return e(() => lanjutkan({ status: \"dibayar\" }, { jenis: \"selesai\" })) === \"Transisi tidak diizinkan: dibayar -> selesai\" && e(() => lanjutkan({ status: \"selesai\" }, { jenis: \"batal\" })) === \"Transisi tidak diizinkan: selesai -> batal\" && e(() => lanjutkan({ status: \"baru\" }, { jenis: \"terbang\" })) === \"Aksi tidak dikenal\"; })()"
+      },
+      {
+        "name": "kelompokkan mengelompokkan berdasarkan fungsi kunci",
+        "check": "JSON.stringify(kelompokkan([1, 2, 3, 4], (x) => (x % 2 ? \"ganjil\" : \"genap\"))) === '{\"ganjil\":[1,3],\"genap\":[2,4]}'"
+      },
+      {
+        "name": "Toko menolak id kembar dan menyimpan data sah",
+        "check": "(() => { const t = new Toko(); const a = t.tambah({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] }); const b = t.tambah({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] }); return Object.keys(t).length === 0 && a.ok === true && b.ok === false && b.galat === \"id sudah ada\" && t.ambil(1).pelanggan === \"Sari\" && t.ambil(9) === undefined; })()"
+      },
+      {
+        "name": "Toko.proses menyimpan perubahan atau melaporkan galat",
+        "check": "(() => { const t = new Toko(); t.tambah({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] }); const a = t.proses(1, { jenis: \"bayar\" }); const b = t.proses(1, { jenis: \"selesai\" }); const c = t.proses(5, { jenis: \"bayar\" }); return a.ok === true && a.nilai.status === \"dibayar\" && t.ambil(1).status === \"dibayar\" && b.ok === false && b.galat === \"Transisi tidak diizinkan: dibayar -> selesai\" && c.galat === \"pesanan tidak ditemukan\"; })()"
+      },
+      {
+        "name": "Toko.laporan menghitung pendapatan hanya dari pesanan berbayar",
+        "check": "(() => { const t = new Toko(); t.tambah({ id: 1, pelanggan: \" Sari \", item: [{ sku: \"A1\", jumlah: 2, harga: 5000 }] }); t.tambah({ id: 2, pelanggan: \"B\", item: [{ sku: \"C\", jumlah: 1, harga: 3000 }] }); t.tambah({ id: 3, pelanggan: \"C\", item: [{ sku: \"D\", jumlah: 1, harga: 9000 }] }); t.proses(1, { jenis: \"bayar\" }); t.proses(3, { jenis: \"batal\" }); const l = t.laporan(); return l.jumlah === 3 && l.pendapatan === 10000 && l.perStatus.dibayar === 1 && l.perStatus.baru === 1 && l.perStatus.batal === 1; })()"
+      }
+    ]
+  }
+}

@@ -1,15 +1,17 @@
 // Renders the assets scripts/deck-typescript.py needs into <dir>: lucide icons
 // (icons/<name>-w.png white, -k.png green, 256px) and the deck diagrams
-// (<name>.png, 2x). Run: node scripts/deck-typescript-assets.mjs <dir>
+// (<name>.png, 2x), plus logo-typescript-w.png from Simple Icons (CC0), taken from
+// a temporary install outside the repo (cd /tmp && npm i simple-icons).
+// Run: node scripts/deck-typescript-assets.mjs <dir> <path to node_modules/simple-icons>
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
-const dir = process.argv[2];
-if (!dir) throw new Error("usage: node scripts/deck-typescript-assets.mjs <dir>");
+const [dir, simpleIcons] = process.argv.slice(2);
+if (!dir || !simpleIcons) throw new Error("usage: node scripts/deck-typescript-assets.mjs <dir> <path to node_modules/simple-icons>");
 mkdirSync(join(dir, "icons"), { recursive: true });
 
-const ICONS = "file-code wrench braces type list-checks shield-check package layers boxes git-branch route split cpu terminal settings globe lock lightbulb rocket clipboard-check book-open search zap check refresh-cw funnel key-round database server activity code bug file-text link eye ban shuffle gauge puzzle target scale box tag sparkles".split(" ");
+const ICONS = "file-code wrench braces type list-checks shield-check package layers boxes git-branch route split cpu terminal settings globe lock lightbulb rocket clipboard-check book-open search zap check refresh-cw funnel key-round database server activity code bug file-text link eye ban circle shuffle gauge puzzle target scale box tag sparkles".split(" ");
 const attr = (o) => Object.entries(o).filter(([k]) => k !== "key").map(([k, v]) => `${k}="${v}"`).join(" ");
 for (const name of ICONS) {
   const { __iconData } = await import(`../node_modules/lucide-react/dist/esm/icons/${name}.mjs`);
@@ -19,6 +21,9 @@ for (const name of ICONS) {
     await sharp(Buffer.from(svg), { density: 300 }).resize(256, 256).png().toFile(join(dir, "icons", `${name}-${suffix}.png`));
   }
 }
+
+const logo = (await import("node:fs")).readFileSync(join(simpleIcons, "icons", "typescript.svg"), "utf8").replace("<path ", '<path fill="#ffffff" ');
+await sharp(Buffer.from(logo.replace("<svg ", '<svg width="512" height="512" ')), { density: 300 }).resize(512, 512).png().toFile(join(dir, "icons", "logo-typescript-w.png"));
 
 const INK = "#0f172a", G = "#10b981", GL = "#d1fae5", AM = "#f59e0b", AML = "#fef3c7", SL = "#f1f5f9", RED = "#ef4444", REDL = "#fee2e2";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
