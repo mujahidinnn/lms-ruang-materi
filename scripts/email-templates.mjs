@@ -9,8 +9,8 @@ const link = (type) => `{{ .SiteURL }}/masuk/callback?token_hash={{ .TokenHash }
 
 import { emailLayout } from "../lib/email-layout.mjs";
 
-const ignore = "Kalau kamu tidak meminta email ini, abaikan saja. Akunmu tetap aman.";
-const secure = "Kalau ini bukan kamu, segera ganti kata sandi dan hubungi kami.";
+const ignore = "Tidak meminta email ini? Abaikan saja, akunmu tetap aman.";
+const secure = "Bukan kamu yang melakukannya? Segera ganti kata sandi dan hubungi kami.";
 
 // key = Supabase config suffix, file = supabase/templates name (config.toml).
 const T = {
