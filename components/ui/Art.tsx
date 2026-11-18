@@ -8,13 +8,8 @@ const INK = "#0f100d", W = "#ffffff", M1 = "#e3edc8", M2 = "#d0e4a4", M3 = "#b5d
 const line = { stroke: INK, strokeWidth: 5, strokeLinecap: "round", strokeLinejoin: "round", fill: "none" } as const;
 const TONES = [M1, M2, M3];
 
-// Shape with its hard shadow; .art-sh turns the copy solid ink (globals.css).
-const S = ({ children }: { children: ReactNode }) => (
-  <>
-    <g className="art-sh" transform="translate(4 4)">{children}</g>
-    <g>{children}</g>
-  </>
-);
+// Grouping only: the offset shadow copy made thick strokes pile up into blobs.
+const S = ({ children }: { children: ReactNode }) => <g>{children}</g>;
 const Dot = ({ x, y, r = 9, f = M3 }: { x: number; y: number; r?: number; f?: string }) => <circle cx={x} cy={y} r={r} {...line} fill={f} />;
 const Spark = ({ x, y, s = 1 }: { x: number; y: number; s?: number }) => <path transform={`translate(${x} ${y}) scale(${s})`} d="M0 -14C1 -5 5 -1 14 0C5 1 1 5 0 14C-1 5 -5 1 -14 0C-5 -1 -1 -5 0 -14Z" fill={INK} />;
 
