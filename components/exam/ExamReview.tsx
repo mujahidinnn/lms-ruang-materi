@@ -1,4 +1,5 @@
 import { Check, X } from "lucide-react";
+import LaporBab from "@/components/belajar/LaporBab";
 import { Passed, TryAgain } from "@/components/illustrations";
 
 export type Review = {
@@ -6,7 +7,7 @@ export type Review = {
   passed: boolean;
   pass_score: number;
   show_keys: boolean;
-  questions: { prompt: string; code: string | null; options: string[]; chosen: number | null; answer: number | null; explanation: string }[];
+  questions: { id: string; prompt: string; code: string | null; options: string[]; chosen: number | null; answer: number | null; explanation: string }[];
 };
 
 // Never "Gagal": a failed result says "Belum lulus" and points back to the
@@ -53,6 +54,7 @@ export default function ExamReview({ review, slug, children }: { review: Review;
             </ul>
             {q.chosen === null && <p className="mt-2 text-sm text-zinc-500">Tidak dijawab.</p>}
             <p className="mt-3 text-sm leading-relaxed text-zinc-300">{q.explanation}</p>
+            <LaporBab questionId={q.id} className="mt-3 bg-zinc-800/60 px-4" />
           </li>
         ))}
       </ol>
