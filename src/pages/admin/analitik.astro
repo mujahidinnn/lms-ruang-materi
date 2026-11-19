@@ -13,7 +13,7 @@ type Analytics = {
   chapters: { slug: string; topic: string; position: number; title: string; started: number; done: number }[];
   questions: { id: string; slug: string; topic: string; prompt: string; seen: number; wrong: number }[];
 };
-type Attempt = { user_id: string; score: number | null; passed: boolean | null; exams: { topics: { slug: string } } };
+type Attempt = { submitted_at: string | null; user_id: string; score: number | null; passed: boolean | null; exams: { topics: { slug: string } } };
 
 const db = await createClient();
 const { data } = await db.rpc("admin_analytics");
@@ -24,19 +24,19 @@ if (!a) return Astro.rewrite("/404");
 const since = new Date(Date.now() - 30 * 864e5).toISOString();
 const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
 const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }, { data: sessions }, { data: codeEx }, { data: codePass }, { data: cardData }, { data: reviews }, { data: allDays }] = await Promise.all([
-  db.from("exam_attempts").select("user_id, score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
+  db.from("exam_attempts").select("user_id, submitted_at, score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
   db.from("chapters").select("topics(slug)").eq("status", "published"),
   db.from("certificates").select("user_id, topics(slug)").limit(5000),
   db.from("exam_questions").select("id, options, answer").in("id", a.questions.map((q) => q.id)),
   db.from("import_jobs").select("provider, model, status, input_tokens, output_tokens").gte("created_at", since).limit(2000),
   db.from("learning_days").select("user_id, day").gte("day", since30).limit(20000),
-  db.from("chapter_progress").select("user_id").limit(20000),
+  db.from("chapter_progress").select("user_id, completed_at").limit(20000),
   db.rpc("admin_users"),
-  db.from("practice_sessions").select("user_id").limit(20000),
+  db.from("practice_sessions").select("user_id, finished_at").limit(20000),
   db.from("code_exercises").select("id, title, chapters!inner(position, status, topics(slug, title))").eq("chapters.status", "published").limit(2000),
   db.from("code_progress").select("exercise_id").limit(20000),
   db.from("flashcards").select("id, front, topics(slug, title)").eq("status", "published").limit(5000),
-  db.from("flashcard_reviews").select("flashcard_id, box").limit(20000),
+  db.from("flashcard_reviews").select("flashcard_id, box, reviewed_at").limit(20000),
   db.from("learning_days").select("user_id, day").limit(50000),
 ]);
 const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
@@ -114,6 +114,26 @@ const funnel = [
   { label: "Mengumpulkan ujian", n: reached(attempts.filter((t) => t.user_id) as { user_id: string }[]) },
   { label: "Punya sertifikat", n: reached(certs as { user_id: string }[] | null) },
 ];
+// Active hours: every timestamped learning action in 30 days, bucketed by weekday x hour in WIB (UTC+7, no DST).
+const cells = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
+const stamps = [
+  ...((done ?? []) as { completed_at: string }[]).map((r) => r.completed_at),
+  ...((sessions ?? []) as { finished_at: string }[]).map((r) => r.finished_at),
+  ...((reviews ?? []) as { reviewed_at: string }[]).map((r) => r.reviewed_at),
+  ...attempts.map((r) => r.submitted_at),
+];
+let actions = 0;
+for (const t of stamps) {
+  if (!t || t < since) continue;
+  const d = new Date(Date.parse(t) + 7 * 36e5);
+  cells[(d.getUTCDay() + 6) % 7][d.getUTCHours()]++;
+  actions++;
+}
+const cellMax = Math.max(1, ...cells.flat());
+const weekdays = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const dayNames = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+const peak = cells.flatMap((row, d) => row.map((n, h) => ({ d, h, n }))).sort((x, y) => y.n - x.n)[0];
+const hour2 = (h: number) => String(h).padStart(2, "0");
 // Retention: of students old enough, how many studied again at least N days after signing up.
 type Created = Person & { created_at: string };
 const lastDay = new Map<string, string>();
@@ -221,6 +241,38 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
             );
           })}
         </ol>
+      </section>
+
+      <section aria-labelledby="jam" class={card}>
+        <h2 id="jam" class="text-lg font-bold tracking-tight">Jam murid belajar</h2>
+        <p class="mt-1 text-sm text-zinc-400">
+          {actions
+            ? `Aktivitas belajar 30 hari terakhir menurut hari dan jam (WIB). Paling ramai ${dayNames[peak.d]} pukul ${hour2(peak.h)}.00, cocok untuk jadwal pengumuman.`
+            : "Belum ada aktivitas belajar 30 hari terakhir."}
+        </p>
+        {actions > 0 && (
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-xs text-zinc-500">
+              <caption class="sr-only">Jumlah aktivitas belajar per hari dan jam</caption>
+              <thead>
+                <tr><td class="w-9"></td>{Array.from({ length: 24 }, (_, h) => <th scope="col" class="overflow-visible whitespace-nowrap font-normal tabular-nums"><span class={h % 3 ? "sr-only" : ""}>{hour2(h)}</span></th>)}</tr>
+              </thead>
+              <tbody>
+                {cells.map((row, d) => (
+                  <tr>
+                    <th scope="row" class="pr-1 text-left font-normal">{weekdays[d]}</th>
+                    {row.map((n, h) => (
+                      <td title={`${dayNames[d]} ${hour2(h)}.00: ${n} aktivitas`} class="h-5 rounded bg-zinc-800 p-0">
+                        <span class={`block h-full w-full rounded ${n ? good : ""}`} style={n ? `opacity:${0.25 + (0.75 * n) / cellMax}` : ""}></span>
+                        <span class="sr-only">{n}</span>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="retensi" class={card}>
