@@ -1,6 +1,6 @@
 // Hand-written service worker. Caches an allowlist only; everything else
 // goes straight to the network. Bump VERSION on every change to this file.
-const VERSION = "rm-8";
+const VERSION = "rm-9";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE = "/offline.html";
@@ -62,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const path = url.pathname;
-  if (path.startsWith("/_astro/") || path.startsWith("/icons/") || path.startsWith("/praktik/")) {
+  if (path.startsWith("/_astro/") || path.startsWith("/icons/") || path.startsWith("/praktik/") || path.startsWith("/ilustrasi/")) {
     event.respondWith(cacheFirst(request));
   } else if (request.mode === "navigate") {
     if (path === "/" || path.startsWith("/belajar/") || path.startsWith("/roadmap")) {
