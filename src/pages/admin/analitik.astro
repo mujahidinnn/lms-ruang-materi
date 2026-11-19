@@ -23,7 +23,7 @@ if (!a) return Astro.rewrite("/404");
 // Extra detail read through the admin's own access; a failed read only hides its column.
 const since = new Date(Date.now() - 30 * 864e5).toISOString();
 const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }, { data: sessions }] = await Promise.all([
+const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }, { data: sessions }, { data: codeEx }, { data: codePass }, { data: cardData }, { data: reviews }, { data: allDays }] = await Promise.all([
   db.from("exam_attempts").select("user_id, score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
   db.from("chapters").select("topics(slug)").eq("status", "published"),
   db.from("certificates").select("user_id, topics(slug)").limit(5000),
@@ -33,6 +33,11 @@ const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobD
   db.from("chapter_progress").select("user_id").limit(20000),
   db.rpc("admin_users"),
   db.from("practice_sessions").select("user_id").limit(20000),
+  db.from("code_exercises").select("id, title, chapters!inner(position, status, topics(slug, title))").eq("chapters.status", "published").limit(2000),
+  db.from("code_progress").select("exercise_id").limit(20000),
+  db.from("flashcards").select("id, front, topics(slug, title)").eq("status", "published").limit(5000),
+  db.from("flashcard_reviews").select("flashcard_id, box").limit(20000),
+  db.from("learning_days").select("user_id, day").limit(50000),
 ]);
 const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
   const m = new Map<string, number>();
@@ -109,6 +114,40 @@ const funnel = [
   { label: "Mengumpulkan ujian", n: reached(attempts.filter((t) => t.user_id) as { user_id: string }[]) },
   { label: "Punya sertifikat", n: reached(certs as { user_id: string }[] | null) },
 ];
+// Retention: of students old enough, how many studied again at least N days after signing up.
+type Created = Person & { created_at: string };
+const lastDay = new Map<string, string>();
+for (const d of (allDays ?? []) as { user_id: string; day: string }[]) if (d.day > (lastDay.get(d.user_id) ?? "")) lastDay.set(d.user_id, d.day);
+const retention = [7, 14, 28].map((n) => {
+  const old = (students as Created[]).filter((x) => Date.now() - new Date(x.created_at).getTime() >= n * 864e5);
+  const back = old.filter((x) => {
+    const l = lastDay.get(x.user_id);
+    return l && Date.parse(l) - Date.parse(dayKey.format(new Date(x.created_at))) >= n * 864e5;
+  });
+  return { n, total: old.length, back: back.length };
+});
+// Code exercises nobody passes, among classes with 3+ learners.
+const startedBy = new Map(a.topics.map((t) => [t.slug, t.started]));
+const passBy = count((codePass ?? []) as { exercise_id: string }[], (r) => r.exercise_id);
+type Ex = { id: string; title: string; chapters: { position: number; topics: { slug: string; title: string } } };
+const codeRows = ((codeEx ?? []) as unknown as Ex[])
+  .map((e) => ({ e, started: startedBy.get(e.chapters.topics.slug) ?? 0, passed: passBy.get(e.id) ?? 0 }))
+  .filter((r) => r.started >= 3)
+  .sort((x, y) => x.passed / x.started - y.passed / y.started || y.started - x.started)
+  .slice(0, 8);
+// Flashcards: cards most learners keep in box 1-2 (not yet remembered).
+const boxes = new Map<string, { n: number; low: number }>();
+for (const v of (reviews ?? []) as { flashcard_id: string; box: number }[]) {
+  const b = boxes.get(v.flashcard_id) ?? { n: 0, low: 0 };
+  b.n++; b.low += v.box <= 2 ? 1 : 0;
+  boxes.set(v.flashcard_id, b);
+}
+type Card = { id: string; front: string; topics: { slug: string; title: string } };
+const cardRows = ((cardData ?? []) as unknown as Card[])
+  .map((c) => ({ c, ...(boxes.get(c.id) ?? { n: 0, low: 0 }) }))
+  .filter((r) => r.n >= 3)
+  .sort((x, y) => y.low / y.n - x.low / x.n || y.n - x.n)
+  .slice(0, 8);
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const topics = a.topics.filter((t) => t.started > 0);
 const chapters = a.chapters.slice(0, 10);
@@ -182,6 +221,19 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
             );
           })}
         </ol>
+      </section>
+
+      <section aria-labelledby="retensi" class={card}>
+        <h2 id="retensi" class="text-lg font-bold tracking-tight">Murid yang kembali belajar</h2>
+        <p class="mt-1 text-sm text-zinc-400">Dari murid yang sudah mendaftar cukup lama, berapa persen yang masih belajar paling cepat 7, 14, atau 28 hari setelah daftar.</p>
+        <ul class="mt-4 grid gap-4">
+          {retention.map((x) => (
+            <li>
+              <p class="flex items-baseline justify-between gap-3 text-sm"><span class="font-medium">Kembali setelah {x.n} hari</span><span class="shrink-0 text-xs tabular-nums text-zinc-400">{x.total ? `${x.back} dari ${x.total} murid (${pct(x.back, x.total)}%)` : "belum ada murid yang cukup lama"}</span></p>
+              <div aria-hidden class={`mt-2 ${track}`}><div class={`h-full rounded-full ${good}`} style={`width:${pct(x.back, x.total)}%`}></div></div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section aria-labelledby="kelas" class={card}>
@@ -312,6 +364,46 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
           </ol>
         )}
       </section>
+
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section aria-labelledby="kode" class={card}>
+          <h2 id="kode" class="text-lg font-bold tracking-tight">Latihan kode yang jarang lulus</h2>
+          <p class="mt-1 text-sm text-zinc-400">Murid yang lulus dari yang membuka kelasnya (minimal 3 murid). Latihan yang tidak pernah lulus mungkin rusak, bukan sulit.</p>
+          {codeRows.length === 0 ? (
+            <p class="mt-4 text-sm text-zinc-400">Belum cukup data.</p>
+          ) : (
+            <ol class="mt-3 divide-y divide-zinc-800">
+              {codeRows.map(({ e, started, passed }) => (
+                <li>
+                  <a href={`/admin/topik/${e.chapters.topics.slug}`} class="group flex min-h-14 items-center gap-3 focus-visible:outline-2 focus-visible:outline-accent">
+                    <span class="min-w-0 flex-1 text-sm"><span class="block truncate font-medium group-hover:text-accent">{e.title}</span><span class="block truncate text-xs text-zinc-500">{e.chapters.topics.title}, bab {e.chapters.position + 1}</span></span>
+                    <span class={`shrink-0 text-right text-xs tabular-nums ${passed === 0 ? "text-red-400" : "text-zinc-400"}`}><span class="block font-semibold text-zinc-50">{pct(passed, started)}% lulus</span>{passed} dari {started}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section aria-labelledby="kartu" class={card}>
+          <h2 id="kartu" class="text-lg font-bold tracking-tight">Flashcard yang sulit diingat</h2>
+          <p class="mt-1 text-sm text-zinc-400">Kartu yang masih di kotak 1 atau 2 pada sebagian besar murid (minimal 3 murid).</p>
+          {cardRows.length === 0 ? (
+            <p class="mt-4 text-sm text-zinc-400">Belum cukup data.</p>
+          ) : (
+            <ol class="mt-3 divide-y divide-zinc-800">
+              {cardRows.map(({ c, n, low }) => (
+                <li>
+                  <a href={`/admin/topik/${c.topics.slug}`} class="group flex min-h-14 items-center gap-3 focus-visible:outline-2 focus-visible:outline-accent">
+                    <span class="min-w-0 flex-1 text-sm"><span class="block truncate font-medium group-hover:text-accent">{c.front}</span><span class="block truncate text-xs text-zinc-500">{c.topics.title}</span></span>
+                    <span class="shrink-0 text-right text-xs tabular-nums text-zinc-400"><span class="block font-semibold text-zinc-50">{pct(low, n)}% belum hafal</span>{low} dari {n} murid</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
 
       <section aria-labelledby="impor" class={card}>
         <h2 id="impor" class="text-lg font-bold tracking-tight">Impor AI, 30 hari terakhir</h2>
