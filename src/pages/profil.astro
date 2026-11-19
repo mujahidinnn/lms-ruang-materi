@@ -37,12 +37,16 @@ const METODE: Record<string, string> = { email: "Email", google: "Google" };
 const { data: ids } = await db.auth.getUserIdentities();
 const methods = [...new Set((ids?.identities ?? []).map((i) => METODE[i.provider] ?? i.provider))];
 const { data: sessions } = await db.rpc("my_sessions");
-const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; refreshed_at: string; current: boolean }[]).map((x) => {
+const WIN: Record<string, string> = { "10.0": "10/11", "6.3": "8.1", "6.1": "7" };
+const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; ip: string | null; created_at: string; refreshed_at: string; current: boolean }[]).map((x) => {
   const ua = x.user_agent ?? "";
-  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\/|CriOS/.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
-  const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
-  return { ...x, nama: os ? `${browser} di ${os}` : browser, hp: /Android|iPhone|iPad|Mobile/.test(ua) };
+  const ver = (re: RegExp) => ua.match(re)?.[1]?.split(".")[0];
+  const [b, bv] = /Edg\/(\d+)/.test(ua) ? ["Edge", ver(/Edg\/([\d.]+)/)] : /OPR\/(\d+)/.test(ua) ? ["Opera", ver(/OPR\/([\d.]+)/)] : /Firefox\/(\d+)/.test(ua) ? ["Firefox", ver(/Firefox\/([\d.]+)/)] : /(?:Chrome|CriOS)\/(\d+)/.test(ua) ? ["Chrome", ver(/(?:Chrome|CriOS)\/([\d.]+)/)] : /Safari\//.test(ua) ? ["Safari", ver(/Version\/([\d.]+)/)] : ["Browser", undefined];
+  const os = /Android ([\d.]+)/.exec(ua) ? `Android ${ver(/Android ([\d.]+)/)}` : /iPhone|iPad/.test(ua) ? `iOS ${(ua.match(/OS (\d+)_/) ?? [])[1] ?? ""}`.trim() : /Windows NT ([\d.]+)/.exec(ua) ? `Windows ${WIN[ua.match(/Windows NT ([\d.]+)/)![1]] ?? ""}`.trim() : /Mac OS X/.test(ua) ? "macOS" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "";
+  const model = ua.match(/Android [\d.]+; ([^;)]+)/)?.[1]?.replace(/ Build.*/, "");
+  return { ...x, nama: `${b}${bv ? ` ${bv}` : ""}${os ? ` · ${os}` : ""}`, model: model && model !== "K" ? model : null, hp: /Android|iPhone|iPad|Mobile/.test(ua) };
 });
+const tgl = (d: string) => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: p?.timezone ?? "Asia/Jakarta" });
 const zone = p?.timezone ?? "Asia/Jakarta";
 ---
 
@@ -134,10 +138,14 @@ const zone = p?.timezone ?? "Asia/Jakarta";
         {perangkat.length > 0 && (
           <ul class="mt-4 divide-y divide-zinc-800 text-sm">
             {perangkat.map((x) => (
-              <li class="flex items-center gap-3 py-2.5">
-                {x.hp ? <Smartphone aria-hidden className="size-4 shrink-0" /> : <Monitor aria-hidden className="size-4 shrink-0" />}
-                <span class="min-w-0 flex-1 truncate font-semibold">{x.nama}</span>
-                {x.current ? <span class="rounded-full bg-matcha-300 px-2.5 py-0.5 text-xs font-bold text-noir">Perangkat ini</span> : <span class="shrink-0 text-xs text-zinc-400"><time datetime={x.refreshed_at}>{new Date(x.refreshed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: zone })}</time></span>}
+              <li class="flex items-start gap-3 py-3">
+                {x.hp ? <Smartphone aria-hidden className="mt-0.5 size-4 shrink-0" /> : <Monitor aria-hidden className="mt-0.5 size-4 shrink-0" />}
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold">{x.nama}{x.model && <span class="font-normal text-zinc-400"> · {x.model}</span>}</p>
+                  <p class="mt-0.5 text-xs text-zinc-400">Masuk {tgl(x.created_at)}{!x.current && <> · aktif {tgl(x.refreshed_at)}</>}</p>
+                  {x.ip && <p class="text-xs text-zinc-400">IP {x.ip}</p>}
+                </div>
+                {x.current && <span class="shrink-0 rounded-full bg-matcha-300 px-2.5 py-0.5 text-xs font-bold text-noir">Perangkat ini</span>}
               </li>
             ))}
           </ul>
