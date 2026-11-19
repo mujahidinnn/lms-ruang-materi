@@ -1,3 +1,4 @@
+import { recordCountry } from "@/lib/session-geo";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import type { APIRoute } from "astro";
 import { NEXT_COOKIE } from "@/lib/actions/masuk";
@@ -32,6 +33,8 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
     // A Google sign-in comes back with ?code=; an email link with a token.
     return redirect(code ? "/masuk?galat=google" : "/masuk?galat=1");
   }
+
+  await recordCountry(supabase);
 
   // A recovery link signs the learner in to set a new password.
   if (type === "recovery") return redirect("/profil#sandi");

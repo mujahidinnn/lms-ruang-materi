@@ -1,3 +1,4 @@
+import { recordCountry } from "@/lib/session-geo";
 import { currentRequest, redirect } from "@/lib/request";
 import { z } from "zod";
 import { claimRef, parseRef, REF_COOKIE } from "@/lib/referral";
@@ -32,9 +33,11 @@ function callbackUrl(next: string) {
 export async function masuk(_prev: MasukState, form: FormData): Promise<MasukState> {
   const parsed = z.object({ email, password: z.string().min(1, "Isi password-nya.").max(200), next: z.string().optional() }).safeParse(Object.fromEntries(form));
   if (!parsed.success) return fail(parsed.error.issues[0].message);
-  const { error } = await (await createClient()).auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  const db = await createClient();
+  const { error } = await db.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
   if (error?.code === "email_not_confirmed") return fail("Email ini belum dikonfirmasi. Buka email konfirmasi dari Ruang Materi, atau masuk lewat link email.");
   if (error) return fail("Email atau password salah.", { daftar: true });
+  await recordCountry(db);
   redirect(safeNext(parsed.data.next, "/dasbor"));
 }
 
