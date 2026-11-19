@@ -22,12 +22,16 @@ if (!a) return Astro.rewrite("/404");
 
 // Extra detail read through the admin's own access; a failed read only hides its column.
 const since = new Date(Date.now() - 30 * 864e5).toISOString();
-const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }] = await Promise.all([
+const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }] = await Promise.all([
   db.from("exam_attempts").select("score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
   db.from("chapters").select("topics(slug)").eq("status", "published"),
   db.from("certificates").select("topics(slug)").limit(5000),
   db.from("exam_questions").select("id, options, answer").in("id", a.questions.map((q) => q.id)),
   db.from("import_jobs").select("provider, model, status, input_tokens, output_tokens").gte("created_at", since).limit(2000),
+  db.from("learning_days").select("user_id").gte("day", since30).limit(20000),
+  db.from("chapter_progress").select("user_id").limit(20000),
+  db.rpc("admin_users"),
 ]);
 const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
   const m = new Map<string, number>();
@@ -58,6 +62,28 @@ for (const j of (jobData ?? []) as Job[]) {
 }
 const models = [...byModel.values()].sort((x, y) => y.jobs - x.jobs);
 const nf = new Intl.NumberFormat("id-ID");
+// Diligent: most study days in 30 days. Slipping: studied before, quiet for 14+ days.
+type Person = { user_id: string; email: string; display_name: string | null; role: string; last_active_at: string | null };
+const tally = (rows: { user_id: string }[] | null) => {
+  const m = new Map<string, number>();
+  for (const r of rows ?? []) m.set(r.user_id, (m.get(r.user_id) ?? 0) + 1);
+  return m;
+};
+const dayCount = tally(days);
+const chapterDone = tally(done);
+const students = ((people ?? []) as Person[]).filter((x) => x.role === "student");
+const label = (x: Person) => x.display_name || x.email;
+const diligent = students
+  .map((x) => ({ x, days: dayCount.get(x.user_id) ?? 0, chapters: chapterDone.get(x.user_id) ?? 0 }))
+  .filter((r) => r.days > 0)
+  .sort((a, b) => b.days - a.days || b.chapters - a.chapters)
+  .slice(0, 5);
+const cutoff = Date.now() - 14 * 864e5;
+const slipping = students
+  .filter((x) => x.last_active_at && new Date(x.last_active_at).getTime() < cutoff && (chapterDone.get(x.user_id) ?? 0) > 0)
+  .sort((a, b) => new Date(a.last_active_at!).getTime() - new Date(b.last_active_at!).getTime())
+  .slice(0, 5);
+const idDate = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const topics = a.topics.filter((t) => t.started > 0);
 const chapters = a.chapters.slice(0, 10);
@@ -133,6 +159,47 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
           </div>
         )}
       </section>
+
+      <div class="grid gap-6 lg:grid-cols-2">
+        <section aria-labelledby="rajin" class={card}>
+          <h2 id="rajin" class="text-lg font-bold tracking-tight">Murid paling rajin</h2>
+          <p class="mt-1 text-sm text-zinc-400">Paling banyak hari belajar dalam 30 hari terakhir.</p>
+          {diligent.length === 0 ? (
+            <p class="mt-4 text-sm text-zinc-400">Belum ada aktivitas belajar 30 hari terakhir.</p>
+          ) : (
+            <ol class="mt-3 divide-y divide-zinc-800">
+              {diligent.map((r, i) => (
+                <li>
+                  <a href={`/admin/pengguna/${r.x.user_id}`} data-murid class="flex min-h-14 items-center gap-3 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+                    <span aria-hidden class={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold text-zinc-50 ${i === 0 ? "bg-tile-peach" : "bg-zinc-800"}`}>{i + 1}</span>
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium" data-nama>{label(r.x)}</span>
+                    <span class="shrink-0 text-right text-xs tabular-nums text-zinc-400"><span class="block font-semibold text-zinc-50">{r.days} hari</span>{r.chapters} bab selesai</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section aria-labelledby="jarang" class={card}>
+          <h2 id="jarang" class="text-lg font-bold tracking-tight">Mulai jarang aktif</h2>
+          <p class="mt-1 text-sm text-zinc-400">Sudah pernah menyelesaikan bab, tapi tidak aktif 14 hari atau lebih. Cocok untuk diberi pengumuman.</p>
+          {slipping.length === 0 ? (
+            <p class="mt-4 text-sm text-zinc-400">Tidak ada. Semua murid yang pernah belajar masih aktif.</p>
+          ) : (
+            <ul class="mt-3 divide-y divide-zinc-800">
+              {slipping.map((x) => (
+                <li>
+                  <a href={`/admin/pengguna/${x.user_id}`} data-murid class="flex min-h-14 items-center gap-3 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent">
+                    <span class="min-w-0 flex-1 truncate text-sm font-medium" data-nama>{label(x)}</span>
+                    <span class="shrink-0 text-right text-xs tabular-nums text-zinc-400"><span class="block font-semibold text-zinc-50">{Math.floor((Date.now() - new Date(x.last_active_at!).getTime()) / 864e5)} hari lalu</span>{idDate.format(new Date(x.last_active_at!))}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
       <section aria-labelledby="bab" class={card}>
         <h2 id="bab" class="text-lg font-bold tracking-tight">Bab yang jarang diselesaikan</h2>
