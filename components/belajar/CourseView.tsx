@@ -61,7 +61,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
             Versi slide
           </a>
           </div>
-          <div className="hidden overflow-hidden rounded-[16px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:block md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
+          <div className="hidden md:block"><Art bare kind="topic" slug={topic.slug} /></div>
         </header>
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}

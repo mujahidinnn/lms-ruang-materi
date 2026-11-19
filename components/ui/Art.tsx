@@ -48,12 +48,12 @@ export const motifOf = (slug: string) => KEYS.find(([k]) => slug.includes(k))?.[
 
 const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0), 2166136261);
 
-type Props = { slug: string; seed?: string; className?: string } & (
+type Props = { slug: string; seed?: string; className?: string; bare?: boolean } & (
   | { kind: "topic" | "track" }
   | { kind: "chapter"; number: number; total?: number }
 );
 
-// kind topic/track: 16:9 card cover. chapter: wide banner with the number.
+// kind topic/track: 16:9 card cover (bare: no background, a loose illustration). chapter: wide banner with the number.
 export default function Art(props: Props) {
   const { slug, kind, className } = props;
   const h = hash(props.seed ?? slug);
@@ -86,8 +86,7 @@ export default function Art(props: Props) {
       <defs>
         <pattern id={id} width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.3" fill={INK} opacity="0.18" /></pattern>
       </defs>
-      <rect width={W_} height={H_} fill={tone} />
-      <rect width={W_} height={H_} fill={`url(#${id})`} />
+      {!props.bare && <><rect width={W_} height={H_} fill={tone} /><rect width={W_} height={H_} fill={`url(#${id})`} /></>}
       <g transform={flip ? `translate(${W_} 0) scale(-1 1)` : undefined}>
         <circle cx={mx + 30} cy={H_ / 2 + 10} r={blobR} fill={W} opacity="0.55" />
         <path d={`M${W_ - 20} ${H_ - 10}q-50-70 -${wide ? 160 : 90} -${wide ? 40 : 30}`} fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeDasharray="2 12" opacity="0.5" />
