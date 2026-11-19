@@ -134,6 +134,36 @@ export const Jalur = (p: P) => (
   </Svg>
 );
 
+export const Data = (p: P) => (
+  <Svg {...p}>
+    <path d="M8 10v28c0 3.500 7 6 16 6s16-2.500 16-6V10" style={paper} />
+    <ellipse cx="24" cy="10" rx="16" ry="6" style={tint} />
+    <path d="M8 21c0 3.500 7 6 16 6s16-2.500 16-6M8 30c0 3.500 7 6 16 6s16-2.500 16-6" />
+  </Svg>
+);
+export const Mobile = (p: P) => (
+  <Svg {...p}>
+    <rect x="12" y="3" width="24" height="42" rx="6" style={paper} />
+    <path d="M21 8h6" /><path d="M21 40h6" />
+    <rect x="17" y="14" width="14" height="9" rx="2.500" style={tint} /><path d="M17 29h14M17 34h8" />
+  </Svg>
+);
+export const UiUx = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 12L6 38M38 10l4 26" strokeWidth={2} />
+    <path d="M10 38C12 8 36 40 38 10" style={{ fill: "none" }} />
+    <rect x="3" y="35" width="7" height="7" rx="2" style={paper} /><rect x="38" y="33" width="7" height="7" rx="2" style={paper} />
+    <circle cx="10" cy="11" r="4.500" style={tint} /><circle cx="38" cy="9" r="4.500" style={tint} />
+  </Svg>
+);
+export const Awan = (p: P) => (
+  <Svg {...p}>
+    <path d="M13 38a9 9 0 0 1-1-18 12 12 0 0 1 23-2 10 10 0 0 1 1 20z" style={paper} />
+    <path d="M24 33V22M18.500 27.500L24 22l5.500 5.500" />
+    <circle cx="35" cy="14" r="5" style={tint} />
+  </Svg>
+);
+
 // Kelas, ujian, dan perayaan
 export const Ujian = (p: P) => (
   <Svg {...p}>
@@ -188,6 +218,10 @@ const TRACK_ICONS = [
   [/backend|api/, Backend],
   [/infrastruktur|server|jaringan/, Infrastruktur],
   [/elektronika|iot|robot/, Robot],
+  [/data|basis/, Data],
+  [/mobile/, Mobile],
+  [/ui-ux|desain/, UiUx],
+  [/cloud|devops/, Awan],
 ] as const;
 export const trackIcon = (slug: string) => TRACK_ICONS.find(([re]) => re.test(slug))?.[1] ?? Jalur;
 export function TrackIcon({ slug, className }: { slug: string; className?: string }) {
