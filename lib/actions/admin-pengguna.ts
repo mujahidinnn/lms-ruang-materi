@@ -2,6 +2,7 @@ import { createClient as createAnon } from "@supabase/supabase-js";
 import { SITE_URL } from "@/lib/site";
 import { refresh } from "@/lib/request";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { loadPeople } from "@/lib/pengguna";
 import { createClient } from "@/lib/supabase/server";
@@ -11,21 +12,23 @@ const input = z.object({ user_id: z.uuid(), role: z.enum(["student", "admin"]) }
 // The function behind set_user_role checks the caller and refuses a change to
 // the caller's own role.
 export async function gantiRole(_: { error?: string; ok?: string }, form: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = input.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "Data tidak valid." };
   const { error } = await (await createClient()).rpc("set_user_role", { target: parsed.data.user_id, new_role: parsed.data.role });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal mengubah role." };
+  await audit(admin, "Ganti role", `${parsed.data.user_id} menjadi ${parsed.data.role}`);
   refresh();
   return { ok: "Role diubah." };
 }
 
 export async function hapusPengguna(_: { error?: string; ok?: string }, form: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = z.uuid().safeParse(form.get("user_id"));
   if (!parsed.success) return { error: "Data tidak valid." };
   const { error } = await (await createClient()).rpc("admin_delete_user", { target: parsed.data });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal menghapus pengguna." };
+  await audit(admin, "Hapus pengguna", parsed.data);
   refresh();
   return { ok: "Pengguna dihapus." };
 }
@@ -41,7 +44,7 @@ export async function daftarPengguna() {
 // service-role key lives in the app and the admin's own session is untouched.
 // The account stays "belum konfirmasi" in the list until the link is opened.
 export async function undangPengguna(_: { error?: string; ok?: string }, form: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = z.email("Alamat email belum benar.").safeParse(String(form.get("email") ?? "").trim().toLowerCase());
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const anon = createAnon(import.meta.env.NEXT_PUBLIC_SUPABASE_URL!, import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
@@ -53,5 +56,6 @@ export async function undangPengguna(_: { error?: string; ok?: string }, form: F
   });
   if (error?.status === 429) return { error: "Terlalu sering. Tunggu sebentar, lalu coba lagi." };
   if (error) return { error: "Undangan gagal dikirim. Coba lagi sebentar lagi." };
+  await audit(admin, "Undang pengguna", parsed.data);
   return { ok: `Undangan dikirim ke ${parsed.data}. Klik Segarkan untuk melihatnya di daftar.` };
 }

@@ -1,6 +1,7 @@
 import { invalidateContent } from "@/lib/cache";
 import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -70,17 +71,19 @@ export async function simpanRingkasan(formData: FormData) {
 export type TopikState = { error?: string; ok?: string };
 
 export async function terbitkan(slug: string): Promise<TopikState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).rpc("publish_topic", { p_slug: slug });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal menerbitkan." };
+  await audit(admin, "Terbitkan topik", slug);
   done();
   return { ok: "Topik diterbitkan." };
 }
 
 export async function tarik(slug: string): Promise<TopikState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).from("topics").update({ status: "draft" }).eq("slug", slug);
   if (error) return { error: "Gagal menarik topik." };
+  await audit(admin, "Tarik topik", slug);
   done();
   return { ok: "Topik ditarik, tidak tampil di publik." };
 }
@@ -88,9 +91,10 @@ export async function tarik(slug: string): Promise<TopikState> {
 // ponytail: slide files stay in Storage after delete. Add a cleanup when
 // storage cost matters.
 export async function hapusTopik(slug: string): Promise<TopikState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).from("topics").delete().eq("slug", slug);
   if (error) return { error: "Gagal menghapus topik." };
+  await audit(admin, "Hapus topik", slug);
   invalidateContent();
   redirect("/admin/topik");
 }

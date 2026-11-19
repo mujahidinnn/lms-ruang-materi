@@ -1,6 +1,7 @@
 import { invalidateContent } from "@/lib/cache";
 import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -103,25 +104,28 @@ export async function hapus(_: RoadmapState, form: FormData): Promise<RoadmapSta
 }
 
 export async function terbitkanTrack(track: string): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).rpc("publish_track", { p_slug: slug.parse(track) });
   if (error) return fail(error, "Gagal menerbitkan.");
+  await audit(admin, "Terbitkan roadmap", track);
   done();
   return { ok: "Roadmap diterbitkan." };
 }
 
 export async function tarikTrack(track: string): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).from("tracks").update({ status: "draft" }).eq("slug", slug.parse(track));
   if (error) return fail(error, "Gagal menarik roadmap.");
+  await audit(admin, "Tarik roadmap", track);
   done();
   return { ok: "Roadmap ditarik, tidak tampil di publik." };
 }
 
 export async function hapusTrack(track: string): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { error } = await (await createClient()).from("tracks").delete().eq("slug", slug.parse(track));
   if (error) return fail(error, "Gagal menghapus roadmap.");
+  await audit(admin, "Hapus roadmap", track);
   invalidateContent();
   redirect("/admin/roadmap");
 }

@@ -1,6 +1,7 @@
 import { refresh } from "@/lib/request";
 import { z } from "zod";
 import { announcementHtml, sendEmails } from "@/lib/announce-mail";
+import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,7 +38,7 @@ export async function kirimTesPengumuman(input: unknown): Promise<Result> {
 }
 
 export async function kirimPengumuman(input: unknown): Promise<Result> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = send.safeParse(input);
   if (!parsed.success) return { error: first(parsed.error) };
   const { title, body, link, audience, userIds, web, email } = parsed.data;
@@ -64,6 +65,7 @@ export async function kirimPengumuman(input: unknown): Promise<Result> {
       note += ` Email gagal: ${e instanceof Error ? e.message : "kesalahan tak dikenal"}.`;
     }
   }
+  await audit(admin, "Kirim pengumuman", `${title} (${audience}${email ? ", email" : ""})`);
   refresh();
   return { ok: `Terkirim.${note ? " " + note : ""}` };
 }
