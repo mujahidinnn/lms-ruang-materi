@@ -5,6 +5,7 @@ import * as adminPengguna from "./admin-pengguna";
 import * as adminPengumuman from "./admin-pengumuman";
 import * as adminProyek from "./admin-proyek";
 import * as adminRoadmap from "./admin-roadmap";
+import * as adminSlug from "./admin-slug";
 import * as adminTopik from "./admin-topik";
 import * as adminUjian from "./admin-ujian";
 import * as flashcard from "./flashcard";
@@ -30,6 +31,7 @@ export const ACTIONS = {
   ...pick(adminPengumuman),
   ...pick(adminProyek),
   ...pick(adminRoadmap),
+  ...pick(adminSlug),
   ...pick(adminTopik),
   ...pick(adminUjian),
   ...pick(flashcard),

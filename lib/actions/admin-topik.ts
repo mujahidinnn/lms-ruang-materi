@@ -68,6 +68,22 @@ export async function simpanRingkasan(formData: FormData) {
   done();
 }
 
+// Judul dan slug kelas. The admin page lives at the slug, so go there after.
+export async function simpanTopik(_: TopikState, form: FormData): Promise<TopikState> {
+  const admin = await requireAdmin();
+  const parsed = z
+    .object({ slug: z.string().regex(/^[a-z0-9-]+$/), baru: z.string().regex(/^[a-z0-9-]+$/, "Slug hanya huruf kecil, angka dan tanda hubung.").max(60), title: z.string().trim().min(1, "Judul wajib diisi.").max(120) })
+    .safeParse({ slug: form.get("topic"), baru: form.get("slug"), title: form.get("title") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { error } = await (await createClient()).rpc("rename_topic", { p_slug: parsed.data.slug, p_new: parsed.data.baru, p_title: parsed.data.title });
+  if (error) return { error: error.code === "P0001" ? error.message : "Gagal menyimpan." };
+  await audit(admin, "Ubah nama kelas", parsed.data.slug === parsed.data.baru ? parsed.data.slug : `${parsed.data.slug} -> ${parsed.data.baru}`);
+  invalidateContent();
+  if (parsed.data.baru !== parsed.data.slug) redirect(`/admin/topik/${parsed.data.baru}`);
+  done();
+  return { ok: "Tersimpan." };
+}
+
 export type TopikState = { error?: string; ok?: string };
 
 export async function terbitkan(slug: string): Promise<TopikState> {

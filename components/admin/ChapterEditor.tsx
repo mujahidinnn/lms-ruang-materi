@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Eye, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import MarkdownBase from "@/components/belajar/MarkdownBase";
 import type { Slide } from "@/lib/slides";
+import SlugField from "./SlugField";
 import StatusBadge from "./StatusBadge";
 import { dangerButton, field, smallButton } from "./editor";
 import { rpc } from "@/lib/rpc";
@@ -32,7 +33,7 @@ export default function ChapterEditor({ topic, c, n, slides }: { topic: string; 
         <input type="hidden" name="topic" value={topic} />
         <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
           <label className="text-sm text-zinc-400">Judul<input name="title" defaultValue={c.title} required maxLength={120} className={`${field} mt-1`} /></label>
-          <label className="text-sm text-zinc-400">Slug<input name="slug" defaultValue={c.slug} required pattern="[a-z0-9\-]+" className={`${field} mt-1 font-mono`} /></label>
+          <label className="text-sm text-zinc-400">Slug<SlugField kind="chapters" defaultValue={c.slug} topic={topic} chapterId={c.id} /></label>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="text-sm text-zinc-400">Menit<input name="est_minutes" type="number" min={1} max={60} defaultValue={c.est_minutes} className={`${field} mt-1`} /></label>

@@ -13,7 +13,7 @@ const id = z.uuid();
 // Trigger messages (P0001) are written for people; anything else is not.
 function fail(error: { code?: string; message: string }, fallback: string): RoadmapState {
   if (error.code === "P0001") return { error: error.message };
-  if (error.code === "23505") return { error: "Sudah ada." };
+  if (error.code === "23505") return { error: "Slug sudah dipakai roadmap lain." };
   return { error: fallback };
 }
 
@@ -38,12 +38,15 @@ export async function simpanTrack(_: RoadmapState, form: FormData): Promise<Road
   await requireAdmin();
   const track = slug.parse(form.get("track"));
   const parsed = z
-    .object({ title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim() })
+    .object({ title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), slug: slug.optional() })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const { error } = await (await createClient()).from("tracks").update(parsed.data).eq("slug", track);
+  const { error } = await (await createClient()).from("tracks").update({ ...parsed.data, slug: parsed.data.slug ?? track }).eq("slug", track);
   if (error) return fail(error, "Gagal menyimpan.");
+  invalidateContent();
+  // The admin page lives at the slug: follow it.
+  if (parsed.data.slug && parsed.data.slug !== track) redirect(`/admin/roadmap/${parsed.data.slug}`);
   done();
   return { ok: "Tersimpan." };
 }

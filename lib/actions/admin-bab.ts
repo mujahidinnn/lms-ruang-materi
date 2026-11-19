@@ -29,6 +29,7 @@ export async function simpanBab(form: FormData) {
     .parse(Object.fromEntries(form));
   const { id, topic: _topic, ...row } = f;
   const { error } = await (await createClient()).from("chapters").update(row).eq("id", id);
+  if (error?.code === "23505") throw new Error("Slug sudah dipakai bab lain di kelas ini.");
   if (error) throw new Error(error.message);
   done();
 }
