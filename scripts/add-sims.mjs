@@ -95,6 +95,18 @@ const ADD = [
     text: "## Coba sendiri: urutan job\n\nJalankan workflow, lalu gagalkan satu job. Job yang `needs`-nya tidak lulus dilewati, dan matikan `needs` untuk melihat deploy jalan walau tes gagal.\n\n![Urutan job dengan needs](sim:pipeline-actions)\n\n" },
   { topic: "pengantar-cloud-computing", chapter: "region-zona-dan-ketersediaan", before: "## Ketersediaan gabungan", sim: "availability-zones",
     text: "## Coba sendiri: satu zona vs banyak zona\n\nDeploy di 1, 2, atau 3 zona, kirim request, lalu matikan satu zona. Satu server di satu zona adalah titik lemah tunggal.\n\n![Zona ketersediaan dan titik lemah tunggal](sim:availability-zones)\n\n" },
+  { topic: "keamanan-siber-dasar", chapter: "kriptografi-dasar", before: "## Menyimpan sandi: hash yang sengaja lambat", sim: "hash-avalanche",
+    text: "## Coba sendiri: efek avalanche\n\nKetik teks apa saja dan lihat hash SHA-256-nya selalu 64 karakter heksadesimal. Lalu ubah satu huruf: sekitar separuh bit hash berubah, dan dari hash tidak ada jalan kembali ke teks aslinya.\n\n![Hash SHA-256 dan efek avalanche](sim:hash-avalanche)\n\n" },
+  { topic: "keamanan-siber-dasar", chapter: "social-engineering", before: "## Pertahanan teknis yang membantu manusia", sim: "phishing-inspector",
+    text: "## Coba sendiri: periksa surel mencurigakan\n\nKetuk bagian surel yang menurutmu janggal: pengirim, tautan, tekanan waktu, permintaan, lampiran. Tekan Periksa untuk melihat bendera merah yang kamu temukan dan yang terlewat. Awas, ada surel yang sah.\n\n![Memeriksa surel phishing dan surel sah](sim:phishing-inspector)\n\n" },
+  { topic: "python", chapter: "percabangan-if-elif-else", before: "## Kondisi gabungan: and, or, not", sim: "python-percabangan",
+    text: "## Coba telusuri sendiri\n\nUbah nilainya, lalu maju satu langkah dan lihat kondisi mana yang berhenti jadi True. Pindah ke contoh urutan terbalik untuk melihat kenapa kondisi paling ketat harus di atas.\n\n![Telusuri if, elif, else langkah demi langkah](sim:python-percabangan)\n\n" },
+  { topic: "python", chapter: "perulangan-for-dan-while", before: "## break dan continue", sim: "python-loop",
+    text: "## Coba telusuri sendiri\n\nMaju satu langkah untuk melihat variabel berubah di tiap putaran. Pada contoh while, hapus baris pengurangan untuk melihat infinite loop.\n\n![Telusuri for dan while langkah demi langkah](sim:python-loop)\n\n" },
+  { topic: "typescript", chapter: "union-literal-dan-narrowing", before: "## in dan instanceof", sim: "ts-narrowing",
+    text: "## Coba sendiri: tipe menyempit\n\nMaju langkah demi langkah dan perhatikan tipe variabel menyempit setelah setiap pengecekan.\n\n![Narrowing tipe di TypeScript](sim:ts-narrowing)\n\n" },
+  { topic: "autentikasi-dan-keamanan-api", chapter: "menyimpan-password-dengan-aman", before: "## Pilih algoritma yang lambat", sim: "password-hash",
+    text: "## Coba sendiri: bocor dan diserang\n\nBandingkan tiga cara menyimpan password, lalu lihat apa yang bisa dibongkar penyerang dari database yang bocor.\n\n![Menyimpan password dengan hash, salt, dan iterasi](sim:password-hash)\n\n" },
 ];
 
 const patch = (body, a) => {

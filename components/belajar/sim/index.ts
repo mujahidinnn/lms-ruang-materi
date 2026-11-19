@@ -45,4 +45,10 @@ export const sims: Record<string, () => Promise<{ default: ComponentType<{ title
   "piramida-tes": () => import("./PiramidaTes"),
   "pipeline-actions": () => import("./PipelineActions"),
   "availability-zones": () => import("./AvailabilityZones"),
+  "hash-avalanche": () => import("./HashAvalanche"),
+  "phishing-inspector": () => import("./PhishingInspector"),
+  "python-percabangan": () => import("./PythonPercabangan"),
+  "python-loop": () => import("./PythonLoop"),
+  "ts-narrowing": () => import("./TsNarrowing"),
+  "password-hash": () => import("./PasswordHash"),
 };
