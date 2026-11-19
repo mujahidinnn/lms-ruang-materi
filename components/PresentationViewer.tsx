@@ -270,7 +270,7 @@ export default function PresentationViewer({
             : "min(100cqw, 72rem, calc(100cqh * 16 / 9))",
         }}
         className={`relative aspect-video overflow-hidden bg-zinc-900 ${
-          isFullscreen ? "" : "rounded-lg"
+          isFullscreen ? "" : "rounded-xl"
         }`}
       >
         {/* The pre-encoded AVIF variants as a srcset, so a phone does not
