@@ -1,4 +1,5 @@
 ---
+import { History, Megaphone, ShieldCheck, Trash2, Undo2, Upload, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -10,25 +11,63 @@ if (user instanceof Response) return user;
 type Row = { id: number; admin_email: string; action: string; detail: string; created_at: string };
 const { data } = await (await createClient()).from("admin_audit_log").select("id, admin_email, action, detail, created_at").order("created_at", { ascending: false }).limit(200);
 const rows = (data ?? []) as Row[];
-const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+const dayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
+const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+
+// Icon and tile by what the action does: publish, withdraw, delete, people, announce.
+const look = (action: string) =>
+  action.startsWith("Terbitkan") ? { Icon: Upload, tone: "bg-tile-mint" }
+  : action.startsWith("Tarik") ? { Icon: Undo2, tone: "bg-tile-butter" }
+  : action.startsWith("Hapus") ? { Icon: Trash2, tone: "bg-tile-pink" }
+  : action.startsWith("Ganti role") ? { Icon: ShieldCheck, tone: "bg-tile-lavender" }
+  : action.startsWith("Undang") ? { Icon: UserPlus, tone: "bg-tile-sky" }
+  : action.startsWith("Kirim") ? { Icon: Megaphone, tone: "bg-tile-peach" }
+  : { Icon: History, tone: "bg-zinc-800" };
+
+const days: { key: string; label: string; rows: Row[] }[] = [];
+for (const r of rows) {
+  const key = dayKey.format(new Date(r.created_at));
+  if (days.at(-1)?.key !== key) days.push({ key, label: dayName.format(new Date(r.created_at)), rows: [] });
+  days.at(-1)!.rows.push(r);
+}
 ---
 
 <Base title="Log aktivitas" description="Catatan perubahan penting yang dilakukan admin." noindex>
   <AppShell set="admin" email={user.email}>
-    <div class="mx-auto max-w-4xl">
+    <div class="mx-auto max-w-3xl">
       <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Log aktivitas</h1>
       <p class="mt-2 text-sm text-zinc-400">Perubahan role, penghapusan, penerbitan, dan pengumuman. Menampilkan 200 terbaru.</p>
-      {rows.length === 0 ? (
-        <p class="mt-6 text-zinc-400">Belum ada catatan. Muncul setelah admin mengubah role, menerbitkan kelas, atau mengirim pengumuman.</p>
+      {days.length === 0 ? (
+        <div class="mt-8 flex flex-col items-center gap-3 rounded-[28px] bg-zinc-900 px-6 py-14 text-center shadow-soft">
+          <span aria-hidden class="grid size-14 place-items-center rounded-2xl bg-tile-lavender text-zinc-50"><History className="size-7" /></span>
+          <p class="font-bold">Belum ada catatan</p>
+          <p class="max-w-sm text-sm text-zinc-400">Muncul setelah admin mengubah role, menerbitkan kelas, atau mengirim pengumuman.</p>
+        </div>
       ) : (
-        <ul class="mt-6 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
-          {rows.map((r) => (
-            <li class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
-              <p class="min-w-0 text-sm"><span class="font-medium">{r.action}</span>{r.detail && <span class="text-zinc-400">: {r.detail}</span>}</p>
-              <p class="text-xs text-zinc-500">{r.admin_email}, <time datetime={r.created_at}>{when.format(new Date(r.created_at))}</time></p>
-            </li>
+        <div class="mt-6 flex flex-col gap-6">
+          {days.map((d) => (
+            <section aria-label={d.label}>
+              <h2 class="mb-2 px-1 text-sm font-semibold text-zinc-400">{d.label}</h2>
+              <ul class="rounded-[28px] bg-zinc-900 px-4 shadow-soft sm:px-5">
+                {d.rows.map((r, i) => {
+                  const { Icon, tone } = look(r.action);
+                  return (
+                    <li class={`flex items-start gap-3 py-3.5 ${i ? "border-t border-zinc-800" : ""}`}>
+                      <span aria-hidden class={`grid size-10 shrink-0 place-items-center rounded-2xl text-zinc-50 ${tone}`}><Icon className="size-[18px]" /></span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium">{r.action}</p>
+                        {r.detail && <p class="mt-0.5 text-sm break-words text-zinc-400">{r.detail}</p>}
+                        <p class="mt-1 truncate text-xs text-zinc-500">{r.admin_email}</p>
+                      </div>
+                      <time datetime={r.created_at} class="shrink-0 pt-0.5 text-xs tabular-nums text-zinc-500">{clock.format(new Date(r.created_at))}</time>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   </AppShell>
