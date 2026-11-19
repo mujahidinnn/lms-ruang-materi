@@ -7,6 +7,7 @@ import ClassPath from "./ClassPath";
 import { chip, primaryButton } from "@/components/ui/styles";
 import Art from "@/components/ui/Art";
 import { totalMinutes } from "@/lib/chapters";
+import { coverSrc } from "@/lib/slides";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
 
@@ -61,7 +62,10 @@ export default function CourseView({ topic }: { topic: Topic }) {
             Versi slide
           </a>
           </div>
-          <div className="hidden md:block"><Art bare kind="topic" slug={topic.slug} /></div>
+          <div className="relative hidden md:block">
+            <Art bare kind="topic" slug={topic.slug} className="absolute -inset-6 -z-0 h-auto w-[calc(100%+3rem)] opacity-80" />
+            {topic.slides.length > 0 && <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} decoding="async" className="relative aspect-video w-full rounded-[16px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />}
+          </div>
         </header>
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}
