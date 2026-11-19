@@ -1,0 +1,83 @@
+---
+import ActionForm from "@/components/admin/ActionForm";
+import { smallButton } from "@/components/admin/editor";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../components/AppShell.astro";
+import Base from "../../layouts/Base.astro";
+import { adminOnly } from "../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+type Report = {
+  id: string;
+  user_id: string;
+  kind: "salah" | "tidak-jelas" | "lainnya";
+  note: string;
+  status: "baru" | "selesai";
+  created_at: string;
+  chapters: { slug: string; title: string; position: number; topics: { slug: string; title: string } };
+};
+
+const KIND = { salah: "Ada yang salah", "tidak-jelas": "Kurang jelas", lainnya: "Lainnya" };
+const db = await createClient();
+const [{ data }, { data: people }] = await Promise.all([
+  db.from("chapter_reports").select("id, user_id, kind, note, status, created_at, chapters(slug, title, position, topics(slug, title))").order("created_at", { ascending: false }).limit(200),
+  db.rpc("admin_users"),
+]);
+const names = new Map<string, string>(((people ?? []) as { user_id: string; display_name: string | null; email: string }[]).map((p) => [p.user_id, p.display_name || p.email]));
+const all = (data ?? []) as unknown as Report[];
+const open = all.filter((r) => r.status === "baru");
+const done = all.filter((r) => r.status === "selesai");
+const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+---
+
+<Base title="Laporan" description="Laporan murid tentang bab yang salah atau kurang jelas." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto max-w-4xl">
+      <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Laporan</h1>
+      <p class="mt-2 text-sm text-zinc-400">Murid melapor dari bagian bawah tiap bab. Perbaiki di halaman topik, lalu tandai selesai.</p>
+
+      <h2 class="mt-8 text-lg font-bold tracking-tight">Perlu ditangani ({open.length})</h2>
+      {open.length === 0 ? (
+        <p class="mt-3 text-sm text-zinc-400">Tidak ada laporan baru.</p>
+      ) : (
+        <ul class="mt-3 grid gap-3">
+          {open.map((r) => (
+            <li class="rounded-[28px] bg-zinc-900 p-5 shadow-soft">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <a href={`/admin/topik/${r.chapters.topics.slug}`} class="font-medium hover:text-accent">{r.chapters.topics.title}, bab {r.chapters.position + 1}: {r.chapters.title}</a>
+                <span class={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${r.kind === "salah" ? "bg-tile-pink" : "bg-zinc-800"} text-zinc-50`}>{KIND[r.kind]}</span>
+              </div>
+              <p class="mt-2 whitespace-pre-line text-sm text-zinc-300">{r.note}</p>
+              <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-zinc-500">{names.get(r.user_id) ?? "(akun dihapus)"}, <time datetime={r.created_at}>{when.format(new Date(r.created_at))}</time></p>
+                <div class="flex gap-2">
+                  <a href={`/belajar/${r.chapters.topics.slug}/${r.chapters.slug}`} class={smallButton}>Buka bab</a>
+                  <ActionForm action="selesaikanLaporan" className="flex">
+                    <input type="hidden" name="id" value={r.id} />
+                    <button class={smallButton}>Tandai selesai</button>
+                  </ActionForm>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {done.length > 0 && (
+        <details class="mt-8">
+          <summary class="min-h-11 cursor-pointer text-sm text-zinc-400">Sudah selesai ({done.length})</summary>
+          <ul class="mt-2 divide-y divide-zinc-800 rounded-[28px] bg-zinc-900 px-5 shadow-soft">
+            {done.map((r) => (
+              <li class="py-3 text-sm">
+                <p class="text-zinc-300">{r.chapters.topics.title}, bab {r.chapters.position + 1}</p>
+                <p class="mt-0.5 line-clamp-2 text-xs text-zinc-500">{r.note}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  </AppShell>
+</Base>

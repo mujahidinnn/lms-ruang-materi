@@ -1,4 +1,4 @@
-import { BookOpen, ClipboardCheck, BarChart3, GraduationCap, FileUp, LayoutDashboard, Megaphone, Route, Users } from "lucide-react";
+import { BookOpen, ClipboardCheck, BarChart3, Flag, GraduationCap, FileUp, LayoutDashboard, Megaphone, Route, Users } from "lucide-react";
 
 // Admin links in two groups: the content, then the people (learners use
 // SiteHeader, GUIDELINE Navigation).
@@ -14,6 +14,7 @@ const SETS = {
     ],
     [
       { href: "/admin/analitik", label: "Analitik", Icon: BarChart3 },
+      { href: "/admin/laporan", label: "Laporan", Icon: Flag },
       { href: "/admin/pengguna", label: "Pengguna", Icon: Users },
       { href: "/admin/pengumuman", label: "Pengumuman", Icon: Megaphone },
     ],

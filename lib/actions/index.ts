@@ -8,6 +8,7 @@ import * as adminRoadmap from "./admin-roadmap";
 import * as adminTopik from "./admin-topik";
 import * as adminUjian from "./admin-ujian";
 import * as flashcard from "./flashcard";
+import * as laporan from "./laporan";
 import * as latihan from "./latihan";
 import * as masuk from "./masuk";
 import * as profil from "./profil";
@@ -32,6 +33,7 @@ export const ACTIONS = {
   ...pick(adminTopik),
   ...pick(adminUjian),
   ...pick(flashcard),
+  ...pick(laporan),
   ...pick(latihan),
   ...pick(masuk),
   ...pick(profil),
