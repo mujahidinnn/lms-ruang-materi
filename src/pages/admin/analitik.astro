@@ -21,11 +21,13 @@ const a = data as Analytics | null;
 if (!a) return Astro.rewrite("/404");
 
 // Extra detail read through the admin's own access; a failed read only hides its column.
-const [{ data: att }, { data: chs }, { data: certs }, { data: qs }] = await Promise.all([
+const since = new Date(Date.now() - 30 * 864e5).toISOString();
+const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }] = await Promise.all([
   db.from("exam_attempts").select("score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
   db.from("chapters").select("topics(slug)").eq("status", "published"),
   db.from("certificates").select("topics(slug)").limit(5000),
   db.from("exam_questions").select("id, options, answer").in("id", a.questions.map((q) => q.id)),
+  db.from("import_jobs").select("provider, model, status, input_tokens, output_tokens").gte("created_at", since).limit(2000),
 ]);
 const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
   const m = new Map<string, number>();
@@ -45,6 +47,17 @@ for (const t of attempts) {
 }
 const keyOf = new Map(((qs ?? []) as { id: string; options: string[]; answer: number }[]).map((q) => [q.id, q.options[q.answer]]));
 
+type Job = { provider: string; model: string; status: string; input_tokens: number | null; output_tokens: number | null };
+const byModel = new Map<string, { name: string; jobs: number; done: number; failed: number; tin: number; tout: number }>();
+for (const j of (jobData ?? []) as Job[]) {
+  const name = `${j.provider} / ${j.model}`;
+  const m = byModel.get(name) ?? { name, jobs: 0, done: 0, failed: 0, tin: 0, tout: 0 };
+  m.jobs++; m.done += j.status === "done" ? 1 : 0; m.failed += j.status === "failed" ? 1 : 0;
+  m.tin += j.input_tokens ?? 0; m.tout += j.output_tokens ?? 0;
+  byModel.set(name, m);
+}
+const models = [...byModel.values()].sort((x, y) => y.jobs - x.jobs);
+const nf = new Intl.NumberFormat("id-ID");
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const topics = a.topics.filter((t) => t.started > 0);
 const chapters = a.chapters.slice(0, 10);
@@ -172,6 +185,39 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
               );
             })}
           </ol>
+        )}
+      </section>
+
+      <section aria-labelledby="impor" class={card}>
+        <h2 id="impor" class="text-lg font-bold tracking-tight">Impor AI, 30 hari terakhir</h2>
+        <p class="mt-1 text-sm text-zinc-400">Jumlah impor dan token per model, untuk memantau pemakaian dan model yang sering gagal.</p>
+        {models.length === 0 ? (
+          <p class="mt-4 text-sm text-zinc-400">Belum ada impor dalam 30 hari terakhir.</p>
+        ) : (
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[34rem] text-left text-sm">
+              <thead class="text-xs text-zinc-500">
+                <tr class="border-b border-zinc-800">
+                  <th scope="col" class="py-2 pr-3 font-normal">Model</th>
+                  <th scope="col" class="py-2 pr-3 text-right font-normal">Impor</th>
+                  <th scope="col" class="py-2 pr-3 text-right font-normal">Gagal</th>
+                  <th scope="col" class="py-2 pr-3 text-right font-normal">Token masuk</th>
+                  <th scope="col" class="py-2 text-right font-normal">Token keluar</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-800 tabular-nums">
+                {models.map((m) => (
+                  <tr>
+                    <td class="py-3 pr-3 font-medium">{m.name}</td>
+                    <td class="py-3 pr-3 text-right">{m.jobs}</td>
+                    <td class={`py-3 pr-3 text-right ${m.failed ? "font-semibold text-red-500" : "text-zinc-400"}`}>{m.failed}</td>
+                    <td class="py-3 pr-3 text-right">{nf.format(m.tin)}</td>
+                    <td class="py-3 text-right">{nf.format(m.tout)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
