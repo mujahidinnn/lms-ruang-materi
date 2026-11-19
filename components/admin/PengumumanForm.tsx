@@ -44,7 +44,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
     });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+    <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
       <label className="text-sm text-zinc-400">
         Judul
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required placeholder="Contoh: Kelas MikroTik sudah terbit" className={`${field} mt-1`} />

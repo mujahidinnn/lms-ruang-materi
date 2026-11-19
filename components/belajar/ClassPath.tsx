@@ -80,7 +80,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
 
   return (
     <ol className="mt-4 grid gap-3">
-      <li className="rounded-[28px] bg-zinc-900 p-5 shadow-soft">
+      <li className="rounded-[18px] bg-zinc-900 p-5 shadow-soft">
         <p className="text-sm font-bold">Langkah menuju sertifikat</p>
         <p className="mt-0.5 text-sm text-zinc-400 tabular-nums">{status?.code ? "Semua langkah selesai." : `Kamu sudah ${doneCount} dari ${steps.length} langkah.`}{!signedIn && " Masuk supaya langkahmu tercatat."}</p>
         <div aria-hidden className="mt-3 h-2 rounded-full bg-zinc-800"><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
@@ -101,7 +101,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
       {topic.project && (
         <Step href={`/belajar/${topic.slug}/proyek`} icon={<Proyek className="size-7" />} title={`Proyek akhir: ${topic.project.title}`} text="Bangun sendiri, diperiksa otomatis" tone="bg-matcha-300" done={status?.project_passed} />
       )}
-      <li className="flex flex-wrap items-center gap-4 rounded-[28px] border-2 border-noir bg-noir p-5 text-on-noir">
+      <li className="flex flex-wrap items-center gap-4 rounded-[18px] border-2 border-noir bg-noir p-5 text-on-noir">
         <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-2xl bg-matcha-300 text-noir"><Medali className="size-7 [--icon-tint:var(--color-matcha-600)]" /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Sertifikat</span>
@@ -177,7 +177,7 @@ const TIPS = [
 function Step({ href, icon, title, text, tone, done }: { href: string; icon: ReactNode; title: string; text: string; tone: string; done?: boolean }) {
   return (
     <li>
-      <a href={href} className={`group flex items-center gap-4 rounded-[28px] border-2 border-noir p-5 text-noir transition-transform hover:-translate-y-0.5 motion-reduce:transition-none ${tone}`}>
+      <a href={href} className={`group flex items-center gap-4 rounded-[18px] border-2 border-noir p-5 text-noir transition-transform hover:-translate-y-0.5 motion-reduce:transition-none ${tone}`}>
         <span className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-noir bg-matcha-50">{done ? <Check aria-label="selesai" className="size-5" /> : icon}</span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">{title}</span>

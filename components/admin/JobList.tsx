@@ -94,7 +94,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
       <p aria-live="polite" className="sr-only">{message}</p>
       {message && <p className="text-sm text-zinc-400">{message}</p>}
       {shown.length === 0 ? (
-        <p className="rounded-[28px] bg-zinc-900 p-8 text-center text-sm text-zinc-400 shadow-soft">
+        <p className="rounded-[18px] bg-zinc-900 p-8 text-center text-sm text-zinc-400 shadow-soft">
           {jobs.length === 0 ? "Belum ada impor. Unggah deck pertama di atas." : "Tidak ada impor dengan status ini."}
         </p>
       ) : (
@@ -103,7 +103,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
             {shown.slice(0, RECENT).map((j) => <JobCard key={j.id} j={j} models={models} disabled={pending || running} onRetry={(m) => ulang(j, m)} />)}
           </ul>
           {shown.length > RECENT && (
-            <details className="rounded-[28px] bg-zinc-900 px-5 py-3 shadow-soft">
+            <details className="rounded-[18px] bg-zinc-900 px-5 py-3 shadow-soft">
               <summary className="min-h-11 cursor-pointer list-none py-2.5 text-sm text-zinc-400 hover:text-zinc-50 [&::-webkit-details-marker]:hidden">
                 Impor lama ({shown.length - RECENT})
               </summary>
@@ -130,7 +130,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
 function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; disabled: boolean; onRetry: (m: string) => void }) {
   const { label, Icon, tone } = STATUS[j.status];
   return (
-    <li className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-[28px] bg-zinc-900 p-4 shadow-soft sm:p-5">
+    <li className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-[18px] bg-zinc-900 p-4 shadow-soft sm:p-5">
       <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-2xl ${TILE[j.status]}`}>
         <Icon className={`size-5 ${tone} ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
       </span>

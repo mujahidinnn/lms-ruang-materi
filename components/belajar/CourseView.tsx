@@ -28,7 +28,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
           <ChevronLeft aria-hidden className="size-4" />Semua kelas
         </a>
-        <header className="mt-0 grid items-center gap-5 rounded-[28px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[32px] sm:p-10 md:grid-cols-[minmax(0,1fr)_20rem]">
+        <header className="mt-0 grid items-center gap-5 rounded-[18px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[20px] sm:p-10 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div>
           <h1 className="text-3xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
@@ -61,14 +61,14 @@ export default function CourseView({ topic }: { topic: Topic }) {
             Versi slide
           </a>
           </div>
-          <div className="hidden overflow-hidden rounded-[24px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:block md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
+          <div className="hidden overflow-hidden rounded-[16px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] md:block md:rotate-2"><Art kind="topic" slug={topic.slug} /></div>
         </header>
 
         {/* Wide screens: syllabus left, the closing steps beside it. */}
         <div className="mt-4 grid items-start gap-x-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* Phones: the list sits on the page, each chapter its own card,
               instead of cards inside a card. */}
-          <section aria-labelledby="silabus" className="sm:rounded-[28px] sm:bg-zinc-900 sm:p-8 sm:shadow-soft">
+          <section aria-labelledby="silabus" className="sm:rounded-[18px] sm:bg-zinc-900 sm:p-8 sm:shadow-soft">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 id="silabus" className="text-2xl font-bold tracking-tight">
                 Daftar bab
@@ -186,7 +186,7 @@ function Extra({
     <li>
       <a
         href={href}
-        className={`group flex items-center gap-4 rounded-[28px] p-5 ${color}`}
+        className={`group flex items-center gap-4 rounded-[18px] p-5 ${color}`}
       >
         <span className="grid size-11 place-items-center rounded-full bg-zinc-900/70 [--icon-paper:var(--color-zinc-900)]">
           {icon}

@@ -199,7 +199,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
       </div>
       <p aria-live="polite" className="mt-3 text-right text-sm text-red-500 empty:hidden">{error}</p>
 
-      <nav aria-label="Daftar soal" className="mt-6 rounded-3xl bg-zinc-800/50 p-4 sm:mt-10 sm:rounded-[28px] sm:p-5">
+      <nav aria-label="Daftar soal" className="mt-6 rounded-[18px] bg-zinc-800/50 p-4 sm:mt-10 sm:rounded-[18px] sm:p-5">
         <ol className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-2">
           {questions.map((qq, n) => {
             const isDoubt = doubts.includes(qq.id);

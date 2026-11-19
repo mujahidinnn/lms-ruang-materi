@@ -155,12 +155,12 @@ export default function PenggunaList({ people: first }: { people: Person[] }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="mt-6 rounded-[28px] bg-zinc-900 p-8 text-center text-zinc-400 shadow-soft">
+        <p className="mt-6 rounded-[18px] bg-zinc-900 p-8 text-center text-zinc-400 shadow-soft">
           Tidak ada akun yang cocok.{" "}
           <button type="button" className="text-accent hover:underline" onClick={() => { setQ(""); setFilter("semua"); }}>Reset pencarian</button>
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-zinc-800 rounded-3xl bg-zinc-900 px-4 shadow-soft sm:rounded-[28px] sm:px-5">
+        <ul className="mt-4 divide-y divide-zinc-800 rounded-[18px] bg-zinc-900 px-4 shadow-soft sm:rounded-[18px] sm:px-5">
           {shown.map((p) => (
             <li key={p.id} className="relative grid items-center gap-x-4 gap-y-2 py-3 sm:gap-y-3 sm:py-4 sm:grid-cols-[minmax(0,1fr)_5rem_12rem_17.5rem]">
               <div className="flex min-w-0 items-center gap-3 max-sm:pr-16">

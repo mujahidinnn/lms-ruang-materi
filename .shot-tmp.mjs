@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+const p = await b.newPage({ viewport: { width: 1280, height: 1100 } });
+const base = "http://localhost:4321";
+await p.goto(base + "/masuk");
+await p.fill('input[type=email]', process.env.DEV_ADMIN_EMAIL);
+await p.fill('input[type=password]', process.env.DEV_ADMIN_PASSWORD);
+await p.keyboard.press("Enter");
+await p.waitForTimeout(3000);
+const r = await p.goto(base + "/admin/analitik");
+console.log(r.status());
+await p.screenshot({ path: process.argv[2], fullPage: true });
+await b.close();

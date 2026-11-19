@@ -14,7 +14,7 @@ export default function TopicCard({ topic, index }: { topic: CardTopic; index: n
     <li>
       <a
         href={`/belajar/${topic.slug}`}
-        className={`group grid h-full grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-x-3 gap-y-2 rounded-3xl p-4 sm:flex sm:flex-col sm:items-stretch sm:gap-4 sm:rounded-[28px] sm:p-5 sm:transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${tile(index)}`}
+        className={`group grid h-full grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-x-3 gap-y-2 rounded-[18px] p-4 sm:flex sm:flex-col sm:items-stretch sm:gap-4 sm:rounded-[18px] sm:p-5 sm:transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${tile(index)}`}
       >
         <div className="col-start-1 flex items-start justify-between gap-3 self-end sm:self-auto">
           <span className={`${chip} bg-zinc-900/70 tabular-nums`}>{n ? `${n} bab · ${totalMinutes(topic.chapters)} menit` : `${topic.slideCount} slide`}</span>

@@ -26,7 +26,7 @@ export default function Avatar({ name, src, admin = false, className = "size-11 
         ref={dialog}
         aria-label={`Foto ${name}`}
         onClick={(e) => e.target === dialog.current && dialog.current?.close()}
-        className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-[28px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+        className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-[18px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm"
       >
         <div className="grid gap-4 p-4">
           <img src={large} alt={`Foto profil ${name}`} referrerPolicy="no-referrer" className="aspect-square w-full rounded-2xl bg-zinc-800 object-cover" />

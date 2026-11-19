@@ -110,7 +110,7 @@ export default function ChapterQuiz({
       {exercises.map((ex, i) => (
         <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} onPassed={exercisePassed} />
       ))}
-      <section aria-labelledby="kuis" className="mt-10 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-8">
+      <section aria-labelledby="kuis" className="mt-10 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-8">
         <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>
         {questions.length === 0 ? (
           <button type="button" onClick={() => { playWin(); celebrate(); complete(); }} disabled={status === "saved" || !allPassed} className={`${primaryButton} mt-5`}>

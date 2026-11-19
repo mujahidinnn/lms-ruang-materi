@@ -63,11 +63,11 @@ export default function ImporForm({ models }: { models: string[] }) {
         onDragOver={(e) => (e.preventDefault(), setDragging(true))}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => (e.preventDefault(), setDragging(false), pick(e.dataTransfer.files[0]))}
-        className={`flex min-h-40 flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[28px] border-2 border-dashed px-6 py-6 sm:min-h-64 sm:gap-3 sm:py-12 text-center shadow-soft transition-colors focus-within:outline-2 focus-within:outline-accent ${
+        className={`flex min-h-40 flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-[18px] border-2 border-dashed px-6 py-6 sm:min-h-64 sm:gap-3 sm:py-12 text-center shadow-soft transition-colors focus-within:outline-2 focus-within:outline-accent ${
           dragging ? "border-zinc-50 bg-tile-mint" : "border-zinc-700 bg-zinc-900 hover:border-brand hover:bg-tile-sky"
         }`}
       >
-        <span className="grid size-16 place-items-center rounded-3xl bg-primary text-on-primary">
+        <span className="grid size-16 place-items-center rounded-[18px] bg-primary text-on-primary">
           <FileUp aria-hidden className="size-7" strokeWidth={1.75} />
         </span>
         {picked ? (
@@ -87,7 +87,7 @@ export default function ImporForm({ models }: { models: string[] }) {
       </label>
 
       {picked && (
-        <div className="grid gap-4 rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <div className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <label className="flex flex-col gap-1.5 text-sm text-zinc-300">
             Slug topik
             <input value={slug} onChange={(e) => setSlug(e.target.value)} className={`${field} font-mono`} />
