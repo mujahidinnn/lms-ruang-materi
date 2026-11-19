@@ -1,5 +1,6 @@
 ---
 import { Download } from "lucide-react";
+import NilaiFilter from "@/components/admin/NilaiFilter";
 import { secondaryButton } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
@@ -22,7 +23,7 @@ type Attempt = {
 const LIMIT = 500;
 const q = Astro.url.searchParams;
 const examId = q.get("ujian") ?? "";
-const status = q.get("status") === "lulus" || q.get("status") === "belum" ? q.get("status") : "";
+const status = q.get("status") === "lulus" ? "lulus" : q.get("status") === "belum" ? "belum" : "";
 const cari = (q.get("cari") ?? "").trim().toLowerCase();
 
 const db = await createClient();
@@ -68,7 +69,6 @@ if (q.get("format") === "csv") {
 const csvHref = `?${new URLSearchParams({ ...(examId && { ujian: examId }), ...(status && { status }), ...(cari && { cari }), format: "csv" })}`;
 const passedCount = rows.filter((r) => r.passed).length;
 const avg = rows.length ? Math.round(rows.reduce((s, r) => s + (r.score ?? 0), 0) / rows.length) : 0;
-const input = "min-h-11 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 text-sm outline-none focus:ring-2 focus:ring-accent";
 ---
 
 <Base title="Nilai" description="Hasil ujian semua murid, bisa disaring dan diunduh sebagai CSV." noindex>
@@ -77,23 +77,10 @@ const input = "min-h-11 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 text
       <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Nilai</h1>
       <p class="mt-2 text-sm text-zinc-400">Setiap percobaan ujian yang sudah dikirim, terbaru di atas.</p>
 
-      <form method="get" class="mt-5 flex flex-wrap items-center gap-3">
-        <label class="sr-only" for="f-ujian">Ujian</label>
-        <select id="f-ujian" name="ujian" class={`${input} min-w-0 max-w-full basis-56`}>
-          <option value="">Semua ujian</option>
-          {exams.map((e) => <option value={e.id} selected={e.id === examId}>{e.topics.title}</option>)}
-        </select>
-        <label class="sr-only" for="f-status">Hasil</label>
-        <select id="f-status" name="status" class={input}>
-          <option value="">Semua hasil</option>
-          <option value="lulus" selected={status === "lulus"}>Lulus</option>
-          <option value="belum" selected={status === "belum"}>Belum lulus</option>
-        </select>
-        <label class="sr-only" for="f-cari">Cari murid</label>
-        <input id="f-cari" type="search" name="cari" value={cari} placeholder="Cari nama atau email" class={`${input} min-w-0 flex-1 basis-48`} />
-        <button class={secondaryButton}>Terapkan</button>
+      <div class="mt-5 flex flex-wrap items-center gap-3">
+        <NilaiFilter client:load exams={exams.map((e) => [e.id, e.topics.title] as const)} ujian={examId} status={status} cari={cari} />
         <a href={csvHref} class={secondaryButton} download><Download aria-hidden className="size-4" />Unduh CSV</a>
-      </form>
+      </div>
 
       <p class="mt-4 text-sm tabular-nums text-zinc-400">
         {rows.length} percobaan, {passedCount} lulus, rata-rata {avg}{data && data.length >= LIMIT ? `. Menampilkan ${LIMIT} terbaru, saring untuk mempersempit.` : ""}
