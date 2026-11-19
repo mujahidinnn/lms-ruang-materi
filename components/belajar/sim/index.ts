@@ -37,4 +37,12 @@ export const sims: Record<string, () => Promise<{ default: ComponentType<{ title
   "boot-proses": () => import("./BootProses"),
   "scope-hoisting": () => import("./ScopeHoisting"),
   "react-render": () => import("./ReactRender"),
+  "tailwind-utility": () => import("./TailwindUtility"),
+  "tailwind-responsive": () => import("./TailwindResponsive"),
+  "kontras-warna": () => import("./KontrasWarna"),
+  "polimorfisme": () => import("./Polimorfisme"),
+  "tdd-siklus": () => import("./TddSiklus"),
+  "piramida-tes": () => import("./PiramidaTes"),
+  "pipeline-actions": () => import("./PipelineActions"),
+  "availability-zones": () => import("./AvailabilityZones"),
 };

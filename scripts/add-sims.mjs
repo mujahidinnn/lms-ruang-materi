@@ -79,6 +79,22 @@ const ADD = [
     text: "![Scope dan hoisting langkah demi langkah](sim:scope-hoisting)\n\n" },
   { topic: "reactjs", chapter: "event-dan-usestate", before: "## Kenapa set state memicu render ulang", sim: "react-render",
     text: "![Render ulang komponen dan React.memo](sim:react-render)\n\n" },
+  { topic: "tailwind-css", chapter: "spacing-ukuran-dan-warna", before: "## Padding, margin, dan gap", sim: "tailwind-utility",
+    text: "## Coba sendiri: utilitas spacing, ukuran, dan warna\n\nPilih padding, margin, lebar, warna, dan sudut. Perhatikan class string yang terbentuk dan ukuran piksel di kotaknya.\n\n![Utilitas Tailwind: spacing, ukuran, warna](sim:tailwind-utility)\n\n" },
+  { topic: "tailwind-css", chapter: "desain-responsif", before: "## Dari satu kolom menjadi tiga", sim: "tailwind-responsive",
+    text: "## Coba sendiri: breakpoint dan mobile-first\n\nGeser lebar layar dan lihat prefiks mana yang menang. Bandingkan dengan cara baca desktop-first.\n\n![Breakpoint responsif Tailwind](sim:tailwind-responsive)\n\n" },
+  { topic: "dasar-ux-dan-desain-antarmuka", chapter: "warna-dan-kontras", before: "## Mode gelap dan buta warna", sim: "kontras-warna",
+    text: "## Coba sendiri: hitung kontras warna\n\nUbah warna teks dan latar, lalu lihat rasio kontras dan apakah lulus standar WCAG.\n\n![Pemeriksa kontras warna WCAG](sim:kontras-warna)\n\n" },
+  { topic: "pemrograman-berorientasi-objek", chapter: "polimorfisme-dan-abstraksi", before: "## Duck typing", sim: "polimorfisme",
+    text: "## Coba sendiri: method mana yang jalan\n\nPilih objek dan panggil `bersuara()`. Perhatikan `Ikan` yang tidak menimpa method, sehingga Python naik ke `Hewan`.\n\n![Polimorfisme dan method lookup](sim:polimorfisme)\n\n" },
+  { topic: "testing-perangkat-lunak", chapter: "tdd-merah-hijau-refaktor", before: "## Refaktor dengan aman", sim: "tdd-siklus",
+    text: "## Ikuti siklusnya langkah demi langkah\n\nMaju satu langkah dan perhatikan kapan tes merah, kapan hijau, dan kapan kode dirapikan.\n\n![Siklus TDD: fungsi kabisat](sim:tdd-siklus)\n\n" },
+  { topic: "testing-perangkat-lunak", chapter: "piramida-tes-dan-jenisnya", before: "## Memilih jenis tes yang tepat", sim: "piramida-tes",
+    text: "## Bandingkan proporsi tes\n\nGeser jumlah tes tiap lapisan dan bandingkan piramida dengan cone es krim: waktu, biaya, dan peluang tes gagal acak.\n\n![Piramida tes](sim:piramida-tes)\n\n" },
+  { topic: "cicd-dengan-github-actions", chapter: "job-step-dan-runner", before: "## Rancang job dengan tujuan jelas", sim: "pipeline-actions",
+    text: "## Coba sendiri: urutan job\n\nJalankan workflow, lalu gagalkan satu job. Job yang `needs`-nya tidak lulus dilewati, dan matikan `needs` untuk melihat deploy jalan walau tes gagal.\n\n![Urutan job dengan needs](sim:pipeline-actions)\n\n" },
+  { topic: "pengantar-cloud-computing", chapter: "region-zona-dan-ketersediaan", before: "## Ketersediaan gabungan", sim: "availability-zones",
+    text: "## Coba sendiri: satu zona vs banyak zona\n\nDeploy di 1, 2, atau 3 zona, kirim request, lalu matikan satu zona. Satu server di satu zona adalah titik lemah tunggal.\n\n![Zona ketersediaan dan titik lemah tunggal](sim:availability-zones)\n\n" },
 ];
 
 const patch = (body, a) => {
