@@ -1,0 +1,94 @@
+---
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../components/AppShell.astro";
+import Base from "../../layouts/Base.astro";
+import { adminOnly } from "../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+type Analytics = {
+  topics: { slug: string; title: string; started: number; finished: number }[];
+  chapters: { slug: string; topic: string; position: number; title: string; started: number; done: number }[];
+  questions: { id: string; slug: string; topic: string; prompt: string; seen: number; wrong: number }[];
+};
+
+const { data } = await (await createClient()).rpc("admin_analytics");
+const a = data as Analytics | null;
+if (!a) return Astro.rewrite("/404");
+
+const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
+const chapters = a.chapters.slice(0, 10);
+const card = "rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-6";
+const bar = (v: number, tone: string) => `<div aria-hidden class="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full ${tone}" style="width:${v}%"></div></div>`;
+---
+
+<Base title="Analitik" description="Di mana murid berhenti belajar dan soal ujian mana yang paling sering salah." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto flex max-w-5xl flex-col gap-6">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Analitik</h1>
+        <p class="mt-2 text-sm text-zinc-400">Bahan untuk memperbaiki materi: kelas yang jarang selesai, bab tempat murid berhenti, dan soal yang sering salah.</p>
+      </div>
+
+      <section aria-labelledby="kelas" class={card}>
+        <h2 id="kelas" class="text-lg font-bold tracking-tight">Kelas selesai</h2>
+        {a.topics.length === 0 ? (
+          <p class="mt-3 text-sm text-zinc-400">Belum ada kelas terbit.</p>
+        ) : (
+          <ul class="mt-4 grid gap-4 sm:grid-cols-2">
+            {a.topics.map((t) => (
+              <li>
+                <a href={`/admin/topik/${t.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
+                  <p class="flex justify-between gap-3 text-sm"><span class="truncate group-hover:text-accent">{t.title}</span><span class="shrink-0 tabular-nums text-zinc-400">{t.finished} dari {t.started} murid</span></p>
+                  <Fragment set:html={bar(pct(t.finished, t.started), "bg-brand")} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="bab" class={card}>
+        <h2 id="bab" class="text-lg font-bold tracking-tight">Bab yang jarang diselesaikan</h2>
+        <p class="mt-1 text-sm text-zinc-400">Dari murid yang sudah membuka kelasnya, berapa persen yang menyelesaikan bab ini. Hanya kelas dengan minimal 3 murid.</p>
+        {chapters.length === 0 ? (
+          <p class="mt-4 text-sm text-zinc-400">Belum cukup data. Muncul setelah sebuah kelas dibuka minimal 3 murid.</p>
+        ) : (
+          <ol class="mt-4 grid gap-4">
+            {chapters.map((c) => (
+              <li>
+                <a href={`/admin/topik/${c.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
+                  <p class="flex justify-between gap-3 text-sm"><span class="truncate group-hover:text-accent">{c.topic}, bab {c.position + 1}: {c.title}</span><span class="shrink-0 tabular-nums text-zinc-400">{pct(c.done, c.started)}% ({c.done} dari {c.started})</span></p>
+                  <Fragment set:html={bar(pct(c.done, c.started), "bg-accent-warm")} />
+                </a>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      <section aria-labelledby="soal" class={card}>
+        <h2 id="soal" class="text-lg font-bold tracking-tight">Soal ujian yang paling sering salah</h2>
+        <p class="mt-1 text-sm text-zinc-400">Soal yang muncul di minimal 3 percobaan. Soal yang dilewati dihitung salah. Tingkat salah sangat tinggi bisa berarti kunci atau redaksinya keliru.</p>
+        {a.questions.length === 0 ? (
+          <p class="mt-4 text-sm text-zinc-400">Belum cukup percobaan ujian.</p>
+        ) : (
+          <ol class="mt-4 divide-y divide-zinc-800">
+            {a.questions.map((q) => (
+              <li class="py-3">
+                <a href={`/admin/topik/${q.slug}#ujian`} class="group flex items-start justify-between gap-4 focus-visible:outline-2 focus-visible:outline-accent">
+                  <span class="min-w-0">
+                    <span class="line-clamp-2 text-sm group-hover:text-accent">{q.prompt}</span>
+                    <span class="mt-0.5 block text-xs text-zinc-500">{q.topic}</span>
+                  </span>
+                  <span class="shrink-0 text-right text-sm tabular-nums"><span class="font-bold">{pct(q.wrong, q.seen)}% salah</span><span class="block text-xs text-zinc-500">{q.wrong} dari {q.seen}</span></span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
+  </AppShell>
+</Base>
