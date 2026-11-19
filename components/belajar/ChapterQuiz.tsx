@@ -151,7 +151,7 @@ export default function ChapterQuiz({
                     })}
                   </div>
                   {picked === q.answer && (
-                    <p className="mt-3 rounded-2xl bg-matcha-50 px-4 py-3 text-sm leading-relaxed text-noir">
+                    <p className="mt-3 rounded-2xl bg-matcha-100 px-4 py-3 text-sm leading-relaxed text-noir">
                       <strong>Tepat. </strong>{q.explanation}
                     </p>
                   )}
