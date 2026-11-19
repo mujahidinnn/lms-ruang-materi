@@ -13,7 +13,7 @@ type Analytics = {
   chapters: { slug: string; topic: string; position: number; title: string; started: number; done: number }[];
   questions: { id: string; slug: string; topic: string; prompt: string; seen: number; wrong: number }[];
 };
-type Attempt = { score: number | null; passed: boolean | null; exams: { topics: { slug: string } } };
+type Attempt = { user_id: string; score: number | null; passed: boolean | null; exams: { topics: { slug: string } } };
 
 const db = await createClient();
 const { data } = await db.rpc("admin_analytics");
@@ -23,15 +23,16 @@ if (!a) return Astro.rewrite("/404");
 // Extra detail read through the admin's own access; a failed read only hides its column.
 const since = new Date(Date.now() - 30 * 864e5).toISOString();
 const since30 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }] = await Promise.all([
-  db.from("exam_attempts").select("score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
+const [{ data: att }, { data: chs }, { data: certs }, { data: qs }, { data: jobData }, { data: days }, { data: done }, { data: people }, { data: sessions }] = await Promise.all([
+  db.from("exam_attempts").select("user_id, score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
   db.from("chapters").select("topics(slug)").eq("status", "published"),
-  db.from("certificates").select("topics(slug)").limit(5000),
+  db.from("certificates").select("user_id, topics(slug)").limit(5000),
   db.from("exam_questions").select("id, options, answer").in("id", a.questions.map((q) => q.id)),
   db.from("import_jobs").select("provider, model, status, input_tokens, output_tokens").gte("created_at", since).limit(2000),
-  db.from("learning_days").select("user_id").gte("day", since30).limit(20000),
+  db.from("learning_days").select("user_id, day").gte("day", since30).limit(20000),
   db.from("chapter_progress").select("user_id").limit(20000),
   db.rpc("admin_users"),
+  db.from("practice_sessions").select("user_id").limit(20000),
 ]);
 const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
   const m = new Map<string, number>();
@@ -84,6 +85,30 @@ const slipping = students
   .sort((a, b) => new Date(a.last_active_at!).getTime() - new Date(b.last_active_at!).getTime())
   .slice(0, 5);
 const idDate = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+// Trend: distinct active learners per day, last 30 days (Jakarta dates).
+const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" });
+const perDay = new Map<string, Set<string>>();
+for (const d of (days ?? []) as { user_id: string; day: string }[]) {
+  (perDay.get(d.day) ?? perDay.set(d.day, new Set()).get(d.day)!).add(d.user_id);
+}
+const trend = Array.from({ length: 30 }, (_, i) => {
+  const date = new Date(Date.now() - (29 - i) * 864e5);
+  return { date, n: perDay.get(dayKey.format(date))?.size ?? 0 };
+});
+const trendMax = Math.max(1, ...trend.map((t) => t.n));
+const weekActive = new Set(trend.slice(-7).flatMap((t) => [...(perDay.get(dayKey.format(t.date)) ?? [])])).size;
+const prevWeek = new Set(trend.slice(-14, -7).flatMap((t) => [...(perDay.get(dayKey.format(t.date)) ?? [])])).size;
+const dayLabel = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+// Funnel: students who reached each milestone. Not strictly nested, each step is its own count.
+const studentIds = new Set(students.map((x) => x.user_id));
+const reached = (rows: { user_id: string }[] | null) => new Set((rows ?? []).map((r) => r.user_id).filter((id) => studentIds.has(id))).size;
+const funnel = [
+  { label: "Daftar", n: students.length },
+  { label: "Selesai minimal 1 bab", n: reached(done) },
+  { label: "Selesai minimal 1 latihan", n: reached(sessions) },
+  { label: "Mengumpulkan ujian", n: reached(attempts.filter((t) => t.user_id) as { user_id: string }[]) },
+  { label: "Punya sertifikat", n: reached(certs as { user_id: string }[] | null) },
+];
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const topics = a.topics.filter((t) => t.started > 0);
 const chapters = a.chapters.slice(0, 10);
@@ -125,6 +150,39 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
           </div>
         ))}
       </dl>
+
+      <section aria-labelledby="tren" class={card}>
+        <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+          <h2 id="tren" class="text-lg font-bold tracking-tight">Murid aktif per hari</h2>
+          <p class="text-sm text-zinc-400"><span class="font-semibold tabular-nums text-zinc-50">{weekActive}</span> murid aktif 7 hari terakhir{prevWeek ? `, minggu sebelumnya ${prevWeek}` : ""}</p>
+        </div>
+        <p class="mt-1 text-sm text-zinc-400">Murid yang belajar (latihan, flashcard, atau ujian) di tiap hari, 30 hari terakhir.</p>
+        <ol class="mt-4 flex h-32 items-end gap-1" role="list">
+          {trend.map((t) => (
+            <li class="group relative flex h-full flex-1 items-end" title={`${dayLabel.format(t.date)}: ${t.n} murid`}>
+              <span class={`block w-full rounded-t ${t.n ? good : "bg-zinc-800"}`} style={`height:${t.n ? Math.max(6, pct(t.n, trendMax)) : 3}%`}></span>
+              <span class="sr-only">{dayLabel.format(t.date)}: {t.n} murid</span>
+            </li>
+          ))}
+        </ol>
+        <p class="mt-2 flex justify-between text-xs tabular-nums text-zinc-500"><span>{dayLabel.format(trend[0].date)}</span><span>puncak {trendMax} murid</span><span>{dayLabel.format(trend[29].date)}</span></p>
+      </section>
+
+      <section aria-labelledby="funnel" class={card}>
+        <h2 id="funnel" class="text-lg font-bold tracking-tight">Dari daftar sampai sertifikat</h2>
+        <p class="mt-1 text-sm text-zinc-400">Berapa murid yang sudah mencapai tiap langkah. Langkah terbesar yang hilang menunjukkan di mana murid baru berhenti.</p>
+        <ol class="mt-4 grid gap-4">
+          {funnel.map((f, i) => {
+            const p = pct(f.n, funnel[0].n);
+            return (
+              <li>
+                <p class="flex items-baseline justify-between gap-3 text-sm"><span class="font-medium">{f.label}</span><span class="shrink-0 text-xs tabular-nums text-zinc-400">{f.n} murid{i ? ` (${p}%)` : ""}</span></p>
+                <div aria-hidden class={`mt-2 ${track}`}><div class={`h-full rounded-full ${good}`} style={`width:${p}%`}></div></div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
 
       <section aria-labelledby="kelas" class={card}>
         <h2 id="kelas" class="text-lg font-bold tracking-tight">Kelas</h2>
