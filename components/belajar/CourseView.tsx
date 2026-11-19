@@ -63,7 +63,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
           </a>
           </div>
           <div className="relative hidden md:block">
-            <Art bare kind="topic" slug={topic.slug} className="absolute top-1/2 left-1/2 -z-0 h-auto w-[200%] max-w-none -translate-x-1/2 -translate-y-1/2 opacity-40" />
+            <Art bare kind="topic" slug={topic.slug} className="absolute top-1/2 left-1/2 -z-0 h-auto w-[200%]! max-w-none -translate-x-1/2 -translate-y-1/2 opacity-40" />
             {topic.slides.length > 0 && <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} decoding="async" className="relative aspect-video w-full rounded-[16px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />}
           </div>
         </header>
