@@ -36,6 +36,13 @@ const ref = refRow as { code: string; joined: number } | null;
 const METODE: Record<string, string> = { email: "Email", google: "Google" };
 const { data: ids } = await db.auth.getUserIdentities();
 const methods = [...new Set((ids?.identities ?? []).map((i) => METODE[i.provider] ?? i.provider))];
+const { data: sessions } = await db.rpc("my_sessions");
+const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; refreshed_at: string; current: boolean }[]).map((x) => {
+  const ua = x.user_agent ?? "";
+  const browser = /Edg\//.test(ua) ? "Edge" : /OPR\/|Opera/.test(ua) ? "Opera" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\/|CriOS/.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser";
+  const os = /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
+  return { ...x, nama: os ? `${browser} di ${os}` : browser, hp: /Android|iPhone|iPad|Mobile/.test(ua) };
+});
 const zone = p?.timezone ?? "Asia/Jakarta";
 ---
 
@@ -124,6 +131,17 @@ const zone = p?.timezone ?? "Asia/Jakarta";
       <section aria-labelledby="keamanan" class={`p-5 sm:p-8 ${card}`}>
         <h2 id="keamanan" class="text-xl font-bold tracking-tight">Keamanan</h2>
         <p class="mt-1 text-sm text-zinc-400">Metode masuk: {methods.join(", ") || "Email"}</p>
+        {perangkat.length > 0 && (
+          <ul class="mt-4 divide-y divide-zinc-800 text-sm">
+            {perangkat.map((x) => (
+              <li class="flex items-center gap-3 py-2.5">
+                {x.hp ? <Smartphone aria-hidden class="size-4 shrink-0" /> : <Monitor aria-hidden class="size-4 shrink-0" />}
+                <span class="min-w-0 flex-1 truncate font-semibold">{x.nama}</span>
+                {x.current ? <span class="rounded-full bg-matcha-300 px-2.5 py-0.5 text-xs font-bold text-noir">Perangkat ini</span> : <span class="shrink-0 text-xs text-zinc-400"><time datetime={x.refreshed_at}>{new Date(x.refreshed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: zone })}</time></span>}
+              </li>
+            ))}
+          </ul>
+        )}
         <p class="mt-3 text-sm text-zinc-400">Pakai perangkat bersama atau merasa akun dipakai orang lain? Keluarkan semua perangkat sekaligus, lalu masuk lagi di perangkatmu.</p>
         <div class="mt-4"><SignOutButton all label class="min-h-11 cursor-pointer rounded-full border-2 border-noir px-5 text-sm font-bold hover:bg-zinc-800" /></div>
       </section>
@@ -138,7 +156,7 @@ const zone = p?.timezone ?? "Asia/Jakarta";
         </div>
         <div class="ml-auto flex h-28 w-20 shrink-0 sm:h-36 sm:w-24 items-end justify-center overflow-hidden rounded-t-full bg-matcha-300 pt-3"><img src="/ilustrasi/kode.svg" alt="" width="890" height="1220" class="h-full w-auto -scale-x-100" /></div>
       </div>
-      <section aria-labelledby="ekspor" class="h-full rounded-[18px] bg-tile-sky p-5 sm:p-8 lg:h-auto">
+      <section aria-labelledby="ekspor" class="h-full rounded-[18px] bg-tile-lavender p-5 sm:p-8 lg:h-auto">
         <h2 id="ekspor" class="text-xl font-bold tracking-tight">Ekspor data</h2>
         <p class="mt-1 mb-4 text-sm text-zinc-300">Semua data belajarmu dalam satu file JSON: progres, latihan, flashcard, ujian, dan badge.</p>
         <ExportButton client:load />
