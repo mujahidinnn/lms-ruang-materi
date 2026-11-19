@@ -3,9 +3,9 @@
 import type { NodeState, PlacedNode, RoadmapEdge } from "@/lib/roadmap";
 import StateIcon from "./StateIcon";
 
-const W = 132;
-const H = 48;
-const GAP_X = 14; // six columns fit beside the 20rem list at 1280px
+const W = 180;
+const H = 60;
+const GAP_X = 14; // graph scrolls horizontally when columns overflow
 const GAP_Y = 20;
 
 const x = (n: PlacedNode) => n.column * (W + GAP_X);
@@ -75,7 +75,7 @@ export default function RoadmapGraph({
               } ${n.optional ? `border-dashed ${selected === n.id ? "" : "!border-zinc-700"}` : ""}`}
             >
               <StateIcon state={state} />
-              <span className="line-clamp-2 leading-tight font-medium">{n.title}</span>
+              <span className="line-clamp-3 leading-tight break-words font-medium">{n.title}</span>
             </button>
           );
         })}
