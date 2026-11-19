@@ -65,6 +65,20 @@ const ADD = [
     text: "## Event loop: siapa jalan lebih dulu?\n\nSetelah kode sinkron selesai, event loop menjalankan semua microtask (Promise `.then`) sebelum task berikutnya (`setTimeout`). Maju langkah demi langkah untuk melihat urutannya.\n\n![Event loop: call stack, microtask queue, dan task queue](sim:event-loop)\n\n" },
   { topic: "linux-dan-terminal", chapter: "izin-dan-kepemilikan", before: "## `chown` dan `chgrp`: mengubah kepemilikan", sim: "chmod-calculator",
     text: "![Kalkulator chmod: centang rwx, angka oktal, dan teks rwxr-xr-- saling sinkron](sim:chmod-calculator)\n\n" },
+  { topic: "docker-dan-deployment", chapter: "dockerfile-dasar", before: "## .dockerignore", sim: "docker-layers",
+    text: "## Coba sendiri: layer dan cache\n\nUbah kode atau package.json, lalu bangun ulang. Perhatikan layer mana yang diambil dari cache dan mana yang ikut dibangun ulang, lalu tukar urutan `COPY . .` dan lihat harganya.\n\n![Layer dan cache Docker](sim:docker-layers)\n\n" },
+  { topic: "linux-dan-terminal", chapter: "pipe-redirect-dan-filter", before: "## Here document dan substitusi perintah", sim: "pipe-redirect",
+    text: "## Coba sendiri: aliran data antar perintah\n\nJalankan pipeline satu tahap demi satu tahap. Perhatikan bahwa pipe hanya membawa stdout, sedangkan stderr tetap ke layar kecuali dialihkan.\n\n![Pipe dan redirect](sim:pipe-redirect)\n\n" },
+  { topic: "analisis-data-dengan-python", chapter: "mengelompokkan-dan-agregasi", before: "## Mengelompokkan dengan defaultdict", sim: "groupby-agg",
+    text: "## Coba sendiri: pecah, terapkan, kumpulkan\n\nPilih kolom pengelompok dan jenis agregasi, lalu maju tahap demi tahap. Baris terpecah menjadi kelompok berwarna, lalu tiap kelompok menjadi satu baris hasil. Baris kode `groupby` yang setara ikut berubah.\n\n![Groupby: pecah, terapkan, dan kumpulkan](sim:groupby-agg)\n\n" },
+  { topic: "analisis-data-dengan-python", chapter: "menggabungkan-tabel", before: "## Jenis penggabungan", sim: "merge-tabel",
+    text: "## Coba sendiri: inner, left, dan outer\n\nGanti jenis merge dan lihat baris mana yang bertahan. Arahkan kursor ke baris hasil untuk melihat pasangannya di tabel asal, dan perhatikan NaN pada baris tanpa pasangan.\n\n![Merge dua tabel lewat kolom kunci](sim:merge-tabel)\n\n" },
+  { topic: "dasar-komputer-dan-os", chapter: "booting-proses-dan-memori-virtual", before: "## Proses Booting", sim: "boot-proses",
+    text: "![Urutan booting dan penjadwalan Round Robin](sim:boot-proses)\n\n" },
+  { topic: "javascript", chapter: "fungsi-scope-dan-hoisting", before: "## Hoisting dasar", sim: "scope-hoisting",
+    text: "![Scope dan hoisting langkah demi langkah](sim:scope-hoisting)\n\n" },
+  { topic: "reactjs", chapter: "event-dan-usestate", before: "## Kenapa set state memicu render ulang", sim: "react-render",
+    text: "![Render ulang komponen dan React.memo](sim:react-render)\n\n" },
 ];
 
 const patch = (body, a) => {

@@ -30,4 +30,11 @@ export const sims: Record<string, () => Promise<{ default: ComponentType<{ title
   "render-pipeline": () => import("./RenderPipeline"),
   "event-loop": () => import("./EventLoop"),
   "chmod-calculator": () => import("./ChmodCalculator"),
+  "docker-layers": () => import("./DockerLayers"),
+  "pipe-redirect": () => import("./PipeRedirect"),
+  "groupby-agg": () => import("./GroupbyAgg"),
+  "merge-tabel": () => import("./MergeTabel"),
+  "boot-proses": () => import("./BootProses"),
+  "scope-hoisting": () => import("./ScopeHoisting"),
+  "react-render": () => import("./ReactRender"),
 };
