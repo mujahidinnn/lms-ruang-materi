@@ -39,6 +39,9 @@ export const GET: APIRoute = async ({ url, redirect, cookies }) => {
   // A recovery link signs the learner in to set a new password.
   if (type === "recovery") return redirect("/profil#sandi");
 
+  // A confirmed email change returns to the Akun tab.
+  if (type === "email_change") return redirect("/profil#akun");
+
   // Name and age given at sign-up (user metadata) fill an empty profile, so
   // a new learner skips /mulai. A Google account brings its name (full_name)
   // but no age, so /mulai then asks only for the age, the name filled in.

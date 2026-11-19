@@ -2,6 +2,7 @@ import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
 import { getCurrentUser, requireUser } from "@/lib/dal";
 import { safeNext } from "@/lib/safe-next";
+import { SITE_URL } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 
 type State = { error?: string; ok?: string };
@@ -40,7 +41,7 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
 export async function eksporData() {
   const user = await requireUser("/profil");
   const db = await createClient();
-  const tables = ["profiles", "progress", "practice_sessions", "flashcard_reviews", "exam_attempts", "badges", "learning_days"] as const;
+  const tables = ["profiles", "progress", "practice_sessions", "flashcard_reviews", "exam_attempts", "badges", "learning_days", "certificates", "learning_streaks"] as const;
   const rows = await Promise.all(tables.map((t) => db.from(t).select("*").eq("user_id", user.id)));
   return {
     email: user.email,
@@ -96,6 +97,47 @@ export async function aturSandi(_: State, form: FormData): Promise<State> {
   if (error?.code === "weak_password") return { error: "Kata sandi terlalu lemah. Pakai campuran huruf dan angka." };
   if (error) return { error: "Gagal menyimpan kata sandi, coba lagi." };
   return { ok: "Kata sandi tersimpan. Lain kali bisa masuk dengan email dan kata sandi ini." };
+}
+
+// Ganti email: Supabase mails a confirmation to the new address (and the old
+// one, double_confirm_changes); the callback verifies it (type=email_change).
+export async function gantiEmail(_: State, form: FormData): Promise<State> {
+  const user = await requireUser("/profil");
+  const parsed = z.object({ email: z.email("Alamat email belum benar.") }).safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (parsed.data.email.toLowerCase() === user.email.toLowerCase()) return { error: "Itu sudah email akunmu sekarang." };
+  const { error } = await (await createClient()).auth.updateUser({ email: parsed.data.email }, { emailRedirectTo: `${SITE_URL}/masuk/callback?next=${encodeURIComponent("/profil#akun")}` });
+  if (error?.code === "email_exists") return { error: "Email itu sudah dipakai akun lain." };
+  if (error?.status === 429) return { error: "Terlalu sering. Tunggu sebentar, lalu coba lagi." };
+  if (error) return { error: "Gagal mengirim email konfirmasi, coba lagi." };
+  return { ok: "Cek email lama dan baru, lalu klik tautan konfirmasi di keduanya." };
+}
+
+// Ends one other session of this account.
+export async function keluarkanPerangkat(form: FormData) {
+  await requireUser("/profil");
+  const id = z.uuid().safeParse(form.get("id"));
+  if (id.success) await (await createClient()).rpc("revoke_my_session", { p_id: id.data });
+  refresh();
+}
+
+// Google as a second way in (needs enable_manual_linking in Supabase Auth).
+export async function hubungkanGoogle() {
+  await requireUser("/profil");
+  const { data, error } = await (await createClient()).auth.linkIdentity({ provider: "google", options: { redirectTo: `${SITE_URL}/masuk/callback?next=${encodeURIComponent("/profil#akun")}` } });
+  if (error || !data.url) redirect("/profil#akun");
+  redirect(data.url);
+}
+
+// Only while another method remains, or the learner would lock themselves out.
+export async function lepasGoogle() {
+  await requireUser("/profil");
+  const db = await createClient();
+  const { data } = await db.auth.getUserIdentities();
+  const all = data?.identities ?? [];
+  const google = all.find((i) => i.provider === "google");
+  if (google && all.length > 1) await db.auth.unlinkIdentity(google);
+  refresh();
 }
 
 // Fired by the browser on CDN-cached pages, which never reach the server:
