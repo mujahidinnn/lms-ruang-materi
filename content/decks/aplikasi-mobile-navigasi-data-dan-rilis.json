@@ -1,0 +1,299 @@
+{
+ "theme": "mobile-lanjut",
+ "deck": "Aplikasi Mobile: Navigasi, Data, dan Rilis",
+ "kicker": "KELAS",
+ "subtitle": "Dari satu layar ke aplikasi utuh: navigasi, state, data offline, dan rilis ke toko",
+ "slides": [
+  {
+   "title": "Aplikasi Mobile: Navigasi, Data, dan Rilis"
+  },
+  {
+   "title": "Dari layar pertama ke aplikasi utuh",
+   "kicker": "PETA KELAS",
+   "bullets": [
+    "Kelas ini melanjutkan React Native dan Expo yang sudah kamu kenal",
+    "Fokus pada hal yang membuat aplikasi terasa nyata: pindah layar, data, offline",
+    "Setiap bab punya logika murni yang bisa kamu latih di browser",
+    "Bab terakhir membawa aplikasi sampai ke toko aplikasi"
+   ]
+  },
+  {
+   "title": "Empat lapisan aplikasi mobile",
+   "kicker": "PETA KELAS",
+   "bullets": [
+    "Layar: tampilan yang dilihat pengguna",
+    "Navigasi: aturan perpindahan antar layar",
+    "State: data yang sedang hidup di memori",
+    "Data: server, cache, dan penyimpanan lokal"
+   ],
+   "note": "Lapisan yang rapi membuat setiap bagian bisa dites dan diganti sendiri."
+  },
+  {
+   "title": "Struktur proyek Expo Router",
+   "kicker": "PETA KELAS",
+   "bullets": [
+    "Folder app/ menentukan rute: satu berkas, satu layar",
+    "_layout.tsx mengatur kerangka: stack, tab, atau drawer",
+    "Berkas [id].tsx menjadi rute dengan parameter",
+    "Logika non-tampilan dipisah ke folder lib/ agar mudah dites"
+   ],
+   "code": "app/\n  _layout.tsx\n  index.tsx\n  (tabs)/\n    _layout.tsx\n    beranda.tsx\n    profil.tsx\n  kelas/[id].tsx\nlib/\n  navigasi.ts"
+  },
+  {
+   "title": "Stack, tab, dan drawer",
+   "kicker": "NAVIGASI",
+   "bullets": [
+    "Stack: layar menumpuk, tombol kembali membuka tumpukan",
+    "Tab: beberapa tujuan setara yang selalu terlihat di bawah",
+    "Drawer: menu samping untuk banyak tujuan jarang dipakai",
+    "Aplikasi nyata menggabungkan: tab di luar, stack di dalam tiap tab"
+   ]
+  },
+  {
+   "title": "Navigasi adalah mesin status",
+   "kicker": "NAVIGASI",
+   "bullets": [
+    "Keadaan: daftar layar di tumpukan dan tab yang aktif",
+    "Aksi: push, pop, replace, ganti tab",
+    "Setiap aksi menghasilkan keadaan baru tanpa mengubah yang lama",
+    "Dengan begitu navigasi bisa dites tanpa layar sama sekali"
+   ],
+   "code": "function push(k, layar) {\n  return { tumpukan: [...k.tumpukan, layar] };\n}\n\nfunction pop(k) {\n  if (k.tumpukan.length === 1) return k;\n  const sisa = k.tumpukan.slice(0, -1);\n  return { tumpukan: sisa };\n}"
+  },
+  {
+   "title": "Perilaku tombol kembali",
+   "kicker": "NAVIGASI",
+   "bullets": [
+    "pop di layar pertama tidak boleh menutup aplikasi tanpa sengaja",
+    "replace mengganti layar tanpa meninggalkan jejak, cocok setelah login",
+    "Tiap tab menyimpan tumpukannya sendiri",
+    "Pindah tab lalu kembali tidak boleh menghapus posisi pengguna"
+   ],
+   "note": "Uji tiga skenario: pop di dasar, replace setelah login, dan pindah tab bolak-balik."
+  },
+  {
+   "title": "Parameter rute",
+   "kicker": "RUTE DAN DEEP LINK",
+   "bullets": [
+    "Rute /kelas/42 membawa parameter id bernilai 42",
+    "Parameter selalu berupa teks, ubah ke angka sendiri",
+    "Query seperti ?tab=bab untuk opsi yang tidak mengubah layar",
+    "Jangan kirim objek besar lewat rute: kirim id lalu ambil datanya"
+   ]
+  },
+  {
+   "title": "Mencocokkan pola rute",
+   "kicker": "RUTE DAN DEEP LINK",
+   "bullets": [
+    "Pola /kelas/:id dicocokkan segmen demi segmen",
+    "Segmen berawalan titik dua menjadi parameter",
+    "Jumlah segmen yang berbeda berarti tidak cocok",
+    "Hasilnya objek params, atau null bila tidak cocok"
+   ],
+   "code": "function cocok(pola, path) {\n  const a = pola.split(\"/\");\n  const b = path.split(\"/\");\n  if (a.length !== b.length) return null;\n  const params = {};\n  for (let i = 0; i < a.length; i++) {\n    const p = a[i];\n    if (p[0] === \":\") params[p.slice(1)] = b[i];\n    else if (p !== b[i]) return null;\n  }\n  return params;\n}"
+  },
+  {
+   "title": "Deep link",
+   "kicker": "RUTE DAN DEEP LINK",
+   "bullets": [
+    "Deep link membuka layar tertentu dari luar aplikasi",
+    "Skema khusus: ruangmateri://kelas/42",
+    "Universal link memakai alamat https biasa dan lebih aman",
+    "Selalu validasi tautan: anggap isinya tidak tepercaya"
+   ],
+   "note": "Tautan dari luar adalah input pengguna. Cek rute dan parameternya sebelum membuka layar."
+  },
+  {
+   "title": "Mengapa perlu state global",
+   "kicker": "STATE",
+   "bullets": [
+    "Data yang dipakai banyak layar tidak cocok disimpan di satu layar",
+    "Prop drilling melelahkan: data dioper lewat banyak lapisan",
+    "State global menaruh data di satu tempat yang bisa dibaca semua layar",
+    "Harga yang dibayar: perubahan harus tertata agar mudah dilacak"
+   ]
+  },
+  {
+   "title": "Reducer: perubahan yang dapat diprediksi",
+   "kicker": "STATE",
+   "bullets": [
+    "Reducer menerima keadaan lama dan aksi, mengembalikan keadaan baru",
+    "Fungsi murni: input yang sama selalu memberi hasil yang sama",
+    "Tidak mengubah keadaan lama, selalu membuat salinan",
+    "Karena murni, reducer paling mudah dites dari seluruh aplikasi"
+   ],
+   "code": "function reducer(k, aksi) {\n  switch (aksi.tipe) {\n    case \"tambah\":\n      return { ...k, item: [...k.item, aksi.item] };\n    case \"hapus\": {\n      const item = k.item.filter((i) => i.id !== aksi.id);\n      return { ...k, item };\n    }\n    default:\n      return k;\n  }\n}"
+  },
+  {
+   "title": "Selector dan data turunan",
+   "kicker": "STATE",
+   "bullets": [
+    "Jangan simpan data yang bisa dihitung dari data lain",
+    "Selector adalah fungsi yang menghitung data turunan dari state",
+    "Contoh: jumlah item, total harga, daftar yang sudah selesai",
+    "Menyimpan satu sumber kebenaran mencegah dua angka yang saling bertentangan"
+   ],
+   "note": "Simpan fakta, hitung turunannya."
+  },
+  {
+   "title": "Data dari API: tiga keadaan",
+   "kicker": "DATA DAN CACHE",
+   "bullets": [
+    "Memuat, berhasil, atau gagal: layar harus siap untuk ketiganya",
+    "Tampilkan penanda muat, jangan layar kosong",
+    "Pesan gagal harus jelas dan menawarkan coba lagi",
+    "Model status eksplisit mencegah tampilan yang bertentangan"
+   ],
+   "code": "const awal = { status: \"diam\", data: null, galat: null };\n\n// status: diam, memuat, berhasil, gagal"
+  },
+  {
+   "title": "Cache dengan masa berlaku",
+   "kicker": "DATA DAN CACHE",
+   "bullets": [
+    "Cache menyimpan hasil agar tidak mengambil data yang sama berulang",
+    "TTL: masa berlaku, setelah itu data dianggap basi",
+    "Stale-while-revalidate: tampilkan data lama sambil memperbarui",
+    "Kunci cache sebaiknya mencerminkan parameter permintaan"
+   ]
+  },
+  {
+   "title": "Coba ulang dengan jeda bertahap",
+   "kicker": "DATA DAN CACHE",
+   "bullets": [
+    "Jaringan seluler sering gagal sesaat, coba ulang itu wajar",
+    "Exponential backoff: jeda makin lama, mis. 1, 2, 4, 8 detik",
+    "Beri batas jumlah percobaan dan batas jeda maksimum",
+    "Hanya ulangi kegagalan sementara, bukan kesalahan permintaan"
+   ],
+   "code": "function jeda(percobaan) {\n  return Math.min(1000 * 2 ** percobaan, 30000);\n}"
+  },
+  {
+   "title": "Penyimpanan lokal",
+   "kicker": "OFFLINE",
+   "bullets": [
+    "AsyncStorage untuk data kecil seperti pengaturan",
+    "SecureStore untuk rahasia seperti token",
+    "SQLite untuk data terstruktur dalam jumlah besar",
+    "Pilih berdasarkan sifat data, bukan kebiasaan"
+   ],
+   "note": "Token dan kata sandi tidak boleh disimpan di AsyncStorage biasa."
+  },
+  {
+   "title": "Offline lebih dulu",
+   "kicker": "OFFLINE",
+   "bullets": [
+    "Aplikasi tetap berguna tanpa sinyal: baca data tersimpan",
+    "Tulisan pengguna disimpan lokal dahulu, dikirim kemudian",
+    "Beri tahu pengguna keadaan koneksi dan status kirim",
+    "Tentukan aturan bila data lokal dan server berbeda"
+   ]
+  },
+  {
+   "title": "Antrean sinkronisasi dan optimistic update",
+   "kicker": "OFFLINE",
+   "bullets": [
+    "Aksi masuk antrean, dikirim saat jaringan kembali",
+    "Optimistic update: tampilkan hasil dulu, batalkan bila server menolak",
+    "Setiap aksi punya id agar tidak terkirim dua kali",
+    "Simpan jumlah percobaan agar aksi macet tidak mengulang selamanya"
+   ],
+   "code": "const antrean = [];\nfunction masuk(a) {\n  antrean.push({ ...a, coba: 0 });\n}\nfunction gagalKirim(a) {\n  a.coba += 1;\n  return a.coba >= 3 ? \"menyerah\" : \"ulang\";\n}"
+  },
+  {
+   "title": "Form dan validasi",
+   "kicker": "FORM DAN IZIN",
+   "bullets": [
+    "Validasi di perangkat memberi umpan balik cepat",
+    "Validasi di server tetap wajib: aplikasi bisa dimanipulasi",
+    "Kembalikan semua kesalahan sekaligus, jangan satu per satu",
+    "Pesan kesalahan menyebut perbaikan, bukan hanya menolak"
+   ],
+   "code": "function validasi(f) {\n  const galat = {};\n  const ok = /^[^@\\s]+@[^@\\s]+$/;\n  if (!ok.test(f.email)) galat.email = \"Email tidak valid\";\n  if (f.sandi.length < 8) galat.sandi = \"Minimal 8 karakter\";\n  return galat;\n}"
+  },
+  {
+   "title": "Pengalaman form yang baik",
+   "kicker": "FORM DAN IZIN",
+   "bullets": [
+    "Tampilkan kesalahan setelah pengguna selesai mengisi kolom",
+    "Tombol kirim dinonaktifkan saat permintaan berjalan",
+    "Pertahankan isian ketika terjadi galat",
+    "Pilih jenis papan ketik yang sesuai: email, angka, telepon"
+   ]
+  },
+  {
+   "title": "Izin perangkat",
+   "kicker": "FORM DAN IZIN",
+   "bullets": [
+    "Kamera, lokasi, notifikasi: semuanya perlu izin pengguna",
+    "Minta izin saat fitur dibutuhkan, bukan saat aplikasi dibuka",
+    "Jelaskan alasannya sebelum dialog sistem muncul",
+    "Siapkan jalan keluar bila izin ditolak"
+   ],
+   "note": "Izin ditolak permanen hanya bisa diubah dari pengaturan sistem. Arahkan pengguna ke sana."
+  },
+  {
+   "title": "FlatList dan daftar panjang",
+   "kicker": "PERFORMA",
+   "bullets": [
+    "ScrollView merender semua anak, FlatList hanya yang terlihat",
+    "keyExtractor harus stabil dan unik untuk tiap item",
+    "Item yang berat memperlambat gulir, jaga item tetap ringan",
+    "getItemLayout membantu bila tinggi item sama"
+   ]
+  },
+  {
+   "title": "Paginasi dengan kursor",
+   "kicker": "PERFORMA",
+   "bullets": [
+    "Ambil data per halaman, jangan sekaligus",
+    "Kursor menandai posisi terakhir, lebih tahan data yang berubah",
+    "Berhenti memuat saat server menyatakan sudah habis",
+    "Cegah permintaan ganda saat pengguna menggulir cepat"
+   ],
+   "code": "function halaman(data, kursor, ukuran) {\n  const mulai = kursor ?? 0;\n  const akhir = mulai + ukuran;\n  const isi = data.slice(mulai, akhir);\n  const berikut = akhir < data.length ? akhir : null;\n  return { isi, berikut };\n}"
+  },
+  {
+   "title": "Memoization dan windowing",
+   "kicker": "PERFORMA",
+   "bullets": [
+    "Memoization menyimpan hasil agar tidak dihitung ulang",
+    "React.memo mencegah render ulang bila prop tidak berubah",
+    "Windowing hanya merender item di sekitar area terlihat",
+    "Ukur dulu sebelum mengoptimalkan, jangan menebak"
+   ],
+   "note": "Optimasi tanpa pengukuran sering menambah kerumitan tanpa manfaat."
+  },
+  {
+   "title": "Build dengan EAS",
+   "kicker": "BUILD DAN RILIS",
+   "bullets": [
+    "EAS Build membuat berkas aplikasi di cloud, tanpa Xcode atau Android Studio lokal",
+    "Profil build: development, preview, production",
+    "Preview dibagikan ke penguji, production dikirim ke toko",
+    "Rahasia disimpan sebagai environment variable, bukan di kode"
+   ]
+  },
+  {
+   "title": "Versi dan pembaruan OTA",
+   "kicker": "BUILD DAN RILIS",
+   "bullets": [
+    "version untuk pengguna, versionCode atau buildNumber untuk toko",
+    "Setiap unggahan ke toko wajib menaikkan nomor build",
+    "OTA mengganti kode JavaScript tanpa lewat toko",
+    "OTA hanya cocok bila runtimeVersion sama dengan build yang terpasang"
+   ],
+   "code": "// app.json\n\"version\": \"1.4.0\",\n\"runtimeVersion\": { \"policy\": \"appVersion\" }"
+  },
+  {
+   "title": "Review toko dan daftar periksa rilis",
+   "kicker": "BUILD DAN RILIS",
+   "bullets": [
+    "Siapkan kebijakan privasi, ikon, tangkapan layar, dan deskripsi",
+    "Jelaskan alasan setiap izin yang diminta",
+    "Uji di perangkat sungguhan sebelum mengirim",
+    "Rilis bertahap dan siapkan cara membatalkan bila ada masalah"
+   ],
+   "note": "Review toko bisa memakan beberapa hari. Jangan menjadwalkan rilis mepet tenggat."
+  }
+ ]
+}

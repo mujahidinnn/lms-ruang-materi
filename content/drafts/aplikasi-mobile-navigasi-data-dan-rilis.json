@@ -1,0 +1,2206 @@
+{
+  "title": "Aplikasi Mobile: Navigasi, Data, dan Rilis",
+  "description": "Lanjutan React Native dan Expo: navigasi, deep link, state dengan reducer, data dengan cache dan coba ulang, offline dan sinkronisasi, form dan izin, performa daftar, sampai rilis dengan EAS. Ditutup proyek Mesin Navigasi dan Antrean Sinkronisasi.",
+  "summary": "Aplikasi mobile yang dipakai orang sungguhan butuh lebih dari beberapa layar. Kelas ini melanjutkan React Native dan Expo dengan membagi aplikasi menjadi empat lapisan: layar, navigasi, state, dan data, lalu memisahkan logikanya dari tampilan sehingga bisa dites sebagai fungsi murni.\n\nBagian inti membahas navigasi sebagai mesin status dengan stack dan tab, parameter rute dan deep link yang divalidasi, serta state global dengan reducer dan selector. Setelah itu kamu mengambil data dari API dengan status yang jelas, cache bermasa berlaku, dan coba ulang dengan jeda bertahap, lalu menyimpan data di perangkat, membuat antrean sinkronisasi, dan menerapkan optimistic update.\n\nBagian akhir mencakup form dengan validasi, izin perangkat, performa daftar dengan FlatList, paginasi kursor, dan memoization, lalu build dengan EAS, versi, pembaruan OTA, dan daftar periksa rilis. Proyek akhir menggabungkan mesin navigasi dengan antrean sinkronisasi dalam satu modul yang dites.",
+  "tips": [
+    "Lingkungan latihan hanya menjalankan JavaScript biasa, jadi kamu melatih logika aplikasi (navigasi, reducer, cache, antrean) tanpa React Native. Tampilan, gestur, dan fitur perangkat tetap perlu dicoba di ponsel sungguhan atau emulator.",
+    "Tulis logika sebagai fungsi murni di folder seperti lib/, lalu panggil dari layar. Fungsi seperti itu bisa kamu pindahkan utuh ke proyek Expo sungguhan.",
+    "Setiap kali menambah fitur yang bergantung pada jaringan, tanyakan: apa yang terjadi bila ini lambat, gagal, atau offline? Jawabannya menentukan status, cache, dan antrean yang kamu butuhkan.",
+    "Uji aplikasi di perangkat sungguhan yang murah dan lama, bukan hanya di emulator laptop. Masalah performa daftar dan memori sering baru terasa di sana.",
+    "Biasakan memakai daftar periksa tertulis sebelum rilis: nomor build naik, profil production, rahasia aman, kebijakan privasi siap, dan build preview sudah dicoba di perangkat."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa empat lapisan aplikasi mobile?",
+      "back": "Layar, navigasi, state, dan data."
+    },
+    {
+      "front": "Mengapa logika dipisah dari layar?",
+      "back": "Fungsi murni mudah dites tanpa emulator dan mudah dipakai ulang."
+    },
+    {
+      "front": "Apa itu fungsi murni?",
+      "back": "Fungsi yang keluarannya hanya bergantung pada masukan dan tidak mengubah apa pun di luar dirinya."
+    },
+    {
+      "front": "Apa arti `[id]` pada nama berkas Expo Router?",
+      "back": "Segmen dinamis; nilainya diambil dari alamat dan dibaca sebagai parameter."
+    },
+    {
+      "front": "Apa beda stack dan tab?",
+      "back": "Stack menumpuk layar dengan tombol kembali; tab menampilkan tujuan setara yang selalu terlihat."
+    },
+    {
+      "front": "Mengapa navigasi disebut mesin status?",
+      "back": "Ada keadaan (tumpukan layar) dan aksi (push, pop, replace) yang menghasilkan keadaan baru."
+    },
+    {
+      "front": "Kapan memakai replace?",
+      "back": "Saat layar sebelumnya tidak boleh dikunjungi lagi, misalnya setelah login."
+    },
+    {
+      "front": "Apa tipe parameter rute?",
+      "back": "Selalu teks; ubah sendiri dengan Number bila perlu."
+    },
+    {
+      "front": "Apa itu deep link?",
+      "back": "Alamat yang membuka layar tertentu dari luar aplikasi."
+    },
+    {
+      "front": "Mengapa universal link lebih aman?",
+      "back": "Domainnya harus dibuktikan milik pengembang, berbeda dengan skema khusus."
+    },
+    {
+      "front": "Apa itu reducer?",
+      "back": "Fungsi murni yang menerima keadaan lama dan aksi, lalu mengembalikan keadaan baru."
+    },
+    {
+      "front": "Mengapa reducer tidak boleh mengubah keadaan lama?",
+      "back": "React membandingkan keadaan lama dan baru; perubahan di tempat membuat layar tidak diperbarui."
+    },
+    {
+      "front": "Apa itu selector?",
+      "back": "Fungsi yang menghitung data turunan dari state, misalnya total harga."
+    },
+    {
+      "front": "Apa aturan fakta dan turunan?",
+      "back": "Simpan fakta, hitung turunannya."
+    },
+    {
+      "front": "Empat status permintaan data?",
+      "back": "Diam, memuat, berhasil, dan gagal."
+    },
+    {
+      "front": "Apa itu TTL pada cache?",
+      "back": "Masa berlaku entri; setelah itu data dianggap basi."
+    },
+    {
+      "front": "Apa itu stale-while-revalidate?",
+      "back": "Menampilkan data lama dulu sambil mengambil data baru di belakang layar."
+    },
+    {
+      "front": "Apa itu exponential backoff?",
+      "back": "Jeda coba ulang yang melipat dua setiap kegagalan, dengan batas atas."
+    },
+    {
+      "front": "Kegagalan mana yang layak diulang?",
+      "back": "Yang sementara: tanpa koneksi, 408, 429, dan 5xx; bukan 400 atau 404."
+    },
+    {
+      "front": "Di mana menyimpan token login?",
+      "back": "Di SecureStore, bukan AsyncStorage."
+    },
+    {
+      "front": "Apa itu offline-first?",
+      "back": "Membaca dari data tersimpan dan menulis lokal dahulu, lalu dikirim saat jaringan kembali."
+    },
+    {
+      "front": "Apa fungsi antrean sinkronisasi?",
+      "back": "Menjaga urutan aksi, menolak id ganda, dan menghitung percobaan agar aksi macet tidak diulang selamanya."
+    },
+    {
+      "front": "Apa itu optimistic update?",
+      "back": "Menampilkan hasil seketika sebelum server menjawab, dengan jalan mundur bila ditolak."
+    },
+    {
+      "front": "Mengapa validasi di server tetap wajib?",
+      "back": "Aplikasi bisa dibongkar atau dilewati, jadi validasi di perangkat hanya kenyamanan."
+    },
+    {
+      "front": "Kapan meminta izin perangkat?",
+      "back": "Saat fitur dibutuhkan, disertai alasan yang jelas, dengan jalan keluar bila ditolak."
+    },
+    {
+      "front": "Mengapa FlatList lebih hemat dari ScrollView?",
+      "back": "Hanya merender item di sekitar area terlihat (windowing)."
+    },
+    {
+      "front": "Apa arti kursor berikutnya null?",
+      "back": "Data sudah habis dan pemuatan berhenti."
+    },
+    {
+      "front": "Apa itu memoization?",
+      "back": "Menyimpan hasil fungsi murni agar tidak dihitung ulang untuk masukan yang sama."
+    },
+    {
+      "front": "Apa itu runtimeVersion?",
+      "back": "Penanda yang mencegah OTA tidak cocok sampai ke build yang tidak punya kode native-nya."
+    },
+    {
+      "front": "Apa yang bisa dan tidak bisa dibawa OTA?",
+      "back": "Bisa JavaScript dan aset; tidak bisa kode native atau perubahan izin."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Susunan folder mana yang menjadikan layar detail kelas dengan alamat /kelas/42 di Expo Router?",
+      "code": "",
+      "options": [
+        "app/kelas/id.tsx",
+        "app/kelas/[id].tsx",
+        "app/kelas.tsx?id=42",
+        "lib/kelas/[id].ts"
+      ],
+      "answer": 1,
+      "explanation": "Kurung siku menandai segmen dinamis yang nilainya diambil dari alamat."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi murni selalu menghasilkan keluaran sama untuk masukan yang sama.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itulah definisi fungsi murni dan alasan mudah dites."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah dua push dan satu pop dari tumpukan [beranda], layar teratasnya adalah",
+      "code": "",
+      "options": [
+        "beranda",
+        "layar yang di-push kedua",
+        "layar yang di-push pertama",
+        "tumpukan kosong"
+      ],
+      "answer": 2,
+      "explanation": "Dua push menambah dua layar, satu pop membuang yang teratas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Parameter rute id bernilai \"7\". Apa hasil id + 1 di JavaScript?",
+      "code": "",
+      "options": [
+        "8, karena JavaScript mengubah tipe otomatis",
+        "NaN, karena id bukan angka",
+        "Galat tipe yang menghentikan aplikasi",
+        "\"71\", karena penjumlahan teks"
+      ],
+      "answer": 3,
+      "explanation": "Operator + pada string menyambung teks; ubah dulu dengan Number."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Yang paling tepat disimpan di state global adalah",
+      "code": "",
+      "options": [
+        "isi keranjang yang dibaca banyak layar",
+        "isi kolom pencarian pada satu layar",
+        "apakah menu di satu layar sedang terbuka",
+        "posisi gulir sementara satu daftar"
+      ],
+      "answer": 0,
+      "explanation": "State global untuk data yang benar-benar dipakai bersama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menyimpan jumlah item keranjang sebagai field terpisah berisiko karena",
+      "code": "",
+      "options": [
+        "angka itu bisa tidak cocok dengan isi keranjang",
+        "JavaScript tidak mengizinkan field angka",
+        "reducer menjadi tidak murni",
+        "layar tidak bisa membacanya"
+      ],
+      "answer": 0,
+      "explanation": "Data turunan sebaiknya dihitung, bukan disimpan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status yang paling sesuai ketika permintaan sedang berjalan adalah",
+      "code": "",
+      "options": [
+        "diam",
+        "berhasil",
+        "gagal",
+        "memuat"
+      ],
+      "answer": 3,
+      "explanation": "Layar menampilkan penanda muat selama status memuat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cache dengan TTL 60 detik disimpan pada detik 0. Pada detik 45 hasil ambilnya",
+      "code": "",
+      "options": [
+        "undefined",
+        "null",
+        "nilai yang tersimpan",
+        "nilai terbaru dari server"
+      ],
+      "answer": 2,
+      "explanation": "Umur 45 detik masih di bawah TTL 60 detik."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Status 503 dari server termasuk kegagalan sementara yang layak diulang.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "503 berarti server sedang tidak tersedia dan kemungkinan pulih sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tempat penyimpanan yang cocok untuk ribuan catatan yang perlu dicari dan diurutkan adalah",
+      "code": "",
+      "options": [
+        "SecureStore",
+        "AsyncStorage biasa",
+        "Variabel di dalam komponen layar",
+        "SQLite"
+      ],
+      "answer": 3,
+      "explanation": "SQLite adalah basis data terstruktur di perangkat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada optimistic update, apa yang harus disimpan agar bisa dibatalkan?",
+      "code": "",
+      "options": [
+        "Keadaan sebelum perubahan",
+        "Hanya pesan galat dari server",
+        "Seluruh riwayat jaringan",
+        "Nomor build aplikasi"
+      ],
+      "answer": 0,
+      "explanation": "Keadaan lama dikembalikan bila server menolak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kesalahan form yang paling mengganggu pengguna adalah",
+      "code": "",
+      "options": [
+        "kesalahan ditampilkan setelah kolom selesai diisi",
+        "tombol kirim dinonaktifkan saat memuat",
+        "isian terhapus ketika terjadi galat",
+        "label kolom selalu terlihat"
+      ],
+      "answer": 2,
+      "explanation": "Mengetik ulang formulir panjang membuat pengguna menyerah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan izin lokasi sebaiknya diminta?",
+      "code": "",
+      "options": [
+        "Saat aplikasi pertama dibuka",
+        "Saat aplikasi dipasang",
+        "Saat pengguna memakai fitur yang membutuhkan lokasi",
+        "Setiap kali layar berpindah"
+      ],
+      "answer": 2,
+      "explanation": "Izin yang diminta dengan konteks lebih sering disetujui."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai berikut dari paginasi data [1,2,3] dengan ukuran 2 dan kursor 2 adalah",
+      "code": "",
+      "options": [
+        "isi [3] dan berikut 4",
+        "isi [3] dan berikut null",
+        "isi [2,3] dan berikut null",
+        "isi [] dan berikut 2"
+      ],
+      "answer": 1,
+      "explanation": "Kursor 2 menyisakan satu data dan tidak ada halaman berikutnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah menambah modul native baru, langkah rilis yang benar adalah",
+      "code": "",
+      "options": [
+        "mengirim OTA saja karena lebih cepat",
+        "mengubah version tanpa build",
+        "membuat build baru dan mengirim ke toko",
+        "menunggu pengguna memperbarui sendiri"
+      ],
+      "answer": 2,
+      "explanation": "OTA tidak bisa membawa kode native."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perubahan yang sebaiknya dipisah dari komponen layar adalah",
+      "code": "",
+      "options": [
+        "keputusan dan aturan bisnis",
+        "warna latar dan ukuran huruf",
+        "posisi tombol di layar",
+        "animasi saat layar berpindah"
+      ],
+      "answer": 0,
+      "explanation": "Aturan bisnis lebih mudah dites bila ditulis sebagai fungsi murni."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Layar sebaiknya hanya menampilkan data dan meneruskan sentuhan, sedangkan keputusan diambil fungsi di luar layar.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pembagian itu membuat logika mudah dites dan dipakai ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bug berupa angka total yang tidak cocok dengan isi keranjang paling mungkin berada di lapisan",
+      "code": "",
+      "options": [
+        "state",
+        "navigasi",
+        "penyimpanan berkas",
+        "izin perangkat"
+      ],
+      "answer": 0,
+      "explanation": "Total dan isi keranjang adalah urusan state."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas _layout.tsx pada Expo Router berfungsi sebagai",
+      "code": "",
+      "options": [
+        "kerangka yang mengatur layar anaknya",
+        "layar pertama yang tampil ketika aplikasi dibuka oleh pengguna",
+        "tempat menyimpan data pengguna di perangkat",
+        "berkas konfigurasi build"
+      ],
+      "answer": 0,
+      "explanation": "Layout mengatur stack, tab, atau drawer di sekitar layar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Navigasi dimodelkan sebagai mesin status. Apa yang menjadi keadaannya?",
+      "code": "",
+      "options": [
+        "jumlah ketukan yang dilakukan pengguna pada tombol kembali selama satu sesi",
+        "versi aplikasi di toko",
+        "kecepatan koneksi",
+        "tumpukan layar dan tab yang aktif"
+      ],
+      "answer": 3,
+      "explanation": "Aksi seperti push dan pop mengubah keadaan itu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi push yang baik mengubah array tumpukan lama di tempat dengan metode push.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Fungsi navigasi murni membuat salinan agar keadaan lama tetap utuh."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa replace dipakai setelah login berhasil?",
+      "code": "",
+      "options": [
+        "supaya tombol kembali tidak membawa pengguna ke layar login",
+        "supaya aplikasi menghapus semua data lama milik pengguna dari perangkat",
+        "supaya layar beranda dimuat lebih cepat",
+        "supaya token disimpan di SecureStore"
+      ],
+      "answer": 0,
+      "explanation": "replace tidak meninggalkan jejak layar yang sudah tidak relevan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Aplikasi nyata biasanya menggabungkan pola navigasi dengan cara",
+      "code": "",
+      "options": [
+        "drawer di dalam setiap tombol yang ada pada layar",
+        "satu stack besar untuk semua tab",
+        "tab di lapisan luar dan stack di dalam tiap tab",
+        "modal di lapisan paling luar"
+      ],
+      "answer": 2,
+      "explanation": "Itu menjaga posisi pengguna di tiap tab."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa isi tumpukan setelah kode berikut dijalankan?",
+      "code": "let t = [\"beranda\"];\nt = [...t, \"detail\"];\nt = [...t, \"bab\"];\nt = t.slice(0, -1);\nconsole.log(t.join(\">\"));",
+      "options": [
+        "beranda>bab>detail>beranda",
+        "beranda",
+        "detail>bab",
+        "beranda>detail"
+      ],
+      "answer": 3,
+      "explanation": "Dua push menambah detail dan bab, slice(0, -1) membuang bab."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Parameter rute pada alamat /kelas/42 bertipe angka secara otomatis.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Parameter selalu teks; ubah dengan Number dan periksa hasilnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di antara berikut, yang sebaiknya dikirim lewat rute adalah",
+      "code": "",
+      "options": [
+        "id pendek lalu layar tujuan mengambil datanya",
+        "objek kelas lengkap beserta semua babnya dalam bentuk teks yang panjang",
+        "token login pengguna",
+        "seluruh daftar bab"
+      ],
+      "answer": 0,
+      "explanation": "Id membuat tautan pendek, stabil, dan bisa dibagikan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa hasil kode berikut?",
+      "code": "const a = \"/kelas/:id\".split(\"/\");\nconst b = \"/kelas/9\".split(\"/\");\nconsole.log(a.length === b.length, a[2][0] === \":\");",
+      "options": [
+        "true true",
+        "true false",
+        "false true",
+        "false false"
+      ],
+      "answer": 0,
+      "explanation": "Kedua pola punya tiga segmen dan segmen terakhir pola berawalan titik dua."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil uraikan(\"ruangmateri://kelas/5?tab=bab\") pada bagian opsi adalah",
+      "code": "",
+      "options": [
+        "{ tab: \"bab\" }",
+        "{ kelas: \"5\" }",
+        "{ path: \"/kelas/5\" }",
+        "[\"tab\", \"bab\"]"
+      ],
+      "answer": 0,
+      "explanation": "Query menjadi pasangan kunci dan nilai."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tautan yang masuk lewat deep link boleh langsung dipercaya karena berasal dari pengguna aplikasi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Siapa pun bisa membuat tautan; rute dan parameternya harus divalidasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prop drilling adalah",
+      "code": "",
+      "options": [
+        "menghapus prop yang tidak terpakai",
+        "mengoper data lewat banyak lapisan komponen yang tidak memakainya",
+        "mengubah prop di dalam komponen anak",
+        "mengirim prop ke server"
+      ],
+      "answer": 1,
+      "explanation": "Setiap lapisan di tengah harus meneruskan data itu."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil kode berikut?",
+      "code": "const r = (k, a) => a.tipe === \"tambah\" ? { ...k, n: k.n + 1 } : k;\nlet k = { n: 0 };\nk = r(k, { tipe: \"tambah\" });\nk = r(k, { tipe: \"aneh\" });\nconsole.log(k.n);",
+      "options": [
+        "0",
+        "1",
+        "2",
+        "undefined"
+      ],
+      "answer": 1,
+      "explanation": "Aksi tambah menaikkan n sekali, aksi aneh mengembalikan keadaan yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Reducer yang memakai k.item.push(baru) lalu mengembalikan k bermasalah karena",
+      "code": "",
+      "options": [
+        "objek yang sama diubah sehingga layar tidak digambar ulang",
+        "push tidak tersedia pada array di lingkungan JavaScript tertentu",
+        "reducer harus mengembalikan array",
+        "aksi tidak boleh berisi item"
+      ],
+      "answer": 0,
+      "explanation": "React membandingkan keadaan lama dan baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh data turunan pada keranjang belanja adalah",
+      "code": "",
+      "options": [
+        "daftar item",
+        "id setiap item",
+        "nama setiap item",
+        "total harga"
+      ],
+      "answer": 3,
+      "explanation": "Total bisa dihitung dari daftar item."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Semua state aplikasi sebaiknya dijadikan global sejak awal.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "State yang hanya dipakai satu layar tetap disimpan lokal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Selector berguna karena",
+      "code": "",
+      "options": [
+        "menyimpan salinan seluruh state di server supaya selalu sinkron",
+        "mengirim aksi ke reducer",
+        "mengganti kebutuhan akan reducer",
+        "menghitung data turunan dari satu sumber kebenaran"
+      ],
+      "answer": 3,
+      "explanation": "Hanya ada satu sumber, sehingga tidak ada angka bertentangan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa total yang dihitung kode berikut?",
+      "code": "const item = [{ h: 100, j: 2 }, { h: 50, j: 1 }];\nconst total = item.reduce((n, i) => n + i.h * i.j, 0);\nconsole.log(total);",
+      "options": [
+        "2500",
+        "150",
+        "300",
+        "250"
+      ],
+      "answer": 3,
+      "explanation": "100 kali 2 ditambah 50 kali 1 sama dengan 250."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cabang default reducer yang mengembalikan keadaan apa adanya mencegah",
+      "code": "",
+      "options": [
+        "reducer berjalan terlalu lambat saat jumlah aksi sangat banyak",
+        "keadaan bertambah besar",
+        "layar kehilangan warna",
+        "aksi yang tidak dikenal merusak keadaan"
+      ],
+      "answer": 3,
+      "explanation": "Aksi yang tidak dikenal harus diabaikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Selama permintaan berjalan, tampilan yang tepat adalah",
+      "code": "",
+      "options": [
+        "penanda muat atau kerangka isi",
+        "layar kosong tanpa petunjuk apa pun agar tampilan tetap bersih",
+        "pesan berhasil",
+        "dialog izin"
+      ],
+      "answer": 0,
+      "explanation": "Layar kosong membuat pengguna mengira aplikasi macet."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "TTL pada cache adalah",
+      "code": "",
+      "options": [
+        "jumlah maksimum entri yang boleh disimpan sekaligus di dalam cache",
+        "masa berlaku data sebelum dianggap basi",
+        "alamat server",
+        "ukuran berkas gambar"
+      ],
+      "answer": 1,
+      "explanation": "Setelah melewati TTL, data diambil ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa waktu sekarang dikirim sebagai argumen ke fungsi cache?",
+      "code": "",
+      "options": [
+        "supaya cache berjalan lebih cepat",
+        "karena Date.now tidak ada di JavaScript",
+        "supaya mudah dites dengan waktu buatan",
+        "supaya cache tidak butuh kunci"
+      ],
+      "answer": 2,
+      "explanation": "Fungsi yang membaca jam sendiri hasilnya berubah dari waktu ke waktu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Strategi stale-while-revalidate berarti",
+      "code": "",
+      "options": [
+        "menghapus seluruh cache setiap kali aplikasi ditutup oleh pengguna",
+        "menolak data lama sama sekali",
+        "menampilkan data lama sambil mengambil yang baru di belakang layar",
+        "mengambil data hanya saat offline"
+      ],
+      "answer": 2,
+      "explanation": "Pengguna melihat sesuatu langsung dan data segar sesaat kemudian."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa jeda yang dihasilkan kode berikut untuk percobaan ke-5 (indeks 5)?",
+      "code": "const jeda = (p) => Math.min(1000 * 2 ** p, 30000);\nconsole.log(jeda(5));",
+      "options": [
+        "30000",
+        "320000",
+        "10000",
+        "5000"
+      ],
+      "answer": 0,
+      "explanation": "1000 kali 32 sama dengan 32000, dibatasi 30000."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Server yang mengembalikan status 400 sebaiknya diulang terus sampai berhasil.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Status 400 adalah kesalahan permintaan yang akan gagal lagi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jitter pada coba ulang ditambahkan untuk",
+      "code": "",
+      "options": [
+        "mempercepat jeda pertama supaya pengguna tidak menunggu terlalu lama",
+        "menghapus batas percobaan",
+        "mencegah ribuan perangkat mengulang pada detik yang sama",
+        "mengubah status menjadi berhasil"
+      ],
+      "answer": 2,
+      "explanation": "Sedikit acak menyebar beban ke server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Data berikut yang paling cocok disimpan di AsyncStorage adalah",
+      "code": "",
+      "options": [
+        "token login pengguna",
+        "kata sandi pengguna",
+        "pilihan tema terang atau gelap",
+        "ribuan catatan yang perlu dicari"
+      ],
+      "answer": 2,
+      "explanation": "AsyncStorage cocok untuk data kecil dan tidak sensitif."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada pendekatan offline-first, saat pengguna menulis catatan tanpa sinyal",
+      "code": "",
+      "options": [
+        "catatan disimpan lokal dahulu lalu dikirim saat jaringan kembali",
+        "aplikasi menolak menyimpan catatan sampai koneksi internet tersedia kembali",
+        "catatan dibuang setelah sesi berakhir",
+        "aplikasi memaksa pengguna mencari sinyal"
+      ],
+      "answer": 0,
+      "explanation": "Tulisan pengguna tidak boleh hilang karena sinyal."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Status terhubung ke Wi-Fi selalu berarti server bisa dijangkau.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Perangkat bisa terhubung ke Wi-Fi tanpa internet; coba permintaan dan tangani kegagalannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Antrean sinkronisasi yang hanya ada di memori berisiko karena",
+      "code": "",
+      "options": [
+        "antrean menjadi terlalu panjang dan tidak bisa lagi diurutkan",
+        "server menolak aksi berurutan",
+        "id aksi tidak bisa dibuat",
+        "aksi yang belum terkirim hilang bila aplikasi ditutup"
+      ],
+      "answer": 3,
+      "explanation": "Simpan antrean ke penyimpanan lokal setiap kali berubah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil kode berikut?",
+      "code": "const q = [{ id: \"a\", coba: 2 }];\nq[0].coba += 1;\nconsole.log(q[0].coba >= 3 ? \"menyerah\" : \"ulang\");",
+      "options": [
+        "menyerah",
+        "ulang",
+        "tidak ada",
+        "undefined"
+      ],
+      "answer": 0,
+      "explanation": "Percobaan mencapai batas 3 sehingga aksi menyerah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Optimistic update paling cocok untuk aksi seperti",
+      "code": "",
+      "options": [
+        "membayar tagihan listrik bulanan lewat dompet digital",
+        "menekan tombol suka",
+        "menghapus akun",
+        "mentransfer uang"
+      ],
+      "answer": 1,
+      "explanation": "Aksi kecil yang hampir selalu berhasil dan mudah dibatalkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci idempotensi dikirim ke server agar",
+      "code": "",
+      "options": [
+        "aksi dikirim lebih cepat daripada aksi lain di dalam antrean",
+        "kiriman ulang tidak dilakukan dua kali",
+        "token tidak perlu disimpan",
+        "aplikasi tidak butuh antrean"
+      ],
+      "answer": 1,
+      "explanation": "Id aksi yang sama dikenali sebagai permintaan yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi validasi yang baik mengembalikan",
+      "code": "",
+      "options": [
+        "semua kesalahan sekaligus",
+        "hanya kesalahan pertama yang ditemukan lalu berhenti memeriksa kolom lain",
+        "true atau false saja",
+        "pesan galat dari server"
+      ],
+      "answer": 0,
+      "explanation": "Pengguna tidak perlu memperbaiki satu per satu."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil kode berikut?",
+      "code": "const ok = /^[^@\\s]+@[^@\\s]+$/;\nconsole.log(ok.test(\"ani@mail.id\"), ok.test(\"ani.mail.id\"));",
+      "options": [
+        "true false",
+        "false true",
+        "true true",
+        "false false"
+      ],
+      "answer": 0,
+      "explanation": "Pola membutuhkan satu @ di antara dua bagian tanpa spasi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Sandi sebaiknya dipangkas spasinya sebelum divalidasi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Spasi di sandi mungkin disengaja; yang dipangkas adalah email dan nama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tombol kirim dinonaktifkan saat permintaan berjalan untuk",
+      "code": "",
+      "options": [
+        "mencegah pengiriman ganda",
+        "menghemat baterai",
+        "mengubah jenis papan ketik",
+        "menyembunyikan pesan galat"
+      ],
+      "answer": 0,
+      "explanation": "Ketukan ganda tidak boleh membuat dua pendaftaran."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Izin ditolak permanen berarti",
+      "code": "",
+      "options": [
+        "izin otomatis diberikan kembali pada hari berikutnya oleh sistem",
+        "aplikasi harus dipasang ulang",
+        "dialog muncul dua kali",
+        "dialog sistem tidak muncul lagi dan izin diubah dari pengaturan"
+      ],
+      "answer": 3,
+      "explanation": "Aplikasi perlu mengarahkan pengguna ke pengaturan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa alasan izin dijelaskan sebelum dialog sistem muncul?",
+      "code": "",
+      "options": [
+        "agar dialog sistem tampil lebih cepat daripada biasanya di semua perangkat",
+        "agar izin selalu disetujui otomatis",
+        "karena toko aplikasi melarang dialog",
+        "dialog sistem hanya bisa muncul sekali dengan jelas"
+      ],
+      "answer": 3,
+      "explanation": "Penjelasan membantu pengguna memahami manfaatnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "ScrollView untuk seribu item bermasalah karena",
+      "code": "",
+      "options": [
+        "tidak bisa digulir bila isinya melebihi tinggi layar perangkat",
+        "merender semua anak sekaligus",
+        "tidak mendukung teks",
+        "hanya jalan di iOS"
+      ],
+      "answer": 1,
+      "explanation": "Memori terbuang dan layar terasa berat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "getItemLayout membantu daftar bila",
+      "code": "",
+      "options": [
+        "item berisi gambar acak",
+        "tinggi semua item sama",
+        "daftar kosong",
+        "jumlah item tidak diketahui"
+      ],
+      "answer": 1,
+      "explanation": "Posisi tiap item bisa dihitung tanpa mengukur."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Membungkus FlatList di dalam ScrollView searah menjaga windowing tetap bekerja.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "FlatList kehilangan windowing dan merender semua item."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa isi dan kursor berikut hasil kode ini?",
+      "code": "const data = [1, 2, 3, 4, 5];\nconst mulai = 2, ukuran = 2;\nconst akhir = mulai + ukuran;\nconsole.log(data.slice(mulai, akhir).join(\",\"), akhir < data.length ? akhir : null);",
+      "options": [
+        "3,4 null",
+        "2,3 4",
+        "3,4,5 null",
+        "3,4 4"
+      ],
+      "answer": 3,
+      "explanation": "Isi mulai indeks 2 sepanjang 2, dan 4 masih kurang dari 5 sehingga ada halaman berikutnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa kursor lebih tahan daripada nomor halaman?",
+      "code": "",
+      "options": [
+        "kursor selalu bernilai lebih kecil daripada nomor halaman yang setara",
+        "data yang berubah tidak membuat item terlewat atau ganda",
+        "kursor tidak butuh server",
+        "kursor menghapus data lama"
+      ],
+      "answer": 1,
+      "explanation": "Kursor menandai posisi terakhir, bukan urutan halaman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi memo hanya aman dipakai pada fungsi yang",
+      "code": "",
+      "options": [
+        "membaca jam sistem",
+        "murni",
+        "mengubah variabel luar",
+        "memanggil server"
+      ],
+      "answer": 1,
+      "explanation": "Hasil tersimpan hanya benar bila bergantung pada masukan saja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "React.memo mencegah komponen digambar ulang bila",
+      "code": "",
+      "options": [
+        "layarnya sedang terkunci",
+        "memori hampir habis",
+        "komponen tidak punya anak",
+        "propnya tidak berubah"
+      ],
+      "answer": 3,
+      "explanation": "Item daftar yang tidak berubah dilewati."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa kali fn dipanggil oleh kode berikut?",
+      "code": "let n = 0;\nconst fn = (x) => { n++; return x; };\nconst simpan = new Map();\nconst m = (x) => { if (!simpan.has(x)) simpan.set(x, fn(x)); return simpan.get(x); };\nm(1); m(1); m(2);\nconsole.log(n);",
+      "options": [
+        "30",
+        "1",
+        "0",
+        "2"
+      ],
+      "answer": 3,
+      "explanation": "Argumen 1 dihitung sekali, argumen 2 sekali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "EAS Build berguna karena",
+      "code": "",
+      "options": [
+        "membuat berkas aplikasi di cloud tanpa Xcode lokal",
+        "menghapus kebutuhan akun toko",
+        "mengganti penulisan kode",
+        "menjalankan tes secara otomatis"
+      ],
+      "answer": 0,
+      "explanation": "Server Expo membangun aplikasi untuk Android dan iOS."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rahasia seperti kunci API sebaiknya",
+      "code": "",
+      "options": [
+        "disimpan sebagai konstanta di komponen",
+        "ditulis di nama berkas",
+        "dikirim lewat tautan",
+        "tidak ditulis di kode aplikasi"
+      ],
+      "answer": 3,
+      "explanation": "Kode aplikasi bisa dibongkar siapa pun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang harus terjadi pada nomor build setiap unggahan ke toko?",
+      "code": "",
+      "options": [
+        "tetap sama agar pengguna tidak bingung",
+        "dikosongkan",
+        "diganti dengan tanggal",
+        "naik dibanding unggahan sebelumnya"
+      ],
+      "answer": 3,
+      "explanation": "Toko menolak unggahan dengan nomor build yang tidak lebih besar."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil kode berikut?",
+      "code": "const [a, b, c] = \"1.9.9\".split(\".\").map(Number);\nconsole.log(`${a}.${b}.${c + 1}`);",
+      "options": [
+        "1.10.0",
+        "1.9.10",
+        "1.9.100",
+        "2.0.0"
+      ],
+      "answer": 1,
+      "explanation": "Patch dinaikkan satu sebagai angka, bukan teks."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pembaruan OTA bisa dikirim ke build lama walau runtimeVersion-nya berbeda.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "OTA hanya diterapkan pada build yang runtimeVersion-nya sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila perubahan menambah pustaka dengan modul native, yang wajib dilakukan adalah",
+      "code": "",
+      "options": [
+        "membuat build baru dan menaikkan runtimeVersion",
+        "mengirim OTA saja",
+        "menaikkan version tanpa build",
+        "menghapus pustaka lama dari toko"
+      ],
+      "answer": 0,
+      "explanation": "OTA tidak membawa kode native."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rilis bertahap lebih aman karena",
+      "code": "",
+      "options": [
+        "review toko dilewati",
+        "aplikasi menjadi lebih kecil",
+        "masalah terdeteksi pada sebagian kecil pengguna lebih dulu",
+        "nomor build tidak perlu naik"
+      ],
+      "answer": 2,
+      "explanation": "Kamu bisa menghentikan rilis sebelum menjangkau semua orang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alat seperti Sentry berguna setelah rilis untuk",
+      "code": "",
+      "options": [
+        "mempercepat peninjauan toko",
+        "membuat ikon aplikasi",
+        "mencatat aplikasi yang macet beserta jejak kodenya",
+        "menaikkan nomor build"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa pelaporan galat kamu hanya tahu dari ulasan bintang satu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Review toko aplikasi selalu selesai dalam hitungan menit.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Review bisa memakan beberapa hari, jadi jangan menjadwalkan rilis mepet tenggat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa server tidak boleh menghapus endpoint lama terlalu cepat?",
+      "code": "",
+      "options": [
+        "pengguna dengan aplikasi versi lama masih memanggilnya",
+        "karena server tidak bisa menghapus endpoint",
+        "karena toko melarangnya",
+        "karena OTA otomatis memperbaruinya"
+      ],
+      "answer": 0,
+      "explanation": "Versi lama tetap terpasang di banyak perangkat."
+    }
+  ],
+  "prerequisites": [
+    "react-native-dengan-expo"
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Mesin Navigasi dan Antrean Sinkronisasi",
+    "brief": "Kembangkan modul `buatApp()` yang menggabungkan dua jantung aplikasi mobile: **mesin navigasi** dan **antrean sinkronisasi dengan optimistic update**.\n\nNavigasi:\n\n- `buka(layar)` menaruh layar di puncak tumpukan. Tumpukan awal berisi `\"beranda\"`.\n- `kembali()` membuang layar teratas dan mengembalikan `true`; bila hanya ada satu layar, tidak berubah dan mengembalikan `false`.\n- `ganti(layar)` mengganti layar teratas tanpa menambah tumpukan.\n- `layar()` mengembalikan layar teratas, `tumpukan()` mengembalikan **salinan** tumpukan.\n- `tautan(url)` menerima tautan seperti `ruangmateri://kelas/42`. Bila rutenya `/kelas/:id` dengan `id` hanya angka, panggil `buka(\"kelas:42\")` dan kembalikan `true`; selain itu kembalikan `false` tanpa mengubah apa pun.\n\nData dan antrean:\n\n- `ubah(id, nilai)` memperbarui `data()[id]` **seketika** (optimistic), lalu memasukkan aksi `{ aksiId, kunci: id, nilai, sebelumnya, coba: 0 }` ke antrean. `aksiId` berupa `\"a1\"`, `\"a2\"`, dan seterusnya, menurut urutan pemanggilan `ubah`; kembalikan `aksiId` itu.\n- `terkirim(aksiId)` mengeluarkan aksi dari antrean.\n- `gagal(aksiId)` menambah `coba`. Bila `coba` mencapai 3, kembalikan `data()[kunci]` ke `sebelumnya`, keluarkan aksi dari antrean, catat `aksiId` di `menyerah()`, dan kembalikan `\"menyerah\"`; selain itu kembalikan `\"ulang\"`.\n- `data()` mengembalikan salinan data, `antrean()` jumlah aksi menunggu, `menyerah()` salinan daftar `aksiId` yang menyerah.",
+    "prompt": "Lengkapi `buatApp()` sehingga semua pemeriksaan lolos. Jangan mengubah nama fungsi dan metodenya.",
+    "starter": {
+      "code": "function buatApp() {\n  return {\n    buka(layar) {},\n    kembali() {\n      return false;\n    },\n    ganti(layar) {},\n    layar() {\n      return \"beranda\";\n    },\n    tumpukan() {\n      return [\"beranda\"];\n    },\n    tautan(url) {\n      return false;\n    },\n    ubah(id, nilai) {\n      return \"\";\n    },\n    terkirim(aksiId) {},\n    gagal(aksiId) {\n      return \"ulang\";\n    },\n    data() {\n      return {};\n    },\n    antrean() {\n      return 0;\n    },\n    menyerah() {\n      return [];\n    },\n  };\n}\n"
+    },
+    "solution": {
+      "code": "function buatApp() {\n  let tumpukan = [\"beranda\"];\n  const data = {};\n  const antrean = [];\n  const menyerah = [];\n  let nomor = 0;\n  const buka = (layar) => {\n    tumpukan = [...tumpukan, layar];\n  };\n  return {\n    buka,\n    kembali() {\n      if (tumpukan.length === 1) return false;\n      tumpukan = tumpukan.slice(0, -1);\n      return true;\n    },\n    ganti(layar) {\n      tumpukan = [...tumpukan.slice(0, -1), layar];\n    },\n    layar() {\n      return tumpukan[tumpukan.length - 1];\n    },\n    tumpukan() {\n      return [...tumpukan];\n    },\n    tautan(url) {\n      const bagian = url.split(\"?\")[0].split(\"://\")[1] || \"\";\n      const s = bagian.split(\"/\");\n      if (s.length !== 2 || s[0] !== \"kelas\" || !/^[0-9]+$/.test(s[1])) return false;\n      buka(`kelas:${s[1]}`);\n      return true;\n    },\n    ubah(id, nilai) {\n      nomor += 1;\n      const aksiId = `a${nomor}`;\n      antrean.push({ aksiId, kunci: id, nilai, sebelumnya: data[id], coba: 0 });\n      data[id] = nilai;\n      return aksiId;\n    },\n    terkirim(aksiId) {\n      const i = antrean.findIndex((a) => a.aksiId === aksiId);\n      if (i !== -1) antrean.splice(i, 1);\n    },\n    gagal(aksiId) {\n      const i = antrean.findIndex((a) => a.aksiId === aksiId);\n      if (i === -1) return \"tidak ada\";\n      const a = antrean[i];\n      a.coba += 1;\n      if (a.coba < 3) return \"ulang\";\n      if (a.sebelumnya === undefined) delete data[a.kunci];\n      else data[a.kunci] = a.sebelumnya;\n      antrean.splice(i, 1);\n      menyerah.push(aksiId);\n      return \"menyerah\";\n    },\n    data() {\n      return { ...data };\n    },\n    antrean() {\n      return antrean.length;\n    },\n    menyerah() {\n      return [...menyerah];\n    },\n  };\n}\n"
+    },
+    "setup": "",
+    "tests": [
+      {
+        "name": "Tumpukan awal berisi beranda",
+        "check": "(() => { const a = buatApp(); return a.layar() === \"beranda\" && a.tumpukan().join(\",\") === \"beranda\"; })()"
+      },
+      {
+        "name": "buka dan kembali",
+        "check": "(() => { const a = buatApp(); a.buka(\"kelas:1\"); a.buka(\"bab:2\"); const ok = a.kembali(); return ok === true && a.layar() === \"kelas:1\"; })()"
+      },
+      {
+        "name": "kembali di layar pertama mengembalikan false",
+        "check": "(() => { const a = buatApp(); return a.kembali() === false && a.layar() === \"beranda\"; })()"
+      },
+      {
+        "name": "ganti tidak menambah tumpukan",
+        "check": "(() => { const a = buatApp(); a.buka(\"masuk\"); a.ganti(\"beranda2\"); return a.tumpukan().join(\",\") === \"beranda,beranda2\"; })()"
+      },
+      {
+        "name": "tumpukan() mengembalikan salinan",
+        "check": "(() => { const a = buatApp(); a.tumpukan().push(\"x\"); return a.tumpukan().length === 1; })()"
+      },
+      {
+        "name": "tautan yang valid membuka kelas",
+        "check": "(() => { const a = buatApp(); return a.tautan(\"ruangmateri://kelas/42?tab=bab\") === true && a.layar() === \"kelas:42\"; })()"
+      },
+      {
+        "name": "tautan tidak valid ditolak tanpa efek",
+        "check": "(() => { const a = buatApp(); const r = [a.tautan(\"ruangmateri://kelas/abc\"), a.tautan(\"ruangmateri://admin/1\"), a.tautan(\"ruangmateri://kelas/1/bab\")]; return r.every((x) => x === false) && a.tumpukan().length === 1; })()"
+      },
+      {
+        "name": "ubah memperbarui data seketika dan memberi id berurutan",
+        "check": "(() => { const a = buatApp(); const x = a.ubah(\"judul\", \"Baru\"); const y = a.ubah(\"catatan\", \"C\"); return x === \"a1\" && y === \"a2\" && a.data().judul === \"Baru\" && a.antrean() === 2; })()"
+      },
+      {
+        "name": "terkirim mengeluarkan aksi dan mempertahankan data",
+        "check": "(() => { const a = buatApp(); const x = a.ubah(\"judul\", \"Baru\"); a.terkirim(x); return a.antrean() === 0 && a.data().judul === \"Baru\"; })()"
+      },
+      {
+        "name": "gagal mengulang dua kali lalu menyerah dan membatalkan",
+        "check": "(() => { const a = buatApp(); const x = a.ubah(\"judul\", \"Baru\"); const r = [a.gagal(x), a.gagal(x), a.gagal(x)]; return r.join(\",\") === \"ulang,ulang,menyerah\" && a.antrean() === 0 && a.menyerah().join(\",\") === x && a.data().judul === undefined; })()"
+      },
+      {
+        "name": "pembatalan mengembalikan nilai sebelumnya",
+        "check": "(() => { const a = buatApp(); const x = a.ubah(\"judul\", \"Lama\"); a.terkirim(x); const y = a.ubah(\"judul\", \"Baru\"); a.gagal(y); a.gagal(y); a.gagal(y); return a.data().judul === \"Lama\"; })()"
+      },
+      {
+        "name": "data() mengembalikan salinan",
+        "check": "(() => { const a = buatApp(); a.ubah(\"k\", 1); a.data().k = 99; return a.data().k === 1; })()"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "peta-aplikasi-mobile-lanjutan",
+      "title": "Peta Aplikasi Mobile Lanjutan",
+      "est_minutes": 25,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menyebut empat lapisan aplikasi mobile dan tugas masing-masing.\n- Menjelaskan mengapa logika non-tampilan sebaiknya dipisah dari layar.\n- Membaca struktur folder proyek Expo Router dan menghubungkannya dengan rute.\n- Memahami cara kelas ini melatih logika aplikasi tanpa perangkat atau emulator.\n\n## Dari layar pertama ke aplikasi utuh\n\nDi kelas React Native dan Expo kamu sudah membuat layar, memakai komponen, dan menjalankan aplikasi di ponsel. Itu langkah pertama yang penting, tetapi aplikasi yang dipakai orang sungguhan butuh lebih banyak hal. Pengguna berpindah antar layar dan mengharapkan tombol kembali bekerja dengan benar. Data datang dari server yang kadang lambat atau gagal. Sinyal hilang di lift, tetapi catatan yang baru ditulis tidak boleh ikut hilang. Daftar yang panjang harus tetap lancar digulir. Dan pada akhirnya aplikasi harus sampai ke toko aplikasi.\n\nKelas ini membahas hal-hal itu satu per satu. Polanya selalu sama: kita mengenali masalahnya, memisahkan logikanya dari tampilan, lalu melatih logika itu sebagai fungsi biasa. Cara itu membuat bagian yang paling sulit, yaitu aturan dan keputusan, bisa dites cepat tanpa menjalankan emulator.\n\n![Peta kelas](slide:2)\n\n## Empat lapisan aplikasi mobile\n\nAplikasi yang tertata biasanya bisa dibagi menjadi empat lapisan.\n\n1. **Layar** adalah apa yang dilihat dan disentuh pengguna: komponen, gaya, dan animasi.\n2. **Navigasi** adalah aturan perpindahan antar layar: layar mana yang berada di tumpukan, tab mana yang aktif, ke mana tombol kembali pergi.\n3. **State** adalah data yang sedang hidup di memori: isi keranjang, pengguna yang sedang masuk, formulir yang setengah terisi.\n4. **Data** adalah sumber yang bertahan lebih lama dari satu sesi: server, cache, dan penyimpanan di perangkat.\n\nPembagian ini bukan formalitas. Saat sebuah bug muncul, kamu bisa bertanya di lapisan mana ia berada. Tombol kembali yang salah arah adalah urusan navigasi. Angka total yang tidak cocok adalah urusan state. Data lama yang tampil setelah diperbarui adalah urusan cache. Tanpa pembagian, semuanya bercampur di satu berkas layar yang panjang dan sulit dites.\n\n## Mengapa logika dipisah dari layar\n\nKomponen layar sulit dites karena ia butuh lingkungan React Native untuk berjalan. Sebaliknya, fungsi biasa seperti `hitungTotal(item)` atau `validasi(form)` hanya butuh masukan dan memberi keluaran. Kamu bisa memanggilnya berkali-kali dengan contoh yang berbeda dan memeriksa hasilnya dalam sekejap.\n\nKarena itu aturan praktisnya begini: **layar hanya menampilkan dan meneruskan sentuhan, keputusan diambil oleh fungsi di luar layar.** Layar memanggil fungsi, fungsi mengembalikan keadaan baru, layar menggambarnya. Selama fungsi itu murni, artinya hasilnya hanya bergantung pada masukannya, ia mudah dites, mudah dipahami, dan mudah dipakai ulang di layar lain.\n\nBerikut contoh kecil perbedaannya. Versi pertama mencampur keputusan dengan tampilan:\n\n```js\nfunction Keranjang({ item }) {\n  let total = 0;\n  for (const i of item) total += i.harga * i.jumlah;\n  if (total > 100000) total = total * 0.9;\n  return <Text>{total}</Text>;\n}\n```\n\nVersi kedua memindahkan keputusan ke fungsi yang bisa dites sendiri:\n\n```js\nfunction hitungTotal(item) {\n  let total = 0;\n  for (const i of item) total += i.harga * i.jumlah;\n  return total > 100000 ? total * 0.9 : total;\n}\n\nfunction Keranjang({ item }) {\n  return <Text>{hitungTotal(item)}</Text>;\n}\n```\n\nLayar menjadi pendek dan hampir tidak punya bug, sedangkan `hitungTotal` bisa dicoba dengan puluhan contoh.\n\n## Struktur proyek Expo Router\n\nExpo Router menentukan rute dari struktur folder. Folder `app/` adalah peta aplikasi: setiap berkas menjadi satu layar, dan namanya menjadi alamatnya.\n\n```text\napp/\n  _layout.tsx        kerangka utama\n  index.tsx          rute \"/\"\n  (tabs)/\n    _layout.tsx      kerangka tab\n    beranda.tsx      rute \"/beranda\"\n    profil.tsx       rute \"/profil\"\n  kelas/[id].tsx     rute \"/kelas/42\"\nlib/\n  navigasi.ts        logika murni\n```\n\nBerkas `_layout.tsx` mengatur kerangka di sekitar layar anaknya, misalnya tumpukan atau tab. Nama dalam tanda kurung seperti `(tabs)` mengelompokkan layar tanpa menambah bagian pada alamat. Nama dalam kurung siku seperti `[id]` menandai segmen dinamis yang nilainya diambil dari alamat. Kita akan memakai semuanya di bab-bab berikutnya.\n\nPerhatikan folder `lib/` di bawahnya. Folder itu berisi logika yang tidak bergantung pada tampilan. Semua latihan kode di kelas ini bekerja pada jenis logika itu, sehingga apa yang kamu tulis di sini bisa langsung dipindahkan ke proyek sungguhan.\n\n## Cara kelas ini bekerja\n\nSetiap bab menjelaskan sebuah masalah umum, menunjukkan pola yang dipakai orang untuk menyelesaikannya, lalu memberi latihan berupa fungsi murni. Lingkungan latihan di situs ini menjalankan JavaScript biasa, tanpa React Native, jadi kita melatih logikanya saja: mesin navigasi, pencocokan rute, reducer, cache, antrean sinkronisasi, validasi, paginasi, dan penomoran versi. Bagian tampilan dan perangkat keras, seperti kamera atau toko aplikasi, dibahas secara konsep.\n\nSemua itu berkumpul di proyek akhir, yaitu mesin navigasi yang digabung dengan antrean sinkronisasi. Dua bagian itu adalah jantung banyak aplikasi sungguhan: yang satu menjaga pengguna tidak tersesat, yang lain menjaga data tidak hilang.\n\nSatu catatan jujur: latihan di sini tidak bisa menggantikan mencoba di perangkat. Animasi, gestur, dan rasa pakai hanya terasa di ponsel sungguhan. Anggap latihan sebagai cara memastikan otaknya benar, lalu pastikan juga tampilannya di perangkat.\n\n## Kesalahan umum di awal proyek\n\nAda beberapa kebiasaan yang membuat proyek mobile sulit dirawat sejak awal. Yang pertama adalah menaruh semuanya di satu berkas layar: pengambilan data, aturan bisnis, dan tampilan. Berkas seperti itu cepat membengkak dan setiap perubahan kecil terasa berisiko. Yang kedua adalah menyimpan data yang sama di banyak tempat, sehingga dua layar menampilkan angka yang berbeda. Yang ketiga adalah baru memikirkan keadaan offline atau galat setelah semuanya jadi, padahal keduanya memengaruhi bentuk seluruh aplikasi.\n\nObatnya sederhana dan murah bila dilakukan sejak awal: pisahkan lapisan, tentukan satu sumber kebenaran untuk setiap data, dan selalu bertanya \"apa yang terjadi bila ini gagal?\" setiap kali menambah fitur yang bergantung pada jaringan. Bab-bab berikutnya memberi alat untuk masing-masing hal itu.\n\n## Rangkuman\n\n- Aplikasi mobile bisa dibagi menjadi empat lapisan: layar, navigasi, state, dan data.\n- Pemisahan lapisan membuat bug lebih mudah dilacak dan logika lebih mudah dites.\n- Layar sebaiknya hanya menampilkan dan meneruskan sentuhan, sedangkan keputusan diambil oleh fungsi murni di luar layar.\n- Expo Router menentukan rute dari struktur folder `app/`: berkas menjadi layar, `_layout.tsx` menjadi kerangka, dan `[id]` menjadi segmen dinamis.\n- Latihan di kelas ini melatih logika murni di browser; tampilan dan fitur perangkat tetap perlu dicoba di ponsel sungguhan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Lapisan mana yang mengatur perpindahan antar layar dan tombol kembali?",
+          "code": "",
+          "options": [
+            "Layar, karena komponen tampilan yang menentukan ke mana pengguna pergi",
+            "Data, karena server yang memutuskan layar berikutnya",
+            "State, karena ia hanya menyimpan nilai isian formulir",
+            "Navigasi"
+          ],
+          "answer": 3,
+          "explanation": "Navigasi adalah aturan perpindahan antar layar, termasuk tumpukan dan tombol kembali."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa logika sebaiknya dipisah dari komponen layar?",
+          "code": "",
+          "options": [
+            "Karena komponen layar tidak boleh memuat kode JavaScript apa pun",
+            "Supaya ukuran aplikasi di toko menjadi jauh lebih kecil",
+            "Karena React Native melarang fungsi di dalam komponen",
+            "Fungsi biasa lebih mudah dites tanpa menjalankan emulator"
+          ],
+          "answer": 3,
+          "explanation": "Fungsi murni hanya butuh masukan dan keluaran, sehingga bisa dites cepat dan dipakai ulang."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Berkas `app/kelas/[id].tsx` pada Expo Router menjadi rute dengan segmen dinamis.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Nama dalam kurung siku menandai segmen yang nilainya diambil dari alamat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mana yang termasuk lapisan data pada aplikasi mobile?",
+          "code": "",
+          "options": [
+            "Tombol, gambar, dan animasi di layar",
+            "Daftar layar yang sedang menumpuk di navigasi",
+            "Nilai isian formulir yang belum dikirim",
+            "Server, cache, dan penyimpanan lokal"
+          ],
+          "answer": 3,
+          "explanation": "Lapisan data adalah sumber yang bertahan lebih lama dari satu sesi."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "navigasi-stack-dan-tab",
+      "title": "Navigasi: Stack dan Tab",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Membedakan navigasi stack, tab, dan drawer serta kapan masing-masing dipakai.\n- Memodelkan navigasi sebagai mesin status dengan keadaan dan aksi.\n- Menulis fungsi `push`, `pop`, dan `replace` yang tidak mengubah keadaan lama.\n- Menjaga tumpukan setiap tab tetap utuh saat pengguna berpindah tab.\n\n## Stack, tab, dan drawer\n\nAda tiga pola navigasi yang paling sering dipakai di aplikasi mobile.\n\n**Stack** menumpuk layar seperti tumpukan kartu. Membuka layar baru menaruhnya di atas, dan tombol kembali mengangkatnya sehingga layar sebelumnya terlihat lagi. Pola ini cocok untuk alur yang punya kedalaman: daftar kelas, detail kelas, lalu isi bab.\n\n**Tab** menampilkan beberapa tujuan setara yang selalu terlihat di bagian bawah, misalnya Beranda, Kelas, dan Profil. Pengguna berpindah di antaranya dengan sekali ketuk. Pola ini cocok untuk tujuan utama yang sering dikunjungi bergantian.\n\n**Drawer** adalah menu yang digeser dari samping. Ia cocok bila tujuan banyak tetapi jarang dipakai, tetapi pengguna sering tidak menyadarinya karena tersembunyi. Untuk tujuan utama, tab biasanya lebih baik.\n\nAplikasi nyata menggabungkannya: tab di lapisan luar, dan di dalam setiap tab ada stack sendiri. Pengguna bisa masuk jauh ke dalam tab Kelas, berpindah ke tab Profil, lalu kembali ke tab Kelas dan menemukan posisinya masih sama.\n\n![Stack, tab, dan drawer](slide:5)\n\n## Navigasi adalah mesin status\n\nDi balik semua pola itu ada gagasan sederhana. Navigasi adalah **mesin status**: sebuah keadaan, ditambah aksi yang mengubahnya menjadi keadaan baru. Keadaannya bisa berupa daftar layar di tumpukan. Aksinya adalah `push` untuk membuka layar, `pop` untuk kembali, dan `replace` untuk mengganti layar teratas.\n\n```js\nfunction push(k, layar) {\n  return { tumpukan: [...k.tumpukan, layar] };\n}\n\nfunction pop(k) {\n  if (k.tumpukan.length === 1) return k;\n  const sisa = k.tumpukan.slice(0, -1);\n  return { tumpukan: sisa };\n}\n```\n\nPerhatikan dua hal. Pertama, fungsi tidak mengubah `k`. Mereka membuat objek baru dengan salinan tumpukan. Kebiasaan ini penting karena keadaan lama tetap utuh, sehingga kamu bisa membandingkan, membatalkan, atau mengulang perubahan dengan mudah. Kedua, `pop` memeriksa kasus tepi: bila hanya ada satu layar, tidak ada yang bisa dikembalikan, jadi keadaan dikembalikan apa adanya. Tanpa pemeriksaan itu tumpukan menjadi kosong dan aplikasi tidak punya layar untuk ditampilkan.\n\nDengan model ini kamu bisa menjawab pertanyaan tentang navigasi tanpa menyentuh layar. Misalnya: setelah `push(\"detail\")` lalu `push(\"bab\")` dan satu `pop`, layar teratas apa? Jawabannya `detail`, dan kamu bisa membuktikannya dengan satu pemeriksaan.\n\n## Perilaku tombol kembali\n\nTombol kembali tampak sepele, tetapi di sinilah banyak pengalaman buruk berasal. Ada beberapa aturan yang perlu dijaga.\n\n**Di layar pertama, kembali tidak boleh menutup aplikasi tanpa sengaja.** Pada Android, tombol kembali di layar pertama biasanya keluar dari aplikasi, dan itu wajar. Namun di dalam aplikasimu sendiri, layar pertama setelah login sebaiknya tidak bisa \"dikembalikan\" ke layar login.\n\n**`replace` dipakai untuk layar yang tidak boleh dikunjungi lagi.** Setelah login berhasil, kamu mengganti layar login dengan beranda, bukan menumpuk beranda di atas login. Dengan begitu tombol kembali tidak membawa pengguna ke formulir login yang sudah tidak relevan.\n\n```js\nfunction replace(k, layar) {\n  const sisa = k.tumpukan.slice(0, -1);\n  return { tumpukan: [...sisa, layar] };\n}\n```\n\n**Setiap tab menyimpan tumpukannya sendiri.** Keadaan yang menampung semua tab bisa berbentuk objek: tab yang aktif, ditambah tumpukan untuk tiap tab.\n\n```js\nconst keadaan = {\n  aktif: \"kelas\",\n  tab: {\n    beranda: [\"beranda\"],\n    kelas: [\"daftar\", \"detail\"],\n    profil: [\"profil\"],\n  },\n};\n```\n\nBerpindah tab hanya mengganti nilai `aktif`. Tumpukan tab lain tidak disentuh, sehingga saat pengguna kembali ke tab Kelas, layar `detail` masih ada di atasnya. Aksi `push` dan `pop` bekerja pada tumpukan milik tab yang sedang aktif saja.\n\n## Menguji navigasi tanpa layar\n\nKarena navigasi sudah berupa fungsi murni, mengujinya mudah dan cepat. Sebuah tes mengatur keadaan awal, memanggil aksi, lalu memeriksa keadaan baru. Tiga skenario yang layak selalu dicoba adalah `pop` di dasar tumpukan, `replace` setelah login, dan berpindah tab bolak-balik.\n\nSkenario terakhir menangkap bug yang sangat umum: pengguna membuka tab Kelas dan masuk dua layar, pindah ke Profil, kembali ke Kelas, lalu mendapati tumpukannya kembali ke awal. Bug itu muncul bila tumpukan disimpan satu untuk semua tab atau direset setiap kali tab berganti. Dengan model objek per tab, bug itu mudah dicegah dan mudah dibuktikan hilang.\n\nDi aplikasi sungguhan, pustaka seperti React Navigation atau Expo Router menyediakan semua ini. Tetapi memahami mesin statusnya membuatmu tahu apa yang terjadi saat navigasi berperilaku aneh, dan membuatmu bisa menulis aturan navigasi khusus, misalnya \"pengguna yang belum login tidak boleh mencapai layar kelas\", sebagai fungsi yang dites.\n\n## Kesalahan umum pada navigasi\n\nBeberapa kesalahan muncul berulang di proyek pemula. Pertama, memakai `push` untuk semua perpindahan, termasuk setelah login. Akibatnya tumpukan menumpuk layar yang tidak lagi relevan dan tombol kembali membawa pengguna ke tempat yang aneh. Kedua, menyimpan satu tumpukan untuk semua tab sehingga posisi hilang saat berpindah. Ketiga, mengubah keadaan lama secara langsung, misalnya `k.tumpukan.push(layar)`, yang membuat perubahan sulit dilacak dan kadang tidak memicu penggambaran ulang.\n\nCara menangkap ketiganya adalah menuliskan skenario sebagai tes: \"setelah login, kembali tidak menuju layar login\", \"pindah tab dan kembali, tumpukan sama\", dan \"keadaan lama tidak berubah setelah aksi\". Tiga kalimat itu langsung menjadi tiga pemeriksaan yang mudah ditulis.\n\n## Rangkuman\n\n- Stack menumpuk layar, tab menampilkan tujuan setara, dan drawer menyimpan tujuan jarang dipakai; aplikasi nyata menggabungkan tab di luar dan stack di dalam.\n- Navigasi adalah mesin status: keadaan berupa tumpukan layar, aksinya `push`, `pop`, dan `replace`.\n- Fungsi navigasi tidak mengubah keadaan lama, melainkan mengembalikan keadaan baru.\n- `pop` harus menangani kasus tepi saat tumpukan hanya berisi satu layar.\n- Setiap tab menyimpan tumpukannya sendiri, sehingga berpindah tab tidak menghapus posisi pengguna.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pola navigasi mana yang cocok untuk beberapa tujuan utama yang sering dikunjungi bergantian?",
+          "code": "",
+          "options": [
+            "Drawer, karena semua tujuan harus tersembunyi",
+            "Tab",
+            "Stack, karena layar selalu menumpuk ke bawah",
+            "Modal, karena ia menutupi seluruh aplikasi"
+          ],
+          "answer": 1,
+          "explanation": "Tab menampilkan tujuan setara yang selalu terlihat dan bisa dicapai dengan sekali ketuk."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang sebaiknya dilakukan pop bila tumpukan hanya berisi satu layar?",
+          "code": "",
+          "options": [
+            "Mengosongkan tumpukan supaya aplikasi menutup diri",
+            "Mengembalikan keadaan apa adanya",
+            "Membuang layar itu lalu menampilkan layar kosong",
+            "Melempar galat agar pengembang mengetahuinya"
+          ],
+          "answer": 1,
+          "explanation": "Tumpukan kosong membuat aplikasi tidak punya layar untuk ditampilkan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Berpindah tab sebaiknya menghapus tumpukan layar milik tab yang ditinggalkan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Setiap tab menyimpan tumpukannya sendiri agar posisi pengguna tidak hilang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah login berhasil, perintah apa yang paling tepat untuk menampilkan beranda?",
+          "code": "",
+          "options": [
+            "push, supaya login tetap bisa dibuka lewat tombol kembali",
+            "pop, supaya semua layar dibuang sekaligus",
+            "ganti tab, karena login selalu berada di tab",
+            "replace, supaya layar login tidak tertinggal di tumpukan"
+          ],
+          "answer": 3,
+          "explanation": "replace mengganti layar tanpa meninggalkan jejak layar login."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Push dan pop tumpukan",
+          "prompt": "Keadaan navigasi berbentuk `{ tumpukan: [...] }`. Lengkapi `push(k, layar)` dan `pop(k)`.\n\n- `push` mengembalikan keadaan **baru** dengan `layar` di puncak tumpukan.\n- `pop` mengembalikan keadaan baru tanpa layar teratas.\n- Bila hanya ada satu layar, `pop` mengembalikan keadaan yang sama apa adanya.\n- Keadaan lama tidak boleh berubah.",
+          "starter": {
+            "code": "function push(k, layar) {\n  // TODO: kembalikan keadaan baru dengan layar di puncak\n  return k;\n}\n\nfunction pop(k) {\n  // TODO: kembalikan keadaan tanpa layar teratas\n  return k;\n}\n"
+          },
+          "solution": {
+            "code": "function push(k, layar) {\n  return { tumpukan: [...k.tumpukan, layar] };\n}\n\nfunction pop(k) {\n  if (k.tumpukan.length === 1) return k;\n  return { tumpukan: k.tumpukan.slice(0, -1) };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "push menaruh layar di puncak",
+              "check": "push({ tumpukan: [\"beranda\"] }, \"detail\").tumpukan.join(\",\") === \"beranda,detail\""
+            },
+            {
+              "name": "pop membuang layar teratas",
+              "check": "pop({ tumpukan: [\"beranda\", \"detail\"] }).tumpukan.join(\",\") === \"beranda\""
+            },
+            {
+              "name": "pop di layar pertama tidak mengosongkan",
+              "check": "pop({ tumpukan: [\"beranda\"] }).tumpukan.length === 1"
+            },
+            {
+              "name": "keadaan lama tidak berubah",
+              "check": "(() => { const k = { tumpukan: [\"a\"] }; push(k, \"b\"); return k.tumpukan.length === 1; })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Tab dengan tumpukan sendiri",
+          "prompt": "Keadaan berbentuk `{ aktif, tab: { nama: [layar...] } }`. Lengkapi tiga fungsi:\n\n- `pindahTab(k, nama)` mengganti tab aktif tanpa menyentuh tumpukan tab mana pun.\n- `pushTab(k, layar)` menaruh `layar` di tumpukan tab yang **sedang aktif** saja.\n- `layarAktif(k)` mengembalikan layar teratas pada tab yang sedang aktif.\n\nKeadaan lama tidak boleh berubah.",
+          "starter": {
+            "code": "function pindahTab(k, nama) {\n  return k;\n}\n\nfunction pushTab(k, layar) {\n  return k;\n}\n\nfunction layarAktif(k) {\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function pindahTab(k, nama) {\n  return { ...k, aktif: nama };\n}\n\nfunction pushTab(k, layar) {\n  const tumpukan = [...k.tab[k.aktif], layar];\n  return { ...k, tab: { ...k.tab, [k.aktif]: tumpukan } };\n}\n\nfunction layarAktif(k) {\n  const t = k.tab[k.aktif];\n  return t[t.length - 1];\n}\n"
+          },
+          "setup": "const awal = { aktif: \"kelas\", tab: { beranda: [\"beranda\"], kelas: [\"daftar\"], profil: [\"profil\"] } };\n",
+          "tests": [
+            {
+              "name": "layarAktif membaca puncak tab aktif",
+              "check": "layarAktif(awal) === \"daftar\""
+            },
+            {
+              "name": "pushTab hanya mengubah tab aktif",
+              "check": "(() => { const k = pushTab(awal, \"detail\"); return k.tab.kelas.join(\",\") === \"daftar,detail\" && k.tab.beranda.length === 1 && k.tab.profil.length === 1; })()"
+            },
+            {
+              "name": "pindah tab lalu kembali menjaga tumpukan",
+              "check": "(() => { let k = pushTab(awal, \"detail\"); k = pindahTab(k, \"profil\"); k = pindahTab(k, \"kelas\"); return layarAktif(k) === \"detail\"; })()"
+            },
+            {
+              "name": "keadaan lama tidak berubah",
+              "check": "(() => { pushTab(awal, \"x\"); return awal.tab.kelas.length === 1; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "parameter-rute-dan-deep-link",
+      "title": "Parameter Rute dan Deep Link",
+      "est_minutes": 30,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menjelaskan parameter rute dan query serta perbedaannya.\n- Mencocokkan pola rute seperti `/kelas/:id` dengan alamat sebenarnya.\n- Menguraikan deep link menjadi rute, parameter, dan query.\n- Memvalidasi tautan dari luar aplikasi sebelum membuka layar.\n\n## Parameter rute\n\nBanyak layar menampilkan sesuatu yang bergantung pada pilihan sebelumnya: detail sebuah kelas, isi sebuah bab, profil seorang pengguna. Layar yang sama dipakai untuk semuanya, jadi ia perlu tahu **yang mana**. Informasi itu dibawa oleh parameter rute.\n\nPada alamat `/kelas/42`, bagian `42` adalah nilai parameter `id`. Di Expo Router, berkas `app/kelas/[id].tsx` menerimanya, dan layar membacanya dengan `useLocalSearchParams()`. Beberapa hal perlu diingat.\n\n**Parameter selalu berupa teks.** Walau tampak seperti angka, `\"42\"` adalah string. Bila kamu membutuhkan angka, ubahlah sendiri dengan `Number()` dan periksa hasilnya, karena `Number(\"abc\")` menghasilkan `NaN`.\n\n**Kirim id, bukan objek.** Menaruh objek besar di dalam alamat membuat tautan panjang, mudah rusak, dan tidak bisa dibagikan. Kirim id yang pendek, lalu layar tujuan mengambil data lengkapnya dari cache atau server. Dengan cara itu layar yang sama juga bisa dibuka dari tautan luar.\n\n**Query untuk opsi.** Bentuk `?tab=bab` menambahkan opsi yang tidak mengubah layar mana yang dibuka, misalnya tab awal atau urutan daftar. Alamat `/kelas/42?tab=bab` tetap layar kelas nomor 42, hanya dengan pilihan tambahan.\n\n![Parameter rute](slide:8)\n\n## Mencocokkan pola rute\n\nBagaimana sistem tahu bahwa `/kelas/42` cocok dengan pola `/kelas/:id`? Ia membandingkan keduanya segmen demi segmen. Segmen biasa harus sama persis. Segmen berawalan titik dua adalah parameter dan cocok dengan apa saja, nilainya disimpan.\n\n```js\nfunction cocok(pola, path) {\n  const a = pola.split(\"/\");\n  const b = path.split(\"/\");\n  if (a.length !== b.length) return null;\n  const params = {};\n  for (let i = 0; i < a.length; i++) {\n    const p = a[i];\n    if (p[0] === \":\") params[p.slice(1)] = b[i];\n    else if (p !== b[i]) return null;\n  }\n  return params;\n}\n```\n\nFungsi ini mengembalikan objek `params` bila cocok, dan `null` bila tidak. Contohnya `cocok(\"/kelas/:id\", \"/kelas/42\")` menghasilkan `{ id: \"42\" }`, sedangkan `cocok(\"/kelas/:id\", \"/profil\")` menghasilkan `null` karena segmen pertama berbeda. Pemeriksaan jumlah segmen di awal mencegah `/kelas/42/bab` cocok dengan `/kelas/:id`.\n\nDari fungsi ini lahir fungsi yang lebih berguna: mencari rute pertama yang cocok dari daftar pola.\n\n```js\nconst daftar = [\"/\", \"/kelas/:id\", \"/kelas/:id/bab/:bab\"];\n\nfunction cari(path) {\n  for (const pola of daftar) {\n    const params = cocok(pola, path);\n    if (params) return { pola, params };\n  }\n  return null;\n}\n```\n\nUrutan daftar penting. Bila dua pola bisa cocok, yang lebih dulu menang, jadi pola yang lebih spesifik biasanya ditaruh lebih dulu. Hasil `null` berarti tidak ada rute: saatnya menampilkan layar \"tidak ditemukan\".\n\n## Deep link\n\n**Deep link** adalah alamat yang membuka layar tertentu dari luar aplikasi: dari pesan, dari email, dari notifikasi, atau dari aplikasi lain. Tanpanya, mengetuk tautan \"lihat kelas ini\" hanya membuka beranda dan pengguna harus mencarinya sendiri.\n\nAda dua jenis. **Skema khusus** seperti `ruangmateri://kelas/42` mudah dibuat, tetapi hanya berfungsi bila aplikasi terpasang, dan skema yang sama bisa diklaim aplikasi lain. **Universal link** (iOS) dan **app link** (Android) memakai alamat https biasa seperti `https://ruang-materi.example/kelas/42`. Bila aplikasi terpasang, tautan membuka aplikasi; bila tidak, tautan membuka situs web. Karena domainnya harus dibuktikan milikmu, jenis ini lebih aman dan lebih dianjurkan.\n\nUntuk memakai deep link, aplikasi menerima alamat teks lalu harus menguraikannya.\n\n```js\nfunction uraikan(url) {\n  const [depan, query = \"\"] = url.split(\"?\");\n  const path = \"/\" + depan.split(\"://\")[1];\n  const opsi = {};\n  for (const bagian of query.split(\"&\")) {\n    if (!bagian) continue;\n    const [k, v = \"\"] = bagian.split(\"=\");\n    opsi[k] = v;\n  }\n  return { path, opsi };\n}\n```\n\nUntuk `ruangmateri://kelas/42?tab=bab`, hasilnya `{ path: \"/kelas/42\", opsi: { tab: \"bab\" } }`. Setelah itu `cari(path)` menentukan layar mana yang dibuka dan parameter apa yang dibawa.\n\n## Tautan dari luar tidak tepercaya\n\nAda satu hal yang sering terlupa: deep link adalah **masukan dari luar**, sama seperti isian formulir. Siapa pun bisa membuat tautan dan menyebarkannya. Karena itu tautan harus diperiksa sebelum dipakai.\n\nBeberapa pemeriksaan yang masuk akal. Pastikan rutenya ada di daftar yang kamu kenal, jangan membuka rute sembarang. Pastikan parameter sesuai bentuk yang diharapkan, misalnya `id` hanya angka. Jangan pernah menjalankan sesuatu hanya karena tautan memintanya, seperti menghapus data atau membayar. Aksi berisiko harus tetap meminta konfirmasi di dalam aplikasi, apa pun cara layarnya dibuka.\n\n```js\nfunction aman(hasil) {\n  if (!hasil) return false;\n  const id = hasil.params.id;\n  return id === undefined || /^[0-9]+$/.test(id);\n}\n```\n\nFungsi seperti ini kecil, tetapi mencegah banyak masalah: `/kelas/abc` ditolak sebelum sempat membuat layar atau permintaan ke server yang aneh. Dan karena murni, ia mudah dites dengan contoh tautan yang baik maupun yang berbahaya.\n\nRangkaian lengkapnya menjadi alur yang jelas: tautan diurai, dicocokkan dengan pola, diperiksa, lalu bila aman dibuka sebagai keadaan navigasi baru memakai `push` dari bab sebelumnya. Setiap langkah adalah fungsi murni yang bisa dites sendiri.\n\n## Kesalahan umum pada rute\n\nKesalahan yang paling sering adalah menganggap parameter sebagai angka. Kode seperti `id + 1` pada `\"42\"` menghasilkan `\"421\"`, bukan `43`, dan bug seperti ini sering lolos karena tampilannya tetap tampak masuk akal. Selalu ubah dengan `Number` dan periksa hasilnya sebelum dipakai.\n\nKesalahan lain adalah lupa menangani rute yang tidak ditemukan. Pengguna bisa tiba di alamat lama, alamat salah ketik, atau tautan dari versi aplikasi yang sudah berubah. Layar \"tidak ditemukan\" yang ramah, dengan tombol kembali ke beranda, jauh lebih baik daripada layar kosong atau aplikasi yang menutup diri. Terakhir, jangan menaruh data pribadi seperti token atau email di dalam alamat, karena alamat bisa tercatat di log dan riwayat.\n\n## Rangkuman\n\n- Parameter rute membawa informasi seperti `id` ke layar tujuan, selalu berupa teks, dan sebaiknya berupa id pendek, bukan objek.\n- Query seperti `?tab=bab` menambahkan opsi tanpa mengubah layar yang dibuka.\n- Pola rute dicocokkan segmen demi segmen; segmen berawalan titik dua menjadi parameter, dan hasil `null` berarti tidak cocok.\n- Deep link membuka layar tertentu dari luar aplikasi; universal link lebih aman daripada skema khusus.\n- Tautan dari luar adalah masukan tidak tepercaya, jadi rute dan parameternya harus divalidasi sebelum dipakai.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada alamat /kelas/42, apa tipe nilai parameter id yang diterima layar?",
+          "code": "",
+          "options": [
+            "Angka bulat 42",
+            "Teks, yaitu \"42\"",
+            "Boolean true karena parameternya ada",
+            "Objek berisi data kelas nomor 42"
+          ],
+          "answer": 1,
+          "explanation": "Parameter rute selalu berupa teks; ubah sendiri dengan Number bila perlu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hasil cocok(\"/kelas/:id\", \"/profil/9\") adalah",
+          "code": "",
+          "options": [
+            "null, karena segmen pertama berbeda",
+            "{ id: \"9\" }, karena segmen terakhir cocok",
+            "{ id: \"profil\" }, karena urutan terbalik",
+            "Galat yang menghentikan aplikasi"
+          ],
+          "answer": 0,
+          "explanation": "Segmen biasa harus sama persis; bila tidak, hasilnya null."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Universal link lebih aman daripada skema khusus karena domainnya harus dibuktikan milik pengembang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Skema khusus bisa diklaim aplikasi lain, universal link tidak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa deep link harus divalidasi sebelum dipakai?",
+          "code": "",
+          "options": [
+            "Karena sistem operasi selalu menghapus tautan yang salah",
+            "Karena tautan terlalu panjang untuk dibaca aplikasi",
+            "Karena server menolak semua tautan tanpa validasi",
+            "Tautan datang dari luar dan tidak bisa dipercaya"
+          ],
+          "answer": 3,
+          "explanation": "Siapa pun bisa membuat dan menyebarkan tautan, jadi isinya harus diperiksa."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Cocokkan pola rute",
+          "prompt": "Lengkapi `cocok(pola, path)`. Bandingkan keduanya segmen demi segmen (dipisah `/`).\n\n- Segmen berawalan `:` adalah parameter; nilainya masuk ke objek hasil dengan nama tanpa titik dua.\n- Segmen lain harus sama persis.\n- Bila jumlah segmen berbeda atau ada segmen biasa yang tidak sama, kembalikan `null`.\n\nContoh: `cocok(\"/kelas/:id\", \"/kelas/42\")` menghasilkan `{ id: \"42\" }`.",
+          "starter": {
+            "code": "function cocok(pola, path) {\n  // TODO: bandingkan segmen demi segmen\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function cocok(pola, path) {\n  const a = pola.split(\"/\");\n  const b = path.split(\"/\");\n  if (a.length !== b.length) return null;\n  const params = {};\n  for (let i = 0; i < a.length; i++) {\n    const p = a[i];\n    if (p[0] === \":\") params[p.slice(1)] = b[i];\n    else if (p !== b[i]) return null;\n  }\n  return params;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Satu parameter",
+              "check": "cocok(\"/kelas/:id\", \"/kelas/42\").id === \"42\""
+            },
+            {
+              "name": "Dua parameter",
+              "check": "(() => { const r = cocok(\"/kelas/:id/bab/:bab\", \"/kelas/7/bab/3\"); return r.id === \"7\" && r.bab === \"3\"; })()"
+            },
+            {
+              "name": "Segmen biasa berbeda tidak cocok",
+              "check": "cocok(\"/kelas/:id\", \"/profil/42\") === null"
+            },
+            {
+              "name": "Jumlah segmen berbeda tidak cocok",
+              "check": "cocok(\"/kelas/:id\", \"/kelas/42/bab\") === null"
+            },
+            {
+              "name": "Pola tanpa parameter menghasilkan objek kosong",
+              "check": "Object.keys(cocok(\"/profil\", \"/profil\")).length === 0"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Uraikan deep link",
+          "prompt": "Lengkapi `uraikan(url)` untuk tautan seperti `ruangmateri://kelas/42?tab=bab&urut=baru`.\n\nKembalikan `{ path, opsi }`:\n\n- `path` adalah bagian setelah `://` dan sebelum `?`, diawali `/` (hasil: `/kelas/42`).\n- `opsi` adalah objek dari pasangan `kunci=nilai` pada query (bisa kosong).\n- Pasangan tanpa nilai, seperti `?debug`, bernilai string kosong.",
+          "starter": {
+            "code": "function uraikan(url) {\n  // TODO: pisahkan path dan query\n  return { path: \"\", opsi: {} };\n}\n"
+          },
+          "solution": {
+            "code": "function uraikan(url) {\n  const [depan, query = \"\"] = url.split(\"?\");\n  const path = \"/\" + depan.split(\"://\")[1];\n  const opsi = {};\n  for (const bagian of query.split(\"&\")) {\n    if (!bagian) continue;\n    const [k, v = \"\"] = bagian.split(\"=\");\n    opsi[k] = v;\n  }\n  return { path, opsi };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Path tanpa query",
+              "check": "uraikan(\"ruangmateri://kelas/42\").path === \"/kelas/42\""
+            },
+            {
+              "name": "Query menjadi opsi",
+              "check": "(() => { const r = uraikan(\"ruangmateri://kelas/42?tab=bab&urut=baru\"); return r.opsi.tab === \"bab\" && r.opsi.urut === \"baru\"; })()"
+            },
+            {
+              "name": "Tanpa query opsi kosong",
+              "check": "Object.keys(uraikan(\"ruangmateri://beranda\").opsi).length === 0"
+            },
+            {
+              "name": "Pasangan tanpa nilai bernilai kosong",
+              "check": "uraikan(\"ruangmateri://kelas/1?debug\").opsi.debug === \"\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "state-global-dan-reducer",
+      "title": "State Global dan Reducer",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menjelaskan masalah prop drilling dan mengapa state global membantu.\n- Menulis reducer sebagai fungsi murni yang menerima keadaan dan aksi.\n- Menurunkan data seperti total dan jumlah memakai selector.\n- Menjelaskan mengapa menyimpan data turunan menimbulkan bug.\n\n## Mengapa perlu state global\n\nState yang hanya dipakai satu layar, seperti isi kolom pencarian, cukup disimpan di layar itu. Masalah muncul saat banyak layar membutuhkan data yang sama. Isi keranjang dibaca oleh layar daftar produk (lencana jumlah), layar keranjang (daftar), dan layar pembayaran (total). Pengguna yang sedang masuk dibaca hampir di mana-mana.\n\nTanpa tempat bersama, data harus dioper dari layar induk ke anak lewat prop, lalu ke cucu, dan seterusnya. Itu disebut **prop drilling**. Setiap lapisan di tengah harus menerima dan meneruskan data yang tidak ia pakai, dan menambah satu field berarti mengubah banyak berkas.\n\n**State global** menaruh data itu di satu tempat yang bisa dibaca dan diubah dari layar mana pun. Di React Native bentuknya bisa Context, Zustand, Redux Toolkit, atau pustaka lain. Bentuknya berbeda, tetapi masalah yang dipecahkan sama. Harga yang dibayar: karena banyak tempat bisa mengubah data, perubahannya harus tertata. Kalau tidak, kamu tidak bisa menjawab pertanyaan \"siapa yang mengubah ini?\".\n\n![Mengapa perlu state global](slide:11)\n\n## Reducer: perubahan yang dapat diprediksi\n\nCara paling rapi menata perubahan adalah **reducer**. Reducer adalah fungsi yang menerima keadaan lama dan sebuah aksi, lalu mengembalikan keadaan baru.\n\n```js\nfunction reducer(k, aksi) {\n  switch (aksi.tipe) {\n    case \"tambah\":\n      return { ...k, item: [...k.item, aksi.item] };\n    case \"hapus\": {\n      const item = k.item.filter((i) => i.id !== aksi.id);\n      return { ...k, item };\n    }\n    default:\n      return k;\n  }\n}\n```\n\nAksi adalah objek biasa yang menjelaskan apa yang terjadi, misalnya `{ tipe: \"tambah\", item: { id: 1, nama: \"Buku\", harga: 50000, jumlah: 1 } }`. Layar tidak mengubah data sendiri. Ia mengirim aksi, dan reducer yang memutuskan keadaan baru.\n\nReducer wajib **murni**. Artinya, masukan yang sama selalu menghasilkan keluaran yang sama, dan ia tidak mengubah keadaan lama. Itu sebabnya kita memakai sebaran `...k` dan `filter`, yang membuat salinan, dan bukan `push` atau `splice`, yang mengubah array asli. Ada dua alasan. Pertama, React membandingkan keadaan lama dan baru untuk memutuskan apakah perlu menggambar ulang; bila objek yang sama diubah di tempat, perbandingan itu gagal dan layar tidak diperbarui. Kedua, keadaan lama yang utuh memungkinkan fitur seperti urungkan atau pelacakan riwayat.\n\nCabang `default` mengembalikan `k` apa adanya. Aksi yang tidak dikenal tidak boleh merusak keadaan. Karena reducer hanyalah fungsi, mengujinya semudah memanggilnya: berikan keadaan, berikan aksi, periksa hasilnya.\n\n## Selector dan data turunan\n\nBayangkan keranjang yang menyimpan `item` dan juga `total`. Setiap kali item berubah, total harus ikut diperbarui. Cepat atau lambat ada satu cabang reducer yang lupa memperbaruinya, dan layar menampilkan total yang tidak cocok dengan isi keranjang. Itu bug yang sulit ditemukan karena datanya tampak masuk akal di tiap layar.\n\nAturan yang mencegahnya: **simpan fakta, hitung turunannya.** Fakta adalah hal yang tidak bisa dihitung dari data lain, seperti daftar item. Jumlah item, total harga, dan daftar yang sudah selesai adalah turunan, jadi tidak perlu disimpan. Hitung saja saat dibutuhkan dengan **selector**, yaitu fungsi yang menerima state dan mengembalikan nilai turunan.\n\n```js\nconst jumlahItem = (k) => k.item.reduce((n, i) => n + i.jumlah, 0);\nconst total = (k) => k.item.reduce((n, i) => n + i.harga * i.jumlah, 0);\nconst selesai = (k) => k.item.filter((i) => i.selesai);\n```\n\nDengan selector hanya ada satu sumber kebenaran, yaitu daftar item. Tidak mungkin ada dua angka yang bertentangan karena angka itu selalu dihitung dari sumber yang sama. Selector juga murni, jadi mudah dites dan bisa dipakai di layar mana pun.\n\nPada daftar yang sangat besar, menghitung ulang setiap kali bisa terasa mahal. Saat itu barulah kamu memakai memoization, yang dibahas di bab performa. Selalu mulai dari yang sederhana dan ukur dulu sebelum menambah lapisan optimasi.\n\n## Menata bentuk keadaan\n\nBentuk keadaan memengaruhi seberapa mudah reducernya ditulis. Dua kebiasaan membantu. Pertama, simpan daftar sebagai larik objek dengan `id` yang stabil, karena `id` membuat pencarian dan penghapusan jelas. Kedua, jaga keadaan sedatar mungkin. Objek yang bersarang dalam membuat sebaran harus ditulis berlapis dan mudah salah.\n\n```js\nconst awal = {\n  item: [],\n  pengguna: null,\n  kupon: \"\",\n};\n```\n\nDan ingat bahwa tidak semua state perlu global. Isi kolom pencarian, apakah sebuah menu terbuka, atau tab apa yang sedang dilihat dalam satu layar tetap cocok disimpan lokal di layar. State global sebaiknya hanya berisi data yang benar-benar dipakai bersama. Semakin sedikit yang global, semakin sedikit tempat yang bisa mengubahnya, dan semakin mudah dipahami.\n\n## Kesalahan umum pada state\n\nKesalahan paling umum adalah mengubah keadaan di tempat, misalnya `k.item.push(baru); return k;`. Reducer seperti itu tampak bekerja pada percobaan pertama, tetapi layar tidak diperbarui karena objeknya sama, dan bug seperti itu membingungkan. Kesalahan kedua adalah menyimpan data turunan seperti yang dibahas di atas. Kesalahan ketiga adalah menjadikan semuanya global sejak awal, sehingga setiap layar bergantung pada setiap bagian state. Mulailah dari state lokal, dan angkat ke global hanya saat dua layar atau lebih benar-benar membutuhkannya.\n\n## Rangkuman\n\n- Prop drilling melelahkan karena data dioper lewat lapisan yang tidak membutuhkannya; state global menaruh data di satu tempat bersama.\n- Reducer menerima keadaan lama dan aksi, lalu mengembalikan keadaan baru tanpa mengubah yang lama.\n- Reducer harus murni dan memakai salinan, karena React membandingkan keadaan lama dan baru.\n- Simpan fakta dan hitung turunannya dengan selector supaya hanya ada satu sumber kebenaran.\n- Tidak semua state perlu global; state yang hanya dipakai satu layar tetap disimpan lokal.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa masalah utama prop drilling?",
+          "code": "",
+          "options": [
+            "Aplikasi berhenti berjalan setelah tiga lapisan komponen",
+            "Prop tidak bisa berisi objek atau larik",
+            "Data dioper lewat lapisan yang tidak membutuhkannya",
+            "Data otomatis terhapus saat layar berpindah"
+          ],
+          "answer": 2,
+          "explanation": "Setiap lapisan di tengah harus menerima dan meneruskan data yang tidak ia pakai."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa reducer harus membuat salinan, bukan mengubah keadaan lama?",
+          "code": "",
+          "options": [
+            "Karena JavaScript melarang perubahan pada objek",
+            "React membandingkan keadaan lama dan baru untuk memutuskan penggambaran ulang",
+            "Karena salinan selalu lebih cepat dibuat daripada diubah",
+            "Supaya ukuran keadaan tidak pernah bertambah"
+          ],
+          "answer": 1,
+          "explanation": "Bila objek yang sama diubah di tempat, perbandingan gagal dan layar tidak diperbarui."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Total harga keranjang sebaiknya disimpan sebagai field tersendiri dan diperbarui setiap item berubah.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Total adalah data turunan; hitung dengan selector agar tidak ada angka yang bertentangan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cabang default pada reducer sebaiknya",
+          "code": "",
+          "options": [
+            "mengembalikan keadaan apa adanya",
+            "melempar galat untuk setiap aksi yang tidak dikenal",
+            "mengosongkan seluruh keadaan agar aman",
+            "mengubah aksi menjadi tambah secara otomatis"
+          ],
+          "answer": 0,
+          "explanation": "Aksi yang tidak dikenal tidak boleh merusak keadaan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Reducer keranjang",
+          "prompt": "Lengkapi `reducer(k, aksi)` untuk keadaan `{ item: [{ id, nama, harga, jumlah }] }`.\n\n- `{ tipe: \"tambah\", item }`: bila `id` sudah ada, tambahkan `jumlah`-nya; bila belum, tambahkan item baru di akhir.\n- `{ tipe: \"hapus\", id }`: buang item dengan `id` itu.\n- `{ tipe: \"kosongkan\" }`: `item` menjadi array kosong.\n- Aksi lain mengembalikan keadaan yang sama.\n\nReducer harus murni: jangan mengubah `k` atau item di dalamnya.",
+          "starter": {
+            "code": "function reducer(k, aksi) {\n  switch (aksi.tipe) {\n    // TODO: tambah, hapus, kosongkan\n    default:\n      return k;\n  }\n}\n"
+          },
+          "solution": {
+            "code": "function reducer(k, aksi) {\n  switch (aksi.tipe) {\n    case \"tambah\": {\n      const ada = k.item.some((i) => i.id === aksi.item.id);\n      const item = ada\n        ? k.item.map((i) => (i.id === aksi.item.id ? { ...i, jumlah: i.jumlah + aksi.item.jumlah } : i))\n        : [...k.item, aksi.item];\n      return { ...k, item };\n    }\n    case \"hapus\":\n      return { ...k, item: k.item.filter((i) => i.id !== aksi.id) };\n    case \"kosongkan\":\n      return { ...k, item: [] };\n    default:\n      return k;\n  }\n}\n"
+          },
+          "setup": "const buku = { id: 1, nama: \"Buku\", harga: 50000, jumlah: 1 };\nconst pena = { id: 2, nama: \"Pena\", harga: 5000, jumlah: 2 };\n",
+          "tests": [
+            {
+              "name": "Tambah item baru",
+              "check": "reducer({ item: [] }, { tipe: \"tambah\", item: buku }).item.length === 1"
+            },
+            {
+              "name": "Tambah id yang sama menjumlahkan",
+              "check": "reducer({ item: [buku] }, { tipe: \"tambah\", item: buku }).item[0].jumlah === 2"
+            },
+            {
+              "name": "Hapus berdasarkan id",
+              "check": "reducer({ item: [buku, pena] }, { tipe: \"hapus\", id: 1 }).item.map((i) => i.id).join(\",\") === \"2\""
+            },
+            {
+              "name": "Kosongkan",
+              "check": "reducer({ item: [buku, pena] }, { tipe: \"kosongkan\" }).item.length === 0"
+            },
+            {
+              "name": "Aksi tidak dikenal mengembalikan keadaan sama",
+              "check": "(() => { const k = { item: [buku] }; return reducer(k, { tipe: \"aneh\" }) === k; })()"
+            },
+            {
+              "name": "Keadaan lama tidak berubah",
+              "check": "(() => { const k = { item: [buku] }; reducer(k, { tipe: \"tambah\", item: buku }); return k.item[0].jumlah === 1; })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Selector turunan",
+          "prompt": "Tulis tiga selector untuk keadaan `{ item: [{ id, nama, harga, jumlah }] }`:\n\n- `jumlahItem(k)`: total `jumlah` semua item.\n- `total(k)`: jumlah `harga * jumlah` seluruh item.\n- `terbanyak(k)`: **nama** item dengan `jumlah` terbesar, atau `null` bila keranjang kosong. Bila seri, ambil yang muncul lebih dulu.",
+          "starter": {
+            "code": "const jumlahItem = (k) => 0;\nconst total = (k) => 0;\nconst terbanyak = (k) => null;\n"
+          },
+          "solution": {
+            "code": "const jumlahItem = (k) => k.item.reduce((n, i) => n + i.jumlah, 0);\nconst total = (k) => k.item.reduce((n, i) => n + i.harga * i.jumlah, 0);\nconst terbanyak = (k) => {\n  let pilih = null;\n  for (const i of k.item) if (!pilih || i.jumlah > pilih.jumlah) pilih = i;\n  return pilih ? pilih.nama : null;\n};\n"
+          },
+          "setup": "const k = { item: [\n  { id: 1, nama: \"Buku\", harga: 50000, jumlah: 1 },\n  { id: 2, nama: \"Pena\", harga: 5000, jumlah: 3 },\n  { id: 3, nama: \"Map\", harga: 2000, jumlah: 3 },\n] };\n",
+          "tests": [
+            {
+              "name": "jumlahItem menjumlahkan semua jumlah",
+              "check": "jumlahItem(k) === 7"
+            },
+            {
+              "name": "total menghitung harga kali jumlah",
+              "check": "total(k) === 71000"
+            },
+            {
+              "name": "terbanyak memilih jumlah terbesar, seri ambil yang pertama",
+              "check": "terbanyak(k) === \"Pena\""
+            },
+            {
+              "name": "Keranjang kosong",
+              "check": "jumlahItem({ item: [] }) === 0 && total({ item: [] }) === 0 && terbanyak({ item: [] }) === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "data-dari-api-cache-dan-retry",
+      "title": "Data dari API, Cache, dan Coba Ulang",
+      "est_minutes": 30,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Memodelkan permintaan data dengan status diam, memuat, berhasil, dan gagal.\n- Menjelaskan cache dengan masa berlaku (TTL) dan strategi stale-while-revalidate.\n- Menghitung jeda coba ulang dengan exponential backoff.\n- Membedakan kegagalan sementara yang layak diulang dari kesalahan permintaan.\n\n## Data dari API: tiga keadaan\n\nHampir semua aplikasi mengambil data dari server, dan permintaan itu tidak selesai seketika. Selama menunggu, ia bisa berhasil, atau gagal karena sinyal buruk, server sibuk, atau data tidak ada. Layar yang baik siap untuk semua kemungkinan itu, bukan hanya untuk kasus berhasil.\n\nCara paling jelas adalah memodelkannya dengan status yang eksplisit.\n\n```js\nconst awal = { status: \"diam\", data: null, galat: null };\n\n// status: diam, memuat, berhasil, gagal\n```\n\nLayar lalu memutuskan tampilannya dari `status`. Saat `memuat`, tampilkan penanda muat. Saat `berhasil`, tampilkan `data`. Saat `gagal`, tampilkan pesan yang menjelaskan masalahnya disertai tombol coba lagi. Kesalahan klasik adalah memakai beberapa boolean terpisah seperti `sedangMuat`, `adaGalat`, dan `sudahSelesai`. Kombinasinya bisa saling bertentangan: sedang memuat sekaligus ada galat? Satu `status` menutup kemungkinan itu karena hanya satu nilai yang bisa aktif.\n\nLayar kosong saat memuat adalah pengalaman buruk, karena pengguna tidak tahu apakah aplikasi macet. Tampilkan sesuatu, entah penanda putar atau kerangka abu-abu yang menyerupai isi akhir. Dan pesan gagal yang hanya berbunyi \"Terjadi kesalahan\" tidak membantu. Katakan apa yang terjadi, misalnya \"Tidak bisa terhubung, periksa koneksi\", dan beri jalan keluar.\n\n![Tiga keadaan data](slide:14)\n\n## Cache dengan masa berlaku\n\nMengambil data yang sama setiap kali layar dibuka memboroskan baterai, kuota, dan waktu pengguna. **Cache** menyimpan hasil agar permintaan berikutnya bisa dijawab langsung. Pertanyaannya: sampai kapan hasil itu boleh dipercaya?\n\nJawabannya adalah **TTL** (time to live), masa berlaku. Setiap entri disimpan bersama waktu ia dibuat. Saat diminta, cache memeriksa apakah umurnya masih di bawah TTL. Bila ya, datanya dipakai; bila tidak, data dianggap basi dan harus diambil ulang.\n\n```js\nfunction buatCache(ttl) {\n  const isi = new Map();\n  return {\n    simpan(kunci, nilai, sekarang) {\n      isi.set(kunci, { nilai, waktu: sekarang });\n    },\n    ambil(kunci, sekarang) {\n      const e = isi.get(kunci);\n      if (!e || sekarang - e.waktu >= ttl) return undefined;\n      return e.nilai;\n    },\n  };\n}\n```\n\nPerhatikan bahwa waktu sekarang dikirim sebagai argumen, bukan dibaca dari `Date.now()` di dalam fungsi. Itu membuat cache bisa dites dengan waktu buatan: \"setelah 59 detik datanya masih ada, setelah 60 detik hilang\". Fungsi yang membaca jam sendiri sulit dites karena hasilnya berubah dari waktu ke waktu.\n\n**Kunci cache** sebaiknya mencerminkan parameter permintaan. Daftar kelas halaman 1 dan halaman 2 adalah data berbeda, jadi kuncinya harus berbeda, misalnya `\"kelas:halaman:2\"`. Kunci yang terlalu umum membuat halaman 2 menampilkan data halaman 1.\n\nStrategi yang populer adalah **stale-while-revalidate**: tampilkan data lama dari cache seketika, lalu ambil data baru di belakang layar dan perbarui tampilannya. Pengguna melihat sesuatu langsung, dan datanya tetap segar sesaat kemudian.\n\n## Coba ulang dengan jeda bertahap\n\nJaringan seluler sering gagal sesaat: pengguna masuk terowongan, atau server baru saja mulai ulang. Coba ulang setelah beberapa detik sering berhasil. Tetapi mengulang terus-menerus tanpa jeda justru membebani server yang sedang bermasalah dan menguras baterai.\n\nSolusinya **exponential backoff**: jeda bertambah dua kali lipat setiap kegagalan, misalnya 1, 2, 4, 8 detik, dengan batas atas supaya tidak menunggu terlalu lama.\n\n```js\nfunction jeda(percobaan) {\n  return Math.min(1000 * 2 ** percobaan, 30000);\n}\n```\n\nDengan `percobaan` mulai dari 0, hasilnya 1000, 2000, 4000, 8000, 16000, lalu tertahan di 30000. Praktiknya sering ditambah sedikit acak (jitter) agar ribuan perangkat tidak mengulang pada detik yang sama.\n\nTidak semua kegagalan layak diulang. **Kegagalan sementara**, seperti tidak ada koneksi, waktu habis, atau status 503, kemungkinan sembuh sendiri. **Kesalahan permintaan**, seperti status 400 karena data salah atau 404 karena tidak ada, akan gagal lagi dengan cara yang sama berapa kali pun diulang. Mengulangnya hanya membuang waktu.\n\n```js\nfunction layakUlang(status) {\n  return status === 0 || status === 408 || status === 429 || status >= 500;\n}\n```\n\nBeri juga batas jumlah percobaan. Setelah beberapa kali gagal, berhenti dan tampilkan pesan gagal, supaya pengguna bisa memutuskan sendiri.\n\n## Menggabungkan ketiganya\n\nKetiga ide itu saling melengkapi. Saat layar meminta data, cache diperiksa lebih dulu. Bila ada dan masih berlaku, data langsung dipakai. Bila tidak, status menjadi `memuat` dan permintaan dikirim. Bila gagal karena masalah sementara, ia diulang dengan jeda yang bertambah. Bila berhasil, hasilnya disimpan ke cache dan status menjadi `berhasil`. Bila akhirnya tetap gagal, status menjadi `gagal` dan layar menawarkan coba lagi.\n\nSetiap keputusan dalam alur itu adalah fungsi murni yang bisa dites: apakah entri masih berlaku, berapa jeda berikutnya, apakah kegagalan ini layak diulang. Bagian yang benar-benar menyentuh jaringan menjadi sangat tipis, dan bug yang tersisa cenderung ada di sana, bukan di logikanya.\n\n## Kesalahan umum pada data\n\nBeberapa kesalahan sering muncul. Pertama, tidak membatalkan permintaan lama. Pengguna membuka layar kelas 1, cepat kembali dan membuka kelas 2, lalu jawaban kelas 1 tiba belakangan dan menimpa tampilan kelas 2. Pastikan jawaban hanya dipakai bila masih sesuai dengan permintaan terakhir. Kedua, menyimpan hasil gagal ke cache sehingga kegagalan sesaat bertahan selama TTL. Ketiga, memakai TTL yang sama untuk semua data. Daftar kelas yang jarang berubah boleh berumur satu jam, sedangkan saldo atau stok sebaiknya hanya beberapa detik.\n\nTerakhir, jangan lupa menguji kasus yang tidak enak: server mengembalikan daftar kosong, jawaban rusak, atau waktu habis di tengah jalan. Layar yang baik punya tampilan untuk daftar kosong juga, bukan hanya untuk daftar berisi.\n\n## Rangkuman\n\n- Permintaan data punya status diam, memuat, berhasil, dan gagal; satu status eksplisit mencegah tampilan yang saling bertentangan.\n- Cache menyimpan hasil dengan TTL; data yang umurnya melewati TTL dianggap basi dan diambil ulang.\n- Waktu sekarang sebaiknya dikirim sebagai argumen supaya cache mudah dites.\n- Exponential backoff melipatgandakan jeda setiap kegagalan dengan batas atas, dan jitter mencegah serbuan serentak.\n- Hanya kegagalan sementara yang diulang; kesalahan permintaan seperti 400 dan 404 tidak.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa satu nilai status lebih baik daripada beberapa boolean untuk permintaan data?",
+          "code": "",
+          "options": [
+            "Kombinasi yang saling bertentangan menjadi mustahil",
+            "Karena boolean tidak bisa disimpan di state",
+            "Karena status membuat permintaan berjalan lebih cepat",
+            "Karena satu nilai selalu memakai memori lebih sedikit"
+          ],
+          "answer": 0,
+          "explanation": "Hanya satu status yang aktif, jadi tidak mungkin sedang memuat sekaligus gagal."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Entri cache berumur tepat sama dengan TTL dianggap",
+          "code": "",
+          "options": [
+            "masih berlaku sampai satu milidetik berikutnya",
+            "rusak sehingga seluruh cache dihapus",
+            "setengah berlaku dan ditampilkan dengan peringatan",
+            "basi dan harus diambil ulang"
+          ],
+          "answer": 3,
+          "explanation": "Aturannya umur kurang dari TTL berlaku; sama dengan TTL sudah basi."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kesalahan 404 karena data tidak ada sebaiknya diulang dengan exponential backoff.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Kesalahan permintaan akan gagal lagi dengan cara yang sama; hanya kegagalan sementara yang layak diulang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Berapa jeda ke-4 (percobaan = 3) pada rumus 1000 * 2 ** percobaan tanpa batas atas?",
+          "code": "",
+          "options": [
+            "3000 milidetik",
+            "4000 milidetik",
+            "6000 milidetik",
+            "8000 milidetik"
+          ],
+          "answer": 3,
+          "explanation": "1000 * 2 pangkat 3 sama dengan 8000."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Cache dengan TTL",
+          "prompt": "Lengkapi `buatCache(ttl)`. Ia mengembalikan objek dengan dua metode; waktu dikirim sebagai argumen (milidetik) agar mudah dites.\n\n- `simpan(kunci, nilai, sekarang)` menyimpan nilai beserta waktunya.\n- `ambil(kunci, sekarang)` mengembalikan nilai bila umurnya **kurang dari** `ttl`; bila tidak ada atau sudah basi, kembalikan `undefined`.\n\nUmur sama dengan `ttl` dianggap basi.",
+          "starter": {
+            "code": "function buatCache(ttl) {\n  return {\n    simpan(kunci, nilai, sekarang) {},\n    ambil(kunci, sekarang) {\n      return undefined;\n    },\n  };\n}\n"
+          },
+          "solution": {
+            "code": "function buatCache(ttl) {\n  const isi = new Map();\n  return {\n    simpan(kunci, nilai, sekarang) {\n      isi.set(kunci, { nilai, waktu: sekarang });\n    },\n    ambil(kunci, sekarang) {\n      const e = isi.get(kunci);\n      if (!e || sekarang - e.waktu >= ttl) return undefined;\n      return e.nilai;\n    },\n  };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Data baru bisa diambil",
+              "check": "(() => { const c = buatCache(1000); c.simpan(\"a\", 5, 0); return c.ambil(\"a\", 500) === 5; })()"
+            },
+            {
+              "name": "Tepat sebelum TTL masih berlaku",
+              "check": "(() => { const c = buatCache(1000); c.simpan(\"a\", 5, 0); return c.ambil(\"a\", 999) === 5; })()"
+            },
+            {
+              "name": "Tepat pada TTL sudah basi",
+              "check": "(() => { const c = buatCache(1000); c.simpan(\"a\", 5, 0); return c.ambil(\"a\", 1000) === undefined; })()"
+            },
+            {
+              "name": "Kunci tidak ada",
+              "check": "buatCache(1000).ambil(\"x\", 0) === undefined"
+            },
+            {
+              "name": "Kunci berbeda tidak tercampur",
+              "check": "(() => { const c = buatCache(1000); c.simpan(\"kelas:1\", \"a\", 0); c.simpan(\"kelas:2\", \"b\", 0); return c.ambil(\"kelas:2\", 10) === \"b\"; })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Jeda coba ulang dan kegagalan sementara",
+          "prompt": "Lengkapi dua fungsi:\n\n- `jeda(percobaan)`: jeda dalam milidetik dengan exponential backoff, `1000 * 2 ** percobaan`, dengan batas atas 30000. `percobaan` dimulai dari 0.\n- `layakUlang(status)`: `true` hanya untuk kegagalan sementara, yaitu status `0` (tanpa koneksi), `408`, `429`, dan semua status `500` ke atas. Status lain, seperti 400, 401, dan 404, menghasilkan `false`.",
+          "starter": {
+            "code": "function jeda(percobaan) {\n  return 0;\n}\n\nfunction layakUlang(status) {\n  return false;\n}\n"
+          },
+          "solution": {
+            "code": "function jeda(percobaan) {\n  return Math.min(1000 * 2 ** percobaan, 30000);\n}\n\nfunction layakUlang(status) {\n  return status === 0 || status === 408 || status === 429 || status >= 500;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Jeda bertambah dua kali lipat",
+              "check": "[0, 1, 2, 3].map(jeda).join(\",\") === \"1000,2000,4000,8000\""
+            },
+            {
+              "name": "Jeda tertahan di batas atas",
+              "check": "jeda(5) === 30000 && jeda(20) === 30000"
+            },
+            {
+              "name": "Kegagalan sementara layak diulang",
+              "check": "[0, 408, 429, 500, 503].every(layakUlang)"
+            },
+            {
+              "name": "Kesalahan permintaan tidak diulang",
+              "check": "[400, 401, 403, 404, 422].every((s) => !layakUlang(s))"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "penyimpanan-lokal-dan-offline",
+      "title": "Penyimpanan Lokal dan Offline",
+      "est_minutes": 30,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Memilih tempat penyimpanan lokal yang tepat: AsyncStorage, SecureStore, atau SQLite.\n- Menjelaskan prinsip offline-first dan aturan bila data lokal berbeda dengan server.\n- Menulis antrean sinkronisasi yang menghitung percobaan dan menolak aksi ganda.\n- Menerapkan optimistic update beserta pembatalannya.\n\n## Penyimpanan lokal\n\nState di memori hilang saat aplikasi ditutup. Agar data bertahan, ia harus ditulis ke penyimpanan di perangkat. Ada beberapa pilihan, dan pilihan yang tepat bergantung pada sifat datanya.\n\n**AsyncStorage** menyimpan pasangan kunci dan teks. Cocok untuk data kecil dan tidak sensitif: pengaturan tema, bahasa pilihan, atau tanda bahwa pengenalan sudah dilihat. Ia tidak dienkripsi dan tidak dirancang untuk data besar.\n\n**SecureStore** menyimpan data di tempat aman milik sistem, yaitu Keychain di iOS dan Keystore di Android. Cocok untuk token dan rahasia kecil lain. **Token tidak boleh disimpan di AsyncStorage biasa**, karena siapa pun yang dapat membaca berkas aplikasi bisa mengambilnya.\n\n**SQLite** adalah basis data lengkap di perangkat. Cocok untuk data terstruktur dalam jumlah besar, perlu dicari atau diurutkan, atau punya hubungan antar tabel: ribuan catatan, riwayat percakapan, atau katalog yang dipakai offline.\n\nAturan memilihnya sederhana: lihat sifat datanya. Kecil dan tidak rahasia, pakai AsyncStorage. Rahasia, pakai SecureStore. Besar atau terstruktur, pakai SQLite. Jangan memilih berdasarkan mana yang paling kamu kenal.\n\n![Penyimpanan lokal](slide:17)\n\n## Offline lebih dulu\n\nBanyak pengguna berada di tempat dengan sinyal buruk. Aplikasi yang hanya berguna saat online akan terasa rapuh. Pendekatan **offline-first** menganggap jaringan sebagai bonus, bukan syarat. Membaca memakai data yang sudah tersimpan, dan menulis disimpan lokal dahulu lalu dikirim saat jaringan kembali.\n\nBeberapa praktik pendukungnya. Tampilkan data tersimpan seketika, lalu perbarui di belakang layar. Beri tahu pengguna keadaan koneksi dan status setiap perubahan, misalnya penanda \"belum terkirim\" pada catatan yang masih menunggu. Dan tentukan sejak awal apa yang terjadi bila data lokal dan data server berbeda, karena itu pasti terjadi, terutama bila pengguna memakai lebih dari satu perangkat. Aturan sederhana yang sering dipakai adalah \"perubahan terbaru menang\", dengan membandingkan waktu perubahan. Aturan yang lebih hati-hati bisa meminta pengguna memilih.\n\nIngat bahwa offline-first menambah pekerjaan. Tidak semua aplikasi memerlukannya. Aplikasi yang isinya selalu bergantung pada data waktu nyata, seperti pemantau harga saham, mungkin cukup menampilkan pesan \"tidak ada koneksi\". Tetapi aplikasi catatan, tugas, atau belajar hampir selalu diuntungkan.\n\n## Antrean sinkronisasi\n\nCara praktis mengirim perubahan saat jaringan kembali adalah **antrean sinkronisasi**. Setiap perubahan yang dibuat pengguna dimasukkan ke antrean sebagai aksi. Saat ada jaringan, aksi dikirim satu per satu, dan yang berhasil dikeluarkan dari antrean.\n\n```js\nfunction buatAntrean() {\n  const daftar = [];\n  return {\n    masuk(aksi) {\n      if (daftar.some((a) => a.id === aksi.id)) return false;\n      daftar.push({ ...aksi, coba: 0 });\n      return true;\n    },\n    berhasil(id) {\n      const i = daftar.findIndex((a) => a.id === id);\n      if (i !== -1) daftar.splice(i, 1);\n    },\n    gagal(id, batas) {\n      const a = daftar.find((x) => x.id === id);\n      if (!a) return \"tidak ada\";\n      a.coba += 1;\n      return a.coba >= batas ? \"menyerah\" : \"ulang\";\n    },\n    ukuran: () => daftar.length,\n  };\n}\n```\n\nTiga detail penting. Setiap aksi punya `id` unik, dan `masuk` menolak id yang sama, sehingga satu ketukan ganda tidak menghasilkan dua kiriman. Setiap aksi menghitung jumlah percobaan, dan setelah mencapai batas hasilnya \"menyerah\" supaya aksi yang macet tidak diulang selamanya dan menghalangi aksi lain. Dan antrean menjaga urutan, karena \"ubah judul\" lalu \"hapus catatan\" tidak boleh terkirim terbalik.\n\nDi sisi server, kirim `id` aksi itu sebagai kunci idempotensi supaya kiriman yang diulang karena jawaban hilang tidak dilakukan dua kali.\n\n## Optimistic update\n\nMenunggu jawaban server sebelum memperbarui layar membuat aplikasi terasa lambat. Pada **optimistic update**, aplikasi langsung menampilkan hasilnya, seolah permintaan pasti berhasil, lalu mengirim permintaan di belakang layar. Contoh yang akrab adalah tombol suka yang langsung berwarna.\n\nSyaratnya, harus ada jalan mundur bila server menolak. Caranya menyimpan keadaan sebelumnya, lalu mengembalikannya bila gagal.\n\n```js\nfunction suka(k, id) {\n  const lama = k;\n  const baru = {\n    ...k,\n    item: k.item.map((i) => (i.id === id ? { ...i, suka: true } : i)),\n  };\n  return { baru, batal: () => lama };\n}\n```\n\nKarena reducer dan fungsi seperti ini tidak mengubah keadaan lama, menyimpan `lama` murah dan aman. Bila server menolak, aplikasi memakai `batal()` dan memberi tahu pengguna dengan pesan singkat. Optimistic update cocok untuk aksi yang hampir selalu berhasil dan kecil risikonya. Untuk pembayaran atau aksi yang tidak bisa dibatalkan, tunggu konfirmasi server.\n\n## Kesalahan umum pada offline\n\nKesalahan yang sering terjadi adalah menganggap \"ada sinyal\" sama dengan \"server bisa dijangkau\". Perangkat bisa terhubung ke Wi-Fi tanpa internet, jadi cara terbaik mengetahui keadaan sebenarnya adalah mencoba permintaan dan menangani kegagalannya, bukan hanya membaca status koneksi. Kesalahan lain adalah antrean yang tidak pernah dikosongkan karena satu aksi macet di depan. Beri batas percobaan, lalu pindahkan aksi yang menyerah ke daftar terpisah supaya pengguna bisa melihat dan memutuskan nasibnya.\n\nJangan juga lupa menyimpan antrean itu sendiri ke penyimpanan lokal. Antrean yang hanya ada di memori hilang bersama aplikasi, dan perubahan yang belum terkirim ikut lenyap saat pengguna menutup aplikasi di tengah perjalanan. Menulis antrean ke SQLite atau AsyncStorage setiap kali berubah adalah biaya kecil untuk jaminan yang besar.\n\n## Rangkuman\n\n- AsyncStorage cocok untuk data kecil tidak sensitif, SecureStore untuk token dan rahasia, SQLite untuk data besar atau terstruktur.\n- Offline-first membaca dari data tersimpan, menulis lokal dahulu, dan butuh aturan bila data lokal berbeda dengan server.\n- Antrean sinkronisasi menjaga urutan, menolak id ganda, dan menghitung percobaan agar aksi macet tidak diulang selamanya.\n- Id aksi sebaiknya dikirim ke server sebagai kunci idempotensi supaya kiriman ulang tidak dilakukan dua kali.\n- Optimistic update menampilkan hasil dulu dan menyimpan keadaan lama untuk dibatalkan; hindari untuk aksi yang tidak bisa dibatalkan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di mana token login sebaiknya disimpan?",
+          "code": "",
+          "options": [
+            "AsyncStorage biasa, karena paling mudah dipakai",
+            "SecureStore",
+            "Di dalam kode aplikasi sebagai konstanta",
+            "Di nama berkas gambar profil"
+          ],
+          "answer": 1,
+          "explanation": "SecureStore memakai Keychain atau Keystore milik sistem; AsyncStorage tidak dienkripsi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi id unik pada aksi di antrean sinkronisasi adalah",
+          "code": "",
+          "options": [
+            "mencegah aksi yang sama terkirim dua kali",
+            "mempercepat pengiriman dengan mengabaikan urutan",
+            "menghapus aksi lama secara otomatis setiap jam",
+            "menggantikan kebutuhan akan batas percobaan"
+          ],
+          "answer": 0,
+          "explanation": "Antrean menolak id yang sudah ada, sehingga ketukan ganda tidak menghasilkan dua kiriman."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Optimistic update cocok untuk pembayaran yang tidak bisa dibatalkan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Untuk aksi yang tidak bisa dibatalkan, tunggu konfirmasi server."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa antrean sinkronisasi perlu menghitung jumlah percobaan?",
+          "code": "",
+          "options": [
+            "Supaya aksi yang macet tidak diulang selamanya",
+            "Supaya aksi dikirim lebih cepat di percobaan pertama",
+            "Supaya server menghitung biaya per percobaan",
+            "Supaya antrean selalu berurutan menurut jumlahnya"
+          ],
+          "answer": 0,
+          "explanation": "Setelah mencapai batas, aksi menyerah dan tidak menghalangi aksi lain."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Antrean sinkronisasi",
+          "prompt": "Lengkapi `buatAntrean()`. Antrean menyimpan aksi `{ id, ... }` dan mengembalikan objek dengan metode:\n\n- `masuk(aksi)`: tambahkan dengan `coba: 0`; bila `id` sudah ada, tolak dan kembalikan `false` (sukses: `true`).\n- `berhasil(id)`: keluarkan aksi itu dari antrean.\n- `gagal(id, batas)`: naikkan `coba` aksi itu; kembalikan `\"menyerah\"` bila `coba >= batas`, selain itu `\"ulang\"`; `\"tidak ada\"` bila id tidak dikenal.\n- `ukuran()`: jumlah aksi di antrean.",
+          "starter": {
+            "code": "function buatAntrean() {\n  const daftar = [];\n  return {\n    masuk(aksi) {\n      return false;\n    },\n    berhasil(id) {},\n    gagal(id, batas) {\n      return \"ulang\";\n    },\n    ukuran() {\n      return 0;\n    },\n  };\n}\n"
+          },
+          "solution": {
+            "code": "function buatAntrean() {\n  const daftar = [];\n  return {\n    masuk(aksi) {\n      if (daftar.some((a) => a.id === aksi.id)) return false;\n      daftar.push({ ...aksi, coba: 0 });\n      return true;\n    },\n    berhasil(id) {\n      const i = daftar.findIndex((a) => a.id === id);\n      if (i !== -1) daftar.splice(i, 1);\n    },\n    gagal(id, batas) {\n      const a = daftar.find((x) => x.id === id);\n      if (!a) return \"tidak ada\";\n      a.coba += 1;\n      return a.coba >= batas ? \"menyerah\" : \"ulang\";\n    },\n    ukuran() {\n      return daftar.length;\n    },\n  };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Aksi masuk menambah ukuran",
+              "check": "(() => { const q = buatAntrean(); q.masuk({ id: \"a\" }); q.masuk({ id: \"b\" }); return q.ukuran() === 2; })()"
+            },
+            {
+              "name": "Id ganda ditolak",
+              "check": "(() => { const q = buatAntrean(); return q.masuk({ id: \"a\" }) === true && q.masuk({ id: \"a\" }) === false && q.ukuran() === 1; })()"
+            },
+            {
+              "name": "Berhasil mengeluarkan aksi",
+              "check": "(() => { const q = buatAntrean(); q.masuk({ id: \"a\" }); q.berhasil(\"a\"); return q.ukuran() === 0; })()"
+            },
+            {
+              "name": "Gagal mengulang lalu menyerah di batas",
+              "check": "(() => { const q = buatAntrean(); q.masuk({ id: \"a\" }); return [q.gagal(\"a\", 3), q.gagal(\"a\", 3), q.gagal(\"a\", 3)].join(\",\") === \"ulang,ulang,menyerah\"; })()"
+            },
+            {
+              "name": "Id tidak dikenal",
+              "check": "buatAntrean().gagal(\"x\", 3) === \"tidak ada\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Optimistic update dengan pembatalan",
+          "prompt": "Lengkapi `suka(k, id)` untuk keadaan `{ item: [{ id, judul, suka }] }`.\n\nKembalikan `{ baru, batal }`:\n\n- `baru` adalah keadaan dengan item ber-`id` itu bernilai `suka: true` (item lain tidak berubah).\n- `batal` adalah fungsi tanpa argumen yang mengembalikan keadaan **sebelum** perubahan.\n\nKeadaan lama tidak boleh berubah.",
+          "starter": {
+            "code": "function suka(k, id) {\n  return { baru: k, batal: () => k };\n}\n"
+          },
+          "solution": {
+            "code": "function suka(k, id) {\n  const baru = {\n    ...k,\n    item: k.item.map((i) => (i.id === id ? { ...i, suka: true } : i)),\n  };\n  return { baru, batal: () => k };\n}\n"
+          },
+          "setup": "const awal = { item: [{ id: 1, judul: \"A\", suka: false }, { id: 2, judul: \"B\", suka: false }] };\n",
+          "tests": [
+            {
+              "name": "Item yang dipilih menjadi suka",
+              "check": "suka(awal, 1).baru.item[0].suka === true"
+            },
+            {
+              "name": "Item lain tidak berubah",
+              "check": "suka(awal, 1).baru.item[1].suka === false"
+            },
+            {
+              "name": "batal mengembalikan keadaan lama",
+              "check": "(() => { const r = suka(awal, 1); return r.batal().item[0].suka === false; })()"
+            },
+            {
+              "name": "Keadaan awal tidak dimodifikasi",
+              "check": "(() => { suka(awal, 2); return awal.item[1].suka === false; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "form-validasi-dan-izin-perangkat",
+      "title": "Form, Validasi, dan Izin Perangkat",
+      "est_minutes": 30,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menulis validasi form yang mengembalikan semua kesalahan sekaligus.\n- Menjelaskan mengapa validasi di perangkat tidak menggantikan validasi di server.\n- Merancang pengalaman form: kapan kesalahan tampil dan bagaimana tombol kirim berperilaku.\n- Menjelaskan alur meminta izin perangkat dan menangani izin yang ditolak.\n\n## Form dan validasi\n\nForm adalah tempat pengguna memberi masukan: mendaftar, masuk, mengubah profil, mengirim pesan. Masukan bisa salah karena salah ketik, lupa, atau sengaja. Validasi memeriksa masukan sebelum dipakai dan memberi tahu pengguna apa yang perlu diperbaiki.\n\nCara yang rapi adalah menjadikan validasi sebuah fungsi murni: ia menerima isian form, mengembalikan objek berisi kesalahan per kolom. Objek kosong berarti isian valid.\n\n```js\nfunction validasi(f) {\n  const galat = {};\n  const ok = /^[^@\\s]+@[^@\\s]+$/;\n  if (!ok.test(f.email)) galat.email = \"Email tidak valid\";\n  if (f.sandi.length < 8) galat.sandi = \"Minimal 8 karakter\";\n  return galat;\n}\n```\n\nAda dua keputusan desain penting di sini. Pertama, fungsi mengembalikan **semua** kesalahan sekaligus, bukan berhenti di yang pertama. Pengguna yang harus memperbaiki satu kesalahan, mengirim ulang, lalu menemukan kesalahan kedua akan frustrasi. Kedua, setiap pesan menyebut apa yang diperlukan, seperti \"Minimal 8 karakter\", bukan hanya \"Sandi salah\". Pesan yang menunjukkan perbaikan menghemat satu putaran percobaan.\n\nKarena `validasi` murni, mengujinya mudah: coba email tanpa `@`, sandi tujuh karakter, dua-duanya salah, dan kasus valid, lalu periksa hasilnya. Pola ekspresi reguler untuk email di atas sengaja longgar. Memeriksa email secara ketat dengan pola saja hampir mustahil, karena cara terbaik membuktikan sebuah email valid adalah mengirim pesan ke sana.\n\n![Form dan validasi](slide:20)\n\n## Validasi di server tetap wajib\n\nValidasi di perangkat memberi umpan balik cepat, tetapi **tidak bisa dipercaya** untuk keamanan. Aplikasi mobile bisa dibongkar, diubah, atau dilewati sama sekali; siapa pun dapat mengirim permintaan langsung ke server tanpa lewat aplikasimu. Karena itu server harus memeriksa ulang semuanya, termasuk hal yang sudah diperiksa di aplikasi.\n\nAnggap validasi di perangkat sebagai kenyamanan dan validasi di server sebagai pagar. Keduanya perlu, dengan tugas berbeda. Idealnya aturan yang sama dipakai di kedua sisi, misalnya lewat pustaka validasi yang dipakai bersama bila server juga memakai JavaScript, supaya tidak ada selisih aturan yang membuat form lolos di aplikasi tetapi ditolak server tanpa penjelasan.\n\nBila server menolak, aplikasi perlu menampilkan pesan dari server di kolom yang tepat. Server sebaiknya mengembalikan kesalahan dengan bentuk yang sama dengan hasil `validasi`, yaitu objek per kolom, sehingga aplikasi bisa menampilkannya dengan kode yang sudah ada.\n\n## Pengalaman form yang baik\n\nBeberapa kebiasaan membuat form terasa menyenangkan. **Tampilkan kesalahan setelah pengguna selesai mengisi kolom**, bukan setiap kali mengetik satu huruf. Kolom email yang langsung memerah di huruf pertama terasa memarahi. Setelah pengguna meninggalkan kolom, atau menekan tombol kirim, barulah kesalahan muncul.\n\n**Nonaktifkan tombol kirim saat permintaan berjalan.** Pengguna yang mengetuk dua kali tidak boleh mengirim dua pendaftaran. Tampilkan penanda muat di tombolnya. **Pertahankan isian ketika terjadi galat**, karena mengetik ulang formulir panjang akibat jaringan gagal adalah alasan klasik orang menghapus aplikasi.\n\n**Pilih jenis papan ketik yang sesuai**: papan ketik email untuk kolom email, angka untuk jumlah, telepon untuk nomor. Dan beri label yang jelas pada setiap kolom, bukan hanya teks petunjuk di dalamnya yang hilang saat mengetik. Label juga dibaca pembaca layar, sehingga membantu aksesibilitas.\n\n## Izin perangkat\n\nKamera, lokasi, kontak, notifikasi: semua fitur perangkat sensitif memerlukan izin dari pengguna. Sistem menampilkan dialog, dan pengguna memilih mengizinkan atau menolak. Izin punya beberapa keadaan: belum pernah ditanya, diizinkan, ditolak, dan ditolak permanen. Pada keadaan terakhir, dialog sistem tidak akan muncul lagi dan izin hanya bisa diubah dari pengaturan.\n\n```js\nfunction langkahIzin(status) {\n  if (status === \"diizinkan\") return \"pakai\";\n  if (status === \"belum\") return \"tanya\";\n  if (status === \"ditolak\") return \"jelaskan\";\n  return \"buka-pengaturan\";\n}\n```\n\nFungsi kecil ini menyimpan keputusan alurnya, sehingga mudah dites. Beberapa praktik baik terkait izin. **Minta izin saat fitur dibutuhkan**, bukan saat aplikasi pertama kali dibuka: izin kamera diminta saat pengguna mengetuk \"ambil foto\", bukan sebelum ia tahu apa gunanya. **Jelaskan alasannya** dengan satu layar singkat sebelum dialog sistem muncul, karena dialog sistem hanya bisa muncul sekali dengan jelas. Dan **siapkan jalan keluar** bila izin ditolak: fitur tetap bisa dipakai dengan cara lain, atau ada penjelasan dan tombol menuju pengaturan.\n\nToko aplikasi juga meninjau izin. Meminta izin yang tidak diperlukan sering menjadi alasan penolakan, dan pengguna makin kritis terhadap aplikasi yang meminta lokasi atau kontak tanpa alasan yang jelas. Minta hanya yang kamu butuhkan.\n\n## Kesalahan umum pada form dan izin\n\nKesalahan form yang paling sering adalah menghapus isian saat galat, memvalidasi hanya di aplikasi, dan memberi pesan yang tidak membantu seperti \"Input salah\". Ada juga jebakan teks: spasi di awal atau akhir email yang disalin dari tempat lain membuat email yang tampak benar ditolak. Pangkas spasi sebelum memvalidasi, dan jangan memangkas sandi karena spasi di sandi mungkin disengaja.\n\nPada izin, kesalahan klasik adalah meminta semua izin sekaligus saat aplikasi dibuka. Pengguna yang belum tahu manfaatnya akan menolak, dan penolakan itu bisa permanen. Kesalahan lain adalah menganggap izin akan selalu ada: pengguna bisa mencabutnya kapan saja dari pengaturan, jadi periksa statusnya setiap kali fitur dipakai, bukan hanya sekali.\n\n## Rangkuman\n\n- Validasi form sebaiknya fungsi murni yang mengembalikan semua kesalahan sekaligus, dengan pesan yang menyebut perbaikannya.\n- Validasi di perangkat adalah kenyamanan; validasi di server tetap wajib karena aplikasi bisa dilewati.\n- Tampilkan kesalahan setelah kolom selesai diisi, nonaktifkan tombol kirim saat memuat, dan pertahankan isian saat galat.\n- Izin perangkat punya keadaan belum, diizinkan, ditolak, dan ditolak permanen, dan setiap keadaan butuh langkah berbeda.\n- Minta izin saat dibutuhkan, jelaskan alasannya, dan sediakan jalan keluar bila ditolak.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa validasi di server tetap wajib walau aplikasi sudah memvalidasi?",
+          "code": "",
+          "options": [
+            "Aplikasi bisa dibongkar atau dilewati lewat permintaan langsung",
+            "Karena validasi di aplikasi selalu salah",
+            "Karena server lebih cepat daripada ponsel",
+            "Karena toko aplikasi mewajibkannya"
+          ],
+          "answer": 0,
+          "explanation": "Validasi di perangkat adalah kenyamanan, bukan pagar keamanan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kapan pesan kesalahan sebaiknya tampil pada sebuah kolom?",
+          "code": "",
+          "options": [
+            "Setelah pengguna selesai mengisi kolom atau menekan kirim",
+            "Segera pada huruf pertama yang diketik",
+            "Hanya setelah aplikasi ditutup dan dibuka lagi",
+            "Tidak pernah, cukup dengan mewarnai kolom"
+          ],
+          "answer": 0,
+          "explanation": "Kolom yang memerah di huruf pertama terasa memarahi pengguna."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Izin kamera sebaiknya diminta saat aplikasi pertama kali dibuka.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Minta izin saat fitur dibutuhkan, dengan alasan yang jelas."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dilakukan aplikasi saat izin ditolak permanen?",
+          "code": "",
+          "options": [
+            "Memunculkan dialog sistem berulang kali sampai disetujui",
+            "Mengarahkan pengguna ke pengaturan sistem",
+            "Menutup aplikasi dengan pesan galat",
+            "Mengabaikan izin dan memakai fitur diam-diam"
+          ],
+          "answer": 1,
+          "explanation": "Dialog sistem tidak muncul lagi; izin hanya bisa diubah dari pengaturan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Validasi form pendaftaran",
+          "prompt": "Lengkapi `validasi(f)` untuk isian `{ nama, email, sandi }`. Kembalikan objek kesalahan per kolom; objek kosong berarti valid. Periksa **semua** kolom, jangan berhenti di yang pertama.\n\n- `nama`: kosong setelah dipangkas spasi (`trim`) → `\"Nama wajib diisi\"`.\n- `email`: harus cocok dengan `/^[^@\\s]+@[^@\\s]+$/` setelah dipangkas → `\"Email tidak valid\"`.\n- `sandi`: kurang dari 8 karakter (tanpa dipangkas) → `\"Minimal 8 karakter\"`.",
+          "starter": {
+            "code": "function validasi(f) {\n  const galat = {};\n  // TODO: periksa nama, email, dan sandi\n  return galat;\n}\n"
+          },
+          "solution": {
+            "code": "function validasi(f) {\n  const galat = {};\n  if (f.nama.trim() === \"\") galat.nama = \"Nama wajib diisi\";\n  if (!/^[^@\\s]+@[^@\\s]+$/.test(f.email.trim())) galat.email = \"Email tidak valid\";\n  if (f.sandi.length < 8) galat.sandi = \"Minimal 8 karakter\";\n  return galat;\n}\n"
+          },
+          "setup": "const baik = { nama: \"Ani\", email: \"ani@mail.id\", sandi: \"rahasia123\" };\n",
+          "tests": [
+            {
+              "name": "Isian benar menghasilkan objek kosong",
+              "check": "Object.keys(validasi(baik)).length === 0"
+            },
+            {
+              "name": "Nama kosong",
+              "check": "validasi({ ...baik, nama: \"   \" }).nama === \"Nama wajib diisi\""
+            },
+            {
+              "name": "Email tanpa @",
+              "check": "validasi({ ...baik, email: \"ani.mail.id\" }).email === \"Email tidak valid\""
+            },
+            {
+              "name": "Email dengan spasi di tepi tetap valid",
+              "check": "validasi({ ...baik, email: \"  ani@mail.id \" }).email === undefined"
+            },
+            {
+              "name": "Sandi pendek",
+              "check": "validasi({ ...baik, sandi: \"pendek\" }).sandi === \"Minimal 8 karakter\""
+            },
+            {
+              "name": "Semua kesalahan dikembalikan sekaligus",
+              "check": "Object.keys(validasi({ nama: \"\", email: \"x\", sandi: \"1\" })).sort().join(\",\") === \"email,nama,sandi\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Langkah izin perangkat",
+          "prompt": "Lengkapi `langkahIzin(status, sudahDijelaskan)` yang menentukan apa yang dilakukan aplikasi.\n\n- `status` `\"diizinkan\"` → `\"pakai\"`.\n- `status` `\"belum\"`: bila `sudahDijelaskan` bernilai `false` → `\"jelaskan\"` (tampilkan alasan dulu), bila `true` → `\"tanya\"` (munculkan dialog sistem).\n- `status` `\"ditolak\"` → `\"jelaskan\"`.\n- `status` lain (misalnya `\"ditolak-permanen\"`) → `\"buka-pengaturan\"`.",
+          "starter": {
+            "code": "function langkahIzin(status, sudahDijelaskan) {\n  return \"pakai\";\n}\n"
+          },
+          "solution": {
+            "code": "function langkahIzin(status, sudahDijelaskan) {\n  if (status === \"diizinkan\") return \"pakai\";\n  if (status === \"belum\") return sudahDijelaskan ? \"tanya\" : \"jelaskan\";\n  if (status === \"ditolak\") return \"jelaskan\";\n  return \"buka-pengaturan\";\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Diizinkan langsung dipakai",
+              "check": "langkahIzin(\"diizinkan\", false) === \"pakai\""
+            },
+            {
+              "name": "Belum ditanya dan belum dijelaskan",
+              "check": "langkahIzin(\"belum\", false) === \"jelaskan\""
+            },
+            {
+              "name": "Belum ditanya tetapi sudah dijelaskan",
+              "check": "langkahIzin(\"belum\", true) === \"tanya\""
+            },
+            {
+              "name": "Ditolak sekali",
+              "check": "langkahIzin(\"ditolak\", true) === \"jelaskan\""
+            },
+            {
+              "name": "Ditolak permanen",
+              "check": "langkahIzin(\"ditolak-permanen\", true) === \"buka-pengaturan\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "performa-daftar",
+      "title": "Performa Daftar",
+      "est_minutes": 30,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa FlatList lebih hemat daripada ScrollView untuk daftar panjang.\n- Menulis fungsi paginasi dengan kursor yang mengembalikan isi dan kursor berikutnya.\n- Menjelaskan memoization dan kapan ia berguna.\n- Menghitung rentang item yang perlu dirender pada windowing.\n\n## FlatList dan daftar panjang\n\nDaftar adalah tampilan paling umum di aplikasi mobile: kelas, pesan, produk, notifikasi. Cara menggambarnya sangat memengaruhi kelancaran aplikasi.\n\n`ScrollView` merender **semua** anaknya sekaligus, termasuk yang jauh di luar layar. Untuk sepuluh item itu tidak masalah. Untuk seribu item, memori terbuang dan layar terasa berat saat dibuka. `FlatList` bekerja berbeda: ia hanya merender item di sekitar area yang terlihat dan mendaur ulang sisanya. Itu sebabnya daftar yang panjang hampir selalu memakai `FlatList`.\n\nBeberapa hal membantu `FlatList` bekerja baik. **`keyExtractor`** harus mengembalikan kunci yang stabil dan unik untuk setiap item, biasanya `id` dari data. Memakai indeks sebagai kunci menimbulkan bug saat daftar diurutkan atau item dihapus, karena kunci berpindah ke item lain. **Jaga item tetap ringan**: gambar besar, bayangan berat, dan perhitungan di dalam render memperlambat gulir. Bila tinggi semua item sama, **`getItemLayout`** memberi tahu daftar posisi tiap item tanpa mengukurnya satu per satu, sehingga lompat ke item tertentu cepat.\n\n![FlatList](slide:23)\n\n## Paginasi dengan kursor\n\nDaftar kelas atau pesan di server bisa berisi ribuan entri. Mengunduh semuanya sekaligus lambat dan boros kuota. **Paginasi** mengambil data sedikit demi sedikit: sepuluh item pertama, lalu sepuluh berikutnya saat pengguna mendekati akhir daftar.\n\nAda dua gaya. **Nomor halaman** meminta \"halaman 3\". Sederhana, tetapi bila data berubah di tengah jalan, misalnya ada item baru di atas, item bisa terlewat atau tampil dua kali. **Kursor** meminta \"setelah item ini\". Kursor menandai posisi terakhir, jadi lebih tahan terhadap perubahan data.\n\n```js\nfunction halaman(data, kursor, ukuran) {\n  const mulai = kursor ?? 0;\n  const akhir = mulai + ukuran;\n  const isi = data.slice(mulai, akhir);\n  const berikut = akhir < data.length ? akhir : null;\n  return { isi, berikut };\n}\n```\n\nFungsi ini mengembalikan `isi` halaman ini dan `berikut`, yaitu kursor untuk halaman selanjutnya, atau `null` bila data sudah habis. Nilai `null` itulah sinyal untuk berhenti memuat. Tanpanya aplikasi terus meminta halaman kosong tanpa akhir.\n\nBeberapa jebakan perlu dijaga. **Cegah permintaan ganda**: saat pengguna menggulir cepat, event \"mendekati akhir\" bisa terpicu berkali-kali sebelum halaman pertama datang. Simpan penanda `sedangMemuat` dan abaikan pemicu selama permintaan berjalan. Tampilkan penanda muat di dasar daftar. Dan tangani galat di tengah paginasi: halaman yang gagal harus bisa dicoba lagi tanpa menghapus yang sudah ada.\n\n## Memoization\n\nBila sebuah fungsi dipanggil berkali-kali dengan masukan yang sama dan perhitungannya mahal, hasilnya bisa disimpan dan dipakai ulang. Inilah **memoization**.\n\n```js\nfunction memo(fn) {\n  const simpan = new Map();\n  return (x) => {\n    if (!simpan.has(x)) simpan.set(x, fn(x));\n    return simpan.get(x);\n  };\n}\n```\n\nPemanggilan pertama dengan `x` tertentu menjalankan `fn`, sedangkan pemanggilan berikutnya dengan `x` yang sama langsung mengambil dari `simpan`. Syaratnya fungsi harus murni: bila hasilnya bergantung pada hal lain selain masukan, hasil tersimpan bisa salah.\n\nDi React ada versi untuk komponen dan nilai. **`React.memo`** membungkus komponen supaya tidak digambar ulang bila propnya tidak berubah. **`useMemo`** menyimpan hasil perhitungan, dan **`useCallback`** menyimpan fungsi supaya propnya tidak berubah tiap render. Item daftar yang dibungkus `React.memo` sangat membantu `FlatList`, karena item yang tidak berubah tidak digambar ulang saat satu item lain berubah.\n\nMemoization bukan gratis. Ia memakai memori dan menambah kode yang harus dirawat. **Ukur dulu sebelum mengoptimalkan.** Alat profil menunjukkan bagian yang benar-benar lambat, dan sering ternyata penyebabnya bukan yang kamu duga. Optimasi tanpa pengukuran sering menambah kerumitan tanpa manfaat nyata.\n\n## Windowing\n\nIde di balik `FlatList` disebut **windowing**: hanya item di dalam \"jendela\" di sekitar area terlihat yang dirender. Bila tinggi item tetap, jendela itu bisa dihitung dengan aritmetika sederhana.\n\n```js\nfunction jendela(gulir, tinggiLayar, tinggiItem, jumlah, penyangga) {\n  const awal = Math.floor(gulir / tinggiItem) - penyangga;\n  const akhir = Math.ceil((gulir + tinggiLayar) / tinggiItem) + penyangga;\n  return {\n    dari: Math.max(0, awal),\n    sampai: Math.min(jumlah, akhir),\n  };\n}\n```\n\n`penyangga` adalah item tambahan di atas dan bawah area terlihat, supaya tidak tampak kosong saat digulir cepat. Hasilnya adalah rentang `dari` sampai `sampai` yang perlu dirender; sisanya hanya diwakili ruang kosong setinggi aslinya supaya bilah gulir tetap benar.\n\nMemahami hitungan ini berguna walau kamu jarang menulisnya sendiri. Ia menjelaskan mengapa `getItemLayout` mempercepat daftar, mengapa item dengan tinggi berubah-ubah lebih sulit, dan mengapa jumlah penyangga memengaruhi memori dan kelancaran.\n\n## Kesalahan umum pada daftar\n\nKesalahan yang paling sering adalah membungkus `FlatList` di dalam `ScrollView` yang sama arahnya. Akibatnya `FlatList` kehilangan kemampuan windowing karena ia merasa punya ruang tak terbatas, lalu merender semua item sekaligus. Bila daftar harus berbagi layar dengan elemen lain, taruh elemen itu di `ListHeaderComponent` atau `ListFooterComponent`.\n\nKesalahan lain adalah membuat fungsi baru di dalam render untuk setiap item, seperti `renderItem={(x) => ...}` yang tiap kali berbeda, sehingga `React.memo` pada item tidak ada gunanya. Pindahkan fungsi itu keluar atau bungkus dengan `useCallback`. Terakhir, jangan mengukur kelancaran di emulator saja: emulator di laptop jauh lebih kencang daripada ponsel murah, tempat masalah performa sebenarnya terasa. Uji juga dengan data yang sangat banyak dan koneksi lambat, karena daftar sepuluh item di jaringan Wi-Fi kantor hampir tidak pernah menunjukkan masalah yang dialami pengguna di perjalanan.\n\n## Rangkuman\n\n- ScrollView merender semua anak; FlatList hanya item di sekitar area terlihat, jadi cocok untuk daftar panjang.\n- `keyExtractor` harus stabil dan unik; indeks sebagai kunci menimbulkan bug saat daftar berubah.\n- Paginasi dengan kursor mengembalikan isi dan kursor berikutnya, dan `null` menandakan data habis.\n- Cegah permintaan ganda saat pengguna menggulir cepat dengan penanda `sedangMemuat`.\n- Memoization menyimpan hasil fungsi murni; ukur dulu sebelum mengoptimalkan, dan windowing merender hanya rentang item di sekitar area terlihat.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa keunggulan FlatList dibanding ScrollView untuk daftar panjang?",
+          "code": "",
+          "options": [
+            "Selalu merender seluruh item agar gulir lebih halus",
+            "Hanya merender item di sekitar area terlihat",
+            "Tidak membutuhkan kunci unik untuk tiap item",
+            "Otomatis mengambil data dari server"
+          ],
+          "answer": 1,
+          "explanation": "Windowing membuat memori dan waktu render tetap kecil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti nilai null pada kursor berikutnya hasil paginasi?",
+          "code": "",
+          "options": [
+            "Data sudah habis dan pemuatan berhenti",
+            "Terjadi galat jaringan dan perlu diulang",
+            "Halaman pertama belum selesai dimuat",
+            "Kursor lama harus dipakai lagi"
+          ],
+          "answer": 0,
+          "explanation": "null adalah sinyal berhenti; tanpanya aplikasi terus meminta halaman kosong."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Indeks array sebaiknya dipakai sebagai keyExtractor pada daftar yang bisa diurutkan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Indeks berpindah ke item lain saat daftar berubah; pakai id yang stabil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kapan memoization layak ditambahkan?",
+          "code": "",
+          "options": [
+            "Sejak awal pada setiap fungsi di aplikasi",
+            "Hanya pada fungsi yang mengubah state global",
+            "Setiap kali aplikasi terasa kurang menarik",
+            "Setelah pengukuran menunjukkan bagian itu benar-benar lambat"
+          ],
+          "answer": 3,
+          "explanation": "Optimasi tanpa pengukuran sering menambah kerumitan tanpa manfaat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Paginasi dengan kursor",
+          "prompt": "Lengkapi `halaman(data, kursor, ukuran)`.\n\n- `kursor` adalah indeks awal; bila `null` atau `undefined`, mulai dari 0.\n- Kembalikan `{ isi, berikut }`: `isi` adalah potongan sepanjang `ukuran` mulai dari kursor, `berikut` adalah kursor halaman selanjutnya atau `null` bila data sudah habis.\n\nContoh: untuk 5 data dengan `ukuran` 2, kursor 4 menghasilkan `isi` satu elemen dan `berikut` `null`.",
+          "starter": {
+            "code": "function halaman(data, kursor, ukuran) {\n  return { isi: [], berikut: null };\n}\n"
+          },
+          "solution": {
+            "code": "function halaman(data, kursor, ukuran) {\n  const mulai = kursor ?? 0;\n  const akhir = mulai + ukuran;\n  const isi = data.slice(mulai, akhir);\n  const berikut = akhir < data.length ? akhir : null;\n  return { isi, berikut };\n}\n"
+          },
+          "setup": "const data = [1, 2, 3, 4, 5];\n",
+          "tests": [
+            {
+              "name": "Halaman pertama dari kursor kosong",
+              "check": "(() => { const r = halaman(data, null, 2); return r.isi.join(\",\") === \"1,2\" && r.berikut === 2; })()"
+            },
+            {
+              "name": "Halaman tengah",
+              "check": "(() => { const r = halaman(data, 2, 2); return r.isi.join(\",\") === \"3,4\" && r.berikut === 4; })()"
+            },
+            {
+              "name": "Halaman terakhir tidak penuh",
+              "check": "(() => { const r = halaman(data, 4, 2); return r.isi.join(\",\") === \"5\" && r.berikut === null; })()"
+            },
+            {
+              "name": "Tepat habis berarti tidak ada kursor berikutnya",
+              "check": "halaman([1, 2, 3, 4], 2, 2).berikut === null"
+            },
+            {
+              "name": "Data kosong",
+              "check": "(() => { const r = halaman([], null, 3); return r.isi.length === 0 && r.berikut === null; })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Memoization dan jendela daftar",
+          "prompt": "Lengkapi dua fungsi:\n\n- `memo(fn)` mengembalikan fungsi baru yang menyimpan hasil `fn(x)` per argumen `x`; pemanggilan berulang dengan `x` yang sama tidak memanggil `fn` lagi.\n- `jendela(gulir, tinggiLayar, tinggiItem, jumlah, penyangga)` mengembalikan `{ dari, sampai }`: `awal = floor(gulir / tinggiItem) - penyangga`, `akhir = ceil((gulir + tinggiLayar) / tinggiItem) + penyangga`, lalu `dari = max(0, awal)` dan `sampai = min(jumlah, akhir)`.",
+          "starter": {
+            "code": "function memo(fn) {\n  return (x) => fn(x);\n}\n\nfunction jendela(gulir, tinggiLayar, tinggiItem, jumlah, penyangga) {\n  return { dari: 0, sampai: jumlah };\n}\n"
+          },
+          "solution": {
+            "code": "function memo(fn) {\n  const simpan = new Map();\n  return (x) => {\n    if (!simpan.has(x)) simpan.set(x, fn(x));\n    return simpan.get(x);\n  };\n}\n\nfunction jendela(gulir, tinggiLayar, tinggiItem, jumlah, penyangga) {\n  const awal = Math.floor(gulir / tinggiItem) - penyangga;\n  const akhir = Math.ceil((gulir + tinggiLayar) / tinggiItem) + penyangga;\n  return { dari: Math.max(0, awal), sampai: Math.min(jumlah, akhir) };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "memo mengembalikan hasil yang benar",
+              "check": "memo((x) => x * 2)(4) === 8"
+            },
+            {
+              "name": "memo tidak memanggil ulang untuk argumen sama",
+              "check": "(() => { let n = 0; const f = memo((x) => { n++; return x + 1; }); f(1); f(1); f(1); return n === 1; })()"
+            },
+            {
+              "name": "memo memisahkan argumen berbeda",
+              "check": "(() => { let n = 0; const f = memo((x) => { n++; return x; }); f(1); f(2); f(1); return n === 2; })()"
+            },
+            {
+              "name": "jendela di awal daftar",
+              "check": "(() => { const r = jendela(0, 600, 100, 50, 2); return r.dari === 0 && r.sampai === 8; })()"
+            },
+            {
+              "name": "jendela di tengah daftar",
+              "check": "(() => { const r = jendela(1000, 600, 100, 50, 2); return r.dari === 8 && r.sampai === 18; })()"
+            },
+            {
+              "name": "jendela dibatasi jumlah item",
+              "check": "jendela(4800, 600, 100, 50, 2).sampai === 50"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "build-rilis-dan-pembaruan",
+      "title": "Build, Rilis, dan Pembaruan",
+      "est_minutes": 25,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Menjelaskan profil build EAS: development, preview, dan production.\n- Membedakan version, nomor build, dan runtimeVersion serta fungsi masing-masing.\n- Menentukan kapan pembaruan OTA cukup dan kapan build baru wajib.\n- Menyusun daftar periksa rilis sebelum mengirim ke toko aplikasi.\n\n## Build dengan EAS\n\nSelama pengembangan, aplikasi dijalankan lewat Expo Go atau server pengembangan. Untuk dibagikan ke orang lain atau dikirim ke toko, kamu membutuhkan berkas aplikasi sungguhan: APK atau AAB untuk Android, IPA untuk iOS. Biasanya itu berarti memasang Xcode dan Android Studio serta menghadapi pengaturan penandatanganan yang rumit.\n\n**EAS Build** (Expo Application Services) membuat berkas itu di cloud. Kamu cukup menjalankan satu perintah, dan server Expo membangun aplikasi, bahkan untuk iOS tanpa Mac sendiri. Konfigurasinya ada di `eas.json` dengan beberapa **profil**:\n\n```json\n{\n  \"build\": {\n    \"development\": { \"developmentClient\": true, \"distribution\": \"internal\" },\n    \"preview\": { \"distribution\": \"internal\" },\n    \"production\": { \"autoIncrement\": true }\n  }\n}\n```\n\nProfil **development** menghasilkan aplikasi khusus pengembangan yang tetap terhubung ke server lokal. Profil **preview** menghasilkan aplikasi yang hampir sama dengan versi akhir tetapi dibagikan lewat tautan kepada penguji. Profil **production** menghasilkan berkas yang dikirim ke toko. Memisahkan profil mencegah kecelakaan seperti mengirim build pengembangan ke pengguna.\n\n**Rahasia seperti kunci API tidak boleh ditulis di kode.** Kode aplikasi bisa dibongkar siapa pun yang memasangnya, jadi kunci yang benar-benar rahasia sebaiknya hanya ada di server. Nilai konfigurasi yang boleh berbeda antar lingkungan disimpan sebagai environment variable pada profil build.\n\n![Build dengan EAS](slide:26)\n\n## Versi dan pembaruan OTA\n\nAplikasi punya beberapa nomor, dan masing-masing punya fungsi berbeda. **`version`** adalah nomor yang dilihat pengguna, seperti `1.4.0`, biasanya mengikuti pola semver: `mayor.minor.patch`. **Nomor build** (`versionCode` di Android, `buildNumber` di iOS) adalah bilangan bulat yang dipakai toko untuk membedakan unggahan. Aturannya keras: **setiap unggahan baru ke toko harus punya nomor build lebih besar** dari sebelumnya, kalau tidak toko menolaknya.\n\n```js\nfunction naikkan(versi, jenis) {\n  const [a, b, c] = versi.split(\".\").map(Number);\n  if (jenis === \"mayor\") return `${a + 1}.0.0`;\n  if (jenis === \"minor\") return `${a}.${b + 1}.0`;\n  return `${a}.${b}.${c + 1}`;\n}\n```\n\nFungsi ini menunjukkan aturan semver: naik mayor mengatur ulang minor dan patch ke nol, naik minor mengatur ulang patch. Mayor untuk perubahan yang tidak kompatibel, minor untuk fitur baru, patch untuk perbaikan bug.\n\n**Pembaruan OTA** (over the air) lewat EAS Update mengganti bagian JavaScript dan aset aplikasi tanpa melewati toko. Perbaikan bug kecil bisa sampai ke pengguna dalam hitungan menit, tanpa menunggu review. Namun OTA hanya bisa mengganti JavaScript. Bila perubahanmu menyentuh kode native, misalnya menambah pustaka dengan modul native atau mengubah izin, kamu **wajib membuat build baru** dan mengirimnya ke toko.\n\nUntuk mencegah OTA yang tidak cocok dikirim ke build lama, ada **`runtimeVersion`**. Pembaruan hanya diterapkan pada build yang `runtimeVersion`-nya sama. Bila kamu mengubah bagian native, naikkan `runtimeVersion`, sehingga pembaruan JavaScript baru tidak sampai ke build lama yang tidak punya modul native yang dibutuhkan.\n\n```js\nfunction bisaOta(runtimeApp, runtimeUpdate) {\n  return runtimeApp === runtimeUpdate;\n}\n```\n\n## Review toko dan daftar periksa rilis\n\nMengirim ke Google Play dan App Store melewati peninjauan. Review Google Play biasanya cepat, sedangkan App Store bisa memakan satu hari hingga beberapa hari, dan penolakan menambah waktu. Karena itu **jangan menjadwalkan rilis mepet tenggat.**\n\nSiapkan semuanya sebelum mengirim. **Kebijakan privasi** berupa alamat web yang menjelaskan data apa yang dikumpulkan, wajib bagi hampir semua aplikasi. **Ikon, tangkapan layar, dan deskripsi** untuk halaman toko. **Alasan setiap izin** yang diminta; peninjau sering menanyakannya. **Akun uji** bila aplikasi butuh login, supaya peninjau bisa masuk dan melihat fitur. Dan **uji di perangkat sungguhan**, bukan hanya emulator, termasuk perangkat lama dan layar kecil.\n\nSetelah lolos, rilis bertahap lebih aman daripada rilis ke semua orang sekaligus. Mulai dari persentase kecil pengguna, pantau laporan galat, lalu naikkan. Siapkan juga cara membatalkan: bila ada masalah serius, kamu perlu bisa menghentikan rilis atau mengirim OTA perbaikan secepatnya.\n\n## Memantau setelah rilis\n\nRilis bukan akhir pekerjaan. Setelah aplikasi sampai ke pengguna, kamu perlu tahu apa yang terjadi di perangkat mereka. Alat pelaporan galat seperti Sentry mencatat setiap aplikasi yang macet beserta jejak kodenya, versi aplikasi, dan jenis perangkat. Tanpanya kamu hanya tahu ada masalah dari ulasan bintang satu yang tidak menjelaskan apa-apa.\n\nPantau beberapa angka sederhana: persentase sesi tanpa macet, versi aplikasi yang paling banyak dipakai, dan berapa banyak pengguna yang sudah memperbarui. Angka terakhir menentukan seberapa lama kamu harus mempertahankan API lama di server, karena pengguna dengan versi lama tetap memanggilnya. Server yang menghapus endpoint lama terlalu cepat akan merusak aplikasi versi lama yang masih terpasang.\n\n## Kesalahan umum saat rilis\n\nKesalahan yang paling mahal adalah mengirim OTA yang butuh modul native ke build yang tidak memilikinya, sehingga aplikasi macet saat dibuka dan pengguna tidak bisa memperbaikinya sendiri. Penjaganya adalah `runtimeVersion` dan kebiasaan menaikkannya setiap kali bagian native berubah. Kesalahan lain adalah lupa menaikkan nomor build sehingga toko menolak unggahan, atau mengirim build yang masih menunjuk ke server pengujian karena variabel lingkungan salah profil.\n\nBiasakan memakai daftar periksa tertulis dan menjalankan build preview di perangkat sungguhan sebelum setiap rilis production. Lima menit memeriksa jauh lebih murah daripada satu hari menunggu peninjauan ulang setelah penolakan, atau satu malam memadamkan masalah yang sudah sampai ke ribuan pengguna.\n\n## Rangkuman\n\n- EAS Build membuat berkas aplikasi di cloud; profil development, preview, dan production memisahkan tujuan build.\n- Rahasia tidak boleh ditulis di kode aplikasi karena kode bisa dibongkar.\n- `version` dilihat pengguna dan mengikuti semver, sedangkan nomor build harus naik di setiap unggahan ke toko.\n- OTA hanya mengganti JavaScript dan aset; perubahan native butuh build baru, dan `runtimeVersion` mencegah OTA tidak cocok.\n- Siapkan kebijakan privasi, alasan izin, akun uji, dan uji di perangkat sungguhan; rilis bertahap dan siapkan cara membatalkan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Profil EAS yang dipakai untuk membagikan aplikasi uji ke penguji internal adalah",
+          "code": "",
+          "options": [
+            "production, karena langsung dikirim ke toko",
+            "development, karena tersambung ke server lokal",
+            "preview",
+            "release, karena paling aman"
+          ],
+          "answer": 2,
+          "explanation": "Preview menghasilkan aplikasi mendekati versi akhir untuk dibagikan lewat tautan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hasil naikkan(\"2.3.7\", \"minor\") adalah",
+          "code": "",
+          "options": [
+            "2.3.8",
+            "3.0.0",
+            "2.4.7",
+            "2.4.0"
+          ],
+          "answer": 3,
+          "explanation": "Naik minor mengatur ulang patch menjadi nol."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pembaruan OTA bisa mengganti kode native seperti modul kamera baru.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "OTA hanya mengganti JavaScript dan aset; perubahan native butuh build baru."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa gunanya runtimeVersion?",
+          "code": "",
+          "options": [
+            "Menentukan tanggal rilis di toko aplikasi",
+            "Mencegah OTA yang tidak cocok sampai ke build lama",
+            "Menaikkan nomor build secara otomatis",
+            "Menghitung berapa lama aplikasi dijalankan"
+          ],
+          "answer": 1,
+          "explanation": "OTA hanya diterapkan pada build dengan runtimeVersion yang sama."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Naikkan versi semver",
+          "prompt": "Lengkapi `naikkan(versi, jenis)` untuk versi berbentuk `\"mayor.minor.patch\"`.\n\n- `\"mayor\"`: naikkan mayor, minor dan patch menjadi 0.\n- `\"minor\"`: naikkan minor, patch menjadi 0.\n- jenis lain (`\"patch\"`): naikkan patch.\n\nContoh: `naikkan(\"1.4.2\", \"minor\")` menghasilkan `\"1.5.0\"`.",
+          "starter": {
+            "code": "function naikkan(versi, jenis) {\n  return versi;\n}\n"
+          },
+          "solution": {
+            "code": "function naikkan(versi, jenis) {\n  const [a, b, c] = versi.split(\".\").map(Number);\n  if (jenis === \"mayor\") return `${a + 1}.0.0`;\n  if (jenis === \"minor\") return `${a}.${b + 1}.0`;\n  return `${a}.${b}.${c + 1}`;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Naik patch",
+              "check": "naikkan(\"1.4.2\", \"patch\") === \"1.4.3\""
+            },
+            {
+              "name": "Naik minor mengatur ulang patch",
+              "check": "naikkan(\"1.4.2\", \"minor\") === \"1.5.0\""
+            },
+            {
+              "name": "Naik mayor mengatur ulang minor dan patch",
+              "check": "naikkan(\"1.4.2\", \"mayor\") === \"2.0.0\""
+            },
+            {
+              "name": "Angka dua digit tidak diperlakukan sebagai teks",
+              "check": "naikkan(\"1.9.9\", \"patch\") === \"1.9.10\" && naikkan(\"1.9.0\", \"minor\") === \"1.10.0\""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

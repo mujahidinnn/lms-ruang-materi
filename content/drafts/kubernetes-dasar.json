@@ -1,0 +1,2023 @@
+{
+  "title": "Kubernetes Dasar",
+  "description": "Belajar Kubernetes dari dasar: arsitektur cluster, Pod, Deployment, Service dan Ingress, ConfigMap dan Secret, volume, resource dan probe, namespace dan RBAC, sampai debugging. Ditutup dengan proyek Simulator Penjadwal Pod.",
+  "summary": "Kubernetes adalah sistem open source untuk mengorkestrasi container: menjadwalkan, menyembuhkan, menskalakan, dan memperbarui aplikasi di banyak server. Kelas ini dimulai dari alasan orkestrasi dibutuhkan, cara berpikir deklaratif, dan reconciliation loop, lalu membedah arsitektur cluster, yaitu control plane dengan API server, etcd, scheduler, dan controller manager, serta node dengan kubelet dan container runtime.\n\nBagian inti membahas objek yang kamu pakai sehari-hari: Pod dengan label dan selector, Deployment dengan rolling update dan rollback, Service dan Ingress untuk menjangkau aplikasi, ConfigMap dan Secret untuk konfigurasi, serta volume, PV, dan PVC untuk data yang harus bertahan. Setelah itu kamu belajar mengatur sumber daya dengan request dan limit, memahami kelas QoS, dan memasang liveness serta readiness probe.\n\nBagian akhir membahas namespace, ResourceQuota, dan RBAC dengan prinsip hak akses paling sedikit, lalu alur debugging dari status sampai log. Latihan kode melatih logika di baliknya, ditutup dengan proyek Simulator Penjadwal Pod; untuk praktik cluster sungguhan, gunakan minikube atau kind di komputermu.",
+  "tips": [
+    "Kelas ini tidak punya cluster Kubernetes di browser. Latihan kode melatih logika di baliknya, seperti selector, penjadwalan, dan RBAC. Untuk praktik sungguhan, pasang minikube atau kind di komputermu sendiri dan ulangi isi tiap bab.",
+    "Ketik ulang setiap manifest dengan tanganmu dan sengaja buat satu kesalahan, misalnya tag image yang salah. Membaca pesan error dari kubectl describe mengajarkan lebih banyak daripada membaca dua halaman teori.",
+    "Setiap kali menghadapi masalah, ikuti urutan yang sama: get pods, describe, logs, baru exec. Urutan yang konsisten membuatmu menemukan penyebab tanpa menebak.",
+    "Simpan semua manifest dalam repositori Git, dan terapkan dengan kubectl apply. Jangan mengubah cluster dengan perintah manual yang tidak tercatat.",
+    "Jangan buru-buru memakai semua fitur. Mulai dari Pod, Deployment, dan Service, lalu tambahkan ConfigMap, probe, dan RBAC hanya ketika ada masalah nyata yang perlu dijawab."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu orkestrasi container?",
+      "back": "Pengaturan otomatis penempatan, jumlah, kesehatan, jaringan, dan pembaruan banyak container."
+    },
+    {
+      "front": "Apa itu Kubernetes?",
+      "back": "Sistem open source untuk mengorkestrasi container, berakar dari Borg milik Google dan dirawat CNCF."
+    },
+    {
+      "front": "Apa arti pendekatan deklaratif?",
+      "back": "Kamu menulis keadaan yang diinginkan, dan Kubernetes yang mencari cara mencapainya."
+    },
+    {
+      "front": "Apa itu reconciliation loop?",
+      "back": "Putaran mengamati keadaan nyata, membandingkannya dengan keinginan, lalu bertindak menutup selisih."
+    },
+    {
+      "front": "Apa itu control plane?",
+      "back": "Otak cluster yang menyimpan keadaan, memutuskan penempatan Pod, dan memantau kenyataan."
+    },
+    {
+      "front": "Apa itu worker node?",
+      "back": "Mesin yang menjalankan container milikmu."
+    },
+    {
+      "front": "Apa fungsi API server?",
+      "back": "Pintu masuk semua perintah ke cluster; memeriksa, mengotentikasi, lalu menyimpan permintaan."
+    },
+    {
+      "front": "Apa fungsi etcd?",
+      "back": "Basis data kunci-nilai yang menyimpan seluruh keadaan cluster."
+    },
+    {
+      "front": "Apa fungsi scheduler?",
+      "back": "Memilih node untuk Pod baru berdasarkan sumber daya dan aturan penempatan."
+    },
+    {
+      "front": "Apa fungsi kubelet?",
+      "back": "Agen di setiap node yang memastikan container Pod berjalan dan melaporkan kesehatannya."
+    },
+    {
+      "front": "Apa itu Pod?",
+      "back": "Pembungkus satu atau lebih container yang berbagi IP dan volume dan selalu berada di satu node."
+    },
+    {
+      "front": "Apa itu label dan selector?",
+      "back": "Label menandai objek dengan pasangan kunci-nilai; selector memilih objek berdasarkan labelnya."
+    },
+    {
+      "front": "Apa itu Deployment?",
+      "back": "Objek yang menjaga jumlah Pod yang diinginkan dan mengatur pembaruan lewat ReplicaSet."
+    },
+    {
+      "front": "Apa itu ReplicaSet?",
+      "back": "Pengendali yang menjaga jumlah Pod untuk satu versi tertentu."
+    },
+    {
+      "front": "Apa fungsi maxSurge?",
+      "back": "Jumlah Pod ekstra yang boleh dibuat di atas replicas selama rolling update."
+    },
+    {
+      "front": "Apa fungsi maxUnavailable?",
+      "back": "Jumlah Pod yang boleh tidak siap selama rolling update."
+    },
+    {
+      "front": "Bagaimana mengembalikan Deployment ke versi sebelumnya?",
+      "back": "kubectl rollout undo deployment/nama."
+    },
+    {
+      "front": "Apa itu Service?",
+      "back": "Objek yang memberi nama dan IP yang stabil untuk sekelompok Pod yang dipilih lewat selector."
+    },
+    {
+      "front": "Apa beda port dan targetPort?",
+      "back": "port dibuka oleh Service untuk klien; targetPort adalah port container tujuan trafik."
+    },
+    {
+      "front": "Apa itu Ingress?",
+      "back": "Aturan routing HTTP berdasarkan host dan path ke berbagai Service; butuh ingress controller."
+    },
+    {
+      "front": "Apa itu ConfigMap?",
+      "back": "Penyimpan konfigurasi biasa sebagai pasangan kunci-nilai, dipakai sebagai variabel lingkungan atau berkas."
+    },
+    {
+      "front": "Apakah base64 di Secret itu enkripsi?",
+      "back": "Bukan. Hanya pengodean; keamanan bergantung pada RBAC dan enkripsi at-rest."
+    },
+    {
+      "front": "Apa beda PV dan PVC?",
+      "back": "PV adalah penyimpanan yang tersedia di cluster; PVC adalah permintaan penyimpanan oleh aplikasi."
+    },
+    {
+      "front": "Apa beda request dan limit?",
+      "back": "request dijamin dan dipakai scheduler; limit adalah batas atas pemakaian."
+    },
+    {
+      "front": "Apa tiga kelas QoS?",
+      "back": "Guaranteed, Burstable, dan BestEffort."
+    },
+    {
+      "front": "Apa beda liveness dan readiness probe?",
+      "back": "Liveness gagal berarti container di-restart; readiness gagal berarti Pod dicabut dari Service."
+    },
+    {
+      "front": "Apa itu namespace?",
+      "back": "Sekat logis dalam satu cluster; nama objek hanya perlu unik di dalam satu namespace."
+    },
+    {
+      "front": "Apa itu RBAC?",
+      "back": "Pengaturan izin lewat Role dan RoleBinding; semua yang tidak diizinkan ditolak."
+    },
+    {
+      "front": "Apa urutan debugging Pod?",
+      "back": "get pods, describe (Events), logs, lalu exec."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Objek mana yang paling cocok untuk menjaga tiga salinan aplikasi tetap hidup?",
+      "code": "",
+      "options": [
+        "Pod tunggal yang dibuat langsung dari manifest",
+        "ConfigMap berisi jumlah salinan yang diinginkan",
+        "Deployment dengan replicas bernilai 3",
+        "Namespace khusus untuk tiga salinan itu"
+      ],
+      "answer": 2,
+      "explanation": "Deployment menjaga jumlah Pod dan mengganti yang mati."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa tugas etcd di control plane?",
+      "code": "",
+      "options": [
+        "Menyimpan seluruh keadaan cluster",
+        "Memilih node untuk Pod baru",
+        "Menjalankan container di setiap node",
+        "Meneruskan trafik ke Pod yang sehat"
+      ],
+      "answer": 0,
+      "explanation": "etcd adalah basis data kunci-nilai milik cluster."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Selector app=web memilih Pod yang",
+      "code": "",
+      "options": [
+        "Namanya persis web",
+        "Berada di namespace bernama web dan memakai image dengan nama yang sama",
+        "Memakai image bernama web",
+        "Memiliki label app dengan nilai web, apa pun label lainnya"
+      ],
+      "answer": 3,
+      "explanation": "Selector memilih berdasarkan label, bukan nama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah mana yang menerapkan manifest secara deklaratif?",
+      "code": "",
+      "options": [
+        "kubectl run deployment.yaml",
+        "kubectl apply -f deployment.yaml",
+        "kubectl exec -f deployment.yaml",
+        "kubectl logs -f deployment.yaml"
+      ],
+      "answer": 1,
+      "explanation": "apply menyamakan keadaan cluster dengan isi berkas."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa Pod paling sedikit yang siap selama rolling update?",
+      "code": "spec:\n  replicas: 4\n  strategy:\n    rollingUpdate:\n      maxSurge: 1\n      maxUnavailable: 0",
+      "options": [
+        "4 Pod, karena tidak ada Pod yang boleh tidak siap",
+        "3 Pod, karena satu Pod boleh tidak siap",
+        "5 Pod, karena satu Pod ekstra boleh dibuat sebelum Pod lama dimatikan",
+        "0 Pod, karena semua Pod diganti sekaligus"
+      ],
+      "answer": 0,
+      "explanation": "Minimum siap adalah replicas dikurangi maxUnavailable, yaitu 4 - 0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Service dibuat tetapi permintaan selalu gagal dan daftar endpoints kosong. Penyebab paling mungkin?",
+      "code": "",
+      "options": [
+        "Cluster kehabisan alamat IP publik untuk dibagikan ke semua Service",
+        "Pod terlalu banyak mengonsumsi memori",
+        "Ingress controller belum dipasang",
+        "Selector Service tidak cocok dengan label Pod mana pun"
+      ],
+      "answer": 3,
+      "explanation": "Endpoint kosong hampir selalu berarti selector salah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa mengisi request CPU dengan jujur itu penting?",
+      "code": "",
+      "options": [
+        "Kubernetes menaikkan limit sesuai request secara otomatis",
+        "Scheduler memakainya untuk menghitung sisa kapasitas node",
+        "Request menentukan nama Pod yang dibuat",
+        "Request mempercepat proses penarikan image"
+      ],
+      "answer": 1,
+      "explanation": "Request yang terlalu kecil atau besar membuat penempatan Pod tidak efisien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibat liveness probe yang gagal berulang kali?",
+      "code": "",
+      "options": [
+        "Pod dicabut dari Service tanpa restart",
+        "Deployment diperbarui ke versi baru",
+        "Container di-restart oleh kubelet",
+        "Node tempat Pod berjalan dihapus dari cluster"
+      ],
+      "answer": 2,
+      "explanation": "Liveness menjawab apakah container masih hidup; gagal berarti restart."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa nilai di Secret tidak boleh dianggap terenkripsi?",
+      "code": "",
+      "options": [
+        "Secret tidak pernah disimpan di etcd",
+        "Secret hanya bisa dibaca oleh Pod yang membuatnya dan tidak oleh siapa pun lain",
+        "Secret otomatis dihapus setelah satu jam",
+        "Nilainya hanya dikodekan base64 dan mudah didekode"
+      ],
+      "answer": 3,
+      "explanation": "Keamanan Secret bergantung pada RBAC dan enkripsi at-rest."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Hak akses apa yang diberikan Role berikut?",
+      "code": "kind: Role\nmetadata:\n  namespace: dev\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]",
+      "options": [
+        "Menghapus Pod di seluruh cluster",
+        "Melihat dan mendaftar Pod di namespace dev",
+        "Membaca Secret di namespace dev",
+        "Membuat Deployment di namespace dev"
+      ],
+      "answer": 1,
+      "explanation": "Verb get dan list pada resource pods, hanya di namespace dev."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Langkah debugging mana yang paling tepat untuk Pod berstatus CrashLoopBackOff?",
+      "code": "NAME       READY   STATUS             RESTARTS\napi-7d9f   0/1     CrashLoopBackOff   12",
+      "options": [
+        "Menunggu sampai status berubah dengan sendirinya",
+        "Menaikkan jumlah replicas supaya salah satu Pod kebetulan berhasil berjalan",
+        "Membaca log container sebelumnya dengan kubectl logs --previous",
+        "Mengubah Service menjadi tipe LoadBalancer"
+      ],
+      "answer": 2,
+      "explanation": "Log container sebelumnya biasanya menunjukkan mengapa aplikasi gagal."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Container di dalam satu Pod bisa saling memanggil lewat localhost.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Mereka berbagi jaringan Pod yang sama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Rollback Deployment juga mengembalikan data di basis data ke keadaan semula.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Rollback hanya mengembalikan template Pod, bukan data."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Namespace memberi isolasi jaringan penuh antar tim secara bawaan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Isolasi jaringan butuh NetworkPolicy; namespace hanya sekat logis."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa Docker saja tidak cukup untuk menjalankan ratusan container di banyak server?",
+      "code": "",
+      "options": [
+        "Docker tidak bisa menjalankan lebih dari satu container sekaligus di dalam satu mesin yang sama",
+        "Image Docker tidak bisa dipindahkan antar server yang berbeda",
+        "Tidak ada yang otomatis menghidupkan ulang, menjadwalkan, dan memperbarui container",
+        "Docker hanya berjalan di satu sistem operasi saja"
+      ],
+      "answer": 2,
+      "explanation": "Orkestrasi mengurus pekerjaan yang berulang itu secara otomatis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Singkatan K8s berasal dari",
+      "code": "",
+      "options": [
+        "K, delapan huruf di tengah, lalu s pada kata Kubernetes",
+        "Kernel versi delapan dari proyek Kubernetes lama",
+        "Kubernetes dengan delapan komponen utama di dalamnya",
+        "Kontainer berjumlah delapan per node dalam satu cluster"
+      ],
+      "answer": 0,
+      "explanation": "Delapan adalah jumlah huruf antara K dan s."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dari sistem internal apa Kubernetes berakar?",
+      "code": "",
+      "options": [
+        "Hadoop milik Yahoo yang dipakai untuk analisis data",
+        "Mesos milik Twitter yang dipakai untuk layanan awal",
+        "Swarm milik Docker yang dipakai untuk cluster kecil",
+        "Borg milik Google"
+      ],
+      "answer": 3,
+      "explanation": "Kubernetes lahir dari pengalaman Google dengan Borg."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi bila satu dari tiga Pod yang diinginkan mati?",
+      "code": "",
+      "options": [
+        "Cluster berhenti sampai administrator menghidupkan ulang Pod itu",
+        "Kubernetes membuat Pod pengganti agar jumlahnya kembali tiga",
+        "Dua Pod yang tersisa dijadikan tiga dengan menggandakan isinya",
+        "Kubernetes menurunkan jumlah yang diinginkan menjadi dua"
+      ],
+      "answer": 1,
+      "explanation": "Reconciliation loop menutup selisih antara keinginan dan kenyataan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Mengubah replicas dari tiga menjadi lima sudah cukup untuk menambah dua Pod.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Loop melihat selisih dua dan membuat dua Pod tambahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana manifest yang kamu terapkan akhirnya tersimpan sebagai keadaan cluster?",
+      "code": "",
+      "options": [
+        "Di etcd, lewat API server",
+        "Di dalam kubelet pada setiap node",
+        "Di dalam scheduler sebagai daftar tugas",
+        "Di dalam container runtime milik tiap node"
+      ],
+      "answer": 0,
+      "explanation": "Hanya API server yang menulis ke etcd."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen mana yang menjaga keadaan sesuai keinginan lewat banyak pengendali kecil?",
+      "code": "",
+      "options": [
+        "Scheduler yang memilih node tujuan Pod",
+        "kube-proxy yang mengatur aturan jaringan",
+        "Container runtime yang menjalankan container",
+        "Controller manager"
+      ],
+      "answer": 3,
+      "explanation": "Tiap pengendali menjalankan satu reconciliation loop."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi kube-proxy di sebuah node?",
+      "code": "",
+      "options": [
+        "Menarik image dari registry dan menjalankannya",
+        "Mengatur aturan jaringan agar trafik ke Service sampai ke Pod yang tepat",
+        "Memilih node tempat Pod baru akan berjalan",
+        "Menyimpan keadaan cluster untuk seluruh node lain dan menjaganya tetap konsisten"
+      ],
+      "answer": 1,
+      "explanation": "kube-proxy mengurus penerusan trafik Service."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Antarmuka apa yang dipakai Kubernetes untuk berbicara dengan container runtime?",
+      "code": "",
+      "options": [
+        "REST khusus yang hanya dipahami oleh runtime Docker",
+        "SSH yang dibuka ke setiap node secara langsung",
+        "CRI, sehingga runtime bisa diganti tanpa mengubah aplikasi",
+        "NFS yang dipasang di setiap node cluster"
+      ],
+      "answer": 2,
+      "explanation": "CRI adalah antarmuka standar antara kubelet dan runtime."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan yang benar setelah perintah kubectl apply untuk Deployment baru adalah",
+      "code": "",
+      "options": [
+        "kubelet, scheduler, API server, etcd, lalu pengendali Pod",
+        "Scheduler, kubelet, etcd, API server, lalu pengendali Pod",
+        "etcd, kubelet, API server, pengendali, lalu scheduler",
+        "API server, etcd, pengendali membuat Pod, scheduler menempatkan, kubelet menjalankan"
+      ],
+      "answer": 3,
+      "explanation": "Komponen berkomunikasi lewat API server dan bertindak sesuai tugasnya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada layanan terkelola seperti GKE, penyedia cloud merawat control plane untukmu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Kamu hanya mengurus node dan aplikasimu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa data penting tidak boleh disimpan hanya di dalam Pod?",
+      "code": "",
+      "options": [
+        "Pod tidak punya sistem berkas sama sekali",
+        "Pod bersifat sementara dan bisa diganti dengan Pod baru",
+        "Pod hanya boleh berisi satu berkas konfigurasi",
+        "Kubernetes menghapus semua data Pod setiap malam"
+      ],
+      "answer": 1,
+      "explanation": "Data harus ditaruh di volume persisten."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian manifest mana yang berisi keadaan yang diinginkan?",
+      "code": "",
+      "options": [
+        "metadata yang memuat nama dan label objek",
+        "apiVersion yang menyebut versi API objek",
+        "spec",
+        "kind yang menyebut jenis objek yang dibuat"
+      ],
+      "answer": 2,
+      "explanation": "spec berisi isi objek, misalnya daftar container."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa menulis image nginx:latest dianggap kurang baik?",
+      "code": "",
+      "options": [
+        "Isi tag latest bisa berubah sehingga dua Pod bisa menjalankan versi berbeda",
+        "Tag latest tidak didukung lagi oleh Kubernetes sejak versi 1.20 dan seterusnya",
+        "Tag latest membuat container berjalan lebih lambat",
+        "Tag latest selalu menghasilkan image kosong"
+      ],
+      "answer": 0,
+      "explanation": "Gunakan tag versi yang tetap agar rilis bisa ditelusuri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manakah selector yang memilih Pod berlabel app=web, tier=frontend, dan versi=v2?",
+      "code": "",
+      "options": [
+        "app=web,tier=backend",
+        "app=web,tier=frontend",
+        "app=api,tier=frontend",
+        "app=web,versi=v1"
+      ],
+      "answer": 1,
+      "explanation": "Semua pasangan selector harus ada pada label Pod."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kelebihan kubectl apply dibanding kubectl create?",
+      "code": "",
+      "options": [
+        "apply lebih cepat karena melewati pemeriksaan manifest dan tidak menghubungi API server",
+        "apply otomatis menambah jumlah replica setiap dijalankan",
+        "Menerapkan manifest yang sama berulang kali tetap menghasilkan keadaan yang sama",
+        "apply hanya bisa dipakai untuk objek berjenis Pod saja"
+      ],
+      "answer": 2,
+      "explanation": "apply bersifat deklaratif dan aman diulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah mana yang membuka shell di dalam container sebuah Pod?",
+      "code": "",
+      "options": [
+        "kubectl exec -it web -- sh",
+        "kubectl logs -it web -- sh",
+        "kubectl describe -it web -- sh",
+        "kubectl apply -it web -- sh"
+      ],
+      "answer": 0,
+      "explanation": "exec menjalankan perintah di dalam container."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pod yang dibuat langsung dari manifest Pod akan dibuat ulang otomatis bila mati.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa Deployment, tidak ada yang menjaganya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa ReplicaSet lama tidak dihapus setelah pembaruan selesai?",
+      "code": "",
+      "options": [
+        "Kubernetes lupa menghapusnya sehingga memakai memori percuma",
+        "ReplicaSet lama wajib ada agar Service tetap berfungsi",
+        "ReplicaSet lama dipakai untuk menyimpan Secret",
+        "Disisakan dengan nol Pod agar rollback ke revisi itu mudah"
+      ],
+      "answer": 3,
+      "explanation": "Riwayat revisi dipertahankan sesuai revisionHistoryLimit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibat template Pod di Deployment berubah, misalnya image diganti?",
+      "code": "",
+      "options": [
+        "Semua Pod lama langsung dihapus lalu Pod baru dibuat serentak tanpa menunggu siap",
+        "Kubernetes menunggu administrator menyetujui perubahan itu",
+        "Deployment membuat ReplicaSet baru dan memindahkan Pod secara bertahap",
+        "Tidak ada perubahan sampai semua Pod dihapus manual"
+      ],
+      "answer": 2,
+      "explanation": "Itulah mekanisme rolling update."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dengan replicas 10, maxSurge 3, dan maxUnavailable 2, berapa Pod yang minimal harus siap?",
+      "code": "",
+      "options": [
+        "8 Pod, yaitu 10 dikurangi 2",
+        "7 Pod, yaitu 10 dikurangi 3",
+        "13 Pod, yaitu 10 ditambah 3",
+        "5 Pod, yaitu setengah dari jumlah replicas"
+      ],
+      "answer": 0,
+      "explanation": "Minimum siap adalah replicas dikurangi maxUnavailable."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Mengapa manifest Deployment berikut ditolak?",
+      "code": "spec:\n  selector:\n    matchLabels:\n      app: web\n  template:\n    metadata:\n      labels:\n        app: site",
+      "options": [
+        "Nilai replicas tidak boleh dihilangkan dari manifest karena Deployment menolak jumlah bawaan satu",
+        "Label app tidak boleh dipakai di bagian template",
+        "Selector harus ditulis di dalam bagian metadata",
+        "Label template tidak cocok dengan selector sehingga Deployment tidak mengenali Pod-nya"
+      ],
+      "answer": 3,
+      "explanation": "Selector.matchLabels harus cocok dengan template.metadata.labels."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pengaturan mana yang menjaga kapasitas tidak pernah turun saat rolling update?",
+      "code": "",
+      "options": [
+        "maxSurge bernilai 0 dengan maxUnavailable minimal 1",
+        "maxUnavailable bernilai 0 dengan maxSurge minimal 1",
+        "replicas bernilai 1 tanpa pengaturan lain",
+        "strategy bertipe Recreate tanpa batas apa pun"
+      ],
+      "answer": 1,
+      "explanation": "Pod baru dibuat dulu dan harus siap sebelum Pod lama dimatikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dikembalikan oleh kubectl rollout undo?",
+      "code": "",
+      "options": [
+        "Template Pod, seperti image dan variabel lingkungan",
+        "Data di basis data aplikasi beserta seluruh tabel yang berubah sejak rilis",
+        "Jumlah replicas ke angka semula",
+        "Semua Secret ke versi sebelumnya"
+      ],
+      "answer": 0,
+      "explanation": "Rollback tidak menyentuh data maupun jumlah replika."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan sebuah Pod baru dihitung siap dalam rolling update?",
+      "code": "",
+      "options": [
+        "Begitu container-nya mulai berjalan",
+        "Setelah scheduler memberinya node",
+        "Setelah image selesai ditarik dari registry",
+        "Setelah lolos readiness probe"
+      ],
+      "answer": 3,
+      "explanation": "Tanpa probe, Pod dianggap siap begitu container mulai."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Deployment sebaiknya dibuat lewat Pod, karena Pod yang mengelola Deployment.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Sebaliknya: Deployment mengelola ReplicaSet, dan ReplicaSet mengelola Pod."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi pada alamat sebuah Pod saat Pod itu diganti?",
+      "code": "",
+      "options": [
+        "Pod baru mewarisi alamat IP Pod lama",
+        "Pod baru mendapat alamat IP yang baru",
+        "Alamat IP tidak pernah berubah sepanjang cluster hidup",
+        "Alamat IP dipindahkan ke node lain"
+      ],
+      "answer": 1,
+      "explanation": "Karena itu klien memakai Service, bukan IP Pod."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa Pod yang belum lolos readiness probe tidak menerima trafik dari Service?",
+      "code": "",
+      "options": [
+        "Service hanya mengenal Pod yang namanya berakhiran angka",
+        "Pod itu otomatis dipindahkan ke namespace lain",
+        "Kubernetes mengeluarkannya dari daftar endpoint Service",
+        "Service menolak Pod yang baru berumur satu menit"
+      ],
+      "answer": 2,
+      "explanation": "Endpoint hanya berisi Pod yang siap."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Pada Service berikut, di port berapa container harus mendengarkan?",
+      "code": "kind: Service\nspec:\n  selector:\n    app: web\n  ports:\n  - port: 80\n    targetPort: 8080",
+      "options": [
+        "Port 80, yaitu port milik Service",
+        "Port 3000, yaitu port bawaan Kubernetes",
+        "Port 443, yaitu port untuk koneksi aman",
+        "Port 8080, yaitu targetPort"
+      ],
+      "answer": 3,
+      "explanation": "Trafik ke port 80 Service diteruskan ke targetPort 8080 di Pod."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa satu LoadBalancer per layanan cepat menjadi mahal?",
+      "code": "",
+      "options": [
+        "Setiap LoadBalancer memakai satu node penuh untuk dirinya",
+        "Penyedia cloud menagih setiap load balancer yang dibuat",
+        "LoadBalancer hanya bisa dibuat satu per cluster",
+        "LoadBalancer mengenakan biaya per permintaan HTTP"
+      ],
+      "answer": 1,
+      "explanation": "Ingress memungkinkan banyak layanan berbagi satu pintu masuk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dibutuhkan agar objek Ingress benar-benar berfungsi?",
+      "code": "",
+      "options": [
+        "Satu Service bertipe NodePort terpisah untuk setiap aturan yang ditulis di Ingress",
+        "Namespace khusus bernama ingress",
+        "Ingress controller yang membaca dan menjalankan aturannya",
+        "Secret berisi kunci SSH milik administrator"
+      ],
+      "answer": 2,
+      "explanation": "Ingress hanyalah aturan; controller yang menjalankannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Permintaan ke /api/produk cocok dengan aturan /api dan /. Mana yang dipilih?",
+      "code": "",
+      "options": [
+        "/api, karena prefix-nya lebih panjang",
+        "/, karena ditulis lebih dulu di manifest",
+        "/, karena dianggap aturan paling umum dan aman",
+        "Keduanya dipakai bergantian secara acak"
+      ],
+      "answer": 0,
+      "explanation": "Prefix terpanjang yang menang, bukan urutan penulisan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "NodePort membuka port yang sama di setiap node cluster.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Rentang bawaannya 30000 sampai 32767."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa satu image dipakai untuk semua lingkungan sementara konfigurasi dipisah?",
+      "code": "",
+      "options": [
+        "Agar image selalu berukuran lebih kecil dari satu megabyte",
+        "Agar mengganti konfigurasi tidak perlu membangun ulang image",
+        "Agar tidak perlu memakai registry sama sekali",
+        "Agar Kubernetes menghemat alamat IP untuk Pod"
+      ],
+      "answer": 1,
+      "explanation": "Konfigurasi lingkungan ditaruh di ConfigMap dan Secret."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa beda variabel lingkungan dari ConfigMap yang dipasang sebagai volume?",
+      "code": "",
+      "options": [
+        "Variabel lingkungan ikut diperbarui otomatis, sedangkan volume tidak pernah berubah sama sekali",
+        "Keduanya selalu berubah seketika di dalam container",
+        "Variabel lingkungan hanya dibaca saat container mulai, volume ikut diperbarui",
+        "Tidak ada perbedaan sama sekali di antara keduanya"
+      ],
+      "answer": 2,
+      "explanation": "Untuk nilai baru lewat variabel lingkungan, Pod harus dibuat ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara mana yang lebih aman untuk menjaga Secret agar tidak bocor lewat Git?",
+      "code": "",
+      "options": [
+        "Memakai alat seperti Sealed Secrets atau External Secrets",
+        "Menyimpan Secret polos di repositori privat",
+        "Menamai berkas Secret dengan nama yang samar",
+        "Menulis nilai Secret langsung di bagian env Deployment"
+      ],
+      "answer": 0,
+      "explanation": "Manifest di Git sebaiknya tidak memuat nilai rahasia polos."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "PVC berstatus Pending. Penyebab yang paling mungkin adalah",
+      "code": "",
+      "options": [
+        "Pod pemakainya terlalu banyak mengirim log",
+        "Namespace PVC belum diberi quota CPU",
+        "Image aplikasi belum selesai ditarik dari registry oleh kubelet di node yang dipilih",
+        "Belum ada PV yang cocok dengan kapasitas, storage class, dan mode akses"
+      ],
+      "answer": 3,
+      "explanation": "PVC baru terikat setelah ada PV yang memenuhi permintaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila beberapa PV cocok dengan sebuah PVC, mana yang dipilih Kubernetes?",
+      "code": "",
+      "options": [
+        "Yang kapasitasnya paling besar agar ada ruang cadangan",
+        "Yang dibuat paling awal oleh administrator",
+        "Yang kapasitasnya paling kecil tetapi masih cukup",
+        "Yang dipilih secara acak setiap kali"
+      ],
+      "answer": 2,
+      "explanation": "Memilih yang terkecil menghindari pemborosan penyimpanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi volume emptyDir?",
+      "code": "",
+      "options": [
+        "Berkas sementara yang hidup selama Pod ada dan bisa dibagi antar container",
+        "Penyimpanan permanen yang bertahan setelah Pod dihapus dan bisa diikat ke PVC lain",
+        "Salinan cadangan otomatis dari basis data aplikasi",
+        "Tempat menyimpan Secret yang sudah dienkripsi penuh"
+      ],
+      "answer": 0,
+      "explanation": "emptyDir dihapus bersama Pod-nya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menghapus PVC selalu menghapus data di PV yang terikat padanya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Nasib data ditentukan oleh reclaimPolicy: Delete atau Retain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Satu inti CPU sama dengan berapa milicore?",
+      "code": "",
+      "options": [
+        "100m, yaitu sepersepuluh inti",
+        "500m, yaitu setengah inti",
+        "1024m, yaitu satu kibi milicore",
+        "1000m"
+      ],
+      "answer": 3,
+      "explanation": "250m berarti seperempat inti."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Node punya 4 inti dan Pod di dalamnya sudah meminta total 3,5 inti. Berapa sisa menurut scheduler?",
+      "code": "",
+      "options": [
+        "4 inti, karena pemakaian aktual masih rendah sekali",
+        "0,5 inti, meski pemakaian aktual hampir nol",
+        "3,5 inti, karena sisa dihitung dari yang sudah dipakai",
+        "0 inti, karena node tidak pernah bisa diisi penuh"
+      ],
+      "answer": 1,
+      "explanation": "Sisa dihitung dari request, bukan pemakaian sesaat."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kelas QoS Pod dengan konfigurasi sumber daya berikut adalah",
+      "code": "resources:\n  requests:\n    cpu: 250m\n    memory: 128Mi\n  limits:\n    cpu: 500m\n    memory: 256Mi",
+      "options": [
+        "Burstable",
+        "Guaranteed, karena ada request dan limit",
+        "BestEffort, karena memori memakai satuan Mi",
+        "Critical, karena limit CPU lebih besar dari request"
+      ],
+      "answer": 0,
+      "explanation": "Guaranteed menuntut request sama dengan limit untuk semua sumber daya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pod mana yang diusir lebih dulu saat node kehabisan memori?",
+      "code": "",
+      "options": [
+        "Pod berkelas Guaranteed yang request-nya terbesar",
+        "Pod yang namanya paling awal secara abjad",
+        "Pod yang paling baru dihapus oleh administrator",
+        "Pod berkelas BestEffort"
+      ],
+      "answer": 3,
+      "explanation": "BestEffort tidak punya jaminan sumber daya."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang terjadi bila endpoint /siap membalas error berulang kali?",
+      "code": "readinessProbe:\n  httpGet:\n    path: /siap\n    port: 8080\n  periodSeconds: 5",
+      "options": [
+        "Container langsung di-restart oleh kubelet",
+        "Pod dicabut dari endpoint Service tetapi tidak di-restart",
+        "Pod dihapus permanen dari cluster oleh scheduler",
+        "Deployment mengembalikan versi sebelumnya otomatis"
+      ],
+      "answer": 1,
+      "explanation": "Readiness hanya mengatur apakah Pod menerima trafik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa liveness probe sebaiknya tidak ikut memeriksa basis data?",
+      "code": "",
+      "options": [
+        "Basis data tidak bisa diakses lewat HTTP sama sekali",
+        "Liveness probe hanya boleh memeriksa satu port TCP",
+        "Gangguan basis data bisa membuat semua Pod di-restart serentak",
+        "Kubelet melarang probe memanggil layanan lain"
+      ],
+      "answer": 2,
+      "explanation": "Liveness cukup memeriksa proses itu sendiri."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Startup probe berguna untuk aplikasi yang lambat mulai agar tidak di-restart terlalu dini.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Selama startup probe belum lolos, probe lain ditunda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Objek mana yang tidak berada di namespace mana pun?",
+      "code": "",
+      "options": [
+        "Pod",
+        "Service",
+        "ConfigMap",
+        "Node"
+      ],
+      "answer": 3,
+      "explanation": "Node dan PersistentVolume berlaku untuk seluruh cluster."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi ResourceQuota pada sebuah namespace?",
+      "code": "",
+      "options": [
+        "Mengenkripsi seluruh data di dalam namespace itu",
+        "Membatasi total pemakaian sumber daya dan jumlah objek di namespace itu",
+        "Memberi akses administrator kepada semua penghuninya agar mereka bebas membuat objek",
+        "Memisahkan jaringan namespace dari namespace lain"
+      ],
+      "answer": 1,
+      "explanation": "Quota mencegah satu tim menghabiskan kapasitas bersama."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Tindakan mana yang diizinkan oleh aturan RBAC berikut?",
+      "code": "rules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]",
+      "options": [
+        "Menghapus Pod di namespace itu",
+        "Membaca Secret di namespace itu",
+        "Melihat dan mendaftar Pod",
+        "Membuat Deployment baru di namespace itu"
+      ],
+      "answer": 2,
+      "explanation": "Hanya verb get dan list pada resource pods."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana RBAC memperlakukan izin dari beberapa aturan yang berlaku bersamaan?",
+      "code": "",
+      "options": [
+        "Digabung, dan permintaan lolos bila ada satu aturan yang mengizinkan",
+        "Hanya aturan pertama yang cocok yang dipakai, sedangkan sisanya diabaikan sepenuhnya",
+        "Aturan paling ketat selalu menang atas yang lain",
+        "Permintaan ditolak bila aturannya lebih dari satu"
+      ],
+      "answer": 0,
+      "explanation": "RBAC bersifat tambahan; tidak ada aturan larang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang sebaiknya dilakukan agar aplikasi bisa memanggil API Kubernetes dengan aman?",
+      "code": "",
+      "options": [
+        "Menyalin kubeconfig administrator ke dalam container",
+        "Memberinya ServiceAccount sendiri dengan Role yang minimal",
+        "Memakai akun default dengan izin seluas mungkin",
+        "Membuka API server tanpa autentikasi di dalam cluster"
+      ],
+      "answer": 1,
+      "explanation": "Bila kredensial bocor, kerusakannya terbatas pada izin minimal itu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Namespace saja sudah cukup untuk mengisolasi lalu lintas jaringan antar tim.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Isolasi jaringan butuh NetworkPolicy."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pod berstatus ImagePullBackOff. Penyebab yang paling sering adalah",
+      "code": "",
+      "options": [
+        "Node kehabisan memori sehingga kubelet tidak bisa menarik image dari registry mana pun",
+        "Readiness probe terlalu ketat untuk aplikasinya",
+        "Nama atau tag image salah ketik, atau tag itu tidak pernah dipublikasikan",
+        "Namespace belum diberi ResourceQuota yang cukup"
+      ],
+      "answer": 2,
+      "explanation": "Events biasanya menyebut manifest unknown atau unauthorized."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa penyebab paling mungkin dari pesan Events berikut?",
+      "code": "Events:\n  Warning  Failed  Failed to pull image \"nginx:1.277\": manifest unknown",
+      "options": [
+        "Tag image tidak ada di registry, kemungkinan salah ketik",
+        "Memori container melewati limit yang dipasang",
+        "Liveness probe gagal berulang kali berturut-turut",
+        "Selector Service tidak cocok dengan label Pod"
+      ],
+      "answer": 0,
+      "explanation": "manifest unknown berarti tag atau nama image tidak ditemukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Container berstatus CrashLoopBackOff dan Last State menunjukkan OOMKilled. Apa langkah tepat?",
+      "code": "",
+      "options": [
+        "Turunkan jumlah replicas menjadi nol lalu naikkan lagi",
+        "Ganti Service menjadi bertipe NodePort",
+        "Tambahkan label baru pada semua Pod",
+        "Naikkan limit memori atau cari kebocoran memori di aplikasi"
+      ],
+      "answer": 3,
+      "explanation": "OOMKilled berarti memori melewati limit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pod Running tetapi layanan tidak bisa dijangkau lewat Service. Apa yang diperiksa pertama?",
+      "code": "",
+      "options": [
+        "Versi API server dan umur cluster",
+        "Jumlah node di dalam cluster",
+        "Readiness probe, selector Service, dan kubectl get endpoints",
+        "Ukuran image yang dipakai Pod"
+      ],
+      "answer": 2,
+      "explanation": "Endpoint kosong atau Pod belum siap sering menjadi penyebabnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa menyimpan manifest di Git dan menerapkannya lewat CI/CD dianjurkan?",
+      "code": "",
+      "options": [
+        "Keadaan cluster bisa direkonstruksi dan setiap perubahan bisa ditinjau",
+        "Git mempercepat jalannya Pod di dalam node karena manifest dibaca langsung dari repositori",
+        "Git menggantikan peran etcd sebagai penyimpan keadaan",
+        "Kubernetes tidak bisa dipakai tanpa repositori Git"
+      ],
+      "answer": 0,
+      "explanation": "Manifest di Git menjadi sumber kebenaran yang bisa diaudit."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pod berstatus Pending karena Insufficient cpu bisa dibantu dengan menurunkan request CPU-nya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Dengan request lebih kecil, lebih banyak node layak menampung Pod itu."
+    }
+  ],
+  "prerequisites": [
+    "docker-dan-deployment"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Simulator Penjadwal Pod",
+    "brief": "Bangun **Simulator Penjadwal Pod**, versi mini dari yang dikerjakan scheduler Kubernetes. Kamu akan menempatkan sekumpulan Pod ke beberapa node berdasarkan request sumber daya dan `nodeSelector`, lalu merangkum hasilnya.\n\nData tersedia di setup: `NODES` (kapasitas CPU dalam milicore dan memori dalam MiB, plus label) dan `PODS` (request dan selector).\n\nFungsi yang harus kamu lengkapi:\n\n1. `jadwalkan_semua(pods, nodes)` memproses Pod **sesuai urutan**. Untuk tiap Pod, pilih node yang layak: semua pasangan `selector` ada di label node, serta sisa CPU dan memori cukup untuk request Pod. Di antara node layak, pilih yang **sisa CPU-nya paling banyak** (sama: nama lebih dulu secara abjad). Hasilnya kamus `nama Pod -> nama node`, atau `None` bila Pod menjadi `Pending`. Kapasitas node berkurang setiap ada Pod yang ditempatkan, tetapi data `nodes` yang diberikan **tidak boleh diubah**.\n2. `ringkasan(hasil)` mengembalikan pasangan `(jumlah_terjadwal, daftar_pending)`, dengan daftar nama Pod `Pending` terurut abjad.\n3. `sisa_node(node, pods, hasil)` mengembalikan `(cpu_bebas_m, mem_bebas_mi)` untuk satu node setelah semua penempatan di `hasil`.\n\nContoh: Pod yang request-nya lebih besar daripada kapasitas semua node tidak pernah terjadwal dan masuk ke daftar Pending.",
+    "prompt": "Lengkapi fungsi `jadwalkan_semua`, `ringkasan`, dan `sisa_node` sesuai brief. Jangan mengubah `NODES` dan `PODS`.",
+    "starter": {
+      "code": "def jadwalkan_semua(pods, nodes):\n    # TODO: proses Pod berurutan, pilih node layak dengan sisa CPU terbanyak\n    return {}\n\n\ndef ringkasan(hasil):\n    # TODO: (jumlah terjadwal, nama Pod Pending terurut)\n    return (0, [])\n\n\ndef sisa_node(node, pods, hasil):\n    # TODO: (cpu bebas, memori bebas) setelah penempatan\n    return (0, 0)\n"
+    },
+    "solution": {
+      "code": "def jadwalkan_semua(pods, nodes):\n    pakai = {n[\"nama\"]: [0, 0] for n in nodes}\n    hasil = {}\n    for pod in pods:\n        layak = []\n        for n in nodes:\n            if any(n[\"labels\"].get(k) != v for k, v in pod[\"selector\"].items()):\n                continue\n            sisa_cpu = n[\"cpu_m\"] - pakai[n[\"nama\"]][0]\n            sisa_mem = n[\"mem_mi\"] - pakai[n[\"nama\"]][1]\n            if sisa_cpu >= pod[\"cpu_m\"] and sisa_mem >= pod[\"mem_mi\"]:\n                layak.append((-sisa_cpu, n[\"nama\"]))\n        if layak:\n            nama = min(layak)[1]\n            pakai[nama][0] += pod[\"cpu_m\"]\n            pakai[nama][1] += pod[\"mem_mi\"]\n            hasil[pod[\"nama\"]] = nama\n        else:\n            hasil[pod[\"nama\"]] = None\n    return hasil\n\n\ndef ringkasan(hasil):\n    pending = sorted(nama for nama, node in hasil.items() if node is None)\n    return (len(hasil) - len(pending), pending)\n\n\ndef sisa_node(node, pods, hasil):\n    cpu, mem = node[\"cpu_m\"], node[\"mem_mi\"]\n    for pod in pods:\n        if hasil.get(pod[\"nama\"]) == node[\"nama\"]:\n            cpu -= pod[\"cpu_m\"]\n            mem -= pod[\"mem_mi\"]\n    return (cpu, mem)\n"
+    },
+    "setup": "import copy\n\nNODES = [\n    {\"nama\": \"node-a\", \"cpu_m\": 2000, \"mem_mi\": 4096, \"labels\": {\"disk\": \"ssd\"}},\n    {\"nama\": \"node-b\", \"cpu_m\": 4000, \"mem_mi\": 8192, \"labels\": {\"disk\": \"hdd\"}},\n    {\"nama\": \"node-c\", \"cpu_m\": 1000, \"mem_mi\": 2048, \"labels\": {\"disk\": \"ssd\", \"zona\": \"b\"}},\n]\nPODS = [\n    {\"nama\": \"web-1\", \"cpu_m\": 500, \"mem_mi\": 256, \"selector\": {}},\n    {\"nama\": \"web-2\", \"cpu_m\": 500, \"mem_mi\": 256, \"selector\": {}},\n    {\"nama\": \"db-1\", \"cpu_m\": 1500, \"mem_mi\": 4096, \"selector\": {\"disk\": \"ssd\"}},\n    {\"nama\": \"batch-1\", \"cpu_m\": 3000, \"mem_mi\": 1024, \"selector\": {}},\n    {\"nama\": \"api-1\", \"cpu_m\": 800, \"mem_mi\": 512, \"selector\": {\"disk\": \"hdd\"}},\n    {\"nama\": \"ml-1\", \"cpu_m\": 6000, \"mem_mi\": 1024, \"selector\": {}},\n]\nNODES_ASLI = copy.deepcopy(NODES)\nPODS_ASLI = copy.deepcopy(PODS)\n",
+    "tests": [
+      {
+        "name": "Pod pertama masuk ke node dengan sisa CPU terbanyak",
+        "check": "jadwalkan_semua(PODS, NODES)[\"web-1\"] == \"node-b\""
+      },
+      {
+        "name": "Pod kedua melihat kapasitas yang sudah berkurang",
+        "check": "jadwalkan_semua(PODS, NODES)[\"web-2\"] == \"node-b\""
+      },
+      {
+        "name": "nodeSelector disk=ssd membatasi db-1 ke node-a",
+        "check": "jadwalkan_semua(PODS, NODES)[\"db-1\"] == \"node-a\""
+      },
+      {
+        "name": "Pod yang pas dengan sisa kapasitas tetap terjadwal",
+        "check": "jadwalkan_semua(PODS, NODES)[\"batch-1\"] == \"node-b\""
+      },
+      {
+        "name": "Selector tidak punya node dengan sisa cukup: Pending",
+        "check": "jadwalkan_semua(PODS, NODES)[\"api-1\"] is None"
+      },
+      {
+        "name": "Pod yang lebih besar dari semua node: Pending",
+        "check": "jadwalkan_semua(PODS, NODES)[\"ml-1\"] is None"
+      },
+      {
+        "name": "ringkasan menghitung terjadwal dan mengurutkan Pending",
+        "check": "ringkasan(jadwalkan_semua(PODS, NODES)) == (4, [\"api-1\", \"ml-1\"])"
+      },
+      {
+        "name": "sisa_node menghitung CPU dan memori yang tersisa",
+        "check": "sisa_node(NODES[0], PODS, jadwalkan_semua(PODS, NODES)) == (500, 0) and sisa_node(NODES[2], PODS, jadwalkan_semua(PODS, NODES)) == (1000, 2048)"
+      },
+      {
+        "name": "Data masukan tidak diubah",
+        "check": "(jadwalkan_semua(PODS, NODES), NODES == NODES_ASLI and PODS == PODS_ASLI)[1]"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "mengapa-kubernetes",
+      "title": "Mengapa Kubernetes",
+      "est_minutes": 20,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan masalah yang muncul ketika container dijalankan dalam jumlah besar.\n- Menyebutkan apa itu Kubernetes dan apa yang dikerjakannya untukmu.\n- Membedakan cara kerja deklaratif dari cara kerja perintah demi perintah.\n- Menjelaskan reconciliation loop dengan contoh sederhana.\n\n## Dari satu container ke ratusan container\n\nDi kelas Docker kamu sudah membungkus aplikasi menjadi image, lalu menjalankannya sebagai container dengan satu perintah. Untuk satu aplikasi di satu mesin, itu cukup. Masalah baru muncul ketika aplikasimu tumbuh.\n\nBayangkan toko online yang dipecah menjadi dua puluh layanan kecil: katalog, keranjang, pembayaran, notifikasi, dan seterusnya. Tiap layanan butuh beberapa salinan agar tahan beban, dan semuanya tersebar di banyak server. Pertanyaan yang tadinya sepele berubah menjadi pekerjaan harian:\n\n- Salah satu container mati pukul tiga pagi. Siapa yang menghidupkannya lagi?\n- Server nomor empat rusak. Container di dalamnya harus pindah ke mana?\n- Trafik melonjak saat promo. Bagaimana menambah salinan layanan keranjang tanpa mengutak-atik server satu per satu?\n- Versi baru layanan pembayaran akan dirilis. Bagaimana menggantinya tanpa membuat pelanggan melihat halaman error?\n\nKamu bisa menjawab semuanya dengan skrip buatan sendiri, tetapi skrip itu akan tumbuh menjadi sistem besar yang harus kamu rawat. Pekerjaan inilah yang disebut **orkestrasi container**: mengatur penempatan, jumlah, kesehatan, jaringan, dan pembaruan container secara otomatis.\n\n![Masalah setelah Docker dan jawabannya](slide:2)\n\n## Apa itu Kubernetes\n\n**Kubernetes** adalah sistem open source untuk mengorkestrasi container. Proyek ini lahir dari pengalaman Google menjalankan sistem internal bernama Borg, lalu diserahkan ke Cloud Native Computing Foundation (CNCF) dan sekarang dipakai hampir di semua penyedia cloud. Namanya sering disingkat **K8s**: huruf K, delapan huruf di tengah, lalu s.\n\nKubernetes tidak membuat container sendiri. Ia memakai container runtime seperti containerd untuk itu. Tugas Kubernetes ada di atasnya:\n\n- **Penjadwalan:** memilih server mana yang menjalankan container baru.\n- **Penyembuhan diri:** menghidupkan lagi container yang mati dan memindahkannya bila server rusak.\n- **Penskalaan:** menambah atau mengurangi jumlah salinan.\n- **Penemuan layanan dan pembagian beban:** memberi alamat tetap kepada sekumpulan container.\n- **Pembaruan bertahap:** mengganti versi tanpa menghentikan layanan, dengan jalan mundur bila gagal.\n\nSatu hal yang perlu diingat sejak awal: Kubernetes bukan pengganti Docker. Image yang kamu bangun dengan Docker tetap dipakai. Kubernetes adalah lapisan yang mengurus container-container itu ketika jumlahnya banyak.\n\n## Cara berpikir deklaratif\n\nPerbedaan terpenting antara Kubernetes dan skrip biasa ada pada cara kamu memberi instruksi. Dengan skrip, kamu menulis **langkah-langkah**: jalankan container A, tunggu, jalankan container B. Dengan Kubernetes, kamu menulis **keadaan yang diinginkan**: \"saya ingin tiga salinan layanan keranjang dengan image versi 1.4\".\n\nKeadaan yang diinginkan ditulis dalam berkas YAML yang disebut manifest. Contoh potongannya:\n\n```yaml\n# keadaan yang diinginkan\nspec:\n  replicas: 3\n```\n\nKamu tidak menulis cara membuat tiga salinan itu. Kubernetes yang mencari caranya. Pendekatan ini disebut **deklaratif**. Kebalikannya, **imperatif**, adalah memberi perintah satu per satu, seperti `docker run` berulang kali.\n\nKeuntungan deklaratif cukup besar. Manifest bisa disimpan di Git, ditinjau lewat pull request, dan diterapkan ulang kapan saja dengan hasil yang sama. Keadaan cluster menjadi dokumen yang bisa dibaca, bukan ingatan seseorang tentang perintah yang pernah diketik.\n\n## Reconciliation loop\n\nBagaimana Kubernetes menjaga keadaan tetap sesuai keinginan? Lewat pola yang disebut **reconciliation loop**, yaitu putaran tanpa henti dengan tiga langkah:\n\n1. **Amati** keadaan nyata saat ini.\n2. **Bandingkan** dengan keadaan yang diinginkan.\n3. **Bertindak** untuk menutup selisihnya, lalu ulangi.\n\nMisalnya kamu menginginkan tiga Pod, sebuah Pod adalah salinan aplikasi yang sedang berjalan. Pada suatu saat satu Pod mati karena servernya padam. Putaran berikutnya mengamati bahwa hanya dua Pod yang hidup. Selisihnya satu, sehingga Kubernetes membuat satu Pod baru di server lain. Tidak ada manusia yang dibangunkan.\n\nPola yang sama berlaku ke arah sebaliknya. Kalau kamu mengubah `replicas` dari tiga menjadi lima, putaran melihat selisih dua dan membuat dua Pod tambahan. Kalau kamu menurunkannya menjadi dua, kelebihannya dihapus.\n\nKonsekuensinya penting untuk cara kamu bekerja: **jangan melawan Kubernetes dengan tindakan manual**. Jika kamu menghapus sebuah Pod secara manual padahal jumlah yang diinginkan tiga, Pod pengganti akan segera muncul. Cara yang benar untuk mengubah hasil adalah mengubah keadaan yang diinginkan.\n\n## Kapan Kubernetes layak dipakai\n\nKubernetes kuat, tetapi tidak gratis. Ia menambah konsep baru, menambah lapisan yang harus dipelajari, dan cluster produksi butuh perawatan. Untuk satu aplikasi kecil di satu server, `docker compose` atau layanan PaaS sering lebih masuk akal.\n\nKubernetes mulai terasa sepadan ketika kamu punya banyak layanan, butuh pembaruan tanpa henti layanan, harus berpindah antar penyedia cloud, atau tim cukup besar untuk berbagi satu platform. Jadi pertanyaan awalnya bukan \"bisakah saya memakai Kubernetes\", melainkan \"masalah apa yang ingin saya selesaikan, dan apakah ini alat yang tepat\".\n\nDi bab-bab berikutnya kita membedah bagian-bagiannya satu per satu: arsitektur cluster, Pod, Deployment, Service, konfigurasi, sumber daya, hak akses, sampai debugging.\n\n## Kesalahan pemahaman yang sering terjadi\n\nBeberapa anggapan keliru sering muncul pada awal belajar Kubernetes, dan lebih baik diluruskan sekarang.\n\n**\"Kubernetes menggantikan Docker.\"** Tidak. Docker, atau alat sejenis, membangun image. Kubernetes menjalankan dan mengatur container dari image itu. Keduanya saling melengkapi.\n\n**\"Kubernetes membuat aplikasi otomatis tahan banting.\"** Kubernetes menghidupkan lagi container yang mati, tetapi ia tidak memperbaiki aplikasi yang bug atau basis data yang tidak punya cadangan. Ketahanan tetap hasil rancanganmu, misalnya menjalankan beberapa replika dan menulis aplikasi yang boleh dimatikan kapan saja.\n\n**\"Semakin banyak fitur Kubernetes dipakai, semakin baik.\"** Justru sebaliknya. Mulailah dari objek paling sederhana, dan tambahkan hanya ketika ada masalah nyata yang perlu dijawab. Cluster dengan sepuluh objek yang kamu pahami lebih baik daripada seratus objek hasil salin-tempel.\n\nPegang tiga hal ini sepanjang kelas: tulis keadaan yang diinginkan, biarkan Kubernetes bekerja, dan periksa hasilnya.\n\n## Rangkuman\n\n- Menjalankan banyak container menimbulkan masalah baru: container mati, server rusak, beban naik, dan pembaruan tanpa henti layanan.\n- Kubernetes (K8s) adalah sistem open source yang mengorkestrasi container: menjadwalkan, menyembuhkan, menskalakan, dan memperbarui.\n- Kubernetes bekerja secara deklaratif: kamu menulis keadaan yang diinginkan di manifest, bukan langkah-langkahnya.\n- Reconciliation loop terus mengamati, membandingkan, dan bertindak agar kenyataan sama dengan keinginan.\n- Jangan melawan Kubernetes dengan tindakan manual; ubah keadaan yang diinginkan.\n- Kubernetes layak dipakai bila skalanya cukup besar, bukan otomatis untuk setiap aplikasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Masalah mana yang paling tepat diselesaikan oleh orkestrasi container?",
+          "code": "",
+          "options": [
+            "Menulis kode aplikasi yang berjalan lebih cepat di server",
+            "Mengubah bahasa pemrograman aplikasi secara otomatis saat build",
+            "Menghidupkan lagi container yang mati dan memperbarui versi tanpa henti layanan",
+            "Membuat desain antarmuka pengguna yang lebih menarik dan modern"
+          ],
+          "answer": 2,
+          "explanation": "Orkestrasi mengurus penempatan, kesehatan, jumlah, dan pembaruan container."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti pendekatan deklaratif pada Kubernetes?",
+          "code": "",
+          "options": [
+            "Kamu menulis keadaan akhir yang diinginkan, bukan langkah-langkahnya",
+            "Kamu menulis setiap langkah perintah dalam urutan yang tetap",
+            "Kamu menyebut bahasa pemrograman yang dipakai aplikasimu",
+            "Kamu menjalankan perintah satu per satu langsung di setiap server"
+          ],
+          "answer": 0,
+          "explanation": "Kubernetes yang mencari cara untuk mencapai keadaan yang kamu tulis."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tiga langkah reconciliation loop adalah",
+          "code": "",
+          "options": [
+            "Bangun, uji, lalu rilis ke produksi",
+            "Tulis, hapus, lalu terapkan ulang manifest dari awal",
+            "Cadangkan, pulihkan, lalu verifikasi data di etcd",
+            "Amati, bandingkan, lalu bertindak"
+          ],
+          "answer": 3,
+          "explanation": "Loop terus mengamati kenyataan, membandingkannya dengan keinginan, dan menutup selisihnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kubernetes menggantikan Docker sebagai alat untuk membangun image.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Kubernetes menjalankan dan mengatur container; image tetap dibangun dengan alat lain."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "arsitektur-cluster",
+      "title": "Arsitektur Cluster",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Membedakan control plane dari worker node dan menyebutkan tugas masing-masing.\n- Menjelaskan fungsi API server, etcd, scheduler, dan controller manager.\n- Menjelaskan fungsi kubelet, container runtime, dan kube-proxy di setiap node.\n- Menelusuri perjalanan sebuah perintah `kubectl` sampai container berjalan.\n\n## Cluster, control plane, dan node\n\nSatu **cluster** Kubernetes adalah sekumpulan mesin, fisik maupun virtual, yang bekerja sebagai satu kesatuan. Mesin-mesin itu terbagi menjadi dua peran.\n\n**Control plane** adalah otak cluster. Ia menyimpan keadaan yang diinginkan, memutuskan Pod mana berjalan di mana, dan memantau kenyataan. Cluster produksi biasanya menjalankan beberapa salinan control plane agar tidak ada satu titik kegagalan.\n\n**Worker node**, sering disebut singkat node, adalah mesin yang benar-benar menjalankan container milikmu. Satu cluster bisa punya tiga node, atau tiga ribu.\n\nSebagai pengguna, kamu hampir tidak pernah berbicara langsung dengan node. Semua perintahmu masuk lewat control plane, lalu control plane yang mengatur node. Jika kamu memakai layanan terkelola seperti GKE, EKS, atau AKS, penyedia cloud merawat control plane untukmu dan kamu hanya mengurus node dan aplikasi.\n\n![Cluster terdiri dari control plane dan node](slide:5)\n\n## Komponen control plane\n\nControl plane terdiri dari beberapa komponen kecil dengan tugas yang jelas.\n\n**API server** adalah pintu masuk satu-satunya. Setiap perintah `kubectl`, setiap komponen lain, bahkan dashboard, berbicara lewat API server. Ia memeriksa siapa kamu, apakah kamu berhak, dan apakah permintaanmu valid, baru kemudian menyimpannya.\n\n**etcd** adalah basis data kunci-nilai yang menyimpan seluruh keadaan cluster: semua manifest yang pernah kamu terapkan dan keadaan terkini tiap objek. Jika etcd hilang tanpa cadangan, cluster kehilangan ingatannya. Itu sebabnya etcd selalu dicadangkan di lingkungan produksi.\n\n**Scheduler** bertugas memilih node untuk Pod yang baru dibuat dan belum punya tempat. Ia mempertimbangkan sumber daya yang tersedia di tiap node, aturan penempatan yang kamu tulis, dan penyebaran agar tidak semua salinan menumpuk di satu mesin. Scheduler hanya memutuskan; ia tidak menjalankan apa pun.\n\n**Controller manager** menjalankan banyak pengendali kecil, dan masing-masing menjalankan reconciliation loop untuk satu jenis objek. Ada pengendali yang menjaga jumlah salinan, ada yang memantau node yang hilang, ada yang mengurus akun layanan. Inilah bagian yang membuat Kubernetes menyembuhkan dirinya sendiri.\n\n## Komponen di setiap node\n\nSetiap worker node menjalankan tiga komponen.\n\n**kubelet** adalah agen yang berjalan di node. Ia bertanya ke API server, \"Pod apa yang seharusnya berjalan di node ini?\", lalu memastikan container-nya berjalan. Ia juga melaporkan kesehatan Pod kembali ke control plane. Kalau container mati, kubelet yang mula-mula menyadarinya.\n\n**Container runtime** adalah perangkat lunak yang benar-benar membuat dan menjalankan container, misalnya containerd atau CRI-O. Kubernetes berbicara dengannya lewat antarmuka standar bernama CRI, sehingga runtime bisa diganti tanpa mengubah aplikasi.\n\n**kube-proxy** mengatur aturan jaringan di node supaya lalu lintas ke sebuah Service sampai ke Pod yang tepat. Kita bahas Service di bab 5.\n\n## Menelusuri sebuah perintah\n\nCara terbaik memahami arsitektur adalah mengikuti satu perintah dari awal sampai akhir. Misalnya kamu menerapkan manifest Deployment dengan tiga replika:\n\n```bash\nkubectl apply -f deployment.yaml\n```\n\nYang terjadi:\n\n1. `kubectl` mengirim manifest ke **API server**.\n2. API server memeriksa dan mengotentikasi, lalu menyimpan objek Deployment di **etcd**.\n3. Pengendali di **controller manager** melihat Deployment baru dan membuat tiga objek Pod. Pod-nya baru ada sebagai catatan, belum berjalan.\n4. **Scheduler** melihat tiga Pod tanpa node, lalu memilih node untuk masing-masing dan menulis keputusannya ke API server.\n5. **kubelet** di tiap node terpilih melihat ada Pod untuknya, lalu meminta **container runtime** menarik image dan menjalankan container.\n6. kubelet melaporkan status Pod, dan API server menyimpannya di etcd.\n\nPerhatikan polanya: komponen-komponen tidak saling memerintah secara langsung. Mereka semua membaca dan menulis keadaan lewat API server, lalu bertindak pada bagian yang menjadi tugasnya. Karena itulah cluster tetap berjalan walau satu komponen sebentar mati. Begitu ia hidup lagi, ia membaca keadaan terbaru dan melanjutkan.\n\n## Apa yang terjadi bila ada yang rusak\n\nMemahami peran tiap komponen membantumu menebak akibat kegagalan.\n\n- **Node mati:** controller manager menandai node tidak sehat, lalu Pod di dalamnya dibuat ulang di node lain. Aplikasi yang punya beberapa replika hampir tidak terasa.\n- **Control plane sementara tidak bisa dijangkau:** Pod yang sudah berjalan tetap berjalan karena kubelet tidak butuh control plane untuk menjaga container yang ada. Yang tidak bisa kamu lakukan hanyalah mengubah keadaan, misalnya menerapkan manifest baru atau menjadwalkan Pod baru.\n- **etcd rusak tanpa cadangan:** ini kegagalan paling serius karena keadaan cluster ikut hilang.\n\nKesimpulannya, pisahkan dua hal dalam pikiranmu: **bidang kontrol**, yaitu mengubah dan memutuskan, dan **bidang data**, yaitu aplikasi yang melayani pengguna. Gangguan di bidang kontrol biasanya tidak langsung mengganggu bidang data.\n\n## Mengapa pemisahan peran ini berguna\n\nPemisahan antara control plane dan node bukan sekadar urusan struktur; ia membuat sistem bisa diskalakan dan diperbaiki per bagian.\n\nKarena penjadwalan dipisahkan dari eksekusi, kamu bisa menambah node baru tanpa mengubah aplikasi sama sekali. Scheduler langsung mulai memakainya untuk Pod berikutnya. Karena keadaan disimpan di satu tempat, yaitu etcd lewat API server, semua komponen punya sumber kebenaran yang sama dan tidak perlu saling menelepon.\n\nPemisahan ini juga menjelaskan cara layanan terkelola bekerja. Di GKE, EKS, atau AKS, penyedia cloud menjalankan control plane untukmu, termasuk pencadangan etcd dan pembaruan versi, sementara kamu mengurus node dan aplikasi. Untuk belajar, minikube dan kind menjalankan semua komponen itu di satu mesin supaya kamu bisa bereksperimen di laptop.\n\nSaat membaca dokumentasi atau pesan error, tanyakan: komponen mana yang sedang bicara? Pertanyaan itu sering langsung menunjukkan di mana mencari masalahnya.\n\n## Rangkuman\n\n- Cluster terdiri dari control plane, yaitu otak yang memutuskan, dan worker node yang menjalankan container.\n- Control plane berisi API server sebagai pintu masuk, etcd sebagai penyimpan keadaan, scheduler yang memilih node, dan controller manager yang menjaga keadaan.\n- Setiap node menjalankan kubelet, container runtime, dan kube-proxy.\n- Perintah `kubectl apply` lewat API server, tersimpan di etcd, dibuatkan Pod oleh pengendali, ditempatkan scheduler, lalu dijalankan kubelet.\n- Komponen tidak saling memerintah; semuanya membaca dan menulis keadaan lewat API server.\n- Gangguan di control plane umumnya tidak menghentikan Pod yang sudah berjalan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Siapa yang menerima setiap perintah kubectl lebih dulu?",
+          "code": "",
+          "options": [
+            "kubelet di node tempat Pod nanti berjalan",
+            "API server, yang memeriksa dan menyimpan permintaan itu",
+            "Scheduler, yang langsung membuat container baru",
+            "etcd, yang langsung menjalankan Pod di node"
+          ],
+          "answer": 1,
+          "explanation": "Semua permintaan masuk lewat API server."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa tugas scheduler?",
+          "code": "",
+          "options": [
+            "Memilih node untuk Pod yang belum punya tempat",
+            "Menjalankan container di node yang sudah dipilih",
+            "Menyimpan keadaan cluster di basis data kunci-nilai",
+            "Mengatur aturan jaringan agar Service bisa dijangkau"
+          ],
+          "answer": 0,
+          "explanation": "Scheduler hanya memutuskan penempatan; kubelet yang menjalankan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Komponen mana yang berjalan di setiap worker node dan memastikan container Pod berjalan?",
+          "code": "",
+          "options": [
+            "controller manager di control plane",
+            "etcd yang menyimpan keadaan cluster",
+            "API server yang menerima permintaan",
+            "kubelet"
+          ],
+          "answer": 3,
+          "explanation": "kubelet adalah agen di tiap node yang menjalankan Pod."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pod yang sudah berjalan langsung berhenti bila control plane sementara tidak bisa dijangkau.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "kubelet tetap menjaga container yang ada; yang tertunda hanya perubahan keadaan."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "pod-dan-kubectl",
+      "title": "Pod dan kubectl",
+      "est_minutes": 25,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu Pod dan mengapa Pod, bukan container, yang menjadi unit terkecil.\n- Membaca dan menulis manifest Pod dengan empat bagian utamanya.\n- Memakai label dan selector untuk menandai dan memilih objek.\n- Menjalankan perintah `kubectl` dasar untuk menerapkan, melihat, dan memeriksa Pod.\n\n## Pod: unit terkecil di Kubernetes\n\nKubernetes tidak menjalankan container secara langsung. Ia menjalankan **Pod**, yaitu pembungkus untuk satu container atau lebih yang selalu ditempatkan bersama di satu node. Container di dalam satu Pod berbagi alamat IP dan boleh berbagi volume, sehingga mereka bisa saling memanggil lewat `localhost`.\n\nKebanyakan Pod berisi satu container utama. Container kedua ditambahkan hanya bila ia benar-benar menempel erat pada yang pertama, misalnya sebuah proses pembantu yang mengirim log. Pola ini disebut *sidecar*. Jangan memasukkan aplikasi web dan basis datanya ke satu Pod; keduanya punya siklus hidup dan kebutuhan penskalaan yang berbeda.\n\nSifat Pod yang paling penting adalah **sementara**. Pod dibuat, berjalan, lalu mati, dan Pod pengganti yang dibuat Kubernetes adalah objek baru dengan nama dan IP baru. Karena itu kamu tidak boleh menyimpan data penting di dalam Pod, dan tidak boleh mengandalkan alamat IP sebuah Pod. Kedua masalah itu punya jawaban di bab 5 dan bab 6.\n\n![Pod membungkus container yang berbagi IP dan volume](slide:8)\n\n## Anatomi manifest\n\nPod, seperti semua objek Kubernetes, dideskripsikan dalam berkas YAML. Hampir setiap manifest punya empat bagian yang sama:\n\n```yaml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n  labels:\n    app: web\nspec:\n  containers:\n  - name: web\n    image: nginx:1.27\n    ports:\n    - containerPort: 80\n```\n\n- **apiVersion** menyebut versi API untuk jenis objek ini. Pod memakai `v1`, sedangkan Deployment memakai `apps/v1`.\n- **kind** adalah jenis objeknya: Pod, Deployment, Service, dan seterusnya.\n- **metadata** berisi identitas: nama yang harus unik dalam satu namespace, serta label.\n- **spec** adalah keadaan yang diinginkan. Isinya bergantung pada jenis objek. Untuk Pod, isinya daftar container beserta image dan port-nya.\n\nTips praktis: tulis versi image dengan jelas, misalnya `nginx:1.27`, bukan `nginx:latest`. Tag `latest` bisa berubah isinya kapan saja sehingga dua Pod dari manifest yang sama bisa menjalankan versi berbeda.\n\n## Label dan selector\n\n**Label** adalah pasangan kunci-nilai yang kamu tempelkan pada objek, misalnya `app: web` atau `tier: backend`. Label tidak punya arti bagi Kubernetes sendiri; artinya ditentukan oleh siapa yang memakainya.\n\nKegunaan label muncul lewat **selector**, yaitu cara memilih objek berdasarkan labelnya. Deployment memakai selector untuk tahu Pod mana yang menjadi miliknya. Service memakai selector untuk tahu Pod mana yang menerima trafik. Kamu sendiri bisa memakainya di terminal:\n\n```bash\nkubectl get pods -l app=web\nkubectl get pods -l app=web,tier=frontend\n```\n\nAturan pencocokannya sederhana dan penting dihafal: sebuah objek **cocok** dengan selector bila *semua* pasangan di selector juga ada pada labelnya dengan nilai yang sama. Label tambahan di objek tidak menjadi masalah. Pod berlabel `app: web, tier: frontend, versi: v2` cocok dengan selector `app: web`, tetapi Pod berlabel `app: web` saja tidak cocok dengan selector `app: web, tier: frontend`. Selector kosong cocok dengan semuanya.\n\n## kubectl sehari-hari\n\n`kubectl` adalah alat baris perintah untuk berbicara dengan API server. Enam perintah berikut sudah cukup untuk sebagian besar pekerjaan awal:\n\n```bash\nkubectl apply -f pod.yaml        # terapkan atau perbarui manifest\nkubectl get pods                 # daftar Pod dan statusnya\nkubectl describe pod web         # detail lengkap, termasuk Events\nkubectl logs web                 # keluaran aplikasi\nkubectl exec -it web -- sh       # masuk ke dalam container\nkubectl delete -f pod.yaml       # hapus objek dari manifest\n```\n\n`apply` bersifat deklaratif: menerapkan manifest yang sama dua kali tidak membuat dua objek, melainkan memastikan keadaan cocok dengan berkas. Itu sebabnya `apply` lebih dianjurkan daripada `create`.\n\n`get` menampilkan ringkasan. Tambahkan `-o wide` untuk melihat node dan IP, atau `-o yaml` untuk melihat objek lengkap sebagaimana tersimpan di cluster. Hasil `-o yaml` penuh dengan kolom `status` yang diisi Kubernetes sendiri, bagian yang tidak kamu tulis.\n\n`describe` adalah perintah favorit saat ada masalah, sebab bagian **Events** di bawahnya menceritakan apa saja yang dicoba Kubernetes terhadap Pod itu: dijadwalkan, menarik image, memulai container, atau gagal.\n\n## Kenapa Pod jarang dibuat langsung\n\nPod yang dibuat langsung dari manifest Pod tidak dijaga siapa pun. Kalau Pod itu mati atau node-nya rusak, tidak ada yang menggantinya. Itu cocok untuk percobaan cepat atau tugas sekali jalan, tetapi tidak untuk aplikasi yang harus selalu hidup.\n\nUntuk aplikasi sungguhan, kamu membuat objek yang *mengurus* Pod, yaitu Deployment. Itu pokok bahasan bab berikutnya. Pemahaman tentang Pod, label, dan selector yang baru saja kamu pelajari tetap dipakai persis sama di sana.\n\n## Kesalahan umum saat menulis manifest\n\nBeberapa kesalahan kecil menghabiskan banyak waktu pemula.\n\n**Indentasi YAML.** YAML memakai spasi, bukan tab, dan indentasi menentukan hierarki. Satu spasi yang salah membuat `containers` jatuh di tempat yang keliru dan Kubernetes menolak manifest itu. Pakai editor yang menandai indentasi, dan jalankan `kubectl apply --dry-run=client -f pod.yaml` untuk memeriksa sebelum menerapkan.\n\n**Label yang tidak konsisten.** Salah ketik `app: wbe` pada satu objek berarti selector tidak menemukannya, dan tidak ada pesan error karena label bebas diisi apa saja. Bila sesuatu tidak terhubung, bandingkan label dan selector dengan teliti.\n\n**Lupa namespace.** Objek dibuat di namespace aktif, yang bawaannya `default`. Kalau `kubectl get pods` tampak kosong, mungkin Pod-mu ada di namespace lain.\n\n**Menamai objek dengan huruf besar atau garis bawah.** Nama harus huruf kecil, angka, dan tanda hubung.\n\nBiasakan membaca keluaran `kubectl describe`; ia hampir selalu menyebut penyebabnya dengan kalimat yang jelas.\n\n## Rangkuman\n\n- Pod adalah unit terkecil Kubernetes: satu atau lebih container yang berbagi IP dan volume dan selalu berada di satu node.\n- Pod bersifat sementara; jangan menyimpan data penting di dalamnya dan jangan mengandalkan IP-nya.\n- Manifest punya empat bagian utama: apiVersion, kind, metadata, dan spec.\n- Label menandai objek, dan selector memilih objek; objek cocok bila semua pasangan selector ada di labelnya.\n- `kubectl apply`, `get`, `describe`, `logs`, `exec`, dan `delete` cukup untuk pekerjaan awal.\n- Pod yang dibuat langsung tidak dijaga siapa pun, sehingga aplikasi sungguhan memakai Deployment.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa unit terkecil yang dijalankan dan dijadwalkan Kubernetes?",
+          "code": "",
+          "options": [
+            "Container tunggal yang dijadwalkan langsung oleh scheduler",
+            "Pod, satu atau lebih container dalam satu node",
+            "Node, yaitu satu mesin di dalam sebuah cluster",
+            "Deployment, yaitu objek yang menjaga jumlah salinan"
+          ],
+          "answer": 1,
+          "explanation": "Kubernetes mengatur Pod, bukan container satu per satu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah Pod berlabel app=web dan tier=frontend. Selector mana yang cocok dengannya?",
+          "code": "",
+          "options": [
+            "app=web dan tier=backend sekaligus",
+            "app=api dan tier=frontend sekaligus",
+            "app=web saja",
+            "app=web dan versi=v2 sekaligus"
+          ],
+          "answer": 2,
+          "explanation": "Semua pasangan selector harus ada di label; label tambahan di Pod tidak masalah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah mana yang menampilkan bagian Events sebuah Pod?",
+          "code": "",
+          "options": [
+            "kubectl logs web --previous",
+            "kubectl get pods -o wide",
+            "kubectl exec -it web -- sh",
+            "kubectl describe pod web"
+          ],
+          "answer": 3,
+          "explanation": "describe menampilkan detail dan Events di bagian bawah."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Container dalam satu Pod berbagi alamat IP.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Mereka berbagi IP dan bisa saling memanggil lewat localhost."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Mencocokkan label selector",
+          "prompt": "Lengkapi dua fungsi:\n\n- `cocok(selector, labels)` mengembalikan `True` bila **semua** pasangan di `selector` juga ada di `labels` dengan nilai yang sama. Selector kosong cocok dengan apa saja. Label tambahan di objek tidak jadi masalah.\n- `pilih_pod(pods, selector)` mengembalikan daftar `nama` Pod yang cocok, dengan urutan asli. Variabel `PODS` sudah tersedia di setup.\n\nContoh: `cocok({\"app\": \"web\"}, {\"app\": \"web\", \"tier\": \"frontend\"})` menghasilkan `True`, sedangkan `cocok({\"app\": \"web\", \"tier\": \"frontend\"}, {\"app\": \"web\"})` menghasilkan `False`.",
+          "starter": {
+            "code": "def cocok(selector, labels):\n    # TODO: semua pasangan selector harus ada di labels\n    return False\n\n\ndef pilih_pod(pods, selector):\n    # TODO: kumpulkan nama Pod yang cocok\n    return []\n"
+          },
+          "solution": {
+            "code": "def cocok(selector, labels):\n    for kunci, nilai in selector.items():\n        if labels.get(kunci) != nilai:\n            return False\n    return True\n\n\ndef pilih_pod(pods, selector):\n    return [p[\"nama\"] for p in pods if cocok(selector, p[\"labels\"])]\n"
+          },
+          "setup": "PODS = [\n    {\"nama\": \"web-1\", \"labels\": {\"app\": \"web\", \"tier\": \"frontend\"}},\n    {\"nama\": \"web-2\", \"labels\": {\"app\": \"web\", \"tier\": \"frontend\", \"versi\": \"v2\"}},\n    {\"nama\": \"api-1\", \"labels\": {\"app\": \"api\", \"tier\": \"backend\"}},\n    {\"nama\": \"db-1\", \"labels\": {\"app\": \"db\"}},\n]\n",
+          "tests": [
+            {
+              "name": "Label tambahan di objek tidak menghalangi kecocokan",
+              "check": "cocok({\"app\": \"web\"}, {\"app\": \"web\", \"tier\": \"frontend\"}) is True"
+            },
+            {
+              "name": "Pasangan selector yang tidak ada di label membuat tidak cocok",
+              "check": "cocok({\"app\": \"web\", \"tier\": \"frontend\"}, {\"app\": \"web\"}) is False"
+            },
+            {
+              "name": "Nilai yang berbeda tidak cocok",
+              "check": "cocok({\"app\": \"web\"}, {\"app\": \"api\"}) is False"
+            },
+            {
+              "name": "Selector kosong cocok dengan semua",
+              "check": "cocok({}, {\"app\": \"db\"}) is True"
+            },
+            {
+              "name": "pilih_pod memilih Pod berlabel app=web",
+              "check": "pilih_pod(PODS, {\"app\": \"web\"}) == [\"web-1\", \"web-2\"]"
+            },
+            {
+              "name": "pilih_pod dengan dua pasangan dan tanpa hasil",
+              "check": "pilih_pod(PODS, {\"app\": \"web\", \"tier\": \"frontend\"}) == [\"web-1\", \"web-2\"] and pilih_pod(PODS, {\"app\": \"cache\"}) == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "deployment-dan-rolling-update",
+      "title": "Deployment dan Rolling Update",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa Deployment dipakai dan bagaimana hubungannya dengan ReplicaSet dan Pod.\n- Menulis manifest Deployment dengan `replicas`, `selector`, dan `template`.\n- Menghitung batas Pod saat rolling update dari `maxSurge` dan `maxUnavailable`.\n- Menjalankan rollout, memantau, dan mengembalikan versi dengan `kubectl rollout`.\n\n## Dari Pod ke Deployment\n\nDi bab sebelumnya kamu melihat bahwa Pod yang berdiri sendiri tidak dijaga siapa pun. **Deployment** menyelesaikan itu. Kamu memberi tahu Deployment berapa salinan yang diinginkan dan cetakan Pod-nya, lalu ia menjaga agar jumlah itu selalu terpenuhi.\n\nDeployment tidak mengurus Pod secara langsung. Di antaranya ada **ReplicaSet**:\n\n- **Deployment** mengatur versi dan cara pembaruan.\n- **ReplicaSet** menjaga jumlah Pod untuk satu versi tertentu.\n- **Pod** menjalankan aplikasi.\n\nKamu hampir tidak pernah membuat ReplicaSet sendiri. Setiap kali template Pod di Deployment berubah, misalnya karena image diganti, Deployment membuat ReplicaSet baru dan memindahkan Pod secara bertahap dari ReplicaSet lama. ReplicaSet lama tidak dihapus; ia disisakan dengan nol Pod supaya jalan mundur selalu tersedia.\n\n![Deployment menjaga replika lewat ReplicaSet](slide:11)\n\n## Manifest Deployment\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: web\n  template:\n    metadata:\n      labels:\n        app: web\n    spec:\n      containers:\n      - name: web\n        image: nginx:1.27\n```\n\nTiga kunci di bawah `spec` perlu kamu pahami:\n\n- **replicas** adalah jumlah Pod yang diinginkan.\n- **selector** menyebut Pod mana yang diurus Deployment ini, dengan aturan pencocokan label yang sama seperti di bab 3.\n- **template** adalah cetakan Pod: metadata berisi label dan spec berisi container.\n\nAda satu jebakan klasik: label di `template.metadata.labels` harus cocok dengan `selector.matchLabels`. Bila tidak, Kubernetes menolak manifest itu karena Deployment tidak akan mengenali Pod buatannya sendiri.\n\nUntuk mengubah jumlah salinan, ubah `replicas` lalu terapkan ulang, atau pakai jalan pintas:\n\n```bash\nkubectl scale deployment web --replicas=5\n```\n\n## Rolling update\n\nBagian paling berguna dari Deployment adalah memperbarui aplikasi tanpa henti layanan. Strategi bawaannya, **RollingUpdate**, mengganti Pod lama dengan Pod baru sedikit demi sedikit. Dua pengaturan menentukan kecepatan dan keamanannya:\n\n```yaml\nstrategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 1\n    maxUnavailable: 0\n```\n\n- **maxSurge** adalah berapa Pod *ekstra* yang boleh dibuat di atas `replicas` selama pembaruan.\n- **maxUnavailable** adalah berapa Pod yang boleh *tidak siap* selama pembaruan.\n\nKeduanya bisa berupa angka atau persen. Dari sana kamu bisa menghitung dua batas:\n\n- Jumlah Pod maksimum yang ada bersamaan = `replicas + maxSurge`.\n- Jumlah Pod minimum yang harus siap = `replicas - maxUnavailable`.\n\nContoh dengan `replicas: 4`, `maxSurge: 1`, dan `maxUnavailable: 1`: paling banyak ada 5 Pod sekaligus, dan paling sedikit 3 Pod harus siap melayani. Kubernetes membuat satu Pod baru, menunggu ia siap, mematikan satu Pod lama, dan mengulang sampai semua diganti.\n\nPilih angkanya sesuai kebutuhan. `maxUnavailable: 0` dengan `maxSurge: 1` paling aman karena kapasitas tidak pernah turun, tetapi butuh ruang ekstra di cluster dan lebih lambat. Nilai persen dibulatkan: `maxSurge` ke atas dan `maxUnavailable` ke bawah, agar pembaruan tetap bisa maju dan tetap aman.\n\n## Memicu dan memantau pembaruan\n\nPembaruan dipicu setiap kali isi `template` berubah. Cara paling umum adalah mengganti image:\n\n```bash\nkubectl set image deployment/web web=nginx:1.28\nkubectl rollout status deployment/web\n```\n\nPerintah kedua menunggu sampai pembaruan selesai atau gagal, sehingga cocok dipakai di pipeline CI/CD. Kalau cara bekerjamu berbasis berkas, ubah image di manifest lalu jalankan `kubectl apply` lagi; hasilnya sama.\n\nSebuah Pod baru dihitung siap hanya setelah lolos *readiness probe*. Itu sebabnya probe, yang kita bahas di bab 7, sangat menentukan keamanan rolling update. Tanpa probe, Kubernetes menganggap Pod siap begitu container-nya mulai, walau aplikasi di dalamnya belum bisa melayani.\n\n## Rollback\n\nVersi baru kadang rusak. Karena ReplicaSet lama masih tersimpan, kembali ke versi sebelumnya cukup satu perintah:\n\n```bash\nkubectl rollout history deployment/web\nkubectl rollout undo deployment/web\nkubectl rollout undo deployment/web --to-revision=2\n```\n\n`history` menampilkan daftar revisi, `undo` kembali ke revisi sebelumnya, dan `--to-revision` memilih revisi tertentu. Secara bawaan Kubernetes menyimpan sepuluh revisi terakhir; angkanya diatur lewat `revisionHistoryLimit`.\n\nPerlu diingat: rollback hanya mengembalikan **template Pod**, yaitu image, variabel lingkungan, dan sejenisnya. Jumlah `replicas` tidak ikut kembali, dan data di basis data juga tidak. Perubahan skema basis data yang tidak bisa dibalik tetap harus kamu tangani sendiri.\n\n## Contoh kasus: pembaruan yang aman\n\nSebuah toko online punya Deployment keranjang dengan `replicas: 6`. Tim ingin merilis versi baru tanpa satu pun pelanggan melihat error. Pilihannya `maxSurge: 2` dan `maxUnavailable: 0`.\n\nDengan pengaturan itu, batas atasnya `6 + 2 = 8` Pod dan batas bawah Pod yang siap adalah `6 - 0 = 6`. Kubernetes membuat dua Pod baru, menunggu keduanya lolos readiness probe, baru mematikan dua Pod lama, lalu mengulang. Kapasitas tidak pernah turun di bawah enam, jadi pelanggan tidak merasakan apa pun.\n\nBandingkan dengan `maxSurge: 0` dan `maxUnavailable: 2`. Batas atasnya tetap 6 Pod, dan minimum yang siap menjadi 4. Pembaruan berjalan tanpa butuh kapasitas ekstra di cluster, tetapi selama proses kapasitas turun sepertiga. Pilihan ini cocok bila sumber daya cluster ketat dan layanan sanggup menahan penurunan sementara.\n\nPelajarannya: tidak ada nilai yang selalu benar. Pilih berdasarkan seberapa penting layanan itu dan seberapa longgar cluster-mu.\n\nSatu hal lagi yang layak dicatat: sebelum merilis, jalankan `kubectl rollout status` dan perhatikan hasilnya, jangan hanya berharap berhasil. Jika Pod baru tidak pernah lolos readiness probe, pembaruan akan macet di tengah jalan dengan sebagian Pod lama masih melayani. Itu sebenarnya perilaku yang baik, sebab pelanggan tetap terlayani, dan kamu bisa mengembalikannya dengan `rollout undo` setelah menemukan masalahnya.\n\n## Rangkuman\n\n- Deployment menjaga jumlah Pod yang diinginkan dan mengatur pembaruan lewat ReplicaSet.\n- Setiap perubahan template membuat ReplicaSet baru; ReplicaSet lama disimpan agar rollback mudah.\n- Label di `template` harus cocok dengan `selector.matchLabels`.\n- `maxSurge` membatasi Pod ekstra dan `maxUnavailable` membatasi Pod yang boleh tidak siap; batasnya adalah `replicas + maxSurge` dan `replicas - maxUnavailable`.\n- `kubectl rollout status`, `history`, dan `undo` memantau dan membatalkan pembaruan.\n- Rollback hanya mengembalikan template Pod, bukan jumlah replika maupun data.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa hubungan Deployment, ReplicaSet, dan Pod?",
+          "code": "",
+          "options": [
+            "Pod membuat ReplicaSet, dan ReplicaSet membuat Deployment",
+            "Deployment mengatur ReplicaSet, dan ReplicaSet menjaga jumlah Pod",
+            "ReplicaSet mengatur Deployment, dan Deployment menjaga Pod",
+            "Ketiganya objek terpisah yang tidak saling berhubungan sama sekali"
+          ],
+          "answer": 1,
+          "explanation": "Deployment mengelola ReplicaSet per versi, dan ReplicaSet mengelola Pod."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dengan replicas 5, maxSurge 2, dan maxUnavailable 1, berapa Pod paling banyak yang boleh ada bersamaan?",
+          "code": "",
+          "options": [
+            "6 Pod, yaitu 5 ditambah 1",
+            "5 Pod, yaitu sama dengan jumlah replicas saja",
+            "7 Pod, yaitu 5 ditambah 2",
+            "8 Pod, yaitu 5 ditambah 2 ditambah 1"
+          ],
+          "answer": 2,
+          "explanation": "Batas atas adalah replicas ditambah maxSurge."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah mana yang mengembalikan Deployment ke revisi sebelumnya?",
+          "code": "",
+          "options": [
+            "kubectl rollout undo deployment/web",
+            "kubectl rollout status deployment/web",
+            "kubectl scale deployment/web --replicas=1",
+            "kubectl delete deployment/web"
+          ],
+          "answer": 0,
+          "explanation": "rollout undo kembali ke revisi sebelumnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Label di template Pod harus cocok dengan selector.matchLabels pada Deployment.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa kecocokan itu Deployment tidak mengenali Pod buatannya sendiri."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Batas Pod saat rolling update",
+          "prompt": "Lengkapi `batas_rolling(replicas, max_surge, max_unavailable)` yang mengembalikan pasangan `(maks_pod, min_siap)`:\n\n- `maks_pod = replicas + surge`\n- `min_siap = replicas - unavailable`\n\nNilai `max_surge` dan `max_unavailable` boleh berupa angka bulat atau teks persen seperti `\"25%\"`. Untuk persen, **surge dibulatkan ke atas** dan **unavailable dibulatkan ke bawah**.\n\nContoh: `batas_rolling(4, 1, 1)` menghasilkan `(5, 3)`, dan `batas_rolling(10, \"25%\", \"25%\")` menghasilkan `(13, 8)`.",
+          "starter": {
+            "code": "def batas_rolling(replicas, max_surge, max_unavailable):\n    # TODO: ubah persen menjadi angka (surge ke atas, unavailable ke bawah)\n    return (0, 0)\n"
+          },
+          "solution": {
+            "code": "def _angka(nilai, replicas, ke_atas):\n    if isinstance(nilai, str) and nilai.endswith(\"%\"):\n        persen = int(nilai[:-1])\n        total = replicas * persen\n        if ke_atas:\n            return -(-total // 100)\n        return total // 100\n    return int(nilai)\n\n\ndef batas_rolling(replicas, max_surge, max_unavailable):\n    surge = _angka(max_surge, replicas, True)\n    tidak_siap = _angka(max_unavailable, replicas, False)\n    return (replicas + surge, replicas - tidak_siap)\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Angka bulat: 4 replika, surge 1, unavailable 1",
+              "check": "batas_rolling(4, 1, 1) == (5, 3)"
+            },
+            {
+              "name": "Surge 2 dan unavailable 0 menjaga kapasitas penuh",
+              "check": "batas_rolling(6, 2, 0) == (8, 6)"
+            },
+            {
+              "name": "Persen 25% dari 10: surge 3, unavailable 2",
+              "check": "batas_rolling(10, \"25%\", \"25%\") == (13, 8)"
+            },
+            {
+              "name": "Persen kecil: surge ke atas, unavailable ke bawah",
+              "check": "batas_rolling(3, \"25%\", \"25%\") == (4, 3)"
+            },
+            {
+              "name": "Campuran angka dan persen",
+              "check": "batas_rolling(8, 2, \"50%\") == (10, 4)"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Memilih revisi untuk rollback",
+          "prompt": "Lengkapi `revisi_rollback(riwayat, ke=None)` yang mengembalikan **image** yang aktif setelah rollback. `riwayat` adalah daftar revisi berurutan, misalnya `[{\"revisi\": 1, \"image\": \"web:1.0\"}, ...]`.\n\n- Tanpa `ke`, kembali ke revisi **sebelum yang terakhir**.\n- Dengan `ke`, kembali ke revisi bernomor itu.\n- Bila revisi tidak ada, atau tidak ada revisi sebelumnya, lempar `ValueError`.\n\nContoh: dengan tiga revisi, `revisi_rollback(R)` mengembalikan image revisi 2.",
+          "starter": {
+            "code": "def revisi_rollback(riwayat, ke=None):\n    # TODO: pilih revisi sebelumnya, atau revisi nomor `ke`\n    return None\n"
+          },
+          "solution": {
+            "code": "def revisi_rollback(riwayat, ke=None):\n    if ke is None:\n        if len(riwayat) < 2:\n            raise ValueError(\"tidak ada revisi sebelumnya\")\n        return riwayat[-2][\"image\"]\n    for r in riwayat:\n        if r[\"revisi\"] == ke:\n            return r[\"image\"]\n    raise ValueError(\"revisi tidak ditemukan\")\n"
+          },
+          "setup": "R = [\n    {\"revisi\": 1, \"image\": \"web:1.0\"},\n    {\"revisi\": 2, \"image\": \"web:1.1\"},\n    {\"revisi\": 3, \"image\": \"web:1.2\"},\n]\n\n\ndef melempar(fungsi, *args):\n    try:\n        fungsi(*args)\n    except ValueError:\n        return True\n    except Exception:\n        return False\n    return False\n",
+          "tests": [
+            {
+              "name": "Tanpa argumen kembali ke revisi sebelumnya",
+              "check": "revisi_rollback(R) == \"web:1.1\""
+            },
+            {
+              "name": "Dengan nomor revisi memilih revisi itu",
+              "check": "revisi_rollback(R, 1) == \"web:1.0\""
+            },
+            {
+              "name": "Revisi terakhir bisa dipilih lewat nomornya",
+              "check": "revisi_rollback(R, 3) == \"web:1.2\""
+            },
+            {
+              "name": "Revisi yang tidak ada melempar ValueError",
+              "check": "melempar(revisi_rollback, R, 9)"
+            },
+            {
+              "name": "Satu revisi saja berarti tidak ada tujuan rollback",
+              "check": "melempar(revisi_rollback, R[:1])"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "service-dan-ingress",
+      "title": "Service dan Ingress",
+      "est_minutes": 30,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa Pod butuh Service sebagai alamat yang stabil.\n- Membedakan Service ClusterIP, NodePort, dan LoadBalancer.\n- Menulis manifest Service dengan `selector`, `port`, dan `targetPort`.\n- Menjelaskan peran Ingress dan menentukan aturan mana yang menangani sebuah permintaan.\n\n## Masalah alamat yang berubah\n\nSetiap Pod punya alamat IP sendiri di dalam cluster. Masalahnya, Pod bersifat sementara: saat sebuah Pod diganti, Pod baru mendapat IP baru. Kalau layanan keranjang menyimpan IP sebuah Pod katalog, alamat itu basi begitu Pod katalog dibuat ulang. Dengan tiga atau sepuluh replika, mencatat semua IP secara manual jelas tidak masuk akal.\n\n**Service** menyelesaikan masalah ini. Ia adalah objek yang memberi nama DNS dan alamat IP *virtual* yang tetap untuk sekelompok Pod. Klien cukup memanggil nama Service, misalnya `http://katalog`, dan Kubernetes meneruskan permintaan ke salah satu Pod yang sehat, sehingga bebannya terbagi rata.\n\n![Service memberi alamat tetap untuk sekelompok Pod](slide:14)\n\n## Cara Service memilih Pod\n\nService tidak dikaitkan ke Pod lewat nama, melainkan lewat **label selector**, aturan yang sama dengan yang kamu pakai di bab 3:\n\n```yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: web\nspec:\n  selector:\n    app: web\n  ports:\n  - port: 80\n    targetPort: 8080\n```\n\nArtinya: semua Pod yang berlabel `app: web` menjadi anggota Service ini. Kubernetes terus memperbarui daftar anggota, yang disebut *endpoints*, saat Pod datang dan pergi. Pod yang belum lolos *readiness probe* otomatis dikeluarkan dari daftar, sehingga trafik tidak dikirim ke Pod yang belum siap.\n\nDua nomor port sering membingungkan, jadi bedakan baik-baik:\n\n- **port** adalah port yang dibuka *Service*, tempat klien menghubungi.\n- **targetPort** adalah port *container* di Pod, tujuan akhir trafik.\n\nPada contoh di atas, klien memanggil `web:80`, lalu trafik diteruskan ke port 8080 di salah satu Pod. Kalau `targetPort` dihilangkan, nilainya sama dengan `port`.\n\nBila selector tidak cocok dengan label Pod mana pun, Service tetap dibuat tetapi tidak punya endpoint, dan permintaan akan gagal. Itu salah satu penyebab paling sering \"Service tidak jalan\"; periksa dengan `kubectl get endpoints web`.\n\n## Jenis-jenis Service\n\nKolom `type` menentukan dari mana Service bisa dijangkau.\n\n**ClusterIP** adalah jenis bawaan. Service hanya bisa dijangkau dari dalam cluster. Cocok untuk komunikasi antar layanan, misalnya aplikasi ke basis data.\n\n**NodePort** membuka satu port yang sama, di rentang 30000 sampai 32767, pada setiap node. Siapa pun yang bisa menjangkau IP node dapat mengakses Service lewat port itu. Mudah untuk percobaan, tetapi jarang dipakai langsung di produksi.\n\n**LoadBalancer** meminta penyedia cloud membuat load balancer eksternal dengan alamat IP publik, lalu mengarahkannya ke Service. Ini cara paling langsung untuk membuka satu layanan ke internet di cloud.\n\nPerhatikan bahwa ketiganya bertingkat: LoadBalancer pada dasarnya NodePort ditambah load balancer cloud, dan NodePort pada dasarnya ClusterIP ditambah port di node. Membuat satu LoadBalancer per layanan cepat menjadi mahal, karena penyedia cloud menagih tiap load balancer. Di situlah Ingress berguna.\n\n## Ingress: satu pintu untuk banyak layanan\n\nService bekerja di tingkat TCP. Untuk lalu lintas web, kamu biasanya ingin aturan yang lebih kaya: \"permintaan ke `toko.example.com/api` ke layanan API, ke `toko.example.com/` ke layanan web, dan semuanya lewat HTTPS\". **Ingress** adalah objek yang menyatakan aturan routing HTTP seperti itu.\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: toko\nspec:\n  rules:\n  - host: toko.example.com\n    http:\n      paths:\n      - path: /api\n        pathType: Prefix\n        backend:\n          service:\n            name: api\n            port:\n              number: 80\n      - path: /\n        pathType: Prefix\n        backend:\n          service:\n            name: web\n            port:\n              number: 80\n```\n\nIngress hanyalah aturan di atas kertas. Agar berfungsi, cluster butuh **ingress controller**, yaitu program yang membaca aturan itu lalu menjalankannya, misalnya NGINX Ingress Controller atau Traefik. Controller biasanya dibuka ke luar lewat satu Service bertipe LoadBalancer, jadi satu load balancer cukup untuk banyak layanan. Penanganan sertifikat TLS juga bisa dipusatkan di satu tempat.\n\nSaat beberapa aturan bisa cocok dengan satu permintaan, yang dipilih adalah path dengan **prefix paling panjang**. Pada contoh di atas, permintaan ke `/api/produk` cocok dengan `/api` maupun `/`, tetapi `/api` lebih panjang sehingga menang. Permintaan ke `/kontak` hanya cocok dengan `/`. Karena itu urutan penulisan aturan tidak menentukan hasil; panjang prefix yang menentukan.\n\n## Menelusuri Service yang tidak berfungsi\n\nKetika sebuah layanan tidak bisa dijangkau, periksa dalam urutan yang sama setiap kali.\n\n1. **Apakah Pod-nya siap?** `kubectl get pods -l app=web` harus menunjukkan `1/1 Running`. Pod yang tidak siap tidak akan menerima trafik.\n2. **Apakah Service punya endpoint?** `kubectl get endpoints web` harus menampilkan alamat IP. Daftar kosong hampir selalu berarti selector tidak cocok dengan label Pod.\n3. **Apakah `targetPort` benar?** Port itu harus sama dengan port yang didengarkan aplikasi di dalam container.\n4. **Apakah bisa dijangkau dari dalam cluster?** Jalankan Pod sementara dan panggil Service-nya dengan nama: `kubectl run uji --rm -it --image=busybox -- wget -qO- http://web`.\n5. **Baru terakhir, periksa Ingress** dan ingress controller-nya.\n\nMengikuti urutan dari dalam ke luar mempersempit masalah dengan cepat. Sebagian besar kasus \"Service tidak jalan\" ternyata selector yang salah ketik atau `targetPort` yang keliru.\n\nSebagai tambahan, di dalam cluster setiap Service otomatis punya nama DNS. Dari namespace yang sama kamu cukup memanggil `web`, dari namespace lain `web.produksi`, dan nama lengkapnya `web.produksi.svc.cluster.local`. Karena itu konfigurasi aplikasi cukup menyimpan nama Service, bukan alamat IP, dan tetap benar walau Pod di belakangnya berganti berkali-kali.\n\n## Rangkuman\n\n- Pod bersifat sementara dan IP-nya berubah, sehingga klien memakai Service sebagai alamat yang stabil.\n- Service memilih anggotanya lewat label selector, dan hanya Pod yang siap yang masuk daftar endpoint.\n- `port` adalah port Service, sedangkan `targetPort` adalah port container.\n- ClusterIP hanya untuk dalam cluster, NodePort membuka port di tiap node, dan LoadBalancer meminta load balancer dari cloud.\n- Ingress menyatakan aturan routing HTTP berdasarkan host dan path, dan butuh ingress controller untuk dijalankan.\n- Bila beberapa path cocok, path dengan prefix terpanjang yang dipilih.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa Pod butuh Service di depannya?",
+          "code": "",
+          "options": [
+            "Pod tidak punya IP sehingga hanya bisa dihubungi lewat Service sama sekali",
+            "IP Pod berubah saat Pod diganti, sedangkan Service punya alamat tetap",
+            "Service membuat Pod berjalan lebih cepat daripada biasanya",
+            "Service menyimpan data Pod agar tidak hilang saat restart"
+          ],
+          "answer": 1,
+          "explanation": "Service memberi nama dan IP yang stabil untuk sekelompok Pod."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dimaksud targetPort pada Service?",
+          "code": "",
+          "options": [
+            "Port yang dibuka Service untuk klien di dalam cluster",
+            "Port acak yang dibuka di setiap node cluster",
+            "Port container di dalam Pod tempat trafik diteruskan",
+            "Port load balancer milik penyedia cloud eksternal"
+          ],
+          "answer": 2,
+          "explanation": "port adalah port Service, targetPort adalah port container."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Jenis Service mana yang hanya bisa dijangkau dari dalam cluster?",
+          "code": "",
+          "options": [
+            "ClusterIP",
+            "NodePort, yang membuka port di setiap node",
+            "LoadBalancer, yang meminta alamat publik dari cloud",
+            "Kombinasi NodePort dan LoadBalancer pada satu Service"
+          ],
+          "answer": 0,
+          "explanation": "ClusterIP adalah jenis bawaan dan bersifat internal."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Service tanpa Pod yang cocok dengan selector-nya tetap dibuat tetapi tidak punya endpoint.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Service dibuat, namun permintaan akan gagal karena tidak ada tujuan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Memilih aturan Ingress",
+          "prompt": "Lengkapi `rute_ingress(aturan, host, path)` yang mengembalikan nama Service tujuan, atau `None` bila tidak ada aturan yang cocok.\n\nSebuah aturan cocok bila `host`-nya sama **dan** path permintaan berada di bawah path aturan, yaitu sama persis atau dilanjutkan dengan `/`. Path `/` cocok dengan semuanya. Bila beberapa aturan cocok, pilih yang path-nya **paling panjang**.\n\nContoh: path `/api/produk` cocok dengan `/api` dan `/`, tetapi `/apix` **tidak** berada di bawah `/api`. Variabel `ATURAN` sudah ada di setup.",
+          "starter": {
+            "code": "def rute_ingress(aturan, host, path):\n    # TODO: filter host dan path, lalu ambil prefix terpanjang\n    return None\n"
+          },
+          "solution": {
+            "code": "def _di_bawah(path, awalan):\n    if awalan == \"/\":\n        return True\n    return path == awalan or path.startswith(awalan + \"/\")\n\n\ndef rute_ingress(aturan, host, path):\n    terbaik = None\n    for a in aturan:\n        if a[\"host\"] != host or not _di_bawah(path, a[\"path\"]):\n            continue\n        if terbaik is None or len(a[\"path\"]) > len(terbaik[\"path\"]):\n            terbaik = a\n    return terbaik[\"service\"] if terbaik else None\n"
+          },
+          "setup": "ATURAN = [\n    {\"host\": \"toko.example.com\", \"path\": \"/\", \"service\": \"web\"},\n    {\"host\": \"toko.example.com\", \"path\": \"/api\", \"service\": \"api\"},\n    {\"host\": \"toko.example.com\", \"path\": \"/api/admin\", \"service\": \"admin\"},\n    {\"host\": \"blog.example.com\", \"path\": \"/\", \"service\": \"blog\"},\n]\n",
+          "tests": [
+            {
+              "name": "Prefix /api menang atas / untuk /api/produk",
+              "check": "rute_ingress(ATURAN, \"toko.example.com\", \"/api/produk\") == \"api\""
+            },
+            {
+              "name": "Prefix yang lebih panjang menang",
+              "check": "rute_ingress(ATURAN, \"toko.example.com\", \"/api/admin/pengguna\") == \"admin\""
+            },
+            {
+              "name": "Path lain jatuh ke aturan /",
+              "check": "rute_ingress(ATURAN, \"toko.example.com\", \"/kontak\") == \"web\""
+            },
+            {
+              "name": "Host yang tidak dikenal tidak punya rute",
+              "check": "rute_ingress(ATURAN, \"lain.example.com\", \"/\") is None"
+            },
+            {
+              "name": "/apix bukan di bawah /api",
+              "check": "rute_ingress(ATURAN, \"toko.example.com\", \"/apix\") == \"web\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "configmap-secret-dan-volume",
+      "title": "ConfigMap, Secret, dan Volume",
+      "est_minutes": 30,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Memisahkan konfigurasi dari image memakai ConfigMap.\n- Menyimpan data sensitif dengan Secret dan memahami batas keamanannya.\n- Menjelaskan mengapa data di dalam container hilang dan bagaimana volume mengatasinya.\n- Menjelaskan hubungan PersistentVolume dan PersistentVolumeClaim.\n\n## Konfigurasi tidak ikut ke dalam image\n\nSalah satu prinsip aplikasi yang sehat adalah **satu image untuk semua lingkungan**. Image yang sama berjalan di pengembangan, staging, dan produksi; yang berbeda hanya konfigurasinya, seperti alamat basis data, tingkat log, atau fitur yang aktif. Bila konfigurasi ditanam di image, kamu harus membangun ulang image hanya untuk mengganti satu nilai.\n\nKubernetes menyediakan dua objek untuk memisahkannya: **ConfigMap** untuk konfigurasi biasa dan **Secret** untuk data sensitif.\n\n![ConfigMap memisahkan konfigurasi dari image](slide:17)\n\n## ConfigMap\n\nConfigMap menyimpan pasangan kunci-nilai:\n\n```yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app\ndata:\n  LOG_LEVEL: info\n  MODE: produksi\n```\n\nPod bisa memakainya dengan dua cara. Cara pertama menjadikannya **variabel lingkungan**:\n\n```yaml\ncontainers:\n- name: web\n  image: toko/web:1.4\n  envFrom:\n  - configMapRef:\n      name: app\n```\n\nCara kedua memasangnya sebagai **berkas** di dalam container lewat volume, cocok untuk berkas konfigurasi utuh seperti `nginx.conf`. Perbedaannya penting: berkas yang dipasang lewat volume diperbarui otomatis ketika ConfigMap berubah, sedangkan variabel lingkungan hanya dibaca saat container mulai. Untuk memakai nilai baru lewat variabel lingkungan, Pod harus dibuat ulang, misalnya dengan `kubectl rollout restart deployment/web`.\n\n## Secret\n\nSecret mirip ConfigMap, tetapi untuk data sensitif seperti kata sandi basis data, token API, dan kunci TLS. Nilainya ditulis dalam **base64**:\n\n```yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: basis-data\ntype: Opaque\ndata:\n  password: czNrcjN0IQ==\n```\n\nDi sini ada kesalahpahaman yang sangat umum, jadi perhatikan baik-baik: **base64 bukan enkripsi**. Itu hanya cara menulis data agar aman dibawa dalam YAML. Siapa pun yang bisa membaca Secret dapat memulihkan nilai aslinya dengan satu perintah, misalnya `echo czNrcjN0IQ== | base64 -d`.\n\nKeamanan Secret bergantung pada lapisan lain:\n\n- **RBAC** membatasi siapa yang boleh membaca Secret (bab 8).\n- **Enkripsi at-rest** di etcd, yang harus diaktifkan di cluster.\n- **Jangan memasukkan Secret ke Git** dalam bentuk polos. Gunakan alat seperti Sealed Secrets atau External Secrets bila manifest disimpan di repositori.\n\nCara memakainya di Pod sama dengan ConfigMap: lewat variabel lingkungan atau volume. Memasangnya sebagai berkas biasanya lebih aman daripada variabel lingkungan, karena variabel lingkungan mudah bocor lewat log atau pesan error.\n\n## Data di dalam container itu sementara\n\nSistem berkas container bersifat sementara. Saat container dibuat ulang, entah karena crash atau pembaruan, semua perubahan di dalamnya hilang. Untuk aplikasi tanpa keadaan seperti server web, itu tidak masalah. Untuk basis data atau unggahan pengguna, itu bencana.\n\nJawabannya adalah **volume**: direktori yang dipasang ke dalam container dan hidup di luarnya. Ada banyak jenis. `emptyDir` hidup selama Pod ada, berguna untuk berbagi berkas antar container dalam satu Pod. Untuk data yang harus bertahan lebih lama dari Pod, dipakai penyimpanan persisten.\n\n## PersistentVolume dan PersistentVolumeClaim\n\nKubernetes memisahkan dua pihak dengan dua objek.\n\n**PersistentVolume (PV)** adalah sepotong penyimpanan nyata yang tersedia di cluster, misalnya disk cloud atau direktori di NFS. Biasanya PV disediakan oleh administrator atau dibuat otomatis oleh penyedia cloud.\n\n**PersistentVolumeClaim (PVC)** adalah *permintaan* penyimpanan oleh aplikasi: \"saya butuh 10 GiB, bisa ditulis oleh satu node\".\n\n```yaml\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: data-db\nspec:\n  accessModes: [\"ReadWriteOnce\"]\n  storageClassName: standar\n  resources:\n    requests:\n      storage: 10Gi\n```\n\nPemisahan ini membuat pengembang cukup menyatakan kebutuhan tanpa tahu detail disknya. Kubernetes lalu **mengikat** PVC ke sebuah PV yang cocok. Sebuah PV cocok bila kapasitasnya paling sedikit sebesar permintaan, `storageClassName`-nya sama, dan mode akses yang diminta didukung. Kalau ada beberapa PV yang cocok, dipilih yang terkecil agar tidak boros. Jika tidak ada yang cocok, PVC tetap berstatus `Pending`.\n\nMode akses yang umum adalah `ReadWriteOnce` (dibaca dan ditulis oleh satu node), `ReadOnlyMany` (dibaca banyak node), dan `ReadWriteMany` (ditulis banyak node, hanya didukung sebagian penyimpanan). Pod lalu memasang PVC itu sebagai volume, dan data tetap ada walau Pod diganti.\n\nSatu peringatan: menjalankan basis data di Kubernetes butuh perhatian ekstra pada pencadangan dan replikasi. Untuk pemula, memakai basis data terkelola dari penyedia cloud sering lebih aman.\n\n## Memilih ConfigMap, Secret, atau volume\n\nPertanyaan yang sering muncul: data ini sebaiknya ditaruh di mana? Gunakan panduan singkat berikut.\n\n- **Nilai biasa yang boleh dilihat siapa saja**, seperti tingkat log, nama fitur, atau alamat layanan lain: ConfigMap.\n- **Nilai yang akan menimbulkan masalah bila bocor**, seperti kata sandi, token, dan kunci pribadi: Secret, dengan akses dibatasi RBAC dan enkripsi at-rest aktif.\n- **Berkas konfigurasi utuh** yang dibaca aplikasi dari disk: ConfigMap atau Secret yang dipasang sebagai volume.\n- **Data yang dihasilkan aplikasi dan harus tahan lama**, seperti isi basis data atau berkas unggahan: PersistentVolumeClaim.\n- **Berkas sementara yang dibagi antar container dalam satu Pod**: volume `emptyDir`.\n\nSatu kebiasaan baik: jangan menaruh nilai rahasia langsung di `env` pada manifest Deployment, sebab manifest itu biasanya masuk ke Git. Rujuk Secret dengan `secretKeyRef`, sehingga manifest hanya berisi *nama* Secret, bukan isinya.\n\nTerakhir, ingat bahwa menghapus sebuah PVC tidak selalu menghapus datanya. Kebijakan `reclaimPolicy` pada PV menentukan nasib data: `Delete` menghapus disk bersama klaimnya, sedangkan `Retain` menyimpannya untuk dipulihkan manual. Periksa kebijakan ini sebelum menghapus apa pun yang berisi data berharga, terutama di lingkungan produksi.\n\n## Rangkuman\n\n- Satu image dipakai untuk semua lingkungan; konfigurasi dipisah ke ConfigMap dan Secret.\n- ConfigMap bisa dipakai sebagai variabel lingkungan atau berkas; hanya berkas yang diperbarui otomatis.\n- Secret berisi data sensitif yang dikodekan base64, dan base64 bukan enkripsi.\n- Keamanan Secret bergantung pada RBAC, enkripsi at-rest, dan tidak menyimpan nilai polos di Git.\n- Data di dalam container hilang saat container dibuat ulang, sehingga data penting butuh volume persisten.\n- PV adalah penyimpanan yang tersedia, PVC adalah permintaannya, dan Kubernetes mengikat keduanya berdasarkan kapasitas, storage class, dan mode akses.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apakah base64 pada Secret melindungi isinya?",
+          "code": "",
+          "options": [
+            "Ya, base64 adalah enkripsi kuat yang tidak bisa dibalik",
+            "Ya, tetapi hanya bila Secret berada di namespace default",
+            "Tidak, kecuali ukuran Secret lebih dari satu megabyte",
+            "Tidak, siapa pun yang bisa membaca Secret dapat mendekodenya dengan mudah"
+          ],
+          "answer": 3,
+          "explanation": "base64 hanya pengodean, bukan enkripsi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana Pod memakai ConfigMap agar perubahannya ikut diperbarui sebagai berkas?",
+          "code": "",
+          "options": [
+            "Menjadikannya variabel lingkungan saat container mulai",
+            "Menyalinnya ke dalam image saat proses build berlangsung",
+            "Memasangnya sebagai volume di dalam container",
+            "Menuliskannya sebagai label pada Pod yang bersangkutan"
+          ],
+          "answer": 2,
+          "explanation": "Berkas dari volume diperbarui otomatis, variabel lingkungan tidak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa peran PersistentVolumeClaim?",
+          "code": "",
+          "options": [
+            "Permintaan penyimpanan oleh aplikasi yang akan diikat ke PV yang cocok",
+            "Penyimpanan nyata yang disediakan oleh administrator cluster",
+            "Salinan cadangan otomatis dari isi sebuah volume lama",
+            "Aturan yang mengizinkan Pod membaca Secret tertentu saja"
+          ],
+          "answer": 0,
+          "explanation": "PVC meminta, PV menyediakan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Data di dalam sistem berkas container tetap ada setelah container dibuat ulang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Sistem berkas container bersifat sementara; data penting butuh volume persisten."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Membuat dan membaca Secret",
+          "prompt": "Nilai di Secret ditulis dalam base64. Lengkapi dua fungsi:\n\n- `buat_secret(data)` menerima kamus teks biasa dan mengembalikan kamus dengan **setiap nilai** dikodekan base64 (teks ASCII).\n- `baca_secret(secret)` melakukan sebaliknya: mendekode setiap nilai kembali menjadi teks.\n\nGunakan modul `base64`. Contoh: `buat_secret({\"password\": \"s3kr3t!\"})` menghasilkan `{\"password\": \"czNrcjN0IQ==\"}`.\n\nIngat: ini hanya pengodean, bukan enkripsi.",
+          "starter": {
+            "code": "import base64\n\n\ndef buat_secret(data):\n    # TODO: kodekan setiap nilai dengan base64\n    return {}\n\n\ndef baca_secret(secret):\n    # TODO: dekode setiap nilai kembali ke teks\n    return {}\n"
+          },
+          "solution": {
+            "code": "import base64\n\n\ndef buat_secret(data):\n    return {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}\n\n\ndef baca_secret(secret):\n    return {k: base64.b64decode(v).decode() for k, v in secret.items()}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Nilai dikodekan base64",
+              "check": "buat_secret({\"password\": \"s3kr3t!\"}) == {\"password\": \"czNrcjN0IQ==\"}"
+            },
+            {
+              "name": "Semua kunci ikut diproses",
+              "check": "buat_secret({\"a\": \"x\", \"b\": \"y\"}) == {\"a\": \"eA==\", \"b\": \"eQ==\"}"
+            },
+            {
+              "name": "baca_secret memulihkan nilai asli",
+              "check": "baca_secret({\"password\": \"czNrcjN0IQ==\"}) == {\"password\": \"s3kr3t!\"}"
+            },
+            {
+              "name": "Pulang-pergi menghasilkan data semula",
+              "check": "baca_secret(buat_secret({\"token\": \"abc123\"})) == {\"token\": \"abc123\"}"
+            },
+            {
+              "name": "Kamus kosong tetap kosong",
+              "check": "buat_secret({}) == {} and baca_secret({}) == {}"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Mengikat PVC ke PV",
+          "prompt": "Lengkapi `ikat_pvc(pvc, pvs)` yang mengembalikan `nama` PV tempat PVC akan diikat, atau `None` bila tidak ada yang cocok.\n\nSebuah PV cocok bila:\n\n- belum terikat (`\"terikat\"` bernilai `False`),\n- `storage_class` sama dengan PVC,\n- `kapasitas_gi` paling sedikit sebesar `minta_gi`,\n- mode akses PVC (`mode`) ada di daftar `mode` milik PV.\n\nBila beberapa PV cocok, pilih yang **kapasitasnya terkecil**. Variabel `PVS` sudah ada di setup.",
+          "starter": {
+            "code": "def ikat_pvc(pvc, pvs):\n    # TODO: saring PV yang cocok lalu pilih kapasitas terkecil\n    return None\n"
+          },
+          "solution": {
+            "code": "def ikat_pvc(pvc, pvs):\n    cocok = [\n        pv for pv in pvs\n        if not pv[\"terikat\"]\n        and pv[\"storage_class\"] == pvc[\"storage_class\"]\n        and pv[\"kapasitas_gi\"] >= pvc[\"minta_gi\"]\n        and pvc[\"mode\"] in pv[\"mode\"]\n    ]\n    if not cocok:\n        return None\n    return min(cocok, key=lambda pv: pv[\"kapasitas_gi\"])[\"nama\"]\n"
+          },
+          "setup": "PVS = [\n    {\"nama\": \"pv-5\", \"storage_class\": \"standar\", \"kapasitas_gi\": 5, \"mode\": [\"ReadWriteOnce\"], \"terikat\": True},\n    {\"nama\": \"pv-20\", \"storage_class\": \"standar\", \"kapasitas_gi\": 20, \"mode\": [\"ReadWriteOnce\"], \"terikat\": False},\n    {\"nama\": \"pv-100\", \"storage_class\": \"standar\", \"kapasitas_gi\": 100, \"mode\": [\"ReadWriteOnce\"], \"terikat\": False},\n    {\"nama\": \"pv-nfs\", \"storage_class\": \"standar\", \"kapasitas_gi\": 50, \"mode\": [\"ReadWriteOnce\", \"ReadWriteMany\"], \"terikat\": False},\n    {\"nama\": \"pv-ssd\", \"storage_class\": \"cepat\", \"kapasitas_gi\": 30, \"mode\": [\"ReadWriteOnce\"], \"terikat\": False},\n]\n",
+          "tests": [
+            {
+              "name": "Memilih PV terkecil yang cukup",
+              "check": "ikat_pvc({\"storage_class\": \"standar\", \"minta_gi\": 10, \"mode\": \"ReadWriteOnce\"}, PVS) == \"pv-20\""
+            },
+            {
+              "name": "PV yang sudah terikat dilewati",
+              "check": "ikat_pvc({\"storage_class\": \"standar\", \"minta_gi\": 5, \"mode\": \"ReadWriteOnce\"}, PVS) == \"pv-20\""
+            },
+            {
+              "name": "Storage class harus sama",
+              "check": "ikat_pvc({\"storage_class\": \"cepat\", \"minta_gi\": 10, \"mode\": \"ReadWriteOnce\"}, PVS) == \"pv-ssd\""
+            },
+            {
+              "name": "Mode akses harus didukung PV",
+              "check": "ikat_pvc({\"storage_class\": \"standar\", \"minta_gi\": 10, \"mode\": \"ReadWriteMany\"}, PVS) == \"pv-nfs\""
+            },
+            {
+              "name": "Permintaan terlalu besar tidak mendapat PV",
+              "check": "ikat_pvc({\"storage_class\": \"standar\", \"minta_gi\": 500, \"mode\": \"ReadWriteOnce\"}, PVS) is None"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "resource-dan-probe",
+      "title": "Resource, QoS, dan Probe",
+      "est_minutes": 30,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menulis `requests` dan `limits` untuk CPU dan memori, dan menjelaskan perbedaannya.\n- Menjelaskan bagaimana scheduler memakai request untuk memilih node.\n- Menentukan kelas QoS sebuah Pod: Guaranteed, Burstable, atau BestEffort.\n- Memilih antara liveness, readiness, dan startup probe untuk situasi tertentu.\n\n## Request dan limit\n\nNode punya sumber daya terbatas, dan banyak Pod berbagi node yang sama. Tanpa aturan, satu Pod yang rakus bisa menghabiskan CPU atau memori dan menjatuhkan tetangganya. Kubernetes memberi dua pengaturan untuk tiap container:\n\n```yaml\nresources:\n  requests:\n    cpu: 250m\n    memory: 128Mi\n  limits:\n    cpu: 500m\n    memory: 256Mi\n```\n\n- **requests** adalah jumlah yang *dijamin* untuk container, dan angka inilah yang dipakai scheduler saat memilih node.\n- **limits** adalah batas atas yang *boleh* dipakai.\n\nSatuannya perlu dihafal. CPU diukur dalam *milicore*: `1000m` sama dengan satu inti penuh, jadi `250m` adalah seperempat inti. Memori diukur dalam byte dengan akhiran seperti `Mi` (mebibyte) dan `Gi` (gibibyte).\n\nPerilaku saat melewati limit berbeda untuk dua jenis sumber daya. CPU bisa dibagi, sehingga container yang melewati limit hanya **diperlambat** (*throttled*). Memori tidak bisa diambil kembali dengan halus, sehingga container yang melewati limit memori **dimatikan** dengan status `OOMKilled`, lalu dihidupkan lagi.\n\n![Request menjamin, limit membatasi](slide:20)\n\n## Bagaimana scheduler memakai request\n\nSaat memilih node untuk Pod baru, scheduler bekerja dalam dua tahap: **menyaring** node yang tidak layak, lalu **memberi skor** pada sisanya.\n\nPada tahap penyaringan, sebuah node layak bila sisa kapasitasnya cukup untuk request Pod. Sisa kapasitas dihitung dari kapasitas node dikurangi total request Pod yang sudah ada di sana, *bukan* dari pemakaian aktual. Node dengan 4 inti CPU yang Pod-nya sudah meminta 3,5 inti hanya punya sisa 0,5 inti, walau sebenarnya hampir menganggur.\n\nKarena itu mengisi request secara jujur sangat penting. Request terlalu kecil membuat scheduler menumpuk terlalu banyak Pod di satu node sehingga bisa saling berebut. Request terlalu besar membuat node tampak penuh padahal kosong, dan kamu membayar kapasitas yang tak terpakai. Bila tidak ada node yang layak, Pod berstatus `Pending` dengan pesan `Insufficient cpu` atau `Insufficient memory` di bagian Events.\n\nTahap pemberian skor lalu memilih di antara node yang layak, misalnya yang paling lega agar beban tersebar. Kamu juga bisa membatasi penempatan lewat `nodeSelector`, yaitu Pod hanya boleh ke node dengan label tertentu, misalnya `disk: ssd`.\n\n## Kelas QoS\n\nBerdasarkan request dan limit yang kamu isi, Kubernetes memberi setiap Pod sebuah kelas **Quality of Service**. Kelas ini menentukan siapa yang diusir lebih dulu ketika node kehabisan memori.\n\n- **Guaranteed:** *setiap* container punya request dan limit untuk CPU dan memori, dan request sama dengan limit. Paling terlindungi.\n- **Burstable:** ada request atau limit, tetapi tidak memenuhi syarat Guaranteed. Misalnya request lebih kecil dari limit.\n- **BestEffort:** tidak ada request maupun limit sama sekali. Pertama diusir saat sumber daya menipis.\n\nAturan praktisnya: jangan membiarkan Pod produksi berstatus BestEffort. Untuk layanan penting, Guaranteed memberi perilaku paling bisa diprediksi. Untuk kebanyakan aplikasi, Burstable dengan request yang jujur sudah cukup.\n\n## Probe: apakah aplikasimu sehat\n\nKubernetes tahu apakah proses di dalam container masih berjalan, tetapi ia tidak tahu apakah aplikasinya benar-benar bekerja. Aplikasi bisa hidup namun macet, atau sedang memuat data dan belum siap melayani. **Probe** adalah pemeriksaan berkala yang kamu definisikan untuk menjawabnya. Ada tiga jenis dengan akibat yang berbeda:\n\n- **Liveness probe**: \"masih hidupkah?\" Bila gagal berulang kali, kubelet **me-restart** container.\n- **Readiness probe**: \"siapkah menerima trafik?\" Bila gagal, Pod **dicabut dari Service** tanpa di-restart, lalu dimasukkan lagi saat sudah pulih.\n- **Startup probe**: \"sudah selesai memulai?\" Selama belum lolos, probe lain ditunda. Berguna untuk aplikasi yang lambat start agar tidak di-restart sebelum waktunya.\n\n```yaml\nlivenessProbe:\n  httpGet:\n    path: /sehat\n    port: 8080\n  initialDelaySeconds: 10\n  periodSeconds: 10\nreadinessProbe:\n  httpGet:\n    path: /siap\n    port: 8080\n  periodSeconds: 5\n```\n\nProbe bisa berupa permintaan HTTP seperti di atas, pengecekan port TCP, atau perintah di dalam container. Dua kesalahan sering terjadi. Pertama, **liveness yang terlalu agresif**: bila endpoint-nya ikut memeriksa basis data, gangguan basis data membuat semua Pod di-restart serentak dan memperparah keadaan. Liveness sebaiknya hanya memeriksa proses itu sendiri. Kedua, **tidak ada readiness probe sama sekali**: Pod langsung menerima trafik walau belum siap, dan rolling update menjadi tidak aman karena Kubernetes menganggap Pod baru sudah siap begitu container-nya mulai.\n\n## Menentukan angka request dan limit\n\nPemula sering bingung mengisi angka. Pendekatan yang masuk akal adalah mengukur, bukan menebak.\n\nJalankan aplikasi dengan beban yang realistis, lalu lihat pemakaian sebenarnya dengan `kubectl top pods` (butuh metrics-server). Jadikan **request** sedikit di atas pemakaian rata-rata, supaya scheduler menjamin kapasitas yang memang dibutuhkan. Jadikan **limit** memori sedikit di atas puncak pemakaian, agar lonjakan wajar tidak membuat container di-OOMKilled.\n\nUntuk CPU, banyak tim memilih tidak memasang limit sama sekali atau memasangnya longgar. Throttling CPU bisa membuat latensi aplikasi melonjak walau node sebenarnya masih lega. Untuk memori, pasang limit, karena memori yang bocor tanpa batas dapat mengganggu seluruh node.\n\nMulailah dengan perkiraan kasar, amati beberapa hari, lalu sesuaikan. Request dan limit bukan angka yang ditetapkan sekali seumur hidup; ia berkembang bersama aplikasimu.\n\nSebagai pegangan tambahan, selalu periksa bagian Events dan kolom `Last State` pada `kubectl describe pod` saat sebuah container berulang kali restart. Dari sana kamu bisa membedakan restart akibat liveness probe yang gagal dari restart akibat OOMKilled, dan itu menentukan apakah yang diubah adalah probe atau limit memori.\n\n## Rangkuman\n\n- `requests` adalah jumlah yang dijamin dan dipakai scheduler; `limits` adalah batas atas pemakaian.\n- CPU diukur dalam milicore dan hanya diperlambat saat melewati limit; memori melewati limit berarti container di-OOMKilled.\n- Scheduler menyaring node berdasarkan sisa kapasitas hasil pengurangan request, bukan pemakaian aktual.\n- Kelas QoS ditentukan dari request dan limit: Guaranteed, Burstable, atau BestEffort, dan BestEffort diusir lebih dulu.\n- Liveness me-restart container, readiness mencabut Pod dari Service, dan startup probe memberi waktu bagi aplikasi yang lambat mulai.\n- Hindari liveness yang bergantung pada layanan lain, dan selalu pasang readiness probe.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dipakai scheduler untuk memutuskan apakah sebuah node cukup lega?",
+          "code": "",
+          "options": [
+            "Pemakaian CPU aktual sesaat pada node itu",
+            "Nilai limit terbesar di antara semua Pod di node",
+            "Jumlah container yang sedang restart di node itu",
+            "Jumlah request Pod yang sudah ada di node itu"
+          ],
+          "answer": 3,
+          "explanation": "Sisa kapasitas dihitung dari request, bukan pemakaian aktual."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah container melewati limit memorinya. Apa akibatnya?",
+          "code": "",
+          "options": [
+            "Container hanya diperlambat sampai memori kembali turun",
+            "Container dimatikan dengan status OOMKilled lalu dihidupkan lagi",
+            "Pod dipindahkan ke node lain tanpa restart sama sekali",
+            "Scheduler menaikkan limit memori secara otomatis untuknya"
+          ],
+          "answer": 1,
+          "explanation": "Memori tidak bisa diperlambat seperti CPU, sehingga container dimatikan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Readiness probe sebuah Pod gagal. Apa yang terjadi?",
+          "code": "",
+          "options": [
+            "Pod dicabut dari Service tanpa di-restart",
+            "Container langsung di-restart oleh kubelet",
+            "Pod dihapus lalu dibuat ulang di node lain",
+            "Deployment otomatis di-rollback ke revisi lama"
+          ],
+          "answer": 0,
+          "explanation": "Readiness mengatur trafik; restart adalah tugas liveness."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pod tanpa request dan limit termasuk kelas QoS Guaranteed.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa request dan limit, Pod berkelas BestEffort."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Memilih node untuk Pod",
+          "prompt": "Lengkapi `pilih_node(pod, nodes)` yang mengembalikan `nama` node untuk Pod, atau `None` bila Pod tidak muat di mana pun (`Pending`).\n\nSebuah node layak bila:\n\n- semua pasangan `selector` Pod ada di `labels` node,\n- sisa CPU (`cpu_m - cpu_dipakai_m`) paling sedikit sebesar `cpu_m` Pod,\n- sisa memori (`mem_mi - mem_dipakai_mi`) paling sedikit sebesar `mem_mi` Pod.\n\nDi antara node yang layak, pilih yang **sisa CPU-nya paling banyak**. Bila sama, pilih nama yang lebih dulu secara abjad. Ingat: sisa dihitung dari request, bukan pemakaian aktual.",
+          "starter": {
+            "code": "def pilih_node(pod, nodes):\n    # TODO: saring node layak, lalu pilih sisa CPU terbanyak\n    return None\n"
+          },
+          "solution": {
+            "code": "def pilih_node(pod, nodes):\n    layak = []\n    for n in nodes:\n        if any(n[\"labels\"].get(k) != v for k, v in pod[\"selector\"].items()):\n            continue\n        sisa_cpu = n[\"cpu_m\"] - n[\"cpu_dipakai_m\"]\n        sisa_mem = n[\"mem_mi\"] - n[\"mem_dipakai_mi\"]\n        if sisa_cpu >= pod[\"cpu_m\"] and sisa_mem >= pod[\"mem_mi\"]:\n            layak.append((-sisa_cpu, n[\"nama\"]))\n    return min(layak)[1] if layak else None\n"
+          },
+          "setup": "NODES = [\n    {\"nama\": \"node-a\", \"cpu_m\": 2000, \"mem_mi\": 4096, \"cpu_dipakai_m\": 0, \"mem_dipakai_mi\": 3000, \"labels\": {\"disk\": \"ssd\"}},\n    {\"nama\": \"node-b\", \"cpu_m\": 4000, \"mem_mi\": 8192, \"cpu_dipakai_m\": 1000, \"mem_dipakai_mi\": 1000, \"labels\": {\"disk\": \"hdd\"}},\n    {\"nama\": \"node-c\", \"cpu_m\": 1000, \"mem_mi\": 2048, \"cpu_dipakai_m\": 800, \"mem_dipakai_mi\": 0, \"labels\": {\"disk\": \"ssd\"}},\n]\n",
+          "tests": [
+            {
+              "name": "Memilih node dengan sisa CPU terbanyak",
+              "check": "pilih_node({\"cpu_m\": 500, \"mem_mi\": 256, \"selector\": {}}, NODES) == \"node-b\""
+            },
+            {
+              "name": "nodeSelector membatasi pilihan",
+              "check": "pilih_node({\"cpu_m\": 500, \"mem_mi\": 256, \"selector\": {\"disk\": \"ssd\"}}, NODES) == \"node-a\""
+            },
+            {
+              "name": "Sisa dihitung dari request yang sudah terpakai",
+              "check": "pilih_node({\"cpu_m\": 1500, \"mem_mi\": 256, \"selector\": {}}, NODES) == \"node-b\""
+            },
+            {
+              "name": "Memori yang kurang membuat node tidak layak",
+              "check": "pilih_node({\"cpu_m\": 100, \"mem_mi\": 3000, \"selector\": {\"disk\": \"ssd\"}}, NODES) is None"
+            },
+            {
+              "name": "Pod terlalu besar menjadi Pending",
+              "check": "pilih_node({\"cpu_m\": 9000, \"mem_mi\": 100, \"selector\": {}}, NODES) is None"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Menentukan kelas QoS",
+          "prompt": "Lengkapi `kelas_qos(containers)` yang menerima daftar container, masing-masing berupa `{\"requests\": {...}, \"limits\": {...}}` dengan kunci `cpu` dan `memory`, dan mengembalikan `\"Guaranteed\"`, `\"Burstable\"`, atau `\"BestEffort\"`.\n\n- **BestEffort:** semua container tidak punya request maupun limit.\n- **Guaranteed:** **setiap** container punya request dan limit untuk `cpu` dan `memory`, dan request sama dengan limit.\n- **Burstable:** selain itu.",
+          "starter": {
+            "code": "def kelas_qos(containers):\n    # TODO: BestEffort, Guaranteed, atau Burstable\n    return \"Burstable\"\n"
+          },
+          "solution": {
+            "code": "def _guaranteed(c):\n    for sumber in (\"cpu\", \"memory\"):\n        req = c[\"requests\"].get(sumber)\n        lim = c[\"limits\"].get(sumber)\n        if req is None or lim is None or req != lim:\n            return False\n    return True\n\n\ndef kelas_qos(containers):\n    kosong = all(not c[\"requests\"] and not c[\"limits\"] for c in containers)\n    if kosong:\n        return \"BestEffort\"\n    if all(_guaranteed(c) for c in containers):\n        return \"Guaranteed\"\n    return \"Burstable\"\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tanpa request dan limit adalah BestEffort",
+              "check": "kelas_qos([{\"requests\": {}, \"limits\": {}}]) == \"BestEffort\""
+            },
+            {
+              "name": "Request sama dengan limit adalah Guaranteed",
+              "check": "kelas_qos([{\"requests\": {\"cpu\": \"500m\", \"memory\": \"256Mi\"}, \"limits\": {\"cpu\": \"500m\", \"memory\": \"256Mi\"}}]) == \"Guaranteed\""
+            },
+            {
+              "name": "Request lebih kecil dari limit adalah Burstable",
+              "check": "kelas_qos([{\"requests\": {\"cpu\": \"250m\", \"memory\": \"128Mi\"}, \"limits\": {\"cpu\": \"500m\", \"memory\": \"256Mi\"}}]) == \"Burstable\""
+            },
+            {
+              "name": "Hanya request tanpa limit adalah Burstable",
+              "check": "kelas_qos([{\"requests\": {\"cpu\": \"100m\"}, \"limits\": {}}]) == \"Burstable\""
+            },
+            {
+              "name": "Satu container tidak lengkap menurunkan menjadi Burstable",
+              "check": "kelas_qos([{\"requests\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}, \"limits\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}}, {\"requests\": {}, \"limits\": {\"memory\": \"64Mi\"}}]) == \"Burstable\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "namespace-dan-rbac",
+      "title": "Namespace dan RBAC",
+      "est_minutes": 30,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Menjelaskan fungsi namespace dan kapan memakainya.\n- Membatasi pemakaian sumber daya sebuah namespace dengan ResourceQuota.\n- Menjelaskan hubungan Role, RoleBinding, ClusterRole, dan ClusterRoleBinding.\n- Menulis dan menafsirkan aturan RBAC dengan prinsip hak akses paling sedikit.\n\n## Namespace: sekat logis dalam satu cluster\n\nBayangkan satu cluster dipakai tiga tim sekaligus, masing-masing dengan lingkungan dev, staging, dan produksi. Tanpa pengelompokan, semua objek bercampur di satu daftar besar dan nama-nama saling bentrok. **Namespace** menyelesaikannya: ia membagi cluster menjadi sekat-sekat logis.\n\nAturan dasarnya:\n\n- Nama objek harus unik **di dalam satu namespace**, bukan di seluruh cluster. Dua namespace boleh sama-sama punya Deployment bernama `web`.\n- Sebuah Service dapat dipanggil dengan nama pendek dari namespace yang sama, atau dengan nama lengkap dari namespace lain: `katalog.produksi`.\n- Sebagian objek tidak berada di namespace mana pun karena berlaku untuk seluruh cluster, misalnya Node dan PersistentVolume.\n\nCluster baru sudah punya beberapa namespace bawaan, di antaranya `default`, `kube-system` untuk komponen Kubernetes sendiri, dan `kube-public`. Jangan menaruh aplikasi di `kube-system`.\n\n```bash\nkubectl create namespace staging\nkubectl get pods -n staging\nkubectl get pods --all-namespaces\n```\n\nTambahkan `-n nama` pada perintah untuk memilih namespace, atau jadikan satu namespace sebagai bawaan konteksmu dengan `kubectl config set-context --current --namespace=staging`. Satu kebiasaan baik: selalu cek namespace aktif sebelum menghapus sesuatu.\n\nPerlu diingat bahwa namespace adalah sekat **logis**, bukan keamanan penuh. Secara bawaan Pod dari namespace berbeda masih bisa saling memanggil lewat jaringan. Isolasi jaringan butuh objek tambahan bernama NetworkPolicy.\n\n## ResourceQuota\n\nSatu tim yang boros bisa menghabiskan kapasitas cluster. **ResourceQuota** membatasi total pemakaian per namespace:\n\n```yaml\napiVersion: v1\nkind: ResourceQuota\nmetadata:\n  name: batas-tim\n  namespace: staging\nspec:\n  hard:\n    pods: \"20\"\n    requests.cpu: \"4\"\n    requests.memory: 8Gi\n```\n\nDengan aturan ini, namespace `staging` tidak bisa memiliki lebih dari 20 Pod atau meminta lebih dari 4 inti CPU secara total. Pembuatan Pod yang melampaui batas ditolak. Itulah cara berbagi satu cluster dengan adil.\n\n![Namespace memisahkan tim dan lingkungan](slide:23)\n\n## RBAC: siapa boleh melakukan apa\n\nCluster menyimpan hal-hal sensitif, jadi tidak semua orang boleh melakukan segalanya. **RBAC** (*Role-Based Access Control*) mengatur izin lewat peran. Konsepnya terdiri dari dua pasang objek:\n\n- **Role** adalah daftar izin di satu namespace. **ClusterRole** serupa tetapi berlaku di seluruh cluster.\n- **RoleBinding** memberikan sebuah Role kepada pengguna, grup, atau ServiceAccount di satu namespace. **ClusterRoleBinding** melakukannya untuk seluruh cluster.\n\nSebuah Role tidak berguna sebelum diikat. Peran mendefinisikan *apa yang boleh*, sedangkan binding menentukan *siapa yang mendapatkannya*.\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  namespace: dev\n  name: pembaca-pod\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  namespace: dev\n  name: bina-pembaca\nsubjects:\n- kind: User\n  name: sinta\nroleRef:\n  kind: Role\n  name: pembaca-pod\n  apiGroup: rbac.authorization.k8s.io\n```\n\nSetiap aturan di `rules` punya tiga bagian: `apiGroups` (kelompok API; string kosong berarti API inti seperti Pod dan Service), `resources` (objek yang boleh disentuh), dan `verbs` (tindakan yang diizinkan). Verb yang umum adalah `get`, `list`, `watch`, `create`, `update`, `patch`, dan `delete`. Tanda bintang `*` berarti semuanya.\n\nPada contoh di atas, pengguna `sinta` boleh melihat dan mendaftar Pod di namespace `dev`, tetapi tidak boleh menghapusnya, tidak boleh melihat Secret, dan tidak boleh menyentuh namespace lain.\n\n## Prinsip hak akses paling sedikit\n\nRBAC bersifat **tambahan saja**: tidak ada aturan \"larang\"; segala sesuatu yang tidak diizinkan otomatis ditolak. Izin dari beberapa aturan digabung, dan sebuah permintaan lolos bila *ada satu aturan* yang mengizinkannya.\n\nKarena itu, rancanglah dengan prinsip **least privilege**: beri hanya yang dibutuhkan, pada cakupan sesempit mungkin.\n\n- Pilih Role di satu namespace daripada ClusterRole bila memungkinkan.\n- Hindari tanda bintang pada `verbs` dan `resources`.\n- Hati-hati dengan izin membaca Secret; siapa pun yang bisa membacanya bisa memulihkan isinya dengan base64.\n- Beri aplikasi `ServiceAccount` sendiri dengan izin minimal, jangan memakai akun bawaan dengan izin luas.\n\nCara cepat memeriksa izin adalah `kubectl auth can-i`:\n\n```bash\nkubectl auth can-i delete pods -n dev --as sinta\n```\n\nPerintah itu menjawab `yes` atau `no` tanpa mengubah apa pun, sehingga aman dipakai untuk memeriksa hasil rancangan RBAC-mu.\n\n## Contoh kasus: tiga tim, satu cluster\n\nSebuah perusahaan memiliki tim Pembayaran, Katalog, dan Data. Mereka berbagi satu cluster, dengan struktur berikut.\n\nSetiap tim mendapat namespace sendiri per lingkungan: `bayar-dev`, `bayar-prod`, `katalog-dev`, dan seterusnya. Tiap namespace diberi ResourceQuota agar satu tim tidak menghabiskan kapasitas bersama. Anggota tim mendapat Role yang memungkinkan mereka melihat dan memperbarui Deployment di namespace timnya sendiri, tetapi hanya engineer produksi yang bisa mengubah `bayar-prod`.\n\nAkun layanan untuk aplikasi pembayaran hanya boleh membaca satu Secret, yaitu kunci gateway pembayaran, dan tidak lebih. Jika kredensial akun itu bocor, kerusakannya terbatas pada hal tersebut.\n\nHasilnya: kesalahan satu tim tidak menjalar ke tim lain, dan hak akses mudah diaudit karena tiap izin punya alasan yang jelas. Itulah manfaat nyata dari menggabungkan namespace, quota, dan RBAC.\n\nPerhatikan juga bahwa izin RBAC diperiksa pada setiap permintaan ke API server, termasuk permintaan dari Pod. Bila sebuah aplikasi di dalam cluster perlu memanggil API Kubernetes, misalnya untuk membaca daftar Pod, berikan ia ServiceAccount dengan Role yang tepat. Jangan pernah menyalin kubeconfig milik administrator ke dalam container, karena siapa pun yang berhasil masuk ke container itu mewarisi seluruh hak akses administrator.\n\n## Rangkuman\n\n- Namespace membagi satu cluster menjadi sekat logis; nama objek hanya perlu unik di dalam satu namespace.\n- Namespace bukan isolasi keamanan penuh; isolasi jaringan butuh NetworkPolicy.\n- ResourceQuota membatasi total pemakaian sumber daya dan jumlah objek per namespace.\n- Role berisi izin, binding memberikannya kepada subjek, dan versi Cluster berlaku di seluruh cluster.\n- Aturan RBAC terdiri dari apiGroups, resources, dan verbs; semua yang tidak diizinkan ditolak, dan izin dari aturan berbeda digabung.\n- Terapkan least privilege: cakupan sempit, tanpa tanda bintang, dan akun layanan terpisah per aplikasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana aturan penamaan objek terkait namespace?",
+          "code": "",
+          "options": [
+            "Nama harus unik di seluruh cluster tanpa kecuali apa pun",
+            "Nama boleh sama di mana saja, termasuk dalam satu namespace",
+            "Nama harus diawali dengan nama namespace tempatnya berada",
+            "Nama harus unik di dalam satu namespace, bukan di seluruh cluster"
+          ],
+          "answer": 3,
+          "explanation": "Dua namespace boleh sama-sama punya Deployment bernama web."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi RoleBinding?",
+          "code": "",
+          "options": [
+            "Mendefinisikan daftar izin yang tersedia di satu namespace",
+            "Memberikan sebuah Role kepada pengguna, grup, atau ServiceAccount",
+            "Membatasi total CPU yang boleh dipakai satu namespace",
+            "Mengenkripsi Secret yang tersimpan di namespace itu"
+          ],
+          "answer": 1,
+          "explanation": "Role berisi izin; binding menentukan siapa yang mendapatkannya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prinsip least privilege berarti",
+          "code": "",
+          "options": [
+            "Memberi semua izin lebih dulu lalu mencabutnya satu per satu",
+            "Memberi izin administrator kepada setiap anggota tim",
+            "Memberi hanya izin yang dibutuhkan, pada cakupan sesempit mungkin",
+            "Memakai satu akun bersama untuk semua aplikasi di cluster"
+          ],
+          "answer": 2,
+          "explanation": "Batasi izin seperlunya agar kebocoran kredensial tidak berakibat besar."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "RBAC Kubernetes punya aturan larang yang bisa menolak izin dari aturan lain.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "RBAC bersifat tambahan saja; yang tidak diizinkan otomatis ditolak."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Memeriksa izin RBAC",
+          "prompt": "Lengkapi `boleh(bindings, user, verb, resource, ns)` yang mengembalikan `True` bila `user` boleh melakukan `verb` pada `resource` di namespace `ns`.\n\nSetiap binding berbentuk `{\"user\": ..., \"ns\": ..., \"rules\": [{\"resources\": [...], \"verbs\": [...]}]}`. Izin diberikan bila **ada satu** binding milik `user` yang berlaku di `ns` (namespace-nya sama, atau `\"*\"` untuk seluruh cluster) dan salah satu aturannya memuat `verb` serta `resource`. Tanda `\"*\"` pada `verbs` atau `resources` berarti semuanya. Selain itu, tolak.",
+          "starter": {
+            "code": "def boleh(bindings, user, verb, resource, ns):\n    # TODO: cari binding user di namespace ini yang mengizinkan\n    return False\n"
+          },
+          "solution": {
+            "code": "def boleh(bindings, user, verb, resource, ns):\n    for b in bindings:\n        if b[\"user\"] != user or b[\"ns\"] not in (ns, \"*\"):\n            continue\n        for aturan in b[\"rules\"]:\n            if verb in aturan[\"verbs\"] or \"*\" in aturan[\"verbs\"]:\n                if resource in aturan[\"resources\"] or \"*\" in aturan[\"resources\"]:\n                    return True\n    return False\n"
+          },
+          "setup": "BINDINGS = [\n    {\"user\": \"sinta\", \"ns\": \"dev\", \"rules\": [{\"resources\": [\"pods\"], \"verbs\": [\"get\", \"list\"]}]},\n    {\"user\": \"budi\", \"ns\": \"prod\", \"rules\": [{\"resources\": [\"pods\", \"deployments\"], \"verbs\": [\"get\", \"update\"]}]},\n    {\"user\": \"admin\", \"ns\": \"*\", \"rules\": [{\"resources\": [\"*\"], \"verbs\": [\"*\"]}]},\n]\n",
+          "tests": [
+            {
+              "name": "Izin yang tertulis diberikan",
+              "check": "boleh(BINDINGS, \"sinta\", \"get\", \"pods\", \"dev\") is True"
+            },
+            {
+              "name": "Verb yang tidak tertulis ditolak",
+              "check": "boleh(BINDINGS, \"sinta\", \"delete\", \"pods\", \"dev\") is False"
+            },
+            {
+              "name": "Namespace lain ditolak",
+              "check": "boleh(BINDINGS, \"sinta\", \"get\", \"pods\", \"prod\") is False"
+            },
+            {
+              "name": "Resource yang tidak tertulis ditolak",
+              "check": "boleh(BINDINGS, \"sinta\", \"get\", \"secrets\", \"dev\") is False"
+            },
+            {
+              "name": "Tanda bintang dan binding seluruh cluster berlaku",
+              "check": "boleh(BINDINGS, \"admin\", \"delete\", \"secrets\", \"prod\") is True"
+            },
+            {
+              "name": "Pengguna tanpa binding ditolak",
+              "check": "boleh(BINDINGS, \"tamu\", \"get\", \"pods\", \"dev\") is False"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "debugging-dan-praktik-terbaik",
+      "title": "Debugging dan Praktik Terbaik",
+      "est_minutes": 30,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Menjalankan alur debugging Pod yang berurutan dari status sampai log.\n- Menafsirkan status Pending, ImagePullBackOff, CrashLoopBackOff, dan OOMKilled.\n- Membaca bagian Events pada `kubectl describe` untuk menemukan penyebab.\n- Menerapkan praktik terbaik dan menyusun langkah belajar berikutnya.\n\n## Alur debugging yang berurutan\n\nSaat sesuatu tidak jalan di Kubernetes, godaan terbesar adalah langsung menebak dan mengubah banyak hal sekaligus. Cara yang lebih cepat adalah mengikuti urutan dari pemeriksaan paling murah ke paling mahal:\n\n1. **`kubectl get pods`** untuk melihat kolom `STATUS` dan `RESTARTS`. Dari sini kamu sudah tahu kategori masalahnya.\n2. **`kubectl describe pod nama`** untuk membaca bagian **Events** di bagian bawah. Di sana tertulis apa yang dicoba Kubernetes dan mengapa gagal.\n3. **`kubectl logs nama`** untuk melihat keluaran aplikasi. Tambahkan `--previous` untuk membaca log dari container sebelumnya yang sudah mati.\n4. **`kubectl exec -it nama -- sh`** untuk masuk dan memeriksa dari dalam: berkas, variabel lingkungan, atau koneksi jaringan.\n\nBanyak masalah selesai di langkah satu atau dua, tanpa perlu sampai ke log. Biasakan urutan ini sampai menjadi refleks.\n\n![Alur debugging dari status sampai exec](slide:26)\n\n## Pending: Pod belum mendapat tempat\n\nStatus `Pending` berarti Pod sudah dibuat tetapi belum berjalan. Penyebab paling umum ada di tahap penjadwalan. Jalankan `describe` dan baca Events; pesan yang sering muncul:\n\n- `Insufficient cpu` atau `Insufficient memory`: tidak ada node dengan sisa kapasitas yang cukup untuk request Pod. Kurangi request, tambah node, atau hapus beban lain.\n- `node(s) didn't match Pod's node selector`: `nodeSelector` meminta label yang tidak dimiliki node mana pun.\n- `persistentvolumeclaim ... not found` atau PVC yang `Pending`: penyimpanan yang diminta belum tersedia.\n\nPod `Pending` tidak punya log, karena container-nya belum pernah berjalan. Itu pertanda kuat bahwa masalahnya ada di penjadwalan atau penyimpanan, bukan di aplikasi.\n\n## ImagePullBackOff dan ErrImagePull\n\nStatus ini berarti kubelet gagal menarik image. `Back-off` artinya Kubernetes mencoba lagi dengan jeda yang makin panjang. Periksa tiga hal:\n\n- **Nama atau tag salah.** Salah ketik, atau tag yang tidak pernah dipublikasikan, misalnya `nginx:1.277`. Ini penyebab paling sering.\n- **Registry privat tanpa kredensial.** Image butuh `imagePullSecrets`, yaitu Secret berisi akses registry.\n- **Jaringan atau batas pengunduhan.** Node tidak bisa menjangkau registry, atau registry membatasi jumlah unduhan.\n\nEvents di `describe` biasanya menyebut penyebab tepatnya, misalnya `manifest unknown` untuk tag yang tidak ada atau `unauthorized` untuk kredensial yang salah.\n\n## CrashLoopBackOff dan OOMKilled\n\n`CrashLoopBackOff` berarti container berhasil dimulai, lalu mati, dihidupkan lagi, mati lagi, dan seterusnya, dengan jeda yang terus bertambah. Aplikasinya berjalan tetapi gagal. Cari penyebabnya dari log:\n\n```bash\nkubectl logs web-7d9f --previous\n```\n\nPenyebab umum: konfigurasi atau variabel lingkungan yang hilang, tidak bisa terhubung ke basis data, perintah awal yang salah, atau liveness probe yang terlalu ketat sehingga container di-restart sebelum siap. Bila di `describe` terlihat `Last State: Terminated` dengan `Reason: OOMKilled`, container melewati limit memori. Naikkan limit, atau cari kebocoran memori di aplikasi.\n\nRangkuman cepat untuk mengenali kategori:\n\n- Tidak ada log sama sekali: kemungkinan masalah penjadwalan, image, atau penyimpanan.\n- Ada log dan container terus restart: kemungkinan masalah di dalam aplikasi atau konfigurasi.\n- Status `Running` tetapi layanan tidak bisa dijangkau: periksa readiness probe, selector Service, dan `kubectl get endpoints`.\n\n## Praktik terbaik\n\nSetelah paham cara memperbaiki, bangun kebiasaan yang mencegah masalah sejak awal:\n\n- **Isi request dan limit** untuk setiap container, dan pasang **liveness serta readiness probe**.\n- **Pin versi image** dengan tag yang jelas, jangan `latest`, supaya setiap rilis bisa ditelusuri dan dikembalikan.\n- **Simpan manifest di Git** dan terapkan lewat pipeline CI/CD, sehingga keadaan cluster selalu bisa direkonstruksi.\n- **Pisahkan lingkungan** dengan namespace, dan batasi hak akses dengan RBAC.\n- **Jangan menyimpan Secret polos di repositori**.\n- **Pantau cluster** dengan metrik dan log terpusat; masalah yang terlihat lebih awal jauh lebih murah diperbaiki.\n\n## Langkah berikutnya\n\nKelas ini sengaja tidak berisi cluster sungguhan di browser, jadi langkah terpenting sesudahnya adalah **berlatih di mesinmu sendiri**. Pasang `minikube` atau `kind`, jalankan cluster di laptop, lalu ulangi isi tiap bab: buat Deployment, buka lewat Service, pecahkan sengaja dengan image yang salah, dan perbaiki dengan alur debugging di atas.\n\nSetelah nyaman, topik yang wajar dipelajari berikutnya adalah **Helm** untuk mengemas manifest, **GitOps** dengan Argo CD atau Flux untuk penerapan otomatis dari Git, **autoscaling** (HPA) untuk menambah Pod sesuai beban, serta **service mesh** dan **observabilitas** untuk jaringan dan pemantauan yang lebih dalam.\n\n## Contoh kasus: Pod yang terus restart\n\nSebuah Deployment `api` menunjukkan `CrashLoopBackOff` dengan angka RESTARTS yang terus naik. Mari ikuti alurnya.\n\n`kubectl get pods` menunjukkan status itu. `kubectl describe pod` menunjukkan `Last State: Terminated` dengan `Exit Code: 1`, bukan OOMKilled, jadi bukan soal memori. Langkah berikutnya `kubectl logs --previous` menampilkan baris terakhir: `Error: DATABASE_URL is not defined`.\n\nPenyebabnya jelas: Secret yang berisi alamat basis data belum dirujuk di Deployment. Perbaikannya menambahkan `secretKeyRef` pada `env`, lalu menerapkan ulang manifest. Pod baru berjalan, status berubah menjadi `Running`, dan angka restart berhenti naik.\n\nPerhatikan bahwa kita menemukan penyebabnya tanpa menebak, hanya dengan mengikuti urutan status, describe, lalu log. Itulah nilai dari alur yang berurutan.\n\nBila kamu masih bingung setelah mengikuti semua langkah, kumpulkan keluaran `kubectl describe pod`, `kubectl logs --previous`, dan `kubectl get events --sort-by=.lastTimestamp`, lalu baca ketiganya berdampingan. Urutan waktu kejadian di Events sering memperlihatkan pemicu yang terlewat jika kamu hanya melihat salah satunya.\n\n## Rangkuman\n\n- Debug berurutan: `get pods`, lalu `describe` (Events), lalu `logs`, lalu `exec`.\n- Pending umumnya masalah penjadwalan atau penyimpanan; Pod itu belum punya log.\n- ImagePullBackOff berasal dari nama atau tag salah, kredensial registry, atau jaringan.\n- CrashLoopBackOff berarti aplikasi terus gagal; baca `logs --previous`, dan OOMKilled berarti limit memori terlewati.\n- Praktik terbaik: request dan limit, probe, tag image tetap, manifest di Git, namespace dengan RBAC, dan tanpa Secret polos di repositori.\n- Berlatih di minikube atau kind, lalu pelajari Helm, GitOps, autoscaling, dan observabilitas.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Langkah pertama yang paling murah saat sebuah Pod bermasalah adalah",
+          "code": "",
+          "options": [
+            "Masuk ke container dengan kubectl exec lalu memeriksa berkas",
+            "Menghapus Pod lalu menunggu penggantinya muncul sendiri",
+            "Membangun ulang image dan merilisnya sekali lagi",
+            "Melihat kolom STATUS lewat kubectl get pods"
+          ],
+          "answer": 3,
+          "explanation": "Mulai dari status, lalu events, lalu log, baru exec."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pod berstatus Pending dengan pesan Insufficient cpu. Apa artinya?",
+          "code": "",
+          "options": [
+            "Aplikasi di dalam container kehabisan CPU saat berjalan",
+            "Tidak ada node dengan sisa CPU yang cukup untuk request Pod",
+            "Image gagal ditarik dari registry yang dituju",
+            "Liveness probe gagal berulang kali pada Pod itu"
+          ],
+          "answer": 1,
+          "explanation": "Pod belum terjadwal karena kapasitas node tidak cukup."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana membaca log dari container sebelumnya yang sudah mati?",
+          "code": "",
+          "options": [
+            "kubectl describe nama-pod --events",
+            "kubectl exec nama-pod -- cat /var/log",
+            "kubectl logs nama-pod --previous",
+            "kubectl get nama-pod --history"
+          ],
+          "answer": 2,
+          "explanation": "Opsi --previous menampilkan log instansi container sebelumnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pod berstatus Pending biasanya punya log aplikasi yang bisa dibaca.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Container belum pernah berjalan, jadi belum ada log; periksa Events."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Mendiagnosis status Pod",
+          "prompt": "Lengkapi `diagnosa(pod)` yang mengembalikan kategori penyebab sebagai teks. `pod` berbentuk `{\"status\": ..., \"events\": [...], \"last_reason\": ..., \"ready\": ...}`.\n\nAturan, dari yang pertama cocok:\n\n- status `Pending` dan ada event yang memuat `\"Insufficient\"`: `\"kapasitas\"`\n- status `ImagePullBackOff` atau `ErrImagePull`: `\"image\"`\n- status `CrashLoopBackOff` dan `last_reason` bernilai `\"OOMKilled\"`: `\"memori\"`\n- status `CrashLoopBackOff` selain itu: `\"aplikasi\"`\n- status `Running` tetapi `ready` bernilai `False`: `\"readiness\"`\n- selain itu: `\"sehat\"`",
+          "starter": {
+            "code": "def diagnosa(pod):\n    # TODO: cocokkan status, events, last_reason, dan ready\n    return \"sehat\"\n"
+          },
+          "solution": {
+            "code": "def diagnosa(pod):\n    status = pod[\"status\"]\n    if status == \"Pending\" and any(\"Insufficient\" in e for e in pod[\"events\"]):\n        return \"kapasitas\"\n    if status in (\"ImagePullBackOff\", \"ErrImagePull\"):\n        return \"image\"\n    if status == \"CrashLoopBackOff\":\n        return \"memori\" if pod[\"last_reason\"] == \"OOMKilled\" else \"aplikasi\"\n    if status == \"Running\" and not pod[\"ready\"]:\n        return \"readiness\"\n    return \"sehat\"\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Pending karena sumber daya kurang",
+              "check": "diagnosa({\"status\": \"Pending\", \"events\": [\"0/3 nodes: Insufficient cpu\"], \"last_reason\": None, \"ready\": False}) == \"kapasitas\""
+            },
+            {
+              "name": "ImagePullBackOff berarti masalah image",
+              "check": "diagnosa({\"status\": \"ImagePullBackOff\", \"events\": [], \"last_reason\": None, \"ready\": False}) == \"image\""
+            },
+            {
+              "name": "CrashLoopBackOff dengan OOMKilled berarti memori",
+              "check": "diagnosa({\"status\": \"CrashLoopBackOff\", \"events\": [], \"last_reason\": \"OOMKilled\", \"ready\": False}) == \"memori\""
+            },
+            {
+              "name": "CrashLoopBackOff lain berarti aplikasi",
+              "check": "diagnosa({\"status\": \"CrashLoopBackOff\", \"events\": [], \"last_reason\": \"Error\", \"ready\": False}) == \"aplikasi\""
+            },
+            {
+              "name": "Running tetapi belum siap berarti readiness",
+              "check": "diagnosa({\"status\": \"Running\", \"events\": [], \"last_reason\": None, \"ready\": False}) == \"readiness\""
+            },
+            {
+              "name": "Running dan siap berarti sehat",
+              "check": "diagnosa({\"status\": \"Running\", \"events\": [], \"last_reason\": None, \"ready\": True}) == \"sehat\""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

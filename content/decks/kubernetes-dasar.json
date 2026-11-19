@@ -1,0 +1,288 @@
+{
+  "theme": "kubernetes",
+  "deck": "Kubernetes Dasar",
+  "kicker": "KELAS",
+  "subtitle": "Dari Pod dan Deployment, Service dan Ingress, sampai resource, RBAC, dan debugging",
+  "slides": [
+    {
+      "title": "Kubernetes Dasar"
+    },
+    {
+      "title": "Masalah setelah Docker",
+      "kicker": "MENGAPA KUBERNETES",
+      "bullets": [
+        "Satu container mudah, ratusan container sulit dikelola",
+        "Container mati harus hidup lagi tanpa menunggu manusia",
+        "Trafik naik: butuh replika baru dan pembagian beban",
+        "Update tanpa membuat layanan berhenti"
+      ],
+      "note": "Orkestrasi = mesin yang mengurus container, bukan kamu secara manual."
+    },
+    {
+      "title": "Apa itu Kubernetes",
+      "kicker": "MENGAPA KUBERNETES",
+      "bullets": [
+        "Sistem open source untuk mengorkestrasi container",
+        "Berakar dari Borg milik Google, kini dirawat CNCF",
+        "Disingkat K8s: K, delapan huruf, lalu s",
+        "Jalan di laptop, server sendiri, dan semua cloud"
+      ]
+    },
+    {
+      "title": "Deklaratif, bukan perintah",
+      "kicker": "MENGAPA KUBERNETES",
+      "bullets": [
+        "Kamu menulis keadaan yang diinginkan",
+        "Kubernetes menyamakan kenyataan dengan keinginan",
+        "Prosesnya disebut reconciliation loop"
+      ],
+      "code": "# yang diinginkan\nreplicas: 3\n\n# kenyataan: 2 Pod hidup\n# aksi: buat 1 Pod baru"
+    },
+    {
+      "title": "Cluster: control plane dan node",
+      "kicker": "ARSITEKTUR CLUSTER",
+      "bullets": [
+        "Cluster = kumpulan mesin yang bekerja sebagai satu",
+        "Control plane: otak yang mengambil keputusan",
+        "Worker node: mesin yang menjalankan container",
+        "Produksi biasanya punya banyak node"
+      ],
+      "note": "Kamu bicara ke control plane, bukan langsung ke node."
+    },
+    {
+      "title": "Komponen control plane",
+      "kicker": "ARSITEKTUR CLUSTER",
+      "bullets": [
+        "API server: pintu masuk semua perintah",
+        "etcd: penyimpanan keadaan cluster",
+        "Scheduler: memilih node untuk Pod baru",
+        "Controller manager: menjaga keadaan sesuai keinginan"
+      ]
+    },
+    {
+      "title": "Komponen di setiap node",
+      "kicker": "ARSITEKTUR CLUSTER",
+      "bullets": [
+        "kubelet: agen yang menjalankan Pod di node",
+        "Container runtime: containerd atau CRI-O",
+        "kube-proxy: aturan jaringan untuk Service"
+      ],
+      "note": "Alur: kubectl, API server, etcd, scheduler, kubelet, container."
+    },
+    {
+      "title": "Pod: unit terkecil",
+      "kicker": "POD DAN KUBECTL",
+      "bullets": [
+        "Pod membungkus satu atau lebih container",
+        "Container dalam satu Pod berbagi IP dan volume",
+        "Pod bersifat sementara: mati lalu diganti baru",
+        "Umumnya satu container utama per Pod"
+      ]
+    },
+    {
+      "title": "Manifest Pod",
+      "kicker": "POD DAN KUBECTL",
+      "bullets": [
+        "apiVersion dan kind: jenis objek",
+        "metadata: nama dan label",
+        "spec: isi yang diinginkan"
+      ],
+      "code": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: web\n  labels:\n    app: web\nspec:\n  containers:\n  - name: web\n    image: nginx:1.27"
+    },
+    {
+      "title": "kubectl sehari-hari",
+      "kicker": "POD DAN KUBECTL",
+      "bullets": [
+        "apply: terapkan manifest",
+        "get dan describe: lihat keadaan",
+        "logs dan exec: periksa isi Pod"
+      ],
+      "code": "kubectl apply -f pod.yaml\nkubectl get pods\nkubectl describe pod web\nkubectl logs web\nkubectl exec -it web -- sh\nkubectl delete -f pod.yaml"
+    },
+    {
+      "title": "Mengapa Deployment",
+      "kicker": "DEPLOYMENT",
+      "bullets": [
+        "Pod sendirian tidak dihidupkan lagi bila mati",
+        "Deployment menjaga jumlah replika tetap sama",
+        "ReplicaSet dibuat dan diurus oleh Deployment",
+        "Hampir selalu buat Deployment, bukan Pod"
+      ]
+    },
+    {
+      "title": "Manifest Deployment",
+      "kicker": "DEPLOYMENT",
+      "bullets": [
+        "replicas: jumlah Pod",
+        "selector: Pod mana yang diurus",
+        "template: cetakan Pod"
+      ],
+      "code": "apiVersion: apps/v1\nkind: Deployment\nmetadata: {name: web}\nspec:\n  replicas: 3\n  selector:\n    matchLabels: {app: web}\n  template:\n    metadata:\n      labels: {app: web}\n    spec: {containers: [...]}"
+    },
+    {
+      "title": "Rolling update dan rollback",
+      "kicker": "DEPLOYMENT",
+      "bullets": [
+        "Ganti image: Pod diganti bertahap",
+        "maxSurge: Pod ekstra yang boleh dibuat",
+        "maxUnavailable: Pod yang boleh tidak siap"
+      ],
+      "code": "kubectl set image deploy/web \\\n  web=nginx:1.28\nkubectl rollout status deploy/web\nkubectl rollout undo deploy/web\nkubectl rollout history deploy/web"
+    },
+    {
+      "title": "Service: alamat yang tetap",
+      "kicker": "SERVICE DAN INGRESS",
+      "bullets": [
+        "IP Pod berubah setiap Pod diganti",
+        "Service memberi nama dan IP yang stabil",
+        "Memilih Pod lewat label selector",
+        "Membagi beban ke semua Pod yang cocok"
+      ]
+    },
+    {
+      "title": "Jenis Service",
+      "kicker": "SERVICE DAN INGRESS",
+      "bullets": [
+        "ClusterIP: hanya di dalam cluster",
+        "NodePort: membuka port di setiap node",
+        "LoadBalancer: minta load balancer cloud"
+      ],
+      "code": "apiVersion: v1\nkind: Service\nmetadata: {name: web}\nspec:\n  selector: {app: web}\n  ports:\n  - port: 80\n    targetPort: 8080"
+    },
+    {
+      "title": "Ingress: pintu HTTP",
+      "kicker": "SERVICE DAN INGRESS",
+      "bullets": [
+        "Satu pintu masuk untuk banyak Service",
+        "Aturan berdasarkan host dan path",
+        "Butuh ingress controller, mis. NGINX",
+        "TLS bisa diurus di satu tempat"
+      ],
+      "note": "Service = di dalam cluster. Ingress = dari luar ke Service."
+    },
+    {
+      "title": "ConfigMap",
+      "kicker": "CONFIG, SECRET, VOLUME",
+      "bullets": [
+        "Pisahkan konfigurasi dari image",
+        "Dipakai sebagai env var atau berkas",
+        "Ubah konfigurasi tanpa build ulang"
+      ],
+      "code": "apiVersion: v1\nkind: ConfigMap\nmetadata: {name: app}\ndata:\n  LOG_LEVEL: info\n  MODE: produksi"
+    },
+    {
+      "title": "Secret",
+      "kicker": "CONFIG, SECRET, VOLUME",
+      "bullets": [
+        "Untuk data sensitif: password, token, kunci",
+        "Nilainya dikodekan base64, bukan dienkripsi",
+        "Batasi pembacaan lewat RBAC",
+        "Aktifkan enkripsi at-rest di cluster"
+      ],
+      "note": "base64 bukan keamanan: siapa pun yang bisa membaca Secret bisa memulihkannya."
+    },
+    {
+      "title": "Volume, PV, dan PVC",
+      "kicker": "CONFIG, SECRET, VOLUME",
+      "bullets": [
+        "Data dalam container hilang saat Pod mati",
+        "PV: penyimpanan yang tersedia di cluster",
+        "PVC: permintaan penyimpanan oleh aplikasi",
+        "Kubernetes mengikat PVC ke PV yang cocok"
+      ]
+    },
+    {
+      "title": "Request dan limit",
+      "kicker": "SUMBER DAYA DAN PROBE",
+      "bullets": [
+        "request: dijamin, dipakai scheduler",
+        "limit: batas atas pemakaian",
+        "CPU melewati limit: diperlambat",
+        "Memori melewati limit: OOMKilled"
+      ],
+      "code": "resources:\n  requests:\n    cpu: 250m\n    memory: 128Mi\n  limits:\n    cpu: 500m\n    memory: 256Mi"
+    },
+    {
+      "title": "Kelas QoS",
+      "kicker": "SUMBER DAYA DAN PROBE",
+      "bullets": [
+        "Guaranteed: request sama dengan limit",
+        "Burstable: ada request atau limit, tidak sama",
+        "BestEffort: tanpa request dan limit",
+        "Node kehabisan memori: BestEffort diusir dulu"
+      ]
+    },
+    {
+      "title": "Liveness dan readiness",
+      "kicker": "SUMBER DAYA DAN PROBE",
+      "bullets": [
+        "liveness gagal: container di-restart",
+        "readiness gagal: dicabut dari Service",
+        "startup: waktu untuk aplikasi lambat"
+      ],
+      "code": "livenessProbe:\n  httpGet:\n    path: /sehat\n    port: 8080\n  periodSeconds: 10\nreadinessProbe:\n  httpGet:\n    path: /siap\n    port: 8080"
+    },
+    {
+      "title": "Namespace",
+      "kicker": "NAMESPACE DAN RBAC",
+      "bullets": [
+        "Sekat logis di dalam satu cluster",
+        "Memisahkan tim atau lingkungan: dev, staging, prod",
+        "Nama objek harus unik per namespace",
+        "ResourceQuota membatasi pemakaian namespace"
+      ]
+    },
+    {
+      "title": "RBAC",
+      "kicker": "NAMESPACE DAN RBAC",
+      "bullets": [
+        "Role: daftar izin (verb pada resource)",
+        "RoleBinding: beri Role ke pengguna",
+        "ClusterRole: berlaku di seluruh cluster",
+        "Least privilege: beri seperlunya saja"
+      ]
+    },
+    {
+      "title": "Contoh Role",
+      "kicker": "NAMESPACE DAN RBAC",
+      "bullets": [
+        "Role hanya berlaku di satu namespace",
+        "verbs: apa yang boleh dilakukan",
+        "resources: objek yang boleh disentuh"
+      ],
+      "code": "kind: Role\nmetadata:\n  namespace: dev\n  name: pembaca-pod\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]"
+    },
+    {
+      "title": "Alur debugging Pod",
+      "kicker": "DEBUGGING",
+      "bullets": [
+        "1. get pods: lihat kolom STATUS",
+        "2. describe pod: baca bagian Events",
+        "3. logs: baca keluaran aplikasi",
+        "4. exec: masuk dan periksa dari dalam"
+      ],
+      "note": "Mulai dari yang paling murah: status, lalu events, baru log."
+    },
+    {
+      "title": "Status yang sering muncul",
+      "kicker": "DEBUGGING",
+      "bullets": [
+        "Pending: belum terjadwal, sumber daya kurang?",
+        "ImagePullBackOff: nama image atau akses salah",
+        "CrashLoopBackOff: container terus mati lalu restart",
+        "OOMKilled: memori melewati limit"
+      ]
+    },
+    {
+      "title": "Praktik terbaik dan langkah lanjut",
+      "kicker": "DEBUGGING",
+      "bullets": [
+        "Selalu isi request dan limit",
+        "Pasang liveness dan readiness probe",
+        "Simpan manifest di Git, terapkan lewat CI/CD",
+        "Berlatih di minikube atau kind di laptopmu"
+      ],
+      "note": "Berikutnya: Helm, GitOps, dan service mesh."
+    }
+  ]
+}

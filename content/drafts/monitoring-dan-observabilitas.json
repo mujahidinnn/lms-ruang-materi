@@ -1,0 +1,2158 @@
+{
+  "title": "Monitoring dan Observabilitas",
+  "description": "Memantau layanan dan memahami penyebab masalahnya: metrik, log, trace, persentil latensi, golden signals, SLO dan error budget, alerting yang baik, sampai postmortem tanpa menyalahkan. Ditutup dengan proyek Analisis Log dan SLO Layanan.",
+  "summary": "Software modern jarang mati total; ia lebih sering rusak sebagian, lambat untuk sebagian pengguna atau gagal untuk satu jenis permintaan. Kelas ini mengajarkan cara melihat dan memahami keadaan itu. Kamu mulai dari perbedaan monitoring dan observabilitas serta tiga pilarnya, yaitu metrik, log, dan trace, lalu mempelajari jenis metrik (counter, gauge, histogram) dan mengapa latensi harus dibaca lewat persentil, bukan rata-rata.\n\nBagian tengah membahas sinyal yang layak dipantau lewat golden signals, metode RED, dan metode USE, lalu log terstruktur dan tracing terdistribusi untuk menemukan sumber kelambatan. Setelah itu kamu belajar menetapkan target keandalan dengan SLI, SLO, error budget, dan burn rate, serta merancang alert yang berbasis dampak dengan histeresis dan peredaman agar tidak menimbulkan alert fatigue.\n\nBagian akhir menutup siklus dengan penanganan insiden, postmortem tanpa menyalahkan, dan pengukuran MTTD serta MTTR. Latihan memakai Python murni untuk menghitung laju counter, persentil, burn rate, dan aturan alert, dan proyek akhir Analisis Log dan SLO Layanan menggabungkan semuanya dari potongan log mentah.",
+  "tips": [
+    "Kelas ini tidak menyediakan sistem monitoring sungguhan di browser. Latihan kode memakai Python murni untuk menghitung laju, persentil, burn rate, dan aturan alert, sehingga kamu melatih cara berpikir di balik alat seperti Prometheus dan Grafana.",
+    "Setelah tiap bab, coba terapkan pada layanan yang kamu kenal: sinyal apa yang sudah ada, sinyal apa yang belum, dan alert mana yang benar-benar butuh tindakan manusia.",
+    "Latih tangan menghitung persentil dan burn rate dengan angka kecil sebelum memakai rumus di kode; pemahaman tangan membuat kamu cepat mendeteksi hasil yang janggal.",
+    "Tulis jawaban pertanyaan pembuka bab 1 (sehat atau tidak, siapa terdampak, bagian mana, apa yang berubah) untuk proyek sampingmu, lalu lihat data apa yang kamu butuhkan untuk menjawabnya.",
+    "Saat membaca contoh insiden, berhenti sejenak sebelum membaca penyebabnya dan tebak data apa yang akan kamu buka lebih dulu. Kebiasaan itu melatih alur investigasi metrik, trace, lalu log."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu monitoring?",
+      "back": "Praktik mengumpulkan dan menampilkan data keadaan sistem lalu memberi peringatan saat data melewati batas, untuk hal yang sudah kita duga bisa rusak."
+    },
+    {
+      "front": "Apa itu observabilitas?",
+      "back": "Kemampuan memahami keadaan dalam sistem dari data yang dikeluarkannya, termasuk untuk pertanyaan yang tidak diduga sebelumnya."
+    },
+    {
+      "front": "Sebutkan tiga pilar observabilitas.",
+      "back": "Metrik (angka ringkas dari waktu ke waktu), log (catatan kejadian), dan trace (jejak satu permintaan lintas layanan)."
+    },
+    {
+      "front": "Apa itu counter?",
+      "back": "Metrik yang hanya bertambah; dibaca lewat lajunya per detik, dan bisa reset ke nol saat proses restart."
+    },
+    {
+      "front": "Apa itu gauge?",
+      "back": "Metrik yang menggambarkan keadaan saat ini dan bisa naik atau turun, misalnya memori terpakai atau panjang antrean."
+    },
+    {
+      "front": "Apa itu histogram?",
+      "back": "Metrik yang menghitung pengamatan ke dalam bucket kumulatif sehingga sebaran nilai dan persentil bisa diperkirakan."
+    },
+    {
+      "front": "Mengapa bucket histogram bersifat kumulatif?",
+      "back": "Setiap bucket menghitung semua pengamatan yang kurang dari atau sama dengan batasnya, sehingga nilai kecil ikut masuk ke bucket yang lebih besar."
+    },
+    {
+      "front": "Apa itu masalah kardinalitas tinggi?",
+      "back": "Terlalu banyak kombinasi nilai label, misalnya id pengguna, sehingga jumlah deret waktu meledak dan penyimpanan kewalahan."
+    },
+    {
+      "front": "Mengapa rata-rata latensi menyesatkan?",
+      "back": "Sebaran latensi berekor panjang; rata-rata menyembunyikan permintaan sangat lambat di balik banyak permintaan cepat."
+    },
+    {
+      "front": "Apa arti p95?",
+      "back": "Batas yang tidak dilampaui oleh 95% permintaan; satu dari dua puluh permintaan lebih lambat dari nilai itu."
+    },
+    {
+      "front": "Bagaimana persentil dihitung dengan nearest-rank?",
+      "back": "Urutkan sampel, ambil nilai pada peringkat ceil(p/100 x n), dihitung mulai dari 1."
+    },
+    {
+      "front": "Mengapa persentil tidak boleh dirata-ratakan antar server?",
+      "back": "Rata-rata p95 beberapa server tidak sama dengan p95 gabungan; gabungkan data mentah atau bucket histogram dulu."
+    },
+    {
+      "front": "Apa empat golden signals?",
+      "back": "Latency, traffic, errors, dan saturation."
+    },
+    {
+      "front": "Apa isi metode RED?",
+      "back": "Rate (permintaan per detik), errors (persentase gagal), dan duration (sebaran waktu respons), untuk layanan."
+    },
+    {
+      "front": "Apa isi metode USE?",
+      "back": "Utilization, saturation, dan errors, untuk sumber daya seperti CPU, memori, disk, dan jaringan."
+    },
+    {
+      "front": "Apa prinsip pemasangan alert menurut gejala dan penyebab?",
+      "back": "Beri peringatan pada gejala yang dirasakan pengguna, lalu selidiki penyebabnya lewat sinyal sumber daya."
+    },
+    {
+      "front": "Apa kelebihan log terstruktur?",
+      "back": "Field bernama membuat log bisa disaring, dihitung, dan dikelompokkan mesin tanpa ekspresi reguler yang rapuh."
+    },
+    {
+      "front": "Apa yang tidak boleh masuk log?",
+      "back": "Rahasia seperti kata sandi, token, nomor kartu, dan data pribadi."
+    },
+    {
+      "front": "Mengapa menyertakan trace id di log?",
+      "back": "Agar log bisa dikaitkan dengan trace dan metrik untuk permintaan yang sama."
+    },
+    {
+      "front": "Apa itu trace dan span?",
+      "back": "Trace adalah seluruh perjalanan satu permintaan; span adalah satu unit kerja di dalamnya dengan induk, waktu mulai, dan durasi."
+    },
+    {
+      "front": "Apa itu propagasi konteks?",
+      "back": "Meneruskan trace id dan span id antar layanan, biasanya lewat header seperti traceparent, agar span menyatu dalam satu trace."
+    },
+    {
+      "front": "Apa itu waktu sendiri (self time) sebuah span?",
+      "back": "Durasi span dikurangi durasi anak-anaknya; menunjukkan waktu yang benar-benar dipakai span itu sendiri."
+    },
+    {
+      "front": "Apa beda head sampling dan tail sampling?",
+      "back": "Head sampling memutuskan di awal permintaan; tail sampling memutuskan setelah trace lengkap sehingga bisa menyimpan yang gagal atau lambat."
+    },
+    {
+      "front": "Apa beda SLI, SLO, dan SLA?",
+      "back": "SLI adalah ukuran nyata, SLO target internal untuk SLI itu, SLA janji ke pelanggan yang sebaiknya lebih longgar dari SLO."
+    },
+    {
+      "front": "Apa itu error budget?",
+      "back": "100% dikurangi SLO: jumlah kegagalan yang boleh terjadi. SLO 99,9% selama 30 hari berarti 43,2 menit."
+    },
+    {
+      "front": "Apa itu burn rate?",
+      "back": "Laju error sekarang dibagi laju error yang diizinkan SLO; burn rate 1 menghabiskan budget tepat di akhir periode."
+    },
+    {
+      "front": "Apa itu alert fatigue?",
+      "back": "Kondisi ketika terlalu banyak alert tak bermakna membuat orang mengabaikan semua alert."
+    },
+    {
+      "front": "Apa itu histeresis pada alert?",
+      "back": "Memakai ambang berbeda untuk menyala (lebih tinggi) dan padam (lebih rendah) agar alert tidak berkedip."
+    },
+    {
+      "front": "Apa prioritas pertama saat insiden?",
+      "back": "Memitigasi, yaitu menghentikan dampak ke pengguna, sebelum mencari akar masalah."
+    },
+    {
+      "front": "Apa itu postmortem tanpa menyalahkan?",
+      "back": "Review insiden yang fokus pada sistem dan proses, dengan linimasa, dampak, sebab, dan tindak lanjut berpemilik serta bertenggat."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah toko online punya server sehat, tetapi sebagian pelanggan gagal membayar. Istilah apa yang menggambarkan kemampuan menyelidiki hal yang tidak diduga ini?",
+      "code": "",
+      "options": [
+        "Replikasi basis data",
+        "Observabilitas",
+        "Virtualisasi jaringan",
+        "Penjadwalan kapasitas"
+      ],
+      "answer": 1,
+      "explanation": "Observabilitas membantu menjawab pertanyaan baru dari data yang dikeluarkan sistem, bukan hanya pertanyaan yang sudah disiapkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk melihat berapa lama setiap langkah sebuah permintaan memakan waktu di banyak layanan, data paling cocok adalah",
+      "code": "",
+      "options": [
+        "Gauge memori",
+        "Counter total",
+        "Log level DEBUG saja",
+        "Trace"
+      ],
+      "answer": 3,
+      "explanation": "Trace menunjukkan urutan dan durasi tiap span sepanjang perjalanan satu permintaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Metrik apa yang paling pas untuk jumlah koneksi yang sedang aktif sekarang?",
+      "code": "",
+      "options": [
+        "Gauge, karena nilainya bisa naik dan turun",
+        "Counter, karena selalu bertambah",
+        "Histogram, karena butuh persentil",
+        "Label, karena berupa nama endpoint"
+      ],
+      "answer": 0,
+      "explanation": "Keadaan saat ini yang naik turun dicatat sebagai gauge."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa nilai yang dicetak kode berikut?",
+      "code": "sampel = [(0, 50), (20, 250)]\nprint((sampel[1][1] - sampel[0][1]) / (sampel[1][0] - sampel[0][0]))",
+      "options": [
+        "200.0",
+        "12.5",
+        "10.0",
+        "5.0"
+      ],
+      "answer": 2,
+      "explanation": "Pertambahan 200 dalam 20 detik berarti laju 10 per detik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Satu halaman memanggil 50 layanan dan tiap layanan punya peluang 2% lambat. Mengapa p98 tiap layanan tetap penting?",
+      "code": "",
+      "options": [
+        "Karena layanan yang lambat selalu menghapus data pengguna",
+        "Peluang halaman kena minimal satu keterlambatan jauh lebih besar dari 2%",
+        "Karena persentil hanya berlaku di atas 50 layanan",
+        "Karena rata-rata tidak bisa dihitung untuk 50 layanan"
+      ],
+      "answer": 1,
+      "explanation": "Ekor latensi bertumpuk: 1 - 0,98^50 mendekati dua pertiga."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dari sepuluh sampel terurut, peringkat nearest-rank untuk p90 adalah",
+      "code": "",
+      "options": [
+        "Ke-10",
+        "Ke-8",
+        "Ke-1",
+        "Ke-9"
+      ],
+      "answer": 3,
+      "explanation": "ceil(0,9 x 10) = 9, jadi ambil nilai peringkat ke-9."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sinyal mana yang menunjukkan seberapa penuh sebuah sumber daya?",
+      "code": "",
+      "options": [
+        "Saturation",
+        "Traffic",
+        "Latency",
+        "Error budget"
+      ],
+      "answer": 0,
+      "explanation": "Saturasi mengukur pekerjaan yang antre atau penuhnya sumber daya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa error 500 yang sangat cepat bisa menyesatkan bila dicampur dengan latensi sukses?",
+      "code": "",
+      "options": [
+        "Error 500 selalu lebih lambat dari permintaan sukses",
+        "Latensi tidak pernah bisa dihitung untuk error",
+        "Rata-rata latensi tampak membaik padahal layanan sedang gagal",
+        "Error cepat otomatis dihitung sebagai permintaan sukses"
+      ],
+      "answer": 2,
+      "explanation": "Golden signals menyarankan memisahkan latensi permintaan sukses dari yang gagal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Log berikut manakah yang terstruktur?",
+      "code": "",
+      "options": [
+        "Terjadi kesalahan saat bayar, mohon dicek",
+        "level=error msg=\"bayar gagal\" user=budi",
+        "Budi gagal bayar tadi pagi sekitar jam sembilan",
+        "Error!!! cek segera sekarang juga"
+      ],
+      "answer": 1,
+      "explanation": "Pasangan kunci=nilai membuat log bisa disaring dan dihitung mesin."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua trace dari endpoint yang sama, satu cepat dan satu lambat. Cara paling cepat mencari penyebab kelambatan adalah",
+      "code": "",
+      "options": [
+        "Menghapus trace yang lambat agar grafik rapi",
+        "Membaca ulang seluruh kode sumber layanan",
+        "Menunggu pengguna melaporkan keluhan",
+        "Membandingkan span yang durasinya berbeda di antara keduanya"
+      ],
+      "answer": 3,
+      "explanation": "Perbedaan antara trace normal dan trace lambat langsung menunjuk span yang bermasalah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Layanan melayani 500.000 permintaan sebulan dengan SLO 99,9%. Berapa permintaan yang boleh gagal?",
+      "code": "",
+      "options": [
+        "500",
+        "50",
+        "5.000",
+        "0,5"
+      ],
+      "answer": 0,
+      "explanation": "Budget = 500.000 x 0,001 = 500 permintaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Burn rate sebesar 2 berarti error budget akan habis",
+      "code": "",
+      "options": [
+        "Tepat di akhir periode",
+        "Dua kali lipat lebih lama dari periode",
+        "Dalam setengah periode",
+        "Tidak akan pernah habis"
+      ],
+      "answer": 2,
+      "explanation": "Burn rate 2 menghabiskan budget dua kali lebih cepat, yaitu di tengah periode."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alert yang berbunyi tiap malam, sembuh sendiri dalam dua menit, dan tidak membutuhkan tindakan sebaiknya",
+      "code": "",
+      "options": [
+        "Dibunyikan lebih keras agar tidak terlewat",
+        "Diberi durasi minimum atau diturunkan menjadi tiket",
+        "Dikirim ke seluruh karyawan perusahaan",
+        "Dibiarkan karena lebih baik berlebihan daripada kurang"
+      ],
+      "answer": 1,
+      "explanation": "Alert tanpa tindakan memicu alert fatigue dan perlu diperbaiki atau diturunkan urgensinya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah rilis, error melonjak. Langkah pertama yang paling tepat adalah",
+      "code": "",
+      "options": [
+        "Menulis postmortem lengkap sebelum melakukan apa pun",
+        "Mencari orang yang melakukan rilis untuk ditegur",
+        "Menunggu error turun dengan sendirinya",
+        "Memitigasi, misalnya rollback, lalu menyelidiki akar masalah"
+      ],
+      "answer": 3,
+      "explanation": "Mitigasi didahulukan untuk menghentikan dampak; akar masalah dicari sesudah layanan pulih."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tindak lanjut postmortem tanpa pemilik dan tenggat jarang selesai.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Tindak lanjut tanpa pemilik hanya niat baik; beri pemilik dan tenggat agar dapat dilacak."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian mana yang paling tepat menggambarkan observabilitas?",
+      "code": "",
+      "options": [
+        "Kumpulan alert yang menyala ketika sebuah metrik melewati batas tetap yang ditentukan lebih dulu",
+        "Daftar server yang dimiliki sebuah perusahaan",
+        "Jadwal pemeliharaan rutin infrastruktur setiap bulan",
+        "Kemampuan memahami keadaan dalam sistem dari data yang dikeluarkannya"
+      ],
+      "answer": 3,
+      "explanation": "Observabilitas memungkinkan menjawab pertanyaan baru dari telemetri yang ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang termasuk tiga pilar observabilitas?",
+      "code": "",
+      "options": [
+        "Metrik, log, dan trace",
+        "CPU, memori, dan disk",
+        "Alert, dashboard, dan runbook",
+        "Latency, traffic, dan errors"
+      ],
+      "answer": 0,
+      "explanation": "Tiga pilar telemetri adalah metrik, log, dan trace."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kelebihan utama metrik dibanding log adalah",
+      "code": "",
+      "options": [
+        "Menyimpan detail setiap kejadian secara lengkap",
+        "Otomatis menunjukkan penyebab kegagalan",
+        "Ringkas, murah disimpan, dan cepat digambar menjadi grafik",
+        "Tidak butuh label atau nama apa pun untuk dibaca"
+      ],
+      "answer": 2,
+      "explanation": "Metrik merangkum data sehingga bagus untuk tren dan alert, tetapi tidak menyimpan detail kejadian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk apa trace paling berguna?",
+      "code": "",
+      "options": [
+        "Menghitung jumlah permintaan per detik di setiap layanan sepanjang hari sebagai angka ringkas",
+        "Menunjukkan jalur dan durasi satu permintaan di banyak layanan",
+        "Menyimpan kata sandi pengguna dengan aman",
+        "Mengukur suhu ruang server"
+      ],
+      "answer": 1,
+      "explanation": "Trace merekam perjalanan satu permintaan dari ujung ke ujung."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Monitoring dan observabilitas saling menggantikan, sehingga cukup memilih salah satu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Keduanya melengkapi: monitoring membunyikan alarm, observabilitas membantu mencari sebab."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa container membuat pengumpulan telemetri terpusat menjadi penting?",
+      "code": "",
+      "options": [
+        "Container tidak mampu menulis log sama sekali",
+        "Container selalu menyimpan log selamanya di disk sehingga tidak perlu dikirim ke penyimpanan terpusat",
+        "Container otomatis mengirim semua data ke pengguna",
+        "Container bersifat sementara dan datanya hilang saat diganti"
+      ],
+      "answer": 3,
+      "explanation": "Data yang hanya ada di dalam container lenyap bersama wadahnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Counter berguna terutama saat dilihat sebagai",
+      "code": "",
+      "options": [
+        "Laju pertambahan per detik",
+        "Nilai mentah sepanjang masa",
+        "Nilai tertinggi yang pernah dicapai",
+        "Selisih terhadap gauge terdekat"
+      ],
+      "answer": 0,
+      "explanation": "Laju memberi konteks waktu; nilai mentah counter jarang berarti sendirian."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "t1, n1 = 0, 1000\nt2, n2 = 60, 1300\nprint((n2 - n1) / (t2 - t1))",
+      "options": [
+        "300.0",
+        "5.0 per menit",
+        "5.0",
+        "0.05"
+      ],
+      "answer": 2,
+      "explanation": "Pertambahan 300 dalam 60 detik berarti 5 per detik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua sampel counter berurutan bernilai 1300 lalu 40. Penafsiran yang benar adalah",
+      "code": "",
+      "options": [
+        "Permintaan berkurang sebanyak 1260",
+        "Proses restart dan counter mulai lagi dari nol",
+        "Data rusak dan harus dibuang seluruhnya",
+        "Counter berubah menjadi gauge"
+      ],
+      "answer": 1,
+      "explanation": "Penurunan nilai counter berarti reset, bukan pengurangan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "nilai = [30, 70, 70, 200]\nbatas = [50, 100, 250]\nprint([sum(1 for v in nilai if v <= b) for b in batas])",
+      "options": [
+        "[1, 2, 1]",
+        "[1, 3, 3]",
+        "[0, 2, 4, 4]",
+        "[1, 3, 4]"
+      ],
+      "answer": 3,
+      "explanation": "Bucket kumulatif: <=50 ada 1, <=100 ada 3, <=250 ada 4."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa label seperti id pengguna sebaiknya tidak dipakai pada metrik?",
+      "code": "",
+      "options": [
+        "Setiap nilai label membuat deret waktu baru sehingga jumlahnya meledak",
+        "Label tidak boleh berisi angka",
+        "Label selalu mengubah jenis metrik menjadi gauge sehingga counter tidak bisa dihitung lajunya",
+        "Label hanya diizinkan untuk log"
+      ],
+      "answer": 0,
+      "explanation": "Kardinalitas tinggi membuat penyimpanan dan kueri kewalahan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Gauge adalah pilihan yang tepat untuk menghitung jumlah permintaan yang sudah dilayani.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Total kejadian yang dihitung adalah counter; gauge untuk keadaan saat ini."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Persentase error layanan paling tepat dihitung dari",
+      "code": "",
+      "options": [
+        "Nilai total counter gagal dibagi total gauge memori",
+        "Jumlah log ERROR dibagi jumlah server",
+        "Laju permintaan gagal dibagi laju semua permintaan",
+        "Rata-rata latensi dibagi p99"
+      ],
+      "answer": 2,
+      "explanation": "Bagi laju terhadap laju pada jendela waktu yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa rata-rata latensi 120 ms tidak berarti semua pengguna menunggu sekitar 120 ms?",
+      "code": "",
+      "options": [
+        "Karena rata-rata selalu dihitung dari data kemarin",
+        "Sebaran latensi berekor panjang sehingga sebagian pengguna jauh lebih lambat",
+        "Karena pengguna tidak merasakan latensi di bawah satu detik",
+        "Karena rata-rata hanya memperhitungkan permintaan yang gagal dan mengabaikan yang sukses sepenuhnya"
+      ],
+      "answer": 1,
+      "explanation": "Ekor lambat tersembunyi di balik banyak permintaan cepat."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "import math\ndata = [10, 12, 15, 18, 20, 22, 25, 30, 90, 800]\nurut = sorted(data)\nprint(urut[math.ceil(0.9 * len(urut)) - 1])",
+      "options": [
+        "800",
+        "30",
+        "20",
+        "90"
+      ],
+      "answer": 3,
+      "explanation": "Peringkat ceil(9) = 9, nilai ke-9 pada data terurut adalah 90."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "p95 sebesar 450 ms berarti",
+      "code": "",
+      "options": [
+        "95% permintaan selesai dalam waktu sampai 450 ms",
+        "Semua permintaan memakan tepat 450 ms",
+        "Hanya 5% permintaan yang selesai dalam 450 ms",
+        "Rata-rata dari 95 sampel tercepat selalu persis sama dengan 450 ms"
+      ],
+      "answer": 0,
+      "explanation": "p95 adalah batas yang tidak dilampaui oleh 95% permintaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa p99 dari sampel yang sangat sedikit kurang bermakna?",
+      "code": "",
+      "options": [
+        "Karena p99 tidak bisa dihitung di bawah sepuluh sampel",
+        "Karena p99 selalu sama dengan median",
+        "Hampir selalu sama dengan nilai maksimum",
+        "Karena p99 hanya dihitung dari rata-rata"
+      ],
+      "answer": 2,
+      "explanation": "Dengan sampel sedikit, peringkat nearest-rank untuk p99 jatuh pada nilai terbesar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa ekor latensi dirasakan lebih sering daripada angkanya?",
+      "code": "",
+      "options": [
+        "Karena pengguna hanya mengirim satu permintaan",
+        "Satu halaman memanggil banyak layanan sehingga peluang kena ekor menumpuk",
+        "Karena ekor latensi terjadi hanya di malam hari",
+        "Karena persentil hanya berlaku untuk layanan basis data dan tidak untuk halaman web"
+      ],
+      "answer": 1,
+      "explanation": "Peluang minimal satu keterlambatan naik cepat saat jumlah panggilan bertambah."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Persentil dari beberapa server dapat dirata-ratakan untuk mendapatkan persentil gabungan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Gabungkan data mentah atau bucket histogram dulu, baru hitung persentil."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jendela waktu pendek untuk persentil cocok digunakan untuk",
+      "code": "",
+      "options": [
+        "Laporan keandalan tahunan",
+        "Menghitung rata-rata biaya server",
+        "Menyimpan log jangka panjang",
+        "Alert yang perlu cepat bereaksi"
+      ],
+      "answer": 3,
+      "explanation": "Jendela pendek cepat bereaksi tetapi berisik; jendela panjang stabil untuk tren."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sinyal yang menunjukkan berapa banyak permintaan masuk ke sistem adalah",
+      "code": "",
+      "options": [
+        "Traffic",
+        "Saturation",
+        "Errors",
+        "Latency"
+      ],
+      "answer": 0,
+      "explanation": "Traffic mengukur besarnya permintaan terhadap sistem."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kegagalan implisit berarti",
+      "code": "",
+      "options": [
+        "Server mati total sehingga tidak menjawab",
+        "Alert yang tidak sengaja dimatikan",
+        "Respons berstatus 200 tetapi isinya salah",
+        "Log yang tidak sengaja terhapus"
+      ],
+      "answer": 2,
+      "explanation": "Kegagalan implisit tidak terlihat di metrik status dan paling sulit dideteksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Metode RED terdiri dari",
+      "code": "",
+      "options": [
+        "Request, error, dan delay",
+        "Rate, errors, dan duration",
+        "Read, edit, dan delete",
+        "Rate, efficiency, dan downtime"
+      ],
+      "answer": 1,
+      "explanation": "RED: laju permintaan, persentase error, dan durasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perbedaan utilisasi dan saturasi pada metode USE adalah",
+      "code": "",
+      "options": [
+        "Utilisasi mengukur error; saturasi mengukur latensi",
+        "Keduanya sama dan hanya berbeda penulisan",
+        "Utilisasi hanya untuk memori; saturasi hanya untuk disk",
+        "Utilisasi mengukur waktu sibuk; saturasi mengukur pekerjaan yang antre"
+      ],
+      "answer": 3,
+      "explanation": "CPU bisa 100% sibuk tanpa antrean, atau 70% sibuk dengan antrean panjang."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa nilai yang dicetak kode berikut (error rate dalam persen)?",
+      "code": "gagal = 30\ntotal = 600\nprint(gagal / total * 100)",
+      "options": [
+        "5.0",
+        "0.5",
+        "50.0",
+        "20.0"
+      ],
+      "answer": 0,
+      "explanation": "30 dari 600 berarti 5 persen."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Alert sebaiknya dipasang terutama pada gejala yang dirasakan pengguna.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Gejala berarti dampak; penyebab diselidiki lewat dashboard sumber daya sesudahnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa log terstruktur lebih mudah diagregasi daripada teks bebas?",
+      "code": "",
+      "options": [
+        "Karena ukurannya selalu lebih kecil",
+        "Karena tidak memuat pesan apa pun dan hanya berisi angka-angka mentah",
+        "Setiap informasi punya field bernama yang bisa disaring dan dihitung",
+        "Karena hanya ditulis oleh mesin cetak"
+      ],
+      "answer": 2,
+      "explanation": "Field bernama menghindari ekspresi reguler yang rapuh."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Level log yang tepat untuk operasi yang benar-benar gagal dan perlu perhatian adalah",
+      "code": "",
+      "options": [
+        "DEBUG",
+        "ERROR",
+        "INFO",
+        "WARNING"
+      ],
+      "answer": 1,
+      "explanation": "ERROR hanya untuk kegagalan nyata agar alert berbasis ERROR tetap bermakna."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang sebaiknya dicatat dalam log pembayaran?",
+      "code": "",
+      "options": [
+        "Nomor kartu lengkap pengguna",
+        "Kata sandi akun pengguna",
+        "Token akses ke penyedia pembayaran",
+        "Id pesanan dan hasil proses"
+      ],
+      "answer": 3,
+      "explanation": "Catat id yang relevan, jangan rahasia atau data pribadi."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "baris = 'level=error alasan=timeout'\nprint(dict(p.split('=') for p in baris.split())['alasan'])",
+      "options": [
+        "timeout",
+        "error",
+        "level",
+        "alasan=timeout"
+      ],
+      "answer": 0,
+      "explanation": "Pasangan alasan=timeout dipecah menjadi kunci alasan dan nilai timeout."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sampling log pada layanan sangat ramai biasanya dilakukan dengan",
+      "code": "",
+      "options": [
+        "Menghapus semua log lama setiap malam pada pukul dua belas supaya penyimpanan kosong kembali",
+        "Mencatat hanya permintaan dari pengguna baru",
+        "Mencatat semua error dan hanya sebagian kecil permintaan sukses",
+        "Mematikan log saat lalu lintas tinggi"
+      ],
+      "answer": 2,
+      "explanation": "Semua bukti kegagalan tetap ada dengan biaya penyimpanan lebih kecil."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Log sebaiknya hanya disimpan di disk container agar mudah dicari.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Disk container hilang saat container diganti; kirim log keluar ke penyimpanan terpusat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Span akar dalam sebuah trace adalah",
+      "code": "",
+      "options": [
+        "Span yang paling singkat dalam trace",
+        "Span tanpa induk, biasanya permintaan masuk di gerbang",
+        "Span yang hanya berisi log kesalahan dari satu layanan tertentu saja",
+        "Span terakhir yang selesai"
+      ],
+      "answer": 1,
+      "explanation": "Span akar membungkus seluruh perjalanan permintaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Header yang umum dipakai untuk meneruskan konteks trace antar layanan adalah",
+      "code": "",
+      "options": [
+        "content-length",
+        "user-agent",
+        "accept-language",
+        "traceparent"
+      ],
+      "answer": 3,
+      "explanation": "Standar W3C Trace Context memakai header traceparent."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa waktu sendiri span 'pembayaran' pada kode berikut?",
+      "code": "durasi = 2000\nanak = [100, 1800]\nprint(durasi - sum(anak))",
+      "options": [
+        "100",
+        "1900",
+        "2000",
+        "3900"
+      ],
+      "answer": 0,
+      "explanation": "Waktu sendiri = 2000 dikurangi 1900 durasi anak = 100."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Beberapa ratus kueri basis data hampir identik dalam satu trace adalah tanda masalah",
+      "code": "",
+      "options": [
+        "Cold start",
+        "Head sampling",
+        "N+1",
+        "Kardinalitas rendah"
+      ],
+      "answer": 2,
+      "explanation": "Pola banyak span serupa yang berulang menunjuk ke kueri N+1."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan tail sampling dibanding head sampling adalah",
+      "code": "",
+      "options": [
+        "Tidak butuh infrastruktur tambahan sama sekali dan selalu lebih murah daripada head sampling di semua kondisi",
+        "Trace yang gagal atau lambat bisa diprioritaskan karena keputusan diambil setelah trace lengkap",
+        "Selalu menyimpan semua trace tanpa biaya",
+        "Keputusan diambil sebelum permintaan dimulai"
+      ],
+      "answer": 1,
+      "explanation": "Tail sampling memilih trace menarik tetapi butuh penampungan sementara."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu layanan yang tidak meneruskan header trace akan memutus trace di titik itu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Layanan sesudahnya memulai trace baru yang tidak terhubung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "SLI yang baik dirumuskan sebagai",
+      "code": "",
+      "options": [
+        "Jumlah server yang menyala",
+        "Suhu rata-rata ruang data",
+        "Daftar nama anggota tim operasi beserta jadwal piket mereka dalam satu bulan",
+        "Rasio kejadian baik terhadap semua kejadian yang valid"
+      ],
+      "answer": 3,
+      "explanation": "Contoh: persentase permintaan yang sukses."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Error budget untuk SLO 99,5% adalah",
+      "code": "",
+      "options": [
+        "0,5% kegagalan yang boleh terjadi",
+        "99,5% kegagalan yang boleh terjadi",
+        "5% kegagalan yang boleh terjadi",
+        "Tidak ada kegagalan yang boleh terjadi"
+      ],
+      "answer": 0,
+      "explanation": "Budget = 100% dikurangi SLO."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa menit error budget dalam kode berikut?",
+      "code": "menit = 30 * 24 * 60\nprint(round(menit * (1 - 0.99)))",
+      "options": [
+        "43",
+        "4",
+        "432",
+        "4320"
+      ],
+      "answer": 2,
+      "explanation": "43.200 menit dikali 0,01 sama dengan 432 menit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Burn rate 1 berarti",
+      "code": "",
+      "options": [
+        "Budget habis dalam satu hari apa pun lamanya periode pengukuran",
+        "Budget habis tepat pada akhir periode",
+        "Tidak ada error sama sekali",
+        "Budget tidak pernah terpakai"
+      ],
+      "answer": 1,
+      "explanation": "Laju error sama dengan yang diizinkan SLO."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa nilai burn rate pada kode berikut?",
+      "code": "gagal, total, slo = 50, 5000, 0.99\nprint(round((gagal / total) / (1 - slo), 1))",
+      "options": [
+        "0.1",
+        "10.0",
+        "0.5",
+        "1.0"
+      ],
+      "answer": 3,
+      "explanation": "Laju error 0,01 dibagi laju yang diizinkan 0,01 sama dengan 1."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa alert berbasis burn rate lebih baik daripada ambang error tetap?",
+      "code": "",
+      "options": [
+        "Sudah memasukkan SLO dan periode sehingga cocok untuk layanan dengan target berbeda",
+        "Karena tidak memakai angka sama sekali",
+        "Karena selalu berbunyi lebih sering sehingga tim cepat menyadari semua masalah kecil sekalipun",
+        "Karena hanya berlaku untuk layanan baru"
+      ],
+      "answer": 0,
+      "explanation": "Satu ambang tetap bisa terlalu longgar atau terlalu ketat tergantung SLO."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "SLA internal sebaiknya lebih longgar daripada SLO agar ada ruang bertindak.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "SLO lebih ketat memberi waktu sebelum janji ke pelanggan terlanggar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ciri alert yang baik adalah",
+      "code": "",
+      "options": [
+        "Berbunyi pada setiap perubahan metrik",
+        "Tidak dilengkapi tautan apa pun",
+        "Berbasis dampak dan butuh tindakan manusia",
+        "Hanya dikirim pada jam makan siang"
+      ],
+      "answer": 2,
+      "explanation": "Alert tanpa tindakan sebaiknya dihapus atau diturunkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Runbook pada sebuah alert berfungsi sebagai",
+      "code": "",
+      "options": [
+        "Daftar nama pelanggan yang terdampak",
+        "Panduan langkah penanganan bagi orang yang bertugas",
+        "Backup basis data otomatis yang dijalankan setiap malam oleh sistem",
+        "Skrip yang menghapus log lama"
+      ],
+      "answer": 1,
+      "explanation": "Orang yang baru bangun tidur butuh panduan, bukan ingatan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "aktif = False\nhasil = []\nfor v in [2, 6, 4, 2.5]:\n    if not aktif and v > 5:\n        aktif = True\n    elif aktif and v < 3:\n        aktif = False\n    hasil.append(aktif)\nprint(hasil)",
+      "options": [
+        "[False, True, False, False]",
+        "[False, True, True, True]",
+        "[True, True, True, True]",
+        "[False, True, True, False]"
+      ],
+      "answer": 3,
+      "explanation": "Alert menyala pada 6, tetap pada 4, padam pada 2,5 yang lebih kecil dari 3."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Peredaman alert berguna agar",
+      "code": "",
+      "options": [
+        "Satu masalah tidak menghasilkan banjir notifikasi",
+        "Alert tidak pernah dikirim ke siapa pun dan hanya disimpan di arsip",
+        "Dashboard menjadi lebih berwarna",
+        "Semua alert otomatis berstatus page"
+      ],
+      "answer": 0,
+      "explanation": "Alert berulang atau berkaitan dikelompokkan dan ditahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alert dengan urgensi rendah yang tidak butuh respons malam hari sebaiknya",
+      "code": "",
+      "options": [
+        "Dikirim sebagai page ke semua orang di perusahaan pada tengah malam",
+        "Dihapus dari semua dokumentasi",
+        "Dibuat sebagai tiket untuk jam kerja",
+        "Dijadikan alert paling keras"
+      ],
+      "answer": 2,
+      "explanation": "Pilah alert menurut urgensi agar yang membangunkan orang benar-benar mendesak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu dashboard sebaiknya menjawab sebanyak mungkin pertanyaan sekaligus.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Satu dashboard, satu pertanyaan; dashboard serba ada akhirnya tidak menjawab apa pun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tanda vertikal rilis pada grafik berguna untuk",
+      "code": "",
+      "options": [
+        "Menghitung jumlah pengguna baru",
+        "Melihat apakah sebuah perubahan bertepatan dengan lonjakan masalah",
+        "Menyembunyikan garis SLO",
+        "Mengubah jenis metrik dari counter menjadi gauge secara otomatis pada setiap rilis baru"
+      ],
+      "answer": 1,
+      "explanation": "Perubahan sering menjadi penyebab; penanda rilis mempercepat korelasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tugas utama pemimpin insiden adalah",
+      "code": "",
+      "options": [
+        "Memperbaiki semua masalah sendirian",
+        "Menentukan siapa yang harus dihukum",
+        "Mematikan semua alert sampai selesai",
+        "Mengoordinasi penanganan dan komunikasi"
+      ],
+      "answer": 3,
+      "explanation": "Pemimpin mengatur siapa menyelidiki apa dan kapan memberi kabar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mitigasi yang umum dilakukan di awal insiden akibat rilis adalah",
+      "code": "",
+      "options": [
+        "Mengembalikan rilis atau mematikan fitur lewat feature flag",
+        "Menulis ulang seluruh aplikasi dari awal sebelum layanan dipulihkan kembali",
+        "Mengganti seluruh tim operasi",
+        "Menghapus semua metrik lama"
+      ],
+      "answer": 0,
+      "explanation": "Mitigasi menghentikan dampak dengan cepat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa postmortem dibuat tanpa menyalahkan?",
+      "code": "",
+      "options": [
+        "Karena tidak ada insiden yang disebabkan manusia",
+        "Karena nama pelaku selalu dirahasiakan dari semua orang",
+        "Rasa aman membuat orang jujur sehingga sistem bisa belajar",
+        "Karena postmortem tidak boleh memuat linimasa"
+      ],
+      "answer": 2,
+      "explanation": "Orang yang takut dihukum menyembunyikan kesalahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian postmortem yang paling sering gagal dan menentukan manfaatnya adalah",
+      "code": "",
+      "options": [
+        "Judul dokumen yang menarik dan mudah diingat oleh pembaca",
+        "Tindak lanjut dengan pemilik dan tenggat",
+        "Warna templat dokumen",
+        "Jumlah halaman lampiran"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa pemilik dan tenggat, tindak lanjut tidak terlaksana."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa MTTR (menit) pada kode berikut?",
+      "code": "pulih = [34, 40, 61]\nprint(sum(pulih) // len(pulih))",
+      "options": [
+        "135",
+        "34",
+        "61",
+        "45"
+      ],
+      "answer": 3,
+      "explanation": "Jumlahnya 135 dibagi 3 insiden sama dengan 45."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "MTTD mengukur rata-rata waktu dari",
+      "code": "",
+      "options": [
+        "Mulai masalah sampai terdeteksi",
+        "Terdeteksi sampai postmortem selesai",
+        "Rilis sampai insiden berikutnya",
+        "Pemulihan sampai laporan dikirim"
+      ],
+      "answer": 0,
+      "explanation": "MTTD menilai seberapa cepat masalah diketahui."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Observabilitas yang baik cenderung menurunkan MTTD dan MTTR.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Alert yang cepat dan penyebab yang mudah ditemukan memotong keduanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Selama insiden, pembaruan berkala kepada pemangku kepentingan sebaiknya",
+      "code": "",
+      "options": [
+        "Dikirim hanya setelah insiden selesai",
+        "Berisi tebakan penyebab yang belum terbukti",
+        "Memakai pola tetap: dampak, tindakan, dan jadwal pembaruan berikutnya",
+        "Dikirim ke semua pelanggan tanpa penjelasan"
+      ],
+      "answer": 2,
+      "explanation": "Pola tetap menenangkan dan menghemat waktu penulis."
+    }
+  ],
+  "prerequisites": [
+    "docker-dan-deployment"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Analisis Log dan SLO Layanan",
+    "brief": "Kamu mendapat potongan log akses sebuah toko online. Setiap baris berformat `ts=... endpoint=... status=... durasi_ms=...`, tetapi sebagian baris rusak (tanpa field, atau `status` bukan angka). Bangun alat analisis kecil yang mengubah log itu menjadi laporan keandalan. Daftar `LOG` dan fungsi `persentil(data, p)` (nearest-rank) sudah tersedia.\n\n**Fungsi yang harus kamu buat:**\n\n- `parse_log(baris)`: uraikan satu baris menjadi `{'endpoint': str, 'status': int, 'durasi_ms': int}`. Bila field hilang atau bukan angka, biarkan error (`KeyError` atau `ValueError`) muncul.\n- `muat(baris_log)`: uraikan semua baris dan **lewati** baris yang rusak.\n- `ketersediaan(entri)`: pecahan permintaan dengan `status < 500`, dibulatkan empat angka desimal; `1.0` bila kosong. Status 404 bukan kegagalan layanan.\n- `p95_per_endpoint(entri)`: dict `endpoint -> p95 durasi_ms` dengan nearest-rank.\n- `sisa_budget(entri, slo)`: budget adalah `jumlah entri * (1 - slo)`; kembalikan `(budget - gagal) / budget` dibulatkan empat angka desimal, tidak kurang dari `0.0` (gagal = status 500 ke atas).\n- `status_alert(entri, slo)`: hitung burn rate `(gagal / total) / (1 - slo)` dibulatkan dua angka desimal. Kembalikan `\"page\"` bila burn rate 10 ke atas, `\"tiket\"` bila 2 ke atas, selain itu `\"ok\"`.\n\nContoh: dengan `SLO = 0.8`, layanan ini masih punya separuh budget dan statusnya `\"ok\"`; dengan SLO 0,99 statusnya `\"page\"`.",
+    "prompt": "Lengkapi parse_log, muat, ketersediaan, p95_per_endpoint, sisa_budget, dan status_alert.",
+    "starter": {
+      "code": "import re\n\n\ndef parse_log(baris):\n    # TODO: kembalikan {'endpoint': str, 'status': int, 'durasi_ms': int}\n    return {}\n\n\ndef muat(baris_log):\n    # TODO: uraikan semua baris, lewati baris yang rusak\n    return []\n\n\ndef ketersediaan(entri):\n    # TODO: pecahan permintaan dengan status < 500 (1.0 bila kosong)\n    return 0.0\n\n\ndef p95_per_endpoint(entri):\n    # TODO: dict endpoint -> p95 durasi_ms\n    return {}\n\n\ndef sisa_budget(entri, slo):\n    # TODO: pecahan error budget yang tersisa, 0.0 sampai 1.0\n    return 0.0\n\n\ndef status_alert(entri, slo):\n    # TODO: \"page\", \"tiket\", atau \"ok\" menurut burn rate\n    return \"ok\"\n"
+    },
+    "solution": {
+      "code": "import re\n\n\ndef parse_log(baris):\n    kv = dict(re.findall(r'(\\w+)=(\\S+)', baris))\n    return {'endpoint': kv['endpoint'], 'status': int(kv['status']), 'durasi_ms': int(kv['durasi_ms'])}\n\n\ndef muat(baris_log):\n    hasil = []\n    for baris in baris_log:\n        try:\n            hasil.append(parse_log(baris))\n        except (KeyError, ValueError):\n            pass\n    return hasil\n\n\ndef ketersediaan(entri):\n    if not entri:\n        return 1.0\n    return round(sum(1 for e in entri if e['status'] < 500) / len(entri), 4)\n\n\ndef p95_per_endpoint(entri):\n    per = {}\n    for e in entri:\n        per.setdefault(e['endpoint'], []).append(e['durasi_ms'])\n    return {k: persentil(v, 95) for k, v in per.items()}\n\n\ndef _gagal(entri):\n    return sum(1 for e in entri if e['status'] >= 500)\n\n\ndef sisa_budget(entri, slo):\n    budget = len(entri) * (1 - slo)\n    if budget <= 0:\n        return 0.0\n    return max(0.0, round((budget - _gagal(entri)) / budget, 4))\n\n\ndef status_alert(entri, slo):\n    if not entri:\n        return 'ok'\n    burn = round((_gagal(entri) / len(entri)) / (1 - slo), 2)\n    if burn >= 10:\n        return 'page'\n    if burn >= 2:\n        return 'tiket'\n    return 'ok'\n"
+    },
+    "setup": "import math\n\ndef persentil(data, p):\n    urut = sorted(data)\n    peringkat = math.ceil(p / 100 * len(urut))\n    return urut[max(peringkat, 1) - 1]\n\nLOG = [\n    'ts=10:00:01 endpoint=/cari status=200 durasi_ms=40',\n    'ts=10:00:02 endpoint=/bayar status=200 durasi_ms=200',\n    'ts=10:00:03 endpoint=/cari status=200 durasi_ms=45',\n    'baris rusak tanpa field',\n    'ts=10:00:04 endpoint=/bayar status=200 durasi_ms=220',\n    'ts=10:00:05 endpoint=/cari status=200 durasi_ms=50',\n    'ts=10:00:06 endpoint=/bayar status=500 durasi_ms=250',\n    'ts=10:00:07 endpoint=/cari status=404 durasi_ms=55',\n    'ts=10:00:08 endpoint=/cari status=200 durasi_ms=60',\n    'ts=10:00:09 endpoint=/bayar status=abc durasi_ms=100',\n    'ts=10:00:10 endpoint=/bayar status=200 durasi_ms=300',\n    'ts=10:00:11 endpoint=/cari status=200 durasi_ms=65',\n    'ts=10:00:12 endpoint=/bayar status=503 durasi_ms=310',\n    'ts=10:00:13 endpoint=/cari status=200 durasi_ms=70',\n    'ts=10:00:14 endpoint=/cari status=200 durasi_ms=75',\n    'ts=10:00:15 endpoint=/bayar status=200 durasi_ms=2000',\n    'ts=10:00:16 endpoint=/cari status=200 durasi_ms=80',\n    'ts=10:00:17 endpoint=/bayar status=200 durasi_ms=180',\n    'ts=10:00:18 endpoint=/cari status=200 durasi_ms=85',\n    'ts=10:00:19 endpoint=/cari status=200 durasi_ms=90',\n    'ts=10:00:20 endpoint=/bayar status=200 durasi_ms=240',\n    'ts=10:00:21 endpoint=/cari status=200 durasi_ms=500',\n]\n",
+    "tests": [
+      {
+        "name": "parse_log mengurai satu baris",
+        "check": "parse_log('ts=10:00:01 endpoint=/cari status=200 durasi_ms=40') == {'endpoint': '/cari', 'status': 200, 'durasi_ms': 40}"
+      },
+      {
+        "name": "muat melewati baris rusak",
+        "check": "len(muat(LOG)) == 20"
+      },
+      {
+        "name": "Ketersediaan 0,9",
+        "check": "ketersediaan(muat(LOG)) == 0.9"
+      },
+      {
+        "name": "Ketersediaan daftar kosong",
+        "check": "ketersediaan([]) == 1.0"
+      },
+      {
+        "name": "p95 endpoint /bayar",
+        "check": "p95_per_endpoint(muat(LOG))['/bayar'] == 2000"
+      },
+      {
+        "name": "p95 endpoint /cari",
+        "check": "p95_per_endpoint(muat(LOG))['/cari'] == 500"
+      },
+      {
+        "name": "Sisa budget SLO 0,8 separuh",
+        "check": "sisa_budget(muat(LOG), 0.8) == 0.5"
+      },
+      {
+        "name": "Sisa budget tidak negatif",
+        "check": "sisa_budget(muat(LOG), 0.95) == 0.0"
+      },
+      {
+        "name": "Status ok pada SLO 0,8",
+        "check": "status_alert(muat(LOG), 0.8) == 'ok'"
+      },
+      {
+        "name": "Status tiket pada SLO 0,95",
+        "check": "status_alert(muat(LOG), 0.95) == 'tiket'"
+      },
+      {
+        "name": "Status page pada SLO 0,99",
+        "check": "status_alert(muat(LOG), 0.99) == 'page'"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "monitoring-dan-observabilitas",
+      "title": "Monitoring dan Observabilitas",
+      "est_minutes": 25,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Membedakan monitoring dan observabilitas dengan contoh nyata.\n- Menyebut tiga pilar observabilitas dan kegunaan masing-masing.\n- Menjelaskan mengapa sistem terdistribusi sulit dipahami tanpa data telemetri.\n- Mengajukan pertanyaan yang tepat saat layanan bermasalah.\n\n## Layanan jalan, tapi apakah sehat?\n\nBayangkan kamu menjalankan toko online. Server menyala, proses berjalan, dan halaman depan terbuka. Tetapi sejak pagi, sebagian pelanggan mengeluh pembayaran gagal, dan sebagian lagi bilang halaman keranjang terasa sangat lambat. Dari luar, semuanya tampak normal. Dari dalam, ada sesuatu yang rusak, dan kamu tidak tahu di mana.\n\nInilah masalah yang dipecahkan monitoring dan observabilitas. Software modern jarang mati total. Ia lebih sering rusak sebagian: lambat untuk sebagian pengguna, gagal untuk satu jenis permintaan, atau memburuk perlahan selama berhari-hari. Tanpa data, kamu hanya bisa menebak, dan menebak di tengah insiden itu mahal.\n\n## Monitoring: memantau yang sudah kita duga\n\n**Monitoring** adalah praktik mengumpulkan dan menampilkan data tentang keadaan sistem, lalu memberi peringatan ketika data melewati batas tertentu. Kamu memutuskan lebih dulu apa yang dipantau: pemakaian CPU, jumlah error per menit, sisa ruang disk, atau apakah halaman utama masih menjawab. Setiap hal itu adalah pertanyaan yang sudah kamu siapkan jawabannya.\n\nMonitoring bekerja baik untuk kegagalan yang bisa diperkirakan. Disk penuh, memori habis, atau proses mati adalah masalah klasik yang jelas gejalanya. Satu dashboard dan beberapa alert biasanya cukup untuk menangkapnya. Keterbatasannya: monitoring hanya menjawab pertanyaan yang kamu pikirkan sebelumnya. Kegagalan baru yang tidak terduga, misalnya pembayaran gagal hanya untuk pengguna dari satu bank di satu wilayah, tidak muncul di dashboard yang tidak dirancang untuk melihatnya.\n\n## Observabilitas: bertanya hal baru\n\n**Observabilitas** (observability) adalah kemampuan memahami apa yang terjadi di dalam sistem dari data yang dikeluarkannya, termasuk untuk pertanyaan yang tidak pernah kamu bayangkan sebelumnya. Idenya datang dari teori kendali: sistem disebut dapat diamati jika keadaan internalnya bisa disimpulkan dari keluarannya.\n\nBedanya terasa dalam praktik. Dengan monitoring, kamu melihat grafik error naik. Dengan observabilitas, kamu bisa menyaring data itu: error naik pada endpoint mana, untuk versi aplikasi berapa, dari wilayah mana, dan apakah semuanya melewati layanan yang sama. Kamu mengiris data dari sudut yang berbeda sampai pola muncul, tanpa perlu memasang kode baru dan menunggu masalahnya terulang.\n\nRingkasnya: **monitoring memberi tahu bahwa ada yang salah, observabilitas membantu menemukan mengapa**. Keduanya bukan pilihan saling menggantikan. Monitoring adalah pintu masuk yang membunyikan alarm, observabilitas adalah alat investigasi sesudahnya.\n\n![Tiga pilar observabilitas](slide:3)\n\n## Tiga pilar: metrik, log, dan trace\n\nData yang dikeluarkan sistem biasa dikelompokkan menjadi tiga jenis yang disebut tiga pilar.\n\n**Metrik** adalah angka yang diukur dari waktu ke waktu, misalnya jumlah permintaan per detik, persentase error, atau pemakaian memori. Metrik ringkas, murah disimpan, dan cepat digambar menjadi grafik. Karena sudah dirangkum, ia bagus untuk melihat tren dan memicu alert, tetapi tidak menyimpan detail setiap kejadian.\n\n**Log** adalah catatan kejadian satu per satu dengan waktu dan keterangan, misalnya \"pembayaran gagal untuk pesanan 1042 karena kartu ditolak\". Log kaya detail dan menjawab pertanyaan \"apa yang persisnya terjadi\". Harganya, volumenya besar dan mahal jika tidak dikelola.\n\n**Trace** adalah jejak satu permintaan saat melewati banyak komponen: gerbang API, layanan pesanan, layanan pembayaran, basis data. Trace menunjukkan urutan dan lama tiap langkah, sehingga kamu tahu bagian mana yang menyumbang kelambatan. Trace paling berguna di sistem yang terdiri dari banyak layanan.\n\nCara memakai ketiganya biasanya berurutan. Metrik memberi tahu ada masalah dan kira-kira kapan dimulai. Trace mempersempit ke layanan atau langkah yang bermasalah. Log di layanan itu menjelaskan kejadian persisnya. Karena itulah ketiganya perlu bisa dikaitkan satu sama lain, misalnya lewat id permintaan yang sama.\n\n## Mengapa sistem terdistribusi mempersulit\n\nPada aplikasi tunggal, kamu bisa membuka satu berkas log dan membaca dari atas ke bawah. Pada sistem dengan puluhan layanan, satu klik pengguna bisa menyentuh belasan proses di mesin berbeda, masing-masing menulis lognya sendiri dan ada yang berjalan di container yang sudah hilang saat kamu mulai menyelidiki. Container bersifat sementara, jadi data harus dikirim keluar dan disimpan di tempat terpusat sebelum wadahnya lenyap.\n\nKegagalan di sistem seperti ini jarang punya satu sebab. Layanan A lambat karena layanan B lambat karena basis data C sedang menjalankan tugas berat. Tanpa trace, kamu melihat A lambat dan mulai menyelidiki A, padahal sumbernya tiga lompatan jauhnya.\n\n## Pertanyaan yang harus bisa dijawab\n\nUkuran sederhana apakah sistemmu cukup teramati: saat ada insiden, bisakah kamu menjawab empat pertanyaan ini dalam beberapa menit?\n\n1. Apakah layanan sehat sekarang, menurut angka dan bukan perasaan?\n2. Siapa yang terdampak, sejak kapan, dan seberapa banyak?\n3. Bagian mana dari sistem yang lambat atau gagal?\n4. Apa yang berubah tepat sebelum masalah muncul, misalnya rilis, perubahan konfigurasi, atau lonjakan lalu lintas?\n\nKalau jawabannya datang dari menebak atau dari bertanya ke orang yang \"kebetulan ingat\", sistemmu belum cukup teramati. Sisa kelas ini membangun kemampuan itu langkah demi langkah: jenis metrik, cara membaca latensi, sinyal yang harus dipantau, log yang berguna, trace, target keandalan, alerting, dan cara belajar dari insiden.\n\n## Kesalahan umum\n\nKesalahan pertama adalah mengumpulkan semua data tanpa tujuan. Menyimpan setiap metrik dan setiap baris log mahal, dan banjir data justru menyulitkan pencarian. Mulailah dari pertanyaan yang ingin dijawab, lalu tentukan datanya. Kesalahan kedua adalah memasang monitoring hanya pada server, bukan pada pengalaman pengguna: CPU 20% tidak berarti pelanggan bisa membayar. Kesalahan ketiga adalah baru memasang alat saat insiden sudah terjadi, padahal data hanya berguna jika sudah dikumpulkan sebelum masalah muncul.\n\n## Rangkuman\n\n- Monitoring memantau hal yang sudah diduga dan membunyikan alarm; observabilitas membantu menjawab pertanyaan baru.\n- Tiga pilar adalah metrik (angka ringkas), log (catatan kejadian), dan trace (jejak satu permintaan).\n- Alur investigasi umum: metrik menunjukkan gejala, trace mempersempit lokasi, log menjelaskan kejadian.\n- Sistem terdistribusi menuntut data terpusat karena kegagalannya jarang punya satu sebab.\n- Ukur kemampuan observasi dengan empat pertanyaan: sehat atau tidak, siapa terdampak, bagian mana, apa yang berubah.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa perbedaan utama monitoring dan observabilitas?",
+          "code": "",
+          "options": [
+            "Monitoring hanya dipakai untuk server fisik dan observabilitas hanya untuk lingkungan cloud, sehingga keduanya tak pernah dipakai bersama",
+            "Monitoring memantau hal yang sudah diduga; observabilitas membantu menjawab pertanyaan baru",
+            "Monitoring memakai log, observabilitas hanya memakai metrik",
+            "Keduanya sama persis dan hanya berbeda nama populernya"
+          ],
+          "answer": 1,
+          "explanation": "Monitoring menjawab pertanyaan yang sudah disiapkan; observabilitas memungkinkan mengiris data untuk pertanyaan yang belum terpikir."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pilar mana yang berupa catatan kejadian satu per satu?",
+          "code": "",
+          "options": [
+            "Metrik",
+            "Trace",
+            "Dashboard",
+            "Log"
+          ],
+          "answer": 3,
+          "explanation": "Log mencatat kejadian individual dengan waktu dan keterangan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Alur investigasi yang umum dimulai dari",
+          "code": "",
+          "options": [
+            "Metrik yang menunjukkan gejala, lalu trace, lalu log",
+            "Log yang paling lama disimpan, lalu metrik bulanan, lalu menebak sebabnya",
+            "Trace yang paling pendek, lalu menghapus metrik",
+            "Dashboard kosong yang diisi saat insiden berlangsung"
+          ],
+          "answer": 0,
+          "explanation": "Metrik memberi tahu ada masalah, trace mempersempit lokasi, log menjelaskan kejadian persisnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Container bersifat sementara, sehingga data telemetri sebaiknya dikirim ke penyimpanan terpusat.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Container bisa hilang kapan saja, dan datanya ikut lenyap bila hanya disimpan di dalamnya."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "jenis-metrik",
+      "title": "Jenis Metrik: Counter, Gauge, dan Histogram",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Membedakan counter, gauge, dan histogram dan memilih yang tepat.\n- Menghitung laju per detik dari dua sampel counter, termasuk saat counter reset.\n- Menjelaskan cara kerja bucket histogram yang kumulatif.\n- Memberi nama dan label metrik dengan wajar.\n\n## Metrik adalah angka dengan waktu\n\nSebuah metrik adalah rangkaian nilai yang dicatat dari waktu ke waktu: pada detik ke-0 jumlah permintaan 1000, pada detik ke-60 jumlahnya 1300. Setiap titik punya cap waktu, nama metrik, dan biasanya beberapa **label** seperti `endpoint=\"/bayar\"` atau `status=\"500\"` yang membagi satu metrik menjadi banyak deret.\n\nAlat seperti Prometheus mengambil (scrape) nilai ini secara berkala, misalnya tiap 15 detik, lalu menyimpannya sebagai deret waktu. Kamu kemudian mengajukan pertanyaan lewat bahasa kueri dan menggambar hasilnya. Yang penting dipahami lebih dulu bukan alatnya, melainkan jenis metrik, karena jenis menentukan cara membacanya.\n\n![Tiga jenis metrik](slide:5)\n\n## Counter: hanya naik\n\n**Counter** adalah angka yang hanya bertambah, misalnya total permintaan yang pernah dilayani, total error, atau total byte yang dikirim. Ia mulai dari nol saat proses menyala dan hanya naik.\n\nNilai counter sendiri jarang berguna. Angka \"4.812.330 permintaan\" tidak menjelaskan apa pun tanpa konteks waktu. Yang berguna adalah **laju**: berapa pertambahan per detik dalam rentang tertentu.\n\n```text\nt = 0 detik    jumlah = 1000\nt = 60 detik   jumlah = 1300\n\nlaju = (1300 - 1000) / 60 = 5 permintaan per detik\n```\n\nDalam bahasa kueri gaya Prometheus, ini ditulis `rate(http_requests_total[5m])`: laju rata-rata per detik selama lima menit terakhir.\n\nAda satu jebakan penting. Ketika proses restart, counter kembali ke nol. Dua sampel berurutan bisa menunjukkan 1300 lalu 40. Selisih negatif jelas bukan \"permintaan berkurang\". Perhitungan laju yang benar mendeteksi penurunan sebagai reset dan memperlakukan nilai sesudah reset sebagai pertambahan dari nol. Fungsi `rate` di alat monitoring sudah menangani ini, dan kamu akan menulisnya sendiri di latihan nanti.\n\nNama counter biasanya berakhiran `_total` agar jenisnya jelas, misalnya `pesanan_dibuat_total`.\n\n## Gauge: naik dan turun\n\n**Gauge** adalah angka yang menggambarkan keadaan saat ini dan bisa naik atau turun: memori terpakai, jumlah koneksi aktif, panjang antrean, suhu, atau jumlah pengguna yang sedang login. Gauge dibaca langsung, tanpa dihitung lajunya.\n\nGauge cocok untuk hal yang punya \"ukuran sekarang\". Tetapi ia punya kelemahan: kalau kamu mengambil sampel tiap 15 detik, lonjakan singkat di antara dua sampel tidak terlihat. Jika antrean penuh selama 5 detik lalu kosong lagi, gauge yang dibaca tiap 15 detik bisa melewatkannya. Untuk kejadian yang dihitung, counter lebih andal karena tidak ada yang hilang di antara sampel: kejadian apa pun ikut menambah angka.\n\n## Histogram: sebaran nilai\n\nBanyak hal yang kita pedulikan bukan satu angka melainkan sebaran: berapa lama setiap permintaan dilayani, berapa besar setiap respons. **Histogram** mencatat sebaran itu dengan menghitung berapa pengamatan yang jatuh ke setiap **bucket**, yaitu rentang yang batas atasnya ditentukan di awal.\n\nMisalnya batas bucket latensi (dalam milidetik) adalah 50, 100, 250, dan 500. Setiap bucket menghitung pengamatan yang **kurang dari atau sama dengan** batasnya. Karena itu bucket bersifat **kumulatif**: pengamatan 40 ms masuk ke semua bucket (≤50, ≤100, ≤250, ≤500), sedangkan pengamatan 300 ms hanya masuk bucket ≤500.\n\n```text\nbatas (ms):     50   100   250   500\nlatensi 40 ms    1     1     1     1\nlatensi 80 ms    0     1     1     1\nlatensi 300 ms   0     0     0     1\njumlah          1     2     2     3\n```\n\nHistogram menyimpan tiga hal: hitungan per bucket, jumlah seluruh pengamatan, dan total nilainya. Dari sini kamu bisa menghitung rata-rata (total dibagi jumlah) dan memperkirakan persentil. Perkiraannya hanya sebaik bucket yang kamu pilih. Jika batas terbesar 500 ms dan banyak permintaan lebih lambat dari itu, kamu hanya tahu \"lebih dari 500 ms\" tanpa tahu seberapa jauh. Pilih batas bucket yang mengelilingi target kecepatanmu dengan rapat, misalnya jika target 200 ms, taruh banyak bucket di antara 100 dan 400 ms.\n\n## Memilih jenis yang tepat\n\nGunakan pertanyaan berikut. Apakah yang diukur adalah **kejadian yang dihitung** (permintaan, error, pesanan)? Pakai counter dan lihat lajunya. Apakah yang diukur **keadaan saat ini** (memori, antrean, koneksi)? Pakai gauge. Apakah yang diukur **sebaran** (durasi, ukuran) dan kamu butuh persentil? Pakai histogram.\n\n| Pertanyaan | Jenis |\n|---|---|\n| Berapa permintaan per detik? | Counter |\n| Berapa persen permintaan gagal? | Dua counter, dibagi lajunya |\n| Berapa memori terpakai sekarang? | Gauge |\n| Berapa lama p95 permintaan? | Histogram |\n\n## Contoh: dari counter ke persentase error\n\nPersentase error bukan metrik tersendiri, melainkan hasil membagi dua laju. Toko online punya dua counter: `permintaan_total` dan `permintaan_gagal_total`. Dalam lima menit terakhir, laju permintaan 20 per detik dan laju kegagalan 1 per detik. Persentase error adalah 1 dibagi 20, yaitu 5%. Perhatikan bahwa kamu tidak boleh membagi nilai mentah kedua counter: total sepanjang masa bisa didominasi data berminggu-minggu lalu dan menutupi masalah yang baru mulai lima menit lalu. Selalu bagi **laju** terhadap **laju** pada jendela waktu yang sama.\n\n## Nama dan label\n\nBeri nama metrik dengan satuan yang jelas dan konsisten, misalnya `latensi_detik` atau `ukuran_respons_byte`, agar tidak ada yang bingung antara milidetik dan detik. Label berguna untuk mengiris data, tetapi jangan pakai label yang nilainya nyaris tak terbatas, seperti id pengguna atau id permintaan. Setiap kombinasi nilai label menjadi satu deret waktu tersendiri, dan jutaan deret akan membuat penyimpanan dan kueri kewalahan. Ini disebut masalah kardinalitas tinggi. Gunakan label dengan puluhan nilai paling banyak, misalnya `endpoint`, `metode`, `status`, dan simpan detail per pengguna di log, bukan di metrik.\n\n## Rangkuman\n\n- Counter hanya naik dan dibaca lewat lajunya; counter bisa reset saat proses restart sehingga penurunan harus dianggap reset.\n- Gauge menggambarkan keadaan sekarang dan bisa naik turun; lonjakan singkat bisa terlewat di antara sampel.\n- Histogram menghitung pengamatan per bucket secara kumulatif dan dipakai untuk memperkirakan persentil.\n- Pilih jenis berdasarkan pertanyaan: dihitung, keadaan sekarang, atau sebaran.\n- Beri nama dengan satuan jelas dan hindari label berkardinalitas tinggi seperti id pengguna.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Jenis metrik apa yang cocok untuk jumlah permintaan yang pernah dilayani?",
+          "code": "",
+          "options": [
+            "Gauge",
+            "Histogram",
+            "Label",
+            "Counter"
+          ],
+          "answer": 3,
+          "explanation": "Total kejadian yang hanya bertambah adalah counter; yang dilihat biasanya lajunya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa counter perlu penanganan khusus saat dihitung lajunya?",
+          "code": "",
+          "options": [
+            "Counter bisa reset ke nol saat proses restart",
+            "Counter selalu turun saat lalu lintas sepi",
+            "Counter hanya bisa dibaca sekali per hari oleh agen pengambil data",
+            "Counter tidak punya cap waktu"
+          ],
+          "answer": 0,
+          "explanation": "Setelah restart nilai counter kembali ke nol, sehingga penurunan harus dianggap reset, bukan pengurangan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "a, b = 120, 420\nprint((b - a) / 30)",
+          "options": [
+            "12.0",
+            "300.0",
+            "10.0",
+            "3.0"
+          ],
+          "answer": 2,
+          "explanation": "Pertambahan 300 dalam 30 detik berarti laju 10 per detik."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bucket histogram menghitung pengamatan yang",
+          "code": "",
+          "options": [
+            "Tepat sama dengan batas bucket saja",
+            "Kurang dari atau sama dengan batas bucket (kumulatif)",
+            "Lebih besar dari batas bucket sebelumnya saja",
+            "Dipilih acak oleh agen pengumpul untuk menghemat ruang penyimpanan"
+          ],
+          "answer": 1,
+          "explanation": "Bucket kumulatif: pengamatan kecil ikut masuk ke semua bucket yang batasnya lebih besar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Laju dari counter",
+          "prompt": "Lengkapi `laju_per_detik(sampel)`. `sampel` adalah list `(waktu_detik, nilai)` yang terurut menurut waktu. Kembalikan laju rata-rata per detik dari sampel pertama sampai terakhir.\n\nCounter bisa reset saat proses restart: bila nilai sesudahnya **lebih kecil** dari nilai sebelumnya, anggap counter mulai dari nol sehingga pertambahannya adalah nilai sesudah reset itu sendiri. Bila sampel kurang dari dua, kembalikan `0.0`.\n\nContoh: `[(0, 1000), (60, 1300)]` menghasilkan `5.0`.",
+          "starter": {
+            "code": "def laju_per_detik(sampel):\n    # TODO: jumlahkan pertambahan antar sampel (waspadai reset), bagi dengan selang waktu\n    return 0.0\n"
+          },
+          "solution": {
+            "code": "def laju_per_detik(sampel):\n    if len(sampel) < 2:\n        return 0.0\n    tambah = 0\n    for (_, a), (_, b) in zip(sampel, sampel[1:]):\n        tambah += b - a if b >= a else b\n    return tambah / (sampel[-1][0] - sampel[0][0])\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Dua sampel tanpa reset",
+              "check": "laju_per_detik([(0, 1000), (60, 1300)]) == 5.0"
+            },
+            {
+              "name": "Counter reset dianggap mulai dari nol",
+              "check": "laju_per_detik([(0, 100), (10, 200), (20, 30)]) == 6.5"
+            },
+            {
+              "name": "Satu sampel menghasilkan 0.0",
+              "check": "laju_per_detik([(0, 500)]) == 0.0"
+            },
+            {
+              "name": "Counter tidak bergerak menghasilkan 0.0",
+              "check": "laju_per_detik([(0, 7), (30, 7), (60, 7)]) == 0.0"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Bucket histogram",
+          "prompt": "Lengkapi `hitung_bucket(nilai, batas)`. Kembalikan list jumlah pengamatan untuk setiap batas pada `batas`, dengan aturan histogram: setiap bucket menghitung nilai yang **kurang dari atau sama dengan** batasnya (kumulatif).\n\nContoh: `hitung_bucket([40, 80, 300], [50, 100, 250, 500])` menghasilkan `[1, 2, 2, 3]`.",
+          "starter": {
+            "code": "def hitung_bucket(nilai, batas):\n    # TODO: untuk tiap batas, hitung nilai yang <= batas\n    return []\n"
+          },
+          "solution": {
+            "code": "def hitung_bucket(nilai, batas):\n    return [sum(1 for v in nilai if v <= b) for b in batas]\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Contoh dari soal",
+              "check": "hitung_bucket([40, 80, 300], [50, 100, 250, 500]) == [1, 2, 2, 3]"
+            },
+            {
+              "name": "Nilai tepat di batas ikut dihitung",
+              "check": "hitung_bucket([50, 100], [50, 100]) == [1, 2]"
+            },
+            {
+              "name": "Tanpa pengamatan semua bucket nol",
+              "check": "hitung_bucket([], [50, 100, 250]) == [0, 0, 0]"
+            },
+            {
+              "name": "Nilai di atas batas terbesar tidak masuk bucket mana pun",
+              "check": "hitung_bucket([900], [50, 500]) == [0, 0]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "persentil-dan-latensi",
+      "title": "Persentil dan Latensi",
+      "est_minutes": 30,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa rata-rata menyesatkan untuk mengukur latensi.\n- Menghitung persentil dengan metode nearest-rank dari daftar sampel.\n- Membaca p50, p95, dan p99 dan menjelaskan artinya bagi pengguna.\n- Menjelaskan mengapa ekor latensi lebih sering terasa daripada yang terlihat.\n\n## Rata-rata yang menipu\n\nLatensi adalah waktu antara permintaan masuk dan respons selesai. Cara paling spontan meringkasnya adalah rata-rata. Cara itu juga yang paling sering salah.\n\nPerhatikan sepuluh permintaan berikut, dalam milidetik: 10, 12, 15, 18, 20, 22, 25, 30, 90, 800. Rata-ratanya 104,2 ms. Angka itu tidak mewakili siapa pun. Delapan dari sepuluh pengguna menunggu 30 ms atau kurang, satu menunggu 90 ms, dan satu pengguna menunggu hampir satu detik. Rata-rata tampak \"lumayan\", padahal ada pengguna yang sangat dirugikan, dan ia tersembunyi di balik sembilan pengalaman yang cepat.\n\nMasalahnya, sebaran latensi hampir tidak pernah berbentuk lonceng simetris. Sebagian besar permintaan cepat, lalu ada ekor panjang ke kanan: permintaan yang kena cache dingin, mengantre di basis data, menunggu *garbage collection*, atau mencoba ulang karena jaringan putus. Rata-rata ditarik oleh ekor itu tetapi tidak memperlihatkannya. Satu permintaan 10 detik dalam seribu permintaan cepat hanya menaikkan rata-rata 10 ms, nyaris tak terlihat, padahal bagi pengguna itu adalah halaman yang tampak macet.\n\n![Persentil latensi](slide:9)\n\n## Persentil\n\n**Persentil** menjawab pertanyaan yang lebih jujur: \"berapa batas yang tidak dilampaui oleh sebagian tertentu dari permintaan?\"\n\n- **p50** (median): separuh permintaan lebih cepat dari nilai ini. Menggambarkan pengalaman tipikal.\n- **p95**: 95% permintaan lebih cepat, dan 1 dari 20 lebih lambat.\n- **p99**: 99% lebih cepat, dan 1 dari 100 lebih lambat.\n\nPada contoh tadi, p50 adalah 20 ms, p90 adalah 90 ms, dan p99 adalah 800 ms. Tiga angka itu menceritakan kisah yang rata-rata sembunyikan: kebanyakan cepat, tetapi ekornya panjang.\n\n### Menghitung dengan nearest-rank\n\nAda beberapa cara menghitung persentil. Yang paling sederhana adalah **nearest-rank**. Urutkan sampel dari kecil ke besar. Untuk persentil ke-*p* dari *n* sampel, cari peringkat `ceil(p/100 × n)`, lalu ambil nilai pada peringkat itu (dihitung mulai dari 1).\n\n```python\nimport math\n\ndef persentil(data, p):\n    urut = sorted(data)\n    peringkat = math.ceil(p / 100 * len(urut))\n    return urut[max(peringkat, 1) - 1]\n\nlatensi = [10, 12, 15, 18, 20, 22, 25, 30, 90, 800]\nprint(persentil(latensi, 50))   # 20\nprint(persentil(latensi, 90))   # 90\nprint(persentil(latensi, 99))   # 800\n```\n\nUntuk p50 dengan sepuluh sampel, peringkatnya `ceil(0,5 × 10) = 5`, jadi nilai kelima, yaitu 20. Untuk p99, peringkatnya `ceil(9,9) = 10`, nilai terbesar. Perhatikan bahwa p99 dari sampel yang sedikit nyaris selalu sama dengan nilai maksimum. Persentil tinggi baru bermakna jika sampelnya cukup banyak, setidaknya ratusan.\n\nDi alat monitoring sungguhan, persentil biasanya diperkirakan dari bucket histogram, bukan dari sampel mentah, karena menyimpan setiap sampel terlalu mahal. Hasilnya perkiraan, dan ketelitiannya ditentukan oleh batas bucket yang kamu pilih.\n\n## Ekor latensi dan pengalaman pengguna\n\nMungkin p99 terdengar tidak penting: hanya 1% permintaan. Tetapi ada dua alasan ekor lebih penting daripada angkanya.\n\nPertama, **satu halaman memanggil banyak layanan**. Misalkan satu halaman beranda memanggil 100 panggilan internal, dan tiap panggilan punya peluang 1% lambat. Peluang paling sedikit satu panggilan lambat adalah `1 - 0,99^100`, sekitar 63%. Jadi walau p99 tiap layanan \"hanya\" 1%, lebih dari separuh pemuatan halaman akan menemui setidaknya satu keterlambatan. Makin banyak komponen yang terlibat, makin besar peluang pengguna merasakan ekor.\n\nKedua, **pengguna yang paling aktif sering paling terdampak**. Pelanggan yang melakukan banyak permintaan dalam satu sesi akan hampir pasti mengalami beberapa permintaan lambat. Pelanggan seperti inilah yang biasanya bernilai paling tinggi bagi bisnis.\n\n## Memilih persentil dan target\n\nPraktik yang umum adalah memantau p50 untuk pengalaman tipikal, p95 untuk pengalaman sebagian besar pengguna, dan p99 untuk ekor. Tetapkan target dalam bentuk persentil: \"95% permintaan selesai dalam 300 ms\". Pernyataan seperti itu bisa diuji dan dibandingkan, berbeda dengan \"layanan harus cepat\".\n\nJangan rata-ratakan persentil. Rata-rata dari p95 dua server tidak sama dengan p95 gabungan keduanya, dan hasilnya bisa jauh meleset. Gabungkan dulu data mentahnya, atau jumlahkan bucket histogram dari semua server, baru hitung persentil dari hasil gabungan itu.\n\nTerakhir, perhatikan juga apa yang diukur. Latensi yang dilihat server tidak mencakup waktu jaringan dan waktu rendering di perangkat pengguna. Ukuran terbaik tetap yang diukur sedekat mungkin dengan pengguna, dan latensi dari sisi server adalah pendekatan yang berguna selama kamu sadar batasnya.\n\n## Contoh: membaca laporan latensi\n\nSebuah tim melaporkan latensi API pencarian: rata-rata 180 ms, p50 120 ms, p95 450 ms, p99 2.100 ms. Bagaimana membacanya? Separuh pengguna dilayani dalam 120 ms atau kurang, dan itu terasa cepat. Satu dari dua puluh pengguna menunggu hampir setengah detik. Satu dari seratus menunggu lebih dari dua detik, dan itu cukup lama untuk membuat orang menutup halaman. Selisih besar antara p50 dan p99 adalah petunjuk bahwa ada kelompok permintaan yang diperlakukan sangat berbeda, misalnya pencarian dengan kata kunci langka yang tidak ada di cache. Langkah berikutnya adalah mengiris data: apakah permintaan lambat itu terpusat di satu endpoint, satu wilayah, atau satu jenis kueri? Rata-rata 180 ms tidak akan pernah mendorong pertanyaan itu muncul, sedangkan jarak p50 ke p99 langsung memunculkannya.\n\nSatu hal lagi: persentil selalu dihitung pada sebuah jendela waktu. p95 selama lima menit terakhir bisa sangat berbeda dari p95 selama satu hari penuh. Jendela pendek cepat bereaksi terhadap masalah baru tetapi berisik, sedangkan jendela panjang stabil tetapi lambat menyadari perubahan. Karena itu, tentukan jendela yang sesuai tujuan: pendek untuk alert, panjang untuk laporan tren dan target keandalan bulanan.\n\n## Rangkuman\n\n- Rata-rata menyembunyikan permintaan lambat karena sebaran latensi punya ekor panjang.\n- Persentil menunjukkan batas untuk sebagian permintaan: p50 tipikal, p95 sebagian besar, p99 ekor.\n- Nearest-rank: urutkan sampel, ambil nilai pada peringkat `ceil(p/100 × n)`.\n- Ekor terasa lebih sering karena satu halaman memanggil banyak layanan dan pengguna aktif mengirim banyak permintaan.\n- Jangan merata-ratakan persentil antar server; gabungkan data atau bucket dulu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa rata-rata latensi bisa menyesatkan?",
+          "code": "",
+          "options": [
+            "Ekor permintaan lambat tersembunyi di balik banyak permintaan cepat",
+            "Rata-rata selalu lebih kecil dari semua sampel, jadi hasilnya tidak bisa dipercaya",
+            "Rata-rata tidak bisa dihitung untuk angka desimal",
+            "Rata-rata hanya berlaku untuk jaringan lokal"
+          ],
+          "answer": 0,
+          "explanation": "Sebaran latensi berekor panjang; rata-rata menyembunyikan pengalaman buruk sebagian kecil pengguna."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut (nearest-rank p50)?",
+          "code": "import math\ndata = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]\nurut = sorted(data)\nprint(urut[math.ceil(0.5 * len(urut)) - 1])",
+          "options": [
+            "4.5",
+            "5",
+            "3",
+            "1.0"
+          ],
+          "answer": 2,
+          "explanation": "Terurut: 1,1,2,3,3,4,5,5,6,9. Peringkat ceil(5) = 5, nilai ke-5 adalah 3."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "p99 sebesar 800 ms berarti",
+          "code": "",
+          "options": [
+            "Semua permintaan selesai dalam 800 ms",
+            "Satu dari seratus permintaan lebih lambat dari 800 ms",
+            "Rata-rata semua permintaan adalah 800 ms",
+            "Sembilan puluh sembilan permintaan lebih lambat dari 800 ms"
+          ],
+          "answer": 1,
+          "explanation": "p99 adalah batas yang hanya dilampaui 1% permintaan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Rata-rata dari p95 beberapa server sama dengan p95 gabungan semua server.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Persentil tidak bisa dirata-ratakan; gabungkan data mentah atau bucket histogram lebih dulu."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Persentil nearest-rank",
+          "prompt": "Lengkapi `persentil(data, p)` dengan metode nearest-rank: urutkan `data`, hitung peringkat `ceil(p / 100 * n)` (minimal 1), lalu kembalikan nilai pada peringkat itu (peringkat dihitung mulai dari 1). `data` tidak dijamin terurut.\n\nContoh: untuk `[10, 12, 15, 18, 20, 22, 25, 30, 90, 800]`, `persentil(data, 50)` adalah `20` dan `persentil(data, 99)` adalah `800`.",
+          "starter": {
+            "code": "import math\n\n\ndef persentil(data, p):\n    # TODO: urutkan, cari peringkat nearest-rank, ambil nilainya\n    return 0\n"
+          },
+          "solution": {
+            "code": "import math\n\ndef persentil(data, p):\n    urut = sorted(data)\n    peringkat = math.ceil(p / 100 * len(urut))\n    return urut[max(peringkat, 1) - 1]\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "p50 dari sepuluh sampel",
+              "check": "persentil([10, 12, 15, 18, 20, 22, 25, 30, 90, 800], 50) == 20"
+            },
+            {
+              "name": "p90 dari sepuluh sampel",
+              "check": "persentil([10, 12, 15, 18, 20, 22, 25, 30, 90, 800], 90) == 90"
+            },
+            {
+              "name": "p99 adalah nilai terbesar pada sampel sedikit",
+              "check": "persentil([10, 12, 15, 18, 20, 22, 25, 30, 90, 800], 99) == 800"
+            },
+            {
+              "name": "Data tidak terurut diurutkan dulu",
+              "check": "persentil([5, 1, 3], 50) == 3"
+            },
+            {
+              "name": "Satu sampel",
+              "check": "persentil([7], 95) == 7"
+            },
+            {
+              "name": "p0 mengambil nilai terkecil",
+              "check": "persentil([4, 2, 9], 0) == 2"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Ringkasan latensi",
+          "prompt": "Fungsi `persentil(data, p)` (nearest-rank) sudah tersedia. Lengkapi `ringkas(data)` yang mengembalikan dict dengan kunci `rata` (rata-rata dibulatkan satu angka desimal), `p50`, `p95`, dan `p99`.\n\nContoh: untuk `list(range(1, 101))` hasilnya `{'rata': 50.5, 'p50': 50, 'p95': 95, 'p99': 99}`.",
+          "starter": {
+            "code": "def ringkas(data):\n    # TODO: rata-rata (1 desimal) dan tiga persentil\n    return {}\n"
+          },
+          "solution": {
+            "code": "def ringkas(data):\n    return {\n        'rata': round(sum(data) / len(data), 1),\n        'p50': persentil(data, 50),\n        'p95': persentil(data, 95),\n        'p99': persentil(data, 99),\n    }\n"
+          },
+          "setup": "import math\n\ndef persentil(data, p):\n    urut = sorted(data)\n    peringkat = math.ceil(p / 100 * len(urut))\n    return urut[max(peringkat, 1) - 1]\n",
+          "tests": [
+            {
+              "name": "Seratus nilai berurutan",
+              "check": "ringkas(list(range(1, 101))) == {'rata': 50.5, 'p50': 50, 'p95': 95, 'p99': 99}"
+            },
+            {
+              "name": "Ekor panjang menarik rata-rata",
+              "check": "ringkas([10, 12, 15, 18, 20, 22, 25, 30, 90, 800]) == {'rata': 104.2, 'p50': 20, 'p95': 800, 'p99': 800}"
+            },
+            {
+              "name": "Rata-rata jauh di atas p50 pada data berekor",
+              "check": "ringkas([10, 12, 15, 18, 20, 22, 25, 30, 90, 800])['rata'] > ringkas([10, 12, 15, 18, 20, 22, 25, 30, 90, 800])['p50']"
+            },
+            {
+              "name": "Semua nilai sama",
+              "check": "ringkas([5, 5, 5, 5]) == {'rata': 5.0, 'p50': 5, 'p95': 5, 'p99': 5}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "golden-signals-red-dan-use",
+      "title": "Golden Signals, RED, dan USE",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menyebut empat golden signals dan menjelaskan masing-masing.\n- Menerapkan metode RED untuk layanan dan metode USE untuk sumber daya.\n- Memilih sinyal yang benar untuk memulai dashboard.\n- Membedakan gejala yang dirasakan pengguna dari penyebab di dalam sistem.\n\n## Terlalu banyak angka, terlalu sedikit arah\n\nSebuah server modern bisa mengeluarkan ratusan metrik. Kalau kamu membuka dashboard dengan lima puluh grafik, kamu tidak tahu harus melihat yang mana. Tim yang berpengalaman menjawab ini dengan memulai dari sedikit sinyal yang paling mewakili kesehatan layanan, lalu masuk lebih dalam hanya bila perlu.\n\nDua kerangka yang paling dikenal adalah **empat golden signals** dari buku Site Reliability Engineering milik Google, serta metode **RED** dan **USE** yang lebih operasional. Semuanya menjawab pertanyaan yang sama dengan cara yang sedikit berbeda.\n\n![Empat golden signals](slide:11)\n\n## Empat golden signals\n\n**Latency** adalah lama permintaan dilayani. Pisahkan latensi permintaan yang berhasil dari yang gagal. Error yang cepat, misalnya langsung menolak dengan status 500, bisa membuat rata-rata latensi tampak membaik padahal layanan sedang rusak. Ukur dengan persentil, bukan rata-rata.\n\n**Traffic** adalah seberapa besar permintaan terhadap sistem: permintaan HTTP per detik, transaksi per menit, atau sesi aktif. Traffic memberi konteks pada semua sinyal lain. Latensi naik saat traffic naik berarti sistem kekurangan kapasitas. Latensi naik padahal traffic turun menunjuk ke masalah di tempat lain.\n\n**Errors** adalah laju permintaan yang gagal. Termasuk kegagalan eksplisit (status 5xx), kegagalan implisit (status 200 tetapi isinya salah), dan kegagalan karena kebijakan (respons yang lebih lambat dari batas waktu yang kamu tetapkan dianggap gagal). Yang paling berbahaya adalah kegagalan implisit karena tidak muncul di metrik status.\n\n**Saturation** adalah seberapa penuh sumber daya paling kritis: memori, CPU, disk, kolam koneksi basis data, atau panjang antrean. Saturasi sering memberi peringatan dini. Layanan biasanya melambat sebelum benar-benar gagal, dan disk yang 95% penuh adalah masalah yang masih bisa dicegah.\n\n## Metode RED: sudut pandang layanan\n\nUntuk layanan yang melayani permintaan, misalnya API dan mikroservis, metode **RED** menyederhanakan golden signals menjadi tiga angka:\n\n- **Rate**: permintaan per detik.\n- **Errors**: persentase permintaan yang gagal.\n- **Duration**: sebaran waktu respons, dilihat lewat persentil.\n\nKelebihan RED adalah keseragamannya. Kalau setiap layanan menampilkan tiga grafik yang sama dengan tata letak yang sama, siapa pun di tim bisa membuka dashboard layanan yang belum pernah ia lihat dan langsung paham. RED mencerminkan apa yang dirasakan pengguna layanan itu, sehingga cocok untuk alert yang berbasis dampak.\n\n```text\nlaju       = permintaan dalam jendela / lama jendela (detik)\nerror      = permintaan gagal / semua permintaan\ndurasi p95 = persentil ke-95 dari waktu respons\n```\n\n## Metode USE: sudut pandang sumber daya\n\nUntuk sumber daya seperti CPU, memori, disk, dan antarmuka jaringan, metode **USE** lebih cocok:\n\n- **Utilization**: berapa persen waktu sumber daya itu sibuk.\n- **Saturation**: berapa banyak pekerjaan yang menunggu karena sumber daya tidak sempat melayani, misalnya panjang antrean proses atau antrean disk.\n- **Errors**: jumlah kesalahan perangkat atau sistem, misalnya paket jaringan yang jatuh atau kegagalan baca disk.\n\nPerbedaan utilisasi dan saturasi penting. CPU yang 100% sibuk tetapi tanpa antrean berarti bekerja penuh namun mengimbangi. CPU yang 70% sibuk tetapi dengan antrean panjang menunjukkan ada pekerjaan yang menunggu, dan di situlah pengguna merasakan perlambatan. Selalu cari saturasi, bukan hanya utilisasi.\n\n## Gejala dan penyebab\n\nSatu prinsip memandu penggunaan semua kerangka ini: **beri peringatan pada gejala, selidiki lewat penyebab**. Gejala adalah apa yang dirasakan pengguna: error naik, halaman lambat. Penyebab adalah apa yang terjadi di dalam: CPU penuh, basis data kehabisan koneksi, disk penuh.\n\nAlert untuk \"CPU di atas 80%\" sering berbunyi tanpa dampak apa pun, dan sebaliknya layanan bisa rusak parah tanpa CPU berubah sedikit pun. Alert untuk \"5% permintaan gagal\" selalu berarti pengguna terganggu. Karena itu, golden signals dan RED dipakai untuk alert, sedangkan USE dipakai di dashboard penyelidikan setelah alert berbunyi, untuk menemukan sumber daya mana yang jadi penyebabnya.\n\n## Contoh membaca sinyal\n\nBayangkan alert berbunyi: laju error layanan pembayaran naik dari 0,5% menjadi 6%. Kamu membuka dashboard RED. Rate stabil, jadi bukan lonjakan traffic. Duration p95 naik dari 200 ms menjadi 3 detik, jadi permintaan melambat sebelum gagal. Lalu kamu membuka tampilan USE untuk basis data: utilisasi CPU rendah, tetapi saturasi kolam koneksi 100% dan antrean menunggu koneksi menumpuk. Kesimpulannya, kolam koneksi habis, mungkin karena ada kueri lambat yang menahan koneksi. Dalam dua menit kamu sudah mempersempit dari \"pembayaran bermasalah\" menjadi \"kolam koneksi basis data penuh\", dan itu semua tanpa membaca satu baris log pun.\n\n## Menyusun dashboard pertama\n\nKalau kamu harus membuat dashboard untuk layanan baru besok pagi, mulailah dari enam panel saja. Baris atas menampilkan tiga panel RED: laju permintaan, persentase error, dan latensi p50, p95, serta p99 dalam satu grafik. Baris bawah menampilkan tiga panel saturasi untuk sumber daya yang paling mungkin menjadi leher botol: pemakaian memori, antrean atau kolam koneksi basis data, dan pemakaian CPU. Tambahkan penanda vertikal setiap kali ada rilis supaya kamu bisa melihat apakah sebuah perubahan bertepatan dengan lonjakan masalah. Dashboard sekecil ini sudah menjawab pertanyaan \"apakah layanan sehat\" dalam sepuluh detik. Panel tambahan boleh menyusul, tetapi setiap panel baru harus punya alasan, yaitu pertanyaan yang tidak terjawab oleh panel yang ada.\n\n## Rangkuman\n\n- Golden signals: latency, traffic, errors, dan saturation; pantau keempatnya untuk setiap layanan.\n- RED (rate, errors, duration) cocok untuk layanan dan menjadi dasar alert berbasis dampak.\n- USE (utilization, saturation, errors) cocok untuk sumber daya; cari saturasi, bukan hanya utilisasi.\n- Beri peringatan pada gejala yang dirasakan pengguna, lalu selidiki penyebab lewat sinyal sumber daya.\n- Dashboard yang seragam antar layanan mempercepat siapa pun memahami layanan baru.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa saja empat golden signals?",
+          "code": "",
+          "options": [
+            "CPU, memori, disk, dan jaringan sebagai keempat sumber daya utama",
+            "Metrik, log, trace, profil",
+            "Latency, traffic, errors, saturation",
+            "Rate, errors, duration, utilization"
+          ],
+          "answer": 2,
+          "explanation": "Empat sinyal dari buku SRE Google: latency, traffic, errors, dan saturation."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Metode RED paling cocok untuk memantau",
+          "code": "",
+          "options": [
+            "Kondisi fisik kabel jaringan",
+            "Layanan yang melayani permintaan",
+            "Kapasitas penyimpanan arsip yang jarang dibuka",
+            "Jadwal rilis tim pengembang"
+          ],
+          "answer": 1,
+          "explanation": "RED (rate, errors, duration) menggambarkan perilaku layanan dari sisi permintaan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada metode USE, huruf S berarti",
+          "code": "",
+          "options": [
+            "Speed, yaitu kecepatan prosesor yang diukur dalam gigahertz per inti",
+            "Success, yaitu persentase permintaan yang sukses",
+            "Storage, yaitu ukuran penyimpanan yang disewa",
+            "Saturation, yaitu pekerjaan yang antre karena sumber daya penuh"
+          ],
+          "answer": 3,
+          "explanation": "Saturasi menunjukkan seberapa banyak pekerjaan menunggu giliran."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Alert sebaiknya dipasang pada gejala yang dirasakan pengguna, sedangkan penyebab diselidiki sesudahnya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Gejala hampir selalu berarti dampak; penyebab dicari lewat sinyal sumber daya setelah alert berbunyi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Hitung RED",
+          "prompt": "Fungsi `persentil(data, p)` dan daftar `PERMINTAAN` (setiap elemen berisi `durasi_ms` dan `status`) sudah tersedia. Lengkapi `hitung_red(permintaan, jendela_detik)` yang mengembalikan dict:\n\n- `rate`: jumlah permintaan dibagi `jendela_detik`\n- `error`: bagian permintaan yang gagal (status 500 ke atas), pecahan antara 0 dan 1\n- `p95`: persentil ke-95 dari `durasi_ms`\n\nUntuk daftar kosong kembalikan `{'rate': 0.0, 'error': 0.0, 'p95': 0}`.",
+          "starter": {
+            "code": "def hitung_red(permintaan, jendela_detik):\n    # TODO: rate, error (status >= 500), p95 durasi\n    return {}\n"
+          },
+          "solution": {
+            "code": "def hitung_red(permintaan, jendela_detik):\n    n = len(permintaan)\n    if n == 0:\n        return {'rate': 0.0, 'error': 0.0, 'p95': 0}\n    gagal = sum(1 for p in permintaan if p['status'] >= 500)\n    return {\n        'rate': n / jendela_detik,\n        'error': gagal / n,\n        'p95': persentil([p['durasi_ms'] for p in permintaan], 95),\n    }\n"
+          },
+          "setup": "import math\n\ndef persentil(data, p):\n    urut = sorted(data)\n    peringkat = math.ceil(p / 100 * len(urut))\n    return urut[max(peringkat, 1) - 1]\n\nPERMINTAAN = [{'durasi_ms': 100, 'status': 200} for _ in range(18)] + [\n    {'durasi_ms': 300, 'status': 500},\n    {'durasi_ms': 900, 'status': 503},\n]\n",
+          "tests": [
+            {
+              "name": "Rate 20 permintaan dalam 10 detik",
+              "check": "hitung_red(PERMINTAAN, 10)['rate'] == 2.0"
+            },
+            {
+              "name": "Dua dari dua puluh gagal",
+              "check": "hitung_red(PERMINTAAN, 10)['error'] == 0.1"
+            },
+            {
+              "name": "p95 adalah peringkat ke-19",
+              "check": "hitung_red(PERMINTAAN, 10)['p95'] == 300"
+            },
+            {
+              "name": "Status 404 bukan kegagalan sisi layanan",
+              "check": "hitung_red([{'durasi_ms': 10, 'status': 404}, {'durasi_ms': 20, 'status': 200}], 1)['error'] == 0.0"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "hitung_red([], 10) == {'rate': 0.0, 'error': 0.0, 'p95': 0}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "logging-terstruktur",
+      "title": "Logging Terstruktur",
+      "est_minutes": 30,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan kelebihan log terstruktur dibanding teks bebas.\n- Menulis dan membaca log dalam format key=value (logfmt) dan JSON.\n- Memilih level log yang tepat dan menambahkan konteks yang berguna.\n- Menghindari kesalahan umum: log rahasia, log berlebihan, dan log tanpa konteks.\n\n## Log: catatan yang paling kaya\n\nMetrik memberi tahu bahwa 6% permintaan gagal. Log memberi tahu permintaan yang mana, untuk siapa, dengan pesan kesalahan apa. Log adalah catatan kejadian satu per satu, dan itulah yang membuatnya jadi sumber detail terbaik saat penyelidikan.\n\nTetapi log yang ditulis sembarangan sama sulitnya dibaca dengan tidak ada log. Perbedaan terbesar antara log yang berguna dan yang tidak adalah **strukturnya**.\n\n## Tak terstruktur vs terstruktur\n\nBandingkan dua cara mencatat kejadian yang sama.\n\n```text\n# tak terstruktur\nPembayaran gagal untuk user budi sebesar 50000 karena kartu ditolak\n\n# terstruktur, format logfmt\nlevel=error msg=\"pembayaran gagal\" user=budi jumlah=50000 alasan=kartu_ditolak trace_id=ab12\n\n# terstruktur, format JSON\n{\"level\":\"error\",\"msg\":\"pembayaran gagal\",\"user\":\"budi\",\"jumlah\":50000,\"alasan\":\"kartu_ditolak\",\"trace_id\":\"ab12\"}\n```\n\nBaris pertama enak dibaca manusia, tetapi mesin kesulitan. Untuk menghitung berapa pembayaran gagal karena kartu ditolak, kamu harus menulis ekspresi reguler yang rapuh dan akan rusak begitu ada yang mengubah redaksi pesan. Pada dua baris berikutnya, setiap informasi punya nama (field) dan nilai. Mesin bisa menyaring `alasan=kartu_ditolak`, menjumlahkan `jumlah`, atau mengelompokkan per `user` tanpa menebak.\n\n![Log terstruktur](slide:14)\n\nDua format terstruktur yang umum adalah **logfmt** (pasangan `kunci=nilai` yang dipisah spasi, nilai berspasi diberi tanda kutip) dan **JSON**. Logfmt lebih ringkas dan nyaman dibaca langsung di terminal. JSON mendukung struktur bersarang dan didukung hampir semua alat. Pilih satu dan pakai konsisten di semua layanan.\n\n## Level log\n\nLevel menandai seberapa penting sebuah catatan, sehingga kamu bisa menyaring sesuai keperluan.\n\n| Level | Kapan dipakai |\n|---|---|\n| DEBUG | Detail untuk pengembang, biasanya mati di produksi |\n| INFO | Peristiwa normal yang berarti: layanan menyala, pesanan dibuat |\n| WARN | Ada yang janggal tetapi sistem masih berjalan: percobaan ulang, fitur usang dipakai |\n| ERROR | Operasi gagal dan butuh perhatian: pembayaran gagal, basis data tak terjangkau |\n\nPakai ERROR hanya untuk hal yang benar-benar gagal. Jika setiap input salah dari pengguna dicatat sebagai ERROR, level itu kehilangan arti dan alert yang berbasis jumlah ERROR akan berbunyi terus. Input yang salah dari pengguna biasanya cukup INFO atau WARN, atau malah tidak perlu dicatat satu per satu.\n\n## Konteks yang membuat log berguna\n\nPesan \"terjadi kesalahan\" tidak menolong siapa pun. Tambahkan konteks yang menjawab pertanyaan penyelidik berikutnya: siapa, apa, di mana, berapa lama.\n\n- **Id permintaan atau trace id**, supaya semua baris log dari satu permintaan bisa dikumpulkan, juga lintas layanan.\n- **Identitas yang relevan**, misalnya id pesanan atau id pengguna (id, bukan data pribadi).\n- **Durasi**, misalnya `durasi_ms=842`, agar log juga bisa dipakai menghitung latensi.\n- **Versi aplikasi**, supaya terlihat apakah masalah dimulai bersama sebuah rilis.\n- **Hasil**, misalnya `status=500` atau `hasil=ditolak`.\n\nMenyertakan trace id adalah kebiasaan yang paling besar manfaatnya. Dari satu trace yang lambat, kamu bisa langsung membuka semua log yang bersangkutan, tanpa menebak berdasarkan waktu.\n\n## Aturan log yang baik\n\n**Satu kejadian, satu baris, satu makna.** Log yang pecah menjadi banyak baris, misalnya jejak tumpukan (stack trace) yang tercecer sebagai baris terpisah, sulit dikelompokkan oleh alat pengumpul. Jika harus mencatat jejak tumpukan, taruh di satu field.\n\n**Jangan pernah mencatat rahasia.** Kata sandi, token akses, nomor kartu, dan data pribadi tidak boleh masuk log. Log biasanya disimpan lama, dikirim ke layanan pihak ketiga, dan dibaca banyak orang. Rahasia yang bocor lewat log sama bocornya dengan rahasia yang ditempel di kanal obrolan. Jika kamu perlu mengaitkan kejadian dengan pengguna, catat id-nya, bukan isi datanya. Pertimbangkan juga penyamaran otomatis (*masking*) pada field yang berisiko.\n\n**Catat dengan tujuan.** Log yang terlalu ramai, misalnya mencatat setiap iterasi perulangan, menghabiskan penyimpanan dan menenggelamkan baris penting. Biaya penyimpanan log bisa menjadi salah satu tagihan terbesar di infrastruktur. Catat batas dan hasil sebuah operasi, bukan setiap langkah kecil di dalamnya.\n\n**Log dikirim keluar dari mesin.** Di lingkungan container, tulis log ke keluaran standar dan biarkan platform atau agen pengumpul mengirimnya ke penyimpanan terpusat. Jangan menyimpan log penting hanya di dalam disk container yang akan lenyap saat container diganti.\n\n## Dari log ke angka\n\nKarena log terstruktur punya field yang konsisten, kamu bisa mengubahnya menjadi metrik: hitung berapa baris dengan `level=error` per menit, atau rata-ratakan `durasi_ms` per endpoint. Latihan di bab ini melakukan hal itu: membaca baris logfmt, menguraikannya menjadi kamus, lalu menghitung agregat. Keterampilan yang sama dipakai alat pencarian log, hanya dalam skala jauh lebih besar.\n\n## Contoh: menyelidiki dengan log\n\nAlert menyatakan laju error di layanan pesanan naik. Kamu menyaring log dengan `level=error` dalam sepuluh menit terakhir dan menemukan ratusan baris. Mengelompokkannya per field `alasan` menunjukkan 90% berisi `alasan=stok_tidak_sinkron`. Mengelompokkan per `versi` menunjukkan semuanya berasal dari versi 2.4.1 yang dirilis dua belas menit lalu. Dalam tiga langkah kamu sudah tahu jenis kesalahan dan rilis yang bertepatan dengannya. Kalau log itu teks bebas, setiap langkah ini akan menuntut ekspresi reguler baru. Struktur log adalah investasi kecil saat menulis yang menghemat banyak waktu saat insiden.\n\nSatu pertimbangan terakhir adalah volume. Pada layanan yang sangat ramai, mencatat setiap permintaan sukses bisa menghasilkan jutaan baris per jam. Banyak tim memakai **sampling**: mencatat semua error, tetapi hanya sebagian kecil permintaan sukses, misalnya satu dari seratus. Dengan begitu kamu tetap punya semua bukti kegagalan dan gambaran representatif tentang lalu lintas normal, tanpa tagihan penyimpanan yang membengkak.\n\n## Rangkuman\n\n- Log terstruktur punya field bernama sehingga mesin bisa menyaring dan menghitungnya; teks bebas rapuh.\n- Logfmt dan JSON adalah dua format umum; pilih satu dan konsisten di semua layanan.\n- Pakai level dengan disiplin: ERROR hanya untuk operasi yang benar-benar gagal.\n- Sertakan konteks: trace id, id relevan, durasi, versi, dan hasil.\n- Jangan mencatat rahasia, jangan berlebihan, dan kirim log keluar dari mesin.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kelebihan utama log terstruktur adalah",
+          "code": "",
+          "options": [
+            "Ukurannya selalu lebih kecil dari teks bebas",
+            "Mesin bisa menyaring dan menghitung berdasarkan field",
+            "Tidak perlu lagi menyimpan metrik dan trace karena semuanya sudah ada di log",
+            "Hanya bisa dibaca oleh pengembang senior"
+          ],
+          "answer": 1,
+          "explanation": "Field yang bernama membuat pencarian dan agregasi tidak bergantung pada ekspresi reguler yang rapuh."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Informasi mana yang tidak boleh masuk log?",
+          "code": "",
+          "options": [
+            "Id permintaan yang dibuat server untuk tiap panggilan",
+            "Durasi operasi dalam milidetik",
+            "Versi aplikasi yang sedang berjalan",
+            "Kata sandi dan token akses"
+          ],
+          "answer": 3,
+          "explanation": "Rahasia seperti kata sandi dan token tidak boleh dicatat karena log disimpan lama dan dibaca banyak orang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa menyertakan trace id di setiap baris log?",
+          "code": "",
+          "options": [
+            "Agar log bisa dikaitkan dengan trace permintaan yang sama",
+            "Agar baris log lebih panjang, lengkap, dan mudah dibaca oleh manusia",
+            "Agar log tidak perlu dikirim keluar mesin",
+            "Agar level log otomatis menjadi ERROR"
+          ],
+          "answer": 0,
+          "explanation": "Trace id menghubungkan log, trace, dan metrik untuk satu permintaan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "baris = 'level=warn alasan=timeout'\nprint(dict(p.split('=') for p in baris.split()))",
+          "options": [
+            "['level', 'alasan']",
+            "level=warn alasan=timeout",
+            "{'level': 'warn', 'alasan': 'timeout'}",
+            "{'warn': 'level', 'timeout': 'alasan'}"
+          ],
+          "answer": 2,
+          "explanation": "Setiap pasangan dipecah pada tanda sama dengan menjadi kunci dan nilai."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Uraikan baris logfmt",
+          "prompt": "Lengkapi `parse_logfmt(baris)` yang mengubah satu baris log berformat `kunci=nilai` menjadi dict string. Nilai yang mengandung spasi diberi tanda kutip ganda, dan tanda kutipnya dibuang dari hasil. Baris kosong menghasilkan dict kosong.\n\nContoh: `level=error msg=\"bayar gagal\" user=budi` menjadi `{'level': 'error', 'msg': 'bayar gagal', 'user': 'budi'}`. Petunjuk: modul `re` dan `re.findall` membantu.",
+          "starter": {
+            "code": "import re\n\n\ndef parse_logfmt(baris):\n    # TODO: ambil pasangan kunci=nilai, buang tanda kutip pada nilai berspasi\n    return {}\n"
+          },
+          "solution": {
+            "code": "import re\n\n\ndef parse_logfmt(baris):\n    hasil = {}\n    for k, v in re.findall(r'(\\w+)=(\"[^\"]*\"|\\S*)', baris):\n        hasil[k] = v[1:-1] if v.startswith('\"') else v\n    return hasil\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Nilai tanpa spasi",
+              "check": "parse_logfmt('level=info user=budi') == {'level': 'info', 'user': 'budi'}"
+            },
+            {
+              "name": "Nilai bertanda kutip memuat spasi",
+              "check": "parse_logfmt('level=error msg=\"bayar gagal\" user=budi') == {'level': 'error', 'msg': 'bayar gagal', 'user': 'budi'}"
+            },
+            {
+              "name": "Semua nilai berupa string",
+              "check": "parse_logfmt('jumlah=50000')['jumlah'] == '50000'"
+            },
+            {
+              "name": "Baris kosong menghasilkan dict kosong",
+              "check": "parse_logfmt('') == {}"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Hitung log per level",
+          "prompt": "Fungsi `parse_logfmt(baris)` dan daftar `LOG` sudah tersedia. Lengkapi `hitung_per_level(baris_log)` yang mengembalikan dict jumlah baris untuk setiap nilai `level`. Baris tanpa field `level` diabaikan.",
+          "starter": {
+            "code": "def hitung_per_level(baris_log):\n    # TODO: uraikan tiap baris dan hitung per level\n    return {}\n"
+          },
+          "solution": {
+            "code": "def hitung_per_level(baris_log):\n    hasil = {}\n    for baris in baris_log:\n        level = parse_logfmt(baris).get('level')\n        if level is not None:\n            hasil[level] = hasil.get(level, 0) + 1\n    return hasil\n"
+          },
+          "setup": "import re\n\ndef parse_logfmt(baris):\n    hasil = {}\n    for k, v in re.findall(r'(\\w+)=(\"[^\"]*\"|\\S*)', baris):\n        hasil[k] = v[1:-1] if v.startswith('\"') else v\n    return hasil\n\nLOG = [\n    'level=info msg=\"layanan menyala\" versi=2.4.1',\n    'level=info msg=\"pesanan dibuat\" pesanan=1042',\n    'level=warn msg=\"coba ulang\" alasan=timeout',\n    'level=error msg=\"bayar gagal\" alasan=kartu_ditolak',\n    'level=info msg=\"pesanan dibuat\" pesanan=1043',\n    'level=error msg=\"bayar gagal\" alasan=timeout',\n]\n",
+          "tests": [
+            {
+              "name": "Hitungan pada LOG",
+              "check": "hitung_per_level(LOG) == {'info': 3, 'warn': 1, 'error': 2}"
+            },
+            {
+              "name": "Baris tanpa level diabaikan",
+              "check": "hitung_per_level(['msg=halo', 'level=info msg=ok']) == {'info': 1}"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "hitung_per_level([]) == {}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tracing-terdistribusi",
+      "title": "Tracing Terdistribusi",
+      "est_minutes": 30,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menjelaskan trace, span, dan hubungan induk-anak di antara span.\n- Menjelaskan bagaimana konteks trace diteruskan antar layanan lewat header.\n- Menghitung waktu sendiri (self time) sebuah span untuk menemukan sumber kelambatan.\n- Menjelaskan mengapa trace biasanya di-sampling.\n\n## Satu permintaan, banyak layanan\n\nPengguna menekan tombol \"Bayar\". Permintaan itu masuk ke gerbang API, diteruskan ke layanan pesanan, yang memanggil layanan stok, layanan pembayaran, dan basis data. Layanan pembayaran lalu memanggil penyedia kartu di luar. Total waktu tunggu pengguna: 2,4 detik. Pertanyaannya, dari 2,4 detik itu, siapa yang memakan berapa?\n\nMetrik per layanan hanya memberi tahu bahwa semuanya agak lambat. Log tiap layanan menyimpan waktunya sendiri-sendiri, tetapi menyatukannya manual itu menyiksa. **Distributed tracing** menjawab pertanyaan ini langsung: ia merekam perjalanan satu permintaan dari ujung ke ujung dan menyusunnya menjadi satu gambar.\n\n## Trace dan span\n\nSebuah **trace** adalah seluruh perjalanan satu permintaan, dan diberi satu **trace id** yang unik. Trace terdiri dari banyak **span**. Satu span mewakili satu unit kerja yang punya waktu mulai dan durasi: sebuah panggilan HTTP, sebuah kueri basis data, atau sebuah fungsi penting di dalam layanan.\n\nSetiap span menyimpan beberapa hal: **span id** miliknya, **parent span id** (span yang memanggilnya), nama operasi, waktu mulai, durasi, dan atribut tambahan seperti `http.status_code` atau `db.statement`. Span tanpa induk disebut span akar (*root span*), biasanya permintaan masuk di gerbang. Hubungan induk-anak membentuk pohon pemanggilan.\n\n```text\nPOST /bayar                      0 ms ─────────────────────── 2400 ms   (akar)\n├─ cek-stok                      50 ms ── 250 ms\n├─ pembayaran                    300 ms ──────────────────── 2300 ms\n│  ├─ validasi-kartu             320 ms ─ 420 ms\n│  └─ panggil-penyedia-kartu     450 ms ──────────────────── 2250 ms\n└─ simpan-pesanan                2310 ms ─ 2390 ms\n```\n\nDari gambar seperti ini, kamu langsung melihat bahwa \"panggil-penyedia-kartu\" memakan 1.800 ms dari 2.400 ms. Tidak perlu menebak dan tidak perlu membuka tiga layanan satu per satu.\n\n![Trace dan span](slide:17)\n\n## Meneruskan konteks antar layanan\n\nAgar span dari layanan berbeda menyatu dalam satu trace, setiap layanan harus tahu trace id dan span id pemanggilnya. Informasi ini dikirim bersama permintaan, biasanya lewat **header HTTP**. Praktik ini disebut **propagasi konteks**.\n\nStandar yang umum adalah W3C Trace Context dengan header `traceparent`:\n\n```text\ntraceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\n             │   │                                │                │\n             │   trace id (32 karakter heksa)     span id induk    flags\n             versi\n```\n\nLayanan penerima membaca header itu, membuat span baru dengan trace id yang sama dan menjadikan span id di header sebagai induknya, lalu meneruskan header yang diperbarui ke layanan berikutnya. Bila satu layanan di tengah rantai lupa meneruskan header, trace putus: layanan sesudahnya memulai trace baru yang tidak terhubung. Karena itu propagasi harus ada di semua layanan, termasuk pustaka klien HTTP, antrean pesan, dan tugas latar belakang.\n\nDalam praktik, kamu jarang menulis ini sendiri. **OpenTelemetry** adalah standar terbuka dan kumpulan pustaka yang menangani pembuatan span dan propagasi untuk banyak bahasa dan kerangka kerja, dan data trace bisa dikirim ke berbagai penyimpanan seperti Jaeger atau Tempo. Instrumentasi otomatis menangkap panggilan HTTP dan basis data tanpa kode tambahan, lalu kamu menambah span manual untuk logika bisnis yang penting.\n\n## Membaca trace: mencari yang lambat\n\nMenemukan span terpanjang adalah langkah pertama, tetapi sering menyesatkan. Span akar selalu yang terpanjang karena ia membungkus semuanya. Yang kamu cari adalah span yang **waktu sendirinya** besar.\n\n**Waktu sendiri** (*self time*) adalah durasi sebuah span dikurangi durasi anak-anaknya. Itulah waktu yang dihabiskan span itu untuk kerjanya sendiri, bukan menunggu span lain. Pada trace di atas, span \"pembayaran\" berdurasi 2.000 ms, tetapi anak-anaknya (100 + 1.800 ms) hampir semuanya. Waktu sendirinya hanya 100 ms. Sedangkan \"panggil-penyedia-kartu\" memakan 1.800 ms tanpa anak, jadi waktu sendirinya 1.800 ms: dialah sumber kelambatan.\n\nBeberapa pola yang patut dicari saat membaca trace:\n\n- **Span berurutan padahal bisa paralel.** Tiga panggilan ke layanan berbeda yang dijalankan satu per satu padahal tidak saling bergantung. Menjalankannya paralel memotong total waktu.\n- **Banyak span kecil yang serupa.** Ratusan kueri basis data hampir identik dalam satu permintaan adalah tanda klasik masalah \"N+1\".\n- **Celah kosong.** Jeda antara selesainya satu span dan mulainya span berikutnya bisa berarti antrean, penjadwalan, atau kerja yang tidak terinstrumentasi.\n- **Perbandingan.** Buka satu trace lambat dan satu trace normal dari endpoint yang sama, lalu lihat span mana yang berbeda.\n\n## Sampling dan biaya\n\nMerekam setiap trace untuk lalu lintas besar sangat mahal. Maka trace hampir selalu **di-sampling**: hanya sebagian yang disimpan. Ada dua pendekatan utama. Pada **head sampling**, keputusan diambil di awal permintaan, misalnya simpan 1 dari 100 secara acak. Murah dan sederhana, tetapi trace yang menarik, yaitu yang lambat atau gagal, bisa terbuang karena keputusan diambil sebelum diketahui hasilnya. Pada **tail sampling**, keputusan diambil setelah trace lengkap: simpan semua yang gagal atau lebih lambat dari ambang, dan hanya sebagian kecil sisanya. Hasilnya jauh lebih berguna tetapi butuh infrastruktur yang menampung trace sementara sebelum memutuskan.\n\nHubungkan juga trace dengan dua pilar lainnya. Sertakan trace id di setiap baris log agar dari satu trace kamu bisa membuka log-lognya, dan simpan *exemplar* pada histogram agar dari satu bucket lambat kamu bisa melompat ke contoh trace-nya.\n\nTerakhir, pikirkan apa yang pantas dijadikan span. Terlalu sedikit membuat trace kabur: kamu hanya melihat kotak besar tanpa isi. Terlalu banyak, misalnya span untuk setiap pemanggilan fungsi kecil, membuat trace sulit dibaca dan mahal disimpan. Aturan praktisnya, buat span untuk setiap panggilan melewati batas proses (HTTP, basis data, antrean, cache) dan untuk beberapa langkah bisnis penting seperti \"hitung-ongkir\" atau \"validasi-kupon\". Beri nama span yang menjelaskan operasinya, bukan nama berisi id, supaya trace dari ribuan permintaan bisa dikelompokkan.\n\n## Rangkuman\n\n- Trace adalah perjalanan satu permintaan; span adalah satu unit kerja di dalamnya dengan induk, waktu mulai, dan durasi.\n- Konteks diteruskan lewat header seperti `traceparent`; satu layanan yang tidak meneruskan akan memutus trace.\n- Waktu sendiri = durasi span dikurangi durasi anak-anaknya; itulah petunjuk sumber kelambatan.\n- Cari pola: span berurutan yang bisa paralel, banyak span serupa (N+1), dan celah kosong.\n- Trace di-sampling karena mahal; tail sampling menyimpan trace yang gagal atau lambat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa itu span?",
+          "code": "",
+          "options": [
+            "Seluruh perjalanan satu permintaan dari awal sampai akhir lewat banyak layanan",
+            "Header HTTP yang berisi versi aplikasi",
+            "Metrik berupa jumlah permintaan per menit",
+            "Satu unit kerja di dalam trace dengan waktu mulai dan durasi"
+          ],
+          "answer": 3,
+          "explanation": "Trace terdiri dari banyak span; tiap span mewakili satu langkah kerja."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa waktu sendiri span berikut?",
+          "code": "span = 900\nanak = [200, 350]\nprint(span - sum(anak))",
+          "options": [
+            "350",
+            "550",
+            "900",
+            "1450"
+          ],
+          "answer": 0,
+          "explanation": "Waktu sendiri adalah durasi dikurangi durasi anak: 900 - 550 = 350."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa akibatnya bila satu layanan tidak meneruskan header traceparent?",
+          "code": "",
+          "options": [
+            "Semua layanan lain otomatis berhenti bekerja sampai header diperbaiki",
+            "Trace id berubah menjadi nol di seluruh sistem",
+            "Trace terputus dan layanan berikutnya memulai trace baru",
+            "Log layanan lain ikut terhapus"
+          ],
+          "answer": 2,
+          "explanation": "Tanpa propagasi konteks, hubungan antar span hilang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Head sampling mengambil keputusan menyimpan trace",
+          "code": "",
+          "options": [
+            "Setelah trace lengkap dan dinilai lambat atau gagal",
+            "Di awal permintaan, sebelum hasilnya diketahui",
+            "Hanya setelah insiden selesai ditangani",
+            "Berdasarkan nama pengembang yang menulis kode"
+          ],
+          "answer": 1,
+          "explanation": "Head sampling murah tetapi bisa membuang trace menarik karena keputusan diambil terlalu awal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Waktu sendiri span",
+          "prompt": "Daftar `SPANS` berisi span dengan `id`, `parent` (id induk, `None` untuk akar), `mulai`, dan `selesai` dalam milidetik. Lengkapi `waktu_sendiri(spans)` yang mengembalikan dict `id -> waktu sendiri`, yaitu durasi span dikurangi jumlah durasi anak langsungnya.",
+          "starter": {
+            "code": "def waktu_sendiri(spans):\n    # TODO: durasi span dikurangi durasi anak-anaknya\n    return {}\n"
+          },
+          "solution": {
+            "code": "def waktu_sendiri(spans):\n    hasil = {s['id']: s['selesai'] - s['mulai'] for s in spans}\n    for s in spans:\n        if s['parent'] is not None:\n            hasil[s['parent']] -= s['selesai'] - s['mulai']\n    return hasil\n"
+          },
+          "setup": "SPANS = [\n    {'id': 'akar', 'parent': None, 'mulai': 0, 'selesai': 2400},\n    {'id': 'cek-stok', 'parent': 'akar', 'mulai': 50, 'selesai': 250},\n    {'id': 'pembayaran', 'parent': 'akar', 'mulai': 300, 'selesai': 2300},\n    {'id': 'validasi-kartu', 'parent': 'pembayaran', 'mulai': 320, 'selesai': 420},\n    {'id': 'penyedia-kartu', 'parent': 'pembayaran', 'mulai': 450, 'selesai': 2250},\n    {'id': 'simpan-pesanan', 'parent': 'akar', 'mulai': 2310, 'selesai': 2390},\n]\n",
+          "tests": [
+            {
+              "name": "Span akar",
+              "check": "waktu_sendiri(SPANS)['akar'] == 120"
+            },
+            {
+              "name": "Span pembayaran hanya 100 ms sendiri",
+              "check": "waktu_sendiri(SPANS)['pembayaran'] == 100"
+            },
+            {
+              "name": "Span tanpa anak sama dengan durasinya",
+              "check": "waktu_sendiri(SPANS)['penyedia-kartu'] == 1800"
+            },
+            {
+              "name": "Hasil lengkap",
+              "check": "waktu_sendiri(SPANS) == {'akar': 120, 'cek-stok': 200, 'pembayaran': 100, 'validasi-kartu': 100, 'penyedia-kartu': 1800, 'simpan-pesanan': 80}"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Cari span paling lambat",
+          "prompt": "Fungsi `waktu_sendiri(spans)` dan `SPANS` sudah tersedia. Lengkapi `paling_lambat(spans)` yang mengembalikan `id` span dengan waktu sendiri terbesar. Bila ada hasil seri, pilih yang muncul lebih dulu di daftar. Untuk daftar kosong kembalikan `None`.",
+          "starter": {
+            "code": "def paling_lambat(spans):\n    # TODO: id span dengan waktu sendiri terbesar\n    return None\n"
+          },
+          "solution": {
+            "code": "def paling_lambat(spans):\n    if not spans:\n        return None\n    w = waktu_sendiri(spans)\n    return max((s['id'] for s in spans), key=lambda i: w[i])\n"
+          },
+          "setup": "SPANS = [\n    {'id': 'akar', 'parent': None, 'mulai': 0, 'selesai': 2400},\n    {'id': 'cek-stok', 'parent': 'akar', 'mulai': 50, 'selesai': 250},\n    {'id': 'pembayaran', 'parent': 'akar', 'mulai': 300, 'selesai': 2300},\n    {'id': 'validasi-kartu', 'parent': 'pembayaran', 'mulai': 320, 'selesai': 420},\n    {'id': 'penyedia-kartu', 'parent': 'pembayaran', 'mulai': 450, 'selesai': 2250},\n    {'id': 'simpan-pesanan', 'parent': 'akar', 'mulai': 2310, 'selesai': 2390},\n]\n\n\ndef waktu_sendiri(spans):\n    hasil = {s['id']: s['selesai'] - s['mulai'] for s in spans}\n    for s in spans:\n        if s['parent'] is not None:\n            hasil[s['parent']] -= s['selesai'] - s['mulai']\n    return hasil\n",
+          "tests": [
+            {
+              "name": "Sumber kelambatan pada SPANS",
+              "check": "paling_lambat(SPANS) == 'penyedia-kartu'"
+            },
+            {
+              "name": "Span akar bukan jawaban walau durasinya terpanjang",
+              "check": "paling_lambat(SPANS) != 'akar'"
+            },
+            {
+              "name": "Seri memilih yang lebih dulu",
+              "check": "paling_lambat([{'id': 'a', 'parent': None, 'mulai': 0, 'selesai': 10}, {'id': 'b', 'parent': None, 'mulai': 0, 'selesai': 10}]) == 'a'"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "paling_lambat([]) is None"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "sli-slo-dan-error-budget",
+      "title": "SLI, SLO, dan Error Budget",
+      "est_minutes": 35,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Membedakan SLI, SLO, dan SLA dan memberi contoh masing-masing.\n- Menghitung error budget dari sebuah SLO.\n- Menghitung burn rate dan menjelaskan artinya.\n- Menjelaskan bagaimana error budget membantu memutuskan antara fitur baru dan keandalan.\n\n## \"Seandal apa cukup andal?\"\n\nTim produk ingin fitur baru secepat mungkin. Tim operasi ingin sistem tidak pernah mati. Dua keinginan ini bertabrakan, dan tanpa angka, pertengkarannya berlangsung berdasarkan perasaan. Jawabannya tidak boleh \"100%\": mencapai 100% mustahil dan sangat mahal, dan pengguna tidak membedakan 99,999% dengan 100% karena jaringan dan perangkat mereka sendiri sudah tidak sesempurna itu.\n\nPendekatan SRE (Site Reliability Engineering) memberi bahasa yang jelas untuk membahasnya: SLI, SLO, dan error budget.\n\n## SLI, SLO, dan SLA\n\n**SLI** (Service Level Indicator) adalah ukuran nyata dari perilaku layanan. SLI yang baik adalah rasio: kejadian baik dibagi semua kejadian yang valid. Contoh: persentase permintaan yang sukses (status bukan 5xx), atau persentase permintaan yang selesai dalam 300 ms.\n\n**SLO** (Service Level Objective) adalah target untuk SLI itu dalam periode tertentu. Contoh: \"99,9% permintaan sukses dalam 30 hari terakhir\". SLO adalah keputusan internal tim.\n\n**SLA** (Service Level Agreement) adalah janji kepada pelanggan, biasanya tertulis dalam kontrak dengan konsekuensi, misalnya pengembalian dana jika dilanggar. SLA sebaiknya lebih longgar daripada SLO, supaya tim punya ruang bertindak sebelum janji ke pelanggan terlanggar.\n\n| Istilah | Siapa yang menetapkan | Contoh |\n|---|---|---|\n| SLI | Pengukuran | 99,95% permintaan sukses minggu ini |\n| SLO | Tim internal | Target 99,9% selama 30 hari |\n| SLA | Perjanjian dengan pelanggan | Di bawah 99,5% dapat kompensasi |\n\nPilih SLI dari sudut pandang pengguna, bukan sudut pandang server. \"CPU di bawah 80%\" bukan SLI yang baik. \"Pembayaran berhasil dalam kurang dari 2 detik\" adalah SLI yang baik.\n\n## Error budget\n\nJika SLO adalah 99,9%, maka 0,1% sisanya adalah **error budget**: jumlah kegagalan yang boleh terjadi tanpa melanggar target. Budget memberi izin untuk gagal dalam batas wajar.\n\nUntuk SLO berbasis waktu, hitungannya sederhana. Satu periode 30 hari berisi 30 × 24 × 60 = 43.200 menit. Dengan SLO 99,9%, budget-nya 43.200 × 0,001 = **43,2 menit** layanan boleh tidak sehat dalam 30 hari. Dengan SLO 99%, budget 432 menit (sekitar 7 jam). Dengan 99,99%, hanya 4,3 menit.\n\n![Error budget](slide:21)\n\nUntuk SLO berbasis permintaan, hitungannya per kejadian. Jika layanan melayani 1.000.000 permintaan sebulan dengan SLO 99,9%, budget-nya 1.000 permintaan gagal. Kalau sudah ada 400 yang gagal, sisa budget adalah 600, atau 60%.\n\nKekuatan error budget adalah perannya sebagai alat keputusan. Selama budget masih banyak, tim boleh merilis cepat dan mengambil risiko. Ketika budget hampir habis, rilis fitur dihentikan dan prioritas pindah ke keandalan sampai budget pulih. Dengan begitu perdebatan \"cepat atau andal\" berubah menjadi pertanyaan terukur: berapa banyak budget yang tersisa?\n\n## Burn rate\n\nMengetahui sisa budget saja belum cukup. Kamu juga perlu tahu seberapa cepat budget terpakai. **Burn rate** adalah laju error sekarang dibagi laju error yang diizinkan SLO.\n\n```text\nlaju error yang diizinkan = 1 - SLO       (SLO 99,9% -> 0,001)\nburn rate = laju error sekarang / laju error yang diizinkan\n```\n\nJika SLO 99,9% dan saat ini 0,3% permintaan gagal, burn rate-nya 0,003 / 0,001 = **3**. Burn rate 1 berarti budget habis tepat pada akhir periode. Burn rate 3 berarti habis dalam sepertiga periode, sekitar 10 hari dari 30 hari. Burn rate 0,5 berarti kamu aman. Burn rate 10 berarti budget habis dalam tiga hari.\n\nBurn rate lebih berguna untuk alert daripada ambang error mentah, karena ia sudah memasukkan SLO dan periode. Satu ambang \"error di atas 1%\" bisa terlalu longgar untuk layanan dengan SLO 99,99% dan terlalu ketat untuk layanan dengan SLO 95%.\n\n## Alert berbasis burn rate\n\nPraktik yang direkomendasikan dalam buku SRE adalah memakai beberapa **jendela waktu** sekaligus. Fraksi budget yang terpakai dalam sebuah jendela sama dengan burn rate dikali lama jendela dibagi lama periode. Burn rate 14,4 selama satu jam menghabiskan 14,4 × 1 / 720 = 2% dari budget bulanan. Itu cepat dan perlu respons segera, misalnya membangunkan orang yang sedang bertugas. Burn rate 1 selama tiga hari hanya menghabiskan 10% dan cukup dibuatkan tiket untuk ditangani pada jam kerja.\n\nDengan dua kondisi, satu jendela panjang untuk memastikan masalahnya nyata dan satu jendela pendek untuk memastikan masalahnya masih berlangsung, kamu terhindar dari alert yang bunyi karena lonjakan sesaat atau yang tetap bunyi padahal masalahnya sudah selesai.\n\nContoh lengkap: layanan pencarian punya SLO 99,5% permintaan selesai dalam 400 ms, diukur 30 hari. Budget-nya 0,5%. Hari ke-10, tim sudah memakai 40% budget karena sebuah rilis yang membuat sebagian kueri lambat. Burn rate kumulatif 40% / (10/30) = 1,2, sedikit di atas 1, artinya jika dibiarkan budget habis sebelum bulan berakhir. Tim memutuskan menunda dua rilis fitur dan memperbaiki indeks basis data lebih dulu. Keputusan itu datang dari angka, bukan dari siapa yang paling keras bicara.\n\n## Memilih SLO yang wajar\n\nMulailah dengan SLO yang realistis berdasarkan data historis, bukan angka yang terdengar bagus. Jika layanan selama ini 99,5%, menetapkan 99,99% langsung hanya membuat budget selalu habis dan tim mengabaikannya. Tinjau SLO secara berkala. Dan ingat bahwa setiap tambahan angka sembilan melipatgandakan biaya dan usaha, jadi tanyakan apakah pengguna benar-benar merasakan bedanya.\n\n## Rangkuman\n\n- SLI adalah ukuran nyata berupa rasio kejadian baik; SLO adalah target internal; SLA adalah janji ke pelanggan dan sebaiknya lebih longgar.\n- Error budget = 100% dikurangi SLO; SLO 99,9% selama 30 hari berarti 43,2 menit atau 1 dari 1.000 permintaan boleh gagal.\n- Burn rate = laju error sekarang dibagi laju error yang diizinkan; burn rate 1 menghabiskan budget tepat di akhir periode.\n- Gunakan burn rate dengan dua jendela waktu untuk membedakan keadaan darurat dari masalah lambat.\n- Budget yang menipis berarti fokus pada keandalan; budget yang longgar berarti ruang untuk merilis cepat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "SLO dengan target 99,9% selama 30 hari memberi error budget kira-kira",
+          "code": "",
+          "options": [
+            "43,2 menit",
+            "4,3 menit",
+            "432 menit",
+            "1 menit lebih sedikit"
+          ],
+          "answer": 0,
+          "explanation": "43.200 menit dikali 0,001 sama dengan 43,2 menit."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi error budget?",
+          "code": "",
+          "options": [
+            "Daftar biaya server dan layanan pihak ketiga yang harus dibayar tiap bulan",
+            "Batas jumlah log yang boleh ditulis per hari",
+            "Alat memutuskan kapan merilis cepat dan kapan fokus pada keandalan",
+            "Jumlah pengembang yang boleh menangani satu insiden"
+          ],
+          "answer": 2,
+          "explanation": "Budget menipis berarti prioritas bergeser ke keandalan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa burn rate pada kode berikut?",
+          "code": "gagal, total, slo = 60, 10000, 0.999\nprint(round((gagal / total) / (1 - slo), 1))",
+          "options": [
+            "0.6",
+            "6.0",
+            "60.0",
+            "1.0"
+          ],
+          "answer": 1,
+          "explanation": "Laju error 0,006 dibagi laju yang diizinkan 0,001 sama dengan 6."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "SLA sebaiknya lebih ketat daripada SLO internal.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "SLA sebaiknya lebih longgar dari SLO supaya tim sempat bertindak sebelum janji kepada pelanggan terlanggar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Sisa error budget",
+          "prompt": "Lengkapi `sisa_budget(slo, total, gagal)`. Budget adalah `total * (1 - slo)` permintaan yang boleh gagal. Kembalikan pecahan budget yang tersisa, `(budget - gagal) / budget`, dibulatkan empat angka desimal dan tidak kurang dari `0.0`. Bila budget `0`, kembalikan `0.0`.\n\nContoh: SLO `0.999` dengan satu juta permintaan punya budget 1000. Dengan 400 gagal, sisanya `0.6`.",
+          "starter": {
+            "code": "def sisa_budget(slo, total, gagal):\n    # TODO: budget = total * (1 - slo); kembalikan pecahan yang tersisa (min 0.0)\n    return 0.0\n"
+          },
+          "solution": {
+            "code": "def sisa_budget(slo, total, gagal):\n    budget = total * (1 - slo)\n    if budget <= 0:\n        return 0.0\n    return max(0.0, round((budget - gagal) / budget, 4))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "400 dari 1000 terpakai",
+              "check": "sisa_budget(0.999, 1000000, 400) == 0.6"
+            },
+            {
+              "name": "Budget habis tepat",
+              "check": "sisa_budget(0.999, 1000000, 1000) == 0.0"
+            },
+            {
+              "name": "Melebihi budget tidak negatif",
+              "check": "sisa_budget(0.999, 1000000, 2500) == 0.0"
+            },
+            {
+              "name": "Tanpa kegagalan budget utuh",
+              "check": "sisa_budget(0.99, 10000, 0) == 1.0"
+            },
+            {
+              "name": "SLO 100 persen tidak punya budget",
+              "check": "sisa_budget(1.0, 1000, 0) == 0.0"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Burn rate",
+          "prompt": "Lengkapi `burn_rate(gagal, total, slo)`: laju error sekarang (`gagal / total`) dibagi laju error yang diizinkan (`1 - slo`), dibulatkan dua angka desimal. Bila `total` adalah `0`, kembalikan `0.0`.\n\nContoh: `burn_rate(3000, 1000000, 0.999)` adalah `3.0`, artinya budget habis tiga kali lebih cepat dari rencana.",
+          "starter": {
+            "code": "def burn_rate(gagal, total, slo):\n    # TODO: (gagal / total) / (1 - slo), bulatkan 2 desimal\n    return 0.0\n"
+          },
+          "solution": {
+            "code": "def burn_rate(gagal, total, slo):\n    if total == 0:\n        return 0.0\n    return round((gagal / total) / (1 - slo), 2)\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Burn rate 3",
+              "check": "burn_rate(3000, 1000000, 0.999) == 3.0"
+            },
+            {
+              "name": "Burn rate 1 menghabiskan budget tepat di akhir periode",
+              "check": "burn_rate(1000, 1000000, 0.999) == 1.0"
+            },
+            {
+              "name": "Tanpa kegagalan",
+              "check": "burn_rate(0, 1000, 0.99) == 0.0"
+            },
+            {
+              "name": "Di bawah 1 berarti aman",
+              "check": "burn_rate(5, 1000, 0.99) == 0.5"
+            },
+            {
+              "name": "Tanpa permintaan",
+              "check": "burn_rate(0, 0, 0.99) == 0.0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "alerting-dan-dashboard",
+      "title": "Alerting dan Dashboard",
+      "est_minutes": 30,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Menyebut ciri alert yang baik dan membedakan alert yang membangunkan orang dari yang cukup menjadi tiket.\n- Menjelaskan alert fatigue dan cara mencegahnya.\n- Menerapkan histeresis dan peredaman agar alert tidak berkedip-kedip.\n- Merancang dashboard yang menjawab satu pertanyaan dengan jelas.\n\n## Alert yang tak ada yang percaya\n\nBayangkan telepon berbunyi pukul tiga pagi. Kamu bangun, membuka laptop, dan menemukan bahwa CPU sempat 82% selama dua menit lalu turun sendiri. Tidak ada pengguna yang terganggu dan tidak ada yang perlu dilakukan. Minggu berikutnya hal yang sama terulang, lalu terulang lagi. Pada kali kesepuluh, kamu mematikan nada dering. Pada kali kesebelas, ada pembayaran yang benar-benar mati, dan tidak ada yang bangun.\n\nFenomena ini disebut **alert fatigue**: terlalu banyak alert yang tidak berarti membuat orang berhenti mempercayai semua alert. Merancang alert yang baik sama pentingnya dengan memasangnya.\n\n## Ciri alert yang baik\n\nAlert yang baik memenuhi beberapa syarat sekaligus.\n\n**Berbasis dampak.** Alert menandai gejala yang dirasakan pengguna: error naik, latensi di atas target, atau budget terbakar terlalu cepat. Alert pada penyebab, seperti CPU tinggi atau memori 85%, hanya berguna bila penyebab itu hampir pasti berujung dampak.\n\n**Butuh tindakan manusia, sekarang.** Pertanyaan ujinya: jika alert ini berbunyi, apa yang harus orang lakukan? Jika jawabannya \"tidak ada, biasanya sembuh sendiri\", alert itu tidak seharusnya membangunkan siapa pun.\n\n**Cukup informasi untuk bertindak.** Pesan alert menyebut layanan yang terdampak, besar dampak, sejak kapan, dan menautkan ke dashboard serta **runbook**, yaitu panduan langkah penanganan. Orang yang baru bangun tidur tidak bisa mengandalkan ingatan.\n\n**Dipilah menurut urgensi.** Tidak semua masalah sama mendesak.\n\n| Tingkat | Kondisi | Respons |\n|---|---|---|\n| Page | Pengguna terdampak sekarang, budget terbakar cepat | Bangunkan orang yang bertugas |\n| Tiket | Masalah lambat atau belum berdampak, budget terbakar pelan | Ditangani pada jam kerja |\n| Hanya dashboard | Informasi untuk investigasi | Tidak ada notifikasi |\n\n![Alert yang baik dan alert fatigue](slide:24)\n\n## Histeresis: ambang naik dan turun\n\nMetrik jarang bergerak mulus. Persentase error yang berada di sekitar ambang 5% bisa menyentuh 5,1%, turun ke 4,9%, naik lagi ke 5,2%. Dengan satu ambang, alert akan menyala, padam, menyala, padam berulang kali dalam beberapa menit. Setiap pergantian mengirim notifikasi baru, dan hasilnya adalah rentetan pesan yang membingungkan.\n\nSolusinya adalah **histeresis**: memakai dua ambang. Alert **menyala** ketika nilai naik melewati ambang atas, misalnya 5%, tetapi baru **padam** ketika nilai turun di bawah ambang bawah yang lebih rendah, misalnya 3%. Di antara kedua ambang itu, keadaan tidak berubah. Alert tetap menyala sampai masalah benar-benar mereda.\n\n```python\ndef alert_aktif(nilai_nilai, naik, turun):\n    aktif = False\n    hasil = []\n    for v in nilai_nilai:\n        if not aktif and v > naik:\n            aktif = True\n        elif aktif and v < turun:\n            aktif = False\n        hasil.append(aktif)\n    return hasil\n\nprint(alert_aktif([2, 6, 4, 4.5, 2.5, 3.5], naik=5, turun=3))\n# [False, True, True, True, False, False]\n```\n\nTeknik pelengkap adalah **durasi minimum**: alert baru menyala jika kondisinya bertahan selama, misalnya, lima menit berturut-turut. Ini menyaring lonjakan singkat yang sembuh sendiri. Kompromi yang perlu disadari: durasi yang lebih panjang berarti alert lebih lambat. Seimbangkan dengan tingkat urgensi: error total layak segera, sedangkan perlambatan kecil boleh menunggu.\n\n## Peredaman dan pengelompokan\n\nSaat satu komponen penting mati, puluhan alert bisa menyala bersamaan: layanan hulu, layanan hilir, basis data, antrean. Sepuluh pesan untuk satu masalah menyulitkan, bukan membantu. Dua teknik membantu.\n\n**Pengelompokan** (*grouping*) menggabungkan alert yang berkaitan menjadi satu notifikasi, misalnya semua alert dari satu klaster dalam satu menit. **Peredaman** (*deduplication* dan *inhibition*) menahan alert yang sama setelah yang pertama terkirim, misalnya tidak mengirim ulang untuk alert yang sama dalam 30 menit, atau menekan alert hilir ketika alert hulu yang menjadi akar sudah menyala.\n\n## Merawat alert\n\nAlert adalah kode yang perlu dirawat. Tinjau secara rutin: alert mana yang paling sering berbunyi? Berapa persen yang berujung tindakan? Alert yang berbunyi berkali-kali tanpa tindakan sebaiknya dihapus, diturunkan menjadi tiket, atau diperbaiki ambangnya. Setelah setiap insiden, tanyakan apakah alert berbunyi tepat waktu, terlalu cepat, atau tidak berbunyi sama sekali, dan sesuaikan.\n\n## Contoh: memperbaiki satu alert\n\nSebuah alert \"latensi p95 di atas 500 ms\" berbunyi sepuluh kali seminggu, dan hanya dua yang berujung tindakan. Tim menelusurinya. Delapan alert palsu berasal dari lonjakan sesaat saat tugas terjadwal berjalan tengah malam, selalu sembuh dalam dua menit. Perbaikannya ada tiga. Pertama, tambahkan durasi minimum lima menit. Kedua, pasang histeresis: menyala di atas 500 ms, padam di bawah 350 ms. Ketiga, jadwalkan ulang tugas berat itu agar tidak bersamaan dengan jam ramai. Sesudahnya alert berbunyi dua kali seminggu, dan hampir semuanya berarti. Kepercayaan terhadap alert pun pulih.\n\n## Dashboard yang berguna\n\nDashboard yang baik menjawab satu pertanyaan jelas, seperti \"apakah layanan pembayaran sehat?\". Dashboard yang mencoba menjawab semua pertanyaan akhirnya tidak menjawab satu pun.\n\nBeberapa kebiasaan yang membantu. Taruh golden signals atau panel RED di bagian paling atas, karena itulah yang dilihat pertama kali. Tampilkan persentil, bukan hanya rata-rata, dan gambarkan garis SLO atau target di grafik agar langsung terlihat apakah kamu di atas atau di bawahnya. Tandai rilis dan perubahan konfigurasi sebagai garis vertikal. Gunakan skala dan satuan yang konsisten antar panel, dan beri judul yang menjelaskan isi, misalnya \"Persentase permintaan gagal (5 menit)\" bukan \"grafik 3\". Pisahkan dashboard ringkasan untuk melihat kesehatan sekilas dari dashboard penyelidikan yang detail.\n\n## Rangkuman\n\n- Alert yang baik berbasis dampak, butuh tindakan sekarang, dan dilengkapi tautan dashboard serta runbook.\n- Pilah alert menurut urgensi: page untuk dampak sekarang, tiket untuk masalah lambat, dashboard untuk informasi.\n- Histeresis memakai ambang naik dan turun berbeda; durasi minimum menyaring lonjakan singkat.\n- Kelompokkan dan redam alert agar satu masalah tidak menghasilkan banjir notifikasi.\n- Satu dashboard menjawab satu pertanyaan; taruh sinyal utama di atas dan tampilkan SLO serta rilis.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Alert fatigue terjadi ketika",
+          "code": "",
+          "options": [
+            "Penyimpanan alert penuh sehingga data baru tidak bisa diterima lagi oleh sistem",
+            "Alert hanya berbunyi di jam kerja",
+            "Terlalu banyak alert tak bermakna membuat orang mengabaikan semuanya",
+            "Dashboard memakai warna yang terlalu terang"
+          ],
+          "answer": 2,
+          "explanation": "Alert palsu yang berulang menurunkan kepercayaan pada alert berikutnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Histeresis pada alert berarti",
+          "code": "",
+          "options": [
+            "Menyalakan alert hanya pada hari kerja dan mematikannya di akhir pekan",
+            "Memakai ambang berbeda untuk menyala dan untuk padam",
+            "Menghapus semua alert yang pernah berbunyi",
+            "Mengirim alert ke semua orang di perusahaan"
+          ],
+          "answer": 1,
+          "explanation": "Ambang naik lebih tinggi daripada ambang turun mencegah alert berkedip."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "aktif = False\nfor v in [1, 6, 4, 2]:\n    if not aktif and v > 5:\n        aktif = True\n    elif aktif and v < 3:\n        aktif = False\nprint(aktif)",
+          "options": [
+            "True lalu False",
+            "None",
+            "6",
+            "False"
+          ],
+          "answer": 3,
+          "explanation": "Alert menyala pada 6, tetap menyala pada 4 (belum di bawah 3), lalu padam pada 2."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dashboard yang baik sebaiknya",
+          "code": "",
+          "options": [
+            "Menjawab satu pertanyaan dengan sinyal utama di bagian atas",
+            "Menampilkan sebanyak mungkin grafik dari semua layanan dalam satu halaman",
+            "Hanya memuat rata-rata tanpa persentil",
+            "Memakai satuan berbeda pada setiap panel"
+          ],
+          "answer": 0,
+          "explanation": "Satu dashboard satu pertanyaan, dengan golden signals di atas."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Alert dengan histeresis",
+          "prompt": "Lengkapi `alert_aktif(nilai, naik, turun, min_berturut)` yang mengembalikan list boolean, satu per sampel di `nilai`, untuk status alert setelah sampel itu diproses.\n\n- Alert **menyala** setelah `min_berturut` sampel berturut-turut yang **lebih besar dari** `naik`. Satu sampel yang tidak melewati `naik` memutus hitungan.\n- Selama menyala, alert **padam** hanya bila ada sampel **lebih kecil dari** `turun`.\n\nContoh: `alert_aktif([2, 6, 4, 4.5, 2.5, 3.5], 5, 3, 1)` menghasilkan `[False, True, True, True, False, False]`.",
+          "starter": {
+            "code": "def alert_aktif(nilai, naik, turun, min_berturut):\n    # TODO: hitung sampel berturut di atas 'naik'; padam bila di bawah 'turun'\n    return [False for _ in nilai]\n"
+          },
+          "solution": {
+            "code": "def alert_aktif(nilai, naik, turun, min_berturut):\n    aktif = False\n    hitung = 0\n    hasil = []\n    for v in nilai:\n        if aktif:\n            if v < turun:\n                aktif = False\n                hitung = 0\n        else:\n            hitung = hitung + 1 if v > naik else 0\n            if hitung >= min_berturut:\n                aktif = True\n        hasil.append(aktif)\n    return hasil\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Histeresis dengan min_berturut 1",
+              "check": "alert_aktif([2, 6, 4, 4.5, 2.5, 3.5], 5, 3, 1) == [False, True, True, True, False, False]"
+            },
+            {
+              "name": "Perlu dua sampel berturut",
+              "check": "alert_aktif([2, 6, 7, 4, 2, 6, 6, 6], 5, 3, 2) == [False, False, True, True, False, False, True, True]"
+            },
+            {
+              "name": "Lonjakan tunggal tidak menyalakan alert",
+              "check": "alert_aktif([6, 2, 6, 2], 5, 3, 2) == [False, False, False, False]"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "alert_aktif([], 5, 3, 2) == []"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Redam alert berulang",
+          "prompt": "Lengkapi `redam(waktu_alert, jeda)`. `waktu_alert` adalah list detik kapan alert menyala, terurut naik. Kembalikan list waktu yang benar-benar mengirim notifikasi: alert pertama selalu dikirim, alert berikutnya hanya bila sudah **sedikitnya** `jeda` detik sejak notifikasi **terakhir yang dikirim**.\n\nContoh: `redam([0, 10, 20, 70, 80, 200], 60)` menghasilkan `[0, 70, 200]`.",
+          "starter": {
+            "code": "def redam(waktu_alert, jeda):\n    # TODO: kirim yang pertama, lalu hanya yang berjarak >= jeda dari kiriman terakhir\n    return []\n"
+          },
+          "solution": {
+            "code": "def redam(waktu_alert, jeda):\n    kirim = []\n    for t in waktu_alert:\n        if not kirim or t - kirim[-1] >= jeda:\n            kirim.append(t)\n    return kirim\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Contoh dari soal",
+              "check": "redam([0, 10, 20, 70, 80, 200], 60) == [0, 70, 200]"
+            },
+            {
+              "name": "Tepat di batas jeda dikirim",
+              "check": "redam([0, 60], 60) == [0, 60]"
+            },
+            {
+              "name": "Satu alert dikirim",
+              "check": "redam([5], 60) == [5]"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "redam([], 60) == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "insiden-dan-postmortem",
+      "title": "Insiden dan Postmortem",
+      "est_minutes": 30,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Menjelaskan tahapan penanganan insiden: deteksi, respons, mitigasi, pemulihan, dan belajar.\n- Menyebut peran penting selama insiden, terutama pemimpin insiden.\n- Menulis postmortem tanpa menyalahkan yang memuat linimasa, dampak, sebab, dan tindak lanjut.\n- Menghitung MTTD dan MTTR dari sekumpulan insiden.\n\n## Insiden pasti terjadi\n\nSeandal apa pun sistemmu, suatu hari ia akan rusak. Pertanyaan yang membedakan tim bukanlah apakah insiden terjadi, melainkan seberapa cepat mereka mendeteksi, memulihkan, dan belajar. Semua alat di bab sebelumnya, yaitu metrik, log, trace, SLO, dan alert, berujung di sini: dipakai saat ada yang rusak.\n\n## Tahapan penanganan insiden\n\n**Deteksi.** Insiden dimulai terdeteksi lewat alert, atau dari laporan pengguna. Deteksi lewat alert jauh lebih baik. Jika pelanggan lebih dulu tahu daripada tim, ada celah dalam monitoring yang perlu ditutup.\n\n**Respons.** Orang yang bertugas mengonfirmasi bahwa masalahnya nyata, menilai tingkat keparahan, dan memanggil bantuan bila perlu. Satu orang ditunjuk sebagai **pemimpin insiden** (*incident commander*). Tugasnya bukan memperbaiki sendiri, melainkan mengoordinasi: siapa menyelidiki apa, apa yang sudah dicoba, dan kapan berkomunikasi ke luar. Tanpa pemimpin, sepuluh orang menyelidiki hal yang sama dan tidak ada yang memberi kabar ke pelanggan. Buka satu kanal komunikasi khusus agar semua catatan terkumpul di satu tempat.\n\n**Mitigasi.** Prioritas pertama adalah **menghentikan dampak**, bukan menemukan sebab terdalam. Kembalikan rilis terakhir, matikan fitur lewat *feature flag*, alihkan lalu lintas ke wilayah sehat, atau tambah kapasitas. Mencari akar masalah sementara pengguna masih terdampak adalah kesalahan prioritas yang umum. Akar masalah bisa dicari sesudah layanan pulih.\n\n**Pemulihan.** Pastikan layanan benar-benar sehat berdasarkan data: golden signals kembali normal dan alert padam. Jangan menyatakan selesai berdasarkan firasat.\n\n**Belajar.** Setiap insiden yang berarti diikuti postmortem. Tanpa tahap ini, insiden yang sama akan terulang.\n\n![Siklus penanganan insiden](slide:27)\n\n## Komunikasi selama insiden\n\nPengguna dan pemangku kepentingan lebih tenang bila mereka diberi kabar, bahkan jika kabarnya \"kami tahu dan sedang menyelidiki\". Tetapkan satu orang yang menulis pembaruan berkala, misalnya tiap 30 menit, dengan pola tetap: apa yang terdampak, apa yang sedang dilakukan, dan kapan pembaruan berikutnya. Halaman status publik membantu mengurangi beban pertanyaan yang masuk ke tim dukungan.\n\n## Postmortem tanpa menyalahkan\n\nSetelah insiden, tim menulis **postmortem** (juga disebut review insiden): dokumen yang menjelaskan apa yang terjadi dan apa yang akan dilakukan agar tidak terulang. Prinsip terpenting adalah **tanpa menyalahkan** (*blameless*).\n\nAlasannya praktis. Hampir setiap insiden melibatkan tindakan manusia: seseorang merilis kode, mengubah konfigurasi, atau salah menjalankan perintah. Tetapi menyalahkan orangnya tidak memperbaiki apa pun. Manusia akan selalu berbuat salah. Pertanyaan yang lebih produktif adalah: mengapa sistem mengizinkan kesalahan itu berdampak besar? Mengapa tidak ada pengaman yang menangkapnya? Jika orang takut dihukum, mereka akan menyembunyikan kesalahan, dan informasi paling berharga justru hilang. Jika orang merasa aman, mereka berbicara terbuka dan sistem menjadi lebih baik.\n\nIsi postmortem yang baik biasanya mencakup:\n\n- **Ringkasan**: apa yang terjadi dalam beberapa kalimat.\n- **Dampak**: berapa pengguna terdampak, berapa lama, dan berapa budget terpakai.\n- **Linimasa**: kejadian berurutan dengan cap waktu, dari perubahan pemicu sampai pemulihan.\n- **Sebab**: faktor-faktor yang berkontribusi, termasuk mengapa deteksi dan respons memakan waktu itu.\n- **Yang berjalan baik dan yang tidak**: bagian proses yang menolong dan yang menghambat.\n- **Tindak lanjut**: daftar pekerjaan konkret, masing-masing dengan **pemilik** dan **tenggat**.\n\nBagian tindak lanjut adalah yang paling sering gagal. Postmortem yang menghasilkan daftar niat baik tanpa pemilik tidak mengubah apa-apa. Setiap item harus bisa dilacak sampai selesai, dan yang paling berdampak diprioritaskan sejajar dengan pekerjaan fitur.\n\n## Contoh linimasa singkat\n\nBerikut ringkasan sebuah insiden fiktif. Pukul 14:02 sebuah rilis layanan pesanan dikirim ke produksi. Pukul 14:05 laju error mulai naik, dan inilah awal masalah. Pukul 14:09 alert burn rate berbunyi, jadi waktu deteksi 4 menit. Pukul 14:12 pemimpin insiden ditunjuk dan kanal dibuka. Pukul 14:20 tim melihat dari trace bahwa kueri stok melambat sejak rilis. Pukul 14:26 rilis dikembalikan sebagai mitigasi. Pukul 14:31 error kembali normal, jadi waktu pemulihan 26 menit sejak awal masalah. Postmortem kemudian menemukan bahwa indeks basis data tidak ikut dimigrasikan, dan tindak lanjutnya adalah menambah pemeriksaan indeks pada proses rilis, lengkap dengan pemilik dan tenggat. Perhatikan bahwa tidak ada nama orang yang disalahkan di dalamnya, yang ada hanya celah pada proses.\n\n## Mengapa tidak berhenti di satu penyebab\n\nSetelah insiden, godaan terbesar adalah menunjuk satu penyebab tunggal, misalnya \"kesalahan konfigurasi\". Hampir selalu ada beberapa faktor yang harus sejajar agar insiden terjadi: perubahan yang tidak ditinjau dengan baik, pengujian yang tidak menangkapnya, alert yang terlambat, dan runbook yang kurang jelas. Menelusuri semua faktor itu memberi lebih banyak peluang perbaikan daripada menunjuk satu orang atau satu baris kode. Pertanyaan \"mengapa\" yang diulang beberapa kali, seperti pada teknik lima mengapa, berguna selama kamu berhenti pada kelemahan sistem, bukan pada nama seseorang.\n\n## Mengukur: MTTD dan MTTR\n\nUntuk melihat apakah proses membaik dari waktu ke waktu, ukur dua angka.\n\n**MTTD** (*mean time to detect*) adalah rata-rata waktu dari **mulai masalah** sampai **terdeteksi**. **MTTR** (*mean time to recover*, kadang *resolve*) adalah rata-rata waktu dari mulai masalah sampai layanan **pulih**. Keduanya dihitung dari beberapa insiden.\n\nContoh tiga insiden (dalam menit sejak mulai masalah): terdeteksi pada menit 4, 10, dan 7; pulih pada menit 34, 40, dan 61. MTTD = (4 + 10 + 7) / 3 = 7 menit. MTTR = (34 + 40 + 61) / 3 = 45 menit. Observabilitas yang baik menurunkan MTTD karena alert berbunyi cepat, dan menurunkan MTTR karena penyebab lebih mudah ditemukan.\n\nGunakan angka ini untuk melihat tren, bukan sebagai alat menghakimi tim. Rata-rata bisa dipengaruhi satu insiden yang sangat panjang, jadi lihat juga median dan sebarannya, seperti yang kamu pelajari di bab latensi.\n\n## Rangkuman\n\n- Tahapan insiden: deteksi, respons, mitigasi, pemulihan, dan belajar.\n- Pemimpin insiden mengoordinasi, bukan memperbaiki sendiri; mitigasi didahulukan sebelum mencari akar masalah.\n- Beri kabar berkala dengan pola tetap kepada pengguna dan pemangku kepentingan.\n- Postmortem tanpa menyalahkan fokus pada sistem; tindak lanjut harus punya pemilik dan tenggat.\n- MTTD dan MTTR mengukur kecepatan deteksi dan pemulihan; pakai untuk melihat tren.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prioritas pertama saat mitigasi insiden adalah",
+          "code": "",
+          "options": [
+            "Menemukan akar masalah sedalam mungkin",
+            "Menghentikan dampak ke pengguna",
+            "Menentukan siapa yang bersalah",
+            "Menulis laporan lengkap sebelum bertindak"
+          ],
+          "answer": 1,
+          "explanation": "Pulihkan layanan dulu, misalnya dengan rollback; akar masalah dicari sesudahnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prinsip utama postmortem tanpa menyalahkan adalah",
+          "code": "",
+          "options": [
+            "Menghukum orang yang melakukan perubahan terakhir",
+            "Merahasiakan insiden dari seluruh tim",
+            "Menulis postmortem hanya bila pelanggan marah",
+            "Fokus pada sistem dan proses, bukan pada orang"
+          ],
+          "answer": 3,
+          "explanation": "Rasa aman membuat orang jujur, dan informasi itu memperbaiki sistem."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa hasil kode berikut (rata-rata waktu pulih dalam menit)?",
+          "code": "pulih = [30, 50, 100]\nprint(sum(pulih) // len(pulih))",
+          "options": [
+            "60",
+            "50",
+            "180",
+            "100"
+          ],
+          "answer": 0,
+          "explanation": "Jumlahnya 180 dibagi 3 insiden sama dengan 60."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Tindak lanjut postmortem sebaiknya memiliki pemilik dan tenggat.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa pemilik dan tenggat, daftar tindak lanjut hanya niat baik yang jarang selesai."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "MTTD dan MTTR",
+          "prompt": "Lengkapi `mttd_mttr(insiden)`. Setiap insiden adalah dict dengan `mulai`, `deteksi`, dan `pulih` (menit pada garis waktu yang sama). Kembalikan tuple `(mttd, mttr)`: MTTD adalah rata-rata `deteksi - mulai`, MTTR adalah rata-rata `pulih - mulai`, keduanya dibulatkan satu angka desimal. Untuk daftar kosong kembalikan `(0.0, 0.0)`.",
+          "starter": {
+            "code": "def mttd_mttr(insiden):\n    # TODO: rata-rata (deteksi - mulai) dan (pulih - mulai)\n    return (0.0, 0.0)\n"
+          },
+          "solution": {
+            "code": "def mttd_mttr(insiden):\n    if not insiden:\n        return (0.0, 0.0)\n    n = len(insiden)\n    mttd = sum(i['deteksi'] - i['mulai'] for i in insiden) / n\n    mttr = sum(i['pulih'] - i['mulai'] for i in insiden) / n\n    return (round(mttd, 1), round(mttr, 1))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tiga insiden dari bab",
+              "check": "mttd_mttr([{'mulai': 0, 'deteksi': 4, 'pulih': 34}, {'mulai': 0, 'deteksi': 10, 'pulih': 40}, {'mulai': 0, 'deteksi': 7, 'pulih': 61}]) == (7.0, 45.0)"
+            },
+            {
+              "name": "Awal masalah tidak harus nol",
+              "check": "mttd_mttr([{'mulai': 100, 'deteksi': 105, 'pulih': 130}]) == (5.0, 30.0)"
+            },
+            {
+              "name": "Pembulatan satu desimal",
+              "check": "mttd_mttr([{'mulai': 0, 'deteksi': 1, 'pulih': 10}, {'mulai': 0, 'deteksi': 2, 'pulih': 11}, {'mulai': 0, 'deteksi': 2, 'pulih': 12}]) == (1.7, 11.0)"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "mttd_mttr([]) == (0.0, 0.0)"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
