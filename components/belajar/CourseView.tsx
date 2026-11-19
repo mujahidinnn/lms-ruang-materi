@@ -157,7 +157,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                     icon={<Kartu className="size-7" />}
                     title="Flashcard"
                     text={`${topic.cardCount} kartu`}
-                    color="bg-tile-sky"
+                    color="bg-tile-lavender"
                   />
                 )}
                 <Extra
@@ -165,7 +165,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                   icon={<Slide className="size-7" />}
                   title="Semua slide"
                   text={`${topic.slideCount} slide`}
-                  color="bg-tile-sky"
+                  color="bg-tile-lavender"
                 />
               </ul>
             </section>
