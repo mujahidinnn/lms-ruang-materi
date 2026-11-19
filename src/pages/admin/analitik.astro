@@ -1,4 +1,5 @@
 ---
+import { Award, BookOpenCheck, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -12,23 +13,57 @@ type Analytics = {
   chapters: { slug: string; topic: string; position: number; title: string; started: number; done: number }[];
   questions: { id: string; slug: string; topic: string; prompt: string; seen: number; wrong: number }[];
 };
+type Attempt = { score: number | null; passed: boolean | null; exams: { topics: { slug: string } } };
 
-const { data } = await (await createClient()).rpc("admin_analytics");
+const db = await createClient();
+const { data } = await db.rpc("admin_analytics");
 const a = data as Analytics | null;
 if (!a) return Astro.rewrite("/404");
 
+// Extra detail read through the admin's own access; a failed read only hides its column.
+const [{ data: att }, { data: chs }, { data: certs }, { data: qs }] = await Promise.all([
+  db.from("exam_attempts").select("score, passed, exams(topics(slug))").not("submitted_at", "is", null).limit(5000),
+  db.from("chapters").select("topics(slug)").eq("status", "published"),
+  db.from("certificates").select("topics(slug)").limit(5000),
+  db.from("exam_questions").select("id, options, answer").in("id", a.questions.map((q) => q.id)),
+]);
+const count = <T,>(rows: T[] | null, slug: (r: T) => string | undefined) => {
+  const m = new Map<string, number>();
+  for (const r of rows ?? []) { const s = slug(r); if (s) m.set(s, (m.get(s) ?? 0) + 1); }
+  return m;
+};
+const chapterCount = count((chs ?? []) as unknown as { topics: { slug: string } }[], (r) => r.topics?.slug);
+const certCount = count((certs ?? []) as unknown as { topics: { slug: string } }[], (r) => r.topics?.slug);
+const attempts = (att ?? []) as unknown as Attempt[];
+const examBy = new Map<string, { n: number; sum: number; passed: number }>();
+for (const t of attempts) {
+  const s = t.exams?.topics?.slug;
+  if (!s) continue;
+  const e = examBy.get(s) ?? { n: 0, sum: 0, passed: 0 };
+  e.n++; e.sum += t.score ?? 0; e.passed += t.passed ? 1 : 0;
+  examBy.set(s, e);
+}
+const keyOf = new Map(((qs ?? []) as { id: string; options: string[]; answer: number }[]).map((q) => [q.id, q.options[q.answer]]));
+
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
-const chapters = a.chapters.slice(0, 10);
 const topics = a.topics.filter((t) => t.started > 0);
+const chapters = a.chapters.slice(0, 10);
 const learners = topics.reduce((n, t) => n + t.started, 0);
 const finished = topics.reduce((n, t) => n + t.finished, 0);
+const avgScore = attempts.length ? Math.round(attempts.reduce((s, t) => s + (t.score ?? 0), 0) / attempts.length) : 0;
+const passRate = pct(attempts.filter((t) => t.passed).length, attempts.length);
+const hard = a.questions.filter((q) => pct(q.wrong, q.seen) >= 70).length;
+
 const tiles = [
-  { label: "Murid belajar", value: learners, note: "pembukaan kelas, semua kelas", tone: "bg-tile-mint" },
-  { label: "Kelas diselesaikan", value: finished, note: `${pct(finished, learners)}% dari yang dibuka`, tone: "bg-tile-lavender" },
-  { label: "Soal perlu dicek", value: a.questions.filter((q) => pct(q.wrong, q.seen) >= 70).length, note: "salah 70% atau lebih", tone: "bg-tile-peach" },
+  { label: "Kelas dibuka murid", value: learners, note: `di ${topics.length} kelas`, tone: "bg-tile-mint", Icon: BookOpenCheck },
+  { label: "Kelas selesai", value: finished, note: `${pct(finished, learners)}% dari yang dibuka`, tone: "bg-tile-peach", Icon: Award },
+  { label: "Rata-rata nilai ujian", value: attempts.length ? avgScore : "-", note: attempts.length ? `${passRate}% percobaan lulus, ${attempts.length} percobaan` : "belum ada percobaan", tone: "bg-tile-lavender", Icon: ClipboardCheck },
+  { label: "Soal perlu dicek", value: hard, note: "salah 70% atau lebih", tone: hard ? "bg-tile-pink" : "bg-tile-sky", Icon: TriangleAlert },
 ];
-const card = "rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6";
-const bar = (v: number, tone: string) => `<div aria-hidden class="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full ${tone}" style="width:${v}%"></div></div>`;
+const good = "bg-brand";
+const bad = "bg-red-400";
+const card = "rounded-[28px] bg-zinc-900 p-5 shadow-soft sm:p-6";
+const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
 ---
 
 <Base title="Analitik" description="Di mana murid berhenti belajar dan soal ujian mana yang paling sering salah." noindex>
@@ -39,31 +74,50 @@ const bar = (v: number, tone: string) => `<div aria-hidden class="mt-2 h-2.5 ove
         <p class="mt-2 text-sm text-zinc-400">Bahan untuk memperbaiki materi: kelas yang jarang selesai, bab tempat murid berhenti, dan soal yang sering salah.</p>
       </div>
 
-      <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {tiles.map((t) => (
-          <div class={`rounded-[28px] p-5 ${t.tone}`}>
-            <dt class="text-sm text-zinc-300">{t.label}</dt>
-            <dd class="mt-1 text-4xl font-bold tabular-nums text-zinc-50">{t.value}</dd>
-            <p class="mt-1 text-xs text-zinc-300">{t.note}</p>
+      <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {tiles.map(({ label, value, note, tone, Icon }) => (
+          <div class={`flex flex-col gap-3 rounded-[28px] p-4 sm:p-5 ${tone}`}>
+            <span aria-hidden class="grid size-10 place-items-center rounded-2xl bg-zinc-900/60 text-zinc-50"><Icon className="size-5" /></span>
+            <div>
+              <dt class="text-sm text-zinc-300">{label}</dt>
+              <dd class="text-3xl font-bold tabular-nums text-zinc-50">{value}</dd>
+              <p class="mt-0.5 text-xs text-zinc-300">{note}</p>
+            </div>
           </div>
         ))}
       </dl>
 
       <section aria-labelledby="kelas" class={card}>
-        <h2 id="kelas" class="text-lg font-bold tracking-tight">Kelas selesai</h2>
+        <h2 id="kelas" class="text-lg font-bold tracking-tight">Kelas</h2>
+        <p class="mt-1 text-sm text-zinc-400">Murid yang menyelesaikan kelas dari yang membukanya. Kelas tanpa murid tidak ditampilkan.</p>
         {topics.length === 0 ? (
-          <p class="mt-3 text-sm text-zinc-400">Belum ada murid yang membuka kelas.</p>
+          <p class="mt-4 text-sm text-zinc-400">Belum ada murid yang membuka kelas.</p>
         ) : (
-          <ul class="mt-4 grid gap-4 sm:grid-cols-2">
-            {topics.map((t) => (
-              <li>
-                <a href={`/admin/topik/${t.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
-                  <p class="flex justify-between gap-3 text-sm"><span class="truncate group-hover:text-accent">{t.title}</span><span class="shrink-0 tabular-nums text-zinc-400">{t.finished} dari {t.started} murid</span></p>
-                  <Fragment set:html={bar(pct(t.finished, t.started), "bg-brand")} />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <div class="mt-4">
+            <div aria-hidden class="hidden grid-cols-[minmax(0,1fr)_5rem_5rem_6rem_5rem] gap-4 border-b border-zinc-800 pb-2 text-xs text-zinc-500 md:grid">
+              <span>Kelas</span><span class="text-right">Murid</span><span class="text-right">Bab</span><span class="text-right">Nilai ujian</span><span class="text-right">Sertifikat</span>
+            </div>
+            <ul class="divide-y divide-zinc-800">
+              {topics.map((t) => {
+                const p = pct(t.finished, t.started);
+                const ex = examBy.get(t.slug);
+                return (
+                  <li class="grid gap-x-4 gap-y-2 py-3 md:grid-cols-[minmax(0,1fr)_5rem_5rem_6rem_5rem] md:items-center">
+                    <a href={`/admin/topik/${t.slug}`} class="group min-w-0 focus-visible:outline-2 focus-visible:outline-accent">
+                      <p class="flex items-baseline justify-between gap-3 text-sm"><span class="truncate font-medium group-hover:text-accent">{t.title}</span><span class="shrink-0 text-xs tabular-nums text-zinc-400">{t.finished} dari {t.started} selesai ({p}%)</span></p>
+                      <div aria-hidden class={`mt-2 ${track}`}><div class={`h-full rounded-full ${p >= 30 ? good : bad}`} style={`width:${p}%`}></div></div>
+                    </a>
+                    <dl class="grid grid-cols-4 gap-2 text-xs tabular-nums text-zinc-400 md:contents md:text-sm md:text-zinc-50">
+                      <div class="md:text-right"><dt class="md:sr-only">Murid</dt><dd>{t.started}</dd></div>
+                      <div class="md:text-right"><dt class="md:sr-only">Bab</dt><dd>{chapterCount.get(t.slug) ?? 0}</dd></div>
+                      <div class="md:text-right"><dt class="md:sr-only">Nilai ujian</dt><dd>{ex ? `${Math.round(ex.sum / ex.n)} (${ex.n}x)` : "-"}</dd></div>
+                      <div class="md:text-right"><dt class="md:sr-only">Sertifikat</dt><dd>{certCount.get(t.slug) ?? 0}</dd></div>
+                    </dl>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </section>
 
@@ -74,14 +128,20 @@ const bar = (v: number, tone: string) => `<div aria-hidden class="mt-2 h-2.5 ove
           <p class="mt-4 text-sm text-zinc-400">Belum cukup data. Muncul setelah sebuah kelas dibuka minimal 3 murid.</p>
         ) : (
           <ol class="mt-4 grid gap-4">
-            {chapters.map((c) => (
-              <li>
-                <a href={`/admin/topik/${c.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
-                  <p class="flex justify-between gap-3 text-sm"><span class="truncate group-hover:text-accent">{c.topic}, bab {c.position + 1}: {c.title}</span><span class="shrink-0 tabular-nums text-zinc-400">{pct(c.done, c.started)}% ({c.done} dari {c.started})</span></p>
-                  <Fragment set:html={bar(pct(c.done, c.started), "bg-accent-warm")} />
-                </a>
-              </li>
-            ))}
+            {chapters.map((c) => {
+              const p = pct(c.done, c.started);
+              return (
+                <li>
+                  <a href={`/admin/topik/${c.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
+                    <p class="flex items-baseline justify-between gap-3 text-sm">
+                      <span class="min-w-0 truncate"><span class="font-medium group-hover:text-accent">Bab {c.position + 1}: {c.title}</span> <span class="text-zinc-500">{c.topic}</span></span>
+                      <span class="shrink-0 text-xs tabular-nums text-zinc-400">{c.done} dari {c.started} murid ({p}%)</span>
+                    </p>
+                    <div aria-hidden class={`mt-2 ${track}`}><div class={`h-full rounded-full ${p >= 30 ? good : bad}`} style={`width:${p}%`}></div></div>
+                  </a>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
@@ -93,20 +153,24 @@ const bar = (v: number, tone: string) => `<div aria-hidden class="mt-2 h-2.5 ove
           <p class="mt-4 text-sm text-zinc-400">Belum cukup percobaan ujian.</p>
         ) : (
           <ol class="mt-4 divide-y divide-zinc-800">
-            {a.questions.map((q) => (
-              <li class="py-3">
-                <a href={`/admin/topik/${q.slug}#ujian`} class="group flex items-start justify-between gap-4 focus-visible:outline-2 focus-visible:outline-accent">
-                  <span class="min-w-0">
-                    <span class="line-clamp-2 text-sm group-hover:text-accent">{q.prompt}</span>
-                    <span class="mt-0.5 block text-xs text-zinc-500">{q.topic}</span>
-                  </span>
-                  <span class="shrink-0 text-right">
-                    <span class={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-semibold tabular-nums ${pct(q.wrong, q.seen) >= 70 ? "bg-tile-pink text-zinc-50" : "bg-zinc-800"}`}>{pct(q.wrong, q.seen)}% salah</span>
-                    <span class="mt-1 block text-xs tabular-nums text-zinc-500">{q.wrong} dari {q.seen} percobaan</span>
-                  </span>
-                </a>
-              </li>
-            ))}
+            {a.questions.map((q) => {
+              const p = pct(q.wrong, q.seen);
+              return (
+                <li class="py-3">
+                  <a href={`/admin/topik/${q.slug}#ujian`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
+                    <p class="flex items-start justify-between gap-4 text-sm">
+                      <span class="line-clamp-2 min-w-0 group-hover:text-accent">{q.prompt}</span>
+                      <span class={`inline-flex min-h-7 shrink-0 items-center rounded-full px-3 text-xs font-semibold tabular-nums ${p >= 70 ? "bg-tile-pink" : "bg-zinc-800"} text-zinc-50`}>{p}% salah</span>
+                    </p>
+                    <div aria-hidden class="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div class={`h-full rounded-full ${p >= 70 ? bad : good}`} style={`width:${p}%`}></div></div>
+                    <p class="mt-1.5 flex flex-wrap justify-between gap-x-4 text-xs text-zinc-500">
+                      <span class="min-w-0 truncate">{q.topic}{keyOf.get(q.id) ? `, kunci: ${keyOf.get(q.id)}` : ""}</span>
+                      <span class="tabular-nums">{q.wrong} dari {q.seen} percobaan</span>
+                    </p>
+                  </a>
+                </li>
+              );
+            })}
           </ol>
         )}
       </section>
