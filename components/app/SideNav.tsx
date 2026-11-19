@@ -7,7 +7,7 @@ const SETS = {
     [
       { href: "/admin", label: "Ringkasan", Icon: LayoutDashboard },
       { href: "/admin/impor", label: "Impor", Icon: FileUp },
-      { href: "/admin/topik", label: "Topik", Icon: BookOpen },
+      { href: "/admin/topik", label: "Kelas", Icon: BookOpen },
       { href: "/admin/roadmap", label: "Roadmap", Icon: Route },
       { href: "/admin/ujian", label: "Ujian", Icon: ClipboardCheck },
       { href: "/admin/nilai", label: "Nilai", Icon: GraduationCap },

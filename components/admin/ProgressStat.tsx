@@ -1,4 +1,4 @@
-// Small card with a bar, like "1 dari 13 topik terbit". Value is in text,
+// Small card with a bar, like "1 dari 13 kelas terbit". Value is in text,
 // the bar only repeats it.
 export default function ProgressStat({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0;

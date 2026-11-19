@@ -89,7 +89,7 @@ export default function ImporForm({ models }: { models: string[] }) {
       {picked && (
         <div className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <label className="flex flex-col gap-1.5 text-sm text-zinc-300">
-            Slug topik
+            Slug kelas
             <input value={slug} onChange={(e) => setSlug(e.target.value)} className={`${field} font-mono`} />
           </label>
           <label className="flex flex-col gap-1.5 text-sm text-zinc-300">

@@ -37,7 +37,7 @@ export default function TrackActions({ slug, published, hasDraft }: { slug: stri
       <div className="flex gap-2">
         {published && <button onClick={async () => (await confirmDialog({ title: "Tarik dari publik?", text: "Murid tidak bisa membukanya lagi sampai diterbitkan ulang. Progres mereka tetap tersimpan.", action: "Tarik" })) && run(tarikTrack)} disabled={pending} className={smallButton}><EyeOff aria-hidden className="size-4" />Tarik dari publik</button>}
         <button
-          onClick={async () => (await confirmDialog({ title: `Hapus roadmap ${slug}? Topiknya tetap ada.`, action: "Hapus", danger: true })) && run(hapusTrack)}
+          onClick={async () => (await confirmDialog({ title: `Hapus roadmap ${slug}? Kelasnya tetap ada.`, action: "Hapus", danger: true })) && run(hapusTrack)}
           disabled={pending}
           className={dangerButton}
         >

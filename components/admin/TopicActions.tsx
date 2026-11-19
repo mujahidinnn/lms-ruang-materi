@@ -37,7 +37,7 @@ export default function TopicActions({ slug, published, hasDraft }: { slug: stri
       <div className="flex gap-2">
         {published && <button onClick={async () => (await confirmDialog({ title: "Tarik dari publik?", text: "Murid tidak bisa membukanya lagi sampai diterbitkan ulang. Progres mereka tetap tersimpan.", action: "Tarik" })) && run(tarik)} disabled={pending} className={smallButton}><EyeOff aria-hidden className="size-4" />Tarik dari publik</button>}
         <button
-          onClick={async () => (await confirmDialog({ title: `Hapus topik ${slug} beserta semua isinya? Ini tidak bisa dibatalkan.`, action: "Hapus", danger: true })) && run(hapusTopik)}
+          onClick={async () => (await confirmDialog({ title: `Hapus kelas ${slug} beserta semua isinya? Ini tidak bisa dibatalkan.`, action: "Hapus", danger: true })) && run(hapusTopik)}
           disabled={pending}
           className={dangerButton}
         >
