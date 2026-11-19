@@ -6,6 +6,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
+const T = JSON.parse(readFileSync(new URL("deck-themes.json", import.meta.url), "utf8"))["algoritma"];
+
 const [dir, simpleIcons] = process.argv.slice(2);
 if (!dir || !simpleIcons) throw new Error("usage: node scripts/deck-algoritma-assets.mjs <dir> <path to node_modules/simple-icons>");
 mkdirSync(join(dir, "icons"), { recursive: true });
@@ -25,7 +27,7 @@ for (const name of ICONS) {
     continue;
   }
   const body = mod.__iconData.node.map(([tag, a]) => `<${tag} ${attr(a)}/>`).join("");
-  for (const [suffix, color] of [["w", "#ffffff"], ["k", "#10b981"]]) {
+  for (const [suffix, color] of [["w", "#ffffff"], ["k", "#" + T.accent]]) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
     await sharp(Buffer.from(svg), { density: 300 }).resize(256, 256).png().toFile(join(dir, "icons", `${name}-${suffix}.png`));
   }
@@ -33,7 +35,7 @@ for (const name of ICONS) {
 const logo = readFileSync(join(simpleIcons, "icons", "python.svg"), "utf8").replace("<path ", '<path fill="#ffffff" ');
 await sharp(Buffer.from(logo.replace("<svg ", '<svg width="512" height="512" ')), { density: 300 }).resize(512, 512).png().toFile(join(dir, "icons", "logo-python-w.png"));
 
-const INK = "#0f172a", G = "#10b981", GL = "#d1fae5", AM = "#f59e0b", AML = "#fef3c7", SL = "#f1f5f9", RED = "#ef4444", REDL = "#fee2e2", GR = "#64748b";
+const INK = "#" + T.ink, G = "#" + T.accent, GL = "#" + T.accentLight, AM = "#f59e0b", AML = "#fef3c7", SL = "#f1f5f9", RED = "#ef4444", REDL = "#fee2e2", GR = "#64748b";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const t = (x, y, s, { size = 30, w = 600, a = "middle", fill = INK, mono = false } = {}) =>
   `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" text-anchor="${a}" fill="${fill}"${mono ? ' font-family="DejaVu Sans Mono, monospace"' : ""}>${esc(s)}</text>`;

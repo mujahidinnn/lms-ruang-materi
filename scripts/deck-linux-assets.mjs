@@ -5,6 +5,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
+import { readFileSync } from "node:fs";
+
+const T = JSON.parse(readFileSync(new URL("deck-themes.json", import.meta.url), "utf8"))["linux"];
 
 const [dir] = process.argv.slice(2);
 if (!dir) throw new Error("usage: node scripts/deck-linux-assets.mjs <dir>");
@@ -15,13 +18,13 @@ const attr = (o) => Object.entries(o).filter(([k]) => k !== "key").map(([k, v]) 
 for (const name of ICONS) {
   const { __iconData } = await import(`../node_modules/lucide-react/dist/esm/icons/${name}.mjs`);
   const body = __iconData.node.map(([tag, a]) => `<${tag} ${attr(a)}/>`).join("");
-  for (const [suffix, color] of [["w", "#ffffff"], ["k", "#10b981"]]) {
+  for (const [suffix, color] of [["w", "#ffffff"], ["k", "#" + T.accent]]) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
     await sharp(Buffer.from(svg), { density: 300 }).resize(256, 256).png().toFile(join(dir, "icons", `${name}-${suffix}.png`));
   }
 }
 
-const INK = "#0f172a", G = "#10b981", GL = "#d1fae5", AM = "#f59e0b", AML = "#fef3c7", SL = "#f1f5f9", RED = "#ef4444", REDL = "#fee2e2";
+const INK = "#" + T.ink, G = "#" + T.accent, GL = "#" + T.accentLight, AM = "#f59e0b", AML = "#fef3c7", SL = "#f1f5f9", RED = "#ef4444", REDL = "#fee2e2";
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const t = (x, y, s, { size = 30, w = 600, a = "middle", fill = INK, mono = false } = {}) =>
   `<text x="${x}" y="${y}" font-size="${size}" font-weight="${w}" text-anchor="${a}" fill="${fill}"${mono ? ' font-family="DejaVu Sans Mono, monospace"' : ""}>${esc(s)}</text>`;

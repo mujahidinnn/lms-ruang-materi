@@ -12,9 +12,12 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from PIL import Image
+import deck_theme as DT
 
 C = lambda h: RGBColor.from_string(h)
-INK, GREEN, AMBER, CARD, GREY, WHITE, LINE = C("0F172A"), C("10B981"), C("F59E0B"), C("F1F5F9"), C("64748B"), C("FFFFFF"), C("CBD5E1")
+T = DT.load("algoritma")
+INK, GREEN, AMBER, CARD, GREY, WHITE, LINE = T.ink, T.accent, T.amber, T.card, T.grey, C("FFFFFF"), T.line
+TITLE_PT = round(32 * T.scale)
 ASSET = sys.argv[1] if len(sys.argv) > 1 else "."
 OUT = sys.argv[2] if len(sys.argv) > 2 else "public/Algoritma_dan_Struktur_Data.pptx"
 DECK = "Algoritma dan Struktur Data  |  Python"
@@ -68,7 +71,7 @@ def num(s, x, y, d, label, bg=GREEN, size=18):
 def base(title, n, kicker):
     s = prs.slides.add_slide(BLANK)
     text(s, 0.6, 0.34, 10, 0.3, kicker, 11, True, GREEN, gap=0, spc=250)
-    text(s, 0.6, 0.68, 11.0, 0.8, title, 32, True, gap=0)
+    text(s, 0.6, 0.68, 11.0, 0.8, title, TITLE_PT, True, gap=0, font=T.font)
     shape(s, MSO_SHAPE.OVAL, 12.1, 0.3, 0.62, 0.62, INK)
     s.shapes.add_picture(os.path.join(ASSET, "icons", "workflow-k.png"), Inches(12.2), Inches(0.4), Inches(0.42), Inches(0.42))
     text(s, 0.6, 7.03, 8, 0.25, DECK, 10, color=GREY, gap=0)
@@ -246,11 +249,11 @@ CODE = {
 # 1: title
 s = prs.slides.add_slide(BLANK)
 rect(s, 0, 0, 13.333, 7.5, INK)
-shape(s, MSO_SHAPE.OVAL, 8.6, 1.4, 4.1, 4.1, C("16253D"))
+DT.motif(s, shape, rect, T)
 shape(s, MSO_SHAPE.OVAL, 9.35, 2.15, 2.6, 2.6, GREEN)
 s.shapes.add_picture(os.path.join(ASSET, "icons", "logo-python-w.png"), Inches(9.95), Inches(2.75), Inches(1.4), Inches(1.4))
 text(s, 0.9, 1.9, 7, 0.4, "PYTHON 3", 14, True, AMBER, gap=0, spc=300)
-text(s, 0.9, 2.5, 7.4, 2.2, "Algoritma dan Struktur Data", 46, True, WHITE, gap=0)
+text(s, 0.9, 2.5, 7.4, 2.2, "Algoritma dan Struktur Data", round(46 * T.scale), True, WHITE, gap=0, font=T.font)
 text(s, 0.9, 4.6, 7.2, 1.2, "Dek pendukung kelas: 12 bab, dari Big O dan hash map sampai graf dan pola pemecahan masalah", 18, False, C("CBD5E1"), gap=0)
 text(s, 0.9, 6.8, 6, 0.3, "Ruang Materi", 11, True, GREEN, gap=0, spc=250)
 
