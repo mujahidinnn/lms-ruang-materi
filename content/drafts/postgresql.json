@@ -1,0 +1,1928 @@
+{
+  "title": "PostgreSQL",
+  "description": "Belajar PostgreSQL setelah SQL dasar: instalasi dan psql, tipe data, constraint, upsert dan RETURNING, JOIN dan agregasi, CTE dan window function, indeks dan EXPLAIN, transaksi, view, trigger, sampai backup. Ditutup dengan proyek Laporan Toko Buku.",
+  "summary": "PostgreSQL adalah sistem basis data relasional open source yang berjalan sebagai server, andal, patuh standar SQL, dan kaya fitur. Kelas ini ditujukan bagi kamu yang sudah mengenal SQL dasar dan ingin bekerja dengan Postgres secara nyata, mulai dari memasangnya dengan Docker, memakai psql, sampai memilih tipe data seperti numeric, timestamptz, identity, jsonb, array, dan enum.\n\nBagian inti membahas merancang tabel dengan constraint yang melindungi data, menulis DML yang aman dengan RETURNING dan upsert ON CONFLICT, menggabungkan serta meringkas data dengan JOIN, GROUP BY, dan HAVING, lalu menyusun query rumit dengan CTE dan window function. Kamu juga belajar mempercepat query dengan indeks dan membaca EXPLAIN ANALYZE.\n\nBagian akhir membahas menjaga data tetap benar dan aman: transaksi dan ACID, MVCC, level isolasi, kunci dan deadlock, view, fungsi dan trigger PL/pgSQL, backup dengan pg_dump, serta role dan hak akses. Karena browser tidak bisa menjalankan server Postgres, latihan kode memakai SQLite lewat Python untuk konsep yang sama di kedua database, dan kelas ditutup dengan proyek Laporan Toko Buku.",
+  "tips": [
+    "Pasang PostgreSQL di komputermu dengan Docker. Latihan kode di sini memakai SQLite untuk konsep yang sama, tetapi jsonb, EXPLAIN, trigger, dan psql hanya bisa kamu coba di server Postgres sungguhan.",
+    "Tulis SELECT dengan kondisi yang sama sebelum menjalankan UPDATE atau DELETE, dan bungkus pembaruan berisiko dengan BEGIN supaya bisa di-ROLLBACK.",
+    "Pakai numeric untuk uang dan timestamptz untuk waktu nyata; dua pilihan ini mencegah bug yang sangat sulit dilacak belakangan.",
+    "Ukur dulu dengan EXPLAIN ANALYZE sebelum menambah indeks, lalu ukur lagi sesudahnya agar tahu indeks itu benar-benar membantu.",
+    "Ingat bedanya SQLite dan Postgres: SQLite mengabaikan foreign key sampai PRAGMA foreign_keys = ON dan tipe datanya longgar, sedangkan Postgres selalu ketat."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu PostgreSQL?",
+      "back": "Sistem basis data relasional open source yang berjalan sebagai server dan patuh standar SQL."
+    },
+    {
+      "front": "Apa itu psql?",
+      "back": "Klien baris perintah bawaan PostgreSQL untuk menjalankan SQL dan meta-command."
+    },
+    {
+      "front": "Meta-command untuk daftar tabel",
+      "back": "\\dt (dan \\d nama_tabel untuk struktur satu tabel)."
+    },
+    {
+      "front": "Meta-command untuk pindah database",
+      "back": "\\c nama_database."
+    },
+    {
+      "front": "Tipe untuk uang",
+      "back": "numeric(p,s), bukan real atau double precision yang hasilnya perkiraan."
+    },
+    {
+      "front": "text vs varchar(n)",
+      "back": "Keduanya sama cepatnya di Postgres; batas varchar hanya validasi."
+    },
+    {
+      "front": "timestamptz",
+      "back": "Tipe tanggal dan jam dengan zona waktu, disimpan dalam UTC; pilihan utama untuk waktu nyata."
+    },
+    {
+      "front": "GENERATED ALWAYS AS IDENTITY",
+      "back": "Kolom ID otomatis sesuai standar SQL, pengganti serial untuk proyek baru."
+    },
+    {
+      "front": "Apa itu jsonb?",
+      "back": "Tipe JSON biner yang bisa dicari dan diindeks, dengan operator -> , ->> , dan @>."
+    },
+    {
+      "front": "Operator ->> pada jsonb",
+      "back": "Mengambil nilai sebagai teks."
+    },
+    {
+      "front": "Apa itu enum?",
+      "back": "Tipe yang membatasi nilai ke daftar tetap yang dibuat dengan CREATE TYPE ... AS ENUM."
+    },
+    {
+      "front": "Lima constraint utama",
+      "back": "PRIMARY KEY, NOT NULL, UNIQUE, CHECK, FOREIGN KEY (ditambah DEFAULT untuk nilai otomatis)."
+    },
+    {
+      "front": "ON DELETE CASCADE",
+      "back": "Saat baris induk dihapus, semua baris anak yang merujuknya ikut terhapus."
+    },
+    {
+      "front": "Fungsi RETURNING",
+      "back": "Mengembalikan baris yang baru disisipkan, diubah, atau dihapus dalam perintah yang sama."
+    },
+    {
+      "front": "Upsert di PostgreSQL",
+      "back": "INSERT ... ON CONFLICT (kolom) DO UPDATE ...; EXCLUDED menunjuk baris baru yang bentrok."
+    },
+    {
+      "front": "INNER JOIN vs LEFT JOIN",
+      "back": "INNER hanya baris yang cocok di kedua tabel; LEFT mempertahankan semua baris kiri dan mengisi NULL."
+    },
+    {
+      "front": "WHERE vs HAVING",
+      "back": "WHERE menyaring baris sebelum dikelompokkan; HAVING menyaring kelompok sesudah agregasi."
+    },
+    {
+      "front": "Apa itu CTE?",
+      "back": "Common Table Expression: query sementara bernama yang ditulis dengan WITH agar query mudah dibaca."
+    },
+    {
+      "front": "Apa itu window function?",
+      "back": "Fungsi dengan OVER (...) yang menghitung lintas baris tanpa meruntuhkan baris seperti GROUP BY."
+    },
+    {
+      "front": "rank() vs dense_rank()",
+      "back": "rank() melompat setelah nilai kembar (1,1,3); dense_rank() tidak melompat (1,1,2)."
+    },
+    {
+      "front": "Apa itu Seq Scan?",
+      "back": "Pembacaan semua baris tabel dari awal sampai akhir untuk mencari yang cocok."
+    },
+    {
+      "front": "EXPLAIN vs EXPLAIN ANALYZE",
+      "back": "EXPLAIN menampilkan rencana perkiraan; ANALYZE menjalankan query dan mengukur waktu nyata."
+    },
+    {
+      "front": "Indeks yang cocok untuk jsonb",
+      "back": "GIN."
+    },
+    {
+      "front": "Empat sifat ACID",
+      "back": "Atomicity, Consistency, Isolation, Durability."
+    },
+    {
+      "front": "Apa itu MVCC?",
+      "back": "Multi-Version Concurrency Control: baris punya beberapa versi sehingga pembaca dan penulis tidak saling memblokir."
+    },
+    {
+      "front": "Level isolasi bawaan Postgres",
+      "back": "READ COMMITTED."
+    },
+    {
+      "front": "Apa itu deadlock?",
+      "back": "Dua transaksi saling menunggu kunci milik lawannya; Postgres membatalkan salah satunya."
+    },
+    {
+      "front": "View vs materialized view",
+      "back": "View menjalankan query tiap dibaca; materialized view menyimpan hasil dan perlu REFRESH."
+    },
+    {
+      "front": "Apa itu trigger?",
+      "back": "Fungsi yang dijalankan otomatis saat INSERT, UPDATE, atau DELETE terjadi pada tabel."
+    },
+    {
+      "front": "Perintah backup satu database",
+      "back": "pg_dump (misalnya pg_dump -Fc toko > toko.dump), dipulihkan dengan pg_restore atau psql."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kepanjangan dari DDL?",
+      "code": "",
+      "options": [
+        "Data Delivery Layer, lapisan pengiriman data",
+        "Data Definition Language",
+        "Dynamic Database Logic, logika dinamis",
+        "Direct Data Link, penghubung data langsung"
+      ],
+      "answer": 1,
+      "explanation": "DDL mencakup CREATE, ALTER, dan DROP untuk membentuk struktur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah psql untuk keluar adalah",
+      "code": "",
+      "options": [
+        "\\x",
+        "\\list",
+        "\\q",
+        "\\close"
+      ],
+      "answer": 2,
+      "explanation": "`\\q` keluar dari psql."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe yang paling tepat untuk menyimpan saldo rekening adalah",
+      "code": "",
+      "options": [
+        "numeric(14,2)",
+        "real",
+        "boolean",
+        "double precision"
+      ],
+      "answer": 0,
+      "explanation": "Uang membutuhkan presisi tepat, dan numeric memberikannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi DEFAULT now() pada kolom timestamptz?",
+      "code": "",
+      "options": [
+        "Mengubah waktu tiap baris setiap kali baris itu dibaca",
+        "Melarang nilai waktu diisi secara manual oleh pengguna",
+        "Menghapus baris yang sudah lama tersimpan di tabel itu",
+        "Mengisi waktu saat baris dibuat bila kolom tidak diisi"
+      ],
+      "answer": 3,
+      "explanation": "DEFAULT mengisi nilai otomatis saat INSERT tidak menyebut kolom itu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Constraint untuk melarang dua baris memiliki email yang sama adalah",
+      "code": "",
+      "options": [
+        "CHECK",
+        "UNIQUE",
+        "DEFAULT",
+        "NOT NULL"
+      ],
+      "answer": 1,
+      "explanation": "UNIQUE menjamin nilai kolom tidak kembar."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dikembalikan query ini?",
+      "code": "INSERT INTO produk (nama, harga)\nVALUES ('Spidol', 9000)\nRETURNING id;",
+      "options": [
+        "Semua baris di tabel produk beserta kolom id-nya",
+        "Jumlah seluruh baris yang ada di tabel produk",
+        "Satu baris berisi id baris yang baru dibuat",
+        "Tidak ada apa pun, perintah itu ditolak oleh database"
+      ],
+      "answer": 2,
+      "explanation": "RETURNING menghasilkan baris yang baru disisipkan, di sini kolom id."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada ON CONFLICT DO UPDATE, kolom pada tanda kurung setelah ON CONFLICT harus",
+      "code": "",
+      "options": [
+        "memiliki constraint UNIQUE atau primary key",
+        "bertipe teks",
+        "berstatus NOT NULL saja",
+        "diindeks dengan GIN"
+      ],
+      "answer": 0,
+      "explanation": "Postgres memakai aturan unik itu untuk mendeteksi bentrokan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query mana yang menampilkan pelanggan yang belum pernah memesan?",
+      "code": "",
+      "options": [
+        "INNER JOIN pesanan lalu saring WHERE total > 0 pada hasilnya",
+        "SELECT dari tabel pesanan lalu GROUP BY pelanggan_id saja",
+        "CROSS JOIN pesanan tanpa kondisi apa pun pada hasilnya",
+        "LEFT JOIN pesanan lalu saring WHERE pesanan.id IS NULL"
+      ],
+      "answer": 3,
+      "explanation": "LEFT JOIN memberi NULL untuk pelanggan tanpa pasangan, lalu disaring."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klausa yang dipakai untuk menyaring hasil setelah GROUP BY adalah",
+      "code": "",
+      "options": [
+        "WHERE",
+        "HAVING",
+        "LIMIT",
+        "DISTINCT"
+      ],
+      "answer": 1,
+      "explanation": "HAVING menyaring kelompok hasil agregasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Window function menghitung peringkat per kategori dengan",
+      "code": "",
+      "options": [
+        "rank() GROUP BY kategori ORDER BY harga DESC dalam satu klausa",
+        "rank(kategori) HAVING harga DESC setelah pengelompokan",
+        "rank() OVER (PARTITION BY kategori ORDER BY harga DESC)",
+        "SELECT rank FROM kategori WHERE harga sebagai syarat"
+      ],
+      "answer": 2,
+      "explanation": "OVER dengan PARTITION BY dan ORDER BY menentukan jendela perhitungan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa Postgres kadang memilih Seq Scan walau ada indeks?",
+      "code": "",
+      "options": [
+        "Tabel kecil atau hasil mencakup sebagian besar baris sehingga membaca semuanya lebih murah",
+        "Karena indeks selalu rusak setelah INSERT sehingga planner tidak lagi memercayainya",
+        "Karena Seq Scan selalu lebih cepat daripada Index Scan untuk semua ukuran tabel dan kondisi",
+        "Karena indeks hanya dipakai oleh ORDER BY"
+      ],
+      "answer": 0,
+      "explanation": "Planner memilih rencana dengan biaya terendah, yang kadang berupa Seq Scan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah yang membatalkan semua perubahan sejak BEGIN adalah",
+      "code": "",
+      "options": [
+        "COMMIT",
+        "SAVEPOINT",
+        "VACUUM",
+        "ROLLBACK"
+      ],
+      "answer": 3,
+      "explanation": "ROLLBACK membatalkan transaksi yang sedang berjalan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sifat ACID mana yang menjamin data yang sudah di-commit tidak hilang walau listrik padam?",
+      "code": "",
+      "options": [
+        "Atomicity",
+        "Durability",
+        "Isolation",
+        "Consistency"
+      ],
+      "answer": 1,
+      "explanation": "Durability dijaga dengan menulis WAL sebelum COMMIT dinyatakan berhasil."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah untuk menyimpan ulang hasil materialized view agar terbaru adalah",
+      "code": "",
+      "options": [
+        "UPDATE MATERIALIZED VIEW SET data",
+        "ALTER VIEW REFRESH DATA NOW",
+        "REFRESH MATERIALIZED VIEW",
+        "VACUUM MATERIALIZED VIEW"
+      ],
+      "answer": 2,
+      "explanation": "Isi materialized view hanya diperbarui oleh REFRESH."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "View menyimpan salinan data secara terpisah dari tabel aslinya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "View hanya menyimpan query; yang menyimpan hasil adalah materialized view."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "PostgreSQL melayani klien dengan cara",
+      "code": "",
+      "options": [
+        "Berjalan sebagai server yang mendengarkan koneksi jaringan",
+        "Dibuka langsung sebagai satu file biasa oleh program yang memakainya",
+        "Hanya lewat editor teks yang berjalan di komputer yang sama",
+        "Menjalankan SQL di dalam peramban web tanpa proses server"
+      ],
+      "answer": 0,
+      "explanation": "Postgres adalah proses server, bukan file seperti SQLite."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di psql, prompt berubah menjadi toko-# lalu tidak menjalankan apa pun. Penyebabnya paling mungkin",
+      "code": "",
+      "options": [
+        "Server Postgres sedang mati total dan tidak bisa dihubungi",
+        "Database toko belum pernah dibuat di server ini sama sekali",
+        "Password pengguna sudah kedaluwarsa sehingga koneksi terputus",
+        "Pernyataan belum diakhiri titik koma"
+      ],
+      "answer": 3,
+      "explanation": "Prompt -# berarti psql menunggu kelanjutan pernyataan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Meta-command psql untuk melihat struktur tabel produk adalah",
+      "code": "",
+      "options": [
+        "\\l produk",
+        "\\d produk",
+        "\\c produk",
+        "\\x produk"
+      ],
+      "answer": 1,
+      "explanation": "`\\d nama_tabel` menampilkan kolom, tipe, dan indeks."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pernyataan SQL di psql harus diakhiri titik koma, sedangkan meta-command berawalan backslash tidak.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Meta-command adalah perintah psql sehingga tidak butuh titik koma."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa kolom saldo sebaiknya bertipe numeric dan bukan double precision?",
+      "code": "",
+      "options": [
+        "numeric memakai ruang disk paling kecil dibanding semua tipe angka lainnya",
+        "double precision tidak mendukung angka desimal sama sekali dalam kolom",
+        "numeric menghitung dengan presisi tepat tanpa galat pembulatan biner",
+        "numeric otomatis menambah indeks pada kolom yang bertipe numeric"
+      ],
+      "answer": 2,
+      "explanation": "Tipe pecahan biner menimbulkan selisih kecil seperti 0.30000000000000004."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Yang benar tentang text dan varchar(n) di PostgreSQL adalah",
+      "code": "",
+      "options": [
+        "Kecepatannya sama; batas varchar hanya aturan validasi",
+        "varchar(n) selalu dua kali lebih cepat dari text",
+        "text tidak bisa dipakai pada kolom UNIQUE",
+        "text hanya menyimpan maksimal 255 karakter"
+      ],
+      "answer": 0,
+      "explanation": "Postgres menyimpan keduanya dengan cara yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe waktu yang disarankan untuk mencatat kapan pesanan dibuat adalah",
+      "code": "",
+      "options": [
+        "time",
+        "timestamp tanpa zona",
+        "text berisi tanggal",
+        "timestamptz"
+      ],
+      "answer": 3,
+      "explanation": "timestamptz menyimpan waktu dalam UTC dengan konversi zona yang jelas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan GENERATED ALWAYS AS IDENTITY dibanding serial adalah",
+      "code": "",
+      "options": [
+        "Mengizinkan dua baris berbeda memiliki ID yang persis sama di satu tabel",
+        "Sesuai standar SQL dan mencegah pengisian ID manual yang tak sengaja",
+        "Menyimpan ID sebagai teks acak yang dibuat otomatis oleh database",
+        "Tidak memerlukan kolom bertipe angka sehingga bisa dipasang di kolom apa saja"
+      ],
+      "answer": 1,
+      "explanation": "Identity adalah cara standar, dan ALWAYS menolak nilai manual."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ekspresi mana yang memeriksa apakah kolom jsonb atribut mengandung warna merah?",
+      "code": "",
+      "options": [
+        "atribut ->> '{\"warna\": \"merah\"}'",
+        "atribut LIKE 'warna merah'",
+        "atribut @> '{\"warna\": \"merah\"}'",
+        "atribut = ANY('merah')"
+      ],
+      "answer": 2,
+      "explanation": "Operator @> memeriksa apakah dokumen jsonb mengandung potongan tertentu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan lebih baik memakai tabel relasi daripada kolom array?",
+      "code": "",
+      "options": [
+        "Ketika elemennya sering di-join, difilter, atau perlu foreign key",
+        "Ketika datanya hanya terdiri dari tiga elemen yang tidak pernah berubah",
+        "Ketika kolom itu tidak pernah dipakai di query sama sekali",
+        "Ketika database hanya dipakai oleh satu pengguna dalam satu aplikasi"
+      ],
+      "answer": 0,
+      "explanation": "Integritas dan JOIN hanya bisa dijaga penuh pada tabel tersendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Constraint PRIMARY KEY otomatis juga bersifat",
+      "code": "",
+      "options": [
+        "CHECK dan DEFAULT",
+        "FOREIGN KEY dan CASCADE",
+        "Hanya NOT NULL",
+        "NOT NULL dan UNIQUE"
+      ],
+      "answer": 3,
+      "explanation": "Primary key menjamin nilai terisi dan tidak kembar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa efek tanpa opsi ON DELETE pada foreign key ketika induk yang punya anak dihapus?",
+      "code": "",
+      "options": [
+        "Anak ikut terhapus otomatis",
+        "Penghapusan ditolak dengan error",
+        "Kolom anak menjadi NULL",
+        "Induk dihapus dan anak dibiarkan menggantung"
+      ],
+      "answer": 1,
+      "explanation": "Bawaannya (NO ACTION) menolak penghapusan selama masih ada anak."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa efek perintah ini?",
+      "code": "ALTER TABLE pelanggan ADD COLUMN telepon text;",
+      "options": [
+        "Membuat tabel baru bernama telepon yang berisi semua pelanggan",
+        "Menghapus kolom telepon dari tabel pelanggan beserta isinya",
+        "Menambah kolom telepon bertipe text ke tabel pelanggan",
+        "Mengubah semua nilai kolom telepon yang ada menjadi NULL"
+      ],
+      "answer": 2,
+      "explanation": "ALTER TABLE ... ADD COLUMN menambah kolom baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan Postgres terkait DDL adalah",
+      "code": "",
+      "options": [
+        "DDL bisa dibungkus transaksi dan di-rollback",
+        "DDL otomatis membuat backup sebelum berjalan",
+        "DDL tidak pernah mengunci tabel sama sekali",
+        "DDL hanya boleh dijalankan oleh psql"
+      ],
+      "answer": 0,
+      "explanation": "Perubahan skema dapat dicoba di dalam BEGIN lalu dibatalkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa aturan data lebih baik dipasang sebagai constraint di database?",
+      "code": "",
+      "options": [
+        "Karena aplikasi tidak mampu memeriksa aturan data dengan cara apa pun",
+        "Karena constraint membuat setiap query selalu berjalan lebih cepat",
+        "Karena database tidak mendukung validasi yang dilakukan oleh aplikasi",
+        "Berlaku untuk semua aplikasi yang menulis ke database itu"
+      ],
+      "answer": 3,
+      "explanation": "Aturan di aplikasi bisa dilewati aplikasi lain; constraint tidak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Constraint CHECK (total >= 0) menolak INSERT yang memberi total -5.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pelanggaran CHECK membuat perintah gagal dengan error."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara menyisipkan tiga baris dengan efisien adalah",
+      "code": "",
+      "options": [
+        "Tiga perintah INSERT di tiga koneksi berbeda",
+        "Satu INSERT dengan tiga daftar VALUES",
+        "Satu INSERT lalu dua UPDATE kosong",
+        "Menunggu satu menit di antara tiap baris"
+      ],
+      "answer": 1,
+      "explanation": "Satu perintah multi-baris mengurangi bolak-balik ke server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kebiasaan aman sebelum menjalankan DELETE FROM pesanan WHERE status = 'batal' adalah",
+      "code": "",
+      "options": [
+        "Menghapus klausa WHERE agar perintah selesai lebih cepat",
+        "Menjalankan perintah dua kali berturut-turut supaya yakin hasilnya",
+        "Menjalankan SELECT dengan kondisi yang sama untuk memeriksa baris yang kena",
+        "Mematikan semua constraint sementara selama penghapusan berlangsung"
+      ],
+      "answer": 2,
+      "explanation": "SELECT dengan WHERE yang sama memperlihatkan baris yang akan terhapus."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manfaat UPDATE produk SET stok = stok - 1 WHERE id = 5 dibanding membaca stok lalu menulis nilai baru dari aplikasi adalah",
+      "code": "",
+      "options": [
+        "Pengurangan dilakukan satu langkah oleh database sehingga aman dari balapan",
+        "Perintahnya otomatis di-commit ke semua replika database pada waktu yang sama persis",
+        "Nilai stok dijamin tidak pernah bisa menjadi negatif walau tanpa CHECK constraint",
+        "Indeks pada kolom stok tidak perlu diperbarui walaupun nilainya berubah-ubah"
+      ],
+      "answer": 0,
+      "explanation": "Satu UPDATE atomik menghindari data basi di antara baca dan tulis."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil query berikut?",
+      "code": "UPDATE produk SET harga = harga * 1.1\nWHERE stok > 40\nRETURNING nama, harga;",
+      "options": [
+        "Seluruh isi tabel produk tanpa perubahan",
+        "Error karena RETURNING tidak boleh pada UPDATE",
+        "Jumlah baris yang dihapus",
+        "Nama dan harga produk yang baru dinaikkan"
+      ],
+      "answer": 3,
+      "explanation": "RETURNING juga bekerja pada UPDATE dan memberi baris hasil perubahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada upsert, DO NOTHING berarti",
+      "code": "",
+      "options": [
+        "Seluruh tabel dikosongkan",
+        "Duplikat diabaikan tanpa error",
+        "Baris lama dihapus lalu diganti",
+        "Transaksi otomatis dibatalkan"
+      ],
+      "answer": 1,
+      "explanation": "DO NOTHING membiarkan baris lama dan melewati baris yang bentrok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam DO UPDATE SET stok = produk.stok + EXCLUDED.stok, nilai produk.stok adalah",
+      "code": "",
+      "options": [
+        "Stok baru yang gagal disisipkan karena bentrok dengan baris lama",
+        "Selalu bernilai nol untuk setiap baris yang baru dibuat",
+        "Stok lama yang sudah ada di tabel",
+        "Rata-rata stok dari semua produk yang ada di tabel"
+      ],
+      "answer": 2,
+      "explanation": "Nama tabel menunjuk baris lama, EXCLUDED baris baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa jangan menyusun SQL dengan menempelkan input pengguna ke string?",
+      "code": "",
+      "options": [
+        "Rentan SQL injection; pakai parameter",
+        "String SQL tidak boleh lebih dari 100 karakter",
+        "Parameter membuat tabel terkunci permanen",
+        "Postgres menolak teks berisi huruf besar"
+      ],
+      "answer": 0,
+      "explanation": "Parameter memisahkan data dari perintah SQL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "INNER JOIN antara pelanggan dan pesanan akan menghilangkan",
+      "code": "",
+      "options": [
+        "Pesanan yang memiliki pelanggan",
+        "Kolom id dari kedua tabel",
+        "Pelanggan yang punya banyak pesanan",
+        "Pelanggan yang tidak punya pesanan"
+      ],
+      "answer": 3,
+      "explanation": "INNER JOIN hanya menyisakan baris yang punya pasangan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada LEFT JOIN pelanggan ke pesanan, kolom pesanan untuk pelanggan tanpa pesanan berisi",
+      "code": "",
+      "options": [
+        "0",
+        "NULL",
+        "string kosong",
+        "nilai dari pelanggan sebelumnya"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa pasangan, kolom sisi kanan diisi NULL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi ON pada JOIN?",
+      "code": "",
+      "options": [
+        "Mengurutkan hasil gabungan menurut kolom yang dipilih pengguna",
+        "Membatasi jumlah baris hasil gabungan menjadi paling banyak sepuluh",
+        "Menentukan syarat pemasangan baris dari dua tabel",
+        "Mengaktifkan indeks pada kedua tabel yang sedang digabungkan"
+      ],
+      "answer": 2,
+      "explanation": "ON berisi kondisi yang menghubungkan baris kedua tabel."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil count(p.id) untuk pelanggan tanpa pesanan pada LEFT JOIN adalah",
+      "code": "",
+      "options": [
+        "0, karena NULL tidak dihitung",
+        "1, karena ada satu baris pelanggan",
+        "NULL, karena tidak ada data",
+        "Error karena kolom kosong"
+      ],
+      "answer": 0,
+      "explanation": "count(kolom) tidak menghitung NULL, sedangkan count(*) menghitung baris."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa sum() atas baris yang semuanya NULL perlu dibungkus COALESCE?",
+      "code": "",
+      "options": [
+        "Hasilnya selalu error",
+        "Hasilnya selalu angka negatif",
+        "sum() tidak mendukung LEFT JOIN",
+        "Hasilnya NULL, bukan 0"
+      ],
+      "answer": 3,
+      "explanation": "COALESCE(sum(x), 0) mengganti NULL dengan 0."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Query ini akan",
+      "code": "SELECT nama, count(*)\nFROM pesanan p JOIN pelanggan c ON c.id = p.pelanggan_id\nGROUP BY p.pelanggan_id;",
+      "options": [
+        "Menampilkan nama dan jumlah pesanan untuk setiap pelanggan yang ada di tabel",
+        "Ditolak karena kolom nama tidak ada di GROUP BY dan bukan agregat",
+        "Mengelompokkan berdasarkan nama otomatis",
+        "Berjalan dengan nama acak tiap kelompok"
+      ],
+      "answer": 1,
+      "explanation": "Kolom SELECT harus agregat atau tercantum di GROUP BY."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan pengerjaan yang benar dalam query SELECT adalah",
+      "code": "",
+      "options": [
+        "SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY",
+        "WHERE, FROM, SELECT, GROUP BY, ORDER BY, HAVING",
+        "FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY",
+        "FROM, SELECT, WHERE, HAVING, GROUP BY, ORDER BY"
+      ],
+      "answer": 2,
+      "explanation": "SELECT baru dikerjakan setelah penyaringan dan pengelompokan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alias kolom dari SELECT boleh dipakai di",
+      "code": "",
+      "options": [
+        "ORDER BY",
+        "WHERE",
+        "FROM",
+        "ON pada JOIN"
+      ],
+      "answer": 0,
+      "explanation": "ORDER BY dikerjakan setelah SELECT sehingga mengenal alias."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kegunaan utama CTE adalah",
+      "code": "",
+      "options": [
+        "Menyimpan data hasil query secara permanen di dalam disk",
+        "Mempercepat semua query secara otomatis tanpa perlu menulis ulang",
+        "Mengganti kebutuhan akan tabel dengan nama sementara saja",
+        "Memecah query rumit menjadi langkah bernama yang mudah dibaca"
+      ],
+      "answer": 3,
+      "explanation": "CTE memberi nama pada langkah antara."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Beberapa CTE dalam satu query dipisahkan dengan",
+      "code": "",
+      "options": [
+        "Titik koma",
+        "Koma",
+        "Kata kunci AND",
+        "Tanda garis bawah"
+      ],
+      "answer": 1,
+      "explanation": "WITH a AS (...), b AS (...) menyambung CTE dengan koma."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Window function ditulis dengan",
+      "code": "",
+      "options": [
+        "fungsi() WITHIN GROUP BY",
+        "fungsi() HAVING (...)",
+        "fungsi() OVER (...)",
+        "fungsi() AS WINDOW TABLE"
+      ],
+      "answer": 2,
+      "explanation": "Klausa OVER mendefinisikan jendela perhitungan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk nilai 100, 100, 80, rank() memberi peringkat",
+      "code": "",
+      "options": [
+        "1, 1, 3",
+        "1, 2, 3",
+        "1, 1, 2",
+        "1, 2, 2"
+      ],
+      "answer": 0,
+      "explanation": "rank() melompat setelah nilai kembar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil total berjalan harga per urutan id diperoleh dengan",
+      "code": "",
+      "options": [
+        "sum(harga) GROUP BY id ORDER BY id",
+        "total(harga) ORDER BY id",
+        "sum(harga) PARTITION id",
+        "sum(harga) OVER (ORDER BY id)"
+      ],
+      "answer": 3,
+      "explanation": "SUM dengan OVER dan ORDER BY menjumlah dari baris pertama sampai baris saat ini."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query 'produk termahal per kategori' paling rapi diselesaikan dengan",
+      "code": "",
+      "options": [
+        "WHERE row_number() = 1 langsung di query yang sama dengan SELECT",
+        "CTE berisi row_number() lalu filter n = 1 di query luar",
+        "GROUP BY kategori tanpa menggunakan fungsi agregat sama sekali",
+        "LIMIT 1 yang diterapkan pada seluruh isi tabel produk"
+      ],
+      "answer": 1,
+      "explanation": "Window function tak boleh di WHERE, jadi dibungkus CTE."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "CTE rekursif cocok untuk menelusuri data berjenjang seperti kategori bertingkat.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Bagian rekursif terus mengambil anak dari hasil sebelumnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Indeks mempercepat query tetapi",
+      "code": "",
+      "options": [
+        "Membuat tabel tidak bisa diubah strukturnya lagi sesudah dibuat",
+        "Menghapus kebutuhan akan primary key pada setiap tabel besar",
+        "Memperlambat penulisan dan memakai ruang disk",
+        "Hanya bekerja untuk kolom bertipe teks dan tidak untuk angka"
+      ],
+      "answer": 2,
+      "explanation": "Setiap perubahan data harus memperbarui indeks."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jenis indeks bawaan PostgreSQL adalah",
+      "code": "",
+      "options": [
+        "B-tree",
+        "GIN",
+        "BRIN",
+        "Hash saja"
+      ],
+      "answer": 0,
+      "explanation": "CREATE INDEX tanpa USING membuat B-tree."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Indeks ini cocok untuk",
+      "code": "CREATE INDEX idx_produk_atribut\n  ON produk USING gin (atribut);",
+      "options": [
+        "Mengurutkan teks dalam kolom secara alfabetis saja",
+        "Menghitung jumlah baris tabel",
+        "Menghapus nilai NULL pada kolom",
+        "Mempercepat filter pada kolom jsonb atribut"
+      ],
+      "answer": 3,
+      "explanation": "GIN mendukung pencarian di dalam nilai majemuk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada indeks multi-kolom (pelanggan_id, dibuat), pencarian paling efektif bila memakai",
+      "code": "",
+      "options": [
+        "Hanya kolom kedua saja tanpa melibatkan kolom pertama",
+        "Kolom pertama, atau kolom pertama dan kedua",
+        "Tidak ada kolom sama sekali",
+        "Hanya hasil fungsi pada kedua kolom"
+      ],
+      "answer": 1,
+      "explanation": "Urutan kolom menentukan pola pencarian yang bisa dibantu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kata Seq Scan pada keluaran EXPLAIN berarti",
+      "code": "",
+      "options": [
+        "Postgres memakai indeks GIN untuk mencari baris dengan cepat",
+        "Query ditolak oleh planner karena tidak memiliki indeks",
+        "Postgres membaca semua baris tabel",
+        "Tabel sedang dikunci oleh transaksi lain yang berjalan"
+      ],
+      "answer": 2,
+      "explanation": "Seq Scan adalah pembacaan berurutan seluruh tabel."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa EXPLAIN ANALYZE pada DELETE perlu dibungkus BEGIN ... ROLLBACK?",
+      "code": "",
+      "options": [
+        "Karena perintahnya benar-benar dijalankan dan mengubah data",
+        "Karena ANALYZE menghapus semua indeks yang ada pada tabel itu",
+        "Karena EXPLAIN tidak mendukung perintah DELETE sama sekali",
+        "Karena Postgres selalu membatalkan perubahannya sendiri tanpa diminta"
+      ],
+      "answer": 0,
+      "explanation": "ANALYZE mengeksekusi query sungguhan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila rows perkiraan jauh berbeda dari actual rows, langkah yang tepat adalah",
+      "code": "",
+      "options": [
+        "Menghapus seluruh indeks pada tabel lalu membuatnya ulang",
+        "Mengganti tipe semua kolom tabel menjadi text agar seragam",
+        "Menambah banyak constraint CHECK supaya planner lebih yakin",
+        "Memperbarui statistik dengan ANALYZE nama_tabel"
+      ],
+      "answer": 3,
+      "explanation": "Statistik usang membuat planner salah memperkirakan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar WHERE lower(email) = 'a@b.id' bisa memakai indeks, dibuat",
+      "code": "",
+      "options": [
+        "Indeks biasa pada kolom id dan kolom email",
+        "Indeks ekspresi pada lower(email)",
+        "Constraint CHECK pada email",
+        "View dari tabel pengguna"
+      ],
+      "answer": 1,
+      "explanation": "Indeks harus cocok dengan ekspresi yang dipakai di query."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Indeks parsial (dengan WHERE) berguna karena",
+      "code": "",
+      "options": [
+        "Bisa dipakai oleh semua query tanpa syarat apa pun pada tabel",
+        "Tidak memperlambat penulisan sama sekali karena kecil ukurannya",
+        "Hanya mengindeks sebagian baris sehingga lebih hemat tempat",
+        "Otomatis dibuat untuk setiap foreign key yang ada di tabel"
+      ],
+      "answer": 2,
+      "explanation": "Ia menyasar pola tertentu, misalnya hanya pesanan berstatus baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pernyataan BEGIN dalam psql",
+      "code": "",
+      "options": [
+        "Memulai transaksi yang baru berakhir pada COMMIT atau ROLLBACK",
+        "Memulai backup database secara otomatis ke disk eksternal",
+        "Membuka koneksi baru ke server database yang lain",
+        "Menghapus semua data lama sebelum perintah berikutnya dijalankan"
+      ],
+      "answer": 0,
+      "explanation": "Perintah di antara BEGIN dan COMMIT menjadi satu kesatuan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tanpa BEGIN, setiap perintah SQL di psql",
+      "code": "",
+      "options": [
+        "Menunggu perintah COMMIT manual dari pengguna sebelum disimpan",
+        "Tidak tersimpan sama sekali sampai psql ditutup dengan normal",
+        "Digabung otomatis dengan perintah berikutnya menjadi satu transaksi",
+        "Berjalan sebagai transaksi sendiri yang langsung di-commit"
+      ],
+      "answer": 3,
+      "explanation": "Itulah mode autocommit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Huruf C pada ACID berarti",
+      "code": "",
+      "options": [
+        "Commit, yaitu setiap perintah langsung disimpan ke disk",
+        "Consistency, data selalu memenuhi aturan constraint",
+        "Cache, yaitu hasil query disimpan sementara di memori",
+        "Cluster, yaitu data tersebar di banyak server sekaligus"
+      ],
+      "answer": 1,
+      "explanation": "Consistency menjaga database tetap valid sebelum dan sesudah transaksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "WAL (write-ahead log) membantu menjaga",
+      "code": "",
+      "options": [
+        "Isolation, karena menyembunyikan semua baris",
+        "Atomicity, karena mengunci seluruh tabel",
+        "Durability, karena perubahan dicatat sebelum COMMIT berhasil",
+        "Indeks, karena membuatnya otomatis"
+      ],
+      "answer": 2,
+      "explanation": "Setelah crash, log diputar ulang untuk memulihkan perubahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada level READ COMMITTED, query kedua dalam satu transaksi",
+      "code": "",
+      "options": [
+        "Dapat melihat data baru yang di-commit transaksi lain",
+        "Selalu melihat data yang persis sama dengan query pertama",
+        "Selalu menunggu transaksi lain selesai",
+        "Tidak bisa dijalankan sebelum COMMIT"
+      ],
+      "answer": 0,
+      "explanation": "Tiap perintah melihat data yang sudah di-commit sampai perintah itu mulai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "SELECT ... FOR UPDATE digunakan untuk",
+      "code": "",
+      "options": [
+        "Memperbarui semua baris yang dibaca dengan nilai yang sama",
+        "Menjalankan SELECT dengan kecepatan yang lebih tinggi",
+        "Membuat salinan baris yang dibaca ke tabel lain secara otomatis",
+        "Mengunci baris yang dibaca sampai transaksi selesai"
+      ],
+      "answer": 3,
+      "explanation": "Transaksi lain yang ingin mengubah baris itu akan menunggu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara paling efektif mencegah deadlock adalah",
+      "code": "",
+      "options": [
+        "Memperbanyak jumlah transaksi bersamaan",
+        "Mengakses baris dalam urutan yang sama di semua transaksi",
+        "Menunggu input pengguna di dalam transaksi",
+        "Menghapus semua constraint foreign key"
+      ],
+      "answer": 1,
+      "explanation": "Urutan konsisten mencegah saling tunggu melingkar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "View pesanan_ringkas berarti",
+      "code": "",
+      "options": [
+        "Tabel yang menyimpan salinan data pesanan secara terpisah dan permanen",
+        "Indeks khusus yang dibuat untuk mempercepat tabel pesanan",
+        "Query tersimpan yang dijalankan tiap kali view dibaca",
+        "Backup otomatis tabel pesanan yang diperbarui setiap malam"
+      ],
+      "answer": 2,
+      "explanation": "View tidak menyimpan data; ia menjalankan query aslinya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi PL/pgSQL dibungkus tanda $$ ... $$ agar",
+      "code": "",
+      "options": [
+        "Isi fungsi dibaca sebagai satu string tanpa bentrok tanda kutip",
+        "Fungsi berjalan jauh lebih cepat dibanding fungsi tanpa tanda itu",
+        "Fungsi otomatis menjadi trigger yang dijalankan pada setiap perubahan",
+        "Fungsi tidak bisa diubah lagi sesudah dibuat dengan tanda itu"
+      ],
+      "answer": 0,
+      "explanation": "Tanda dolar menghindari repot menghindari kutip di dalam isi fungsi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Trigger BEFORE UPDATE FOR EACH ROW berjalan",
+      "code": "",
+      "options": [
+        "Sesudah seluruh isi tabel dihapus oleh DELETE",
+        "Hanya sekali per hari",
+        "Hanya ketika COMMIT dijalankan",
+        "Sebelum setiap baris yang diubah disimpan"
+      ],
+      "answer": 3,
+      "explanation": "BEFORE memungkinkan fungsi mengubah NEW sebelum penyimpanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "pg_restore dipakai untuk",
+      "code": "",
+      "options": [
+        "Membuat dump baru dari database yang sedang aktif berjalan",
+        "Memulihkan dump berformat kustom ke sebuah database",
+        "Menjalankan EXPLAIN pada seluruh tabel di database",
+        "Menghapus role yang sudah lama tidak aktif dari server"
+      ],
+      "answer": 1,
+      "explanation": "pg_restore membaca file dump hasil pg_dump -Fc."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prinsip least privilege dalam role dan GRANT berarti",
+      "code": "",
+      "options": [
+        "Memberi semua pengguna hak penuh agar pengelolaan jadi mudah",
+        "Menghapus role setelah satu hari agar server tetap bersih",
+        "Memberi pengguna hanya hak yang benar-benar diperlukan",
+        "Memakai satu password yang sama untuk semua role di server"
+      ],
+      "answer": 2,
+      "explanation": "Hak minimal membatasi kerusakan bila akun disalahgunakan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Aplikasi sebaiknya selalu terhubung memakai user postgres karena memiliki hak paling lengkap.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Pakailah role terbatas sesuai kebutuhan, bukan superuser."
+    }
+  ],
+  "prerequisites": [
+    "sql"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Laporan Toko Buku",
+    "brief": "Kamu mengelola data sebuah **toko buku kecil**. Bangun modul `laporan toko` yang menyiapkan skema database dengan constraint yang benar, mencatat data dengan aman, lalu menghasilkan laporan memakai JOIN, agregasi, CTE, dan window function.\n\nKarena browser tidak bisa menjalankan server PostgreSQL, proyek ini memakai **SQLite lewat modul `sqlite3`**. Semua teknik yang dipakai (constraint, upsert, JOIN, CTE, window function, transaksi) sama dengan di PostgreSQL; hanya sintaks ID otomatis dan beberapa tipe data yang berbeda.\n\nFungsi yang harus kamu tulis, semuanya menerima koneksi `db`:\n\n1. `buat_skema(db)`: aktifkan foreign key, lalu buat tabel `buku` (`id`, `judul` unik dan wajib, `penulis` wajib, `harga` bilangan bulat positif) dan `penjualan` (`id`, `buku_id` merujuk `buku`, `jumlah` positif, `tanggal` teks `YYYY-MM-DD`).\n2. `tambah_buku(db, judul, penulis, harga)`: upsert berdasarkan `judul`; bila sudah ada, perbarui harganya.\n3. `catat_penjualan(db, buku_id, jumlah, tanggal)`: sisipkan dalam transaksi; kembalikan `True` bila berhasil, `False` bila melanggar constraint.\n4. `omzet_per_buku(db)`: daftar `(judul, jumlah_terjual, omzet)` untuk **semua** buku, omzet terbesar dulu, lalu judul. Omzet = jumlah x harga.\n5. `tidak_laku(db)`: daftar judul yang belum pernah terjual, urut abjad.\n6. `terlaris_per_penulis(db)`: `(penulis, judul, omzet)` untuk buku beromzet terbesar tiap penulis, urut penulis.\n7. `laporan_bulanan(db)`: `(bulan, omzet, omzet_kumulatif)` dengan bulan berformat `YYYY-MM`, urut bulan.\n\nContoh hasil `omzet_per_buku` untuk data contoh: `('Bumi', 4, 360000)` muncul pertama dan `('Dilan 1990', 0, 0)` paling akhir.",
+    "prompt": "Lengkapi tujuh fungsi di kode awal. Pemeriksa menyiapkan data contoh sendiri untuk fungsi laporan, sedangkan tiga fungsi pertama diuji memakai skema yang kamu buat. Ingat menyalakan `PRAGMA foreign_keys = ON` di `buat_skema`.",
+    "starter": {
+      "code": "import sqlite3\n\n\ndef buat_skema(db):\n    # TODO: aktifkan foreign key lalu buat tabel buku dan penjualan\n    pass\n\n\ndef tambah_buku(db, judul, penulis, harga):\n    # TODO: upsert berdasarkan judul; bila judul sudah ada, perbarui harganya\n    pass\n\n\ndef catat_penjualan(db, buku_id, jumlah, tanggal):\n    # TODO: sisipkan penjualan; True bila berhasil, False bila melanggar constraint\n    pass\n\n\ndef omzet_per_buku(db):\n    # TODO: [(judul, jumlah_terjual, omzet)] semua buku, omzet terbesar dulu\n    return []\n\n\ndef tidak_laku(db):\n    # TODO: daftar judul buku yang belum pernah terjual, urut abjad\n    return []\n\n\ndef terlaris_per_penulis(db):\n    # TODO: [(penulis, judul, omzet)] buku beromzet terbesar tiap penulis, urut penulis\n    return []\n\n\ndef laporan_bulanan(db):\n    # TODO: [(bulan 'YYYY-MM', omzet, omzet_kumulatif)] urut bulan\n    return []\n"
+    },
+    "solution": {
+      "code": "import sqlite3\n\n\ndef buat_skema(db):\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.executescript(\"\"\"\n    CREATE TABLE buku (\n        id INTEGER PRIMARY KEY,\n        judul TEXT NOT NULL UNIQUE,\n        penulis TEXT NOT NULL,\n        harga INTEGER NOT NULL CHECK (harga > 0)\n    );\n    CREATE TABLE penjualan (\n        id INTEGER PRIMARY KEY,\n        buku_id INTEGER NOT NULL REFERENCES buku (id),\n        jumlah INTEGER NOT NULL CHECK (jumlah > 0),\n        tanggal TEXT NOT NULL\n    );\n    \"\"\")\n\n\ndef tambah_buku(db, judul, penulis, harga):\n    db.execute(\n        \"INSERT INTO buku (judul, penulis, harga) VALUES (?, ?, ?) \"\n        \"ON CONFLICT (judul) DO UPDATE SET harga = EXCLUDED.harga\",\n        (judul, penulis, harga),\n    )\n\n\ndef catat_penjualan(db, buku_id, jumlah, tanggal):\n    try:\n        with db:\n            db.execute(\n                \"INSERT INTO penjualan (buku_id, jumlah, tanggal) VALUES (?, ?, ?)\",\n                (buku_id, jumlah, tanggal),\n            )\n        return True\n    except sqlite3.IntegrityError:\n        return False\n\n\ndef omzet_per_buku(db):\n    return db.execute(\"\"\"\n        SELECT b.judul, COALESCE(SUM(p.jumlah), 0), COALESCE(SUM(p.jumlah * b.harga), 0) AS omzet\n        FROM buku b\n        LEFT JOIN penjualan p ON p.buku_id = b.id\n        GROUP BY b.id\n        ORDER BY omzet DESC, b.judul\n    \"\"\").fetchall()\n\n\ndef tidak_laku(db):\n    rows = db.execute(\"\"\"\n        SELECT b.judul\n        FROM buku b\n        LEFT JOIN penjualan p ON p.buku_id = b.id\n        WHERE p.id IS NULL\n        ORDER BY b.judul\n    \"\"\").fetchall()\n    return [r[0] for r in rows]\n\n\ndef terlaris_per_penulis(db):\n    return db.execute(\"\"\"\n        WITH o AS (\n            SELECT b.penulis, b.judul, COALESCE(SUM(p.jumlah * b.harga), 0) AS omzet\n            FROM buku b\n            LEFT JOIN penjualan p ON p.buku_id = b.id\n            GROUP BY b.id\n        ), r AS (\n            SELECT *, ROW_NUMBER() OVER (PARTITION BY penulis ORDER BY omzet DESC, judul) AS n\n            FROM o\n        )\n        SELECT penulis, judul, omzet FROM r WHERE n = 1 ORDER BY penulis\n    \"\"\").fetchall()\n\n\ndef laporan_bulanan(db):\n    return db.execute(\"\"\"\n        WITH m AS (\n            SELECT substr(p.tanggal, 1, 7) AS bulan, SUM(p.jumlah * b.harga) AS omzet\n            FROM penjualan p\n            JOIN buku b ON b.id = p.buku_id\n            GROUP BY bulan\n        )\n        SELECT bulan, omzet, SUM(omzet) OVER (ORDER BY bulan) FROM m ORDER BY bulan\n    \"\"\").fetchall()\n"
+    },
+    "setup": "import sqlite3\n\nSKEMA_RESMI = \"\"\"\nCREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT NOT NULL UNIQUE, penulis TEXT NOT NULL, harga INTEGER NOT NULL CHECK (harga > 0));\nCREATE TABLE penjualan (id INTEGER PRIMARY KEY, buku_id INTEGER NOT NULL REFERENCES buku (id), jumlah INTEGER NOT NULL CHECK (jumlah > 0), tanggal TEXT NOT NULL);\nINSERT INTO buku VALUES (1, 'Laskar Pelangi', 'Andrea Hirata', 80000), (2, 'Sang Pemimpi', 'Andrea Hirata', 70000),\n  (3, 'Bumi', 'Tere Liye', 90000), (4, 'Pulang', 'Tere Liye', 85000), (5, 'Dilan 1990', 'Pidi Baiq', 75000);\nINSERT INTO penjualan VALUES (1, 1, 2, '2026-01-05'), (2, 1, 1, '2026-01-20'), (3, 3, 3, '2026-01-25'),\n  (4, 2, 1, '2026-02-02'), (5, 3, 1, '2026-02-10'), (6, 4, 2, '2026-02-15');\n\"\"\"\n\ndef fixture():\n    d = sqlite3.connect(\":memory:\")\n    d.executescript(SKEMA_RESMI)\n    return d\n\ndef skema_baru():\n    d = sqlite3.connect(\":memory:\")\n    buat_skema(d)\n    return d\n\ndef melanggar(d, sql):\n    try:\n        d.execute(sql)\n        return False\n    except sqlite3.IntegrityError:\n        return True\n",
+    "tests": [
+      {
+        "name": "buat_skema membuat tabel buku dan penjualan",
+        "check": "{r[0] for r in skema_baru().execute(\"SELECT name FROM sqlite_master WHERE type = 'table'\")} >= {'buku', 'penjualan'}"
+      },
+      {
+        "name": "harga buku harus positif",
+        "check": "melanggar(skema_baru(), \"INSERT INTO buku (judul, penulis, harga) VALUES ('A', 'X', 0)\")"
+      },
+      {
+        "name": "penjualan harus merujuk buku yang ada (foreign key aktif)",
+        "check": "melanggar(skema_baru(), \"INSERT INTO penjualan (buku_id, jumlah, tanggal) VALUES (99, 1, '2026-01-01')\")"
+      },
+      {
+        "name": "tambah_buku memperbarui harga bila judul sudah ada",
+        "check": "(lambda d: (tambah_buku(d, 'A', 'X', 100), tambah_buku(d, 'A', 'X', 150), d.execute('SELECT count(*), max(harga) FROM buku').fetchone())[2])(skema_baru()) == (1, 150)"
+      },
+      {
+        "name": "catat_penjualan menerima yang sah dan menolak yang tidak",
+        "check": "(lambda d: (tambah_buku(d, 'A', 'X', 100), catat_penjualan(d, 1, 2, '2026-01-01'), catat_penjualan(d, 99, 1, '2026-01-01'), catat_penjualan(d, 1, 0, '2026-01-01'), d.execute('SELECT count(*) FROM penjualan').fetchone()[0])[1:])(skema_baru()) == (True, False, False, 1)"
+      },
+      {
+        "name": "omzet_per_buku mencakup buku tanpa penjualan",
+        "check": "omzet_per_buku(fixture()) == [('Bumi', 4, 360000), ('Laskar Pelangi', 3, 240000), ('Pulang', 2, 170000), ('Sang Pemimpi', 1, 70000), ('Dilan 1990', 0, 0)]"
+      },
+      {
+        "name": "tidak_laku mendaftar buku yang belum terjual",
+        "check": "tidak_laku(fixture()) == ['Dilan 1990']"
+      },
+      {
+        "name": "terlaris_per_penulis memilih buku beromzet terbesar tiap penulis",
+        "check": "terlaris_per_penulis(fixture()) == [('Andrea Hirata', 'Laskar Pelangi', 240000), ('Pidi Baiq', 'Dilan 1990', 0), ('Tere Liye', 'Bumi', 360000)]"
+      },
+      {
+        "name": "laporan_bulanan memberi omzet dan total kumulatif",
+        "check": "laporan_bulanan(fixture()) == [('2026-01', 510000, 510000), ('2026-02', 330000, 840000)]"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "pengenalan-dan-psql",
+      "title": "Pengenalan PostgreSQL dan psql",
+      "est_minutes": 25,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu PostgreSQL dan apa bedanya dengan SQLite atau file biasa.\n- Memasang PostgreSQL dengan Docker atau paket sistem operasi.\n- Memakai `psql` untuk berpindah database, melihat tabel, dan menjalankan SQL.\n\n## PostgreSQL itu apa dan kenapa dipilih\n\nPostgreSQL (sering disingkat Postgres) adalah sistem basis data relasional open source yang sudah dikembangkan lebih dari 30 tahun. Ia gratis, lisensinya longgar, dan dipakai dari proyek kecil sampai sistem besar yang menyimpan miliaran baris. Kalau kamu sudah pernah belajar SQL dasar, kabar baiknya: sebagian besar yang kamu tahu tetap berlaku. Kelas ini fokus pada hal-hal yang membuat Postgres istimewa.\n\nBeberapa alasan orang memilih Postgres:\n\n- **Patuh standar SQL.** Sintaksnya dekat dengan standar, jadi pengetahuanmu mudah dipindah ke database lain.\n- **Tipe data kaya.** Selain angka dan teks, ada `jsonb`, array, `uuid`, rentang waktu, sampai tipe buatan sendiri.\n- **Fitur lanjutan sudah ada di dalam.** CTE, window function, indeks khusus, transaksi yang kuat, dan trigger tersedia tanpa tambahan.\n- **Andal.** Postgres terkenal menjaga data tetap konsisten walau listrik padam di tengah penulisan.\n\n### Server, bukan file\n\nHal pertama yang perlu dipahami: PostgreSQL berjalan sebagai **server**. Ada proses yang terus hidup di komputermu (atau di mesin lain), mendengarkan koneksi di port **5432**, dan menjawab perintah dari klien. Aplikasimu, `psql`, atau alat visual seperti DBeaver semuanya adalah klien yang terhubung ke server itu.\n\nBandingkan dengan SQLite yang isinya satu file dan dibuka langsung oleh program. SQLite sangat praktis untuk belajar atau aplikasi kecil, tetapi Postgres dirancang untuk banyak pengguna yang menulis dan membaca bersamaan.\n\n| Hal | SQLite | PostgreSQL |\n| --- | --- | --- |\n| Bentuk | satu file | server yang berjalan terus |\n| Banyak pengguna bersamaan | terbatas | dirancang untuk itu |\n| Hak akses pengguna | tidak ada | role dan GRANT |\n| Tipe data | longgar | ketat dan kaya |\n\n> **Catatan tentang kelas ini.** Browser tidak bisa menjalankan server PostgreSQL. Karena itu latihan kode di kelas ini memakai SQLite lewat Python untuk konsep yang sama di kedua database: constraint, JOIN, agregasi, CTE, window function, dan transaksi. Bab yang khas Postgres (tipe `jsonb`, `EXPLAIN`, trigger, `psql`) disajikan sebagai bab bacaan. Untuk mencoba semuanya langsung, pasang Postgres di komputermu dengan langkah di bawah.\n\n## Memasang PostgreSQL\n\nAda tiga jalur umum. Pilih yang paling nyaman.\n\n**1. Docker (disarankan untuk belajar).** Satu perintah, mudah dihapus, tidak mengotori sistem:\n\n```bash\ndocker run --name pg \\\n  -e POSTGRES_PASSWORD=rahasia \\\n  -p 5432:5432 -d postgres:17\n```\n\nPerintah ini mengunduh image `postgres:17`, menjalankan server di latar belakang, memberi password `rahasia` untuk user `postgres`, dan membuka port 5432. Untuk masuk ke `psql` di dalam kontainer:\n\n```bash\ndocker exec -it pg psql -U postgres\n```\n\n**2. Linux (Debian/Ubuntu).** Pasang dari repositori:\n\n```bash\nsudo apt install postgresql\nsudo -u postgres psql\n```\n\nPada instalasi paket, Postgres membuat user sistem bernama `postgres`. Perintah `sudo -u postgres` menjalankan `psql` sebagai user itu.\n\n**3. Windows atau macOS.** Unduh installer resmi dari situs postgresql.org. Installer akan menanyakan password untuk user `postgres` dan port (biarkan 5432).\n\n## Berkenalan dengan psql\n\n`psql` adalah klien baris perintah bawaan Postgres. Begitu terhubung, kamu melihat prompt seperti `postgres=#`. Di sana kamu bisa mengetik dua jenis perintah:\n\n1. **Pernyataan SQL**, misalnya `SELECT 1;`. Wajib diakhiri titik koma.\n2. **Meta-command**, diawali garis miring terbalik (`\\`). Ini perintah milik `psql`, bukan SQL, jadi tidak perlu titik koma.\n\nMeta-command yang paling sering dipakai:\n\n| Perintah | Fungsi |\n| --- | --- |\n| `\\l` | daftar semua database |\n| `\\c toko` | pindah ke database `toko` |\n| `\\dt` | daftar tabel di database aktif |\n| `\\d produk` | struktur tabel `produk` (kolom, tipe, indeks) |\n| `\\du` | daftar role (pengguna) |\n| `\\x` | tampilan hasil memanjang ke bawah, enak untuk baris lebar |\n| `\\timing` | tampilkan lama eksekusi setiap query |\n| `\\q` | keluar |\n\n![Perintah dasar psql](slide:4)\n\n### Membuat database pertama\n\nSatu server Postgres bisa menampung banyak database yang terpisah. Mari buat satu untuk latihan:\n\n```sql\nCREATE DATABASE toko;\n\\c toko\nCREATE TABLE produk (id integer, nama text);\nINSERT INTO produk VALUES (1, 'Pensil');\nSELECT * FROM produk;\n\\dt\n\\d produk\n```\n\nSetelah `\\c toko`, prompt berubah menjadi `toko=#`, tanda kamu sudah berada di database `toko`. Perintah `\\d produk` menampilkan dua kolom beserta tipenya. Kalau lupa sintaks, ketik `\\h CREATE TABLE` untuk bantuan, atau `\\?` untuk daftar semua meta-command.\n\n### Tiga kebiasaan yang menolong\n\n- **Akhiri dengan titik koma.** Kalau prompt berubah menjadi `toko-#`, artinya `psql` masih menunggu kelanjutan perintah. Tambahkan `;` lalu Enter.\n- **Gunakan riwayat.** Panah atas mengulang perintah sebelumnya, dan `Ctrl+R` mencari di riwayat.\n- **Jalankan file SQL.** `psql -d toko -f skema.sql` menjalankan seluruh isi file, berguna untuk menyiapkan database dengan cepat.\n\n## Kesalahan umum pemula\n\nBeberapa jebakan yang hampir semua orang alami di minggu pertama:\n\n1. **Lupa password atau salah user.** Pada instalasi Docker, user bawaannya `postgres` dan password-nya yang kamu set lewat `POSTGRES_PASSWORD`. Jika `psql` menolak, periksa keduanya sebelum mengutak-atik hal lain.\n2. **Mengira database dan tabel sama.** Satu server punya banyak database, dan satu database punya banyak tabel. Setelah `\\c toko`, hanya tabel di `toko` yang terlihat oleh `\\dt`.\n3. **Mengetik SQL tanpa titik koma lalu bingung.** Prompt berubah menjadi `-#` dan tak ada yang terjadi. Itu bukan error; `psql` hanya menunggu kamu menyelesaikan pernyataan.\n4. **Memakai superuser `postgres` untuk segalanya.** Untuk belajar tidak masalah, tetapi di aplikasi nyata kamu akan membuat role terbatas, yang dibahas di bab terakhir.\n\nKalau ragu apakah koneksi berjalan, jalankan `SELECT version();` dan `SELECT now();`. Dua perintah itu menampilkan versi server dan waktu saat ini, bukti bahwa server hidup dan menjawab.\n\n## Rangkuman\n\n- PostgreSQL adalah server basis data relasional open source yang mendengarkan di port 5432, berbeda dari SQLite yang berupa satu file.\n- Cara tercepat memasangnya untuk belajar adalah Docker dengan image `postgres`.\n- `psql` menerima SQL (diakhiri `;`) dan meta-command berawalan `\\`.\n- Meta-command penting: `\\l`, `\\c`, `\\dt`, `\\d`, `\\x`, dan `\\q`.\n- Latihan kode di kelas ini memakai SQLite untuk konsep yang sama; fitur khas Postgres dipelajari lewat bacaan dan percobaan di server milikmu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa perbedaan utama PostgreSQL dengan SQLite?",
+          "code": "",
+          "options": [
+            "PostgreSQL tidak memakai bahasa SQL untuk query",
+            "PostgreSQL hanya bisa dipakai di sistem operasi Linux",
+            "PostgreSQL berjalan sebagai server yang melayani banyak klien",
+            "PostgreSQL menyimpan semua datanya dalam satu file tunggal"
+          ],
+          "answer": 2,
+          "explanation": "Postgres adalah proses server yang mendengarkan koneksi, sedangkan SQLite adalah pustaka yang membuka satu file."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Port bawaan PostgreSQL adalah",
+          "code": "",
+          "options": [
+            "5432",
+            "3306",
+            "8080",
+            "27017"
+          ],
+          "answer": 0,
+          "explanation": "Postgres mendengarkan di port 5432 secara bawaan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah psql untuk melihat daftar tabel di database aktif adalah",
+          "code": "",
+          "options": [
+            "\\l",
+            "\\q",
+            "\\du",
+            "\\dt"
+          ],
+          "answer": 3,
+          "explanation": "`\\dt` menampilkan tabel, `\\l` menampilkan database, `\\du` menampilkan role."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Meta-command psql seperti \\dt harus diakhiri titik koma.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Meta-command adalah perintah milik psql, bukan SQL, jadi tidak memerlukan titik koma."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "tipe-data-postgresql",
+      "title": "Tipe Data PostgreSQL",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Memilih tipe angka dan teks yang tepat, termasuk `numeric` untuk uang.\n- Memakai `timestamptz`, `identity`, dan `uuid` untuk waktu dan pengenal.\n- Mengenali kapan `jsonb`, array, dan `enum` berguna.\n\n## Kenapa tipe data penting\n\nDi Postgres, setiap kolom punya tipe yang ketat. Kolom `integer` menolak teks `'abc'` dengan error, bukan diam-diam menyimpannya. Sifat ketat ini terasa merepotkan di awal, tetapi menyelamatkanmu dari data rusak. Memilih tipe yang pas juga menentukan ukuran tabel, kecepatan query, dan ketepatan hitungan.\n\n```sql\nCREATE TABLE contoh (angka integer);\nINSERT INTO contoh VALUES ('abc');\n-- ERROR:  invalid input syntax for type integer: \"abc\"\n```\n\n## Angka: bulat, desimal, dan uang\n\n| Tipe | Rentang / sifat | Cocok untuk |\n| --- | --- | --- |\n| `smallint` | sekitar ±32 ribu | nilai kecil seperti umur |\n| `integer` | sekitar ±2,1 miliar | ID dan hitungan umum |\n| `bigint` | sekitar ±9,2 kuintiliun | ID tabel yang sangat besar |\n| `numeric(p,s)` | presisi tepat | uang, nilai yang harus akurat |\n| `real`, `double precision` | pecahan perkiraan | data ilmiah, sensor |\n\nAturan emas: **jangan simpan uang dengan `real` atau `double precision`**. Tipe pecahan bekerja dengan perkiraan biner, sehingga `0.1 + 0.2` bisa menghasilkan `0.30000000000000004`. Untuk uang pakai `numeric(12,2)`, artinya total 12 digit dengan 2 digit di belakang koma, atau simpan dalam satuan terkecil (rupiah penuh) sebagai `bigint`.\n\n## Teks dan boolean\n\nPostgres punya tiga tipe teks: `char(n)`, `varchar(n)`, dan `text`. Berbeda dari beberapa database lain, **`text` sama cepatnya dengan `varchar(n)`**. Batas panjang di `varchar(n)` hanya aturan validasi. Jadi pilihan yang umum: pakai `text`, lalu tambahkan `CHECK (length(nama) <= 100)` bila memang perlu batas.\n\n`boolean` menyimpan `true`, `false`, atau `NULL`. Postgres menerima banyak tulisan seperti `'yes'`, `'t'`, atau `'1'`, tetapi tuliskan `true` dan `false` saja agar jelas.\n\n## Tanggal dan waktu: pilih timestamptz\n\nAda beberapa tipe waktu:\n\n- `date`: tanggal saja, misalnya `2026-11-19`.\n- `time`: jam saja.\n- `timestamp`: tanggal dan jam **tanpa** zona waktu.\n- `timestamptz`: tanggal dan jam **dengan** zona waktu.\n\nUntuk mencatat kejadian nyata (pesanan dibuat, user login), pakai `timestamptz`. Postgres menyimpannya dalam UTC dan menampilkannya sesuai zona waktu koneksi. Dengan `timestamp` biasa, kamu kehilangan informasi zona, dan itu menyakitkan saat aplikasi dipakai dari beberapa negara atau server berpindah zona.\n\n```sql\nCREATE TABLE pesanan (\n  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  dibuat_pada timestamptz NOT NULL DEFAULT now()\n);\n```\n\nFungsi `now()` mengembalikan waktu saat ini, dan `DEFAULT now()` mengisinya otomatis tiap baris baru.\n\n## Pengenal otomatis: identity, serial, dan uuid\n\nHampir setiap tabel butuh ID yang naik sendiri. Ada dua cara:\n\n- `serial` adalah cara lama: kolom `integer` plus sebuah sequence di belakang layar.\n- `GENERATED ALWAYS AS IDENTITY` adalah cara baru yang sesuai standar SQL. Ia lebih rapi karena sequence terikat jelas pada kolomnya, dan `ALWAYS` mencegah kamu tak sengaja mengisi ID sendiri.\n\nUntuk proyek baru, pilih **identity**.\n\n`uuid` adalah pengenal acak 128-bit seperti `3f2504e0-4f89-41d3-9a0c-0305e82c3301`. Ia berguna ketika ID perlu dibuat di aplikasi atau tidak boleh mudah ditebak. Fungsi `gen_random_uuid()` membuatnya langsung di database.\n\n![Contoh tipe data dalam satu tabel](slide:5)\n\n## jsonb: dokumen di dalam tabel\n\n`jsonb` menyimpan data JSON dalam bentuk biner sehingga bisa dicari dan diindeks dengan cepat. Cocok untuk atribut yang bentuknya berbeda-beda per baris, misalnya spesifikasi produk.\n\n```sql\nCREATE TABLE produk (\n  id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  nama     text NOT NULL,\n  atribut  jsonb NOT NULL DEFAULT '{}'\n);\n\nINSERT INTO produk (nama, atribut)\nVALUES ('Kaos', '{\"warna\": \"merah\", \"ukuran\": \"M\"}');\n\n-- ambil nilai sebagai teks\nSELECT atribut->>'warna' FROM produk;\n-- filter: apakah mengandung pasangan ini?\nSELECT * FROM produk WHERE atribut @> '{\"warna\": \"merah\"}';\n```\n\nOperator `->` mengambil nilai sebagai `jsonb`, `->>` mengambilnya sebagai teks, dan `@>` memeriksa apakah dokumen mengandung potongan tertentu. Ada juga tipe `json` biasa, tetapi `jsonb` hampir selalu pilihan yang lebih baik.\n\n## Array dan enum\n\nKolom bisa berisi **array** dari satu tipe: `text[]`, `integer[]`, dan seterusnya.\n\n```sql\nALTER TABLE produk ADD COLUMN tag text[] DEFAULT '{}';\nUPDATE produk SET tag = '{baru,diskon}' WHERE nama = 'Kaos';\nSELECT * FROM produk WHERE 'diskon' = ANY(tag);\n```\n\n**Enum** membatasi nilai ke daftar tetap dan lebih hemat tempat daripada teks:\n\n```sql\nCREATE TYPE status_pesanan AS ENUM ('baru', 'dibayar', 'dikirim', 'selesai');\nALTER TABLE pesanan ADD COLUMN status status_pesanan DEFAULT 'baru';\n```\n\n### Jangan berlebihan\n\n`jsonb` dan array menggoda karena fleksibel, tetapi ada harganya. Kalau data sering di-join, difilter, atau dijaga integritasnya dengan foreign key, jadikan **tabel tersendiri**. Aturan praktis: bila kamu merasa perlu menulis \"kolom yang isinya daftar ID\", itu tanda butuh tabel relasi, bukan array.\n\n## Memilih tipe: contoh keputusan nyata\n\nMari latih dengan tabel `anggota` sebuah perpustakaan. Untuk tiap kolom, tanyakan: \"nilai apa yang boleh masuk, dan apa yang mustahil?\"\n\n| Kolom | Tipe yang dipilih | Alasan |\n| --- | --- | --- |\n| `id` | `bigint GENERATED ALWAYS AS IDENTITY` | pengenal otomatis, tak mungkin habis |\n| `nama` | `text NOT NULL` | panjang bebas, wajib diisi |\n| `tanggal_lahir` | `date` | hanya perlu tanggal, tanpa jam |\n| `denda` | `numeric(10,2) DEFAULT 0` | uang, presisi tepat |\n| `aktif` | `boolean DEFAULT true` | dua keadaan jelas |\n| `bergabung_pada` | `timestamptz DEFAULT now()` | kejadian nyata, zona jelas |\n\nPerhatikan bahwa hampir semua kolom punya `NOT NULL` atau `DEFAULT`. Membiasakan diri menjawab \"bolehkah kosong?\" sejak awal membuat data jauh lebih bersih. Kolom yang boleh kosong sebaiknya benar-benar punya arti \"tidak diketahui\", bukan sekadar malas memikirkannya.\n\nSatu lagi: tipe bisa diubah belakangan dengan `ALTER TABLE ... ALTER COLUMN ... TYPE`, tetapi pada tabel besar itu bisa lama dan mengunci tabel. Memilih benar sejak awal jauh lebih murah.\n\n## Rangkuman\n\n- Postgres ketat soal tipe: nilai yang tidak cocok ditolak dengan error.\n- Pakai `numeric` atau `bigint` untuk uang, jangan `real` atau `double precision`.\n- `text` sama cepatnya dengan `varchar(n)`; batas panjang cukup dengan `CHECK`.\n- Untuk waktu nyata pilih `timestamptz`; untuk ID otomatis pilih `GENERATED ALWAYS AS IDENTITY`, atau `uuid` bila perlu ID acak.\n- `jsonb`, array, dan `enum` berguna untuk kasus tertentu, tetapi data relasional tetap lebih baik di tabel sendiri.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tipe mana yang paling tepat untuk menyimpan harga dalam rupiah dengan dua desimal?",
+          "code": "",
+          "options": [
+            "double precision",
+            "numeric(12,2)",
+            "real",
+            "text"
+          ],
+          "answer": 1,
+          "explanation": "`numeric` menghitung dengan presisi tepat, sedangkan `real` dan `double precision` memakai perkiraan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa timestamptz lebih disarankan daripada timestamp untuk mencatat kejadian nyata?",
+          "code": "",
+          "options": [
+            "Ia memakai ruang penyimpanan yang jauh lebih kecil dari timestamp",
+            "Ia mengisi nilai waktu sendiri tanpa perlu menulis DEFAULT",
+            "Ia menyimpan informasi zona waktu sehingga waktunya tidak ambigu",
+            "Ia hanya menyimpan tanggal saja tanpa informasi jam apa pun"
+          ],
+          "answer": 2,
+          "explanation": "timestamptz disimpan dalam UTC dan ditampilkan sesuai zona koneksi, jadi tidak ambigu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Operator jsonb mana yang mengambil nilai sebagai teks?",
+          "code": "",
+          "options": [
+            "->>",
+            "->",
+            "@>",
+            "||"
+          ],
+          "answer": 0,
+          "explanation": "`->>` mengembalikan teks, `->` mengembalikan jsonb, dan `@>` mengecek kandungan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di PostgreSQL, varchar(50) jauh lebih cepat daripada text.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Keduanya sama cepatnya. Batas panjang di varchar hanyalah aturan validasi."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "tabel-dan-constraint",
+      "title": "Membuat Tabel dan Constraint",
+      "est_minutes": 35,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Membuat tabel lengkap dengan primary key, foreign key, `UNIQUE`, `CHECK`, dan `NOT NULL`.\n- Mengubah struktur tabel dengan `ALTER TABLE`.\n- Memahami bahwa constraint melindungi data dari semua aplikasi sekaligus.\n\n## DDL: bahasa untuk membentuk struktur\n\nSQL punya dua bagian besar. **DML** (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) mengurus isi data. **DDL** (Data Definition Language: `CREATE`, `ALTER`, `DROP`) mengurus struktur: tabel, kolom, dan aturan. Bab ini tentang DDL, dan bintang utamanya adalah **constraint**, yaitu aturan yang dijaga langsung oleh database.\n\nKenapa aturan sebaiknya ada di database, bukan hanya di aplikasi? Bayangkan toko online punya aplikasi web, aplikasi admin, dan skrip impor data. Kalau aturan \"total tidak boleh negatif\" hanya ada di aplikasi web, dua yang lain bisa melanggarnya. Constraint di database berlaku untuk **semua** yang menulis data.\n\n## Lima constraint yang wajib dikenal\n\nMari bangun tabel pelanggan dan pesanan:\n\n```sql\nCREATE TABLE pelanggan (\n  id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  nama  text NOT NULL,\n  email text UNIQUE\n);\n\nCREATE TABLE pesanan (\n  id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  pelanggan bigint NOT NULL REFERENCES pelanggan (id),\n  total     numeric(12,2) NOT NULL CHECK (total >= 0),\n  dibuat    timestamptz NOT NULL DEFAULT now()\n);\n```\n\nSatu per satu:\n\n1. **`PRIMARY KEY`** menandai pengenal unik tiap baris. Ia otomatis `NOT NULL` dan `UNIQUE`, dan setiap tabel sebaiknya punya satu.\n2. **`NOT NULL`** melarang nilai kosong. Pakai pada kolom yang memang wajib.\n3. **`UNIQUE`** melarang dua baris punya nilai sama, cocok untuk email atau username. Perhatikan: `NULL` dianggap berbeda dari `NULL`, jadi beberapa baris dengan email kosong tetap boleh.\n4. **`CHECK`** menulis aturan bebas berupa ekspresi, misalnya `CHECK (total >= 0)`.\n5. **`FOREIGN KEY`** (lewat `REFERENCES`) memastikan nilai menunjuk baris yang benar-benar ada di tabel lain. Pesanan tidak bisa merujuk pelanggan yang tidak ada.\n\nTambahan penting adalah `DEFAULT`, yang mengisi nilai otomatis bila kolom tidak diisi.\n\n### Apa yang terjadi saat aturan dilanggar\n\nCoba masukkan data yang salah:\n\n```sql\nINSERT INTO pesanan (pelanggan, total) VALUES (99, 100);\n-- ERROR: insert or update on table \"pesanan\" violates foreign key constraint\n\nINSERT INTO pelanggan (nama) VALUES (NULL);\n-- ERROR: null value in column \"nama\" violates not-null constraint\n```\n\nDatabase menolak seluruh perintah dan tidak ada yang tersimpan setengah-setengah. Itulah inti perlindungannya.\n\n![Tabel dengan constraint lengkap](slide:8)\n\n## Foreign key dan nasib baris anak\n\nApa yang terjadi jika pelanggan dihapus padahal punya pesanan? Kamu menentukannya lewat `ON DELETE`:\n\n```sql\npelanggan bigint NOT NULL\n  REFERENCES pelanggan (id) ON DELETE CASCADE\n```\n\n| Pilihan | Efek saat baris induk dihapus |\n| --- | --- |\n| tanpa opsi (`NO ACTION`) | penghapusan ditolak selama masih ada anak |\n| `CASCADE` | semua baris anak ikut terhapus |\n| `SET NULL` | kolom anak menjadi `NULL` |\n| `RESTRICT` | seperti tanpa opsi, tetapi dicek segera |\n\nBawaan yang menolak penghapusan adalah yang paling aman. Gunakan `CASCADE` hanya bila anak memang tak berarti tanpa induknya, misalnya item di dalam keranjang.\n\n## Mengubah struktur dengan ALTER TABLE\n\nKebutuhan berubah, jadi tabel perlu diubah:\n\n```sql\nALTER TABLE pelanggan ADD COLUMN telepon text;\nALTER TABLE pelanggan DROP COLUMN telepon;\nALTER TABLE pelanggan ALTER COLUMN nama SET NOT NULL;\nALTER TABLE pesanan ADD CONSTRAINT total_positif CHECK (total >= 0);\nALTER TABLE pesanan DROP CONSTRAINT total_positif;\nDROP TABLE IF EXISTS pesanan;\n```\n\nMemberi nama pada constraint (`ADD CONSTRAINT total_positif`) memudahkan menghapusnya nanti dan membuat pesan error lebih jelas. Satu keunggulan Postgres: **DDL bisa dibungkus transaksi**. Kamu bisa menjalankan `BEGIN; ALTER TABLE ...; ROLLBACK;` untuk mencoba perubahan tanpa risiko, hal yang tidak bisa dilakukan di banyak database lain.\n\n## Latihan di SQLite\n\nDi latihan di bawah, constraint yang sama diuji lewat SQLite. Ada satu perbedaan yang harus kamu ingat: **SQLite mengabaikan foreign key sampai kamu menyalakannya** dengan `PRAGMA foreign_keys = ON`. Di Postgres foreign key selalu aktif. Sintaks `PRIMARY KEY`, `NOT NULL`, `UNIQUE`, `CHECK`, dan `REFERENCES` sendiri sama.\n\nPenulisan primary key otomatis di SQLite adalah `id INTEGER PRIMARY KEY`, sedangkan di Postgres kamu memakai `GENERATED ALWAYS AS IDENTITY`. Itu perbedaan sintaks kecil; konsepnya identik.\n\n## Merancang skema: contoh lengkap\n\nSekarang gabungkan semuanya dalam satu rancangan kecil untuk **perpustakaan**: anggota meminjam buku.\n\n```sql\nCREATE TABLE anggota (\n  id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  nama  text NOT NULL,\n  email text NOT NULL UNIQUE\n);\n\nCREATE TABLE buku (\n  id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  judul text NOT NULL,\n  stok  integer NOT NULL DEFAULT 1 CHECK (stok >= 0)\n);\n\nCREATE TABLE peminjaman (\n  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  anggota_id bigint NOT NULL REFERENCES anggota (id),\n  buku_id    bigint NOT NULL REFERENCES buku (id),\n  dipinjam   date NOT NULL DEFAULT current_date,\n  kembali    date,\n  CHECK (kembali IS NULL OR kembali >= dipinjam)\n);\n```\n\nBeberapa hal yang patut dicermati:\n\n- Tabel `peminjaman` menghubungkan dua tabel lain lewat dua foreign key. Pola ini disebut **tabel penghubung** untuk relasi banyak-ke-banyak: satu anggota meminjam banyak buku, dan satu buku dipinjam banyak anggota.\n- `CHECK` di level tabel (di akhir, tanpa menempel pada satu kolom) boleh membandingkan beberapa kolom sekaligus, di sini memastikan tanggal kembali tidak mendahului tanggal pinjam.\n- Kolom `kembali` sengaja boleh `NULL`: buku yang belum dikembalikan belum punya tanggal kembali.\n\nDengan skema seperti ini, data yang tidak masuk akal (peminjaman oleh anggota yang tidak ada, stok negatif, tanggal terbalik) ditolak oleh database sendiri, tanpa bergantung pada kehati-hatian aplikasi.\n\n## Rangkuman\n\n- DDL (`CREATE`, `ALTER`, `DROP`) membentuk struktur; constraint adalah aturan yang dijaga database.\n- Lima constraint utama: `PRIMARY KEY`, `NOT NULL`, `UNIQUE`, `CHECK`, `FOREIGN KEY`, ditambah `DEFAULT` untuk nilai otomatis.\n- Pelanggaran constraint membuat seluruh perintah ditolak, tanpa data setengah tersimpan.\n- `ON DELETE` mengatur nasib baris anak; bawaan yang menolak penghapusan adalah yang paling aman.\n- `ALTER TABLE` mengubah struktur; di Postgres perubahan itu bisa dibungkus transaksi dan di-rollback.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Constraint mana yang memastikan nilai kolom menunjuk baris yang ada di tabel lain?",
+          "code": "",
+          "options": [
+            "UNIQUE",
+            "CHECK",
+            "DEFAULT",
+            "FOREIGN KEY"
+          ],
+          "answer": 3,
+          "explanation": "FOREIGN KEY (REFERENCES) menjaga agar rujukan antar tabel selalu valid."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang terjadi bila INSERT melanggar sebuah CHECK constraint?",
+          "code": "",
+          "options": [
+            "Baris tersimpan dengan nilai NULL pada kolom yang melanggar aturan itu saja",
+            "Seluruh perintah ditolak dengan error dan tidak ada data tersimpan",
+            "Baris tetap tersimpan dan hanya muncul pesan peringatan",
+            "Hanya kolom yang salah yang dilewati dan sisanya tersimpan"
+          ],
+          "answer": 1,
+          "explanation": "Constraint membuat seluruh perintah gagal, jadi tidak ada data setengah tersimpan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Opsi ON DELETE mana yang ikut menghapus semua baris anak?",
+          "code": "",
+          "options": [
+            "RESTRICT",
+            "SET NULL",
+            "CASCADE",
+            "NO ACTION"
+          ],
+          "answer": 2,
+          "explanation": "CASCADE meneruskan penghapusan dari induk ke semua baris anak."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di SQLite foreign key selalu aktif tanpa perlu pengaturan apa pun.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "SQLite mengabaikan foreign key sampai dinyalakan dengan `PRAGMA foreign_keys = ON`."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Skema dengan constraint",
+          "prompt": "Tulis DDL di string `SKEMA` untuk dua tabel:\n\n- `pelanggan`: `id` (primary key), `nama` (wajib diisi), `email` (tidak boleh kembar)\n- `pesanan`: `id` (primary key), `pelanggan_id` (wajib, merujuk `pelanggan.id`), `total` (bilangan bulat, tidak boleh negatif)\n\nPemeriksa menyalakan `PRAGMA foreign_keys = ON` sebelum menjalankan skemamu.",
+          "starter": {
+            "code": "# Tulis DDL untuk dua tabel di dalam string SKEMA.\n# pelanggan: id (primary key), nama (wajib), email (unik)\n# pesanan:   id (primary key), pelanggan_id (wajib, merujuk pelanggan.id),\n#            total (bilangan bulat, tidak boleh negatif)\nSKEMA = \"\"\"\n-- TODO\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "SKEMA = \"\"\"\nCREATE TABLE pelanggan (\n    id INTEGER PRIMARY KEY,\n    nama TEXT NOT NULL,\n    email TEXT UNIQUE\n);\nCREATE TABLE pesanan (\n    id INTEGER PRIMARY KEY,\n    pelanggan_id INTEGER NOT NULL REFERENCES pelanggan (id),\n    total INTEGER CHECK (total >= 0)\n);\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef isi(ddl, *perintah):\n    c = sqlite3.connect(\":memory:\")\n    c.execute(\"PRAGMA foreign_keys = ON\")\n    c.executescript(ddl)\n    for p in perintah:\n        c.execute(p)\n    return c\n\ndef melanggar(c, sql):\n    try:\n        c.execute(sql)\n        return False\n    except sqlite3.IntegrityError:\n        return True\n",
+          "tests": [
+            {
+              "name": "Tabel pelanggan dan pesanan ada",
+              "check": "{r[0] for r in isi(SKEMA).execute(\"SELECT name FROM sqlite_master WHERE type = 'table'\")} >= {'pelanggan', 'pesanan'}"
+            },
+            {
+              "name": "nama wajib diisi (NOT NULL)",
+              "check": "melanggar(isi(SKEMA), \"INSERT INTO pelanggan (nama) VALUES (NULL)\")"
+            },
+            {
+              "name": "email tidak boleh kembar (UNIQUE)",
+              "check": "(lambda s: melanggar(isi(SKEMA, s), s))(\"INSERT INTO pelanggan (nama, email) VALUES ('A', 'a@x.id')\")"
+            },
+            {
+              "name": "pesanan harus merujuk pelanggan yang ada",
+              "check": "melanggar(isi(SKEMA), \"INSERT INTO pesanan (pelanggan_id, total) VALUES (99, 10)\")"
+            },
+            {
+              "name": "total negatif ditolak (CHECK)",
+              "check": "melanggar(isi(SKEMA, \"INSERT INTO pelanggan (nama) VALUES ('A')\"), \"INSERT INTO pesanan (pelanggan_id, total) VALUES (1, -5)\")"
+            },
+            {
+              "name": "data yang sah diterima",
+              "check": "isi(SKEMA, \"INSERT INTO pelanggan (nama) VALUES ('A')\", \"INSERT INTO pesanan (pelanggan_id, total) VALUES (1, 100)\").execute('SELECT count(*) FROM pesanan').fetchone()[0] == 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "dml-returning-dan-upsert",
+      "title": "INSERT, UPDATE, DELETE, RETURNING, dan Upsert",
+      "est_minutes": 35,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menambah, mengubah, dan menghapus data dengan aman memakai `INSERT`, `UPDATE`, dan `DELETE`.\n- Memakai `RETURNING` untuk langsung mendapat baris yang baru berubah.\n- Menulis upsert dengan `INSERT ... ON CONFLICT`.\n\n## DML: mengurus isi tabel\n\nSetelah tabel dan constraint siap, saatnya mengisi dan merawat datanya. Tiga perintah DML (Data Manipulation Language) yang kamu pakai setiap hari adalah `INSERT`, `UPDATE`, dan `DELETE`. Kamu mungkin sudah mengenalnya dari kelas SQL dasar, jadi bab ini cepat di bagian awal lalu masuk ke fitur khas Postgres.\n\nKita pakai tabel berikut sebagai bahan:\n\n```sql\nCREATE TABLE produk (\n  id    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  nama  text NOT NULL UNIQUE,\n  harga numeric(12,2) NOT NULL CHECK (harga > 0),\n  stok  integer NOT NULL DEFAULT 0\n);\n```\n\n## INSERT\n\n`INSERT` menambah baris. Selalu tulis nama kolomnya agar kode tetap benar bila urutan kolom berubah.\n\n```sql\nINSERT INTO produk (nama, harga) VALUES ('Pensil', 2500);\n\n-- beberapa baris sekaligus, jauh lebih cepat daripada satu per satu\nINSERT INTO produk (nama, harga, stok) VALUES\n  ('Buku Tulis', 12000, 50),\n  ('Penghapus', 1500, 80),\n  ('Penggaris', 5000, 30);\n```\n\nKolom `id` tidak diisi karena dibuat otomatis oleh identity, dan `stok` memakai `DEFAULT 0` pada baris pertama. Menyisipkan banyak baris dalam satu perintah mengurangi bolak-balik ke server, sehingga impor data besar jadi jauh lebih cepat.\n\n## UPDATE dan DELETE: awas tanpa WHERE\n\n```sql\nUPDATE produk SET harga = 3000 WHERE nama = 'Pensil';\nDELETE FROM produk WHERE stok = 0;\n```\n\nBahaya terbesarnya adalah **lupa `WHERE`**. `UPDATE produk SET harga = 3000;` mengubah harga **semua** produk, dan `DELETE FROM produk;` menghapus seluruh isi tabel. Tidak ada tombol undo kecuali kamu memakai transaksi. Dua kebiasaan penyelamat:\n\n1. **Tulis `SELECT` dulu.** Ubah `UPDATE ... WHERE kondisi` menjadi `SELECT * FROM ... WHERE kondisi`, periksa baris yang kena, baru ganti ke `UPDATE`.\n2. **Bungkus dengan transaksi.** `BEGIN;` jalankan perintah, lihat hasilnya, lalu `COMMIT;` atau `ROLLBACK;` (dibahas di bab transaksi).\n\n`UPDATE` juga bisa menghitung dari nilai lama: `UPDATE produk SET stok = stok - 1 WHERE id = 5;` mengurangi stok sambil membaca nilai saat ini, dan itu aman dari balapan karena dilakukan satu langkah oleh database.\n\n## RETURNING: minta hasilnya sekarang juga\n\nFitur khas Postgres yang sangat praktis. Biasanya setelah `INSERT` kamu perlu tahu `id` yang baru dibuat, sehingga harus menjalankan `SELECT` lagi. Dengan `RETURNING`, perintah yang sama mengembalikan baris itu:\n\n```sql\nINSERT INTO produk (nama, harga) VALUES ('Spidol', 9000)\nRETURNING id, nama;\n--  id |  nama\n-- ----+--------\n--   5 | Spidol\n\nUPDATE produk SET harga = harga * 1.1 WHERE stok > 40\nRETURNING nama, harga;\n\nDELETE FROM produk WHERE stok = 0\nRETURNING nama;\n```\n\nKeuntungannya dua: satu perjalanan ke server, dan hasilnya pasti baris yang benar-benar terkena, bukan hasil tebakan lewat query terpisah. `RETURNING` bekerja untuk `INSERT`, `UPDATE`, dan `DELETE`.\n\n![Contoh RETURNING dan upsert](slide:12)\n\n## Upsert dengan ON CONFLICT\n\nMasalah umum: \"simpan data ini; kalau sudah ada, perbarui saja.\" Tanpa fitur khusus, kamu harus mengecek dulu lalu memilih `INSERT` atau `UPDATE`, dan di antara dua langkah itu pengguna lain bisa menyelip. Postgres menyelesaikannya dengan satu perintah atomik:\n\n```sql\nINSERT INTO produk (nama, harga, stok)\nVALUES ('Pensil', 2800, 10)\nON CONFLICT (nama)\nDO UPDATE SET harga = EXCLUDED.harga,\n              stok  = produk.stok + EXCLUDED.stok;\n```\n\nCara bacanya:\n\n- `ON CONFLICT (nama)` menyebut kolom yang bisa bentrok. Kolom ini harus punya `UNIQUE` atau primary key.\n- `EXCLUDED` adalah baris baru yang **gagal** disisipkan, jadi `EXCLUDED.harga` berarti harga yang baru saja kamu coba masukkan.\n- `produk.stok` adalah nilai lama yang sudah ada di tabel.\n- Jadi hasilnya: harga ditimpa dengan yang baru, dan stok lama ditambah stok baru.\n\nKalau kamu hanya ingin mengabaikan duplikat tanpa error, pakai `DO NOTHING`:\n\n```sql\nINSERT INTO produk (nama, harga) VALUES ('Pensil', 2500)\nON CONFLICT (nama) DO NOTHING;\n```\n\nUpsert ini juga ada di SQLite (sintaks `ON CONFLICT ... DO UPDATE` sama), sehingga latihan di bawah bisa dijalankan di sini.\n\n## Tips kerja yang aman\n\n- Jangan menaruh nilai dari pengguna langsung ke string SQL. Gunakan parameter (`?` di SQLite, `$1` di Postgres) agar terhindar dari SQL injection.\n- Satu perintah `INSERT` banyak baris lebih baik daripada ratusan perintah kecil.\n- Gunakan `RETURNING` alih-alih `SELECT` susulan.\n- Untuk pembaruan massal yang berisiko, jalankan dalam transaksi dan periksa dulu jumlah baris yang terkena.\n\n## Contoh: menjaga stok saat pesanan masuk\n\nGabungkan beberapa teknik dalam satu skenario. Saat pesanan dibuat, stok produk harus berkurang, dan kamu ingin tahu sisa stok sekarang:\n\n```sql\nUPDATE produk\nSET stok = stok - 2\nWHERE id = 5 AND stok >= 2\nRETURNING id, nama, stok;\n```\n\nPerhatikan trik `AND stok >= 2`. Bila stok kurang, tidak ada baris yang cocok sehingga `UPDATE` tidak mengubah apa pun dan `RETURNING` mengembalikan nol baris. Aplikasi cukup memeriksa apakah ada baris yang kembali: ada berarti berhasil, kosong berarti stok tidak cukup. Seluruh pengecekan dan pengurangan terjadi dalam **satu langkah atomik**, tanpa celah di antara membaca dan menulis.\n\nBandingkan dengan cara naif yang rawan: baca stok lewat `SELECT`, cek di aplikasi, lalu `UPDATE` dengan angka baru. Di antara dua langkah itu, pesanan lain bisa menyelip dan membuat stok negatif atau salah hitung.\n\n### Menghapus dengan aman\n\nUntuk membersihkan data lama sambil mencatat apa yang dihapus:\n\n```sql\nDELETE FROM sesi\nWHERE kedaluwarsa < now()\nRETURNING user_id;\n```\n\nHasil `RETURNING` bisa dipakai untuk menulis log atau memberi tahu pengguna. Kebiasaan ini membuat setiap perubahan besar meninggalkan jejak yang bisa diperiksa.\n\n## Rangkuman\n\n- `INSERT` sebaiknya menyebut nama kolom dan bisa memasukkan banyak baris sekaligus.\n- `UPDATE` dan `DELETE` tanpa `WHERE` mengenai semua baris; periksa dengan `SELECT` dulu atau pakai transaksi.\n- `RETURNING` mengembalikan baris yang baru disisipkan, diubah, atau dihapus tanpa query tambahan.\n- `INSERT ... ON CONFLICT DO UPDATE` adalah upsert atomik; `EXCLUDED` menunjuk baris baru yang bentrok.\n- `ON CONFLICT DO NOTHING` mengabaikan duplikat dengan tenang.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang terjadi bila menjalankan UPDATE tanpa klausa WHERE?",
+          "code": "",
+          "options": [
+            "Semua baris di tabel ikut berubah",
+            "Perintah ditolak karena WHERE wajib",
+            "Hanya baris pertama yang berubah",
+            "Tidak ada baris yang berubah"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa WHERE, UPDATE berlaku untuk seluruh baris tabel."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi RETURNING pada INSERT adalah",
+          "code": "",
+          "options": [
+            "Membatalkan INSERT bila ada error lalu mengulangnya otomatis",
+            "Mengulang INSERT sampai berhasil tanpa campur tangan pengguna",
+            "Menghapus baris lama yang kembar sebelum menyisipkan baris baru",
+            "Mengembalikan baris yang baru disisipkan, misalnya id barunya"
+          ],
+          "answer": 3,
+          "explanation": "RETURNING menghemat satu SELECT susulan dengan langsung memberi baris hasil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dalam ON CONFLICT ... DO UPDATE, apa yang ditunjuk oleh EXCLUDED?",
+          "code": "",
+          "options": [
+            "Baris lama yang sudah ada di dalam tabel sebelumnya",
+            "Baris baru yang gagal disisipkan karena bentrok",
+            "Semua baris yang akan dihapus",
+            "Baris yang melanggar CHECK"
+          ],
+          "answer": 1,
+          "explanation": "EXCLUDED adalah baris yang diusulkan untuk disisipkan, sedangkan nama tabel menunjuk baris lama."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "ON CONFLICT (kolom) mensyaratkan kolom itu punya constraint UNIQUE atau primary key.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Postgres perlu tahu aturan unik mana yang dipakai untuk mendeteksi bentrokan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tambah stok dengan upsert",
+          "prompt": "Lengkapi fungsi `tambah_stok(db, sku, n)`:\n\n- bila `sku` belum ada di tabel `stok`, sisipkan dengan `jumlah = n`\n- bila sudah ada, **tambahkan** `n` ke jumlah lama\n\nGunakan **satu** perintah SQL dengan `ON CONFLICT`, bukan `SELECT` lalu `UPDATE`.",
+          "starter": {
+            "code": "def tambah_stok(db, sku, n):\n    # TODO: sisipkan sku dengan jumlah n; bila sku sudah ada,\n    # jumlahkan ke jumlah lama (pakai ON CONFLICT)\n    db.execute(\"INSERT INTO stok (sku, jumlah) VALUES (?, ?)\", (sku, n))\n"
+          },
+          "solution": {
+            "code": "def tambah_stok(db, sku, n):\n    db.execute(\n        \"INSERT INTO stok (sku, jumlah) VALUES (?, ?) \"\n        \"ON CONFLICT (sku) DO UPDATE SET jumlah = stok.jumlah + EXCLUDED.jumlah\",\n        (sku, n),\n    )\n"
+          },
+          "setup": "import sqlite3\n\ndef baru():\n    c = sqlite3.connect(\":memory:\")\n    c.execute(\"CREATE TABLE stok (sku TEXT PRIMARY KEY, jumlah INTEGER NOT NULL)\")\n    return c\n\ndef jumlah(c, sku):\n    r = c.execute(\"SELECT jumlah FROM stok WHERE sku = ?\", (sku,)).fetchone()\n    return r[0] if r else None\n\ndef jalankan(*langkah):\n    c = baru()\n    for sku, n in langkah:\n        tambah_stok(c, sku, n)\n    return c\n",
+          "tests": [
+            {
+              "name": "SKU baru disisipkan",
+              "check": "jumlah(jalankan(('A1', 5)), 'A1') == 5"
+            },
+            {
+              "name": "SKU yang sama menjumlahkan stok",
+              "check": "jumlah(jalankan(('A1', 5), ('A1', 3)), 'A1') == 8"
+            },
+            {
+              "name": "SKU lain tidak terpengaruh",
+              "check": "jumlah(jalankan(('A1', 5), ('B2', 2), ('A1', 1)), 'B2') == 2"
+            },
+            {
+              "name": "tidak ada baris ganda",
+              "check": "jalankan(('A1', 5), ('A1', 3)).execute('SELECT count(*) FROM stok').fetchone()[0] == 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "join-dan-agregasi",
+      "title": "JOIN, GROUP BY, dan Agregasi",
+      "est_minutes": 40,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menggabungkan tabel dengan `INNER JOIN` dan `LEFT JOIN`, dan tahu kapan memakai masing-masing.\n- Meringkas data dengan `GROUP BY`, fungsi agregat, dan `HAVING`.\n- Memahami urutan eksekusi sebuah query SELECT.\n\n## Kenapa data dipecah ke banyak tabel\n\nDalam database yang dirancang baik, data tidak ditaruh dalam satu tabel raksasa. Nama pelanggan disimpan sekali di tabel `pelanggan`, sedangkan tabel `pesanan` hanya menyimpan `pelanggan_id`. Dengan begitu, mengganti nama pelanggan cukup di satu tempat. Konsekuensinya: untuk menampilkan \"siapa memesan apa\", kamu harus **menggabungkan** tabel kembali lewat `JOIN`.\n\nKita pakai dua tabel ini sepanjang bab:\n\n```sql\npelanggan:  id | nama\n            1  | Ani\n            2  | Budi\n            3  | Citra\n\npesanan:    id | pelanggan_id | total\n            1  | 1            | 50000\n            2  | 1            | 30000\n            3  | 2            | 20000\n```\n\nAni punya dua pesanan, Budi satu, dan Citra belum memesan apa pun. Keadaan Citra inilah yang membedakan jenis JOIN.\n\n## INNER JOIN: hanya yang cocok\n\n`INNER JOIN` (cukup ditulis `JOIN`) hanya mengembalikan baris yang punya pasangan di **kedua** tabel.\n\n```sql\nSELECT c.nama, p.id AS pesanan, p.total\nFROM pelanggan c\nJOIN pesanan p ON p.pelanggan_id = c.id;\n```\n\nHasilnya tiga baris: Ani dua kali dan Budi sekali. **Citra tidak muncul** karena tidak punya pesanan. Syarat penggabungan ditulis setelah `ON`: baris pelanggan dan pesanan dipasangkan bila `pelanggan_id` sama dengan `id`. Perhatikan penggunaan alias `c` dan `p` agar query lebih pendek, dan awalan alias (`c.nama`) agar jelas kolom itu milik tabel mana.\n\n## LEFT JOIN: semua baris kiri\n\nBagaimana jika kita ingin **semua** pelanggan, termasuk yang belum memesan? Pakai `LEFT JOIN`:\n\n```sql\nSELECT c.nama, p.id AS pesanan, p.total\nFROM pelanggan c\nLEFT JOIN pesanan p ON p.pelanggan_id = c.id;\n```\n\nKini Citra muncul, dengan `NULL` di kolom `pesanan` dan `total` karena tidak ada pasangannya. Aturannya: tabel di sisi kiri (`FROM`) selalu tampil lengkap, tabel kanan diisi bila ada pasangan, kalau tidak, `NULL`.\n\nTrik yang berguna: mencari baris yang **tidak punya** pasangan.\n\n```sql\nSELECT c.nama\nFROM pelanggan c\nLEFT JOIN pesanan p ON p.pelanggan_id = c.id\nWHERE p.id IS NULL;\n```\n\nHasilnya hanya Citra, pelanggan yang belum pernah memesan. Postgres juga punya `RIGHT JOIN` (kebalikan LEFT) dan `FULL JOIN` (semua baris dari kedua sisi), tetapi `JOIN` dan `LEFT JOIN` mencakup hampir semua kebutuhan sehari-hari.\n\n![Perbedaan INNER JOIN dan LEFT JOIN](slide:14)\n\n## Fungsi agregat dan GROUP BY\n\nFungsi agregat meringkas banyak baris menjadi satu nilai: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`.\n\n```sql\nSELECT count(*) AS jumlah, sum(total) AS omzet, avg(total) AS rata_rata\nFROM pesanan;\n```\n\nUntuk ringkasan **per kelompok**, tambahkan `GROUP BY`:\n\n```sql\nSELECT c.nama,\n       count(p.id)  AS jumlah_pesanan,\n       sum(p.total) AS total_belanja\nFROM pelanggan c\nJOIN pesanan p ON p.pelanggan_id = c.id\nGROUP BY c.nama;\n```\n\nHasilnya satu baris per pelanggan. Aturan penting: **setiap kolom di `SELECT` harus berupa fungsi agregat atau ada di `GROUP BY`**. Kalau melanggar, Postgres menolak dengan error \"column must appear in the GROUP BY clause\".\n\nDua hal kecil yang sering membuat bingung:\n\n- `count(*)` menghitung semua baris, sedangkan `count(kolom)` menghitung baris yang `kolom`-nya tidak `NULL`. Pada LEFT JOIN, `count(p.id)` memberi 0 untuk Citra, sedangkan `count(*)` memberi 1.\n- `sum()` atas baris yang semuanya `NULL` menghasilkan `NULL`, bukan 0. Bungkus dengan `COALESCE(sum(p.total), 0)` untuk mendapat 0.\n\n## HAVING: menyaring kelompok\n\n`WHERE` menyaring **baris** sebelum dikelompokkan. Untuk menyaring **hasil kelompok** (misalnya hanya yang total belanjanya di atas 60 ribu), pakai `HAVING`:\n\n```sql\nSELECT c.nama, sum(p.total) AS total_belanja\nFROM pelanggan c\nJOIN pesanan p ON p.pelanggan_id = c.id\nWHERE p.total > 0\nGROUP BY c.nama\nHAVING sum(p.total) > 60000\nORDER BY total_belanja DESC;\n```\n\nHanya Ani (80000) yang lolos. Urutan pengerjaan Postgres, yang berbeda dari urutan penulisan, adalah:\n\n1. `FROM` dan `JOIN`: kumpulkan dan gabungkan baris.\n2. `WHERE`: buang baris yang tidak memenuhi syarat.\n3. `GROUP BY`: kelompokkan.\n4. `HAVING`: buang kelompok yang tidak memenuhi syarat.\n5. `SELECT`: hitung kolom hasil dan alias.\n6. `ORDER BY` lalu `LIMIT`: urutkan dan potong.\n\nKarena `SELECT` baru dikerjakan setelah `WHERE`, alias seperti `total_belanja` belum dikenal di `WHERE`, tetapi sudah boleh dipakai di `ORDER BY`.\n\n## Tiga kesalahan yang sering terjadi\n\n**1. Hasil JOIN berlipat ganda.** Bila kamu menggabungkan tabel dengan hubungan satu-ke-banyak lalu menjumlahkan kolom dari sisi \"satu\", angkanya terhitung berkali-kali. Contoh: menjumlahkan `gaji` setelah di-JOIN dengan proyek yang diikuti tiap karyawan menghitung gaji sebanyak jumlah proyeknya. Hitung agregat di tingkat yang tepat, atau agregasi dulu di CTE sebelum di-JOIN.\n\n**2. Memakai INNER JOIN ketika butuh semua baris.** Laporan \"omzet per pelanggan\" yang memakai `JOIN` diam-diam menghilangkan pelanggan tanpa pesanan. Bila laporan harus lengkap, gunakan `LEFT JOIN` dan `COALESCE`.\n\n**3. Menaruh syarat sisi kanan LEFT JOIN di WHERE.** Perhatikan perbedaan ini:\n\n```sql\n-- syarat di ON: pelanggan tanpa pesanan besar tetap tampil\nSELECT c.nama, p.total\nFROM pelanggan c\nLEFT JOIN pesanan p ON p.pelanggan_id = c.id AND p.total > 25000;\n\n-- syarat di WHERE: pelanggan tanpa pesanan besar ikut terbuang\nSELECT c.nama, p.total\nFROM pelanggan c\nLEFT JOIN pesanan p ON p.pelanggan_id = c.id\nWHERE p.total > 25000;\n```\n\nQuery kedua mengubah LEFT JOIN menjadi INNER JOIN secara efektif, karena baris dengan `NULL` tidak lolos `WHERE`. Aturan praktis: syarat yang membatasi **tabel kanan** pada LEFT JOIN masuk ke `ON`.\n\n## Rangkuman\n\n- `JOIN` menggabungkan tabel lewat syarat `ON`; `INNER JOIN` hanya mengembalikan baris yang cocok di kedua tabel.\n- `LEFT JOIN` mempertahankan semua baris kiri dan mengisi `NULL` bila tidak ada pasangan; berguna untuk mencari yang \"tidak punya\".\n- Fungsi agregat (`count`, `sum`, `avg`, `min`, `max`) meringkas baris; `GROUP BY` membuat ringkasan per kelompok.\n- Kolom di `SELECT` harus agregat atau ada di `GROUP BY`; gunakan `COALESCE` untuk mengganti `NULL` hasil `sum`.\n- `WHERE` menyaring baris, `HAVING` menyaring kelompok; urutan eksekusi: FROM, WHERE, GROUP BY, HAVING, SELECT, ORDER BY.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pelanggan tanpa pesanan tetap ingin ditampilkan dengan total 0. JOIN apa yang tepat?",
+          "code": "",
+          "options": [
+            "INNER JOIN dari pelanggan ke pesanan",
+            "INNER JOIN dari pesanan ke pelanggan",
+            "LEFT JOIN dari pelanggan ke pesanan",
+            "CROSS JOIN tanpa syarat ON"
+          ],
+          "answer": 2,
+          "explanation": "LEFT JOIN mempertahankan semua baris sisi kiri walau tidak ada pasangan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perbedaan WHERE dan HAVING adalah",
+          "code": "",
+          "options": [
+            "WHERE menyaring baris sebelum dikelompokkan, HAVING menyaring kelompok",
+            "WHERE hanya untuk teks, sedangkan HAVING hanya untuk angka dan tanggal saja",
+            "HAVING dikerjakan sebelum GROUP BY",
+            "Keduanya identik dan bisa saling menggantikan"
+          ],
+          "answer": 0,
+          "explanation": "WHERE bekerja pada baris mentah, HAVING pada hasil agregasi per kelompok."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Query berikut menghasilkan apa?",
+          "code": "SELECT pelanggan_id, count(*)\nFROM pesanan\nGROUP BY pelanggan_id;",
+          "options": [
+            "Satu baris berisi jumlah semua pesanan dari seluruh pelanggan",
+            "Semua pesanan beserta hitungannya",
+            "Error karena count tidak boleh dipakai bersama GROUP BY pada kolom itu",
+            "Jumlah pesanan per pelanggan, satu baris untuk tiap pelanggan_id"
+          ],
+          "answer": 3,
+          "explanation": "GROUP BY membuat satu kelompok per pelanggan_id, dan count(*) dihitung di tiap kelompok."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Alias kolom yang dibuat di SELECT boleh dipakai di klausa WHERE pada query yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "WHERE dikerjakan sebelum SELECT, jadi alias belum dikenal di sana; ORDER BY boleh memakainya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Rekap belanja per pelanggan",
+          "prompt": "Tulis query di `QUERY` yang menampilkan **semua** pelanggan dengan tiga kolom, berurutan:\n\n1. `nama`\n2. jumlah pesanan\n3. total belanja, dengan `0` (bukan `NULL`) untuk pelanggan yang belum memesan\n\nUrutkan dari total belanja terbesar; bila sama, urutkan menurut nama.",
+          "starter": {
+            "code": "# Tampilkan semua pelanggan dengan tiga kolom:\n# nama, jumlah pesanan, total belanja (0 bila belum memesan).\n# Urutkan dari total belanja terbesar, lalu nama.\nQUERY = \"\"\"\nSELECT nama FROM pelanggan\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT c.nama, COUNT(p.id), COALESCE(SUM(p.total), 0) AS total\nFROM pelanggan c\nLEFT JOIN pesanan p ON p.pelanggan_id = c.id\nGROUP BY c.id\nORDER BY total DESC, c.nama\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE pelanggan (id INTEGER PRIMARY KEY, nama TEXT);\nCREATE TABLE pesanan (id INTEGER PRIMARY KEY, pelanggan_id INTEGER, total INTEGER);\nINSERT INTO pelanggan VALUES (1, 'Ani'), (2, 'Budi'), (3, 'Citra');\nINSERT INTO pesanan VALUES (1, 1, 50000), (2, 1, 30000), (3, 2, 20000);\n\"\"\")\n\ndef hasil():\n    return db.execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Hasil lengkap dan berurutan",
+              "check": "hasil() == [('Ani', 2, 80000), ('Budi', 1, 20000), ('Citra', 0, 0)]"
+            },
+            {
+              "name": "Pelanggan tanpa pesanan tetap tampil",
+              "check": "len(hasil()) == 3"
+            },
+            {
+              "name": "Jumlah pesanan Ani adalah 2",
+              "check": "hasil()[0][1] == 2"
+            },
+            {
+              "name": "Total Citra 0, bukan NULL",
+              "check": "hasil()[-1][2] == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "cte-dan-window-function",
+      "title": "CTE dan Window Function",
+      "est_minutes": 40,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Memecah query rumit menjadi langkah terbaca dengan CTE (`WITH`).\n- Menghitung peringkat dan total berjalan dengan window function.\n- Mengenali kapan CTE rekursif dipakai.\n\n## Query yang makin panjang\n\nSetelah JOIN dan agregasi, query-mu mulai panjang. Biasanya muncul subquery di dalam subquery, dan beberapa minggu kemudian tak seorang pun (termasuk kamu) paham maksudnya. Dua alat membuat query rumit tetap terbaca: **CTE** untuk memecah langkah, dan **window function** untuk perhitungan yang melintasi baris.\n\nKita pakai tabel `produk` berikut:\n\n```sql\nproduk:  nama       | kategori | harga\n         Pensil     | alat     | 2500\n         Pulpen     | alat     | 4000\n         Penggaris  | alat     | 3000\n         Buku       | kertas   | 12000\n         Kertas A4  | kertas   | 50000\n```\n\n## CTE: subquery yang diberi nama\n\nCTE (Common Table Expression) ditulis dengan `WITH`. Ia memberi nama pada sebuah query sementara yang bisa dipakai seperti tabel di query utama.\n\nPertanyaan: produk apa saja yang harganya di atas rata-rata **kategorinya**? Dengan subquery, hasilnya berantakan. Dengan CTE:\n\n```sql\nWITH rata AS (\n  SELECT kategori, avg(harga) AS rata_harga\n  FROM produk\n  GROUP BY kategori\n)\nSELECT p.nama, p.harga\nFROM produk p\nJOIN rata r ON r.kategori = p.kategori\nWHERE p.harga > r.rata_harga\nORDER BY p.nama;\n```\n\nBacalah dari atas ke bawah seperti resep: langkah pertama menghitung rata-rata per kategori, langkah kedua membandingkan tiap produk dengan rata-ratanya. Hasilnya Kertas A4 dan Pulpen.\n\nKamu bisa menyambung beberapa CTE dengan koma, dan CTE belakangan boleh memakai CTE sebelumnya:\n\n```sql\nWITH\n  per_kategori AS (SELECT kategori, sum(harga) AS total FROM produk GROUP BY kategori),\n  besar AS (SELECT kategori FROM per_kategori WHERE total > 10000)\nSELECT * FROM besar;\n```\n\nManfaat utama CTE adalah keterbacaan. Hasilnya sama dengan subquery, tetapi tiap langkah punya nama yang menjelaskan tujuannya.\n\n## Window function: hitung tanpa meruntuhkan baris\n\n`GROUP BY` meringkas banyak baris menjadi satu, jadi detail baris hilang. **Window function** menghitung nilai dari sekumpulan baris terkait **tanpa** menghilangkan baris itu. Setiap baris tetap tampil, dengan kolom tambahan hasil perhitungan.\n\nBentuknya selalu `fungsi() OVER (...)`. Di dalam `OVER` kamu menentukan jendela:\n\n- `PARTITION BY` membagi baris menjadi kelompok (mirip GROUP BY, tetapi baris tidak runtuh).\n- `ORDER BY` mengurutkan baris di dalam jendela.\n\n### Peringkat per kelompok\n\n```sql\nSELECT nama, kategori, harga,\n       rank() OVER (PARTITION BY kategori ORDER BY harga DESC) AS peringkat\nFROM produk;\n```\n\n| nama | kategori | harga | peringkat |\n| --- | --- | --- | --- |\n| Pulpen | alat | 4000 | 1 |\n| Penggaris | alat | 3000 | 2 |\n| Pensil | alat | 2500 | 3 |\n| Kertas A4 | kertas | 50000 | 1 |\n| Buku | kertas | 12000 | 2 |\n\nPeringkat dihitung ulang dari 1 di tiap kategori, dan semua lima baris tetap ada. Tiga fungsi peringkat yang sering dipakai:\n\n- `row_number()` memberi nomor urut unik 1, 2, 3, ... walau nilainya sama.\n- `rank()` memberi peringkat sama untuk nilai sama lalu melompat (1, 1, 3).\n- `dense_rank()` seperti `rank()` tetapi tanpa lompatan (1, 1, 2).\n\n![Peringkat dengan window function](slide:18)\n\n### Total berjalan dan perbandingan dengan baris lain\n\nFungsi agregat juga bisa dipakai sebagai window dengan menambahkan `OVER`:\n\n```sql\nSELECT nama, harga,\n       sum(harga) OVER (ORDER BY id) AS total_berjalan,\n       harga - lag(harga) OVER (ORDER BY id) AS selisih_sebelumnya\nFROM produk;\n```\n\n`sum(...) OVER (ORDER BY id)` menjumlahkan harga dari baris pertama sampai baris saat ini, hasilnya total berjalan. `lag()` mengambil nilai dari baris sebelumnya, sehingga mudah menghitung selisih. Pasangannya, `lead()`, mengambil dari baris berikutnya.\n\n### Pola favorit: ambil yang teratas per kelompok\n\nKombinasi CTE dan `row_number()` menyelesaikan soal klasik \"produk termahal di tiap kategori\":\n\n```sql\nWITH urut AS (\n  SELECT nama, kategori, harga,\n         row_number() OVER (PARTITION BY kategori ORDER BY harga DESC) AS n\n  FROM produk\n)\nSELECT nama, kategori, harga FROM urut WHERE n = 1;\n```\n\nWindow function tidak boleh langsung di `WHERE`, jadi hitung dulu di CTE lalu saring di query luarnya.\n\n## CTE rekursif\n\nBeberapa data berbentuk pohon: kategori yang punya sub-kategori, atau karyawan yang punya atasan. Menelusurinya sedalam apa pun butuh **CTE rekursif**:\n\n```sql\nWITH RECURSIVE turun AS (\n  SELECT id, nama, 0 AS level\n  FROM kategori WHERE induk IS NULL          -- bagian awal (anchor)\n  UNION ALL\n  SELECT k.id, k.nama, t.level + 1           -- bagian rekursif\n  FROM kategori k JOIN turun t ON k.induk = t.id\n)\nSELECT * FROM turun;\n```\n\nBagian awal mengambil akar pohon. Bagian rekursif lalu berulang: mengambil anak dari hasil sebelumnya, sampai tidak ada anak lagi. Pastikan data tidak membentuk lingkaran (A induk B, B induk A), kalau tidak, query tak akan pernah berhenti.\n\n## Memilih alat yang tepat\n\nBagaimana memutuskan antara `GROUP BY`, subquery, CTE, dan window function? Panduan singkat:\n\n| Kebutuhan | Alat |\n| --- | --- |\n| Satu ringkasan per kelompok, detail tidak diperlukan | `GROUP BY` |\n| Detail setiap baris plus nilai ringkasan di sebelahnya | window function |\n| Query panjang yang ingin dibaca berurutan | CTE |\n| Menelusuri pohon atau rantai tak tentu kedalamannya | CTE rekursif |\n\nContoh kebutuhan kedua: menampilkan setiap produk beserta persentasenya terhadap total kategorinya.\n\n```sql\nSELECT nama, kategori, harga,\n       round(100.0 * harga / sum(harga) OVER (PARTITION BY kategori), 1) AS persen\nFROM produk;\n```\n\nDengan `GROUP BY` kamu harus menghitung total per kategori di query terpisah lalu menggabungkannya. Dengan window function, semuanya selesai dalam satu query. Ingat pula bahwa di SQLite versi 3.25 ke atas (dipakai pada latihan di sini), sintaks window function sama dengan di Postgres, sehingga contoh-contoh bab ini bisa langsung kamu coba di kedua tempat.\n\n## Rangkuman\n\n- CTE (`WITH nama AS (...)`) memberi nama pada langkah query sehingga mudah dibaca dari atas ke bawah.\n- Window function (`fungsi() OVER (...)`) menghitung lintas baris tanpa meruntuhkan baris, berbeda dari `GROUP BY`.\n- `PARTITION BY` membagi kelompok, `ORDER BY` mengurutkan di dalam jendela.\n- `row_number()`, `rank()`, `dense_rank()` untuk peringkat; `sum() OVER` untuk total berjalan; `lag()` dan `lead()` untuk baris tetangga.\n- Window function tidak bisa langsung di `WHERE`: hitung di CTE, saring di query luar.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa beda utama window function dengan GROUP BY?",
+          "code": "",
+          "options": [
+            "Window function hanya bekerja pada kolom teks",
+            "Window function tetap mempertahankan setiap baris",
+            "GROUP BY mempertahankan setiap baris",
+            "Window function tidak bisa dipakai bersama ORDER BY"
+          ],
+          "answer": 1,
+          "explanation": "GROUP BY meruntuhkan baris per kelompok, window function menambah kolom hasil tanpa menghilangkan baris."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Untuk nilai yang kembar, fungsi mana yang memberi peringkat 1, 1, 3?",
+          "code": "",
+          "options": [
+            "row_number()",
+            "dense_rank()",
+            "rank()",
+            "lag()"
+          ],
+          "answer": 2,
+          "explanation": "rank() memberi peringkat sama lalu melompat; dense_rank() tanpa lompatan; row_number() selalu unik."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa filter 'n = 1' pada hasil row_number() dilakukan di query luar?",
+          "code": "",
+          "options": [
+            "Window function tidak boleh langsung dipakai di WHERE",
+            "Karena n adalah kolom bawaan tabel",
+            "Karena row_number() hanya bisa berjalan di dalam query luar saja",
+            "Karena WHERE tidak mendukung angka"
+          ],
+          "answer": 0,
+          "explanation": "Window function dihitung setelah WHERE, jadi dibungkus CTE lalu disaring di query berikutnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "CTE rekursif memerlukan bagian awal (anchor) dan bagian rekursif yang digabung dengan UNION ALL.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Anchor memberi baris awal, bagian rekursif terus menelusuri turunannya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Peringkat harga per kategori",
+          "prompt": "Tulis query di `QUERY` yang menampilkan tiga kolom `produk`, `kategori`, dan `peringkat` (harga termahal = 1) dengan **window function** `RANK() OVER (PARTITION BY ...)`.\n\nUrutkan menurut `kategori`, lalu `peringkat`. Kelima produk harus tetap tampil.",
+          "starter": {
+            "code": "# Tampilkan produk, kategori, dan peringkat harga (termahal = 1) di dalam\n# kategorinya. Urutkan menurut kategori lalu peringkat.\nQUERY = \"\"\"\nSELECT produk, kategori FROM produk\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT produk, kategori,\n       RANK() OVER (PARTITION BY kategori ORDER BY harga DESC) AS peringkat\nFROM produk\nORDER BY kategori, peringkat\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE produk (id INTEGER PRIMARY KEY, produk TEXT, kategori TEXT, harga INTEGER);\nINSERT INTO produk VALUES\n  (1, 'Pensil', 'alat', 2500), (2, 'Pulpen', 'alat', 4000), (3, 'Penggaris', 'alat', 3000),\n  (4, 'Buku', 'kertas', 12000), (5, 'Kertas A4', 'kertas', 50000);\n\"\"\")\n\ndef hasil():\n    return db.execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Semua produk dan peringkatnya benar",
+              "check": "hasil() == [('Pulpen', 'alat', 1), ('Penggaris', 'alat', 2), ('Pensil', 'alat', 3), ('Kertas A4', 'kertas', 1), ('Buku', 'kertas', 2)]"
+            },
+            {
+              "name": "Kelima baris tetap tampil",
+              "check": "len(hasil()) == 5"
+            },
+            {
+              "name": "Peringkat dimulai ulang di tiap kategori",
+              "check": "[r[2] for r in hasil() if r[1] == 'kertas'] == [1, 2]"
+            },
+            {
+              "name": "Memakai window function OVER",
+              "check": "'OVER' in QUERY.upper()"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Produk di atas rata-rata kategori",
+          "prompt": "Tulis query di `QUERY` yang menampilkan nama `produk` yang harganya **di atas rata-rata kategorinya**, diurutkan menurut nama.\n\nHitung rata-rata per kategori di sebuah **CTE** (`WITH ... AS`), lalu gabungkan dengan tabel `produk`.",
+          "starter": {
+            "code": "# Tampilkan nama produk yang harganya di atas rata-rata kategorinya,\n# diurutkan menurut nama. Hitung rata-rata di sebuah CTE (WITH).\nQUERY = \"\"\"\nSELECT produk FROM produk\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nWITH rata AS (\n    SELECT kategori, AVG(harga) AS rata_harga\n    FROM produk\n    GROUP BY kategori\n)\nSELECT p.produk\nFROM produk p\nJOIN rata r ON r.kategori = p.kategori\nWHERE p.harga > r.rata_harga\nORDER BY p.produk\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE produk (id INTEGER PRIMARY KEY, produk TEXT, kategori TEXT, harga INTEGER);\nINSERT INTO produk VALUES\n  (1, 'Pensil', 'alat', 2500), (2, 'Pulpen', 'alat', 4000), (3, 'Penggaris', 'alat', 3000),\n  (4, 'Buku', 'kertas', 12000), (5, 'Kertas A4', 'kertas', 50000);\n\"\"\")\n\ndef hasil():\n    return db.execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Hasil benar dan berurutan",
+              "check": "hasil() == [('Kertas A4',), ('Pulpen',)]"
+            },
+            {
+              "name": "Memakai CTE (WITH)",
+              "check": "'WITH' in QUERY.upper()"
+            },
+            {
+              "name": "Hanya dua produk lolos",
+              "check": "len(hasil()) == 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "indeks-dan-explain",
+      "title": "Indeks dan EXPLAIN",
+      "est_minutes": 35,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu indeks dan trade-off-nya.\n- Memilih jenis indeks yang tepat: B-tree, GIN, indeks parsial, dan indeks ekspresi.\n- Membaca keluaran `EXPLAIN` dan `EXPLAIN ANALYZE` untuk menemukan query lambat.\n\n> **Catatan.** Bab ini bab bacaan. Pemeriksa kode di kelas ini memakai SQLite, yang tidak memiliki `EXPLAIN ANALYZE` seperti Postgres. Coba contohnya langsung di `psql` pada server milikmu.\n\n## Masalah: tabel membesar, query melambat\n\nSaat tabel `pesanan` baru berisi seratus baris, query apa pun terasa instan. Ketika isinya sepuluh juta baris, query berikut bisa memakan beberapa detik:\n\n```sql\nSELECT * FROM pesanan WHERE pelanggan_id = 42;\n```\n\nTanpa bantuan, Postgres harus membaca **setiap baris** dari awal sampai akhir untuk mencari yang cocok. Ini disebut **sequential scan** (Seq Scan). Bayangkan mencari satu nama di buku telepon tanpa urutan abjad: kamu terpaksa membaca halaman demi halaman.\n\n## Indeks: daftar isi untuk tabel\n\n**Indeks** adalah struktur terpisah yang menyimpan nilai sebuah kolom dalam keadaan terurut beserta penunjuk ke barisnya. Seperti indeks di belakang buku, ia memungkinkan loncat langsung ke data yang dicari.\n\n```sql\nCREATE INDEX idx_pesanan_pelanggan ON pesanan (pelanggan_id);\n```\n\nSetelah indeks dibuat, query di atas tidak lagi membaca seluruh tabel. Ia mencari di indeks, menemukan lokasi baris, lalu mengambilnya. Postgres otomatis memakai dan memperbarui indeks; kamu tidak perlu mengubah query.\n\nNamun indeks **bukan gratis**:\n\n- Ia memakan ruang disk.\n- Setiap `INSERT`, `UPDATE`, dan `DELETE` harus ikut memperbarui indeks, sehingga penulisan sedikit melambat.\n\nJadi aturannya: buat indeks untuk kolom yang **sering dipakai mencari, menggabung, atau mengurutkan**, bukan untuk semua kolom. Perhatikan bahwa primary key dan kolom `UNIQUE` sudah otomatis punya indeks.\n\n## Jenis-jenis indeks\n\n| Jenis | Cocok untuk |\n| --- | --- |\n| **B-tree** (bawaan) | `=`, `<`, `>`, `BETWEEN`, `ORDER BY`, hampir semua kasus |\n| **GIN** | `jsonb`, array, pencarian teks penuh |\n| **GiST** | data geometri dan rentang |\n| **BRIN** | tabel sangat besar yang berurutan alami, misalnya log waktu |\n\n```sql\n-- B-tree untuk pencarian biasa\nCREATE INDEX idx_produk_nama ON produk (nama);\n\n-- GIN agar filter jsonb cepat\nCREATE INDEX idx_produk_atribut ON produk USING gin (atribut);\n\n-- indeks pada beberapa kolom: urutan kolom penting\nCREATE INDEX idx_pesanan_pelanggan_dibuat ON pesanan (pelanggan_id, dibuat);\n```\n\nPada indeks multi-kolom, indeks efektif untuk pencarian yang memakai kolom **pertama** (atau kolom pertama dan kedua), tetapi kurang untuk pencarian hanya dengan kolom kedua. Letakkan kolom yang paling sering difilter dengan `=` di depan.\n\n## Membaca EXPLAIN\n\nBagaimana tahu sebuah query memakai indeks atau tidak? Tanyakan pada Postgres dengan `EXPLAIN`, yang menampilkan **rencana eksekusi** tanpa menjalankan query:\n\n```sql\nEXPLAIN SELECT * FROM pesanan WHERE pelanggan_id = 42;\n```\n\nTanpa indeks, keluarannya kira-kira:\n\n```\nSeq Scan on pesanan  (cost=0.00..189000.00 rows=95 width=40)\n  Filter: (pelanggan_id = 42)\n```\n\nSetelah indeks dibuat:\n\n```\nIndex Scan using idx_pesanan_pelanggan on pesanan  (cost=0.43..8.45 rows=95 width=40)\n  Index Cond: (pelanggan_id = 42)\n```\n\nAngka `cost` adalah perkiraan biaya relatif (makin kecil makin murah), dan `rows` adalah perkiraan jumlah baris. Perhatikan penurunan biaya dari 189000 menjadi 8,45.\n\n![Membaca keluaran EXPLAIN](slide:21)\n\n### EXPLAIN ANALYZE: ukur yang sebenarnya\n\n`EXPLAIN` hanya memperkirakan. Tambahkan `ANALYZE` agar query **benar-benar dijalankan** dan waktu nyata dilaporkan:\n\n```sql\nEXPLAIN ANALYZE SELECT * FROM pesanan WHERE pelanggan_id = 42;\n```\n\n```\nIndex Scan using idx_pesanan_pelanggan on pesanan\n  (cost=0.43..8.45 rows=95 width=40) (actual time=0.031..0.110 rows=97 loops=1)\nPlanning Time: 0.120 ms\nExecution Time: 0.152 ms\n```\n\nBandingkan `rows` perkiraan (95) dengan `actual rows` (97). Bila selisihnya jauh, statistik tabel mungkin usang; jalankan `ANALYZE pesanan;` untuk memperbaruinya. Hati-hati: karena benar-benar dijalankan, `EXPLAIN ANALYZE` pada `UPDATE` atau `DELETE` akan mengubah data, jadi bungkus dengan `BEGIN ... ROLLBACK`.\n\n## Kapan indeks tidak dipakai\n\nIndeks tidak selalu dipakai, dan itu kadang benar:\n\n- **Tabel kecil.** Membaca seluruh tabel kecil lebih cepat daripada melompat lewat indeks, jadi Seq Scan dipilih.\n- **Hasil mencakup sebagian besar baris.** Bila query mengambil 60% isi tabel, membaca berurutan lebih murah.\n- **Fungsi membungkus kolom.** `WHERE lower(email) = 'a@b.id'` tidak bisa memakai indeks biasa pada `email`. Solusinya **indeks ekspresi**:\n\n```sql\nCREATE INDEX idx_pengguna_email_kecil ON pengguna (lower(email));\n```\n\n- **Indeks parsial** hanya mengindeks sebagian baris dan hemat tempat, misalnya hanya pesanan yang masih berstatus baru:\n\n```sql\nCREATE INDEX idx_pesanan_baru ON pesanan (dibuat) WHERE status = 'baru';\n```\n\nKebiasaan yang sehat: ukur dulu dengan `EXPLAIN ANALYZE`, tambahkan indeks, ukur lagi. Jangan menebak lalu membuat indeks di mana-mana.\n\n## Alur kerja menangani query lambat\n\nSaat sebuah halaman aplikasi terasa lambat, jangan langsung menambah indeks. Ikuti langkah berikut:\n\n1. **Temukan query-nya.** Aktifkan `log_min_duration_statement` (misalnya 500 ms) agar Postgres mencatat query yang lebih lambat dari batas itu, atau pakai ekstensi `pg_stat_statements`.\n2. **Jalankan `EXPLAIN (ANALYZE, BUFFERS)`** pada query itu dengan nilai parameter yang nyata.\n3. **Cari simpul yang paling mahal.** Biasanya berupa `Seq Scan` pada tabel besar dengan `Filter` yang membuang hampir semua baris, atau `Sort` yang memakan disk.\n4. **Tambahkan indeks yang menyasar kondisi `WHERE` atau `JOIN` itu**, lalu jalankan ulang `EXPLAIN ANALYZE`.\n5. **Bandingkan waktu sebelum dan sesudah.** Bila tidak membaik, hapus indeks itu dengan `DROP INDEX`.\n\nSatu catatan keamanan: di server produksi, `CREATE INDEX` biasa mengunci penulisan pada tabel selama pembuatan. Gunakan `CREATE INDEX CONCURRENTLY` agar tabel tetap bisa ditulis, dengan konsekuensi proses lebih lama.\n\nDan jangan lupa merawat statistik: `ANALYZE` memperbarui informasi yang dipakai planner, dan autovacuum biasanya menjalankannya sendiri. Setelah impor data besar, menjalankannya manual membantu planner memilih rencana yang tepat.\n\n## Rangkuman\n\n- Tanpa indeks, Postgres melakukan Seq Scan: membaca semua baris tabel.\n- Indeks mempercepat pencarian tetapi memakan ruang dan memperlambat penulisan, jadi buat hanya yang diperlukan.\n- B-tree adalah indeks bawaan; GIN untuk `jsonb`, array, dan teks; indeks parsial dan ekspresi menyasar pola tertentu.\n- `EXPLAIN` menampilkan rencana eksekusi; `EXPLAIN ANALYZE` menjalankan query dan mengukur waktu nyata.\n- Bandingkan perkiraan dan angka sebenarnya, dan ukur sebelum serta sesudah menambah indeks.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa kelemahan utama menambah banyak indeks pada sebuah tabel?",
+          "code": "",
+          "options": [
+            "Query SELECT menjadi tidak bisa lagi memakai primary key maupun indeks unik pada tabel",
+            "Tabel menolak semua constraint yang baru",
+            "Postgres berhenti menjalankan EXPLAIN",
+            "INSERT, UPDATE, dan DELETE menjadi lebih lambat dan ruang disk bertambah"
+          ],
+          "answer": 3,
+          "explanation": "Setiap perubahan data harus ikut memperbarui semua indeks, dan indeks memakan ruang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Jenis indeks mana yang cocok untuk mempercepat filter pada kolom jsonb?",
+          "code": "",
+          "options": [
+            "B-tree biasa pada seluruh kolom",
+            "GIN",
+            "BRIN",
+            "Tidak ada, jsonb tidak bisa diindeks"
+          ],
+          "answer": 1,
+          "explanation": "GIN dirancang untuk nilai majemuk seperti jsonb, array, dan teks penuh."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa perbedaan EXPLAIN dan EXPLAIN ANALYZE?",
+          "code": "",
+          "options": [
+            "EXPLAIN ANALYZE hanya memperbaiki indeks yang rusak dan tidak menjalankan query apa pun",
+            "EXPLAIN menjalankan query, EXPLAIN ANALYZE tidak",
+            "EXPLAIN ANALYZE benar-benar menjalankan query dan melaporkan waktu nyata",
+            "Keduanya sama persis"
+          ],
+          "answer": 2,
+          "explanation": "EXPLAIN hanya menampilkan perkiraan, ANALYZE menjalankan query dan mengukurnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Query dengan WHERE lower(email) = 'a@b.id' memakai indeks biasa pada kolom email.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Fungsi membungkus kolom sehingga indeks biasa tidak terpakai; buat indeks ekspresi pada lower(email)."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "transaksi-dan-isolasi",
+      "title": "Transaksi, MVCC, dan Isolasi",
+      "est_minutes": 40,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Menjelaskan transaksi dan empat sifat ACID.\n- Memakai `BEGIN`, `COMMIT`, `ROLLBACK`, dan `SAVEPOINT`.\n- Memahami MVCC, level isolasi, kunci baris, dan deadlock.\n\n## Kenapa transaksi dibutuhkan\n\nBayangkan transfer Rp500 dari rekening A ke rekening B. Itu terdiri dari dua langkah: kurangi saldo A, tambah saldo B. Kalau server mati di antara dua langkah itu, uang lenyap. **Transaksi** menyelesaikannya dengan membungkus beberapa perintah menjadi satu kesatuan: semuanya berhasil, atau tidak ada yang berubah sama sekali.\n\n```sql\nBEGIN;\nUPDATE rekening SET saldo = saldo - 500 WHERE id = 1;\nUPDATE rekening SET saldo = saldo + 500 WHERE id = 2;\nCOMMIT;\n```\n\n`BEGIN` memulai transaksi, dan `COMMIT` menyimpan semua perubahan secara permanen. Kalau terjadi masalah sebelum `COMMIT`, jalankan `ROLLBACK` dan seluruh perubahan sejak `BEGIN` dibatalkan. Tanpa `BEGIN`, setiap perintah berdiri sendiri sebagai transaksi kecil yang langsung di-commit (disebut autocommit).\n\nBila ada error di tengah transaksi Postgres, transaksi masuk keadaan \"aborted\": perintah berikutnya ditolak sampai kamu menjalankan `ROLLBACK`. Ini sengaja, supaya tidak ada yang tak sengaja meng-commit separuh pekerjaan.\n\n## ACID: empat janji transaksi\n\n| Huruf | Arti | Contoh |\n| --- | --- | --- |\n| **A**tomicity | semua atau tidak sama sekali | transfer tidak berhenti separuh jalan |\n| **C**onsistency | data selalu memenuhi aturan constraint | saldo tidak pernah negatif bila ada CHECK |\n| **I**solation | transaksi tak saling mengganggu | dua transfer bersamaan tak saling merusak |\n| **D**urability | yang sudah di-commit tidak hilang | data aman walau listrik padam sesudah COMMIT |\n\nPostgres menjaga Durability dengan menulis catatan perubahan ke **WAL** (write-ahead log) sebelum menyatakan COMMIT berhasil. Kalau server mati, ia memutar ulang log itu saat menyala kembali.\n\n### SAVEPOINT: membatalkan sebagian\n\nKadang kamu hanya ingin membatalkan satu bagian transaksi:\n\n```sql\nBEGIN;\nINSERT INTO pesanan (pelanggan, total) VALUES (1, 100);\nSAVEPOINT sebelum_bonus;\nINSERT INTO bonus (pelanggan, poin) VALUES (1, -5);  -- gagal karena CHECK\nROLLBACK TO sebelum_bonus;                           -- batalkan bagian ini saja\nCOMMIT;                                              -- pesanan tetap tersimpan\n```\n\n![Transaksi, COMMIT, dan ROLLBACK](slide:23)\n\n## MVCC: pembaca tidak memblokir penulis\n\nBagaimana Postgres melayani banyak transaksi sekaligus tanpa saling menunggu? Dengan **MVCC** (Multi-Version Concurrency Control). Saat sebuah baris diubah, Postgres tidak menimpa baris lama; ia menyimpan **versi baru** dan menjaga versi lama selama masih ada transaksi yang memerlukannya. Setiap transaksi melihat \"foto\" data yang konsisten sesuai waktunya.\n\nAkibat praktisnya: **membaca tidak memblokir menulis, dan menulis tidak memblokir membaca**. Laporan panjang yang membaca tabel tidak membuat aplikasi yang sedang menyimpan pesanan menunggu. Versi lama yang tak terpakai dibersihkan secara berkala oleh proses `VACUUM` (autovacuum menjalankannya otomatis).\n\n## Level isolasi\n\nLevel isolasi menentukan seberapa banyak perubahan transaksi lain yang boleh terlihat di tengah transaksimu.\n\n| Level | Perilaku |\n| --- | --- |\n| `READ COMMITTED` (bawaan) | tiap perintah melihat data yang sudah di-commit sampai saat perintah itu mulai |\n| `REPEATABLE READ` | seluruh transaksi melihat foto data yang sama sejak perintah pertama |\n| `SERIALIZABLE` | hasil seolah transaksi berjalan satu per satu; bisa gagal dan perlu diulang |\n\n```sql\nBEGIN ISOLATION LEVEL REPEATABLE READ;\nSELECT sum(saldo) FROM rekening;   -- 1500\n-- transaksi lain meng-commit perubahan di sini\nSELECT sum(saldo) FROM rekening;   -- tetap 1500 dalam transaksi ini\nCOMMIT;\n```\n\nPada `READ COMMITTED`, query kedua bisa memberi angka berbeda karena melihat commit orang lain. Cocok untuk kebanyakan aplikasi, tetapi untuk laporan yang harus konsisten dari awal sampai akhir pakai `REPEATABLE READ`. Level yang lebih ketat bisa melempar error serialisasi; aplikasi harus siap mengulang transaksinya.\n\n## Kunci baris dan deadlock\n\nKadang kamu perlu memastikan tidak ada yang mengubah baris selagi kamu bekerja. Gunakan `SELECT ... FOR UPDATE`, yang mengunci baris yang dibaca sampai transaksi selesai:\n\n```sql\nBEGIN;\nSELECT saldo FROM rekening WHERE id = 1 FOR UPDATE;  -- baris terkunci\n-- hitung di aplikasi, lalu:\nUPDATE rekening SET saldo = saldo - 500 WHERE id = 1;\nCOMMIT;                                              -- kunci dilepas\n```\n\nTransaksi lain yang mencoba mengubah baris itu akan menunggu sampai kamu `COMMIT` atau `ROLLBACK`.\n\n**Deadlock** terjadi saat dua transaksi saling menunggu: T1 mengunci baris A lalu ingin B, sementara T2 mengunci B lalu ingin A. Keduanya macet selamanya. Postgres mendeteksinya dan **membatalkan salah satu** dengan error. Cara mencegahnya:\n\n1. Akses baris dalam **urutan yang sama** di semua transaksi (misalnya selalu urutkan ID kecil dulu).\n2. Jaga transaksi **tetap singkat**. Jangan menunggu input pengguna di dalam transaksi.\n3. Siapkan aplikasi untuk mengulang transaksi yang dibatalkan.\n\n## Latihan: transfer yang aman\n\nLatihan di bawah memakai SQLite lewat Python. Modul `sqlite3` punya konsep serupa: `with db:` membungkus blok dalam transaksi, melakukan commit bila sukses dan rollback otomatis bila terjadi error. Kamu akan menulis fungsi transfer yang tidak meninggalkan uang separuh jalan.\n\n## Pola transaksi yang sehat di aplikasi\n\nBeberapa kebiasaan yang membuat kode yang memakai transaksi lebih aman:\n\n- **Satu unit kerja, satu transaksi.** Semua langkah yang harus utuh (kurangi stok, buat pesanan, catat pembayaran) berada dalam satu `BEGIN ... COMMIT`.\n- **Selalu tangani kegagalan.** Bungkus dengan `try`: bila terjadi error, lakukan `ROLLBACK`. Pustaka klien biasanya menyediakan pembungkus seperti `with db:` di Python yang melakukannya otomatis.\n- **Jangan menahan transaksi terbuka.** Transaksi yang menggantung menahan kunci dan menghambat pembersihan versi lama oleh VACUUM. Jangan menunggu klik pengguna di dalamnya.\n- **Siap mengulang.** Pada level `REPEATABLE READ` dan `SERIALIZABLE`, Postgres dapat menolak transaksi dengan error serialisasi. Aplikasi harus mengulang seluruh transaksi dari awal.\n\n```python\ndef transfer(db, dari, ke, jumlah):\n    with db:                      # BEGIN\n        db.execute(\"UPDATE rekening SET saldo = saldo - ? WHERE id = ?\", (jumlah, dari))\n        db.execute(\"UPDATE rekening SET saldo = saldo + ? WHERE id = ?\", (jumlah, ke))\n    # COMMIT bila lolos, ROLLBACK otomatis bila ada error\n```\n\nPola serupa itulah yang akan kamu terapkan pada latihan transfer di bab ini.\n\n## Rangkuman\n\n- Transaksi membungkus beberapa perintah agar semuanya berhasil atau semuanya dibatalkan; `BEGIN`, `COMMIT`, `ROLLBACK`.\n- ACID: Atomicity, Consistency, Isolation, Durability; durability dijaga lewat WAL.\n- `SAVEPOINT` memungkinkan pembatalan sebagian transaksi.\n- MVCC menyimpan beberapa versi baris sehingga pembaca dan penulis tidak saling memblokir.\n- Level isolasi bawaan adalah `READ COMMITTED`; `REPEATABLE READ` dan `SERIALIZABLE` lebih ketat.\n- `FOR UPDATE` mengunci baris; deadlock dicegah dengan urutan akses konsisten dan transaksi singkat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti Atomicity dalam ACID?",
+          "code": "",
+          "options": [
+            "Semua perintah dalam transaksi berhasil, atau tidak ada yang berubah",
+            "Data yang sudah di-commit tidak akan hilang walaupun server mati mendadak",
+            "Transaksi lain tidak bisa melihat datamu",
+            "Setiap kolom selalu terisi nilai"
+          ],
+          "answer": 0,
+          "explanation": "Atomicity berarti semua-atau-tidak-sama-sekali; durability adalah janji data tidak hilang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Level isolasi bawaan PostgreSQL adalah",
+          "code": "",
+          "options": [
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ UNCOMMITTED",
+            "READ COMMITTED"
+          ],
+          "answer": 3,
+          "explanation": "Bawaan Postgres adalah READ COMMITTED."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa pembaca tidak memblokir penulis di PostgreSQL?",
+          "code": "",
+          "options": [
+            "Karena Postgres tidak pernah memakai kunci apa pun pada seluruh baris data",
+            "MVCC menyimpan beberapa versi baris sehingga pembaca memakai versi lama",
+            "Karena semua query berjalan satu per satu",
+            "Karena pembaca selalu memakai SERIALIZABLE"
+          ],
+          "answer": 1,
+          "explanation": "MVCC menjaga versi lama untuk pembaca sementara penulis membuat versi baru."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Deadlock dapat dikurangi dengan mengakses baris dalam urutan yang sama di semua transaksi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Urutan akses konsisten mencegah dua transaksi saling menunggu secara melingkar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Transfer yang aman",
+          "prompt": "Lengkapi `transfer(db, dari, ke, jumlah)` yang memindahkan saldo antar rekening:\n\n1. Tambah saldo rekening `ke` **terlebih dulu**, lalu kurangi saldo rekening `dari`.\n2. Keduanya dalam **satu transaksi** (`with db:`).\n3. Bila saldo `dari` tidak cukup, constraint `CHECK` menolak dan **seluruh** perubahan harus batal; kembalikan `False`.\n4. Bila berhasil kembalikan `True`.\n\nTabel `rekening` punya `CHECK (saldo >= 0)`.",
+          "starter": {
+            "code": "import sqlite3\n\ndef transfer(db, dari, ke, jumlah):\n    # TODO: tambah saldo rekening tujuan dulu, lalu kurangi saldo asal,\n    # keduanya dalam satu transaksi. Bila saldo asal tidak cukup (CHECK gagal),\n    # batalkan semuanya dan kembalikan False. Bila sukses kembalikan True.\n    db.execute(\"UPDATE rekening SET saldo = saldo + ? WHERE id = ?\", (jumlah, ke))\n    db.execute(\"UPDATE rekening SET saldo = saldo - ? WHERE id = ?\", (jumlah, dari))\n    db.commit()\n    return True\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\ndef transfer(db, dari, ke, jumlah):\n    try:\n        with db:\n            db.execute(\"UPDATE rekening SET saldo = saldo + ? WHERE id = ?\", (jumlah, ke))\n            db.execute(\"UPDATE rekening SET saldo = saldo - ? WHERE id = ?\", (jumlah, dari))\n        return True\n    except sqlite3.IntegrityError:\n        return False\n"
+          },
+          "setup": "import sqlite3\n\ndef baru():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"CREATE TABLE rekening (id INTEGER PRIMARY KEY, saldo INTEGER NOT NULL CHECK (saldo >= 0)); INSERT INTO rekening VALUES (1, 1000), (2, 500);\")\n    c.commit()\n    return c\n\ndef saldo(c):\n    return [r[0] for r in c.execute(\"SELECT saldo FROM rekening ORDER BY id\")]\n",
+          "tests": [
+            {
+              "name": "Transfer berhasil memindahkan saldo",
+              "check": "(lambda c: (transfer(c, 1, 2, 300), saldo(c)))(baru()) == (True, [700, 800])"
+            },
+            {
+              "name": "Saldo kurang mengembalikan False",
+              "check": "transfer(baru(), 1, 2, 5000) is False"
+            },
+            {
+              "name": "Kegagalan tidak meninggalkan perubahan separuh",
+              "check": "(lambda c: (transfer(c, 1, 2, 5000), saldo(c)))(baru()) == (False, [1000, 500])"
+            },
+            {
+              "name": "Total uang selalu tetap",
+              "check": "(lambda c: (transfer(c, 1, 2, 5000), transfer(c, 2, 1, 200), sum(saldo(c)))[2])(baru()) == 1500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "view-trigger-dan-backup",
+      "title": "View, Fungsi, Trigger, dan Backup",
+      "est_minutes": 40,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Membuat `VIEW` dan `MATERIALIZED VIEW` untuk menyederhanakan query berulang.\n- Menulis fungsi dan trigger sederhana dengan PL/pgSQL.\n- Membuat backup dengan `pg_dump`, memulihkannya, dan mengatur hak akses dengan role.\n\n> **Catatan.** Trigger, fungsi PL/pgSQL, `pg_dump`, dan role hanya ada di PostgreSQL, jadi sebagian besar bab ini bacaan. Latihan kode hanya untuk `VIEW`, yang juga dikenal SQLite.\n\n## View: query yang diberi nama\n\nKamu sering menulis query gabungan panjang yang sama berulang kali. **View** menyimpan query itu dengan sebuah nama sehingga bisa dipakai seperti tabel.\n\n```sql\nCREATE VIEW pesanan_ringkas AS\n  SELECT p.id, c.nama, p.total\n  FROM pesanan p\n  JOIN pelanggan c ON c.id = p.pelanggan_id;\n\nSELECT * FROM pesanan_ringkas WHERE total > 25000;\n```\n\nView **tidak menyimpan data**. Setiap kali kamu mengquery view, Postgres menjalankan query aslinya terhadap data terkini. Manfaatnya:\n\n- **Sederhana.** Query rumit disembunyikan di balik satu nama.\n- **Aman.** Kamu bisa memberi akses ke view yang hanya menampilkan kolom tertentu, tanpa membuka tabel aslinya.\n- **Konsisten.** Rumus bisnis (misalnya cara menghitung omzet) ditulis sekali.\n\nUntuk menghapus: `DROP VIEW pesanan_ringkas;`. Untuk mengganti isinya: `CREATE OR REPLACE VIEW`.\n\n### Materialized view: hasil yang disimpan\n\nKalau query-nya berat (agregasi jutaan baris) dan datanya tak perlu selalu segar, pakai **materialized view**, yang menyimpan hasilnya di disk seperti tabel.\n\n```sql\nCREATE MATERIALIZED VIEW laporan_harian AS\n  SELECT date(dibuat) AS hari, sum(total) AS omzet\n  FROM pesanan GROUP BY 1;\n\nREFRESH MATERIALIZED VIEW laporan_harian;\n```\n\nMembaca jadi sangat cepat, tetapi isinya basi sampai kamu menjalankan `REFRESH`. Cocok untuk laporan yang diperbarui terjadwal, misalnya tiap malam.\n\n![View dan materialized view](slide:26)\n\n## Fungsi dan trigger dengan PL/pgSQL\n\nPostgres punya bahasa prosedural bawaan, **PL/pgSQL**, yang memungkinkan variabel, percabangan, dan perulangan di dalam database. Fungsi sederhana:\n\n```sql\nCREATE FUNCTION harga_dengan_pajak(harga numeric)\nRETURNS numeric AS $$\nBEGIN\n  RETURN round(harga * 1.11, 2);\nEND;\n$$ LANGUAGE plpgsql;\n\nSELECT harga_dengan_pajak(100000);   -- 111000.00\n```\n\nTanda `$$ ... $$` membungkus isi fungsi sebagai satu string agar tanda kutip di dalamnya tidak bentrok.\n\n**Trigger** adalah fungsi yang dijalankan **otomatis** saat sebuah peristiwa terjadi pada tabel (`INSERT`, `UPDATE`, atau `DELETE`). Contoh klasik: mengisi kolom `diperbarui_pada` setiap kali baris berubah.\n\n```sql\nCREATE FUNCTION set_waktu() RETURNS trigger AS $$\nBEGIN\n  NEW.diperbarui_pada := now();\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER trg_produk_waktu\nBEFORE UPDATE ON produk\nFOR EACH ROW EXECUTE FUNCTION set_waktu();\n```\n\nDi dalam trigger, `NEW` adalah baris yang akan disimpan. Fungsi mengubah `NEW` lalu mengembalikannya, dan baris itu yang tersimpan. `BEFORE` artinya jalan sebelum penyimpanan (bisa mengubah nilai), sedangkan `AFTER` jalan sesudahnya (cocok untuk mencatat log).\n\nGunakan trigger secukupnya. Logika yang tersembunyi di trigger sulit dilacak dan bisa mengejutkan pengembang lain. Cocok untuk hal yang benar-benar harus selalu terjadi, seperti stempel waktu atau catatan audit.\n\n## Backup dan restore\n\nData yang tak pernah dibackup hanya menunggu waktu untuk hilang. Alat bawaan Postgres adalah `pg_dump`, yang membuat salinan logis satu database.\n\n```bash\n# format kustom terkompresi, direkomendasikan\npg_dump -Fc toko > toko.dump\n\n# pulihkan ke database baru\ncreatedb toko_baru\npg_restore -d toko_baru toko.dump\n\n# format teks SQL biasa\npg_dump toko > toko.sql\npsql -d toko_baru -f toko.sql\n```\n\nFormat `-Fc` bisa dipulihkan sebagian dan paralel oleh `pg_restore`, sedangkan format teks dipulihkan dengan `psql`. Untuk seluruh server termasuk role, gunakan `pg_dumpall`.\n\nDua aturan penting dalam backup:\n\n1. **Otomatiskan.** Jadwalkan dengan cron atau layanan cloud, jangan mengandalkan ingatan.\n2. **Uji restore.** Backup yang belum pernah dicoba dipulihkan belum bisa disebut backup. Jadwalkan latihan restore ke database percobaan.\n\n## Role dan hak akses\n\nPostgres mengatur siapa boleh melakukan apa lewat **role**. Satu role bisa berupa pengguna (boleh login) atau grup. Berikan hanya hak yang diperlukan (prinsip *least privilege*).\n\n```sql\nCREATE ROLE laporan LOGIN PASSWORD 'rahasia-kuat';\nGRANT SELECT ON pesanan, pelanggan TO laporan;\nGRANT USAGE ON SCHEMA public TO laporan;\nREVOKE INSERT ON pesanan FROM laporan;\n```\n\nRole `laporan` kini hanya bisa membaca dua tabel, tanpa bisa mengubah atau menghapus apa pun. Aplikasi sebaiknya memakai role terbatas seperti ini, bukan user `postgres` yang bebas melakukan segalanya.\n\n## Kapan memakai apa\n\nSetiap objek di bab ini punya tempatnya, dan masing-masing punya harga yang harus dibayar:\n\n| Objek | Pakai bila | Waspadai |\n| --- | --- | --- |\n| View | query gabungan dipakai berulang, atau perlu membatasi kolom | tetap menjalankan query asli tiap dibaca |\n| Materialized view | laporan berat yang boleh sedikit basi | harus di-`REFRESH` terjadwal |\n| Fungsi PL/pgSQL | logika yang sama dipakai banyak aplikasi | logika bisnis tersebar di dua tempat |\n| Trigger | hal yang wajib selalu terjadi, seperti stempel waktu atau audit | sulit dilacak, bisa mengejutkan pengembang baru |\n\nPegangan praktis: mulailah dari yang paling sederhana. Kebanyakan kebutuhan cukup dengan view. Trigger dan fungsi baru dipakai ketika aturannya harus ditegakkan di database tanpa peduli aplikasi mana yang menulis.\n\n### Contoh audit sederhana\n\nTrigger `AFTER` cocok untuk mencatat jejak perubahan ke tabel log:\n\n```sql\nCREATE TABLE log_harga (produk_id bigint, harga_lama numeric, harga_baru numeric, waktu timestamptz DEFAULT now());\n\nCREATE FUNCTION catat_harga() RETURNS trigger AS $$\nBEGIN\n  IF NEW.harga <> OLD.harga THEN\n    INSERT INTO log_harga (produk_id, harga_lama, harga_baru) VALUES (OLD.id, OLD.harga, NEW.harga);\n  END IF;\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n```\n\nDi trigger `UPDATE`, `OLD` adalah baris sebelum diubah dan `NEW` sesudahnya, sehingga perubahan harga bisa dicatat lengkap dengan nilai lama dan barunya.\n\n## Rangkuman\n\n- View menyimpan query dengan nama dan selalu menampilkan data terkini; materialized view menyimpan hasilnya dan perlu `REFRESH`.\n- PL/pgSQL memungkinkan fungsi dengan logika di dalam database; trigger menjalankan fungsi otomatis saat `INSERT`, `UPDATE`, atau `DELETE`.\n- Di trigger, `NEW` adalah baris yang akan disimpan; `BEFORE` bisa mengubahnya, `AFTER` cocok untuk log.\n- `pg_dump` membuat backup logis; pulihkan dengan `pg_restore` atau `psql`, dan uji restore secara berkala.\n- Role dan `GRANT` mengatur hak akses; beri hak sesedikit mungkin.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa perbedaan utama VIEW dengan MATERIALIZED VIEW?",
+          "code": "",
+          "options": [
+            "View menyimpan data hasil query, sedangkan materialized view tidak menyimpannya",
+            "Materialized view selalu menampilkan data terbaru",
+            "View menjalankan query tiap dibaca, materialized view menyimpan hasilnya",
+            "View tidak bisa dipakai dalam SELECT"
+          ],
+          "answer": 2,
+          "explanation": "View tidak menyimpan data; materialized view menyimpan hasil dan perlu REFRESH."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di dalam trigger BEFORE UPDATE, NEW merujuk pada",
+          "code": "",
+          "options": [
+            "Baris yang akan disimpan setelah perubahan",
+            "Baris lama sebelum perubahan dilakukan pada tabel",
+            "Seluruh isi tabel",
+            "Nama trigger itu sendiri"
+          ],
+          "answer": 0,
+          "explanation": "NEW adalah baris baru; fungsi trigger dapat mengubahnya sebelum disimpan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah mana yang membuat backup terkompresi satu database dalam format kustom?",
+          "code": "",
+          "options": [
+            "pg_restore -Fc toko > toko.dump",
+            "psql -Fc toko > toko.dump",
+            "createdb -Fc toko.dump",
+            "pg_dump -Fc toko > toko.dump"
+          ],
+          "answer": 3,
+          "explanation": "pg_dump -Fc membuat dump format kustom yang dipulihkan dengan pg_restore."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Backup yang belum pernah dicoba dipulihkan tetap dapat dianggap aman.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Hanya restore yang berhasil membuktikan backup bisa dipakai, jadi uji secara berkala."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "View pesanan ringkas",
+          "prompt": "Tulis `CREATE VIEW` di string `VIEW_SQL` untuk view bernama `pesanan_ringkas` dengan tiga kolom: `id` (id pesanan), `nama` (nama pelanggan), dan `total`.\n\nGabungkan tabel `pesanan` dan `pelanggan` dengan `JOIN`.",
+          "starter": {
+            "code": "# Buat view bernama pesanan_ringkas dengan kolom id (pesanan), nama\n# (pelanggan), dan total, hasil gabungan pesanan dan pelanggan.\nVIEW_SQL = \"\"\"\n-- TODO: CREATE VIEW pesanan_ringkas AS ...\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "VIEW_SQL = \"\"\"\nCREATE VIEW pesanan_ringkas AS\nSELECT p.id AS id, c.nama AS nama, p.total AS total\nFROM pesanan p\nJOIN pelanggan c ON c.id = p.pelanggan_id\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE pelanggan (id INTEGER PRIMARY KEY, nama TEXT);\nCREATE TABLE pesanan (id INTEGER PRIMARY KEY, pelanggan_id INTEGER, total INTEGER);\nINSERT INTO pelanggan VALUES (1, 'Ani'), (2, 'Budi');\nINSERT INTO pesanan VALUES (1, 1, 50000), (2, 1, 30000), (3, 2, 20000);\n\"\"\")\n\ndef lihat():\n    db.execute(\"DROP VIEW IF EXISTS pesanan_ringkas\")\n    db.execute(VIEW_SQL)\n    return db.execute(\"SELECT * FROM pesanan_ringkas ORDER BY id\").fetchall()\n",
+          "tests": [
+            {
+              "name": "View menghasilkan baris yang benar",
+              "check": "lihat() == [(1, 'Ani', 50000), (2, 'Ani', 30000), (3, 'Budi', 20000)]"
+            },
+            {
+              "name": "Kolom bernama id, nama, total",
+              "check": "(lihat(), [c[0] for c in db.execute('SELECT * FROM pesanan_ringkas').description])[1] == ['id', 'nama', 'total']"
+            },
+            {
+              "name": "View ikut berubah saat data berubah",
+              "check": "(lihat(), db.execute('INSERT INTO pesanan VALUES (9, 2, 1)'), len(db.execute('SELECT * FROM pesanan_ringkas').fetchall()))[2] == 4"
+            },
+            {
+              "name": "Memakai CREATE VIEW",
+              "check": "'CREATE VIEW' in VIEW_SQL.upper()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

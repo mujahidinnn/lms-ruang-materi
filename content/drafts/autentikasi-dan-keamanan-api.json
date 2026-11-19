@@ -1,0 +1,2225 @@
+{
+  "title": "Autentikasi & Keamanan API",
+  "description": "Amankan API Express: autentikasi dan otorisasi, hashing password, session dan JWT, middleware auth, role, BOLA, mass assignment, batas laju, CORS, validasi, dan rahasia. Ditutup dengan proyek API Catatan Aman.",
+  "summary": "Kelas ini mengajarkan cara mengamankan API Express dari awal sampai siap rilis. Kamu mulai dari perbedaan autentikasi dan otorisasi, kode status 401, 403, dan 404, lalu menyimpan password dengan hash lambat dan salt tanpa membocorkan informasi lewat pesan galat.\n\nBagian inti membahas cara membawa identitas: session yang disimpan di server dan token JWT yang ditandatangani, lengkap dengan kedaluwarsa dan refresh token. Kamu menulis middleware auth di Express, middleware perluRole untuk hak akses berbasis peran, dan pemeriksaan kepemilikan data untuk mencegah BOLA.\n\nBagian akhir menutup celah yang lazim di API: mass assignment, respons yang membocorkan data, tanpa batas laju, CORS yang terlalu terbuka, input yang tidak divalidasi, serta rahasia dan log yang bocor. Semua latihan dijalankan oleh tes otomatis, dan kelas ditutup dengan proyek API Catatan Aman yang menggabungkan login, token, peran, kepemilikan, dan validasi.",
+  "tips": [
+    "Latihan kelas ini memakai fungsi pengganti hash dan HMAC karena lingkungan latihan tidak punya library kripto. Di produksi, selalu pakai library teruji seperti bcrypt atau argon2 untuk password dan jsonwebtoken atau jose untuk JWT.",
+    "Setiap kali menulis route baru, tanyakan tiga hal: siapa yang boleh memanggilnya, data milik siapa yang disentuhnya, dan apa yang terjadi bila inputnya aneh.",
+    "Uji setiap route tanpa token dan dengan token pengguna lain. Tes dua akun menangkap celah kepemilikan data yang paling sering terjadi.",
+    "Jangan percaya klien: role, pemilik, dan field milik server selalu ditetapkan di server, bukan diambil dari body request.",
+    "Baca OWASP API Security Top 10 edisi terbaru dan telusuri API milikmu sendiri dengan daftar itu setelah menyelesaikan proyek akhir."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu autentikasi?",
+      "back": "Proses membuktikan identitas pemanggil, misalnya lewat login dengan email dan password."
+    },
+    {
+      "front": "Apa itu otorisasi?",
+      "back": "Keputusan tentang apa yang boleh dilakukan oleh identitas yang sudah terbukti."
+    },
+    {
+      "front": "Kapan API menjawab 401?",
+      "back": "Saat identitas pemanggil belum terbukti: token tidak ada, salah, atau kedaluwarsa."
+    },
+    {
+      "front": "Kapan API menjawab 403?",
+      "back": "Saat identitas sudah terbukti tetapi pemanggil tidak berhak melakukan aksi itu."
+    },
+    {
+      "front": "Mengapa kadang dipakai 404 untuk data orang lain?",
+      "back": "Agar keberadaan data itu tidak terkonfirmasi kepada pihak yang tidak berhak."
+    },
+    {
+      "front": "Apa itu least privilege?",
+      "back": "Prinsip memberi setiap pengguna dan layanan hanya hak sekecil yang dibutuhkan."
+    },
+    {
+      "front": "Apa itu defense in depth?",
+      "back": "Pengamanan berlapis sehingga satu lapisan yang bocor tidak langsung meruntuhkan seluruh sistem."
+    },
+    {
+      "front": "Mengapa password disimpan sebagai hash?",
+      "back": "Agar kebocoran database tidak langsung membuka password asli semua akun."
+    },
+    {
+      "front": "Apa fungsi salt?",
+      "back": "String acak unik per pengguna yang membuat password sama menghasilkan hash berbeda."
+    },
+    {
+      "front": "Algoritma apa yang cocok untuk hash password?",
+      "back": "bcrypt, scrypt, atau argon2: sengaja lambat dan mahal bagi penyerang."
+    },
+    {
+      "front": "Apa itu user enumeration?",
+      "back": "Penyerang mengetahui email mana yang terdaftar dari perbedaan pesan galat login."
+    },
+    {
+      "front": "Mengapa perbandingan hash waktu-konstan?",
+      "back": "Agar waktu respons tidak membocorkan seberapa banyak karakter awal yang cocok."
+    },
+    {
+      "front": "Apa beda session dan token?",
+      "back": "Session disimpan di server dan klien membawa ID; token berisi bukti yang diperiksa tanpa ingatan server."
+    },
+    {
+      "front": "Apa yang dilakukan atribut cookie HttpOnly?",
+      "back": "Membuat JavaScript di halaman tidak bisa membaca cookie."
+    },
+    {
+      "front": "Apa itu CSRF?",
+      "back": "Situs lain memicu request atas nama pengguna karena browser menyertakan cookie secara otomatis."
+    },
+    {
+      "front": "Apa tiga bagian JWT?",
+      "back": "Header, payload, dan signature, dipisah titik."
+    },
+    {
+      "front": "Apakah payload JWT terenkripsi?",
+      "back": "Tidak. Hanya di-encode base64url sehingga bisa dibaca siapa saja yang memegang token."
+    },
+    {
+      "front": "Apa yang dijamin oleh signature JWT?",
+      "back": "Keutuhan dan keaslian isi token, bukan kerahasiaannya."
+    },
+    {
+      "front": "Apa arti klaim sub, iat, dan exp?",
+      "back": "Pemilik token, waktu pembuatan, dan waktu kedaluwarsa."
+    },
+    {
+      "front": "Mengapa access token berumur pendek?",
+      "back": "Token sulit dicabut, jadi umur pendek membatasi kerugian bila token bocor."
+    },
+    {
+      "front": "Untuk apa refresh token?",
+      "back": "Menukar access token baru tanpa login ulang; disimpan di server sehingga bisa dicabut."
+    },
+    {
+      "front": "Apa fungsi next() di middleware Express?",
+      "back": "Meneruskan request ke handler atau middleware berikutnya."
+    },
+    {
+      "front": "Apa itu BOLA?",
+      "back": "Mengakses objek milik orang lain karena server tidak memeriksa pemilik objek itu."
+    },
+    {
+      "front": "Apa itu mass assignment?",
+      "back": "Menyalin seluruh body request ke objek sehingga klien bisa mengatur field seperti role."
+    },
+    {
+      "front": "Kode status untuk batas laju terlewati?",
+      "back": "429 Too Many Requests."
+    },
+    {
+      "front": "Apakah CORS melindungi server dari permintaan?",
+      "back": "Tidak. Ini aturan browser; curl dan Postman tidak terpengaruh, jadi autentikasi tetap wajib."
+    },
+    {
+      "front": "Mengapa validasi harus di server?",
+      "back": "Penyerang memanggil API langsung tanpa melewati formulir di klien."
+    },
+    {
+      "front": "Apa yang dilakukan bila rahasia bocor?",
+      "back": "Rotasi rahasia di layanan asalnya, periksa log, lalu bersihkan riwayat bila perlu."
+    },
+    {
+      "front": "Data apa yang tidak boleh masuk log?",
+      "back": "Password, token, dan header Authorization."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam urutan pemeriksaan sebuah request ke API, apa yang dilakukan lebih dulu?",
+      "code": "",
+      "options": [
+        "Otorisasi, baru autentikasi",
+        "Validasi CORS, baru hashing password",
+        "Rate limiting, baru pembuatan token",
+        "Autentikasi, baru otorisasi"
+      ],
+      "answer": 3,
+      "explanation": "Server harus tahu siapa pemanggilnya sebelum memutuskan apa yang boleh ia lakukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Seorang pengguna sudah login tetapi mencoba membuka halaman khusus admin. Respons yang tepat adalah",
+      "code": "",
+      "options": [
+        "401 Unauthorized",
+        "403 Forbidden",
+        "301 Moved Permanently",
+        "204 No Content"
+      ],
+      "answer": 1,
+      "explanation": "Identitas terbukti, tetapi hak aksesnya tidak mencukupi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa SHA-256 polos kurang baik untuk menyimpan password?",
+      "code": "",
+      "options": [
+        "Terlalu cepat dihitung sehingga mudah ditebak berjuta kali",
+        "Hasilnya terlalu panjang untuk disimpan",
+        "Tidak bisa dihitung ulang saat login",
+        "Hanya bekerja untuk password berupa angka"
+      ],
+      "answer": 0,
+      "explanation": "Kecepatan hash membantu penyerang yang menebak jutaan kandidat per detik."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dua pengguna dengan password sama harus menghasilkan hash yang berbeda bila salt dipakai dengan benar.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Salt unik per pengguna membuat hasil hash berbeda meskipun password sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian JWT mana yang membuktikan isinya tidak diubah?",
+      "code": "",
+      "options": [
+        "Header yang memuat algoritma serta jenis token",
+        "Signature",
+        "Payload",
+        "Klaim iat"
+      ],
+      "answer": 1,
+      "explanation": "Signature dihitung dari header dan payload dengan kunci rahasia."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klaim exp pada JWT berarti",
+      "code": "",
+      "options": [
+        "Waktu ketika token pertama kali diterbitkan oleh server",
+        "Nama pemilik token",
+        "Waktu ketika token berakhir",
+        "Algoritma tanda tangan"
+      ],
+      "answer": 2,
+      "explanation": "exp (expiration) menentukan kapan token tidak lagi diterima."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Payload JWT aman untuk menyimpan nomor kartu kredit karena token ditandatangani.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tanda tangan menjaga keutuhan, bukan kerahasiaan; payload bisa dibaca siapa saja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pasangan access token dan refresh token dipakai agar",
+      "code": "",
+      "options": [
+        "Pengguna tidak sering login ulang sementara token akses tetap berumur pendek",
+        "Server tidak perlu menyimpan apa pun sama sekali tentang pengguna yang sedang login",
+        "Token tidak pernah bisa dicabut",
+        "Password tidak perlu di-hash"
+      ],
+      "answer": 0,
+      "explanation": "Refresh token yang berumur panjang menukar access token baru, dan refresh bisa dicabut di server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada middleware Express, apa fungsi next()?",
+      "code": "",
+      "options": [
+        "Mengirim respons ke klien",
+        "Meneruskan request ke handler atau middleware berikutnya",
+        "Menutup koneksi server",
+        "Mengulang middleware yang sama"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa memanggil next(), rangkaian berhenti di middleware itu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Route privat sebaiknya dipasang seperti apa?",
+      "code": "",
+      "options": [
+        "app.get(path, auth, handler)",
+        "app.get(handler, path, auth) dengan auth di posisi terakhir",
+        "app.auth(path, handler)",
+        "app.get(path).auth(handler)"
+      ],
+      "answer": 0,
+      "explanation": "Middleware ditulis sebelum handler akhir pada daftar argumen route."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara mencegah BOLA pada route /catatan/:id adalah",
+      "code": "",
+      "options": [
+        "Mengacak nomor id catatan",
+        "Menyembunyikan route dari dokumentasi",
+        "Membatasi panjang id menjadi tiga digit",
+        "Memeriksa pemilik catatan sama dengan pengguna yang login"
+      ],
+      "answer": 3,
+      "explanation": "Hanya pemeriksaan kepemilikan di server yang menutup celahnya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Role pengguna sebaiknya dibaca dari body request supaya klien bisa memilih perannya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Role harus berasal dari data tepercaya di server, bukan dari input klien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Respons API pendaftaran sebaiknya",
+      "code": "",
+      "options": [
+        "Mengembalikan seluruh objek termasuk hash password",
+        "Mengembalikan seluruh isi body yang dikirim",
+        "Dikosongkan sama sekali agar aman",
+        "Hanya berisi field yang memang dibutuhkan klien"
+      ],
+      "answer": 3,
+      "explanation": "Membentuk respons secara eksplisit mencegah kebocoran field internal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dengan allowlist origin pada CORS, origin yang tidak ada di daftar akan",
+      "code": "",
+      "options": [
+        "Tetap diizinkan dengan header bintang karena browser memperbolehkannya secara bawaan",
+        "Otomatis diblokir oleh server lewat status 401",
+        "Tidak menerima header CORS sehingga browser memblokir pembacaan respons",
+        "Diizinkan hanya untuk metode GET"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa header izin, browser tidak mengizinkan skrip lintas asal membaca respons."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kebiasaan mana yang benar untuk rahasia seperti JWT_SECRET?",
+      "code": "",
+      "options": [
+        "Simpan di environment dan beri nilai berbeda untuk tiap lingkungan",
+        "Tulis langsung di kode agar mudah diganti kapan saja oleh seluruh anggota tim",
+        "Gunakan satu nilai yang sama di development dan produksi",
+        "Cetak ke log saat server mulai agar mudah dicek"
+      ],
+      "answer": 0,
+      "explanation": "Memisahkan rahasia per lingkungan membatasi dampak bila salah satunya bocor."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perbedaan paling tepat antara autentikasi dan otorisasi adalah",
+      "code": "",
+      "options": [
+        "Autentikasi membuktikan identitas, otorisasi menentukan hak akses",
+        "Autentikasi menentukan hak akses, otorisasi membuktikan identitas pengguna di server",
+        "Keduanya sama, hanya beda istilah di bahasa pemrograman",
+        "Autentikasi hanya untuk admin, otorisasi untuk pengguna biasa"
+      ],
+      "answer": 0,
+      "explanation": "Dua pertanyaan berbeda: siapa kamu, lalu boleh apa kamu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Token tidak ada di request ke route yang butuh login. Status yang benar adalah",
+      "code": "",
+      "options": [
+        "403",
+        "401",
+        "404",
+        "418"
+      ],
+      "answer": 1,
+      "explanation": "Identitas belum terbukti sehingga jawabannya 401."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Identitas sah tetapi aksi dilarang. Status yang benar adalah",
+      "code": "",
+      "options": [
+        "401",
+        "502",
+        "403",
+        "100"
+      ],
+      "answer": 2,
+      "explanation": "403 menandakan server paham siapa pemanggil tetapi menolak aksinya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prinsip least privilege berarti",
+      "code": "",
+      "options": [
+        "Semua pengguna diberi hak admin agar mudah",
+        "Hak diberikan sesuai urutan pendaftaran",
+        "Hak hanya diberikan kepada pengguna premium",
+        "Setiap pengguna dan layanan hanya diberi hak sekecil yang dibutuhkan"
+      ],
+      "answer": 3,
+      "explanation": "Hak minimal membatasi kerusakan bila sebuah akun dicuri."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Defense in depth berarti memakai beberapa lapisan pengamanan sehingga satu lapisan yang bocor tidak langsung meruntuhkan sistem.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pengamanan berlapis adalah prinsip dasar, tidak ada kontrol tunggal yang cukup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa pemeriksaan hak akses harus dilakukan di server?",
+      "code": "",
+      "options": [
+        "Siapa pun bisa memanggil endpoint langsung tanpa melewati antarmuka",
+        "Karena server lebih cepat dari browser",
+        "Karena antarmuka tidak bisa menampilkan pesan galat",
+        "Karena browser tidak mendukung pemeriksaan role"
+      ],
+      "answer": 0,
+      "explanation": "Antarmuka hanya kenyamanan; klien tidak bisa dipercaya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Serangan manakah yang berupa mencoba daftar password umum pada satu akun?",
+      "code": "",
+      "options": [
+        "Mass assignment pada formulir pendaftaran pengguna baru",
+        "CSRF",
+        "Brute force atau tebak password",
+        "Preflight"
+      ],
+      "answer": 2,
+      "explanation": "Penyerang menebak banyak kandidat password; pertahanannya hash lambat dan batas percobaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa password tidak disimpan polos?",
+      "code": "",
+      "options": [
+        "Karena database tidak bisa menyimpan teks yang panjang untuk waktu lama",
+        "Karena teks polos memperlambat login",
+        "Karena teks polos tidak bisa dibandingkan",
+        "Satu kebocoran database langsung membuka semua akun"
+      ],
+      "answer": 3,
+      "explanation": "Hash menjaga password asli tetap tidak terbaca walau database bocor."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Salt harus dirahasiakan sama ketatnya dengan kunci JWT.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Salt boleh terlihat dan disimpan bersama hash; tugasnya hanya membuat hash unik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada format salt$hash, apa yang dilakukan saat login?",
+      "code": "",
+      "options": [
+        "Dekripsi hash menjadi password lalu bandingkan teksnya",
+        "Hash salt saja lalu bandingkan dengan password",
+        "Cocokkan password dengan salt secara langsung",
+        "Ambil salt, hitung ulang hash dari salt dan password, lalu bandingkan"
+      ],
+      "answer": 3,
+      "explanation": "Hash satu arah, jadi yang dicocokkan adalah hasil hitung ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Algoritma password hashing yang menuntut banyak memori sehingga mahal dilawan dengan GPU adalah",
+      "code": "",
+      "options": [
+        "CRC32 yang biasa dipakai memeriksa berkas",
+        "Base64",
+        "scrypt",
+        "ROT13"
+      ],
+      "answer": 2,
+      "explanation": "scrypt dirancang memory-hard selain lambat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manfaat menaikkan parameter biaya pada bcrypt seiring waktu adalah",
+      "code": "",
+      "options": [
+        "Memperkecil ukuran hash sehingga database menghemat ruang penyimpanan dalam jumlah besar",
+        "Perangkat keras makin cepat sehingga biaya perlu naik agar tebakan tetap mahal",
+        "Membuat password menjadi lebih pendek",
+        "Menghilangkan kebutuhan salt"
+      ],
+      "answer": 1,
+      "explanation": "Biaya yang cukup hari ini bisa terlalu murah di masa depan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Aturan wajib huruf besar, angka, dan simbol lebih efektif daripada panjang minimal.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Panduan modern mengutamakan panjang minimal; aturan simbol mendorong pola mudah ditebak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Login gagal sebaiknya menjawab",
+      "code": "",
+      "options": [
+        "Pesan berbeda agar pengguna tahu bagian mana yang salah dan cepat memperbaikinya",
+        "Pesan berisi hash password yang tersimpan",
+        "Status 200 dengan isi kosong",
+        "Satu pesan yang sama untuk email salah maupun password salah"
+      ],
+      "answer": 3,
+      "explanation": "Pesan yang sama mencegah user enumeration."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa perbandingan hash sebaiknya waktu-konstan?",
+      "code": "",
+      "options": [
+        "Agar waktu respons tidak membocorkan seberapa banyak karakter awal yang cocok",
+        "Agar perbandingan berjalan lebih cepat daripada operator biasa pada semua panjang string",
+        "Agar hash bisa dibalik",
+        "Agar salt tidak perlu disimpan"
+      ],
+      "answer": 0,
+      "explanation": "Operator === berhenti di karakter pertama yang berbeda sehingga waktunya bergantung pada data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "CSRF adalah serangan di mana",
+      "code": "",
+      "options": [
+        "Penyerang menebak password dengan banyak percobaan berturut-turut pada akun milik korban",
+        "Situs lain memicu request atas nama pengguna karena browser menyertakan cookie otomatis",
+        "Penyerang mengirim field tambahan ke body request",
+        "Server kehabisan memori karena request besar"
+      ],
+      "answer": 1,
+      "explanation": "SameSite dan token anti-CSRF membantu mencegahnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Session ID di produksi harus",
+      "code": "",
+      "options": [
+        "Berurutan agar mudah dilacak",
+        "Acak dan sulit ditebak",
+        "Sama dengan ID pengguna",
+        "Berisi email pengguna"
+      ],
+      "answer": 1,
+      "explanation": "ID yang bisa ditebak memungkinkan penyerang menyamar sebagai pengguna lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kelemahan khas token murni dibanding session adalah",
+      "code": "",
+      "options": [
+        "Wajib disimpan di database untuk setiap request yang masuk",
+        "Tidak bisa dipakai oleh aplikasi mobile",
+        "Tidak bisa memuat identitas pengguna",
+        "Sulit dicabut sebelum waktu kedaluwarsa"
+      ],
+      "answer": 3,
+      "explanation": "Server tidak menyimpan catatan yang bisa dihapus."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada autentikasi session, logout dilakukan dengan menghapus catatan session di server.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Setelah catatan dihapus, session ID lama langsung tidak berlaku."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk aplikasi web kecil dengan satu server, pilihan yang sering paling sederhana adalah",
+      "code": "",
+      "options": [
+        "JWT tanpa kedaluwarsa",
+        "Password dikirim tiap request",
+        "Session dengan cookie HttpOnly",
+        "Token yang disimpan di URL"
+      ],
+      "answer": 2,
+      "explanation": "Session mudah dicabut dan tidak butuh penyimpanan bersama bila server hanya satu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Token yang disimpan di localStorage paling rentan terhadap",
+      "code": "",
+      "options": [
+        "CSRF otomatis dari cookie",
+        "Serangan brute force pada hash",
+        "Salah ketik pada header Content-Type",
+        "XSS yang membaca token dari halaman"
+      ],
+      "answer": 3,
+      "explanation": "Skrip yang berjalan di halaman bisa membaca localStorage."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Node.js, cara membuat session ID acak yang aman adalah",
+      "code": "",
+      "options": [
+        "Math.random() lalu diubah menjadi teks",
+        "crypto.randomUUID() atau crypto.randomBytes",
+        "Date.now() yang ditambah nomor urut",
+        "Penghitung yang bertambah satu setiap login"
+      ],
+      "answer": 1,
+      "explanation": "Math.random dan penghitung bisa ditebak; gunakan generator kriptografis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klaim sub pada JWT lazimnya berisi",
+      "code": "",
+      "options": [
+        "Waktu token dibuat dalam hitungan detik sejak tahun 1970",
+        "Kunci rahasia penandatangan token",
+        "Identitas pemilik token, biasanya ID pengguna",
+        "Algoritma tanda tangan yang dipakai"
+      ],
+      "answer": 2,
+      "explanation": "sub (subject) menunjuk pemilik token."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Mendekode payload JWT sudah membuktikan isinya asli.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Hanya verifikasi tanda tangan yang membuktikan keaslian; dekode bisa dilakukan siapa saja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan verifikasi token yang benar adalah",
+      "code": "",
+      "options": [
+        "exp, tanda tangan, baru format",
+        "Format, tanda tangan, baru isi dan exp",
+        "Isi payload, lalu tanda tangan, lalu format",
+        "Tanda tangan saja tanpa memeriksa exp"
+      ],
+      "answer": 1,
+      "explanation": "Jangan memercayai payload sebelum signature terbukti sah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bahaya menerima algoritma none pada JWT adalah",
+      "code": "",
+      "options": [
+        "Token tanpa tanda tangan bisa dianggap sah",
+        "Token menjadi terlalu panjang untuk dikirim lewat header",
+        "Token tidak bisa didekode oleh klien",
+        "Server menjadi lebih lambat memeriksa tiap permintaan"
+      ],
+      "answer": 0,
+      "explanation": "Server harus menentukan sendiri algoritma yang diterima."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci HS256 yang baik adalah",
+      "code": "",
+      "options": [
+        "Kata sederhana yang mudah diingat seperti rahasia atau password",
+        "Nama aplikasi",
+        "Acak, panjang minimal 32 karakter, dan berasal dari environment",
+        "Tanggal rilis aplikasi"
+      ],
+      "answer": 2,
+      "explanation": "Kunci pendek atau mudah ditebak bisa ditemukan penyerang lewat tebakan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Refresh token yang dirotasi berarti",
+      "code": "",
+      "options": [
+        "Refresh token tidak pernah kedaluwarsa",
+        "Refresh token dibagikan ke semua klien",
+        "Refresh token diganti hanya saat pengguna lupa password",
+        "Setiap dipakai diterbitkan yang baru dan yang lama dimatikan"
+      ],
+      "answer": 3,
+      "explanation": "Pemakaian token lama yang muncul lagi menandakan salinan, sehingga rantai bisa dicabut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa return dibutuhkan sebelum res.status(401).json(...) di dalam middleware?",
+      "code": "",
+      "options": [
+        "Agar status HTTP otomatis berubah menjadi 200 setelah ditulis",
+        "Agar next() di bawahnya tidak ikut terpanggil",
+        "Agar respons dikirim dua kali",
+        "Agar token otomatis diperbarui"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa return, kode berlanjut dan request yang ditolak malah diteruskan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "req.user boleh diisi dari nilai yang dikirim klien di body selama formatnya benar.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "req.user hanya boleh diisi dari hasil verifikasi token atau session di server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara mengurangi risiko lupa memasang auth pada route baru adalah",
+      "code": "",
+      "options": [
+        "Menulis auth hanya di route yang dianggap penting oleh tim pengembang saja",
+        "Menghapus semua route publik",
+        "Pasang app.use(auth) setelah route publik sehingga route di bawahnya otomatis terlindungi",
+        "Mengandalkan nama route yang panjang"
+      ],
+      "answer": 2,
+      "explanation": "Pola ini membuat route baru terlindungi secara bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pemeriksaan skema Bearer di middleware bertujuan",
+      "code": "",
+      "options": [
+        "Menolak header yang bukan format Bearer sebelum mencari token",
+        "Mengenkripsi token sebelum dikirim kembali ke klien pada setiap request",
+        "Mempercepat query database",
+        "Mengubah token menjadi session"
+      ],
+      "answer": 0,
+      "explanation": "Skema lain seperti Basic tidak boleh diterima sebagai token."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa stack trace tidak boleh dikirim ke klien?",
+      "code": "",
+      "options": [
+        "Karena ukurannya terlalu besar untuk dikirim sebagai JSON ke klien",
+        "Memuat detail internal yang berguna bagi penyerang",
+        "Karena klien tidak bisa membaca teks",
+        "Karena Express melarangnya"
+      ],
+      "answer": 1,
+      "explanation": "Detail galat milik log server; klien cukup menerima pesan umum."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Respons yang tepat untuk token kedaluwarsa pada middleware auth adalah",
+      "code": "",
+      "options": [
+        "403 karena nilai exp melebihi batas yang diizinkan",
+        "404 karena token tidak ada",
+        "401 karena identitas tidak lagi terbukti",
+        "200 dengan peringatan"
+      ],
+      "answer": 2,
+      "explanation": "Token kedaluwarsa diperlakukan sama seperti tidak ada bukti identitas yang sah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Middleware perluRole('admin') mengembalikan 403 bila",
+      "code": "",
+      "options": [
+        "Token tidak ada",
+        "Body request kosong",
+        "Route tidak ditemukan",
+        "req.user.role bukan admin"
+      ],
+      "answer": 3,
+      "explanation": "Autentikasi sudah lewat; yang gagal adalah hak aksesnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa auth harus dipasang sebelum perluRole pada sebuah route?",
+      "code": "",
+      "options": [
+        "Agar req.user sudah terisi saat role diperiksa",
+        "Agar route menjadi lebih cepat dibuka oleh pengguna biasa",
+        "Agar role otomatis berubah",
+        "Agar token tidak kedaluwarsa"
+      ],
+      "answer": 0,
+      "explanation": "perluRole membaca req.user yang diisi oleh auth."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa memakai 404 untuk catatan milik orang lain?",
+      "code": "",
+      "options": [
+        "Agar server lebih cepat merespons karena tidak perlu memeriksa pemilik data",
+        "Agar klien otomatis mengulang request",
+        "Agar data terhapus",
+        "Agar keberadaan data tidak terkonfirmasi kepada penyerang"
+      ],
+      "answer": 3,
+      "explanation": "Jawaban yang sama untuk data tidak ada dan data milik orang lain tidak membocorkan keberadaan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Admin sebaiknya dibuat tahu semua rahasia dengan if (req.user.id === 1) yang tersebar di banyak route.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Aturan akses sebaiknya dikumpulkan di satu fungsi yang eksplisit dan mudah diuji."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara efektif menguji BOLA adalah",
+      "code": "",
+      "options": [
+        "Menguji hanya dengan akun admin",
+        "Menguji hanya route yang tanpa parameter",
+        "Memakai dua akun biasa lalu mencoba mengakses data akun lain",
+        "Menghapus semua data lalu mencoba lagi"
+      ],
+      "answer": 2,
+      "explanation": "Tes dua akun menangkap celah kepemilikan yang paling umum."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila role disimpan di dalam token, perubahan role pengguna",
+      "code": "",
+      "options": [
+        "Berlaku seketika di semua token lama yang sudah beredar di klien",
+        "Baru berlaku setelah token berikutnya diterbitkan",
+        "Tidak pernah berlaku",
+        "Hanya berlaku di browser yang sama"
+      ],
+      "answer": 1,
+      "explanation": "Token lama tetap membawa klaim lama sampai kedaluwarsa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "OWASP API Security Top 10 digunakan sebagai",
+      "code": "",
+      "options": [
+        "Daftar periksa risiko saat meninjau sebuah API",
+        "Standar enkripsi resmi yang wajib dipasang pada setiap server produksi",
+        "Library untuk membuat token",
+        "Protokol komunikasi antarserver"
+      ],
+      "answer": 0,
+      "explanation": "Daftar ini alat bantu tinjauan, bukan sebuah produk."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di produksi dengan banyak server, hitungan pembatas laju sebaiknya disimpan di penyimpanan bersama seperti Redis.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Hitungan di memori satu server tidak terlihat oleh server lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebuah route login diserang tebak password. Perlindungan paling relevan adalah",
+      "code": "",
+      "options": [
+        "Menaikkan ukuran font halaman login",
+        "Pembatasan laju yang ketat pada login",
+        "Menyembunyikan tombol login",
+        "Menambah warna pada formulir"
+      ],
+      "answer": 1,
+      "explanation": "Batas percobaan memperlambat tebakan massal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Preflight CORS adalah",
+      "code": "",
+      "options": [
+        "Request untuk memperbarui token",
+        "Percobaan login pertama",
+        "Perintah untuk membersihkan cache",
+        "Request OPTIONS yang dikirim browser sebelum request berisiko"
+      ],
+      "answer": 3,
+      "explanation": "Browser menanyakan izin lebih dulu untuk metode atau header tertentu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Header Vary: Origin berguna agar",
+      "code": "",
+      "options": [
+        "Server menerima lebih banyak koneksi dari berbagai origin sekaligus dalam satu waktu",
+        "Token otomatis diperbarui",
+        "CORS menjadi tidak aktif",
+        "Cache tidak menyajikan respons satu origin kepada origin lain"
+      ],
+      "answer": 3,
+      "explanation": "Respons bergantung pada origin, jadi cache harus membedakannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa memeriksa typeof judul !== 'string' saat validasi?",
+      "code": "",
+      "options": [
+        "Klien bisa mengirim objek atau angka sehingga perilaku kode menjadi tak terduga",
+        "Karena format JSON hanya mendukung tipe string sehingga angka selalu diubah otomatis",
+        "Karena Express mengubah semua nilai menjadi angka",
+        "Karena trim() hanya ada di angka"
+      ],
+      "answer": 0,
+      "explanation": "Tipe data dari luar tidak boleh diasumsikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara mencegah SQL injection adalah",
+      "code": "",
+      "options": [
+        "Menyaring kata SELECT dari input",
+        "Menyembunyikan nama tabel",
+        "Memakai query berparameter atau ORM",
+        "Menambah panjang password"
+      ],
+      "answer": 2,
+      "explanation": "Parameter memisahkan data dari perintah SQL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tujuan membatasi ukuran body request adalah",
+      "code": "",
+      "options": [
+        "Mempercepat preflight CORS pada setiap permintaan lintas origin yang masuk ke server",
+        "Mencegah klien mengirim data berukuran sangat besar yang membebani server",
+        "Mengenkripsi body",
+        "Mengubah format JSON menjadi XML"
+      ],
+      "answer": 1,
+      "explanation": "Batas ukuran adalah bagian dari pembatasan sumber daya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File .env sebaiknya",
+      "code": "",
+      "options": [
+        "Diunggah ke repositori agar seluruh anggota tim mudah mengaksesnya kapan saja",
+        "Dikirim lewat chat umum",
+        "Dicetak di halaman beranda",
+        "Masuk .gitignore dan tidak pernah diunggah ke repositori"
+      ],
+      "answer": 3,
+      "explanation": "Berkas ini berisi rahasia yang tidak boleh masuk riwayat Git."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prinsip gagal cepat pada konfigurasi berarti",
+      "code": "",
+      "options": [
+        "Aplikasi menolak berjalan bila konfigurasi penting hilang atau lemah",
+        "Aplikasi memakai nilai bawaan untuk semua rahasia",
+        "Aplikasi mengabaikan galat saat mulai",
+        "Aplikasi menampilkan rahasia di konsol"
+      ],
+      "answer": 0,
+      "explanation": "Lebih baik berhenti daripada berjalan dengan konfigurasi tidak aman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah rahasia bocor di repositori publik, langkah yang benar adalah",
+      "code": "",
+      "options": [
+        "Menghapus commit dan berkasnya saja lalu menganggap masalah selesai sepenuhnya",
+        "Rotasi rahasia, periksa log, lalu bersihkan riwayat bila perlu",
+        "Mengganti nama repositori",
+        "Memperpendek rahasia agar tidak terbaca"
+      ],
+      "answer": 1,
+      "explanation": "Rotasi lebih dulu karena rahasia lama bisa sudah tersalin."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Data yang boleh dicatat di log adalah",
+      "code": "",
+      "options": [
+        "Password pengguna agar mudah debugging",
+        "Seluruh header Authorization",
+        "Kejadian seperti login gagal dan akses ditolak tanpa password atau token",
+        "Isi lengkap body login"
+      ],
+      "answer": 2,
+      "explanation": "Log berguna untuk deteksi, tetapi tidak boleh memuat rahasia."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi sensor yang menyalin objek dan mengganti nilai field sensitif dengan *** aman dipakai sebelum mencatat objek ke log.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Objek asli tidak berubah dan field sensitif tidak ikut masuk log."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Daftar periksa sebelum rilis API mencakup",
+      "code": "",
+      "options": [
+        "Hanya warna tema aplikasi dan jumlah halaman yang tersedia di dalam situs",
+        "Hanya jumlah route yang dibuat",
+        "HTTPS, password di-hash lambat, token berumur pendek, cek kepemilikan, validasi, dan rahasia di environment",
+        "Hanya nama domain yang dipilih"
+      ],
+      "answer": 2,
+      "explanation": "Daftar itu merangkum kontrol utama yang dibahas sepanjang kelas ini."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Dari kode berikut, apa yang terjadi jika header Authorization tidak ada?",
+      "code": "function auth(req, res, next) {\n  const h = req.headers.authorization || \"\";\n  const user = cari(h.replace(\"Bearer \", \"\"));\n  if (!user) return res.status(401).json({ error: \"Belum login\" });\n  req.user = user;\n  next();\n}",
+      "options": [
+        "Server menjawab 403 lalu tetap meneruskan permintaan ke handler berikutnya",
+        "Server menjawab 401 dan tidak memanggil next()",
+        "Server memanggil next() tanpa req.user",
+        "Server melempar galat tidak tertangani"
+      ],
+      "answer": 1,
+      "explanation": "Pada kode ini header kosong membuat user null sehingga 401 dikirim dengan return."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa bahaya pada kode berikut?",
+      "code": "app.post(\"/daftar\", (req, res) => {\n  const baru = { id: 1, ...req.body };\n  pengguna.push(baru);\n  res.status(201).json(baru);\n});",
+      "options": [
+        "Mass assignment: klien bisa mengirim role atau field lain",
+        "SQL injection pada kolom email yang dirangkai langsung ke dalam kueri database",
+        "Token tidak kedaluwarsa",
+        "CORS terlalu terbuka"
+      ],
+      "answer": 0,
+      "explanation": "Spread req.body menyalin semua field dari klien ke objek pengguna."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa masalah keamanan pada route berikut?",
+      "code": "app.get(\"/catatan/:id\", auth, (req, res) => {\n  const c = catatan.find((x) => x.id === Number(req.params.id));\n  res.json(c);\n});",
+      "options": [
+        "Tidak ada validasi panjang judul sehingga teks sangat panjang bisa lolos masuk",
+        "BOLA: tidak ada pemeriksaan pemilik catatan",
+        "Token tidak diperiksa sama sekali",
+        "Respons tidak memakai JSON"
+      ],
+      "answer": 1,
+      "explanation": "Route hanya memeriksa login, bukan kepemilikan catatan yang diminta."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dihasilkan fungsi berikut untuk origin yang tidak ada di daftar?",
+      "code": "function corsHeaders(origin, izin) {\n  if (!origin || !izin.includes(origin)) return {};\n  return { \"Access-Control-Allow-Origin\": origin, Vary: \"Origin\" };\n}",
+      "options": [
+        "Objek kosong sehingga tidak ada header CORS",
+        "Access-Control-Allow-Origin dengan nilai bintang",
+        "Galat yang dilempar",
+        "Header Vary saja"
+      ],
+      "answer": 0,
+      "explanation": "Origin yang tidak diizinkan tidak menerima header izin apa pun."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa kelemahan kode berikut?",
+      "code": "const SECRET = \"rahasia123\";\nconst token = buatToken(user, SECRET);",
+      "options": [
+        "Token tidak memakai exp",
+        "Algoritma hash terlalu lambat",
+        "Rahasia tertulis di kode sumber",
+        "Route tidak memakai auth"
+      ],
+      "answer": 2,
+      "explanation": "Rahasia harus berasal dari environment, bukan tertanam di kode."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pesan galat validasi sebaiknya menyebut field mana yang salah dan aturannya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pesan yang jelas membantu pengembang klien memperbaiki request tanpa menebak."
+    }
+  ],
+  "prerequisites": [
+    "expressjs"
+  ],
+  "project": {
+    "kind": "express",
+    "title": "API Catatan Aman",
+    "prompt": "Lengkapi API catatan yang aman: login, autentikasi, peran, kepemilikan, dan validasi. Fungsi pembantu sudah tersedia di setup: `buatToken(user)`, `verifikasi(token)` (mengembalikan payload atau `null`), `hash(teks)`, serta data `USERS` dan `catatan`.",
+    "starter": {
+      "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\n// Disediakan: buatToken(user), verifikasi(token) -> payload atau null,\n// hash(teks), USERS, catatan.\n\nfunction auth(req, res, next) {\n  // TODO: baca Bearer token, verifikasi, isi req.user = { id, role } atau 401\n  next();\n}\n\nfunction perluRole(role) {\n  return (req, res, next) => {\n    // TODO: 403 bila role tidak cocok\n    next();\n  };\n}\n\napp.post(\"/login\", (req, res) => {\n  // TODO: cocokkan email dan hash, balas { token } atau 401 dengan pesan yang sama\n  res.json({});\n});\n\napp.get(\"/catatan\", auth, (req, res) => {\n  // TODO: hanya catatan milik pengguna\n  res.json(catatan);\n});\n\napp.get(\"/catatan/:id\", auth, (req, res) => {\n  // TODO: 404 bila tidak ada atau bukan milik pengguna\n  res.json(catatan.find((c) => c.id === Number(req.params.id)));\n});\n\napp.post(\"/catatan\", auth, (req, res) => {\n  // TODO: validasi judul dan isi, pemilik dari token, balas 201\n  res.status(201).json(req.body);\n});\n\napp.delete(\"/catatan/:id\", auth, (req, res) => {\n  // TODO: pemilik atau admin boleh menghapus, selain itu 404\n  res.json({ dihapus: Number(req.params.id) });\n});\n\napp.get(\"/admin/pengguna\", auth, (req, res) => {\n  // TODO: hanya admin, tanpa field hash\n  res.json(USERS);\n});\n"
+    },
+    "solution": {
+      "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction auth(req, res, next) {\n  const [skema, token] = (req.headers.authorization || \"\").split(\" \");\n  const payload = skema === \"Bearer\" ? verifikasi(token) : null;\n  if (!payload) return res.status(401).json({ error: \"Belum login\" });\n  req.user = { id: payload.sub, role: payload.role };\n  next();\n}\n\nfunction perluRole(role) {\n  return (req, res, next) => {\n    if (req.user.role !== role) return res.status(403).json({ error: \"Dilarang\" });\n    next();\n  };\n}\n\napp.post(\"/login\", (req, res) => {\n  const { email, password } = req.body;\n  const user = USERS.find((u) => u.email === email);\n  if (!user || user.hash !== hash(password || \"\")) {\n    return res.status(401).json({ error: \"Email atau password salah\" });\n  }\n  res.json({ token: buatToken(user) });\n});\n\napp.get(\"/catatan\", auth, (req, res) => {\n  res.json(catatan.filter((c) => c.pemilik === req.user.id));\n});\n\napp.get(\"/catatan/:id\", auth, (req, res) => {\n  const c = catatan.find((x) => x.id === Number(req.params.id));\n  if (!c || c.pemilik !== req.user.id) return res.status(404).json({ error: \"Tidak ada\" });\n  res.json(c);\n});\n\napp.post(\"/catatan\", auth, (req, res) => {\n  const { judul, isi } = req.body;\n  const errors = [];\n  if (typeof judul !== \"string\" || judul.trim().length < 1 || judul.trim().length > 100) {\n    errors.push(\"judul harus teks 1 sampai 100 karakter\");\n  }\n  if (typeof isi !== \"string\") errors.push(\"isi harus berupa teks\");\n  if (errors.length) return res.status(400).json({ errors });\n  const baru = { id: catatan.length + 1, pemilik: req.user.id, judul: judul.trim(), isi };\n  catatan.push(baru);\n  res.status(201).json(baru);\n});\n\napp.delete(\"/catatan/:id\", auth, (req, res) => {\n  const i = catatan.findIndex((c) => c.id === Number(req.params.id));\n  const c = catatan[i];\n  if (!c || (c.pemilik !== req.user.id && req.user.role !== \"admin\")) {\n    return res.status(404).json({ error: \"Tidak ada\" });\n  }\n  catatan.splice(i, 1);\n  res.json({ dihapus: c.id });\n});\n\napp.get(\"/admin/pengguna\", auth, perluRole(\"admin\"), (req, res) => {\n  res.json(USERS.map((u) => ({ id: u.id, nama: u.nama, email: u.email, role: u.role })));\n});\n"
+    },
+    "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\n// Pengganti HMAC dan base64url untuk latihan, bukan untuk produksi.\nconst ABC = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_\";\nfunction b64url(s) {\n  let out = \"\";\n  for (let i = 0; i < s.length; i += 3) {\n    const n = (s.charCodeAt(i) << 16) | ((s.charCodeAt(i + 1) || 0) << 8) | (s.charCodeAt(i + 2) || 0);\n    out += ABC[(n >> 18) & 63] + ABC[(n >> 12) & 63];\n    if (i + 1 < s.length) out += ABC[(n >> 6) & 63];\n    if (i + 2 < s.length) out += ABC[n & 63];\n  }\n  return out;\n}\nfunction unb64url(t) {\n  let bits = 0, acc = 0, out = \"\";\n  for (const ch of t) {\n    acc = (acc << 6) | ABC.indexOf(ch);\n    bits += 6;\n    if (bits >= 8) {\n      bits -= 8;\n      out += String.fromCharCode((acc >> bits) & 255);\n      acc &= (1 << bits) - 1;\n    }\n  }\n  return out;\n}\nfunction sign(data, secret) {\n  let h = 2166136261;\n  const s = secret + \".\" + data + \".\" + secret;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\nconst encode = (obj) => b64url(JSON.stringify(obj));\nconst decode = (str) => JSON.parse(unb64url(str));\n// Pengganti hash lambat untuk latihan (FNV-1a), bukan untuk produksi.\nfunction hash(teks) {\n  let h = 2166136261;\n  for (let i = 0; i < teks.length; i++) {\n    h ^= teks.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\n\nconst SECRET = \"rahasia-proyek-yang-cukup-panjang-0123456789\";\nconst SEKARANG = 1000; // jam tetap untuk latihan\n\nfunction buatToken(user, ttl = 900) {\n  const header = { alg: \"HS256\", typ: \"JWT\" };\n  const klaim = { sub: user.id, role: user.role, iat: SEKARANG, exp: SEKARANG + ttl };\n  const data = encode(header) + \".\" + encode(klaim);\n  return data + \".\" + sign(data, SECRET);\n}\n\n// Mengembalikan payload bila token sah, selain itu null.\nfunction verifikasi(token) {\n  if (typeof token !== \"string\") return null;\n  const bagian = token.split(\".\");\n  if (bagian.length !== 3) return null;\n  const [h, p, s] = bagian;\n  if (s !== sign(h + \".\" + p, SECRET)) return null;\n  const payload = decode(p);\n  return SEKARANG < payload.exp ? payload : null;\n}\n\nconst USERS = [\n  { id: 1, email: \"ani@contoh.id\", nama: \"Ani\", role: \"user\", hash: hash(\"rahasia123\") },\n  { id: 2, email: \"budi@contoh.id\", nama: \"Budi\", role: \"user\", hash: hash(\"budi-kuat-1\") },\n  { id: 3, email: \"rina@contoh.id\", nama: \"Rina\", role: \"admin\", hash: hash(\"admin-kuat\") },\n];\nconst catatan = [\n  { id: 1, pemilik: 1, judul: \"Belanja\", isi: \"susu dan roti\" },\n  { id: 2, pemilik: 2, judul: \"Rahasia Budi\", isi: \"jangan dibaca\" },\n  { id: 3, pemilik: 1, judul: \"PR Matematika\", isi: \"halaman 40\" },\n];\nconst TOKEN_LAMA = buatToken(USERS[0], -10);\n// Tes memakai sebagai(USERS[i]) untuk mengirim token pengguna itu.\nconst sebagai = (u, token) => { globalThis.__headers = u || token ? { authorization: \"Bearer \" + (token || buatToken(u)) } : {}; };",
+    "tests": [
+      {
+        "name": "Login benar menghasilkan token yang sah",
+        "check": "verifikasi((await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"rahasia123\" })).body.token).sub === 1"
+      },
+      {
+        "name": "Login gagal: 401 dan pesan sama untuk email salah maupun password salah",
+        "check": "[(await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"salah\" })), (await request(\"POST\", \"/login\", { email: \"x@contoh.id\", password: \"salah\" }))].every((r, i, a) => r.status === 401 && typeof r.body.error === \"string\" && r.body.error === a[0].body.error)"
+      },
+      {
+        "name": "Tanpa token: 401",
+        "check": "(sebagai(), (await request(\"GET\", \"/catatan\")).status === 401)"
+      },
+      {
+        "name": "Token kedaluwarsa: 401",
+        "check": "(sebagai(null, TOKEN_LAMA), (await request(\"GET\", \"/catatan\")).status === 401)"
+      },
+      {
+        "name": "Daftar hanya berisi catatan milik sendiri",
+        "check": "(sebagai(USERS[0]), (await request(\"GET\", \"/catatan\")).body.length === 2 && (await request(\"GET\", \"/catatan\")).body.every((c) => c.pemilik === 1))"
+      },
+      {
+        "name": "Catatan milik orang lain: 404",
+        "check": "(sebagai(USERS[0]), (await request(\"GET\", \"/catatan/2\")).status === 404)"
+      },
+      {
+        "name": "Membuat catatan: pemilik dari token, bukan dari body",
+        "check": "(sebagai(USERS[0]), (await request(\"POST\", \"/catatan\", { judul: \"Baru\", isi: \"x\", pemilik: 2 })).body.pemilik === 1)"
+      },
+      {
+        "name": "Judul kosong ditolak dengan 400",
+        "check": "(sebagai(USERS[0]), (await request(\"POST\", \"/catatan\", { judul: \"  \", isi: \"x\" })).status === 400)"
+      },
+      {
+        "name": "Bukan pemilik tidak bisa menghapus, data tetap ada",
+        "check": "(sebagai(USERS[0]), (await request(\"DELETE\", \"/catatan/2\")).status === 404 && catatan.some((c) => c.id === 2))"
+      },
+      {
+        "name": "Admin boleh menghapus catatan siapa pun",
+        "check": "(sebagai(USERS[2]), (await request(\"DELETE\", \"/catatan/3\")).status === 200 && !catatan.some((c) => c.id === 3))"
+      },
+      {
+        "name": "Daftar pengguna: user biasa 403, admin 200 tanpa hash",
+        "check": "(sebagai(USERS[0]), (await request(\"GET\", \"/admin/pengguna\")).status === 403) && (sebagai(USERS[2]), JSON.stringify((await request(\"GET\", \"/admin/pengguna\")).body).includes(\"hash\") === false && (await request(\"GET\", \"/admin/pengguna\")).status === 200)"
+      }
+    ],
+    "brief": "Bangun **API Catatan Aman** dengan Express yang menerapkan semua yang kamu pelajari di kelas ini.\n\nFitur wajib:\n\n- `POST /login`: cocokkan email dan hash password, balas `{ token }`. Satu pesan galat yang sama untuk email salah maupun password salah.\n- Middleware `auth`: baca `Authorization: Bearer <token>`, verifikasi dengan `verifikasi`, isi `req.user = { id, role }`, dan balas 401 bila gagal atau kedaluwarsa.\n- `GET /catatan` dan `GET /catatan/:id`: pengguna hanya melihat catatan miliknya; catatan orang lain dijawab 404.\n- `POST /catatan`: validasi `judul` (teks 1 sampai 100 karakter setelah trim) dan `isi` (teks); `pemilik` selalu diambil dari token, bukan dari body.\n- `DELETE /catatan/:id`: pemilik atau admin boleh menghapus, selain itu 404.\n- `GET /admin/pengguna`: hanya admin (403 untuk lainnya), tanpa field `hash`.\n\nPegangan: tes mengirim token lewat header `Authorization`, termasuk token yang sudah kedaluwarsa dan token pengguna lain."
+  },
+  "chapters": [
+    {
+      "slug": "autentikasi-dan-otorisasi",
+      "title": "Autentikasi dan Otorisasi",
+      "est_minutes": 15,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Membedakan autentikasi dan otorisasi dengan contoh nyata di sebuah API.\n- Memilih kode status yang tepat: 401, 403, atau 404.\n- Mengenali lima jenis serangan paling umum terhadap API.\n- Memahami bahwa keamanan dibangun berlapis, bukan satu fitur.\n\n## Dua pertanyaan yang berbeda\n\nBayangkan kamu masuk ke sebuah gedung kantor. Di pintu depan, satpam memeriksa kartu identitasmu: itu **autentikasi**, yaitu membuktikan bahwa kamu memang orang yang kamu klaim. Setelah masuk, kartu aksesmu hanya membuka lantai tiga, bukan ruang server di lantai lima: itu **otorisasi**, yaitu keputusan tentang apa yang boleh dilakukan oleh identitas yang sudah terbukti.\n\nDi sebuah API, urutannya selalu sama. Pertama server menjawab \"siapa yang memanggil?\", baru kemudian \"bolehkah dia melakukan ini pada data itu?\". Mengacaukan urutan atau melewatkan salah satunya adalah sumber bug keamanan yang paling sering ditemukan.\n\n| | Autentikasi | Otorisasi |\n|---|---|---|\n| Pertanyaan | Siapa kamu? | Boleh apa kamu? |\n| Contoh | Login dengan email dan password | Hanya admin yang boleh menghapus pengguna |\n| Terjadi | Sekali di awal, lalu dibawa lewat token atau sesi | Di setiap request ke data atau aksi tertentu |\n| Gagal berarti | 401 Unauthorized | 403 Forbidden |\n\n![Perbedaan autentikasi dan otorisasi](slide:2)\n\n## 401, 403, dan 404\n\nNama resmi 401 adalah \"Unauthorized\", padahal artinya lebih dekat ke \"unauthenticated\": server belum bisa memastikan siapa kamu. Token tidak ada, salah, atau sudah kedaluwarsa. Respons 403 berarti server tahu persis siapa kamu, tetapi kamu tidak berhak.\n\n```js\nfunction kodeAkses(user, perluRole) {\n  if (!user) return 401;                              // belum terbukti siapa\n  if (perluRole && user.role !== perluRole) return 403; // terbukti, tapi dilarang\n  return 200;\n}\n```\n\nAda kode ketiga yang sering dipakai dengan sengaja: **404**. Jika Ani meminta `/catatan/2` dan catatan itu milik Budi, menjawab 403 membocorkan bahwa catatan nomor 2 ada. Menjawab 404 membuat catatan orang lain tampak sama dengan catatan yang memang tidak ada. Kamu akan memakai pola ini lagi di bab tentang kepemilikan data.\n\n## Apa yang sebenarnya diserang?\n\nSebuah API tidak punya halaman yang bisa \"diintip\" lewat tombol yang disembunyikan. Siapa pun bisa memanggil endpoint langsung dengan alat seperti curl atau Postman, jadi semua pemeriksaan harus ada di server. Lima kelompok serangan yang akan kita tangani sepanjang kelas ini:\n\n1. **Menebak atau menjebol password**: mencoba daftar password umum, atau memakai password yang bocor dari situs lain. Pertahanannya: hash lambat dengan salt dan batas percobaan login.\n2. **Mencuri atau memalsukan token**: mengambil token dari tempat penyimpanan yang lemah, atau membuat token palsu. Pertahanannya: tanda tangan, umur pendek, dan penyimpanan yang tepat.\n3. **Mengakses data milik orang lain**: cukup mengganti angka di URL. Pertahanannya: cek kepemilikan di setiap akses data.\n4. **Mengirim input yang tidak terduga**: field tambahan, tipe data salah, teks super panjang. Pertahanannya: validasi dan penyaringan field.\n5. **Membanjiri API**: ribuan permintaan per detik, sengaja atau tidak. Pertahanannya: pembatasan laju.\n\n## Keamanan berlapis\n\nTidak ada satu kontrol yang cukup. Password yang di-hash dengan baik tidak menolong bila endpoint lupa memeriksa kepemilikan data. Token yang ditandatangani rapi tidak menolong bila kunci rahasianya tertulis di repositori publik. Karena itu para praktisi memakai prinsip **defense in depth**: banyak lapisan sederhana, sehingga satu lapisan yang bocor tidak langsung berarti seluruh sistem jatuh.\n\nPrinsip kedua adalah **least privilege**: setiap pengguna, token, dan layanan hanya diberi hak sekecil yang dibutuhkan untuk pekerjaannya. Admin yang hanya butuh melihat laporan tidak perlu bisa menghapus pengguna.\n\nPrinsip ketiga: **jangan percaya klien**. Tombol \"Hapus\" yang disembunyikan di antarmuka bukan kontrol keamanan. Yang melindungi data adalah pemeriksaan di server, setiap kali, untuk setiap request.\n\n## Peta kelas ini\n\nBab-bab berikutnya mengikuti perjalanan sebuah request: password disimpan dengan aman (bab 2), identitas dibawa lewat sesi atau token (bab 3 dan 4), middleware Express memeriksa identitas itu (bab 5), lalu role dan kepemilikan data diperiksa (bab 6). Setelah itu kita menutup celah yang lazim di API: mass assignment, tanpa batas laju, CORS, input liar, dan rahasia yang bocor (bab 7 sampai 9).\n\nPada akhirnya kamu membangun satu API catatan lengkap dengan login, peran, dan pengamanan yang diperiksa oleh tes otomatis. Kelas ini mengasumsikan kamu sudah bisa membuat route dasar dengan Express.\n\n## Contoh: satu request, dua pemeriksaan\n\nAmbil request `DELETE /pengguna/5` ke sebuah API. Server pertama-tama membaca token di header dan mencari tahu siapa pengirimnya. Jika tokennya tidak ada atau palsu, selesai dengan 401; request tidak boleh melangkah lebih jauh. Jika tokennya sah dan menunjuk ke Rina, barulah server bertanya: apakah role Rina boleh menghapus pengguna? Jika Rina seorang `user` biasa, jawabannya 403. Jika ia `admin`, aksi dijalankan.\n\nPerhatikan bahwa dua pemeriksaan itu terjadi di lapisan yang berbeda. Di bab 5 kamu akan menaruh pemeriksaan identitas di sebuah middleware yang dipakai banyak route, lalu di bab 6 menambahkan pemeriksaan role dan kepemilikan. Memisahkan keduanya membuat kode lebih mudah diuji: kamu bisa menguji \"tanpa token selalu 401\" sekali untuk semua route.\n\n## Kebiasaan yang dibangun sejak awal\n\nSebelum menulis satu pun endpoint baru, biasakan bertanya tiga hal: siapa yang boleh memanggilnya, data milik siapa yang disentuhnya, dan apa yang terjadi bila inputnya aneh. Tiga pertanyaan ini mencakup hampir semua temuan dalam daftar OWASP API Security Top 10 yang akan kita bahas di bab 7.\n\n## Rangkuman\n\n- Autentikasi membuktikan identitas, otorisasi memutuskan apa yang boleh dilakukan; keduanya diperiksa di server, setiap request.\n- 401 berarti identitas belum terbukti, 403 berarti identitas terbukti tetapi tidak berhak, dan 404 bisa dipakai untuk menyembunyikan data milik orang lain.\n- Serangan umum pada API: tebak password, curi atau palsukan token, akses data orang lain, input liar, dan banjir permintaan.\n- Keamanan dibangun berlapis (defense in depth) dengan hak sekecil mungkin (least privilege), dan klien tidak pernah dipercaya.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Server menerima request tanpa token sama sekali ke route yang butuh login. Kode status yang tepat adalah",
+          "code": "",
+          "options": [
+            "401, karena identitas pemanggil belum terbukti",
+            "403, karena pemanggil tidak berhak melakukan aksi tersebut pada route itu",
+            "404, karena route tidak ditemukan",
+            "200, karena route tetap bisa dijalankan"
+          ],
+          "answer": 0,
+          "explanation": "401 dipakai bila server belum bisa memastikan siapa pemanggilnya, termasuk saat token tidak ada."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pernyataan mana yang membedakan otorisasi dari autentikasi?",
+          "code": "",
+          "options": [
+            "Otorisasi membuktikan bahwa pengguna memang pemilik akun yang sedang dipakai",
+            "Otorisasi hanya terjadi saat pengguna mengisi form login",
+            "Otorisasi selalu dilakukan sebelum identitas diperiksa",
+            "Otorisasi memutuskan apa yang boleh dilakukan identitas yang sudah terbukti"
+          ],
+          "answer": 3,
+          "explanation": "Autentikasi menjawab siapa kamu, otorisasi menjawab boleh apa kamu, dan urutannya autentikasi lebih dulu."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menyembunyikan tombol Hapus di antarmuka sudah cukup untuk mencegah pengguna biasa menghapus data.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Siapa pun bisa memanggil endpoint langsung; pemeriksaan harus ada di server."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa jawaban 404 kadang dipilih untuk catatan milik orang lain?",
+          "code": "",
+          "options": [
+            "Karena 404 lebih cepat diproses daripada 403 oleh seluruh server web modern",
+            "Agar keberadaan catatan itu tidak terkonfirmasi kepada pihak yang tidak berhak",
+            "Karena standar HTTP mewajibkan 404 untuk data milik pengguna lain",
+            "Karena 403 hanya boleh dipakai untuk admin"
+          ],
+          "answer": 1,
+          "explanation": "Jawaban 403 membocorkan bahwa data itu ada; 404 membuatnya tampak sama seperti data yang tidak ada."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Kode status yang tepat",
+          "prompt": "Lengkapi fungsi `kodeAkses(user, perluRole)` yang mengembalikan kode status sebuah request:\n\n- `401` bila `user` kosong (belum login)\n- `403` bila `perluRole` diberikan tetapi `user.role` berbeda\n- `200` untuk selain itu\n\nContoh: `kodeAkses({ role: \"user\" }, \"admin\")` menghasilkan `403`. Bila `perluRole` tidak diberikan, route hanya butuh login.",
+          "starter": {
+            "code": "function kodeAkses(user, perluRole) {\n  // TODO: 401, 403, atau 200\n  return 200;\n}\n"
+          },
+          "solution": {
+            "code": "function kodeAkses(user, perluRole) {\n  if (!user) return 401;\n  if (perluRole && user.role !== perluRole) return 403;\n  return 200;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tanpa pengguna menghasilkan 401",
+              "check": "kodeAkses(null, \"admin\") === 401"
+            },
+            {
+              "name": "Role tidak cocok menghasilkan 403",
+              "check": "kodeAkses({ role: \"user\" }, \"admin\") === 403"
+            },
+            {
+              "name": "Role cocok menghasilkan 200",
+              "check": "kodeAkses({ role: \"admin\" }, \"admin\") === 200"
+            },
+            {
+              "name": "Route yang hanya butuh login",
+              "check": "kodeAkses({ role: \"user\" }) === 200 && kodeAkses(undefined) === 401"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "menyimpan-password-dengan-aman",
+      "title": "Menyimpan Password dengan Aman",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa password tidak boleh disimpan sebagai teks polos maupun hash cepat.\n- Memahami peran salt dan hash lambat (bcrypt, scrypt, argon2).\n- Menulis alur penyimpanan dan pengecekan password dengan salt.\n- Membuat alur login yang tidak membocorkan informasi tentang akun.\n\n## Mengapa password tidak disimpan polos\n\nDatabase yang bocor adalah kejadian yang harus kamu anggap suatu saat terjadi: serangan injeksi, cadangan yang tersalin, atau karyawan yang salah klik. Bila password tersimpan polos, satu kebocoran langsung berarti semua akun terbuka, termasuk akun milik orang itu di situs lain, karena banyak orang memakai password yang sama di mana-mana.\n\nKarena itu server menyimpan **hash** dari password. Hash adalah fungsi satu arah: dari teks bisa dihitung hash-nya dengan mudah, tetapi dari hash tidak ada cara matematis untuk mendapatkan teks aslinya. Saat login, server menghitung hash dari password yang dikirim lalu membandingkannya dengan hash yang tersimpan. Server tidak pernah perlu tahu password aslimu setelah itu.\n\n![Mengapa password disimpan sebagai hash](slide:5)\n\n## Hash cepat berarti mudah ditebak\n\nAda jebakan di sini. Fungsi hash seperti SHA-256 dirancang untuk cepat, dan kartu grafis modern bisa menghitung miliaran hash per detik. Penyerang yang memegang database bocor tidak perlu membalik hash; ia cukup menghitung hash dari jutaan password yang umum dipakai dan mencari yang cocok. Ada dua masalah:\n\n- **Kecepatan**: semakin cepat hash dihitung, semakin murah menebak.\n- **Keseragaman**: password yang sama selalu menghasilkan hash yang sama. Penyerang bisa menyiapkan tabel hash siap pakai (rainbow table) dan mencocokkan ribuan akun sekaligus.\n\nJadi password butuh hash yang sengaja **lambat** dan hasilnya **unik per pengguna**.\n\n## Salt: bumbu acak per pengguna\n\n**Salt** adalah string acak yang dibuat baru untuk setiap pengguna dan disimpan bersama hash-nya. Yang di-hash bukan password saja, melainkan gabungan salt dan password.\n\n```js\n// pola penyimpanan: salt$hash\nfunction hashPassword(password, salt) {\n  return salt + \"$\" + hash(salt + password);\n}\n\nfunction cekPassword(password, tersimpan) {\n  const salt = tersimpan.split(\"$\")[0];\n  return hashPassword(password, salt) === tersimpan;\n}\n```\n\nDengan salt, dua pengguna yang sama-sama memakai `rahasia123` akan punya hash berbeda, sehingga tabel siap pakai tidak berguna dan penyerang harus menebak per akun. Salt tidak rahasia; ia boleh terlihat bersama hash. Tugasnya hanya membuat setiap hash unik.\n\nDi latihan kamu memakai fungsi `hash` sederhana sebagai pengganti, karena lingkungan latihan tidak punya library kripto. **Fungsi itu tidak aman untuk produksi.** Di dunia nyata kamu memakai algoritma yang memang dibuat untuk password.\n\n## Pilih algoritma yang lambat\n\nTiga pilihan yang direkomendasikan praktisi:\n\n| Algoritma | Catatan |\n|---|---|\n| **bcrypt** | Paling lama dipakai, tersedia di hampir semua bahasa, memasukkan salt otomatis |\n| **scrypt** | Selain lambat, juga menuntut banyak memori sehingga mahal dilawan dengan GPU; tersedia di `node:crypto` |\n| **argon2** | Pemenang kompetisi password hashing, pilihan modern untuk sistem baru |\n\nKetiganya punya parameter biaya. Dengan menaikkan biaya, satu hash yang tadinya 50 milidetik bisa dibuat 250 milidetik. Bagi pengguna yang login sekali, selisihnya tidak terasa; bagi penyerang yang mencoba miliaran tebakan, selisihnya menentukan layak atau tidak serangan itu.\n\nDan satu aturan yang tidak bisa ditawar: **jangan membuat algoritma hash sendiri.** Pakai library teruji. Kodemu hanya menyusun pemanggilannya.\n\n## Login yang tidak membocorkan apa pun\n\nAlur login yang benar juga memperhatikan apa yang dikatakan kepada klien:\n\n```js\napp.post(\"/login\", (req, res) => {\n  const { email, password } = req.body;\n  const user = USERS.find((u) => u.email === email);\n  if (!user || !cekPassword(password, user.hash)) {\n    return res.status(401).json({ error: \"Email atau password salah\" });\n  }\n  res.json({ token: buatToken(user) });\n});\n```\n\nPerhatikan satu pesan galat untuk dua kegagalan. Jika email tidak ditemukan dijawab \"Email tidak terdaftar\" sedangkan password salah dijawab \"Password salah\", penyerang bisa menguji ribuan email dan mendapatkan daftar akun yang valid. Pola ini disebut **user enumeration**.\n\nPerbandingan hash juga sebaiknya memakai **perbandingan waktu-konstan**. Operator `===` berhenti di karakter pertama yang berbeda, sehingga waktu jawabannya sedikit bergantung pada seberapa banyak karakter awal yang cocok. Secara teori penyerang bisa mengukur selisih itu. Perbandingan waktu-konstan selalu memeriksa semua karakter:\n\n```js\nfunction samaAman(a, b) {\n  if (a.length !== b.length) return false;\n  let beda = 0;\n  for (let i = 0; i < a.length; i++) {\n    beda |= a.charCodeAt(i) ^ b.charCodeAt(i);\n  }\n  return beda === 0;\n}\n```\n\nDi Node.js sungguhan, `crypto.timingSafeEqual` sudah menyediakan ini, dan library bcrypt memakainya di dalamnya. Latihan kedua bab ini memintamu menuliskannya agar kamu paham alasannya.\n\n## Aturan password yang masuk akal\n\nPanduan modern (misalnya NIST) menyarankan: wajibkan **panjang minimal** (mis. 8 sampai 12 karakter), izinkan panjang maksimal yang longgar, dan tolak password yang ada di daftar password bocor. Aturan \"harus ada huruf besar, angka, dan simbol\" justru mendorong pola yang mudah ditebak seperti `Password1!`. Tambahkan juga **pembatasan percobaan login** per akun dan per alamat IP; bab 7 membahas caranya.\n\n## Menaikkan biaya seiring waktu\n\nPerangkat keras terus lebih cepat, jadi biaya hash yang dianggap cukup hari ini akan terasa terlalu murah beberapa tahun lagi. Library password hashing menyimpan parameter biaya di dalam string hash-nya. Saat pengguna login dengan password yang benar, kamu bisa memeriksa apakah hash tersimpan memakai biaya lama; jika ya, hitung ulang dengan biaya baru dan simpan. Dengan cara ini semua akun aktif perlahan naik ke standar terbaru tanpa meminta siapa pun mengganti password.\n\n## Rangkuman\n\n- Simpan hash, bukan password; server tidak perlu tahu password asli setelah login.\n- Hash cepat seperti SHA-256 polos mudah ditebak; pakai hash lambat dengan salt unik per pengguna.\n- Pilih bcrypt, scrypt, atau argon2 dari library teruji; jangan membuat algoritma sendiri.\n- Beri satu pesan galat yang sama untuk email salah dan password salah, dan bandingkan hash dengan perbandingan waktu-konstan.\n- Wajibkan panjang minimal, bukan aturan simbol yang rumit, dan batasi percobaan login.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa password disimpan sebagai hash, bukan teks polos?",
+          "code": "",
+          "options": [
+            "Bila database bocor, password asli tidak langsung terbaca",
+            "Hash membuat password bisa dipulihkan kapan saja jika pengguna lupa",
+            "Hash mempercepat proses login karena lebih pendek",
+            "Hash mengenkripsi koneksi antara klien dan server"
+          ],
+          "answer": 0,
+          "explanation": "Hash satu arah: kebocoran database tidak otomatis membuka password asli semua akun."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi utama salt pada penyimpanan password?",
+          "code": "",
+          "options": [
+            "Mempercepat penghitungan hash agar login terasa instan",
+            "Mengenkripsi hash agar tidak bisa dibaca administrator",
+            "Menggantikan kebutuhan akan algoritma hash",
+            "Membuat password yang sama menghasilkan hash berbeda per pengguna"
+          ],
+          "answer": 3,
+          "explanation": "Salt unik per pengguna membuat tabel hash siap pakai tidak berguna dan memaksa penebakan per akun."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Algoritma mana yang dirancang khusus untuk menyimpan password?",
+          "code": "",
+          "options": [
+            "MD5 dengan salt tetap untuk semua pengguna",
+            "SHA-256 satu putaran tanpa salt",
+            "bcrypt, scrypt, atau argon2",
+            "Base64 agar tidak terlihat langsung"
+          ],
+          "answer": 2,
+          "explanation": "Ketiganya sengaja lambat dan mahal bagi penyerang; yang lain terlalu cepat atau bukan hash."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pesan galat sebaiknya membedakan 'email tidak terdaftar' dan 'password salah' agar pengguna tidak bingung.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Perbedaan itu memberi penyerang cara mengetahui email mana yang terdaftar (user enumeration)."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Password dengan salt",
+          "prompt": "Fungsi `hash(teks)` sudah tersedia (pengganti hash lambat untuk latihan). Lengkapi dua fungsi:\n\n- `hashPassword(password, salt)` mengembalikan string `salt$hash` dengan `hash` dihitung dari `salt + password`.\n- `cekPassword(password, tersimpan)` memisahkan salt dari string tersimpan, menghitung ulang, lalu membandingkan.\n\nContoh: `hashPassword(\"rahasia\", \"ab12\")` diawali `ab12$`.",
+          "starter": {
+            "code": "function hashPassword(password, salt) {\n  // TODO: salt + \"$\" + hash(salt + password)\n  return hash(password);\n}\n\nfunction cekPassword(password, tersimpan) {\n  // TODO: ambil salt dari tersimpan, hitung ulang, bandingkan\n  return false;\n}\n"
+          },
+          "solution": {
+            "code": "function hashPassword(password, salt) {\n  return salt + \"$\" + hash(salt + password);\n}\n\nfunction cekPassword(password, tersimpan) {\n  const salt = tersimpan.split(\"$\")[0];\n  return hashPassword(password, salt) === tersimpan;\n}\n"
+          },
+          "setup": "// Pengganti hash lambat untuk latihan (FNV-1a), bukan untuk produksi.\nfunction hash(teks) {\n  let h = 2166136261;\n  for (let i = 0; i < teks.length; i++) {\n    h ^= teks.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}",
+          "tests": [
+            {
+              "name": "Formatnya salt$hash",
+              "check": "hashPassword(\"rahasia\", \"ab12\").startsWith(\"ab12$\")"
+            },
+            {
+              "name": "Salt berbeda menghasilkan hasil berbeda",
+              "check": "hashPassword(\"rahasia\", \"a1\") !== hashPassword(\"rahasia\", \"b2\")"
+            },
+            {
+              "name": "Password benar lolos",
+              "check": "cekPassword(\"rahasia\", hashPassword(\"rahasia\", \"x9\")) === true"
+            },
+            {
+              "name": "Password salah ditolak",
+              "check": "cekPassword(\"salah\", hashPassword(\"rahasia\", \"x9\")) === false"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Perbandingan waktu-konstan",
+          "prompt": "Tulis `samaAman(a, b)` yang membandingkan dua string **tanpa berhenti di karakter pertama yang berbeda**:\n\n- panjang berbeda: kembalikan `false`\n- selain itu, periksa **semua** karakter dan kumpulkan perbedaannya dengan `beda |= a.charCodeAt(i) ^ b.charCodeAt(i)`\n- kembalikan `beda === 0`\n\nTes memeriksa bahwa semua karakter benar-benar dibaca.",
+          "starter": {
+            "code": "function samaAman(a, b) {\n  // TODO: periksa semua karakter, jangan berhenti lebih awal\n  return a === b;\n}\n"
+          },
+          "solution": {
+            "code": "function samaAman(a, b) {\n  if (a.length !== b.length) return false;\n  let beda = 0;\n  for (let i = 0; i < a.length; i++) {\n    beda |= a.charCodeAt(i) ^ b.charCodeAt(i);\n  }\n  return beda === 0;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "String sama menghasilkan true",
+              "check": "samaAman(\"abc123\", \"abc123\") === true"
+            },
+            {
+              "name": "Beda di karakter terakhir menghasilkan false",
+              "check": "samaAman(\"abc123\", \"abc124\") === false"
+            },
+            {
+              "name": "Panjang berbeda menghasilkan false",
+              "check": "samaAman(\"abc\", \"abcd\") === false"
+            },
+            {
+              "name": "Semua karakter tetap dibaca walau beda di awal",
+              "check": "(() => { const r = []; const x = { length: 3, charCodeAt(i) { r.push(i); return 65; } }; return samaAman(x, \"BAA\") === false && r.length === 3; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "session-dan-token",
+      "title": "Session dan Token",
+      "est_minutes": 20,
+      "slide_from": 9,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Menjelaskan cara kerja autentikasi berbasis session dan berbasis token.\n- Membandingkan kelebihan dan kekurangan keduanya, terutama soal pencabutan akses.\n- Menulis penyimpanan session sederhana lengkap dengan kedaluwarsa dan logout.\n- Memilih tempat penyimpanan identitas di sisi klien dengan sadar risikonya.\n\n## Masalahnya: HTTP tidak punya ingatan\n\nSetiap request HTTP berdiri sendiri. Server tidak otomatis tahu bahwa request kedua datang dari orang yang baru saja login di request pertama. Karena itu setelah login berhasil, server dan klien perlu sepakat tentang **sesuatu yang dibawa di setiap request** sebagai bukti identitas. Ada dua pendekatan besar untuk itu: session dan token.\n\n![Dua cara membawa identitas](slide:9)\n\n## Session: server yang mengingat\n\nPada autentikasi berbasis session, server menyimpan catatan tentang siapa yang sedang login. Alurnya:\n\n1. Login berhasil, server membuat **session ID** yang acak dan sulit ditebak, lalu menyimpan `{ userId, exp }` di penyimpanannya (memori, database, atau Redis).\n2. Session ID dikirim ke klien, biasanya lewat **cookie**.\n3. Di setiap request berikutnya browser otomatis menyertakan cookie itu. Server mencari ID tersebut di penyimpanannya.\n4. Saat logout atau kedaluwarsa, server menghapus catatan itu dan ID tadi langsung tak berguna.\n\n```js\nconst sesi = new Map();\n\nfunction buatSesi(userId, ttl, sekarang) {\n  const id = \"sid-\" + urutan++;           // produksi: ID acak dari CSPRNG\n  sesi.set(id, { userId, exp: sekarang + ttl });\n  return id;\n}\n\nfunction cariSesi(id, sekarang) {\n  const s = sesi.get(id);\n  if (!s) return null;\n  if (sekarang >= s.exp) { sesi.delete(id); return null; }\n  return s.userId;\n}\n```\n\nDi latihan, ID dibuat dari penghitung supaya hasilnya bisa diuji. **Di produksi, ID wajib acak** dari generator yang aman secara kriptografis (di Node.js: `crypto.randomUUID()` atau `crypto.randomBytes`). ID yang bisa ditebak membuat penyerang bisa menyamar sebagai siapa saja.\n\nKekuatan session ada pada kendalinya: akun dicuri atau pengguna dipecat, hapus session-nya, akses putus **seketika**. Harganya adalah penyimpanan bersama. Bila API berjalan di beberapa server, semuanya harus bisa membaca penyimpanan session yang sama.\n\n## Token: klien yang membawa bukti\n\nPada pendekatan token, server tidak menyimpan apa pun tentang login. Setelah login, server membuat **token yang ditandatangani** berisi identitas dan masa berlaku, lalu menyerahkannya ke klien. Setiap request, klien mengirim token itu; server cukup memeriksa tanda tangannya dengan kunci rahasia, tanpa membuka database.\n\nKeuntungannya terasa di skala besar: server mana pun bisa memeriksa token tanpa penyimpanan bersama, dan token mudah dipakai oleh klien non-browser seperti aplikasi mobile atau layanan lain. Bab berikutnya membedah format paling populer, JWT.\n\nKelemahannya: **token sulit dicabut**. Selama tanda tangannya sah dan belum kedaluwarsa, server akan menerimanya, bahkan jika pemiliknya sudah menekan logout. Itu sebabnya token dibuat berumur pendek, dan pencabutan sungguhan butuh mekanisme tambahan seperti daftar token terlarang atau refresh token yang disimpan di server.\n\n## Membandingkan keduanya\n\n| | Session | Token |\n|---|---|---|\n| Server menyimpan data login | Ya | Tidak |\n| Mencabut akses | Seketika | Menunggu kedaluwarsa, atau butuh daftar tambahan |\n| Skala ke banyak server | Butuh penyimpanan bersama | Mudah |\n| Cocok untuk | Aplikasi web dengan browser | API untuk mobile, layanan lain, banyak klien |\n| Risiko khas | Pencurian cookie, CSRF | Pencurian token, token berumur terlalu panjang |\n\nTidak ada pemenang mutlak. Banyak sistem nyata memakai gabungan: token akses berumur pendek untuk request sehari-hari, ditambah catatan di server untuk bisa mencabut akses.\n\n## Di mana klien menyimpan identitas\n\nPilihan tempat penyimpanan menentukan jenis serangan yang paling mungkin:\n\n- **Cookie dengan `HttpOnly`, `Secure`, dan `SameSite`**: `HttpOnly` membuat JavaScript di halaman tidak bisa membaca cookie, sehingga serangan XSS tidak bisa mencurinya langsung. `Secure` memastikan cookie hanya lewat HTTPS. `SameSite` mengurangi risiko **CSRF**, yaitu situs lain yang memicu request atas namamu karena browser otomatis menyertakan cookie.\n- **`localStorage` atau memori JavaScript lalu dikirim lewat header `Authorization`**: tidak ikut terkirim otomatis, jadi kebal CSRF, tetapi bisa dibaca oleh skrip apa pun yang berjalan di halaman. Satu celah XSS berarti token dicuri.\n\nKedua pilihan punya harga. Aturan praktis: untuk aplikasi web biasa yang dilayani satu domain, cookie `HttpOnly` dengan `SameSite` adalah baseline yang kuat; untuk API yang dipanggil klien mobile atau layanan lain, header `Authorization: Bearer <token>` adalah konvensi umum.\n\n## Kedaluwarsa itu wajib\n\nApa pun pilihannya, setiap bukti identitas harus punya **masa berlaku**. Session tanpa `exp` hidup selamanya di penyimpanan; token tanpa `exp` berlaku selamanya di tangan siapa pun yang mencurinya. Masa berlaku pendek memperkecil jendela kerugian bila sesuatu bocor, dan itu hampir tidak memakan biaya bagi pengguna yang aktif.\n\n## Logout: apa yang sebenarnya terjadi\n\nTombol logout terdengar sederhana, tetapi artinya berbeda di tiap pendekatan. Pada session, logout berarti server menghapus catatan session sehingga ID lama langsung tidak berlaku: `sesi.delete(id)`. Pada token murni, server tidak punya apa pun untuk dihapus. Klien hanya membuang token dari penyimpanannya, sementara token itu secara teknis masih sah sampai `exp`. Jika seseorang sempat menyalinnya, ia masih bisa memakainya.\n\nInilah alasan sistem yang serius tentang keamanan sering menambahkan catatan di server, misalnya daftar token yang sudah dicabut atau refresh token yang tersimpan, meskipun mereka memilih token. Pilihan session versus token bukan soal mana yang lebih modern, melainkan soal seberapa cepat kamu butuh bisa memutus akses.\n\n## Memilih untuk proyekmu\n\nTanyakan tiga hal. Siapa kliennya: hanya browser, atau juga aplikasi mobile dan layanan lain? Seberapa cepat akses harus bisa dicabut: seketika, atau menunggu beberapa menit tidak masalah? Berapa server yang akan berjalan: satu, atau banyak di belakang penyeimbang beban? Untuk aplikasi web kecil dengan satu server, session sering paling sederhana dan paling aman. Untuk API yang dipakai banyak klien dan dijalankan di banyak server, token berumur pendek ditambah refresh token yang bisa dicabut lebih masuk akal.\n\n## Rangkuman\n\n- HTTP tidak punya ingatan, jadi setiap request harus membawa bukti identitas: session ID atau token.\n- Session disimpan di server sehingga bisa dicabut seketika, tetapi butuh penyimpanan bersama; token diperiksa lewat tanda tangan tanpa penyimpanan, tetapi sulit dicabut.\n- Cookie `HttpOnly`, `Secure`, dan `SameSite` melindungi dari XSS dan CSRF; token di `localStorage` kebal CSRF tetapi rentan XSS.\n- Session ID di produksi harus acak dan sulit ditebak, dan semua bukti identitas wajib punya masa berlaku.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Keunggulan utama autentikasi berbasis session dibanding token murni adalah",
+          "code": "",
+          "options": [
+            "Tidak membutuhkan penyimpanan apa pun di server dan selalu lebih mudah diskalakan",
+            "Akses bisa dicabut seketika dengan menghapus session di server",
+            "Selalu lebih mudah diskalakan ke banyak server",
+            "Tidak mungkin dicuri karena disimpan di cookie"
+          ],
+          "answer": 1,
+          "explanation": "Server memegang catatan session, jadi menghapusnya langsung memutus akses."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Atribut cookie mana yang mencegah JavaScript di halaman membaca cookie session?",
+          "code": "",
+          "options": [
+            "HttpOnly",
+            "Secure yang memaksa cookie hanya lewat HTTPS",
+            "SameSite",
+            "Max-Age"
+          ],
+          "answer": 0,
+          "explanation": "HttpOnly menyembunyikan cookie dari skrip sehingga serangan XSS tidak bisa mencurinya langsung."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Setiap session atau token wajib punya masa berlaku.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa masa berlaku, bukti identitas yang bocor berlaku selamanya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah pengguna menekan logout pada sistem token murni, apa yang biasanya terjadi?",
+          "code": "",
+          "options": [
+            "Server menghapus token dari penyimpanannya sehingga langsung tidak berlaku",
+            "Tanda tangan token otomatis berubah menjadi tidak valid",
+            "Token menjadi kedaluwarsa pada saat itu juga",
+            "Klien membuang token, tetapi token itu secara teknis masih sah sampai exp"
+          ],
+          "answer": 3,
+          "explanation": "Server tidak menyimpan apa pun, jadi tidak ada yang bisa dihapus; karena itu token dibuat berumur pendek."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Penyimpanan session",
+          "prompt": "Peta `sesi` dan penghitung `urutan` sudah tersedia. Lengkapi tiga fungsi:\n\n- `buatSesi(userId, ttl, sekarang)` membuat ID `\"sid-\" + urutan++`, menyimpan `{ userId, exp: sekarang + ttl }`, dan mengembalikan ID.\n- `cariSesi(id, sekarang)` mengembalikan `userId`, atau `null` bila tidak ada atau sudah lewat `exp` (hapus session yang kedaluwarsa).\n- `hapusSesi(id)` menghapus session (logout).\n\nDi produksi ID dibuat acak, di sini dibuat dari penghitung supaya bisa diuji.",
+          "starter": {
+            "code": "function buatSesi(userId, ttl, sekarang) {\n  // TODO: buat ID, simpan di sesi, kembalikan ID\n}\n\nfunction cariSesi(id, sekarang) {\n  // TODO: userId, atau null bila tidak ada atau kedaluwarsa\n  return null;\n}\n\nfunction hapusSesi(id) {\n  // TODO\n}\n"
+          },
+          "solution": {
+            "code": "function buatSesi(userId, ttl, sekarang) {\n  const id = \"sid-\" + urutan++;\n  sesi.set(id, { userId, exp: sekarang + ttl });\n  return id;\n}\n\nfunction cariSesi(id, sekarang) {\n  const s = sesi.get(id);\n  if (!s) return null;\n  if (sekarang >= s.exp) {\n    sesi.delete(id);\n    return null;\n  }\n  return s.userId;\n}\n\nfunction hapusSesi(id) {\n  sesi.delete(id);\n}\n"
+          },
+          "setup": "let urutan = 1;\nconst sesi = new Map();",
+          "tests": [
+            {
+              "name": "Session yang masih berlaku mengembalikan userId",
+              "check": "(() => { const id = buatSesi(7, 60, 1000); return cariSesi(id, 1030) === 7; })()"
+            },
+            {
+              "name": "Session kedaluwarsa menghasilkan null dan dihapus",
+              "check": "(() => { const id = buatSesi(8, 60, 1000); return cariSesi(id, 1061) === null && !sesi.has(id); })()"
+            },
+            {
+              "name": "Logout membuat session tidak berlaku",
+              "check": "(() => { const id = buatSesi(9, 60, 1000); hapusSesi(id); return cariSesi(id, 1001) === null; })()"
+            },
+            {
+              "name": "Setiap session punya ID berbeda",
+              "check": "buatSesi(1, 60, 1000) !== buatSesi(1, 60, 1000)"
+            },
+            {
+              "name": "ID yang tidak dikenal menghasilkan null",
+              "check": "cariSesi(\"sid-tidak-ada\", 1000) === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "jwt",
+      "title": "JWT: Struktur, Tanda Tangan, dan Kedaluwarsa",
+      "est_minutes": 25,
+      "slide_from": 12,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Membaca struktur JWT: header, payload, dan signature.\n- Menjelaskan mengapa mengubah payload membuat signature tidak cocok.\n- Menulis pembuatan dan verifikasi token lengkap dengan pengecekan exp.\n- Menjelaskan peran access token dan refresh token, serta kesalahan umum pada JWT.\n\n## Apa itu JWT\n\n**JWT** (JSON Web Token, dibaca \"jot\") adalah format token yang berisi data dalam bentuk JSON dan ditandatangani, sehingga penerimanya bisa memastikan isinya tidak diubah. Bentuknya tiga bagian yang dipisah titik:\n\n```\neyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIifQ.5mhBHqs5_DTLdINd9p5m7ZJ6XD0Xc55kIaCRY5r3AKI\n   header                             payload                            signature\n```\n\n- **Header**: metadata, terutama algoritma tanda tangan (`alg`) dan jenis token (`typ`).\n- **Payload**: klaim, yaitu data tentang pemilik token dan masa berlakunya.\n- **Signature**: tanda tangan dari dua bagian pertama memakai kunci rahasia.\n\nHeader dan payload masing-masing diubah ke **base64url**, yaitu cara menulis data biner atau teks memakai huruf, angka, `-`, dan `_` supaya aman dipakai di header HTTP dan URL.\n\n![Tiga bagian JWT](slide:12)\n\n## Payload bukan rahasia\n\nIni kesalahpahaman nomor satu. Base64url hanyalah **pengkodean**, bukan enkripsi. Siapa pun yang memegang token bisa menyalin bagian tengahnya, mendekodenya, dan membaca isinya. Karena itu jangan pernah menaruh password, nomor kartu, atau data pribadi sensitif di payload. Taruh hanya yang memang boleh dilihat pemegang token, seperti ID pengguna dan role.\n\nKlaim standar yang sering dipakai:\n\n| Klaim | Arti |\n|---|---|\n| `sub` | Subject: siapa pemilik token, biasanya ID pengguna |\n| `iat` | Issued at: kapan token dibuat (detik sejak 1970) |\n| `exp` | Expiration: kapan token berakhir |\n| `iss`, `aud` | Penerbit token dan pihak yang dituju |\n\n## Tanda tangan: mengapa token tidak bisa dipalsukan\n\nServer membuat signature dari `header.payload` memakai **kunci rahasia** yang hanya ia ketahui (untuk algoritma HS256, yaitu HMAC-SHA256). Saat token datang, server menghitung ulang signature dari dua bagian pertama dengan kunci yang sama dan membandingkannya dengan bagian ketiga.\n\nSeandainya penyerang mengubah `\"role\":\"user\"` menjadi `\"role\":\"admin\"` di payload, signature lama tidak lagi cocok dengan isi baru, dan penyerang tidak bisa membuat signature baru tanpa kunci. Hasilnya server menolak token itu. Inilah satu-satunya jaminan JWT: **keutuhan dan keaslian**, bukan kerahasiaan.\n\n## Membuat dan memverifikasi token\n\nDi latihan, tersedia fungsi `sign(data, secret)` dan `encode`/`decode` yang mensimulasikan HMAC dan base64url, karena lingkungan latihan tidak punya library kripto. Susunannya sama persis dengan yang dilakukan library sungguhan:\n\n```js\nfunction buatToken(payload, secret, ttl, sekarang) {\n  const header = { alg: \"HS256\", typ: \"JWT\" };\n  const klaim = { ...payload, iat: sekarang, exp: sekarang + ttl };\n  const data = encode(header) + \".\" + encode(klaim);\n  return data + \".\" + sign(data, secret);\n}\n\nfunction verifikasi(token, secret, sekarang) {\n  const bagian = token.split(\".\");\n  if (bagian.length !== 3) return { ok: false, alasan: \"format\" };\n  const [h, p, s] = bagian;\n  if (s !== sign(h + \".\" + p, secret)) return { ok: false, alasan: \"tanda-tangan\" };\n  const payload = decode(p);\n  if (sekarang >= payload.exp) return { ok: false, alasan: \"kedaluwarsa\" };\n  return { ok: true, payload };\n}\n```\n\nUrutan pemeriksaan penting: **format dulu, tanda tangan kedua, baru isi**. Jangan pernah memercayai atau menguraikan payload sebelum signature terbukti sah, karena payload itu datang dari pihak luar. Di produksi kamu memakai library seperti `jsonwebtoken` atau `jose` yang melakukan semua ini, termasuk perbandingan waktu-konstan; menulisnya sendiri hanya untuk memahami mekanismenya.\n\n## Kedaluwarsa dan refresh token\n\nKarena token sulit dicabut, kuncinya adalah membuatnya **berumur pendek**: lima belas menit sampai satu jam untuk **access token**, yaitu token yang dipakai memanggil API. Bila bocor, penyerang hanya punya jendela waktu kecil.\n\nTetapi menyuruh pengguna login ulang tiap lima belas menit tidak nyaman. Solusinya pasangan token:\n\n- **Access token**: umur pendek, dikirim di setiap request.\n- **Refresh token**: umur panjang (hari atau minggu), hanya dikirim ke satu endpoint khusus untuk menukar access token baru. Disimpan lebih ketat, dan **dicatat di server** sehingga bisa dicabut saat logout atau saat dicurigai bocor.\n\nSatu praktik baik: **rotasi** refresh token. Setiap kali dipakai, server menerbitkan refresh token baru dan mematikan yang lama. Jika token lama muncul lagi, berarti ada yang menyalinnya, dan server bisa mencabut seluruh rantai.\n\n## Kesalahan umum pada JWT\n\n- **Menerima algoritma pilihan pengirim.** Beberapa implementasi lama mempercayai `alg` di header, termasuk nilai `none` yang artinya tanpa tanda tangan. Library modern menolaknya, tetapi kamu harus selalu menentukan algoritma yang diterima di sisi server.\n- **Kunci rahasia pendek atau tertanam di kode.** HS256 butuh kunci acak yang panjang (minimal 32 karakter) dan diambil dari environment.\n- **Tidak memeriksa `exp`.** Tanpa itu token berlaku selamanya.\n- **Menyimpan data sensitif di payload**, seperti dibahas tadi.\n- **Menganggap JWT cocok untuk semuanya.** Untuk aplikasi web sederhana, session biasa sering lebih mudah dan lebih mudah dicabut.\n\n## Membaca token sungguhan\n\nAmbil token contoh di awal bab. Bagian tengahnya `eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIifQ` bila didekode menjadi `{\"sub\":\"7\",\"role\":\"user\"}`. Kamu bisa mencobanya sendiri di konsol browser dengan `atob(\"eyJzdWIiOiI3Iiwicm9sZSI6InVzZXIifQ\")`. Latihan sederhana ini membuktikan sendiri mengapa payload tidak boleh berisi rahasia.\n\nKebiasaan yang baik saat men-debug autentikasi: dekode token dan lihat klaimnya. Sering masalahnya terlihat langsung, misalnya `exp` yang ternyata sudah lewat, atau `sub` yang berisi ID pengguna yang salah. Tetapi ingat bahwa hasil dekode belum membuktikan apa-apa; hanya verifikasi tanda tangan yang membuat isinya layak dipercaya.\n\n## Rangkuman\n\n- JWT terdiri dari header, payload, dan signature, dipisah titik; header dan payload hanya di-encode base64url sehingga terbaca siapa saja.\n- Signature dihitung dari header dan payload memakai kunci rahasia; ubah isi satu karakter saja dan signature tidak cocok lagi.\n- Verifikasi berurutan: format, tanda tangan, baru isi dan `exp`; di produksi pakai library teruji.\n- Access token berumur pendek ditambah refresh token yang bisa dicabut menjaga kenyamanan sekaligus membatasi kerugian bila token bocor.\n- Hindari kesalahan umum: algoritma pilihan pengirim, kunci lemah, `exp` tidak diperiksa, dan data sensitif di payload.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa tiga bagian JWT, berurutan?",
+          "code": "",
+          "options": [
+            "Payload, header, kunci rahasia",
+            "Header, payload, signature",
+            "Signature, salt, payload",
+            "Header, hash, session"
+          ],
+          "answer": 1,
+          "explanation": "JWT berbentuk header.payload.signature, dipisah titik."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Payload JWT dienkripsi sehingga aman untuk menyimpan data pribadi sensitif.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Payload hanya di-encode base64url dan bisa dibaca siapa saja yang memegang token."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Penyerang mengubah role di payload dari user menjadi admin tanpa tahu kunci rahasia. Apa akibatnya?",
+          "code": "",
+          "options": [
+            "Token tetap diterima karena payload tidak diperiksa",
+            "Server otomatis menerbitkan token admin yang baru",
+            "Signature ikut berubah mengikuti payload",
+            "Signature tidak lagi cocok sehingga server menolak token itu"
+          ],
+          "answer": 3,
+          "explanation": "Signature dihitung dari header dan payload dengan kunci rahasia; isi yang berubah memutus kecocokannya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa access token dibuat berumur pendek?",
+          "code": "",
+          "options": [
+            "Membatasi kerugian bila token bocor karena token sulit dicabut",
+            "Agar ukuran token tetap kecil dan hemat bandwidth pada setiap permintaan klien",
+            "Agar server tidak perlu memeriksa tanda tangan",
+            "Agar pengguna wajib mengubah password tiap jam"
+          ],
+          "answer": 0,
+          "explanation": "Token yang sah diterima sampai exp, jadi umur pendek memperkecil jendela penyalahgunaan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membuat token JWT",
+          "prompt": "Fungsi `encode(obj)`, `decode(str)`, dan `sign(data, secret)` sudah tersedia (pengganti base64url dan HMAC untuk latihan). Tulis `buatToken(payload, secret, ttl, sekarang)`:\n\n1. header `{ alg: \"HS256\", typ: \"JWT\" }`\n2. klaim: isi `payload` ditambah `iat: sekarang` dan `exp: sekarang + ttl`\n3. `data = encode(header) + \".\" + encode(klaim)`\n4. kembalikan `data + \".\" + sign(data, secret)`",
+          "starter": {
+            "code": "function buatToken(payload, secret, ttl, sekarang) {\n  // TODO: header, klaim, data, tanda tangan\n  return \"\";\n}\n"
+          },
+          "solution": {
+            "code": "function buatToken(payload, secret, ttl, sekarang) {\n  const header = { alg: \"HS256\", typ: \"JWT\" };\n  const klaim = { ...payload, iat: sekarang, exp: sekarang + ttl };\n  const data = encode(header) + \".\" + encode(klaim);\n  return data + \".\" + sign(data, secret);\n}\n"
+          },
+          "setup": "// Pengganti HMAC dan base64url untuk latihan, bukan untuk produksi.\nconst ABC = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_\";\nfunction b64url(s) {\n  let out = \"\";\n  for (let i = 0; i < s.length; i += 3) {\n    const n = (s.charCodeAt(i) << 16) | ((s.charCodeAt(i + 1) || 0) << 8) | (s.charCodeAt(i + 2) || 0);\n    out += ABC[(n >> 18) & 63] + ABC[(n >> 12) & 63];\n    if (i + 1 < s.length) out += ABC[(n >> 6) & 63];\n    if (i + 2 < s.length) out += ABC[n & 63];\n  }\n  return out;\n}\nfunction unb64url(t) {\n  let bits = 0, acc = 0, out = \"\";\n  for (const ch of t) {\n    acc = (acc << 6) | ABC.indexOf(ch);\n    bits += 6;\n    if (bits >= 8) {\n      bits -= 8;\n      out += String.fromCharCode((acc >> bits) & 255);\n      acc &= (1 << bits) - 1;\n    }\n  }\n  return out;\n}\nfunction sign(data, secret) {\n  let h = 2166136261;\n  const s = secret + \".\" + data + \".\" + secret;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\nconst encode = (obj) => b64url(JSON.stringify(obj));\nconst decode = (str) => JSON.parse(unb64url(str));",
+          "tests": [
+            {
+              "name": "Token terdiri dari tiga bagian",
+              "check": "buatToken({ sub: \"u1\" }, \"kunci\", 900, 1000).split(\".\").length === 3"
+            },
+            {
+              "name": "Payload memuat sub, iat, dan exp",
+              "check": "(() => { const p = decode(buatToken({ sub: \"u1\" }, \"kunci\", 900, 1000).split(\".\")[1]); return p.sub === \"u1\" && p.iat === 1000 && p.exp === 1900; })()"
+            },
+            {
+              "name": "Header menyebut HS256",
+              "check": "decode(buatToken({}, \"kunci\", 60, 0).split(\".\")[0]).alg === \"HS256\""
+            },
+            {
+              "name": "Tanda tangan dihitung dari header.payload",
+              "check": "(() => { const [h, p, s] = buatToken({ sub: \"u1\" }, \"kunci\", 900, 1000).split(\".\"); return s === sign(h + \".\" + p, \"kunci\"); })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Memverifikasi token JWT",
+          "prompt": "`buatToken`, `encode`, `decode`, dan `sign` sudah tersedia. Tulis `verifikasi(token, secret, sekarang)` yang mengembalikan `{ ok: true, payload }` atau `{ ok: false, alasan }`. Periksa **berurutan**:\n\n1. bukan tiga bagian: `alasan: \"format\"`\n2. signature tidak cocok dengan `sign(header + \".\" + payload, secret)`: `alasan: \"tanda-tangan\"`\n3. `sekarang >= payload.exp`: `alasan: \"kedaluwarsa\"`\n\nJangan menguraikan payload sebelum signature terbukti sah.",
+          "starter": {
+            "code": "function verifikasi(token, secret, sekarang) {\n  // TODO: format, tanda tangan, baru kedaluwarsa\n  return { ok: true, payload: decode(token.split(\".\")[1]) };\n}\n"
+          },
+          "solution": {
+            "code": "function verifikasi(token, secret, sekarang) {\n  const bagian = token.split(\".\");\n  if (bagian.length !== 3) return { ok: false, alasan: \"format\" };\n  const [h, p, s] = bagian;\n  if (s !== sign(h + \".\" + p, secret)) return { ok: false, alasan: \"tanda-tangan\" };\n  const payload = decode(p);\n  if (sekarang >= payload.exp) return { ok: false, alasan: \"kedaluwarsa\" };\n  return { ok: true, payload };\n}\n"
+          },
+          "setup": "// Pengganti HMAC dan base64url untuk latihan, bukan untuk produksi.\nconst ABC = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_\";\nfunction b64url(s) {\n  let out = \"\";\n  for (let i = 0; i < s.length; i += 3) {\n    const n = (s.charCodeAt(i) << 16) | ((s.charCodeAt(i + 1) || 0) << 8) | (s.charCodeAt(i + 2) || 0);\n    out += ABC[(n >> 18) & 63] + ABC[(n >> 12) & 63];\n    if (i + 1 < s.length) out += ABC[(n >> 6) & 63];\n    if (i + 2 < s.length) out += ABC[n & 63];\n  }\n  return out;\n}\nfunction unb64url(t) {\n  let bits = 0, acc = 0, out = \"\";\n  for (const ch of t) {\n    acc = (acc << 6) | ABC.indexOf(ch);\n    bits += 6;\n    if (bits >= 8) {\n      bits -= 8;\n      out += String.fromCharCode((acc >> bits) & 255);\n      acc &= (1 << bits) - 1;\n    }\n  }\n  return out;\n}\nfunction sign(data, secret) {\n  let h = 2166136261;\n  const s = secret + \".\" + data + \".\" + secret;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\nconst encode = (obj) => b64url(JSON.stringify(obj));\nconst decode = (str) => JSON.parse(unb64url(str));\n\nfunction buatToken(payload, secret, ttl, sekarang) {\n  const header = { alg: \"HS256\", typ: \"JWT\" };\n  const klaim = { ...payload, iat: sekarang, exp: sekarang + ttl };\n  const data = encode(header) + \".\" + encode(klaim);\n  return data + \".\" + sign(data, secret);\n}",
+          "tests": [
+            {
+              "name": "Token sah diterima beserta payload",
+              "check": "(() => { const r = verifikasi(buatToken({ sub: \"u1\" }, \"kunci\", 900, 1000), \"kunci\", 1500); return r.ok === true && r.payload.sub === \"u1\"; })()"
+            },
+            {
+              "name": "Payload yang diubah ditolak",
+              "check": "(() => { const [h, , s] = buatToken({ sub: \"u1\", role: \"user\" }, \"kunci\", 900, 1000).split(\".\"); const palsu = [h, encode({ sub: \"u1\", role: \"admin\", exp: 9999 }), s].join(\".\"); return verifikasi(palsu, \"kunci\", 1500).alasan === \"tanda-tangan\"; })()"
+            },
+            {
+              "name": "Kunci yang salah ditolak",
+              "check": "verifikasi(buatToken({}, \"kunci\", 900, 1000), \"lain\", 1500).alasan === \"tanda-tangan\""
+            },
+            {
+              "name": "Token kedaluwarsa ditolak",
+              "check": "verifikasi(buatToken({}, \"kunci\", 900, 1000), \"kunci\", 1900).alasan === \"kedaluwarsa\""
+            },
+            {
+              "name": "Format yang rusak ditolak",
+              "check": "verifikasi(\"abc\", \"kunci\", 1000).alasan === \"format\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "middleware-autentikasi-express",
+      "title": "Middleware Autentikasi di Express",
+      "est_minutes": 25,
+      "slide_from": 16,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Menjelaskan cara kerja middleware Express dan perannya dalam autentikasi.\n- Menulis middleware `auth` yang membaca header `Authorization: Bearer`.\n- Memasang middleware pada route yang tepat dan menyadari risiko lupa memasangnya.\n- Menyusun alur login sampai request terautentikasi.\n\n## Middleware: pemeriksa di pintu masuk\n\nDi Express, **middleware** adalah fungsi dengan tiga parameter `(req, res, next)` yang berjalan sebelum handler route. Ia bisa membaca atau mengubah `req`, langsung menjawab dengan `res`, atau meneruskan request ke langkah berikutnya dengan memanggil `next()`. Rangkaian middleware seperti pos pemeriksaan berurutan: request hanya sampai ke handler bila semua pos meloloskannya.\n\nItu persis kebutuhan autentikasi. Alih-alih menulis ulang pemeriksaan token di setiap handler, kamu menulisnya sekali dalam sebuah middleware lalu memasangnya di route yang butuh login.\n\n![Middleware sebagai pos pemeriksaan](slide:16)\n\n## Anatomi middleware auth\n\nKlien membawa token di header `Authorization` dengan format `Bearer <token>`. Middleware membacanya, memeriksa token, lalu memutuskan:\n\n```js\nfunction auth(req, res, next) {\n  const header = req.headers.authorization || \"\";\n  const [skema, token] = header.split(\" \");\n  const user = skema === \"Bearer\" ? cariPengguna(token) : null;\n\n  if (!user) {\n    return res.status(401).json({ error: \"Belum login\" });\n  }\n  req.user = user;   // handler berikutnya tinggal memakai req.user\n  next();\n}\n```\n\nAda tiga hal yang pantas diperhatikan. Pertama, **`return` sebelum `res.status(401)`**: tanpa `return`, kode di bawahnya tetap jalan dan `next()` ikut terpanggil, sehingga request yang seharusnya ditolak malah lolos. Kedua, **`req.user` hanya diisi dari hasil verifikasi**, tidak pernah dari data yang dikirim klien di body atau query. Ketiga, hasil `cariPengguna` bisa berupa pencarian di tabel token, verifikasi JWT, atau pencarian session, dan bentuk middlewarenya tidak berubah.\n\n## Memasang middleware pada route\n\nExpress menerima beberapa handler untuk satu route: yang pertama berjalan lebih dulu, dan hanya jika ia memanggil `next()`, yang kedua dieksekusi.\n\n```js\napp.get(\"/publik\", (req, res) => res.json({ pesan: \"Halo semua orang\" }));\napp.get(\"/saya\", auth, (req, res) => res.json(req.user));\napp.delete(\"/catatan/:id\", auth, hapusCatatan);\n```\n\nRoute `/publik` terbuka untuk siapa saja. Route `/saya` dan `/catatan/:id` baru dijalankan setelah `auth` meloloskan request. Pola ini jelas dan eksplisit, tetapi punya kelemahan: **lupa menulis `auth` di satu route sama dengan membiarkan pintu itu terbuka**, dan itu sulit disadari karena kode tetap berjalan normal.\n\nDua cara mengurangi risikonya. Pertama, pasang `app.use(auth)` untuk semua route yang butuh login, lalu letakkan route publik (seperti `/login` dan `/daftar`) di atas baris itu. Kedua, tulis tes yang mencoba memanggil setiap route tanpa token dan memastikan jawabannya 401. Tes seperti itu menangkap route yang terlupa sebelum sampai ke produksi.\n\n## Alur login lengkap\n\nGabungkan semuanya. Pengguna mengirim email dan password ke `/login`; server menerbitkan token; klien menyertakan token itu di setiap request berikutnya; middleware `auth` memeriksanya.\n\n```js\napp.post(\"/login\", (req, res) => {\n  const { email, password } = req.body;\n  const user = USERS.find((u) => u.email === email);\n  if (!user || user.hash !== hash(password || \"\")) {\n    return res.status(401).json({ error: \"Email atau password salah\" });\n  }\n  res.json({ token: \"tok-\" + user.id });\n});\n```\n\nPerhatikan bahwa respons login memuat **token saja**. Jangan mengirim kembali objek pengguna lengkap, karena di dalamnya bisa ada hash password atau field internal lain. Perhatikan juga `password || \"\"`: bila klien tidak mengirim field `password`, kodemu tidak boleh crash, karena crash yang tidak tertangani bisa membuka informasi lewat pesan galat.\n\nPesan galatnya sama untuk email yang tidak dikenal dan password yang salah. Bab 2 sudah menjelaskan alasannya: jangan memberi penyerang cara mengetahui email mana yang terdaftar.\n\n## Menguji middleware\n\nTes untuk middleware auth minimal mencakup empat kasus: tanpa header, header dengan token tidak dikenal, header dengan skema selain Bearer, dan header yang valid. Ditambah satu tes untuk route publik agar kamu yakin `auth` tidak ikut menutup route yang memang harus terbuka. Latihan di bab ini memakai pola yang sama: tes mengirim header berbeda-beda lalu memeriksa status dan isi respons.\n\n## Middleware global dan urutannya\n\nSelain dipasang per route, middleware bisa dipasang untuk semua route dengan `app.use(fn)`. Urutan penulisan menentukan urutan eksekusi. Itu sebabnya `app.use(express.json())` diletakkan di atas route: parser body harus berjalan sebelum handler yang membaca `req.body`. Untuk autentikasi, pola umumnya: route publik seperti `/login`, `/daftar`, dan `/kesehatan` ditulis lebih dulu, lalu `app.use(auth)`, lalu semua route privat. Dengan pola ini route baru yang ditambahkan di bawah otomatis terlindungi, jadi risiko lupa memasang `auth` menyusut jauh.\n\n## Menangani galat dengan sopan\n\nMiddleware dan handler bisa melempar galat. Jangan biarkan pesan galat mentah, apalagi stack trace, sampai ke klien: di dalamnya sering ada nama berkas, kueri, atau detail internal yang berguna bagi penyerang. Tangkap galat, catat detailnya di log server, dan kirim pesan umum seperti `{ \"error\": \"Terjadi kesalahan\" }` dengan status 500. Bab 9 membahas log yang aman.\n\n## Token di request sungguhan\n\nDi klien, token dikirim sebagai header. Contoh dengan `fetch` dari JavaScript:\n\n```js\nconst res = await fetch(\"/saya\", {\n  headers: { Authorization: \"Bearer \" + token },\n});\n```\n\nPastikan koneksi memakai HTTPS. Header `Authorization` terkirim apa adanya; di jaringan tanpa enkripsi, siapa pun di tengah jalan bisa membacanya dan memakai tokenmu.\n\n## Satu middleware, banyak jenis bukti\n\nKeindahan pola ini adalah middleware `auth` tidak peduli bagaimana identitas dibuktikan. Hari ini ia mencari token di sebuah tabel, besok ia memverifikasi JWT, lusa ia membaca cookie session. Selama hasil akhirnya sama, yaitu `req.user` terisi atau jawaban 401, semua route di bawahnya tidak perlu diubah. Itulah mengapa memisahkan autentikasi dari logika bisnis membuat aplikasi lebih mudah dirawat.\n\n## Rangkuman\n\n- Middleware Express `(req, res, next)` berjalan sebelum handler dan bisa menolak request atau meneruskannya dengan `next()`.\n- Middleware `auth` membaca `Authorization: Bearer <token>`, mengisi `req.user` dari hasil verifikasi, dan menjawab 401 dengan `return` bila gagal.\n- Pasang `auth` secara eksplisit per route atau lewat `app.use`; lupa memasangnya sama dengan membuka pintu, jadi uji tiap route tanpa token.\n- Respons login hanya memuat token, dengan satu pesan galat yang sama untuk email salah dan password salah.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang harus terjadi pada middleware auth bila token tidak valid?",
+          "code": "",
+          "options": [
+            "Memanggil next() lalu membiarkan handler yang memutuskan",
+            "Membalas 401 dan tidak memanggil next()",
+            "Membalas 403 dan tetap memanggil next()",
+            "Mengabaikan token dan mengisi req.user dengan tamu"
+          ],
+          "answer": 1,
+          "explanation": "Request yang ditolak tidak boleh diteruskan ke handler."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Format header Authorization yang umum untuk token adalah",
+          "code": "",
+          "options": [
+            "Authorization: Bearer <token>",
+            "Token: <token> di body request",
+            "Authorization: <token>.<kata sandi>",
+            "Cookie: bearer=<email>"
+          ],
+          "answer": 0,
+          "explanation": "Skema Bearer diikuti spasi lalu token adalah konvensi umum untuk API."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Lupa memasang middleware auth pada satu route membuat route itu terbuka untuk semua orang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Express tidak otomatis melindungi route; setiap route privat harus melewati auth."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa respons login sebaiknya hanya berisi token, bukan seluruh objek pengguna?",
+          "code": "",
+          "options": [
+            "Karena token otomatis berisi semua data pengguna",
+            "Karena Express tidak bisa mengirim objek bersarang",
+            "Objek pengguna bisa memuat hash password atau field internal",
+            "Karena klien tidak boleh mengetahui namanya sendiri"
+          ],
+          "answer": 2,
+          "explanation": "Mengirim objek mentah berisiko membocorkan field yang tidak seharusnya terlihat klien."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Middleware auth",
+          "prompt": "Tabel `TOKEN` (Map token ke pengguna) sudah tersedia. Lengkapi middleware `auth`:\n\n- baca `req.headers.authorization` berformat `Bearer <token>`\n- bila skemanya bukan `Bearer` atau token tidak ada di `TOKEN`: balas `401` dengan `{ error: \"Belum login\" }` dan hentikan\n- bila valid: isi `req.user` lalu panggil `next()`\n\nRoute `/saya` memakai `auth`, sedangkan `/publik` terbuka untuk semua.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction auth(req, res, next) {\n  // TODO: baca header, cari di TOKEN, isi req.user atau balas 401\n  next();\n}\n\napp.get(\"/publik\", (req, res) => res.json({ pesan: \"Halo semua orang\" }));\napp.get(\"/saya\", auth, (req, res) => res.json(req.user));\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction auth(req, res, next) {\n  const [skema, token] = (req.headers.authorization || \"\").split(\" \");\n  const user = skema === \"Bearer\" ? TOKEN.get(token) : undefined;\n  if (!user) return res.status(401).json({ error: \"Belum login\" });\n  req.user = user;\n  next();\n}\n\napp.get(\"/publik\", (req, res) => res.json({ pesan: \"Halo semua orang\" }));\napp.get(\"/saya\", auth, (req, res) => res.json(req.user));\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\nconst TOKEN = new Map([\n  [\"tok-ani\", { id: 1, nama: \"Ani\", role: \"user\" }],\n  [\"tok-budi\", { id: 2, nama: \"Budi\", role: \"user\" }],\n  [\"tok-rina\", { id: 3, nama: \"Rina\", role: \"admin\" }],\n  [\"tok-edit\", { id: 4, nama: \"Eko\", role: \"editor\" }],\n]);",
+          "tests": [
+            {
+              "name": "Tanpa header: 401",
+              "check": "(globalThis.__headers = {}, (await request(\"GET\", \"/saya\")).status === 401)"
+            },
+            {
+              "name": "Token tidak dikenal: 401",
+              "check": "(globalThis.__headers = { authorization: \"Bearer palsu\" }, (await request(\"GET\", \"/saya\")).status === 401)"
+            },
+            {
+              "name": "Skema selain Bearer: 401",
+              "check": "(globalThis.__headers = { authorization: \"Basic tok-ani\" }, (await request(\"GET\", \"/saya\")).status === 401)"
+            },
+            {
+              "name": "Token valid: 200 dengan identitas",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"GET\", \"/saya\")).body.nama === \"Ani\")"
+            },
+            {
+              "name": "Route publik tetap terbuka",
+              "check": "(globalThis.__headers = {}, (await request(\"GET\", \"/publik\")).status === 200)"
+            }
+          ]
+        },
+        {
+          "kind": "express",
+          "title": "Login tanpa membocorkan",
+          "prompt": "`hash(teks)` dan daftar `USERS` sudah tersedia. Lengkapi `POST /login`:\n\n- ambil `email` dan `password` dari body\n- cari pengguna lewat email dan bandingkan `user.hash` dengan `hash(password)`\n- gagal (email tidak dikenal **atau** password salah): `401` dengan `{ error: \"Email atau password salah\" }`, pesannya sama\n- berhasil: balas `{ token: \"tok-\" + user.id }` saja, tanpa hash",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/login\", (req, res) => {\n  // TODO: cari pengguna, cocokkan hash, balas token atau 401\n  res.json({});\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/login\", (req, res) => {\n  const { email, password } = req.body;\n  const user = USERS.find((u) => u.email === email);\n  if (!user || user.hash !== hash(password || \"\")) {\n    return res.status(401).json({ error: \"Email atau password salah\" });\n  }\n  res.json({ token: \"tok-\" + user.id });\n});\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\n// Pengganti hash lambat untuk latihan (FNV-1a), bukan untuk produksi.\nfunction hash(teks) {\n  let h = 2166136261;\n  for (let i = 0; i < teks.length; i++) {\n    h ^= teks.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\nconst USERS = [\n  { id: 1, email: \"ani@contoh.id\", nama: \"Ani\", role: \"user\", hash: hash(\"rahasia123\") },\n  { id: 2, email: \"rina@contoh.id\", nama: \"Rina\", role: \"admin\", hash: hash(\"admin-kuat\") },\n];",
+          "tests": [
+            {
+              "name": "Login benar menghasilkan token",
+              "check": "(await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"rahasia123\" })).body.token === \"tok-1\""
+            },
+            {
+              "name": "Password salah menghasilkan 401",
+              "check": "(await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"salah\" })).status === 401"
+            },
+            {
+              "name": "Email tidak dikenal menghasilkan 401",
+              "check": "(await request(\"POST\", \"/login\", { email: \"x@contoh.id\", password: \"rahasia123\" })).status === 401"
+            },
+            {
+              "name": "Pesan galat sama untuk kedua kegagalan",
+              "check": "[(await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"salah\" })).body.error, (await request(\"POST\", \"/login\", { email: \"x@contoh.id\", password: \"salah\" })).body.error].every((e, i, a) => typeof e === \"string\" && e === a[0])"
+            },
+            {
+              "name": "Respons tidak memuat hash",
+              "check": "JSON.stringify((await request(\"POST\", \"/login\", { email: \"ani@contoh.id\", password: \"rahasia123\" })).body).includes(\"hash\") === false"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "role-dan-kepemilikan-data",
+      "title": "Role, Permission, dan Kepemilikan Data",
+      "est_minutes": 25,
+      "slide_from": 19,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Menulis middleware `perluRole` yang bisa dipakai ulang untuk membatasi route berdasarkan peran.\n- Menjelaskan BOLA (Broken Object Level Authorization) dan mengapa login saja tidak cukup.\n- Menerapkan pemeriksaan kepemilikan data pada route yang memakai ID di URL.\n- Menyusun aturan akses yang jelas, bisa diuji, dan mengikuti least privilege.\n\n## Setelah login: siapa boleh apa\n\nAutentikasi hanya menjawab \"siapa kamu\". Pada API nyata, pertanyaan berikutnya muncul di hampir setiap route: **boleh atau tidak?** Ada dua jenis aturan yang perlu dibedakan:\n\n- **Aturan berbasis role**: berlaku untuk jenis aksi. Contoh: hanya `admin` yang boleh menghapus pengguna.\n- **Aturan berbasis kepemilikan**: berlaku untuk objek tertentu. Contoh: seorang `user` hanya boleh membuka catatan miliknya sendiri.\n\nKeduanya dibutuhkan. Tanpa aturan role, pengguna biasa bisa memanggil aksi administratif. Tanpa aturan kepemilikan, setiap pengguna bisa membuka data pengguna lain.\n\n![Role dan kepemilikan](slide:19)\n\n## Role dengan middleware perluRole\n\nRole adalah label hak, misalnya `user`, `editor`, dan `admin`. Kamu bisa menyimpannya di database dan memasukkannya ke token atau `req.user` saat login. Agar tidak mengulang pemeriksaan di setiap handler, buat middleware yang menerima role sebagai parameter:\n\n```js\nconst perluRole = (role) => (req, res, next) =>\n  req.user.role === role\n    ? next()\n    : res.status(403).json({ error: \"Dilarang\" });\n\napp.delete(\"/pengguna/:id\", auth, perluRole(\"admin\"), hapusPengguna);\napp.get(\"/laporan\", auth, perluRole(\"editor\"), lihatLaporan);\n```\n\n`perluRole(\"admin\")` adalah fungsi yang mengembalikan middleware. Urutan pemasangan penting: `auth` harus lebih dulu agar `req.user` terisi saat `perluRole` berjalan. Jawabannya **403**, bukan 401, karena identitas pengguna sudah terbukti; ia hanya tidak berhak.\n\nSatu catatan desain: periksa role di **server**, dari data yang kamu percaya (database atau token yang ditandatangani). Jangan pernah membaca role dari body atau query. Tombol yang disembunyikan di antarmuka hanyalah kenyamanan, bukan kontrol keamanan, karena siapa pun bisa memanggil endpoint langsung.\n\n## BOLA: kerentanan nomor satu di API\n\nBayangkan route `GET /catatan/:id` yang hanya memeriksa bahwa pemanggil sudah login. Ani login, membuka catatannya di `/catatan/1`, lalu iseng mengganti angka menjadi `/catatan/2`. Bila server hanya mencari catatan dengan ID itu dan mengirimkannya, Ani kini membaca catatan milik Budi. Itulah **BOLA** (Broken Object Level Authorization), juga dikenal sebagai **IDOR**, dan ia menempati urutan pertama dalam OWASP API Security Top 10 karena mudah dieksploitasi dan sangat sering terjadi.\n\nPerbaikannya adalah memeriksa kepemilikan di setiap akses data:\n\n```js\napp.get(\"/catatan/:id\", auth, (req, res) => {\n  const c = catatan.find((x) => x.id === Number(req.params.id));\n  if (!c || c.pemilik !== req.user.id) {\n    return res.status(404).json({ error: \"Tidak ada\" });\n  }\n  res.json(c);\n});\n\napp.get(\"/catatan\", auth, (req, res) => {\n  res.json(catatan.filter((c) => c.pemilik === req.user.id));\n});\n```\n\nPerhatikan tiga detail. Pertama, kondisi `!c || c.pemilik !== req.user.id` memberi **jawaban yang sama** untuk catatan yang tidak ada dan catatan milik orang lain. Itulah alasan memakai 404, bukan 403: jawaban 403 mengonfirmasi bahwa catatan itu ada. Kedua, **daftar** juga harus difilter. Banyak kebocoran terjadi bukan di route detail tetapi di route daftar yang mengirim semua data. Ketiga, `pemilik` dibandingkan dengan `req.user.id` yang berasal dari token terverifikasi, bukan dengan nilai dari body.\n\n## ID yang sulit ditebak tidak menggantikan cek\n\nSebagian orang menyarankan memakai UUID sebagai ID agar sulit ditebak. Itu berguna sebagai lapisan tambahan, tetapi **bukan pengganti** cek kepemilikan. ID bisa bocor lewat log, tautan yang dibagikan, atau respons lain. Kalau server tidak memeriksa kepemilikan, siapa pun yang tahu ID tetap bisa mengakses data.\n\n## Admin: boleh lebih, tetap lewat aturan\n\nAdmin biasanya boleh mengakses data semua orang. Jangan menambalnya dengan `if (req.user.id === 1)` yang tersebar di mana-mana. Tulis aturannya secara eksplisit di satu tempat:\n\n```js\nfunction bolehAkses(user, catatan) {\n  return user.role === \"admin\" || catatan.pemilik === user.id;\n}\n```\n\nDengan satu fungsi, aturan mudah dibaca, mudah diubah, dan mudah diuji: kamu menulis tes untuk pemilik, orang lain, dan admin, lalu semua route yang memakai fungsi itu ikut benar. Catat juga percobaan akses yang ditolak. Deretan 404 dari satu akun ke ID berurutan adalah tanda seseorang sedang menyisir data.\n\n## Menguji dengan dua akun\n\nCara paling efektif menangkap BOLA adalah tes dengan dua pengguna biasa. Login sebagai Ani, coba buka, ubah, dan hapus milik Budi; semuanya harus ditolak. Lalu login sebagai Budi dan ulangi untuk milik Ani. Tes seperti ini sederhana dan menutup celah yang paling sering muncul di laporan keamanan. Latihan di bab ini mengikuti pola tersebut.\n\n## Merancang role dengan least privilege\n\nMulailah dari role yang sedikit dan jelas, lalu tambah hanya bila ada kebutuhan nyata. Pertanyaan yang membantu: aksi apa yang benar-benar dibutuhkan orang dengan peran ini setiap hari? Aksi sisanya tidak diberikan. Role `editor` yang hanya perlu menulis laporan tidak perlu bisa menghapus pengguna. Jika satu role menumpuk terlalu banyak hak, satu akun yang dicuri langsung berarti kerusakan besar.\n\nHindari juga membuat role sebanyak pengguna. Bila aturan makin rumit, misalnya \"editor boleh mengubah artikel hanya jika artikel itu di kategorinya\", pertimbangkan model berbasis atribut atau aturan yang ditulis sebagai fungsi seperti `bolehAkses` tadi, bukan menambah role baru terus-menerus.\n\n## Perubahan role harus berlaku cepat\n\nJika role disimpan di dalam token, perubahan role baru berlaku setelah token berikutnya diterbitkan. Seorang admin yang diturunkan hak aksesnya tetap bisa bertindak sebagai admin sampai tokennya kedaluwarsa. Dua cara menanganinya: pakai token berumur pendek, atau untuk aksi yang sangat sensitif, baca role terbaru dari database alih-alih mempercayai klaim di token.\n\n## Rangkuman\n\n- Role membatasi jenis aksi (`perluRole`), kepemilikan membatasi objek tertentu; keduanya dibutuhkan dan diperiksa di server.\n- BOLA terjadi saat server hanya memeriksa login tanpa memeriksa pemilik data; perbaikannya adalah cek `pemilik === req.user.id` di setiap akses, termasuk route daftar.\n- Jawab 404 untuk data yang tidak ada maupun milik orang lain agar keberadaan data tidak terkonfirmasi.\n- Kumpulkan aturan akses di fungsi yang jelas, uji dengan dua akun, dan catat akses yang ditolak.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Seorang pengguna biasa memanggil route khusus admin dengan token yang sah. Status yang tepat adalah",
+          "code": "",
+          "options": [
+            "401, karena token tidak berlaku untuk route khusus admin tersebut sama sekali",
+            "404, karena route admin tersembunyi",
+            "403, karena identitas terbukti tetapi tidak berhak",
+            "500, karena terjadi kesalahan server"
+          ],
+          "answer": 2,
+          "explanation": "403 dipakai ketika identitas sah tetapi aksi tidak diizinkan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa itu BOLA?",
+          "code": "",
+          "options": [
+            "Membanjiri server dengan permintaan dari banyak alamat",
+            "Mengakses objek milik orang lain karena server tidak memeriksa pemiliknya",
+            "Menyalin seluruh body request ke objek tanpa menyaring",
+            "Menebak password dengan daftar kata umum"
+          ],
+          "answer": 1,
+          "explanation": "BOLA terjadi saat server hanya memeriksa login dan tidak memeriksa kepemilikan objek yang diminta."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Memakai UUID sebagai ID sudah cukup sebagai pengganti pemeriksaan kepemilikan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "ID bisa bocor lewat log atau tautan; cek kepemilikan tetap wajib."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada route GET /catatan, bagaimana mencegah kebocoran data milik pengguna lain?",
+          "code": "",
+          "options": [
+            "Menampilkan semua catatan lalu mengandalkan klien untuk menyaring tampilannya sendiri",
+            "Mengacak urutan catatan dalam respons",
+            "Menyembunyikan field pemilik dari tiap catatan",
+            "Menyaring daftar hanya untuk catatan dengan pemilik sama dengan req.user.id"
+          ],
+          "answer": 3,
+          "explanation": "Route daftar harus difilter di server, bukan di klien."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Middleware perluRole",
+          "prompt": "Middleware `auth` dan tabel `TOKEN` sudah tersedia. Lengkapi `perluRole(role)` yang mengembalikan middleware:\n\n- bila `req.user.role` sama dengan `role`: panggil `next()`\n- selain itu: `403` dengan `{ error: \"Dilarang\" }`\n\nLalu route `DELETE /pengguna/:id` (admin) dan `GET /laporan` (editor) memakainya.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction perluRole(role) {\n  return (req, res, next) => {\n    // TODO: 403 bila role tidak cocok\n    next();\n  };\n}\n\napp.delete(\"/pengguna/:id\", auth, perluRole(\"admin\"), (req, res) => {\n  res.json({ dihapus: Number(req.params.id) });\n});\napp.get(\"/laporan\", auth, perluRole(\"editor\"), (req, res) => {\n  res.json({ laporan: \"Rekap bulanan\" });\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction perluRole(role) {\n  return (req, res, next) => {\n    if (req.user.role !== role) return res.status(403).json({ error: \"Dilarang\" });\n    next();\n  };\n}\n\napp.delete(\"/pengguna/:id\", auth, perluRole(\"admin\"), (req, res) => {\n  res.json({ dihapus: Number(req.params.id) });\n});\napp.get(\"/laporan\", auth, perluRole(\"editor\"), (req, res) => {\n  res.json({ laporan: \"Rekap bulanan\" });\n});\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\nconst TOKEN = new Map([\n  [\"tok-ani\", { id: 1, nama: \"Ani\", role: \"user\" }],\n  [\"tok-budi\", { id: 2, nama: \"Budi\", role: \"user\" }],\n  [\"tok-rina\", { id: 3, nama: \"Rina\", role: \"admin\" }],\n  [\"tok-edit\", { id: 4, nama: \"Eko\", role: \"editor\" }],\n]);\nfunction auth(req, res, next) {\n  const [skema, token] = (req.headers.authorization || \"\").split(\" \");\n  const user = skema === \"Bearer\" ? TOKEN.get(token) : undefined;\n  if (!user) return res.status(401).json({ error: \"Belum login\" });\n  req.user = user;\n  next();\n}",
+          "tests": [
+            {
+              "name": "Tanpa token: 401",
+              "check": "(globalThis.__headers = {}, (await request(\"DELETE\", \"/pengguna/5\")).status === 401)"
+            },
+            {
+              "name": "User biasa: 403",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"DELETE\", \"/pengguna/5\")).status === 403)"
+            },
+            {
+              "name": "Admin: 200 dengan id yang dihapus",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-rina\" }, (await request(\"DELETE\", \"/pengguna/5\")).body.dihapus === 5)"
+            },
+            {
+              "name": "Editor boleh membuka laporan",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-edit\" }, (await request(\"GET\", \"/laporan\")).status === 200)"
+            },
+            {
+              "name": "Admin tidak otomatis boleh membuka laporan",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-rina\" }, (await request(\"GET\", \"/laporan\")).status === 403)"
+            }
+          ]
+        },
+        {
+          "kind": "express",
+          "title": "Cek kepemilikan catatan",
+          "prompt": "`auth`, `TOKEN`, dan daftar `catatan` (field `pemilik` berisi id pengguna) sudah tersedia. Perbaiki dua route:\n\n- `GET /catatan/:id`: bila catatan tidak ada **atau** bukan milik `req.user`, balas `404` dengan `{ error: \"Tidak ada\" }`\n- `GET /catatan`: hanya kembalikan catatan milik `req.user`",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/catatan/:id\", auth, (req, res) => {\n  const c = catatan.find((x) => x.id === Number(req.params.id));\n  // TODO: 404 bila tidak ada atau bukan milik req.user\n  res.json(c);\n});\n\napp.get(\"/catatan\", auth, (req, res) => {\n  // TODO: hanya catatan milik req.user\n  res.json(catatan);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/catatan/:id\", auth, (req, res) => {\n  const c = catatan.find((x) => x.id === Number(req.params.id));\n  if (!c || c.pemilik !== req.user.id) {\n    return res.status(404).json({ error: \"Tidak ada\" });\n  }\n  res.json(c);\n});\n\napp.get(\"/catatan\", auth, (req, res) => {\n  res.json(catatan.filter((c) => c.pemilik === req.user.id));\n});\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\nconst TOKEN = new Map([\n  [\"tok-ani\", { id: 1, nama: \"Ani\", role: \"user\" }],\n  [\"tok-budi\", { id: 2, nama: \"Budi\", role: \"user\" }],\n  [\"tok-rina\", { id: 3, nama: \"Rina\", role: \"admin\" }],\n  [\"tok-edit\", { id: 4, nama: \"Eko\", role: \"editor\" }],\n]);\nfunction auth(req, res, next) {\n  const [skema, token] = (req.headers.authorization || \"\").split(\" \");\n  const user = skema === \"Bearer\" ? TOKEN.get(token) : undefined;\n  if (!user) return res.status(401).json({ error: \"Belum login\" });\n  req.user = user;\n  next();\n}\nconst catatan = [\n  { id: 1, pemilik: 1, judul: \"Belanja\" },\n  { id: 2, pemilik: 2, judul: \"Rahasia Budi\" },\n  { id: 3, pemilik: 1, judul: \"PR Matematika\" },\n];",
+          "tests": [
+            {
+              "name": "Pemilik bisa membuka catatannya",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"GET\", \"/catatan/1\")).body.judul === \"Belanja\")"
+            },
+            {
+              "name": "Catatan milik orang lain: 404",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"GET\", \"/catatan/2\")).status === 404)"
+            },
+            {
+              "name": "Catatan yang tidak ada: 404",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"GET\", \"/catatan/99\")).status === 404)"
+            },
+            {
+              "name": "Daftar hanya berisi catatan sendiri",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-ani\" }, (await request(\"GET\", \"/catatan\")).body.every((c) => c.pemilik === 1) && (await request(\"GET\", \"/catatan\")).body.length === 2)"
+            },
+            {
+              "name": "Pengguna lain melihat daftarnya sendiri",
+              "check": "(globalThis.__headers = { authorization: \"Bearer tok-budi\" }, (await request(\"GET\", \"/catatan\")).body.length === 1)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "owasp-api-dan-batas-laju",
+      "title": "OWASP API, Mass Assignment, dan Batas Laju",
+      "est_minutes": 25,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menyebutkan risiko utama dalam OWASP API Security Top 10 dan mengenali yang paling sering muncul.\n- Mencegah mass assignment dengan menyaring field satu per satu.\n- Menghindari kebocoran data berlebih pada respons.\n- Menulis pembatas laju (rate limiter) sederhana dan menjawab 429.\n\n## OWASP API Security Top 10\n\n**OWASP** adalah komunitas nirlaba yang menerbitkan daftar risiko keamanan paling umum. Selain Top 10 untuk aplikasi web, ada daftar khusus **API Security Top 10** karena API punya pola kelemahan yang berbeda. Daftar ini bukan resep sekali pakai, melainkan alat bantu: setiap kali meninjau sebuah API, kamu menelusuri daftar itu dan bertanya \"apakah ini terjadi di sini?\".\n\nBeberapa risiko yang paling relevan untuk kelas ini:\n\n| Risiko | Intinya | Dibahas di |\n|---|---|---|\n| Broken Object Level Authorization | Mengakses objek milik orang lain | Bab 6 |\n| Broken Authentication | Login atau token yang lemah | Bab 2 sampai 5 |\n| Broken Object Property Level Authorization | Field yang boleh dibaca atau diubah tidak dibatasi (termasuk mass assignment dan data berlebih) | Bab ini |\n| Unrestricted Resource Consumption | Tidak ada batas penggunaan | Bab ini |\n| Security Misconfiguration | Pengaturan bawaan yang longgar, CORS terlalu terbuka | Bab 8 dan 9 |\n\nNomor urut dan nama persisnya bisa berubah antarversi, jadi baca edisi terbaru di situs OWASP. Yang lebih penting adalah polanya: sebagian besar celah muncul dari **kurang memeriksa** sesuatu, bukan dari serangan canggih.\n\n![Peta risiko API](slide:22)\n\n## Mass assignment\n\nBayangkan route pendaftaran yang menyalin seluruh body ke objek pengguna:\n\n```js\napp.post(\"/daftar\", (req, res) => {\n  const baru = { id: pengguna.length + 1, ...req.body };  // berbahaya\n  pengguna.push(baru);\n  res.status(201).json(baru);\n});\n```\n\nFormulir yang sah mengirim `{ nama, email, password }`. Tetapi penyerang tidak memakai formulir; ia memanggil endpoint langsung dengan `{ nama, email, password, role: \"admin\" }`. Karena kode menyalin semua field, penyerang mendaftar sebagai admin. Masalah ini disebut **mass assignment**: field yang tidak seharusnya bisa diatur klien ikut masuk.\n\nPerbaikannya sederhana tetapi harus disiplin: **ambil field satu per satu**, dan tetapkan sendiri field yang menjadi hak server.\n\n```js\napp.post(\"/daftar\", (req, res) => {\n  const { nama, email, password } = req.body;\n  const baru = { id: pengguna.length + 1, nama, email, role: \"user\", hash: hash(password) };\n  pengguna.push(baru);\n  res.status(201).json({ id: baru.id, nama: baru.nama, email: baru.email, role: baru.role });\n});\n```\n\nDaftar putih (allowlist) seperti ini lebih aman daripada daftar hitam yang mencoba membuang field berbahaya, karena daftar hitam selalu bisa terlewat satu nama. Field seperti `role`, `isAdmin`, `saldo`, `pemilik`, dan `id` sebaiknya tidak pernah diambil dari body.\n\n## Data berlebih pada respons\n\nSisi sebaliknya terjadi pada respons. Handler yang mengembalikan objek database apa adanya mengirim juga field internal: hash password, token reset, catatan admin. Klien yang sah mungkin mengabaikannya, tetapi siapa pun yang membuka tab jaringan di browser bisa melihatnya.\n\nPola aman yang sama berlaku: **bentuk respons secara eksplisit**. Pilih field yang memang dibutuhkan klien, jangan buang field yang tidak dibutuhkan. Dengan begitu field baru yang kelak ditambahkan ke database tidak otomatis bocor ke API.\n\n## Membatasi laju permintaan\n\nAPI tanpa batas bisa dihabiskan kapasitasnya oleh satu klien, entah karena serangan, skrip yang salah, atau pengembang yang lupa menghentikan perulangan. Pembatas laju (rate limiter) menghitung permintaan per **kunci** (alamat IP, ID pengguna, atau token) dalam **jendela waktu**, lalu menolak yang melebihi batas dengan status **429 Too Many Requests**.\n\n```js\nfunction buatPembatas(maks, jendela) {\n  const catatan = new Map();\n  return function boleh(kunci, sekarang) {\n    const waktu = (catatan.get(kunci) || []).filter((t) => sekarang - t < jendela);\n    if (waktu.length >= maks) { catatan.set(kunci, waktu); return false; }\n    waktu.push(sekarang);\n    catatan.set(kunci, waktu);\n    return true;\n  };\n}\n```\n\nFungsi di atas menyimpan waktu tiap permintaan dan hanya menghitung yang masih dalam jendela. Permintaan yang ditolak tidak dicatat, sehingga klien yang berhenti sejenak bisa lolos lagi setelah jendela lewat. Sebagai middleware, kamu memanggil `boleh(req.ip, Date.now() / 1000)` lalu menjawab 429 bila `false`.\n\nBeberapa catatan praktis. Batas **lebih ketat untuk jalur sensitif** seperti login dan reset password, misalnya lima percobaan per menit per akun, karena itu tempat tebak password terjadi. Di produksi dengan banyak server, hitungan harus disimpan di tempat bersama seperti Redis, dan kamu bisa memakai library siap pakai seperti `express-rate-limit`. Terakhir, batasi juga **ukuran body**, **jumlah item per halaman**, dan waktu eksekusi, bukan hanya jumlah request.\n\n## Mengapa celah ini terus muncul\n\nMass assignment dan data berlebih lahir dari kebiasaan yang masuk akal: menyalin objek itu pendek dan cepat, dan framework membuatnya mudah. Masalahnya, kode terasa benar saat diuji lewat formulir sendiri. Celah baru terlihat ketika ada pihak yang sengaja mengirim sesuatu yang tidak kamu bayangkan. Karena itu tinjau setiap route dengan pertanyaan terbalik: **apa yang terjadi bila klien mengirim field yang tidak kuharapkan, dan field apa saja yang ikut kukembalikan?**\n\nDua kebiasaan menolong. Pertama, tulis tes yang sengaja mengirim field tambahan seperti `role: \"admin\"` lalu memastikan field itu diabaikan. Kedua, tulis tes yang memeriksa bahwa respons hanya memuat field yang kamu rencanakan. Tes seperti ini murah dan menjaga agar perubahan di masa depan tidak membuka kembali celah yang sudah ditutup.\n\n## Rangkuman\n\n- OWASP API Security Top 10 adalah daftar periksa risiko API; sebagian besar celahnya berasal dari pemeriksaan yang kurang, bukan serangan canggih.\n- Mass assignment terjadi saat body disalin utuh; ambil field satu per satu dan tetapkan sendiri `role`, `id`, dan field milik server.\n- Bentuk respons secara eksplisit agar hash password dan field internal tidak ikut terkirim.\n- Pembatas laju menghitung permintaan per kunci dalam jendela waktu dan menjawab 429; ketatkan untuk login dan reset password, dan simpan hitungan di tempat bersama di produksi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa itu mass assignment?",
+          "code": "",
+          "options": [
+            "Menyalin seluruh body request ke objek sehingga klien bisa mengatur field seperti role",
+            "Mengirim banyak request sekaligus untuk menjatuhkan server dengan beban berlebih",
+            "Menugaskan satu token untuk banyak pengguna",
+            "Menyimpan banyak password dalam satu hash"
+          ],
+          "answer": 0,
+          "explanation": "Field yang seharusnya hanya diatur server ikut terisi dari input klien."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cara terbaik mencegah mass assignment adalah",
+          "code": "",
+          "options": [
+            "Menghapus field role dari body setelah disalin",
+            "Menyembunyikan field role dari formulir pendaftaran",
+            "Menolak body yang lebih dari dua field",
+            "Mengambil field yang diizinkan satu per satu dan menetapkan role di server"
+          ],
+          "answer": 3,
+          "explanation": "Daftar putih field lebih aman daripada mencoba membuang field berbahaya satu per satu."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pembatas laju sebaiknya lebih ketat pada jalur login daripada jalur lain.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Login adalah tempat tebak password terjadi, jadi percobaannya perlu dibatasi lebih keras."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Status HTTP yang tepat saat klien melewati batas laju adalah",
+          "code": "",
+          "options": [
+            "401 Unauthorized karena klien dianggap belum membuktikan identitasnya",
+            "429 Too Many Requests",
+            "404 Not Found",
+            "418 I'm a teapot"
+          ],
+          "answer": 1,
+          "explanation": "429 khusus dipakai untuk permintaan yang terlalu banyak dalam jendela waktu."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Pendaftaran tanpa mass assignment",
+          "prompt": "`hash(teks)` dan larik `pengguna` sudah tersedia. Perbaiki `POST /daftar`:\n\n- ambil hanya `nama`, `email`, dan `password` dari body\n- simpan `{ id, nama, email, role: \"user\", hash: hash(password) }`, `role` selalu `\"user\"` apa pun isi body\n- balas `201` dengan `{ id, nama, email, role }` saja, tanpa password maupun hash",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/daftar\", (req, res) => {\n  // TODO: ambil field satu per satu, role selalu \"user\", balas tanpa password dan hash\n  const baru = { id: pengguna.length + 1, ...req.body };\n  pengguna.push(baru);\n  res.status(201).json(baru);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/daftar\", (req, res) => {\n  const { nama, email, password } = req.body;\n  const baru = { id: pengguna.length + 1, nama, email, role: \"user\", hash: hash(password) };\n  pengguna.push(baru);\n  res.status(201).json({ id: baru.id, nama: baru.nama, email: baru.email, role: baru.role });\n});\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};\n// Pengganti hash lambat untuk latihan (FNV-1a), bukan untuk produksi.\nfunction hash(teks) {\n  let h = 2166136261;\n  for (let i = 0; i < teks.length; i++) {\n    h ^= teks.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return (\"00000000\" + h.toString(16)).slice(-8);\n}\nconst pengguna = [];",
+          "tests": [
+            {
+              "name": "Pendaftaran berhasil dengan 201",
+              "check": "(await request(\"POST\", \"/daftar\", { nama: \"Eko\", email: \"e@x.id\", password: \"abc12345\" })).status === 201"
+            },
+            {
+              "name": "role dari body diabaikan",
+              "check": "(await request(\"POST\", \"/daftar\", { nama: \"Eko\", email: \"e@x.id\", password: \"abc12345\", role: \"admin\" })).body.role === \"user\""
+            },
+            {
+              "name": "Respons hanya memuat id, nama, email, role",
+              "check": "Object.keys((await request(\"POST\", \"/daftar\", { nama: \"Eko\", email: \"e@x.id\", password: \"abc12345\" })).body).sort().join() === \"email,id,nama,role\""
+            },
+            {
+              "name": "Field asing tidak ikut tersimpan",
+              "check": "(await request(\"POST\", \"/daftar\", { nama: \"Fi\", email: \"f@x.id\", password: \"p4ssw0rd\", isAdmin: true }), !(\"isAdmin\" in pengguna[pengguna.length - 1]) && !(\"password\" in pengguna[pengguna.length - 1]))"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Pembatas laju",
+          "prompt": "Tulis `buatPembatas(maks, jendela)` yang mengembalikan fungsi `boleh(kunci, sekarang)`:\n\n- simpan waktu setiap permintaan yang diizinkan per `kunci`\n- hanya hitung waktu yang masih dalam `jendela` detik (`sekarang - t < jendela`)\n- bila jumlahnya sudah `maks`: kembalikan `false` tanpa mencatat\n- selain itu catat `sekarang` lalu kembalikan `true`\n\nKunci yang berbeda dihitung terpisah.",
+          "starter": {
+            "code": "function buatPembatas(maks, jendela) {\n  const catatan = new Map();\n  return function boleh(kunci, sekarang) {\n    // TODO: hitung permintaan dalam jendela, tolak bila sudah maks\n    return true;\n  };\n}\n"
+          },
+          "solution": {
+            "code": "function buatPembatas(maks, jendela) {\n  const catatan = new Map();\n  return function boleh(kunci, sekarang) {\n    const waktu = (catatan.get(kunci) || []).filter((t) => sekarang - t < jendela);\n    if (waktu.length >= maks) {\n      catatan.set(kunci, waktu);\n      return false;\n    }\n    waktu.push(sekarang);\n    catatan.set(kunci, waktu);\n    return true;\n  };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tiga permintaan pertama lolos",
+              "check": "(() => { const b = buatPembatas(3, 60); return [0, 1, 2].every((i) => b(\"ip1\", 100 + i)); })()"
+            },
+            {
+              "name": "Permintaan keempat ditolak",
+              "check": "(() => { const b = buatPembatas(3, 60); [0, 1, 2].forEach((i) => b(\"ip1\", 100 + i)); return b(\"ip1\", 103) === false; })()"
+            },
+            {
+              "name": "Kunci lain tidak terpengaruh",
+              "check": "(() => { const b = buatPembatas(3, 60); [0, 1, 2].forEach((i) => b(\"ip1\", 100 + i)); return b(\"ip2\", 103) === true; })()"
+            },
+            {
+              "name": "Lolos lagi setelah jendela lewat",
+              "check": "(() => { const b = buatPembatas(3, 60); [0, 1, 2].forEach((i) => b(\"ip1\", 100 + i)); return b(\"ip1\", 161) === true; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "cors-dan-validasi-input",
+      "title": "CORS dan Validasi Input",
+      "est_minutes": 20,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu CORS dan mengapa ia bukan mekanisme autentikasi.\n- Mengizinkan hanya asal (origin) tertentu dengan header yang benar.\n- Memvalidasi input di batas sistem: tipe, panjang, dan format.\n- Menerapkan kebiasaan aman untuk query dan keluaran.\n\n## CORS: aturan browser, bukan server\n\nBrowser menerapkan **same-origin policy**: skrip di `https://situs-a.id` tidak boleh membaca respons dari `https://api-b.id` kecuali api-b secara eksplisit mengizinkannya. Izin itu dinyatakan lewat header respons **CORS** (Cross-Origin Resource Sharing). Origin adalah gabungan skema, host, dan port, jadi `https://app.contoh.id` dan `http://app.contoh.id` adalah dua origin berbeda.\n\nSatu salah paham yang berbahaya: **CORS bukan autentikasi dan bukan firewall.** Ia hanya aturan yang ditegakkan oleh browser demi melindungi pengguna. Skrip curl, Postman, atau server lain tidak peduli pada CORS sama sekali. Jangan pernah mengandalkan CORS untuk melindungi data; tetap pakai autentikasi dan otorisasi seperti di bab-bab sebelumnya.\n\n![Cara kerja CORS](slide:25)\n\n## Izinkan asal tertentu, bukan semua\n\nUntuk mengizinkan sebuah origin, server menjawab dengan `Access-Control-Allow-Origin` berisi origin itu. Pola yang aman: simpan **daftar asal yang dipercaya**, cocokkan origin permintaan dengan daftar itu, dan balas dengan origin yang sama bila cocok.\n\n```js\nconst IZIN = [\"https://app.contoh.id\"];\n\nfunction corsHeaders(origin, izin) {\n  if (!origin || !izin.includes(origin)) return {};\n  return { \"Access-Control-Allow-Origin\": origin, Vary: \"Origin\" };\n}\n```\n\nBeberapa detail. Header `Vary: Origin` memberi tahu cache bahwa respons berbeda tergantung origin, sehingga cache tidak menyajikan jawaban untuk satu origin kepada origin lain. Bila origin tidak ada dalam daftar, **jangan kirim header CORS sama sekali**; browser akan memblokir sendiri. Dan hindari `Access-Control-Allow-Origin: *` untuk API yang memakai cookie atau data pribadi: tanda bintang membuka respons untuk situs mana pun. Kombinasi `*` dengan kredensial bahkan ditolak browser, tetapi kesalahan konfigurasi yang diakali dengan memantulkan origin apa pun sama berbahayanya.\n\nDi Express, middleware `cors` mengurus semua ini bila kamu memberinya daftar asal. Intinya tetap sama: daftar putih eksplisit.\n\n## Validasi input di batas sistem\n\nSemua yang datang dari luar, yaitu body, query, parameter URL, dan header, adalah **input tidak tepercaya**. Jangan menganggap `judul` pasti string, `umur` pasti angka, atau `email` pasti berformat email hanya karena formulirmu begitu. Penyerang memanggil API langsung.\n\nValidasi yang baik memeriksa **tipe, panjang, dan format** lalu menolak dengan **400 Bad Request** dan pesan yang menjelaskan apa yang salah:\n\n```js\napp.post(\"/catatan\", (req, res) => {\n  const { judul, isi } = req.body;\n  const errors = [];\n  if (typeof judul !== \"string\" || judul.trim().length < 1 || judul.trim().length > 100) {\n    errors.push(\"judul harus teks 1 sampai 100 karakter\");\n  }\n  if (typeof isi !== \"string\") errors.push(\"isi harus berupa teks\");\n  if (errors.length) return res.status(400).json({ errors });\n\n  res.status(201).json({ judul: judul.trim(), isi });\n});\n```\n\nPerhatikan `typeof judul !== \"string\"` di awal. Tanpa itu, kiriman `{ \"judul\": { \"$ne\": null } }` atau angka bisa lolos ke tahap berikutnya dan menimbulkan perilaku aneh, termasuk crash. Perhatikan juga `trim()` sehingga judul berisi spasi saja ditolak, dan batas panjang atas agar tidak ada yang mengirim teks berukuran megabyte.\n\nUntuk aturan yang rumit, jangan menulis if berantai; pakai library skema seperti **Zod**. Kamu menyatakan bentuk data sekali, dan library memeriksa serta memberi pesan galat yang rapi.\n\n## Query dan keluaran yang aman\n\nValidasi saja tidak cukup bila data yang lolos kemudian dipakai dengan ceroboh.\n\n- **Query database memakai parameter.** Jangan merangkai string SQL dari input pengguna (`\"SELECT * FROM user WHERE email = '\" + email + \"'\"`), karena itu pintu **SQL injection**. Gunakan query berparameter atau ORM yang melakukannya untukmu.\n- **Keluaran dikodekan sesuai konteks.** Data yang kelak ditampilkan di HTML harus di-escape agar tidak berubah menjadi skrip (**XSS**). Framework modern melakukannya secara bawaan, selama kamu tidak mematikannya.\n- **Batasi ukuran.** Atur batas ukuran body (`express.json({ limit: \"100kb\" })`) dan paksa penomoran halaman dengan batas atas, misalnya maksimal 100 item per permintaan.\n- **Jangan tampilkan stack trace ke klien.** Detail galat milik log server; klien cukup menerima pesan umum.\n\nPrinsipnya sama dengan bab-bab sebelumnya: server adalah satu-satunya pihak yang bisa dipercaya untuk menegakkan aturan, jadi setiap batas harus ditegakkan di sana.\n\n## Preflight: pemeriksaan sebelum request sebenarnya\n\nUntuk request yang dianggap berisiko, misalnya metode `DELETE` atau header kustom seperti `Authorization`, browser lebih dulu mengirim request `OPTIONS` yang disebut **preflight**: \"bolehkah aku mengirim ini dari origin sana?\". Server menjawab dengan header seperti `Access-Control-Allow-Methods` dan `Access-Control-Allow-Headers`. Hanya jika jawabannya mengizinkan, browser mengirim request yang sebenarnya. Jika frontend-mu gagal memanggil API dengan pesan \"blocked by CORS policy\" padahal curl berhasil, hampir selalu penyebabnya adalah preflight yang tidak dijawab dengan benar.\n\nPerhatikan juga bahwa CORS melindungi pengguna dari skrip situs lain, bukan melindungi server dari permintaan. Request lintas asal tetap sampai ke server dan tetap dieksekusi; yang diblokir hanyalah pembacaan responsnya oleh skrip di halaman. Itulah sebabnya otorisasi di server tetap wajib.\n\n## Pesan galat validasi yang berguna\n\nPesan galat yang baik menyebut field mana yang salah dan aturannya, misalnya \"judul harus teks 1 sampai 100 karakter\", supaya pengembang klien bisa memperbaikinya tanpa menebak. Tetapi jangan menampilkan detail internal seperti nama tabel atau kutipan kueri. Kembalikan semua galat sekaligus dalam satu larik `errors` alih-alih berhenti di galat pertama; itu menghemat bolak-balik request bagi klien yang sah, dan tidak memberi penyerang informasi tambahan.\n\n## Rangkuman\n\n- CORS adalah aturan browser yang mengizinkan atau memblokir pemanggilan lintas asal; ia bukan autentikasi, dan curl atau Postman tidak terpengaruh.\n- Izinkan origin lewat daftar putih, balas dengan origin yang cocok plus `Vary: Origin`, dan jangan kirim header CORS untuk origin yang tidak dikenal.\n- Anggap semua input luar tidak tepercaya: periksa tipe, panjang, dan format, lalu tolak dengan 400 dan pesan yang jelas.\n- Pakai query berparameter, batasi ukuran body dan halaman, dan sembunyikan stack trace dari klien.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pernyataan mana yang benar tentang CORS?",
+          "code": "",
+          "options": [
+            "CORS melindungi server dari semua permintaan berbahaya",
+            "CORS menggantikan kebutuhan autentikasi di server",
+            "CORS mengenkripsi data antara klien dan server",
+            "CORS adalah aturan browser dan tidak menghentikan curl atau Postman"
+          ],
+          "answer": 3,
+          "explanation": "CORS hanya ditegakkan oleh browser; klien lain tidak peduli, jadi autentikasi tetap wajib."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana mengizinkan origin tertentu dengan aman?",
+          "code": "",
+          "options": [
+            "Mencocokkan origin dengan daftar putih lalu membalas dengan origin yang sama",
+            "Selalu membalas Access-Control-Allow-Origin dengan tanda bintang untuk semua permintaan",
+            "Memantulkan origin apa pun yang dikirim klien",
+            "Mematikan CORS di browser pengguna"
+          ],
+          "answer": 0,
+          "explanation": "Daftar putih eksplisit mencegah situs lain membaca respons API."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Validasi di sisi klien (formulir) sudah cukup sehingga server tidak perlu memeriksa input lagi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Penyerang memanggil API langsung tanpa melewati formulir, jadi server wajib memvalidasi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Status yang tepat untuk input yang tidak lolos validasi adalah",
+          "code": "",
+          "options": [
+            "200 OK dengan isi kosong agar klien tidak menampilkan pesan galat apa pun",
+            "400 Bad Request dengan pesan yang menjelaskan kesalahan",
+            "401 Unauthorized",
+            "500 Internal Server Error"
+          ],
+          "answer": 1,
+          "explanation": "400 menandakan permintaan klien salah bentuk; pesan galat membantu memperbaikinya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Validasi body catatan",
+          "prompt": "Lengkapi `POST /catatan`:\n\n- `judul` wajib string dengan 1 sampai 100 karakter setelah `trim()`\n- `isi` wajib string (boleh kosong)\n- bila ada yang salah: `400` dengan `{ errors: [...] }` berisi pesan teks\n- bila benar: `201` dengan `{ judul, isi }` dan `judul` sudah di-trim",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/catatan\", (req, res) => {\n  // TODO: validasi judul dan isi\n  res.status(201).json(req.body);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/catatan\", (req, res) => {\n  const { judul, isi } = req.body;\n  const errors = [];\n  if (typeof judul !== \"string\" || judul.trim().length < 1 || judul.trim().length > 100) {\n    errors.push(\"judul harus teks 1 sampai 100 karakter\");\n  }\n  if (typeof isi !== \"string\") errors.push(\"isi harus berupa teks\");\n  if (errors.length) return res.status(400).json({ errors });\n  res.status(201).json({ judul: judul.trim(), isi });\n});\n"
+          },
+          "setup": "// Tes mengirim header lewat globalThis.__headers\nconst __require = require;\nglobalThis.require = (nama) => {\n  const ex = __require(nama);\n  const bungkus = () => {\n    const app = ex();\n    app.use((req, res, next) => { req.headers = globalThis.__headers || {}; next(); });\n    return app;\n  };\n  bungkus.json = ex.json;\n  return bungkus;\n};",
+          "tests": [
+            {
+              "name": "Data valid menghasilkan 201 dengan judul di-trim",
+              "check": "(await request(\"POST\", \"/catatan\", { judul: \"  Belanja \", isi: \"susu\" })).body.judul === \"Belanja\""
+            },
+            {
+              "name": "Judul hanya spasi ditolak",
+              "check": "(await request(\"POST\", \"/catatan\", { judul: \"   \", isi: \"x\" })).status === 400"
+            },
+            {
+              "name": "Judul bukan string ditolak",
+              "check": "(await request(\"POST\", \"/catatan\", { judul: 123, isi: \"x\" })).status === 400"
+            },
+            {
+              "name": "Judul lebih dari 100 karakter ditolak",
+              "check": "(await request(\"POST\", \"/catatan\", { judul: \"a\".repeat(101), isi: \"x\" })).status === 400"
+            },
+            {
+              "name": "Isi yang hilang ditolak",
+              "check": "(await request(\"POST\", \"/catatan\", { judul: \"Halo\" })).status === 400"
+            },
+            {
+              "name": "Galat dikirim sebagai larik errors",
+              "check": "Array.isArray((await request(\"POST\", \"/catatan\", {})).body.errors)"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Header CORS dengan daftar putih",
+          "prompt": "Tulis `corsHeaders(origin, izin)` yang mengembalikan objek header respons:\n\n- bila `origin` ada di larik `izin`: `{ \"Access-Control-Allow-Origin\": origin, Vary: \"Origin\" }`\n- selain itu (termasuk `origin` kosong): objek kosong `{}`\n\nJangan pernah mengembalikan `*`.",
+          "starter": {
+            "code": "function corsHeaders(origin, izin) {\n  // TODO: hanya izinkan origin yang ada di daftar\n  return { \"Access-Control-Allow-Origin\": \"*\" };\n}\n"
+          },
+          "solution": {
+            "code": "function corsHeaders(origin, izin) {\n  if (!origin || !izin.includes(origin)) return {};\n  return { \"Access-Control-Allow-Origin\": origin, Vary: \"Origin\" };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Origin yang diizinkan dipantulkan",
+              "check": "corsHeaders(\"https://app.contoh.id\", [\"https://app.contoh.id\"])[\"Access-Control-Allow-Origin\"] === \"https://app.contoh.id\""
+            },
+            {
+              "name": "Vary: Origin ikut dikirim",
+              "check": "corsHeaders(\"https://app.contoh.id\", [\"https://app.contoh.id\"]).Vary === \"Origin\""
+            },
+            {
+              "name": "Origin yang tidak dikenal tanpa header CORS",
+              "check": "Object.keys(corsHeaders(\"https://jahat.id\", [\"https://app.contoh.id\"])).length === 0"
+            },
+            {
+              "name": "Tanpa origin tanpa header CORS",
+              "check": "Object.keys(corsHeaders(undefined, [\"https://app.contoh.id\"])).length === 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rahasia-log-dan-daftar-periksa",
+      "title": "Rahasia, Log, dan Daftar Periksa Rilis",
+      "est_minutes": 20,
+      "slide_from": 28,
+      "slide_to": 31,
+      "body": "## Tujuan\n\n- Menyimpan rahasia di environment dan memvalidasinya saat aplikasi mulai.\n- Menjelaskan apa yang harus dilakukan bila rahasia bocor.\n- Menulis fungsi penyensor agar log tidak membocorkan password atau token.\n- Menggunakan daftar periksa keamanan sebelum merilis API.\n\n## Rahasia tidak boleh ada di kode\n\n**Rahasia** adalah nilai yang kalau jatuh ke tangan orang lain memberi akses: kunci penandatangan JWT, password database, API key layanan pihak ketiga, kunci enkripsi. Kesalahan paling umum dan paling mahal adalah menulisnya langsung di kode lalu mengunggah repositori ke GitHub. Mesin pemindai milik penyerang mengintip repositori publik baru dan bisa menemukan kunci dalam hitungan menit.\n\nAturannya: rahasia berasal dari **variabel environment** (atau layanan pengelola rahasia di platform tempat kamu deploy), bukan dari file kode. Saat pengembangan lokal, simpan di berkas `.env` yang dimasukkan ke `.gitignore` sehingga tidak pernah masuk repositori. Sediakan `.env.example` berisi nama variabelnya tanpa nilai asli, agar anggota tim tahu apa yang harus diisi.\n\n![Rahasia di environment, bukan di kode](slide:28)\n\n## Periksa saat aplikasi mulai\n\nBahaya lain: rahasia yang kosong atau lemah. Jika `JWT_SECRET` tidak diatur dan kodemu diam-diam memakai string kosong atau nilai bawaan, siapa pun bisa menandatangani token sah. Lebih baik aplikasi **menolak berjalan** daripada berjalan dengan konfigurasi tidak aman. Ini disebut gagal cepat (fail fast).\n\n```js\nfunction muatKonfigurasi(env) {\n  const secret = env.JWT_SECRET;\n  if (!secret || secret.length < 32) {\n    throw new Error(\"JWT_SECRET wajib ada dan minimal 32 karakter\");\n  }\n  return {\n    secret,\n    port: Number(env.PORT) || 3000,\n    mode: env.NODE_ENV || \"development\",\n  };\n}\n```\n\nFungsi ini dipanggil sekali di awal dengan `muatKonfigurasi(process.env)`. Nilai lain diberi nilai bawaan yang aman, sedangkan rahasia tidak pernah punya nilai bawaan. Memusatkan pembacaan environment di satu fungsi juga membuat konfigurasi mudah diuji, seperti di latihan bab ini.\n\nGunakan rahasia **berbeda** untuk development, staging, dan produksi. Dengan begitu kebocoran di laptop pengembang tidak membuka sistem produksi.\n\n## Bila rahasia bocor\n\nMenghapus baris rahasia dari repositori **tidak cukup**. Riwayat Git menyimpan semuanya, dan salinan mungkin sudah diambil. Anggap rahasia yang pernah terlihat publik sebagai sudah dikompromikan:\n\n1. **Ganti (rotasi) rahasia itu** di layanan asalnya: buat kunci baru, matikan yang lama.\n2. Periksa log untuk memastikan apakah kunci lama sempat dipakai.\n3. Bersihkan riwayat bila perlu, tetapi hanya sebagai langkah tambahan setelah rotasi.\n4. Cari tahu bagaimana kebocoran terjadi dan tutup celahnya.\n\nUntuk kunci penandatangan JWT, rotasi berarti semua token lama menjadi tidak sah dan pengguna perlu login ulang. Itu harga yang wajar; sistem yang dirancang baik mendukung beberapa kunci aktif sementara agar rotasi tidak memutus semua orang sekaligus.\n\n## Log yang tidak membocorkan\n\nLog penting untuk mendeteksi serangan: login gagal berulang, akses ditolak, lonjakan 429. Tetapi log juga tempat rahasia sering bocor tanpa sengaja, karena seseorang mencatat seluruh `req.body` atau seluruh header untuk men-debug. Lalu password dan token pengguna tersimpan polos di berkas log yang dibaca banyak orang dan dikirim ke layanan pihak ketiga.\n\nAturannya: **jangan catat password, token, dan header `Authorization`.** Bila kamu perlu mencatat objek, sensor dulu field sensitifnya:\n\n```js\nconst RAHASIA = /password|token|secret|authorization/i;\n\nfunction sensor(nilai) {\n  if (Array.isArray(nilai)) return nilai.map(sensor);\n  if (nilai && typeof nilai === \"object\") {\n    const hasil = {};\n    for (const k of Object.keys(nilai)) {\n      hasil[k] = RAHASIA.test(k) ? \"***\" : sensor(nilai[k]);\n    }\n    return hasil;\n  }\n  return nilai;\n}\n```\n\nFungsi ini membuat salinan baru dan tidak mengubah objek aslinya, serta menelusuri objek bersarang dan array. Pesan galat untuk klien tetap umum; detail lengkap hanya masuk log server.\n\n## Daftar periksa sebelum rilis\n\nGunakan daftar ini setiap kali sebuah API siap dirilis:\n\n- HTTPS dipaksa di semua lingkungan produksi.\n- Password di-hash dengan bcrypt, scrypt, atau argon2 beserta salt.\n- Token berumur pendek, memakai kunci kuat, dan diperiksa lengkap termasuk `exp`.\n- Setiap route punya autentikasi, role bila perlu, dan cek kepemilikan data.\n- Body disaring field per field, respons dibentuk eksplisit, dan input divalidasi.\n- Laju dibatasi, terutama pada login; CORS memakai daftar asal.\n- Rahasia di environment, log disensor, dan pesan galat ke klien bersifat umum.\n\nDaftar ini bukan jaminan, tetapi menangkap sebagian besar kesalahan yang sering terjadi. Keamanan adalah kebiasaan yang dijalankan setiap kali, bukan fitur yang dipasang di akhir. Setelah bab ini, kamu siap membangun proyek akhir yang menggabungkan semuanya.\n\n## Contoh nyata: dari kebocoran ke pemulihan\n\nBayangkan seorang pengembang tanpa sengaja mengunggah berkas `.env` berisi `JWT_SECRET` ke repositori publik, lalu menyadarinya sehari kemudian. Langkah yang benar: segera buat `JWT_SECRET` baru di platform deploy dan terapkan; seluruh token lama otomatis gagal diverifikasi sehingga penyerang yang menyalin kunci tidak bisa lagi memalsukan token. Setelah itu periksa log untuk akses mencurigakan dalam rentang waktu kebocoran, dan tambahkan `.env` ke `.gitignore` serta pemindai rahasia di proses commit supaya kejadian serupa tertangkap lebih awal.\n\nKuncinya adalah kecepatan dan urutan: rotasi lebih dulu, baru bersih-bersih. Menghapus berkas dari repositori tanpa mengganti kunci memberi rasa aman palsu, karena kunci lama masih berlaku.\n\n## Pengelola rahasia di platform\n\nVariabel environment adalah titik awal yang baik, tetapi platform deploy biasanya menyediakan pengelola rahasia yang lebih lengkap: nilai terenkripsi saat disimpan, kontrol siapa yang boleh membaca, catatan audit, dan rotasi terjadwal. Di Vercel, Railway, atau layanan cloud besar, isi rahasia lewat dasbor atau perintah resmi mereka, bukan lewat berkas yang ikut tersalin ke repositori. Biasakan juga memberi setiap layanan hak sekecil mungkin: API key untuk email cukup bisa mengirim email, tidak perlu bisa menghapus domain.\n\n## Rangkuman\n\n- Rahasia berasal dari environment, bukan dari kode; `.env` masuk `.gitignore` dan tiap lingkungan memakai rahasia berbeda.\n- Validasi konfigurasi saat aplikasi mulai dan gagal cepat bila rahasia kosong atau lemah.\n- Rahasia yang bocor harus dirotasi, bukan sekadar dihapus dari kode.\n- Jangan catat password, token, atau header Authorization; sensor field sensitif sebelum masuk log.\n- Pakai daftar periksa sebelum rilis, karena keamanan adalah kebiasaan, bukan fitur akhir.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di mana sebaiknya kunci rahasia JWT disimpan?",
+          "code": "",
+          "options": [
+            "Langsung di kode sumber agar mudah ditemukan oleh seluruh anggota tim pengembang",
+            "Di file README repositori",
+            "Di payload JWT agar server bisa membacanya",
+            "Di variabel environment atau pengelola rahasia platform"
+          ],
+          "answer": 3,
+          "explanation": "Rahasia tidak boleh masuk repositori; environment menjaganya terpisah dari kode."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rahasia terlanjur terunggah ke repositori publik. Langkah pertama yang tepat adalah",
+          "code": "",
+          "options": [
+            "Menghapus berkasnya lalu menganggap masalah selesai",
+            "Merotasi rahasia itu di layanan asalnya",
+            "Menunggu sampai ada yang memakainya",
+            "Mengubah nama variabel rahasia"
+          ],
+          "answer": 1,
+          "explanation": "Riwayat Git dan salinan masih memuatnya; hanya mengganti rahasia yang menutup risikonya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Mencatat seluruh header request ke log tidak berbahaya karena log hanya dibaca tim internal.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Header Authorization berisi token; log sering dibaca banyak orang atau dikirim ke layanan pihak ketiga."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa aplikasi sebaiknya menolak berjalan bila JWT_SECRET kosong?",
+          "code": "",
+          "options": [
+            "Karena Node.js tidak bisa berjalan tanpa variabel itu sama sekali dalam kondisi apa pun",
+            "Karena kosongnya JWT_SECRET membuat server lambat",
+            "Agar tidak berjalan dengan konfigurasi yang diam-diam tidak aman",
+            "Karena JWT_SECRET dipakai sebagai port server"
+          ],
+          "answer": 2,
+          "explanation": "Gagal cepat lebih baik daripada berjalan dengan kunci kosong yang bisa dipalsukan siapa pun."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Muat konfigurasi dengan gagal cepat",
+          "prompt": "Tulis `muatKonfigurasi(env)`:\n\n- `env.JWT_SECRET` wajib ada dan minimal 32 karakter; bila tidak, lempar `Error` yang pesannya menyebut `JWT_SECRET`\n- `port`: `Number(env.PORT)` atau `3000` bila kosong\n- `mode`: `env.NODE_ENV` atau `\"development\"`\n- kembalikan `{ secret, port, mode }`",
+          "starter": {
+            "code": "function muatKonfigurasi(env) {\n  // TODO: validasi JWT_SECRET, beri nilai bawaan untuk port dan mode\n  return { secret: env.JWT_SECRET, port: env.PORT, mode: env.NODE_ENV };\n}\n"
+          },
+          "solution": {
+            "code": "function muatKonfigurasi(env) {\n  const secret = env.JWT_SECRET;\n  if (!secret || secret.length < 32) {\n    throw new Error(\"JWT_SECRET wajib ada dan minimal 32 karakter\");\n  }\n  return { secret, port: Number(env.PORT) || 3000, mode: env.NODE_ENV || \"development\" };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tanpa JWT_SECRET melempar galat",
+              "check": "(() => { try { muatKonfigurasi({}); return false; } catch (e) { return /JWT_SECRET/.test(e.message); } })()"
+            },
+            {
+              "name": "JWT_SECRET terlalu pendek melempar galat",
+              "check": "(() => { try { muatKonfigurasi({ JWT_SECRET: \"pendek\" }); return false; } catch (e) { return /JWT_SECRET/.test(e.message); } })()"
+            },
+            {
+              "name": "Port bawaan 3000 bertipe angka",
+              "check": "muatKonfigurasi({ JWT_SECRET: \"x\".repeat(32) }).port === 3000"
+            },
+            {
+              "name": "PORT string diubah menjadi angka",
+              "check": "muatKonfigurasi({ JWT_SECRET: \"x\".repeat(32), PORT: \"8080\" }).port === 8080"
+            },
+            {
+              "name": "Mode bawaan development",
+              "check": "muatKonfigurasi({ JWT_SECRET: \"x\".repeat(32) }).mode === \"development\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Sensor data sebelum masuk log",
+          "prompt": "Tulis `sensor(nilai)` yang mengembalikan **salinan** `nilai` dengan setiap properti yang namanya cocok `RAHASIA` (password, token, secret, authorization, tanpa membedakan huruf besar kecil) diganti `\"***\"`:\n\n- telusuri objek bersarang dan larik\n- jangan mengubah objek aslinya\n- nilai yang bukan objek dikembalikan apa adanya",
+          "starter": {
+            "code": "const RAHASIA = /password|token|secret|authorization/i;\n\nfunction sensor(nilai) {\n  // TODO: salin dan sensor secara rekursif\n  return nilai;\n}\n"
+          },
+          "solution": {
+            "code": "const RAHASIA = /password|token|secret|authorization/i;\n\nfunction sensor(nilai) {\n  if (Array.isArray(nilai)) return nilai.map(sensor);\n  if (nilai && typeof nilai === \"object\") {\n    const hasil = {};\n    for (const k of Object.keys(nilai)) {\n      hasil[k] = RAHASIA.test(k) ? \"***\" : sensor(nilai[k]);\n    }\n    return hasil;\n  }\n  return nilai;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Password disensor",
+              "check": "sensor({ email: \"a@x.id\", password: \"p\" }).password === \"***\""
+            },
+            {
+              "name": "Field lain tetap utuh",
+              "check": "sensor({ email: \"a@x.id\", password: \"p\" }).email === \"a@x.id\""
+            },
+            {
+              "name": "Objek bersarang ikut disensor",
+              "check": "sensor({ headers: { Authorization: \"Bearer abc\" } }).headers.Authorization === \"***\""
+            },
+            {
+              "name": "Larik berisi objek ikut disensor",
+              "check": "sensor([{ token: \"t\" }])[0].token === \"***\""
+            },
+            {
+              "name": "Objek asli tidak diubah",
+              "check": "(() => { const o = { password: \"p\" }; sensor(o); return o.password === \"p\"; })()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+ "theme": "basis-data",
+ "deck": "Desain Basis Data",
+ "kicker": "KELAS",
+ "subtitle": "ERD, kunci, relasi, normalisasi, constraint, dan indeks",
+ "slides": [
+  {
+   "title": "Desain Basis Data"
+  },
+  {
+   "title": "Apa itu basis data?",
+   "kicker": "PENGENALAN",
+   "bullets": [
+    "Kumpulan data yang tersusun rapi dan disimpan di komputer",
+    "Bisa dicari, ditambah, diubah, dan dihapus dengan cepat",
+    "Dipakai bersama oleh banyak pengguna dan aplikasi",
+    "Lebih konsisten dan aman daripada file yang berserakan",
+    "Contoh: data siswa, stok toko, pinjaman buku"
+   ]
+  },
+  {
+   "title": "Tabel, baris, dan kolom",
+   "kicker": "PENGENALAN",
+   "bullets": [
+    "Tabel = satu kumpulan data sejenis",
+    "Baris = satu catatan, misalnya satu siswa",
+    "Kolom = satu atribut, misalnya nama"
+   ],
+   "code": "CREATE TABLE siswa (\n  id    INTEGER,\n  nama  TEXT,\n  kelas TEXT\n);\n\nINSERT INTO siswa\nVALUES (1, 'Ani', '10A');"
+  },
+  {
+   "title": "DBMS dan model relasional",
+   "kicker": "PENGENALAN",
+   "bullets": [
+    "DBMS = perangkat lunak pengelola basis data",
+    "Contoh DBMS relasional: SQLite, PostgreSQL, MySQL",
+    "Data disimpan dalam tabel yang saling berhubungan",
+    "SQL adalah bahasa untuk membuat dan menanyai data"
+   ],
+   "note": "Rancang skema dulu, baru isi data. Merombak tabel yang sudah terisi jauh lebih mahal."
+  },
+  {
+   "title": "Entitas dan atribut",
+   "kicker": "ERD",
+   "bullets": [
+    "Entitas = benda atau konsep yang datanya disimpan",
+    "Contoh entitas: Siswa, Buku, Pesanan, Produk",
+    "Atribut = ciri sebuah entitas: nama, harga, tanggal",
+    "Satu entitas menjadi satu tabel",
+    "Satu atribut menjadi satu kolom"
+   ]
+  },
+  {
+   "title": "Membaca ERD",
+   "kicker": "ERD",
+   "bullets": [
+    "Kotak = entitas",
+    "Garis = relasi antar entitas",
+    "Kaki gagak = sisi 'banyak'"
+   ],
+   "code": "[SISWA] ---< [PINJAM] >--- [BUKU]\n  id          id            id\n  nama        siswa_id      judul\n  kelas       buku_id       penulis\n              tanggal"
+  },
+  {
+   "title": "Kardinalitas relasi",
+   "kicker": "ERD",
+   "bullets": [
+    "Satu-ke-satu (1:1): satu orang punya satu paspor",
+    "Satu-ke-banyak (1:N): satu kelas punya banyak siswa",
+    "Banyak-ke-banyak (N:N): siswa dan ekstrakurikuler",
+    "Kardinalitas menentukan di mana kunci ditaruh"
+   ],
+   "note": "Tanya dua arah: satu A punya berapa B, dan satu B punya berapa A?"
+  },
+  {
+   "title": "Primary key",
+   "kicker": "KUNCI",
+   "bullets": [
+    "Pengenal unik untuk setiap baris",
+    "Tidak boleh kosong dan tidak boleh kembar",
+    "Satu tabel punya satu primary key"
+   ],
+   "code": "CREATE TABLE siswa (\n  id   INTEGER PRIMARY KEY,\n  nama TEXT NOT NULL\n);\n\n-- id 1 hanya boleh dipakai sekali"
+  },
+  {
+   "title": "Foreign key",
+   "kicker": "KUNCI",
+   "bullets": [
+    "Kolom yang menunjuk primary key tabel lain",
+    "Menjaga agar relasi selalu menunjuk data yang ada",
+    "Di SQLite aktifkan dengan PRAGMA foreign_keys = ON"
+   ],
+   "code": "CREATE TABLE nilai (\n  id       INTEGER PRIMARY KEY,\n  siswa_id INTEGER NOT NULL\n    REFERENCES siswa(id),\n  skor     INTEGER\n);"
+  },
+  {
+   "title": "Jenis kunci lainnya",
+   "kicker": "KUNCI",
+   "bullets": [
+    "Candidate key: kolom yang layak jadi pengenal unik",
+    "Composite key: gabungan dua kolom atau lebih",
+    "Natural key berasal dari data asli, misalnya NIK",
+    "Surrogate key dibuat sistem, misalnya id otomatis"
+   ],
+   "note": "Pilihan umum: surrogate key sebagai primary key, natural key diberi UNIQUE."
+  },
+  {
+   "title": "Relasi satu-ke-banyak (1:N)",
+   "kicker": "RELASI",
+   "bullets": [
+    "Taruh foreign key di sisi 'banyak'",
+    "Satu kelas punya banyak siswa",
+    "Setiap siswa menyimpan kelas_id"
+   ],
+   "code": "CREATE TABLE kelas (\n  id   INTEGER PRIMARY KEY,\n  nama TEXT NOT NULL\n);\nCREATE TABLE siswa (\n  id       INTEGER PRIMARY KEY,\n  nama     TEXT NOT NULL,\n  kelas_id INTEGER\n    REFERENCES kelas(id)\n);"
+  },
+  {
+   "title": "Relasi banyak-ke-banyak (N:N)",
+   "kicker": "RELASI",
+   "bullets": [
+    "Tidak bisa dengan satu kolom saja",
+    "Buat tabel penghubung di tengah",
+    "Isinya dua foreign key sekaligus"
+   ],
+   "code": "CREATE TABLE ikut_ekskul (\n  siswa_id INTEGER\n    REFERENCES siswa(id),\n  ekskul_id INTEGER\n    REFERENCES ekskul(id),\n  PRIMARY KEY (siswa_id, ekskul_id)\n);"
+  },
+  {
+   "title": "Relasi satu-ke-satu (1:1)",
+   "kicker": "RELASI",
+   "bullets": [
+    "Jarang dipakai, tapi berguna",
+    "Memisahkan data jarang dipakai atau sensitif",
+    "Foreign key sekaligus UNIQUE"
+   ],
+   "code": "CREATE TABLE profil (\n  user_id INTEGER PRIMARY KEY\n    REFERENCES users(id),\n  bio     TEXT,\n  foto    TEXT\n);"
+  },
+  {
+   "title": "Redundansi dan anomali",
+   "kicker": "NORMALISASI",
+   "bullets": [
+    "Redundansi: data yang sama tertulis berulang",
+    "Anomali ubah: satu fakta diubah di satu tempat saja",
+    "Anomali sisip: data tidak bisa dicatat tanpa data lain",
+    "Anomali hapus: menghapus satu baris menghilangkan fakta lain"
+   ],
+   "note": "Normalisasi adalah cara sistematis menghilangkan anomali ini."
+  },
+  {
+   "title": "Bentuk normal pertama (1NF)",
+   "kicker": "NORMALISASI",
+   "bullets": [
+    "Setiap sel berisi satu nilai",
+    "Tidak ada kolom berulang",
+    "Setiap baris bisa dibedakan"
+   ],
+   "code": "SEBELUM (melanggar 1NF)\n id | nama | hobi\n  1 | Ani  | musik, renang\n\nSESUDAH (1NF)\n id | nama | hobi\n  1 | Ani  | musik\n  1 | Ani  | renang"
+  },
+  {
+   "title": "Ketergantungan fungsional",
+   "kicker": "NORMALISASI",
+   "bullets": [
+    "A menentukan B bila satu nilai A selalu berpasangan dengan satu nilai B",
+    "Contoh: nis menentukan nama siswa",
+    "Parsial: bergantung pada sebagian kunci gabungan",
+    "Transitif: bergantung lewat kolom non-kunci lain"
+   ]
+  },
+  {
+   "title": "Bentuk normal kedua dan ketiga",
+   "kicker": "NORMALISASI",
+   "bullets": [
+    "2NF: sudah 1NF dan tidak ada ketergantungan parsial",
+    "3NF: sudah 2NF dan tidak ada ketergantungan transitif",
+    "Intinya: setiap kolom bicara tentang kunci, seluruh kunci, dan hanya kunci",
+    "Pecah tabel di titik ketergantungan itu"
+   ]
+  },
+  {
+   "title": "Contoh normalisasi sampai 3NF",
+   "kicker": "NORMALISASI",
+   "code": "PESANAN(id_pesanan, tgl, id_pelanggan, nama_pelanggan,\n        kota, id_produk, nama_produk, harga, qty)\n\n           | pecah ketergantungan\n           v\npelanggan(id, nama, kota)\nproduk(id, nama, harga)\npesanan(id, tgl, pelanggan_id)\nitem_pesanan(pesanan_id, produk_id, qty)"
+  },
+  {
+   "title": "Kapan denormalisasi?",
+   "kicker": "NORMALISASI",
+   "bullets": [
+    "Menggabungkan tabel kembali demi kecepatan baca",
+    "Cocok untuk laporan dan data yang jarang berubah",
+    "Harga: redundansi kembali dan risiko data tidak sinkron",
+    "Normalisasi dulu, denormalisasi hanya bila terukur lambat"
+   ],
+   "note": "Jangan denormalisasi karena firasat. Ukur dulu."
+  },
+  {
+   "title": "Constraint di tingkat kolom",
+   "kicker": "CONSTRAINT",
+   "bullets": [
+    "NOT NULL: wajib diisi",
+    "UNIQUE: tidak boleh kembar",
+    "CHECK: syarat nilai yang valid",
+    "DEFAULT: nilai bila tidak diisi"
+   ],
+   "code": "CREATE TABLE produk (\n  id    INTEGER PRIMARY KEY,\n  kode  TEXT NOT NULL UNIQUE,\n  harga INTEGER NOT NULL\n        CHECK (harga >= 0),\n  aktif INTEGER DEFAULT 1\n);"
+  },
+  {
+   "title": "Aksi saat induk dihapus",
+   "kicker": "CONSTRAINT",
+   "bullets": [
+    "RESTRICT: tolak penghapusan bila masih dipakai",
+    "CASCADE: hapus baris anak ikut terhapus",
+    "SET NULL: kolom anak dikosongkan",
+    "Pilih sesuai makna data, bukan kebiasaan"
+   ],
+   "code": "CREATE TABLE komentar (\n  id      INTEGER PRIMARY KEY,\n  post_id INTEGER NOT NULL\n    REFERENCES post(id)\n    ON DELETE CASCADE\n);"
+  },
+  {
+   "title": "Apa itu indeks?",
+   "kicker": "INDEKS",
+   "bullets": [
+    "Struktur bantu agar pencarian tidak memindai semua baris",
+    "Seperti indeks di belakang buku",
+    "Dibuat pada kolom yang sering dicari atau disambung",
+    "Primary key dan UNIQUE otomatis berindeks"
+   ],
+   "code": "CREATE INDEX idx_siswa_nama\n  ON siswa(nama);\n\nSELECT * FROM siswa\nWHERE nama = 'Ani';"
+  },
+  {
+   "title": "Kapan indeks membantu?",
+   "kicker": "INDEKS",
+   "bullets": [
+    "Membantu: kolom WHERE, JOIN, dan ORDER BY yang sering dipakai",
+    "Tidak membantu: tabel kecil atau kolom yang nilainya hampir sama semua",
+    "Biaya: ruang disimpan dan INSERT serta UPDATE jadi lebih lambat",
+    "Periksa dengan EXPLAIN QUERY PLAN"
+   ],
+   "note": "Indeks bukan gratis. Tambahkan untuk query yang memang lambat."
+  },
+  {
+   "title": "Langkah merancang skema",
+   "kicker": "STUDI KASUS",
+   "bullets": [
+    "1. Kenali kebutuhan: data apa dan pertanyaan apa yang harus terjawab",
+    "2. Tentukan entitas dan atributnya",
+    "3. Gambar ERD dan tentukan kardinalitas",
+    "4. Tentukan kunci, lalu normalisasi sampai 3NF",
+    "5. Tambahkan constraint, lalu indeks bila perlu"
+   ]
+  },
+  {
+   "title": "Studi kasus: perpustakaan sekolah",
+   "kicker": "STUDI KASUS",
+   "bullets": [
+    "Anggota meminjam banyak buku",
+    "Satu buku bisa dipinjam berkali-kali",
+    "Buku punya satu kategori"
+   ],
+   "code": "anggota(id, nama, kelas)\nkategori(id, nama)\nbuku(id, judul, kategori_id)\npinjam(id, anggota_id, buku_id,\n       tgl_pinjam, tgl_kembali)\n\n-- N:N anggota-buku lewat pinjam"
+  },
+  {
+   "title": "Daftar periksa skema yang baik",
+   "kicker": "STUDI KASUS",
+   "bullets": [
+    "Setiap tabel punya primary key",
+    "Tidak ada kolom berisi banyak nilai atau kolom berulang",
+    "Relasi dijaga foreign key dengan aksi hapus yang jelas",
+    "Aturan data dijaga NOT NULL, UNIQUE, dan CHECK",
+    "Nama konsisten dan indeks hanya untuk query yang butuh"
+   ],
+   "note": "Skema yang baik membuat data salah sulit dimasukkan sejak awal."
+  }
+ ]
+}

@@ -41,6 +41,7 @@ const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, bas
   const g = globalThis as unknown as { importScripts(u: string): void; loadPyodide(o: object): Promise<any>; postMessage(m: unknown): void };
   g.importScripts(base + "pyodide.js");
   const py = await g.loadPyodide({ indexURL: base });
+  await py.loadPackagesFromImports(p.setup + "\n" + p.code); // sqlite3 etc. are separate packages in Pyodide
   g.postMessage({ ready: true });
   const logs: string[] = [];
   py.setStdout({ batched: (s: string) => logs.push(s) });

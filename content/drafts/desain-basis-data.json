@@ -1,0 +1,2201 @@
+{
+  "title": "Desain Basis Data",
+  "description": "Belajar merancang basis data relasional: entitas dan ERD, kunci, relasi 1:1, 1:N, N:N, normalisasi 1NF sampai 3NF, constraint, indeks, dan studi kasus. Semua latihan dijalankan dengan Python dan sqlite3, ditutup proyek Skema Toko Online.",
+  "summary": "Basis data yang baik dimulai dari rancangan, bukan dari tabel yang dibuat asal jadi. Kelas ini mengajarkan cara berpikir perancang: membaca kebutuhan, menemukan entitas dan atribut, lalu menggambarnya sebagai ERD lengkap dengan kardinalitas satu-ke-satu, satu-ke-banyak, dan banyak-ke-banyak.\n\nBagian inti membahas kunci dan relasi. Kamu memakai primary key untuk mengenali baris, foreign key untuk menghubungkan tabel, tabel penghubung untuk relasi banyak-ke-banyak, dan composite key bila satu kolom tidak cukup. Lalu normalisasi dibahas langkah demi langkah: redundansi dan tiga jenis anomali, bentuk normal pertama, kedua, dan ketiga, serta kapan denormalisasi masuk akal.\n\nBagian akhir menjaga mutu skema dengan constraint (NOT NULL, UNIQUE, CHECK, DEFAULT, dan aksi ON DELETE) serta mempercepat pencarian dengan indeks yang dibaca lewat EXPLAIN QUERY PLAN. Semua dirangkum dalam lima langkah merancang skema dan studi kasus perpustakaan sekolah. Latihan memakai Python dan sqlite3, dan kelas ditutup dengan proyek Skema Toko Online yang menggabungkan seluruh materi.",
+  "tips": [
+    "Tulis kebutuhan dalam kalimat dulu, lalu garis bawahi kata benda dan kata kerja penting sebelum menggambar ERD apa pun.",
+    "Setiap kali menambah relasi, tanyakan kardinalitas dari dua arah: satu A punya berapa B, dan satu B punya berapa A.",
+    "Jalankan setiap contoh SQL di sqlite3 dan sengaja langgar aturannya. Membaca pesan IntegrityError melatih matamu.",
+    "Selesai merancang, masukkan data contoh yang aneh (anggota tanpa pinjaman, produk belum terjual) untuk mencari celah di skema.",
+    "Gunakan satu gaya penamaan di seluruh skema, misalnya huruf kecil dengan garis bawah, dan satu bahasa."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu basis data?",
+      "back": "Kumpulan data terorganisir yang disimpan di komputer dan dipakai bersama, sehingga mudah dicari, diubah, dan dijaga konsistensinya."
+    },
+    {
+      "front": "Apa kepanjangan dan fungsi DBMS?",
+      "back": "Database Management System: perangkat lunak yang mengelola penyimpanan, akses, dan aturan data, misalnya SQLite dan PostgreSQL."
+    },
+    {
+      "front": "Apa beda baris dan kolom?",
+      "back": "Baris adalah satu catatan lengkap; kolom adalah satu ciri yang dicatat untuk setiap catatan."
+    },
+    {
+      "front": "Apa itu entitas dan atribut?",
+      "back": "Entitas adalah hal yang datanya disimpan (siswa, buku); atribut adalah fakta tentang entitas itu (nama, judul)."
+    },
+    {
+      "front": "Apa fungsi ERD?",
+      "back": "Menggambar entitas dan relasinya sebelum tabel dibuat, supaya struktur data dipikirkan dulu."
+    },
+    {
+      "front": "Apa itu kardinalitas?",
+      "back": "Banyaknya baris di satu sisi yang berhubungan dengan satu baris di sisi lain: 1:1, 1:N, atau N:N."
+    },
+    {
+      "front": "Bagaimana menentukan kardinalitas dengan benar?",
+      "back": "Tanyakan dari dua arah: satu A punya berapa B, dan satu B punya berapa A."
+    },
+    {
+      "front": "Apa itu primary key dan syaratnya?",
+      "back": "Pengenal unik satu baris; harus unik, tidak boleh kosong, dan stabil."
+    },
+    {
+      "front": "Apa itu foreign key?",
+      "back": "Kolom yang nilainya menunjuk primary key tabel lain, sehingga relasi dijaga integritas referensial."
+    },
+    {
+      "front": "Bagaimana mengaktifkan foreign key di SQLite?",
+      "back": "Jalankan PRAGMA foreign_keys = ON pada setiap koneksi, karena bawaannya mati."
+    },
+    {
+      "front": "Apa itu composite key?",
+      "back": "Primary key yang terdiri dari dua kolom atau lebih, misalnya (siswa_id, mapel)."
+    },
+    {
+      "front": "Apa beda natural key dan surrogate key?",
+      "back": "Natural key berasal dari data dunia nyata (NIK, ISBN); surrogate key dibuat sistem tanpa arti bisnis (nomor id)."
+    },
+    {
+      "front": "Di sisi mana foreign key diletakkan pada relasi 1:N?",
+      "back": "Di tabel sisi 'banyak', menunjuk primary key tabel sisi 'satu'."
+    },
+    {
+      "front": "Bagaimana relasi N:N diwujudkan?",
+      "back": "Dengan tabel penghubung berisi dua foreign key, biasanya dengan primary key gabungan."
+    },
+    {
+      "front": "Kapan relasi 1:1 berguna?",
+      "back": "Untuk memisahkan data yang jarang dipakai atau sensitif; foreign key sekaligus menjadi primary key atau UNIQUE."
+    },
+    {
+      "front": "Apa itu redundansi?",
+      "back": "Data yang sama tertulis berulang di banyak baris, penyebab utama anomali."
+    },
+    {
+      "front": "Sebutkan tiga anomali data.",
+      "back": "Anomali ubah (update), sisip (insert), dan hapus (delete)."
+    },
+    {
+      "front": "Apa syarat 1NF?",
+      "back": "Setiap sel berisi satu nilai, tidak ada kolom berulang, dan setiap baris bisa dibedakan lewat kunci."
+    },
+    {
+      "front": "Apa itu ketergantungan fungsional A → B?",
+      "back": "Setiap nilai A selalu berpasangan dengan tepat satu nilai B; A menentukan B."
+    },
+    {
+      "front": "Apa syarat 2NF?",
+      "back": "Sudah 1NF dan tidak ada kolom yang bergantung hanya pada sebagian kunci gabungan."
+    },
+    {
+      "front": "Apa syarat 3NF?",
+      "back": "Sudah 2NF dan tidak ada kolom non-kunci yang bergantung pada kolom non-kunci lain (tanpa ketergantungan transitif)."
+    },
+    {
+      "front": "Apa ungkapan hafalan untuk 1NF sampai 3NF?",
+      "back": "Setiap kolom menjelaskan kunci, seluruh kunci, dan tidak lain selain kunci."
+    },
+    {
+      "front": "Kapan denormalisasi dibenarkan?",
+      "back": "Hanya bila pengukuran menunjukkan masalah kinerja, atau untuk fakta historis seperti harga saat transaksi."
+    },
+    {
+      "front": "Sebutkan empat constraint kolom dasar.",
+      "back": "NOT NULL, UNIQUE, CHECK, dan DEFAULT."
+    },
+    {
+      "front": "Apa beda ON DELETE RESTRICT dan CASCADE?",
+      "back": "RESTRICT menolak penghapusan induk bila masih ada anak; CASCADE ikut menghapus baris anak."
+    },
+    {
+      "front": "Apa fungsi indeks?",
+      "back": "Struktur terurut yang membuat pencarian tidak perlu memindai seluruh baris tabel."
+    },
+    {
+      "front": "Apa arti SCAN dan SEARCH di EXPLAIN QUERY PLAN?",
+      "back": "SCAN membaca semua baris (pindai penuh); SEARCH melompat langsung lewat indeks atau primary key."
+    },
+    {
+      "front": "Apa biaya menambah indeks?",
+      "back": "Memakan ruang dan memperlambat INSERT, UPDATE, dan DELETE karena indeks ikut diperbarui."
+    },
+    {
+      "front": "Sebutkan lima langkah merancang skema.",
+      "back": "Kenali kebutuhan, tentukan entitas dan atribut, gambar ERD, tentukan kunci dan normalisasi, lalu tambah constraint dan indeks."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang termasuk contoh DBMS relasional?",
+      "code": "",
+      "options": [
+        "Photoshop",
+        "PostgreSQL",
+        "Notepad",
+        "Google Chrome"
+      ],
+      "answer": 1,
+      "explanation": "PostgreSQL, MySQL, dan SQLite adalah DBMS relasional."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah SQL untuk menambah baris baru ke tabel adalah",
+      "code": "",
+      "options": [
+        "CREATE INDEX",
+        "DROP TABLE",
+        "ALTER ROLE",
+        "INSERT INTO"
+      ],
+      "answer": 3,
+      "explanation": "INSERT INTO menambah baris; CREATE TABLE membuat tabel."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa isi variabel hasil kode berikut?",
+      "code": "import sqlite3\ndb = sqlite3.connect(':memory:')\ndb.execute('CREATE TABLE s (id INTEGER, nama TEXT)')\ndb.execute(\"INSERT INTO s VALUES (1, 'Ani')\")\ndb.execute(\"INSERT INTO s VALUES (2, 'Budi')\")\nhasil = db.execute('SELECT nama FROM s ORDER BY nama').fetchall()",
+      "options": [
+        "[('Ani',), ('Budi',)]",
+        "['Ani', 'Budi']",
+        "('Ani', 'Budi')",
+        "[(1, 'Ani'), (2, 'Budi')]"
+      ],
+      "answer": 0,
+      "explanation": "fetchall mengembalikan list tuple, dan SELECT satu kolom menghasilkan tuple berisi satu elemen."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Atribut 'judul' dan 'penulis' paling tepat menjadi bagian dari entitas",
+      "code": "",
+      "options": [
+        "Peminjaman",
+        "Kategori saja",
+        "Buku",
+        "Anggota"
+      ],
+      "answer": 2,
+      "explanation": "Judul dan penulis adalah ciri sebuah buku."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dalam ERD, satu entitas biasanya menjadi satu tabel.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Entitas menjadi tabel dan atributnya menjadi kolom."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Primary key yang terdiri dari dua kolom disebut",
+      "code": "",
+      "options": [
+        "Surrogate key",
+        "Foreign key",
+        "Natural key",
+        "Composite key"
+      ],
+      "answer": 3,
+      "explanation": "Composite key menggabungkan beberapa kolom menjadi satu pengenal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tanpa PRAGMA foreign_keys = ON, SQLite",
+      "code": "",
+      "options": [
+        "Menolak semua INSERT",
+        "Tidak memeriksa foreign key saat INSERT",
+        "Menghapus foreign key",
+        "Mengubah semua foreign key menjadi primary key pada tabel anak"
+      ],
+      "answer": 1,
+      "explanation": "Pemeriksaan foreign key SQLite mati secara bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk relasi satu penulis banyak buku, kolom penulis_id diletakkan di tabel",
+      "code": "",
+      "options": [
+        "penulis",
+        "kategori",
+        "buku",
+        "tidak perlu kolom"
+      ],
+      "answer": 2,
+      "explanation": "Foreign key berada di sisi banyak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Relasi N:N bisa diselesaikan dengan menyimpan daftar id dipisah koma dalam satu kolom.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Itu melanggar 1NF; gunakan tabel penghubung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom hobi berisi 'futsal, renang' di satu sel melanggar",
+      "code": "",
+      "options": [
+        "1NF",
+        "2NF saja",
+        "Aturan CHECK",
+        "Aturan UNIQUE"
+      ],
+      "answer": 0,
+      "explanation": "Sel harus berisi satu nilai agar memenuhi 1NF."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama pelanggan tertulis berulang di setiap baris pesanan. Masalah ini disebut",
+      "code": "",
+      "options": [
+        "Indeks",
+        "Cascade",
+        "Redundansi",
+        "Surrogate"
+      ],
+      "answer": 2,
+      "explanation": "Data yang sama tertulis berulang disebut redundansi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom harga hanya bergantung pada id_produk, padahal kunci tabel (id_pesanan, id_produk). Pelanggaran",
+      "code": "",
+      "options": [
+        "2NF",
+        "1NF",
+        "Primary key",
+        "Kardinalitas"
+      ],
+      "answer": 0,
+      "explanation": "Bergantung pada sebagian kunci gabungan adalah ketergantungan parsial, melanggar 2NF."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Constraint yang memastikan stok tidak negatif adalah",
+      "code": "",
+      "options": [
+        "UNIQUE (stok)",
+        "DEFAULT stok",
+        "REFERENCES stok",
+        "CHECK (stok >= 0)"
+      ],
+      "answer": 3,
+      "explanation": "CHECK memeriksa syarat nilai yang valid."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom foreign key sering dibuatkan indeks karena",
+      "code": "",
+      "options": [
+        "Selalu berisi nilai kembar",
+        "Sering dipakai untuk JOIN dan pencarian",
+        "Kolom ini tidak pernah dibaca sehingga ruang disk harus dihemat",
+        "Menggantikan primary key"
+      ],
+      "answer": 1,
+      "explanation": "Kolom penghubung JOIN yang sering dipakai paling diuntungkan indeks."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil EXPLAIN QUERY PLAN 'SCAN siswa' menunjukkan bahwa",
+      "code": "",
+      "options": [
+        "Indeks sedang dipakai",
+        "Seluruh tabel dibaca baris demi baris",
+        "Tabel tidak ada",
+        "Query selesai tanpa membaca data"
+      ],
+      "answer": 1,
+      "explanation": "SCAN artinya pindai penuh tabel."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manfaat utama memakai satu basis data bersama dibanding banyak file terpisah adalah",
+      "code": "",
+      "options": [
+        "Data tidak pernah perlu dicadangkan",
+        "Semua pengguna harus memakai aplikasi yang sama",
+        "Data otomatis terenkripsi dan tidak dapat diubah oleh siapa pun",
+        "Perubahan dilakukan sekali dan dilihat semua pihak"
+      ],
+      "answer": 3,
+      "explanation": "Satu sumber data menjaga konsistensi antar pengguna dan aplikasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada tabel siswa, 'nama' dan 'kelas' adalah",
+      "code": "",
+      "options": [
+        "Kolom",
+        "Baris",
+        "Indeks",
+        "Constraint"
+      ],
+      "answer": 0,
+      "explanation": "Kolom adalah ciri yang dicatat; baris adalah satu catatan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "DBMS yang menyimpan seluruh basis data dalam satu file tanpa server adalah",
+      "code": "",
+      "options": [
+        "PostgreSQL",
+        "Oracle Server",
+        "SQLite",
+        "MariaDB Cluster"
+      ],
+      "answer": 2,
+      "explanation": "SQLite berbentuk satu file dan tidak butuh proses server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Model relasional menghubungkan tabel lewat",
+      "code": "",
+      "options": [
+        "Alamat memori fisik",
+        "Urutan baris",
+        "Nama file",
+        "Nilai kunci yang sama"
+      ],
+      "answer": 3,
+      "explanation": "Hubungan dibuat oleh kunci, bukan petunjuk fisik di disk."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "db.execute() di sqlite3 mengembalikan cursor yang bisa dipanggil fetchall().",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Cursor dari execute() menyediakan fetchone() dan fetchall()."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang paling tepat menjadi entitas tersendiri?",
+      "code": "",
+      "options": [
+        "Jumlah halaman sebuah buku",
+        "Kategori buku yang punya deskripsi dan dipakai banyak buku",
+        "Warna sampul satu buku",
+        "Jumlah halaman yang hanya dimiliki satu buku dan tidak punya atribut lain"
+      ],
+      "answer": 1,
+      "explanation": "Hal yang punya atribut sendiri dan dipakai berulang cocok menjadi entitas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Atribut yang dapat dihitung dari atribut lain disebut",
+      "code": "",
+      "options": [
+        "Atribut kunci",
+        "Atribut ganda",
+        "Atribut turunan",
+        "Atribut tunggal"
+      ],
+      "answer": 2,
+      "explanation": "Contohnya usia yang dihitung dari tanggal lahir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada ERD, kaki gagak pada ujung garis menandakan",
+      "code": "",
+      "options": [
+        "Sisi banyak",
+        "Sisi satu",
+        "Entitas dihapus",
+        "Atribut wajib"
+      ],
+      "answer": 0,
+      "explanation": "Crow's foot adalah lambang 'banyak'."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Satu guru bisa mengajar beberapa mata pelajaran dan satu mata pelajaran bisa diajar beberapa guru. Kardinalitasnya",
+      "code": "",
+      "options": [
+        "1:1",
+        "1:N",
+        "N:N",
+        "tidak ada hubungan"
+      ],
+      "answer": 2,
+      "explanation": "Kedua arah bernilai banyak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu atribut ERD biasanya menjadi satu kolom tabel.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Atribut dipetakan menjadi kolom."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom buku_dipinjam berisi daftar judul di tabel anggota adalah tanda bahaya karena",
+      "code": "",
+      "options": [
+        "Relasi disimpan sebagai daftar dan bukan lewat kunci",
+        "Judul tidak boleh berupa teks",
+        "Tabel anggota terlalu kecil",
+        "Judul buku tidak boleh disimpan sebagai teks di tabel mana pun"
+      ],
+      "answer": 0,
+      "explanation": "Relasi harus ditangani kunci dan tabel terpisah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pertanyaan 'apakah setiap siswa wajib punya kelas?' berkaitan dengan",
+      "code": "",
+      "options": [
+        "Pemilihan DBMS",
+        "Ukuran file",
+        "Nama indeks",
+        "Wajib atau opsional (kolom NOT NULL)"
+      ],
+      "answer": 3,
+      "explanation": "Kardinalitas juga memuat partisipasi wajib atau opsional."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manakah yang paling cocok sebagai primary key tabel siswa?",
+      "code": "",
+      "options": [
+        "Nama lengkap siswa",
+        "Nomor id buatan sistem",
+        "Alamat rumah",
+        "Nomor telepon orang tua"
+      ],
+      "answer": 1,
+      "explanation": "Nama dan data kontak bisa kembar atau berubah; surrogate key stabil."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom nilai.siswa_id yang menunjuk siswa.id disebut",
+      "code": "",
+      "options": [
+        "Primary key",
+        "Foreign key",
+        "Candidate key",
+        "Index key"
+      ],
+      "answer": 1,
+      "explanation": "Kolom yang menunjuk primary key tabel lain adalah foreign key."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Akibat jika foreign key tidak diperiksa adalah munculnya",
+      "code": "",
+      "options": [
+        "Kolom bertambah sendiri",
+        "Tabel otomatis dinormalisasi",
+        "Kolom baru bertambah sendiri tanpa diminta oleh pengguna",
+        "Data yatim yang menunjuk baris yang tidak ada"
+      ],
+      "answer": 3,
+      "explanation": "Tanpa pemeriksaan, baris anak bisa menunjuk induk yang tidak ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tabel nilai memakai kunci (siswa_id, mapel). Aturan bisnis yang tertanam adalah",
+      "code": "",
+      "options": [
+        "Satu siswa punya satu nilai per mapel",
+        "Satu mapel hanya boleh punya satu siswa",
+        "Skor tidak boleh kosong",
+        "Nilai harus berupa bilangan genap"
+      ],
+      "answer": 0,
+      "explanation": "Pasangan siswa dan mapel yang sama tidak boleh muncul dua kali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom nis dan id sama-sama bisa menjadi pengenal siswa. Keduanya disebut",
+      "code": "",
+      "options": [
+        "Composite key",
+        "Foreign key",
+        "Candidate key",
+        "Partial key"
+      ],
+      "answer": 2,
+      "explanation": "Candidate key adalah kolom yang layak menjadi primary key."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu tabel boleh memiliki dua primary key terpisah.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Satu tabel hanya punya satu primary key, meski boleh terdiri dari beberapa kolom."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Praktik yang umum untuk NIS yang harus unik tetapi bukan primary key adalah",
+      "code": "",
+      "options": [
+        "Menjadikannya primary key kedua pada tabel yang sama",
+        "Menjadikannya foreign key",
+        "Menyimpannya sebagai gambar",
+        "Memberinya constraint UNIQUE"
+      ],
+      "answer": 3,
+      "explanation": "Natural key dijaga keunikannya lewat UNIQUE sementara surrogate key jadi primary key."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa hasil percobaan memasukkan id yang sudah ada pada kolom primary key?",
+      "code": "",
+      "options": [
+        "Baris lama ditimpa diam-diam",
+        "sqlite3.IntegrityError",
+        "Dua baris dengan id sama tersimpan",
+        "Tabel dihapus"
+      ],
+      "answer": 1,
+      "explanation": "Primary key menolak nilai kembar dengan IntegrityError."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Foreign key kelas_id seharusnya berada di tabel siswa karena",
+      "code": "",
+      "options": [
+        "Kelas adalah sisi banyak",
+        "Siswa lebih sedikit dari kelas",
+        "Siswa adalah sisi banyak dalam relasi dengan kelas",
+        "Karena kelas lebih sering diubah daripada data siswa mana pun"
+      ],
+      "answer": 2,
+      "explanation": "Foreign key selalu di sisi banyak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tabel penghubung ikut_ekskul(siswa_id, ekskul_id) memecah relasi N:N menjadi",
+      "code": "",
+      "options": [
+        "Dua relasi 1:N",
+        "Dua relasi 1:1",
+        "Satu relasi 1:1 saja",
+        "Tiga relasi N:N"
+      ],
+      "answer": 0,
+      "explanation": "Siswa ke ikut_ekskul dan ekskul ke ikut_ekskul masing-masing 1:N."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengambil nama siswa beserta nama ekskulnya lewat tabel penghubung membutuhkan",
+      "code": "",
+      "options": [
+        "Satu DELETE",
+        "Satu CREATE INDEX",
+        "Dua JOIN",
+        "Tidak perlu JOIN"
+      ],
+      "answer": 2,
+      "explanation": "Siswa ke penghubung lalu penghubung ke ekskul."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan yang sah memisahkan profil pengguna ke tabel 1:1 adalah",
+      "code": "",
+      "options": [
+        "Data profil jarang dibaca dan berukuran besar",
+        "Agar tabel punya lebih banyak kolom",
+        "Karena SQL melarang tabel lebar",
+        "Supaya setiap pengguna bisa memiliki beberapa profil sekaligus"
+      ],
+      "answer": 0,
+      "explanation": "Memisahkan data jarang dipakai menjaga tabel utama ringan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tabel pinjam di perpustakaan sebaiknya punya id sendiri karena",
+      "code": "",
+      "options": [
+        "Karena composite key tidak didukung oleh DBMS mana pun saat ini",
+        "Composite key tidak ada di SQLite",
+        "Foreign key tidak boleh menjadi kunci",
+        "Pasangan anggota dan buku yang sama bisa dipinjam berulang"
+      ],
+      "answer": 3,
+      "explanation": "Peminjaman berulang menabrak kunci gabungan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Pada relasi 1:N, foreign key diletakkan di tabel sisi satu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Foreign key ada di sisi banyak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Primary key gabungan di tabel penghubung terutama mencegah",
+      "code": "",
+      "options": [
+        "Siswa tanpa nama",
+        "Pasangan yang sama terdaftar dua kali",
+        "Ekskul tanpa siswa",
+        "Kolom tambahan tidak bisa ditambahkan ke tabel penghubung itu"
+      ],
+      "answer": 1,
+      "explanation": "Pasangan duplikat ditolak oleh keunikan kombinasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Foreign key yang sekaligus primary key di tabel anak menjamin",
+      "code": "",
+      "options": [
+        "Satu induk punya banyak anak",
+        "Satu induk punya paling banyak satu anak",
+        "Setiap anak boleh menunjuk beberapa induk sekaligus tanpa batas",
+        "Induk tanpa kolom"
+      ],
+      "answer": 1,
+      "explanation": "Keunikan di sisi anak membuat relasi 1:1."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengubah kota Ani di satu baris tetapi lupa baris lain menimbulkan",
+      "code": "",
+      "options": [
+        "Anomali hapus",
+        "Anomali sisip",
+        "Anomali indeks",
+        "Anomali ubah"
+      ],
+      "answer": 3,
+      "explanation": "Data yang sama menjadi bertentangan antar baris."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Produk baru tidak bisa dicatat sebelum ada yang membelinya. Ini disebut",
+      "code": "",
+      "options": [
+        "Anomali sisip",
+        "Anomali ubah",
+        "Anomali hapus",
+        "Kardinalitas"
+      ],
+      "answer": 0,
+      "explanation": "Fakta produk tertahan oleh fakta pesanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Akar ketiga anomali adalah tabel yang",
+      "code": "",
+      "options": [
+        "Terlalu sedikit baris",
+        "Tidak memakai indeks gabungan pada kolom utamanya sama sekali",
+        "Menyimpan beberapa fakta berbeda topik",
+        "Memakai terlalu banyak foreign key"
+      ],
+      "answer": 2,
+      "explanation": "Memecah tabel agar tiap fakta tinggal di satu tempat adalah solusinya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom hobi1, hobi2, hobi3 untuk satu siswa melanggar",
+      "code": "",
+      "options": [
+        "3NF saja",
+        "Aturan CHECK",
+        "Aturan DEFAULT",
+        "1NF"
+      ],
+      "answer": 3,
+      "explanation": "Kolom berulang tidak memenuhi 1NF."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mencari siswa yang suka renang dengan LIKE '%renang%' pada kolom berisi daftar hobi bermasalah karena",
+      "code": "",
+      "options": [
+        "LIKE tidak ada di SQL",
+        "Bisa ikut cocok dengan 'berenang' dan sulit diubah",
+        "Kolom terlalu pendek",
+        "Daftar hobi harus numerik"
+      ],
+      "answer": 1,
+      "explanation": "Daftar dalam satu sel membuat pencarian dan perubahan tidak akurat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pernyataan nis → nama bernilai benar bila",
+      "code": "",
+      "options": [
+        "Satu nama selalu punya satu NIS",
+        "NIS tidak boleh kosong",
+        "Satu NIS selalu berpasangan dengan satu nama",
+        "Nama harus selalu unik di seluruh sekolah dan tidak boleh kosong"
+      ],
+      "answer": 2,
+      "explanation": "A → B: nilai A menentukan tepat satu nilai B."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Ketergantungan fungsional ditentukan oleh aturan dunia nyata, bukan sekadar data sampel.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Data sampel kebetulan bisa menyesatkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ujian untuk memastikan A bukan penentu B adalah",
+      "code": "",
+      "options": [
+        "Mungkinkah satu nilai A berpasangan dengan dua nilai B?",
+        "Apakah A selalu muncul bersama B di setiap baris pada data contoh?",
+        "Apakah A punya indeks?",
+        "Apakah A muncul di ERD?"
+      ],
+      "answer": 0,
+      "explanation": "Jika mungkin, bukan ketergantungan fungsional."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom nama_produk bergantung pada id_produk saja dalam tabel berkunci (id_pesanan, id_produk). Ini ketergantungan",
+      "code": "",
+      "options": [
+        "Transitif",
+        "Atomik",
+        "Parsial",
+        "Referensial"
+      ],
+      "answer": 2,
+      "explanation": "Bergantung pada sebagian kunci gabungan adalah ketergantungan parsial."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bentuk normal yang melarang ketergantungan transitif adalah",
+      "code": "",
+      "options": [
+        "3NF",
+        "1NF",
+        "2NF",
+        "Tidak ada"
+      ],
+      "answer": 0,
+      "explanation": "3NF melarang kolom non-kunci bergantung pada kolom non-kunci lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tabel dengan kunci tunggal yang sudah 1NF otomatis memenuhi",
+      "code": "",
+      "options": [
+        "3NF",
+        "Normal Boyce-Codd saja",
+        "Tidak satu pun",
+        "2NF"
+      ],
+      "answer": 3,
+      "explanation": "Ketergantungan parsial hanya mungkin pada kunci gabungan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dari id_pesanan → id_pelanggan → kota, kolom yang dipindah ke tabel pelanggan adalah",
+      "code": "",
+      "options": [
+        "id_pesanan dan tgl",
+        "kota dan nama pelanggan",
+        "qty dan harga",
+        "semua kolom"
+      ],
+      "answer": 1,
+      "explanation": "Kolom yang bergantung lewat id_pelanggan dipisah ke tabel pelanggan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ungkapan 'kunci, seluruh kunci, dan tidak lain selain kunci' merangkum",
+      "code": "",
+      "options": [
+        "Hanya 1NF",
+        "1NF, 2NF, dan 3NF",
+        "Aturan JOIN",
+        "Aturan indeks"
+      ],
+      "answer": 1,
+      "explanation": "Tiga frasa itu mewakili tiga bentuk normal."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Normalisasi yang benar tidak menghilangkan informasi sama sekali.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Hasil pecahan bisa digabung kembali dengan JOIN menjadi data asli."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menyimpan harga satuan di item_pesanan masuk akal karena",
+      "code": "",
+      "options": [
+        "Produk tidak punya harga",
+        "Karena 3NF mewajibkan setiap tabel menyimpan kolom harga miliknya sendiri tanpa kecuali",
+        "JOIN tidak bisa memakai harga",
+        "Harga produk bisa berubah tetapi pesanan lama harus mengingat harganya"
+      ],
+      "answer": 3,
+      "explanation": "Itu fakta historis, bukan salinan yang harus selalu sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keputusan denormalisasi yang sehat didasarkan pada",
+      "code": "",
+      "options": [
+        "Pengukuran yang menunjukkan masalah kinerja",
+        "Firasat bahwa JOIN lambat",
+        "Keinginan memperbanyak kolom",
+        "Keinginan agar jumlah kolom setiap tabel menjadi lebih banyak"
+      ],
+      "answer": 0,
+      "explanation": "Normalisasi dulu, denormalisasi hanya bila terukur perlu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Keunggulan menaruh aturan data di skema dibanding hanya di aplikasi adalah",
+      "code": "",
+      "options": [
+        "Aplikasi tak perlu pesan kesalahan",
+        "Basis data jadi lebih kecil",
+        "Aturan berlaku bagi semua program yang menulis ke tabel",
+        "Aplikasi tidak perlu lagi menampilkan pesan kesalahan sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "Skema menjadi pertahanan terakhir di semua jalur penulisan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom kode produk wajib terisi dan tidak boleh kembar. Constraint yang tepat",
+      "code": "",
+      "options": [
+        "CHECK saja",
+        "DEFAULT saja",
+        "REFERENCES saja",
+        "NOT NULL UNIQUE"
+      ],
+      "answer": 3,
+      "explanation": "UNIQUE saja masih mengizinkan beberapa NULL pada banyak DBMS."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Constraint yang mengisi nilai awal saat kolom tidak disebut di INSERT adalah",
+      "code": "",
+      "options": [
+        "CHECK",
+        "DEFAULT",
+        "UNIQUE",
+        "PRIMARY KEY"
+      ],
+      "answer": 1,
+      "explanation": "DEFAULT menyediakan nilai bila tidak diisi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada penghapusan pelanggan yang masih punya pesanan, aksi yang paling aman adalah",
+      "code": "",
+      "options": [
+        "CASCADE",
+        "SET NULL pada kolom wajib",
+        "RESTRICT",
+        "Abaikan saja"
+      ],
+      "answer": 2,
+      "explanation": "RESTRICT menolak penghapusan selama masih ada data anak penting."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "SET NULL pada ON DELETE hanya bisa dipakai bila kolom foreign key",
+      "code": "",
+      "options": [
+        "Tidak berstatus NOT NULL",
+        "Berstatus PRIMARY KEY",
+        "Berstatus PRIMARY KEY dan UNIQUE sekaligus pada tabel yang sama",
+        "Berstatus UNIQUE"
+      ],
+      "answer": 0,
+      "explanation": "Kolom harus boleh kosong agar bisa diubah menjadi NULL."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "CASCADE yang dipasang sembarangan dapat menghapus data berantai tanpa disadari.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Pilih aksi berdasarkan makna data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "CHECK (tgl_kembali >= tgl_pinjam) pada tabel pinjam berfungsi untuk",
+      "code": "",
+      "options": [
+        "Mengisi tanggal otomatis",
+        "Mengisi tanggal pinjam secara otomatis setiap hari baru berganti",
+        "Menolak tanggal kembali yang lebih awal dari tanggal pinjam",
+        "Menghapus pinjaman lama"
+      ],
+      "answer": 2,
+      "explanation": "CHECK antar-kolom menjaga hubungan nilai dua kolom."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh kode yang menangkap pelanggaran constraint adalah",
+      "code": "",
+      "options": [
+        "except sqlite3.IntegrityError as e:",
+        "except KeyError:",
+        "except ZeroDivisionError:",
+        "except FileNotFoundError:"
+      ],
+      "answer": 0,
+      "explanation": "IntegrityError dimunculkan saat constraint dilanggar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Struktur data yang umumnya dipakai indeks basis data relasional adalah",
+      "code": "",
+      "options": [
+        "Tumpukan acak",
+        "File teks polos",
+        "Antrian pesan",
+        "B-tree"
+      ],
+      "answer": 3,
+      "explanation": "B-tree menyimpan nilai terurut sehingga pencarian cepat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Indeks gabungan pada (siswa_id, mapel) membantu query yang memfilter",
+      "code": "",
+      "options": [
+        "Hanya query yang memakai kolom mapel tanpa siswa_id sama sekali",
+        "siswa_id saja, atau siswa_id dan mapel",
+        "kolom lain apa pun",
+        "tidak ada query"
+      ],
+      "answer": 1,
+      "explanation": "Urutan kolom penting; kolom awal harus ikut dipakai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query yang paling mungkin tidak memakai indeks pada kolom nama",
+      "code": "",
+      "options": [
+        "WHERE nama = 'Ani'",
+        "WHERE LOWER(nama) = 'ani'",
+        "WHERE nama LIKE 'An%'",
+        "WHERE nama IN ('Ani')"
+      ],
+      "answer": 1,
+      "explanation": "Fungsi pada kolom mengubah nilai yang dibandingkan sehingga indeks tak terpakai."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Primary key dan UNIQUE otomatis berindeks sehingga tidak perlu dibuatkan indeks lagi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Keduanya memakai indeks unik di baliknya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom aktif yang isinya hanya 0 atau 1 biasanya tidak layak diindeks karena",
+      "code": "",
+      "options": [
+        "Angka tidak bisa diindeks",
+        "Indeks hanya untuk teks",
+        "Kolom boolean dilarang",
+        "Indeks tidak menyaring banyak baris"
+      ],
+      "answer": 3,
+      "explanation": "Sedikit nilai berbeda membuat indeks kurang berguna."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan langkah merancang skema yang benar adalah",
+      "code": "",
+      "options": [
+        "Kebutuhan, entitas, ERD, kunci dan normalisasi, constraint dan indeks",
+        "Indeks, constraint, ERD, kebutuhan",
+        "Kebutuhan, entitas, indeks, ERD, normalisasi, lalu constraint terakhir pada skema",
+        "Normalisasi, indeks, entitas, ERD"
+      ],
+      "answer": 0,
+      "explanation": "Mulai dari kebutuhan dan berakhir pada penyetelan constraint serta indeks."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query untuk mencari buku yang belum dikembalikan memakai",
+      "code": "",
+      "options": [
+        "WHERE tgl_kembali = 0",
+        "WHERE tgl_kembali = ''",
+        "WHERE tgl_kembali IS NULL",
+        "ORDER BY tgl_kembali"
+      ],
+      "answer": 2,
+      "explanation": "NULL menandai nilai yang belum ada; bandingkan dengan IS NULL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Daftar periksa skema yang baik mencakup",
+      "code": "",
+      "options": [
+        "Semua kolom bertipe teks",
+        "Tidak ada foreign key",
+        "Satu tabel untuk semua data",
+        "Setiap tabel punya primary key"
+      ],
+      "answer": 3,
+      "explanation": "Primary key di setiap tabel adalah syarat dasar."
+    }
+  ],
+  "prerequisites": [
+    "python"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Skema Toko Online",
+    "brief": "Rancang dan bangun basis data **toko online kecil** dengan `sqlite3`, lalu tulis fungsi-fungsi yang memakainya.\n\n**Skema wajib** (kamu tentukan nama kolom lainnya):\n\n- `pelanggan(id, nama NOT NULL, email NOT NULL UNIQUE)`\n- `produk(id, nama NOT NULL, harga NOT NULL >= 0, stok NOT NULL bawaan 0 dan >= 0)`\n- `pesanan(id, pelanggan_id NOT NULL → pelanggan)`\n- `item_pesanan(pesanan_id → pesanan ON DELETE CASCADE, produk_id → produk, qty > 0, harga_satuan, PRIMARY KEY (pesanan_id, produk_id))`\n- indeks bernama `idx_pesanan_pelanggan` pada `pesanan(pelanggan_id)`\n\n**Fungsi wajib:**\n\n- `buat_db()` membuat dan mengembalikan koneksi di memori dengan `PRAGMA foreign_keys = ON`.\n- `tambah_pesanan(db, pelanggan_id, items)` dengan `items` list `(produk_id, qty)`. Salin `harga_satuan` dari produk saat itu, kurangi stok, lalu kembalikan id pesanan. Jika stok tidak cukup, **batalkan seluruh pesanan** (tidak ada pesanan, item, atau perubahan stok yang tersisa) dan angkat `ValueError`.\n- `total_pesanan(db, pesanan_id)` mengembalikan jumlah `harga_satuan * qty`.\n- `laporan_pelanggan(db)` mengembalikan list `(nama, jumlah_pesanan, total_belanja)`, urut total terbesar dulu lalu nama, termasuk pelanggan tanpa pesanan (`0, 0`).",
+    "prompt": "Lengkapi `buat_db`, `tambah_pesanan`, `total_pesanan`, dan `laporan_pelanggan` sesuai brief. Gunakan satu transaksi (`with db:`) agar pesanan yang gagal tidak meninggalkan jejak.",
+    "starter": {
+      "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    # TODO: buat tabel pelanggan, produk, pesanan, item_pesanan, dan indeks\n    return db\n\n\ndef tambah_pesanan(db, pelanggan_id, items):\n    # TODO: dalam satu transaksi: buat pesanan, isi item, kurangi stok\n    # stok kurang -> raise ValueError\n    return 0\n\n\ndef total_pesanan(db, pesanan_id):\n    # TODO: jumlah harga_satuan * qty\n    return 0\n\n\ndef laporan_pelanggan(db):\n    # TODO: (nama, jumlah_pesanan, total_belanja), total terbesar dulu\n    return []\n"
+    },
+    "solution": {
+      "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE pelanggan (id INTEGER PRIMARY KEY, nama TEXT NOT NULL, email TEXT NOT NULL UNIQUE)\")\n    db.execute(\"CREATE TABLE produk (id INTEGER PRIMARY KEY, nama TEXT NOT NULL, harga INTEGER NOT NULL CHECK (harga >= 0), stok INTEGER NOT NULL DEFAULT 0 CHECK (stok >= 0))\")\n    db.execute(\"CREATE TABLE pesanan (id INTEGER PRIMARY KEY, pelanggan_id INTEGER NOT NULL REFERENCES pelanggan(id))\")\n    db.execute(\"\"\"CREATE TABLE item_pesanan (\n        pesanan_id INTEGER NOT NULL REFERENCES pesanan(id) ON DELETE CASCADE,\n        produk_id INTEGER NOT NULL REFERENCES produk(id),\n        qty INTEGER NOT NULL CHECK (qty > 0),\n        harga_satuan INTEGER NOT NULL,\n        PRIMARY KEY (pesanan_id, produk_id))\"\"\")\n    db.execute(\"CREATE INDEX idx_pesanan_pelanggan ON pesanan(pelanggan_id)\")\n    return db\n\n\ndef tambah_pesanan(db, pelanggan_id, items):\n    try:\n        with db:\n            pesanan_id = db.execute(\"INSERT INTO pesanan (pelanggan_id) VALUES (?)\", (pelanggan_id,)).lastrowid\n            for produk_id, qty in items:\n                harga = db.execute(\"SELECT harga FROM produk WHERE id = ?\", (produk_id,)).fetchone()[0]\n                db.execute(\"INSERT INTO item_pesanan VALUES (?, ?, ?, ?)\", (pesanan_id, produk_id, qty, harga))\n                db.execute(\"UPDATE produk SET stok = stok - ? WHERE id = ?\", (qty, produk_id))\n    except sqlite3.IntegrityError as e:\n        raise ValueError(f\"pesanan ditolak: {e}\")\n    return pesanan_id\n\n\ndef total_pesanan(db, pesanan_id):\n    return db.execute(\"SELECT COALESCE(SUM(harga_satuan * qty), 0) FROM item_pesanan WHERE pesanan_id = ?\", (pesanan_id,)).fetchone()[0]\n\n\ndef laporan_pelanggan(db):\n    return db.execute(\"\"\"SELECT pelanggan.nama, COUNT(DISTINCT pesanan.id), COALESCE(SUM(item_pesanan.harga_satuan * item_pesanan.qty), 0) AS total\n        FROM pelanggan\n        LEFT JOIN pesanan ON pesanan.pelanggan_id = pelanggan.id\n        LEFT JOIN item_pesanan ON item_pesanan.pesanan_id = pesanan.id\n        GROUP BY pelanggan.id\n        ORDER BY total DESC, pelanggan.nama\"\"\").fetchall()\n"
+    },
+    "setup": "import sqlite3\n\ndef gagal(fungsi, galat=sqlite3.IntegrityError):\n    \"\"\"True bila fungsi() memunculkan galat itu.\"\"\"\n    try:\n        fungsi()\n    except galat:\n        return True\n    return False\n\ndef siapkan():\n    db = buat_db()\n    db.executemany(\"INSERT INTO pelanggan VALUES (?, ?, ?)\", [(1, \"Ani\", \"ani@x.id\"), (2, \"Budi\", \"budi@x.id\"), (3, \"Citra\", \"citra@x.id\")])\n    db.executemany(\"INSERT INTO produk VALUES (?, ?, ?, ?)\", [(1, \"Pensil\", 3000, 100), (2, \"Buku tulis\", 8000, 50), (3, \"Penggaris\", 5000, 2)])\n    db.commit()\n    return db\n\ndef ramai():\n    db = siapkan()\n    tambah_pesanan(db, 1, [(1, 10), (2, 2)])\n    tambah_pesanan(db, 1, [(2, 1)])\n    tambah_pesanan(db, 2, [(1, 5)])\n    return db\n",
+    "tests": [
+      {
+        "name": "Keempat tabel ada",
+        "check": "sorted(r[0] for r in buat_db().execute(\"SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'\")) == ['item_pesanan', 'pelanggan', 'pesanan', 'produk']"
+      },
+      {
+        "name": "Email kembar ditolak",
+        "check": "gagal(lambda: siapkan().execute(\"INSERT INTO pelanggan VALUES (9, 'X', 'ani@x.id')\"))"
+      },
+      {
+        "name": "Harga negatif ditolak",
+        "check": "gagal(lambda: siapkan().execute(\"INSERT INTO produk VALUES (9, 'Rusak', -1, 0)\"))"
+      },
+      {
+        "name": "Pesanan pertama mendapat id 1 dan total 46000",
+        "check": "(lambda d: (tambah_pesanan(d, 1, [(1, 10), (2, 2)]), total_pesanan(d, 1)))(siapkan()) == (1, 46000)"
+      },
+      {
+        "name": "Stok berkurang sesuai qty",
+        "check": "(lambda d: (tambah_pesanan(d, 1, [(1, 10)]), d.execute('SELECT stok FROM produk WHERE id = 1').fetchone()[0])[1])(siapkan()) == 90"
+      },
+      {
+        "name": "Harga saat transaksi tidak ikut berubah",
+        "check": "(lambda d: (tambah_pesanan(d, 1, [(1, 10)]), d.execute('UPDATE produk SET harga = 9999 WHERE id = 1'), total_pesanan(d, 1))[2])(siapkan()) == 30000"
+      },
+      {
+        "name": "Stok kurang membatalkan seluruh pesanan",
+        "check": "(lambda d: (gagal(lambda: tambah_pesanan(d, 1, [(1, 5), (3, 10)]), ValueError), d.execute('SELECT COUNT(*) FROM pesanan').fetchone()[0], d.execute('SELECT COUNT(*) FROM item_pesanan').fetchone()[0], d.execute('SELECT stok FROM produk WHERE id = 1').fetchone()[0]))(siapkan()) == (True, 0, 0, 100)"
+      },
+      {
+        "name": "Laporan pelanggan urut total terbesar",
+        "check": "laporan_pelanggan(ramai()) == [('Ani', 2, 54000), ('Budi', 1, 15000), ('Citra', 0, 0)]"
+      },
+      {
+        "name": "Menghapus pesanan menghapus itemnya",
+        "check": "(lambda d: (d.execute('DELETE FROM pesanan WHERE id = 1'), d.execute('SELECT COUNT(*) FROM item_pesanan WHERE pesanan_id = 1').fetchone()[0])[1])(ramai()) == 0"
+      },
+      {
+        "name": "Pesanan per pelanggan dicari lewat indeks",
+        "check": "'idx_pesanan_pelanggan' in ' '.join(r[3] for r in buat_db().execute('EXPLAIN QUERY PLAN SELECT * FROM pesanan WHERE pelanggan_id = 1'))"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "mengenal-basis-data",
+      "title": "Mengenal Basis Data dan DBMS",
+      "est_minutes": 20,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu basis data dan mengapa file atau spreadsheet saja tidak cukup.\n- Menyebutkan arti tabel, baris, dan kolom.\n- Menjelaskan peran DBMS dan model relasional.\n- Membuat tabel dan mengisinya dari Python dengan `sqlite3`.\n\n## Mengapa butuh basis data\n\nBayangkan sebuah sekolah menyimpan data siswa di tiga tempat: buku induk, spreadsheet wali kelas, dan file milik bagian perpustakaan. Ani pindah dari kelas 10A ke 10B. Wali kelas mengubah spreadsheet-nya, tetapi perpustakaan tidak tahu. Sebulan kemudian kartu perpustakaan Ani masih mencetak kelas lama. Dua sumber data yang seharusnya sama sudah berbeda. Itulah masalah paling klasik dari data yang berserakan: **tidak konsisten**.\n\nBasis data (*database*) adalah kumpulan data yang tersusun rapi dan disimpan di komputer sehingga bisa dicari, ditambah, diubah, dan dihapus dengan cepat. Satu sumber data dipakai bersama oleh banyak orang dan banyak aplikasi sekaligus. Kalau Ani pindah kelas, perubahan dilakukan di satu tempat dan semua pihak langsung melihat data yang sama.\n\nManfaat lain yang tidak bisa diberikan file biasa:\n\n- **Pencarian cepat.** Mencari satu siswa di antara jutaan baris tetap terasa instan.\n- **Aturan data.** Basis data bisa menolak data yang tidak masuk akal, misalnya nilai negatif.\n- **Akses bersama yang aman.** Banyak pengguna bisa menulis bersamaan tanpa saling menimpa.\n- **Pemulihan.** Ada mekanisme agar data tidak rusak ketika listrik mati di tengah penyimpanan.\n\n![Tabel, baris, dan kolom](slide:3)\n\n## Tabel, baris, dan kolom\n\nBasis data relasional menyimpan data dalam **tabel**. Satu tabel menampung satu jenis hal, misalnya tabel `siswa`. Tabel terdiri dari:\n\n- **Kolom** (*column*, *field*): satu ciri yang dicatat untuk setiap data, misalnya `nama` atau `kelas`. Setiap kolom punya tipe, misalnya teks atau angka bulat.\n- **Baris** (*row*, *record*): satu catatan lengkap, misalnya data satu siswa.\n\nJadi tabel `siswa` dengan tiga kolom dan dua baris terlihat seperti ini:\n\n```text\nid | nama | kelas\n 1 | Ani  | 10A\n 2 | Budi | 10B\n```\n\nPerhatikan bahwa urutan baris tidak punya arti. Jika kamu butuh urutan tertentu, kamu memintanya saat mengambil data. Perhatikan juga bahwa setiap kolom hanya berisi satu jenis nilai. Kolom `kelas` tidak dipakai untuk menyimpan catatan bebas.\n\n## DBMS dan model relasional\n\nBasis data tidak bekerja sendiri. Ia dikelola oleh perangkat lunak bernama **DBMS** (*Database Management System*). DBMS yang menyimpan data ke disk, mengatur siapa boleh melakukan apa, menjalankan pencarian, dan menjaga aturan data.\n\nBeberapa DBMS relasional yang populer:\n\n- **SQLite**: seluruh basis data berada di satu file, tanpa server. Dipakai di ponsel, aplikasi desktop, dan prototipe. Kelas ini memakainya karena sudah termasuk di Python.\n- **PostgreSQL**: server basis data yang kaya fitur, favorit untuk aplikasi web.\n- **MySQL** dan **MariaDB**: sangat umum di hosting web.\n\nSemuanya memakai **model relasional**: data disimpan dalam tabel, dan tabel-tabel itu dihubungkan lewat nilai bersama (kunci), bukan lewat petunjuk fisik di disk. Bahasa yang dipakai untuk membuat dan menanyai tabel adalah **SQL** (*Structured Query Language*). Perintah dasarnya mudah dibaca:\n\n- `CREATE TABLE` membuat tabel,\n- `INSERT INTO` menambah baris,\n- `SELECT` mengambil data,\n- `UPDATE` dan `DELETE` mengubah dan menghapus.\n\n## Praktik dengan Python dan sqlite3\n\nPython punya modul `sqlite3` bawaan. Untuk latihan, kita pakai basis data yang hidup di memori saja dengan nama khusus `\":memory:\"`, sehingga tidak ada file yang tertinggal.\n\n```python\nimport sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE siswa (id INTEGER, nama TEXT, kelas TEXT)\")\ndb.execute(\"INSERT INTO siswa VALUES (1, 'Ani', '10A')\")\ndb.execute(\"INSERT INTO siswa VALUES (2, 'Budi', '10B')\")\n\nfor baris in db.execute(\"SELECT nama, kelas FROM siswa\"):\n    print(baris)\n```\n\nKeluarannya `('Ani', '10A')` lalu `('Budi', '10B')`. Setiap baris hasil query dikembalikan sebagai tuple. Untuk memasukkan nilai dari variabel, jangan menyambung string. Pakai tanda tanya sebagai penampung:\n\n```python\nnama, kelas = \"Citra\", \"10A\"\ndb.execute(\"INSERT INTO siswa VALUES (?, ?, ?)\", (3, nama, kelas))\n```\n\nCara ini aman dari serangan *SQL injection*, yaitu ketika teks buatan pengguna disisipkan langsung ke dalam perintah SQL dan mengubah maknanya. Biasakan sejak awal.\n\nSatu hal lagi: `db.execute(...)` mengembalikan *cursor*. Panggil `.fetchall()` untuk mengambil semua baris sebagai list, atau `.fetchone()` untuk satu baris saja:\n\n```python\nsemua = db.execute(\"SELECT nama FROM siswa ORDER BY nama\").fetchall()\nprint(semua)   # [('Ani',), ('Budi',), ('Citra',)]\n```\n\nPerhatikan tanda koma di `('Ani',)`. Itu tuple berisi satu elemen, bukan string.\n\n## Mengapa desain itu penting\n\nTabel `siswa` di atas sangat sederhana, dan kamu bisa membuatnya tanpa berpikir panjang. Tetapi aplikasi nyata punya puluhan tabel. Keputusan seperti \"apakah kelas disimpan sebagai teks di tabel siswa atau tabel tersendiri\" menentukan apakah data nanti konsisten atau berantakan. Merombak tabel setelah terisi jutaan baris sangat mahal, karena semua kode yang membaca tabel itu ikut berubah.\n\nKarena itu urutannya selalu: **rancang dulu, isi kemudian**. Kelas ini mengajarkan cara merancang: mengenali entitas, menggambar ERD, memilih kunci, menghubungkan tabel, menghilangkan duplikasi lewat normalisasi, menjaga aturan data dengan constraint, dan mempercepat pencarian dengan indeks.\n\n## Kesalahan umum pemula\n\nBeberapa jebakan yang sering terjadi pada hari-hari pertama:\n\n- **Menganggap basis data sama dengan spreadsheet.** Spreadsheet membiarkan sel berisi apa saja. Basis data menuntut setiap kolom punya tipe dan aturan. Aturan itu bukan penghalang, melainkan alat agar data tetap bersih.\n- **Menyambung string SQL dengan input pengguna.** Cara ini membuka celah SQL injection. Selalu pakai penampung `?` seperti di contoh di atas.\n- **Lupa `commit`.** Di Python, perubahan yang dibuat dengan `INSERT` atau `UPDATE` baru tersimpan permanen setelah `db.commit()`. Untuk basis data `\":memory:\"` yang hilang saat program selesai, hal ini tidak terasa, tetapi untuk file nyata ia sangat penting.\n- **Menyimpan semuanya dalam satu tabel besar.** Godaan ini kuat karena terasa mudah di awal. Bab-bab selanjutnya menunjukkan mengapa satu tabel besar cepat menjadi sumber masalah.\n\nKebiasaan baik untuk dimulai sekarang: setiap kali membuat tabel, tanyakan dalam hati \"apa yang membedakan satu baris dari baris lain?\" dan \"data apa yang tidak boleh kosong?\". Dua pertanyaan itu menuntunmu ke primary key dan `NOT NULL` di bab-bab berikutnya.\n\n## Rangkuman\n\n- Basis data adalah kumpulan data terorganisir yang dipakai bersama dan dijaga konsistensinya.\n- Tabel menampung satu jenis hal; kolom adalah ciri, baris adalah satu catatan.\n- DBMS (SQLite, PostgreSQL, MySQL) mengelola penyimpanan, akses, dan aturan data.\n- Basis data relasional menghubungkan tabel lewat kunci dan dipakai lewat SQL.\n- Di Python, `sqlite3.connect(\":memory:\")` memberi basis data latihan; pakai tanda `?` untuk nilai variabel.\n- Rancang skema dulu, baru isi data, karena merombak tabel terisi itu mahal.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Masalah utama data siswa yang tersimpan di tiga spreadsheet berbeda adalah",
+          "code": "",
+          "options": [
+            "Spreadsheet tidak bisa menyimpan teks",
+            "Data yang seharusnya sama bisa berbeda satu sama lain",
+            "Komputer menolak membuka tiga file sekaligus",
+            "Komputer tidak mampu membuka beberapa file spreadsheet pada saat yang sama"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa sumber tunggal, perubahan di satu tempat tidak sampai ke tempat lain, sehingga data tidak konsisten."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dalam tabel, satu baris mewakili",
+          "code": "",
+          "options": [
+            "Satu jenis nilai untuk semua data",
+            "Satu jenis nilai yang dipakai bersama di seluruh tabel lain",
+            "Satu catatan lengkap, misalnya satu siswa",
+            "Satu file basis data"
+          ],
+          "answer": 2,
+          "explanation": "Baris (record) adalah satu catatan utuh; kolom adalah ciri yang dicatat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perangkat lunak yang mengelola penyimpanan dan akses basis data disebut",
+          "code": "",
+          "options": [
+            "DBMS",
+            "Compiler",
+            "Browser",
+            "Firewall"
+          ],
+          "answer": 0,
+          "explanation": "DBMS (Database Management System) seperti SQLite dan PostgreSQL mengelola basis data."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa nilai variabel dimasukkan ke SQL memakai tanda ? dan bukan penyambungan string?",
+          "code": "",
+          "options": [
+            "Agar perintah berjalan dua kali lebih cepat",
+            "Karena SQLite tidak mengenal string",
+            "Agar teks pengguna tidak mengubah makna perintah SQL",
+            "Karena SQLite tidak dapat mengenali tipe string dalam perintah apa pun"
+          ],
+          "answer": 2,
+          "explanation": "Penampung ? memisahkan data dari perintah sehingga SQL injection tidak terjadi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tabel siswa pertamamu",
+          "prompt": "Lengkapi fungsi `buat_db()` yang mengembalikan koneksi `sqlite3` di memori berisi tabel `siswa` dengan kolom `id` (INTEGER), `nama` (TEXT), dan `kelas` (TEXT). Isi tiga baris: (1, 'Ani', '10A'), (2, 'Budi', '10B'), (3, 'Citra', '10A').",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: buat tabel siswa lalu isi tiga barisnya\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"CREATE TABLE siswa (id INTEGER, nama TEXT, kelas TEXT)\")\n    db.executemany(\"INSERT INTO siswa VALUES (?, ?, ?)\", [(1, 'Ani', '10A'), (2, 'Budi', '10B'), (3, 'Citra', '10A')])\n    return db\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tabel siswa punya tiga baris",
+              "check": "buat_db().execute(\"SELECT COUNT(*) FROM siswa\").fetchone()[0] == 3"
+            },
+            {
+              "name": "Kolomnya id, nama, kelas",
+              "check": "[k[1] for k in buat_db().execute(\"PRAGMA table_info(siswa)\")] == ['id', 'nama', 'kelas']"
+            },
+            {
+              "name": "Baris pertama adalah Ani di 10A",
+              "check": "buat_db().execute(\"SELECT nama, kelas FROM siswa WHERE id = 1\").fetchone() == ('Ani', '10A')"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Cari siswa per kelas",
+          "prompt": "Basis data `db` sudah berisi tabel `siswa`. Lengkapi `siswa_kelas(db, kelas)` yang mengembalikan **list nama** siswa di kelas itu, diurutkan menurut abjad. Pakai tanda `?` untuk nilai `kelas`.",
+          "starter": {
+            "code": "def siswa_kelas(db, kelas):\n    # TODO: SELECT nama ... WHERE kelas = ? ORDER BY nama\n    return []\n"
+          },
+          "solution": {
+            "code": "def siswa_kelas(db, kelas):\n    baris = db.execute(\"SELECT nama FROM siswa WHERE kelas = ? ORDER BY nama\", (kelas,)).fetchall()\n    return [b[0] for b in baris]\n"
+          },
+          "setup": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE siswa (id INTEGER, nama TEXT, kelas TEXT)\")\ndb.executemany(\"INSERT INTO siswa VALUES (?, ?, ?)\", [(1, 'Ani', '10A'), (2, 'Budi', '10B'), (3, 'Citra', '10A')])\n",
+          "tests": [
+            {
+              "name": "Kelas 10A berisi Ani dan Citra",
+              "check": "siswa_kelas(db, '10A') == ['Ani', 'Citra']"
+            },
+            {
+              "name": "Kelas 10B hanya Budi",
+              "check": "siswa_kelas(db, '10B') == ['Budi']"
+            },
+            {
+              "name": "Kelas yang tidak ada menghasilkan list kosong",
+              "check": "siswa_kelas(db, '12Z') == []"
+            },
+            {
+              "name": "Nama dengan tanda kutip tidak merusak query",
+              "check": "siswa_kelas(db, \"10A' OR '1'='1\") == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "entitas-atribut-dan-erd",
+      "title": "Entitas, Atribut, dan ERD",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Mengenali entitas dan atribut dari sebuah kebutuhan nyata.\n- Membaca dan menggambar ERD sederhana.\n- Menentukan kardinalitas relasi 1:1, 1:N, dan N:N.\n- Menerjemahkan entitas dan atribut menjadi tabel dan kolom.\n\n## Mulai dari kebutuhan, bukan dari tabel\n\nKesalahan paling umum perancang pemula adalah langsung membuka editor dan mengetik `CREATE TABLE`. Perancang yang baik mulai dari kalimat-kalimat kebutuhan. Misalnya sebuah sekolah berkata: \"Anggota perpustakaan meminjam buku. Setiap buku termasuk satu kategori. Kami ingin tahu siapa meminjam apa dan kapan dikembalikan.\"\n\nDari tiga kalimat itu sudah terlihat bahan skemanya. Kata benda yang penting menjadi calon **entitas**: anggota, buku, kategori, peminjaman. Kata kerja yang menghubungkannya menjadi calon **relasi**: anggota *meminjam* buku, buku *termasuk* kategori. Cara membaca kebutuhan seperti ini jauh lebih aman daripada menebak.\n\n## Entitas dan atribut\n\n**Entitas** adalah benda, orang, atau konsep yang datanya perlu disimpan. Contohnya `Siswa`, `Buku`, `Produk`, `Pesanan`. Ujian sederhananya: apakah kamu perlu menyimpan beberapa fakta tentang hal itu? Jika ya, ia entitas.\n\n**Atribut** adalah fakta yang dicatat tentang sebuah entitas. Entitas `Buku` punya atribut `judul`, `penulis`, `tahun_terbit`. Dua aturan praktis:\n\n- Satu entitas menjadi **satu tabel**.\n- Satu atribut menjadi **satu kolom**.\n\nHati-hati membedakan atribut dengan entitas. Kategori buku bisa jadi atribut (kolom `kategori` berisi teks) atau entitas tersendiri (tabel `kategori` dengan nama dan deskripsi). Gunakan entitas tersendiri bila kategori punya atribut sendiri atau dipakai berulang oleh banyak buku. Di studi kasus perpustakaan nanti, kategori dibuat entitas tersendiri.\n\nSatu lagi: pilih atribut yang **tunggal**. Alamat lengkap sering lebih baik dipecah menjadi `jalan`, `kota`, dan `kode_pos` supaya bisa dicari per kota. Tentukan sejak awal seberapa halus data perlu dipecah.\n\n## Membaca ERD\n\n**ERD** (*Entity Relationship Diagram*) adalah gambar yang memperlihatkan entitas dan hubungannya sebelum tabel dibuat. Bentuk dasarnya:\n\n- Kotak untuk entitas, dengan daftar atribut di dalamnya.\n- Garis untuk relasi antar entitas, sering diberi nama kata kerja.\n- Ujung garis menunjukkan berapa banyak: satu garis tegak untuk \"satu\", kaki gagak (*crow's foot*) untuk \"banyak\".\n\nDi kelas ini kita menuliskan ERD sebagai teks supaya mudah ditulis di mana saja:\n\n```text\n[ANGGOTA] 1 ---- N [PINJAM] N ---- 1 [BUKU]\n id                 id               id\n nama               anggota_id       judul\n kelas              buku_id          kategori_id\n                    tgl_pinjam\n```\n\n![Membaca ERD](slide:6)\n\nSekilas terbaca: satu anggota punya banyak catatan pinjam, dan satu buku juga muncul di banyak catatan pinjam. Entitas `PINJAM` menghubungkan dua sisi, dan kita akan membahas alasannya di bab relasi.\n\n## Kardinalitas\n\n**Kardinalitas** menyatakan berapa banyak baris di satu sisi yang berhubungan dengan satu baris di sisi lain. Ada tiga jenis:\n\n- **Satu-ke-satu (1:1).** Satu orang punya paling banyak satu paspor, dan satu paspor milik satu orang.\n- **Satu-ke-banyak (1:N).** Satu kelas punya banyak siswa, tetapi satu siswa hanya masuk satu kelas.\n- **Banyak-ke-banyak (N:N).** Satu siswa bisa ikut banyak ekstrakurikuler, dan satu ekstrakurikuler diikuti banyak siswa.\n\nCara menentukannya: tanyakan **dua arah**. \"Satu kelas punya berapa siswa?\" Banyak. \"Satu siswa masuk berapa kelas?\" Satu. Hasilnya 1:N. Jangan puas dengan satu arah, karena jawaban satu arah saja menyesatkan. Orang sering mengira hubungan guru dan mata pelajaran 1:N, padahal satu guru bisa mengajar beberapa mata pelajaran dan satu mata pelajaran bisa diajar beberapa guru.\n\nKardinalitas juga memuat soal **wajib atau opsional**. Apakah setiap siswa wajib punya kelas? Jika ya, kolom `kelas_id` nantinya `NOT NULL`. Pertanyaan ini akan terjawab di bab constraint, tetapi catatlah sejak ERD.\n\n## Dari ERD ke tabel\n\nAturan penerjemahan dasarnya sederhana. Setiap entitas menjadi tabel, setiap atribut menjadi kolom, lalu relasi ditangani sesuai kardinalitas (dibahas bab 3 dan 4). Kamu bisa bahkan menuliskan penerjemahan itu sebagai kode. Contoh fungsi kecil yang menyusun `CREATE TABLE` dari nama entitas dan atributnya:\n\n```python\ndef ddl(nama, atribut):\n    kolom = [\"id INTEGER PRIMARY KEY\"]\n    for k, tipe in atribut.items():\n        kolom.append(f\"{k} {tipe}\")\n    return f\"CREATE TABLE {nama} ({', '.join(kolom)})\"\n\nprint(ddl(\"buku\", {\"judul\": \"TEXT\", \"tahun\": \"INTEGER\"}))\n# CREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT, tahun INTEGER)\n```\n\nFungsi ini tentu terlalu sederhana untuk dipakai sungguhan, tetapi ia menegaskan polanya: ERD adalah sumber, tabel adalah turunan. Jika ERD-nya benar, menulis tabel hanya pekerjaan mekanis.\n\n## Kesalahan umum saat membuat ERD\n\n- **Entitas terlalu mirip.** Jangan membuat `Guru` dan `Pengajar` sebagai dua entitas bila isinya sama.\n- **Atribut turunan.** Usia bisa dihitung dari tanggal lahir, jadi simpan tanggal lahirnya saja. Menyimpan keduanya membuat data cepat tidak sinkron.\n- **Menyimpan relasi sebagai atribut.** Kolom `buku_dipinjam` di tabel anggota berisi daftar judul adalah tanda bahaya. Relasi digambar sebagai garis dan ditangani lewat kunci.\n- **Nama tidak konsisten.** Pilih satu gaya (misalnya huruf kecil dengan garis bawah) dan satu bahasa untuk seluruh skema.\n\n## Contoh kerja: toko buku kecil\n\nPemilik toko buku berkata: \"Saya jual buku. Setiap buku punya penerbit. Pelanggan membeli beberapa buku dalam satu pesanan. Saya ingin tahu buku apa yang paling laris.\"\n\nKita baca pelan-pelan. Kata benda penting: buku, penerbit, pelanggan, pesanan. Kata kerja: buku *punya* penerbit, pelanggan *membeli* buku lewat pesanan. Kardinalitasnya:\n\n- penerbit ke buku: satu penerbit menerbitkan banyak buku, satu buku satu penerbit, jadi **1:N**;\n- pelanggan ke pesanan: satu pelanggan banyak pesanan, satu pesanan satu pelanggan, jadi **1:N**;\n- pesanan ke buku: satu pesanan memuat banyak buku, satu buku muncul di banyak pesanan, jadi **N:N**.\n\nHubungan N:N pesanan dan buku menyimpan satu informasi tambahan, yaitu jumlah yang dibeli. Informasi itu bukan milik pesanan dan bukan milik buku, melainkan milik **pasangannya**. Itulah isyarat bahwa kita perlu entitas penghubung, misalnya `item_pesanan`, yang akan dibahas di bab relasi. Pertanyaan pemilik, \"buku apa yang paling laris\", juga jadi uji: dapatkah ERD ini menjawabnya? Ya, dengan menjumlahkan jumlah per buku di entitas penghubung.\n\nLatihan yang baik: ambil aplikasi yang kamu pakai sehari-hari, misalnya jadwal pelajaran atau daftar belanja, lalu tuliskan entitas, atribut, dan kardinalitasnya dalam sepuluh menit. Kebiasaan ini melatih mata perancang lebih cepat daripada membaca teori.\n\n## Rangkuman\n\n- Rancangan dimulai dari kebutuhan; kata benda penting menjadi entitas dan kata kerja menjadi relasi.\n- Entitas menjadi tabel, atribut menjadi kolom.\n- ERD memperlihatkan entitas dan relasi sebelum tabel dibuat.\n- Kardinalitas ditentukan dengan bertanya dari dua arah: 1:1, 1:N, atau N:N.\n- Hindari atribut turunan dan relasi yang disimpan sebagai daftar di satu kolom.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dalam kalimat 'Anggota meminjam buku', kata 'anggota' dan 'buku' adalah calon",
+          "code": "",
+          "options": [
+            "Entitas",
+            "Atribut",
+            "Constraint",
+            "Indeks"
+          ],
+          "answer": 0,
+          "explanation": "Kata benda penting yang datanya disimpan menjadi calon entitas."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Satu kelas punya banyak siswa, satu siswa masuk satu kelas. Kardinalitasnya",
+          "code": "",
+          "options": [
+            "1:1",
+            "N:N",
+            "N:1 tanpa relasi",
+            "1:N"
+          ],
+          "answer": 3,
+          "explanation": "Satu kelas ke banyak siswa disebut satu-ke-banyak (1:N)."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa 'usia' sebaiknya tidak disimpan jika 'tanggal_lahir' sudah ada?",
+          "code": "",
+          "options": [
+            "Tabel tidak boleh punya lebih dari dua kolom",
+            "Usia bisa dihitung sehingga menyimpannya membuat data mudah tidak sinkron",
+            "Karena ERD hanya mengizinkan atribut yang bertipe teks dan tidak boleh dihitung ulang",
+            "ERD hanya mengizinkan atribut teks"
+          ],
+          "answer": 1,
+          "explanation": "Atribut turunan membuka peluang dua nilai yang saling bertentangan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cara terbaik menentukan kardinalitas relasi adalah",
+          "code": "",
+          "options": [
+            "Memilih N:N pada semua relasi supaya aman terhadap perubahan di masa depan",
+            "Bertanya dari dua arah untuk setiap pasangan entitas",
+            "Melihat jumlah kolom tabel",
+            "Menebak dari nama tabel"
+          ],
+          "answer": 1,
+          "explanation": "Jawaban satu arah bisa menyesatkan; periksa kedua sisi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tentukan jenis relasi",
+          "prompt": "Lengkapi `jenis_relasi(maks_a, maks_b)`. `maks_a` adalah jumlah **maksimum** B yang bisa berhubungan dengan satu A, dan `maks_b` jumlah maksimum A untuk satu B. Gunakan angka `1` atau string `\"N\"`. Kembalikan salah satu string `\"1:1\"`, `\"1:N\"`, atau `\"N:N\"` (relasi 1:N berarti sisi A tunggal, sisi B banyak; kembalikan `\"1:N\"` juga untuk kebalikannya).",
+          "starter": {
+            "code": "def jenis_relasi(maks_a, maks_b):\n    # TODO: bandingkan keduanya\n    return \"\"\n"
+          },
+          "solution": {
+            "code": "def jenis_relasi(maks_a, maks_b):\n    if maks_a == 1 and maks_b == 1:\n        return \"1:1\"\n    if maks_a == \"N\" and maks_b == \"N\":\n        return \"N:N\"\n    return \"1:N\"\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Satu paspor satu orang adalah 1:1",
+              "check": "jenis_relasi(1, 1) == '1:1'"
+            },
+            {
+              "name": "Satu kelas banyak siswa adalah 1:N",
+              "check": "jenis_relasi('N', 1) == '1:N'"
+            },
+            {
+              "name": "Kebalikannya juga 1:N",
+              "check": "jenis_relasi(1, 'N') == '1:N'"
+            },
+            {
+              "name": "Siswa dan ekskul adalah N:N",
+              "check": "jenis_relasi('N', 'N') == 'N:N'"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Susun CREATE TABLE dari atribut",
+          "prompt": "Lengkapi `ddl(nama, atribut)`. `atribut` adalah dict `{kolom: tipe}`. Kembalikan string `CREATE TABLE` dengan kolom pertama `id INTEGER PRIMARY KEY`, diikuti kolom-kolom dari dict sesuai urutannya, dipisah koma dan spasi. Contoh: `ddl(\"buku\", {\"judul\": \"TEXT\"})` menghasilkan `CREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT)`.",
+          "starter": {
+            "code": "def ddl(nama, atribut):\n    kolom = [\"id INTEGER PRIMARY KEY\"]\n    # TODO: tambahkan tiap kolom dan tipenya\n    return \"\"\n"
+          },
+          "solution": {
+            "code": "def ddl(nama, atribut):\n    kolom = [\"id INTEGER PRIMARY KEY\"]\n    for k, tipe in atribut.items():\n        kolom.append(f\"{k} {tipe}\")\n    return f\"CREATE TABLE {nama} ({', '.join(kolom)})\"\n"
+          },
+          "setup": "import sqlite3\n",
+          "tests": [
+            {
+              "name": "Format string tepat",
+              "check": "ddl('buku', {'judul': 'TEXT'}) == 'CREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT)'"
+            },
+            {
+              "name": "Tanpa atribut hanya ada id",
+              "check": "ddl('x', {}) == 'CREATE TABLE x (id INTEGER PRIMARY KEY)'"
+            },
+            {
+              "name": "Hasilnya bisa dijalankan SQLite",
+              "check": "(lambda c: (c.execute(ddl('buku', {'judul': 'TEXT', 'tahun': 'INTEGER'})), [k[1] for k in c.execute('PRAGMA table_info(buku)')])[1])(sqlite3.connect(':memory:')) == ['id', 'judul', 'tahun']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "kunci-primary-dan-foreign",
+      "title": "Primary Key dan Foreign Key",
+      "est_minutes": 30,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menjelaskan fungsi primary key dan syaratnya.\n- Menjelaskan foreign key dan integritas referensial.\n- Membedakan candidate key, composite key, natural key, dan surrogate key.\n- Mengaktifkan dan menguji foreign key di SQLite.\n\n## Primary key: pengenal unik\n\nBayangkan dua siswa bernama Budi Santoso di sekolah yang sama. Jika data siswa hanya punya kolom nama, kamu tidak bisa membedakan keduanya saat mengubah nilai salah satunya. Setiap baris butuh pengenal yang pasti: **primary key** (kunci utama).\n\nPrimary key punya tiga syarat:\n\n- **Unik.** Tidak ada dua baris dengan nilai kunci yang sama.\n- **Tidak kosong.** Kunci wajib terisi.\n- **Stabil.** Nilainya tidak berganti sepanjang hidup baris itu.\n\nSatu tabel hanya punya satu primary key, tetapi kunci itu boleh terdiri dari beberapa kolom (dibahas di bawah). Di SQLite, kolom `INTEGER PRIMARY KEY` bahkan terisi otomatis dengan nomor berikutnya bila kamu tidak menyebut nilainya:\n\n```python\nimport sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\ndb.execute(\"INSERT INTO siswa (nama) VALUES ('Ani')\")\ndb.execute(\"INSERT INTO siswa (nama) VALUES ('Budi')\")\nprint(db.execute(\"SELECT id, nama FROM siswa\").fetchall())\n# [(1, 'Ani'), (2, 'Budi')]\n```\n\nJika kamu mencoba memasukkan `id` yang sudah ada, SQLite menolaknya dengan `sqlite3.IntegrityError`. Penolakan ini bukan gangguan. Inilah gunanya primary key: kesalahan data ditolak di pintu masuk.\n\n![Primary key](slide:8)\n\n## Foreign key: penghubung antar tabel\n\nSekarang tambahkan tabel `nilai`. Setiap nilai milik seorang siswa. Kita simpan **id siswa**, bukan namanya, di tabel nilai. Kolom itu disebut **foreign key** (kunci asing): kolom yang nilainya menunjuk primary key tabel lain.\n\n```sql\nCREATE TABLE nilai (\n  id       INTEGER PRIMARY KEY,\n  siswa_id INTEGER NOT NULL REFERENCES siswa(id),\n  mapel    TEXT NOT NULL,\n  skor     INTEGER\n);\n```\n\nForeign key menjaga **integritas referensial**: setiap nilai harus menunjuk siswa yang benar-benar ada. Tanpa itu, kamu bisa punya nilai milik `siswa_id = 99` padahal siswa 99 tidak pernah ada, yaitu data yatim.\n\nAda satu kejutan di SQLite: pemeriksaan foreign key **tidak aktif secara bawaan** untuk alasan kompatibilitas. Aktifkan pada setiap koneksi:\n\n```python\ndb.execute(\"PRAGMA foreign_keys = ON\")\n```\n\nSetelah itu, `INSERT INTO nilai ... siswa_id = 99` menghasilkan `IntegrityError: FOREIGN KEY constraint failed`. Di PostgreSQL dan MySQL, pemeriksaan ini selalu aktif, jadi hanya SQLite yang butuh pengingat.\n\n## Jenis kunci lainnya\n\nDunia kunci lebih luas dari dua istilah di atas.\n\n- **Candidate key.** Kolom (atau gabungan kolom) yang cukup unik untuk menjadi pengenal. Tabel siswa bisa punya dua kandidat: `id` dan `nis`. Yang dipilih menjadi primary key; sisanya tetap unik lewat constraint `UNIQUE`.\n- **Composite key.** Kunci dari dua kolom atau lebih. Tabel `nilai(siswa_id, mapel, skor)` bisa memakai `(siswa_id, mapel)` sebagai kunci, karena satu siswa punya satu nilai per mata pelajaran.\n- **Natural key.** Kunci dari data dunia nyata, seperti NIK atau ISBN. Kelemahannya: data dunia nyata bisa salah ketik, berubah, atau ternyata tidak benar-benar unik.\n- **Surrogate key.** Kunci buatan sistem tanpa arti bisnis, misalnya nomor urut `id`. Stabil dan ringkas.\n\nPraktik yang paling sering dipakai: **surrogate key sebagai primary key, natural key diberi `UNIQUE`**. Dengan begitu referensi antar tabel tetap stabil, sementara aturan keunikan data asli tetap dijaga.\n\n```sql\nCREATE TABLE nilai (\n  siswa_id INTEGER NOT NULL REFERENCES siswa(id),\n  mapel    TEXT    NOT NULL,\n  skor     INTEGER,\n  PRIMARY KEY (siswa_id, mapel)\n);\n```\n\nPada contoh composite key di atas, mencoba memasukkan nilai Matematika kedua untuk siswa yang sama langsung ditolak. Aturan bisnis \"satu nilai per mapel\" tertanam di skema, bukan di kode aplikasi yang bisa lupa memeriksanya.\n\n## Memilih kunci dengan baik\n\nBeberapa pedoman praktis:\n\n- Jangan pakai nama sebagai kunci. Nama kembar dan nama berubah.\n- Hindari kunci yang punya arti dan bisa berubah, seperti nomor telepon atau email, sebagai target foreign key. Jika email berganti, semua tabel yang menunjuknya harus ikut diubah.\n- Kolom foreign key harus bertipe sama dengan primary key yang ditunjuk.\n- Jika sebuah tabel tidak punya kunci yang jelas, itu isyarat bahwa entitasnya belum dipikirkan matang.\n\nSatu pertanyaan uji yang berguna: \"Jika baris ini kuubah isinya, apakah aku masih menyebutnya baris yang sama?\" Jika ya, kuncinya stabil.\n\n## Kesalahan umum soal kunci\n\n- **Memakai nama sebagai primary key.** Dua siswa bernama sama akan bentrok, dan siswa yang mengganti nama membuat semua referensi ikut berubah.\n- **Menunjuk kolom yang bukan kunci.** Foreign key harus menunjuk primary key (atau kolom `UNIQUE`). Menunjuk kolom biasa membuat relasi tidak punya jaminan apa pun.\n- **Tipe foreign key berbeda dengan primary key.** Menyimpan `id` sebagai teks di satu tabel dan angka di tabel lain menyulitkan `JOIN` dan membuang indeks.\n- **Mengira `NULL` sama dengan nilai biasa.** Foreign key boleh `NULL` bila relasinya opsional, misalnya pegawai yang belum punya atasan. Bila relasinya wajib, beri `NOT NULL`.\n\nSatu pengamatan menarik tentang `INTEGER PRIMARY KEY` di SQLite: kolom itu sebenarnya alias dari `rowid`, nomor baris internal. Itu sebabnya ia otomatis terisi dan pencariannya sangat cepat. Di PostgreSQL kamu memakai `SERIAL` atau `GENERATED ALWAYS AS IDENTITY` untuk efek serupa, dan di MySQL `AUTO_INCREMENT`. Namanya berbeda, gagasannya sama: kunci buatan yang bertambah sendiri.\n\nUji dirimu dengan skenario ini: tabel `pegawai(id, nama, atasan_id)` di mana `atasan_id` menunjuk `pegawai(id)`. Apakah foreign key boleh menunjuk tabel yang sama? Boleh, dan itu disebut relasi **rekursif** (*self-reference*). Kolom `atasan_id` untuk direktur dibiarkan `NULL`, karena direktur tidak punya atasan.\n\nTerakhir, perhatikan satu kebiasaan baik: beri nama foreign key sesuai tabel yang ditunjuk, misalnya `siswa_id` untuk menunjuk `siswa(id)`. Nama yang konsisten membuat skema terbaca sendiri, dan kamu bisa menebak `JOIN` tanpa membuka dokumentasi.\n\n## Rangkuman\n\n- Primary key mengenali satu baris: unik, tidak kosong, dan stabil.\n- Foreign key menunjuk primary key tabel lain dan menjaga integritas referensial.\n- Di SQLite, aktifkan `PRAGMA foreign_keys = ON` pada setiap koneksi.\n- Composite key menggabungkan beberapa kolom menjadi satu pengenal.\n- Pola umum: surrogate key sebagai primary key, natural key diberi `UNIQUE`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Manakah syarat sebuah primary key?",
+          "code": "",
+          "options": [
+            "Selalu berupa teks",
+            "Boleh kembar asal beda huruf",
+            "Harus sama dengan nama tabel",
+            "Unik dan tidak boleh kosong"
+          ],
+          "answer": 3,
+          "explanation": "Primary key harus unik, terisi, dan stabil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi utama foreign key adalah",
+          "code": "",
+          "options": [
+            "Memastikan relasi menunjuk baris yang benar-benar ada",
+            "Mempercepat semua query",
+            "Menyembunyikan kolom tertentu agar tidak terbaca oleh pengguna biasa lain",
+            "Mengganti primary key tabel lain"
+          ],
+          "answer": 0,
+          "explanation": "Foreign key menjaga integritas referensial antar tabel."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Agar SQLite benar-benar memeriksa foreign key, kamu perlu menjalankan",
+          "code": "",
+          "options": [
+            "CREATE INDEX fk",
+            "SELECT foreign_keys()",
+            "PRAGMA foreign_keys = ON",
+            "ALTER TABLE ENABLE FK"
+          ],
+          "answer": 2,
+          "explanation": "Pemeriksaan foreign key di SQLite mati secara bawaan dan harus diaktifkan per koneksi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kunci buatan sistem berupa nomor urut tanpa arti bisnis disebut",
+          "code": "",
+          "options": [
+            "Natural key",
+            "Candidate key",
+            "Alternate key",
+            "Surrogate key"
+          ],
+          "answer": 3,
+          "explanation": "Surrogate key dibuat oleh sistem, bukan berasal dari data dunia nyata."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Siswa dan nilai dengan foreign key",
+          "prompt": "Lengkapi `buat_db()`. Buat tabel `siswa(id INTEGER PRIMARY KEY, nama TEXT NOT NULL)` dan tabel `nilai(id INTEGER PRIMARY KEY, siswa_id INTEGER NOT NULL REFERENCES siswa(id), skor INTEGER)`. Aktifkan `PRAGMA foreign_keys = ON` agar nilai milik siswa yang tidak ada ditolak.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: aktifkan foreign key, buat tabel siswa dan nilai\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE nilai (id INTEGER PRIMARY KEY, siswa_id INTEGER NOT NULL REFERENCES siswa(id), skor INTEGER)\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Kedua tabel ada",
+              "check": "sorted(r[0] for r in buat_db().execute(\"SELECT name FROM sqlite_master WHERE type='table'\")) == ['nilai', 'siswa']"
+            },
+            {
+              "name": "Siswa dengan id kembar ditolak",
+              "check": "(lambda d: (d.execute(\"INSERT INTO siswa VALUES (1, 'Ani')\"), gagal(lambda: d.execute(\"INSERT INTO siswa VALUES (1, 'Budi')\")))[1])(buat_db())"
+            },
+            {
+              "name": "Nilai untuk siswa yang tidak ada ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO nilai (siswa_id, skor) VALUES (99, 80)\"))"
+            },
+            {
+              "name": "Nilai untuk siswa yang ada diterima",
+              "check": "(lambda d: (d.execute(\"INSERT INTO siswa VALUES (1, 'Ani')\"), d.execute(\"INSERT INTO nilai (siswa_id, skor) VALUES (1, 80)\"), d.execute('SELECT COUNT(*) FROM nilai').fetchone()[0])[2])(buat_db()) == 1"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Composite key nilai per mapel",
+          "prompt": "Lengkapi `buat_db()` yang membuat tabel `nilai(siswa_id INTEGER NOT NULL, mapel TEXT NOT NULL, skor INTEGER)` dengan **composite primary key** `(siswa_id, mapel)`, sehingga satu siswa tidak bisa punya dua nilai untuk mapel yang sama.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: buat tabel nilai dengan PRIMARY KEY (siswa_id, mapel)\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"CREATE TABLE nilai (siswa_id INTEGER NOT NULL, mapel TEXT NOT NULL, skor INTEGER, PRIMARY KEY (siswa_id, mapel))\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Dua mapel berbeda untuk siswa yang sama diterima",
+              "check": "(lambda d: (d.execute(\"INSERT INTO nilai VALUES (1, 'MTK', 80)\"), d.execute(\"INSERT INTO nilai VALUES (1, 'IPA', 75)\"), d.execute('SELECT COUNT(*) FROM nilai').fetchone()[0])[2])(buat_db()) == 2"
+            },
+            {
+              "name": "Mapel yang sama untuk siswa yang sama ditolak",
+              "check": "(lambda d: (d.execute(\"INSERT INTO nilai VALUES (1, 'MTK', 80)\"), gagal(lambda: d.execute(\"INSERT INTO nilai VALUES (1, 'MTK', 90)\")))[1])(buat_db())"
+            },
+            {
+              "name": "Mapel yang sama untuk siswa lain diterima",
+              "check": "(lambda d: (d.execute(\"INSERT INTO nilai VALUES (1, 'MTK', 80)\"), d.execute(\"INSERT INTO nilai VALUES (2, 'MTK', 90)\"), d.execute('SELECT COUNT(*) FROM nilai').fetchone()[0])[2])(buat_db()) == 2"
+            },
+            {
+              "name": "Kunci terdiri dari dua kolom",
+              "check": "sum(1 for r in buat_db().execute('PRAGMA table_info(nilai)') if r[5] > 0) == 2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "relasi-antar-tabel",
+      "title": "Relasi Antar Tabel",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Mengimplementasikan relasi satu-ke-banyak dengan foreign key.\n- Mengimplementasikan relasi banyak-ke-banyak dengan tabel penghubung.\n- Mengenali kapan relasi satu-ke-satu berguna.\n- Menggabungkan tabel berelasi dengan `JOIN`.\n\n## Satu-ke-banyak: relasi yang paling umum\n\nRelasi 1:N muncul di mana-mana: satu kelas punya banyak siswa, satu pelanggan punya banyak pesanan, satu penulis menulis banyak buku. Aturannya hanya satu: **taruh foreign key di sisi \"banyak\"**.\n\n```sql\nCREATE TABLE kelas (\n  id   INTEGER PRIMARY KEY,\n  nama TEXT NOT NULL\n);\n\nCREATE TABLE siswa (\n  id       INTEGER PRIMARY KEY,\n  nama     TEXT NOT NULL,\n  kelas_id INTEGER NOT NULL REFERENCES kelas(id)\n);\n```\n\nSatu siswa menyimpan satu `kelas_id`, jadi satu siswa hanya bisa masuk satu kelas. Sebaliknya banyak siswa boleh menyimpan `kelas_id` yang sama, sehingga satu kelas memiliki banyak siswa. Perhatikan arah yang tidak boleh terbalik: jika foreign key ditaruh di tabel `kelas` (misalnya `siswa_id`), satu kelas hanya bisa punya satu siswa. Itu relasi yang salah.\n\nUntuk melihat data berdua sekaligus, kita pakai `JOIN`. `JOIN` menyambungkan baris dua tabel yang kuncinya cocok:\n\n```sql\nSELECT siswa.nama, kelas.nama AS kelas\nFROM siswa\nJOIN kelas ON kelas.id = siswa.kelas_id\nORDER BY siswa.nama;\n```\n\nHasilnya satu baris per siswa lengkap dengan nama kelas, padahal datanya tersimpan di dua tabel. Itulah kekuatan model relasional: nama kelas disimpan sekali, dan semua siswa menunjuknya. Mengganti nama kelas dari \"10A\" menjadi \"X-A\" cukup di satu baris.\n\n## Banyak-ke-banyak: tabel penghubung\n\nSiswa boleh ikut beberapa ekstrakurikuler, dan setiap ekstrakurikuler diikuti banyak siswa. Kita tidak bisa menyelesaikannya dengan satu kolom. Kalau `siswa` menyimpan satu `ekskul_id`, siswa hanya bisa ikut satu. Kalau menyimpan daftar id dalam satu kolom, kita melanggar prinsip satu nilai per sel (dibahas di bab normalisasi).\n\nSolusinya adalah **tabel penghubung** (*junction table*, *associative table*). Relasi N:N dipecah menjadi dua relasi 1:N yang bertemu di tabel tengah.\n\n```sql\nCREATE TABLE siswa  (id INTEGER PRIMARY KEY, nama TEXT NOT NULL);\nCREATE TABLE ekskul (id INTEGER PRIMARY KEY, nama TEXT NOT NULL);\n\nCREATE TABLE ikut_ekskul (\n  siswa_id  INTEGER NOT NULL REFERENCES siswa(id),\n  ekskul_id INTEGER NOT NULL REFERENCES ekskul(id),\n  PRIMARY KEY (siswa_id, ekskul_id)\n);\n```\n\n![Tabel penghubung](slide:12)\n\nPrimary key gabungan `(siswa_id, ekskul_id)` mencegah siswa yang sama terdaftar dua kali di ekskul yang sama. Tabel penghubung boleh punya kolom tambahan yang menjelaskan hubungannya, misalnya `tgl_daftar` atau `peran`. Pada kasus perpustakaan, tabel `pinjam` adalah tabel penghubung antara anggota dan buku, dengan kolom tambahan `tgl_pinjam` dan `tgl_kembali`. Karena satu anggota bisa meminjam buku yang sama di waktu berbeda, tabel itu sebaiknya memakai `id` sendiri sebagai primary key.\n\nMengambil siswa dan ekskulnya butuh dua `JOIN`, melewati tabel tengah:\n\n```sql\nSELECT siswa.nama, ekskul.nama\nFROM ikut_ekskul\nJOIN siswa  ON siswa.id  = ikut_ekskul.siswa_id\nJOIN ekskul ON ekskul.id = ikut_ekskul.ekskul_id;\n```\n\n## Satu-ke-satu: jarang tetapi berguna\n\nRelasi 1:1 berarti satu baris di tabel A berhubungan dengan paling banyak satu baris di tabel B. Kalau begitu, mengapa tidak digabung jadi satu tabel? Biasanya memang sebaiknya digabung. Ada beberapa alasan sah untuk memisahnya:\n\n- **Data jarang dipakai.** Bio panjang dan foto profil tidak perlu ikut terbaca setiap kali daftar pengguna ditampilkan.\n- **Data sensitif.** Detail pembayaran dipisah supaya akses bisa dibatasi.\n- **Atribut hanya berlaku untuk sebagian baris.** Hanya sebagian pengguna yang punya profil penjual.\n\nCara membuatnya: foreign key di tabel kedua sekaligus menjadi **primary key** atau diberi `UNIQUE`, sehingga satu baris induk tidak bisa punya dua baris anak.\n\n```sql\nCREATE TABLE profil (\n  user_id INTEGER PRIMARY KEY REFERENCES users(id),\n  bio     TEXT,\n  foto    TEXT\n);\n```\n\nKarena `user_id` adalah primary key, setiap pengguna hanya mungkin punya satu profil. Relasi 1:1 jadi tegak berkat kunci, bukan berkat kebiasaan kode.\n\n## Mengecek hasil dengan data\n\nSetelah membuat relasi, selalu uji dengan data contoh. Masukkan dua siswa dengan ekskul yang tumpang tindih, lalu hitung. Contoh pengecekan di Python:\n\n```python\nhasil = db.execute(\"\"\"\n    SELECT ekskul.nama, COUNT(*)\n    FROM ikut_ekskul JOIN ekskul ON ekskul.id = ikut_ekskul.ekskul_id\n    GROUP BY ekskul.nama\n\"\"\").fetchall()\n```\n\nJika angka yang keluar sesuai harapan, skemamu bekerja. Jika tidak, kemungkinan besar foreign key salah tempat atau ada baris ganda yang lolos karena kunci gabungan lupa dipasang.\n\n## Kesalahan umum pada relasi\n\n- **Foreign key di sisi yang salah.** Gejalanya: kamu tidak bisa menyimpan semua data. Jika tabel `kelas` punya kolom `siswa_id`, satu kelas hanya muat satu siswa. Pindahkan foreign key ke tabel `siswa`.\n- **Daftar id dalam satu kolom.** Menyimpan `\"1,3,7\"` di kolom `ekskul` terasa praktis, tetapi tidak ada yang menjaganya dari id yang tidak ada, dan `JOIN` tidak bisa memakainya. Gunakan tabel penghubung.\n- **Lupa aturan keunikan di tabel penghubung.** Tanpa primary key gabungan, siswa yang sama bisa terdaftar tiga kali di ekskul yang sama dan semua penghitungan menjadi salah.\n- **Salah memakai `INNER JOIN` untuk daftar lengkap.** `JOIN` biasa membuang baris yang tidak punya pasangan. Jika kamu ingin semua siswa, termasuk yang belum ikut ekskul apa pun, pakai `LEFT JOIN`: baris siswa tetap muncul dengan kolom ekskul berisi `NULL`.\n\nContoh `LEFT JOIN` yang berguna untuk laporan:\n\n```sql\nSELECT siswa.nama, COUNT(ikut_ekskul.ekskul_id) AS jumlah\nFROM siswa\nLEFT JOIN ikut_ekskul ON ikut_ekskul.siswa_id = siswa.id\nGROUP BY siswa.id;\n```\n\nSiswa tanpa ekskul tetap tampil dengan jumlah 0. Dengan `JOIN` biasa, mereka menghilang dari laporan tanpa peringatan.\n\nTerakhir, ingat bahwa relasi tidak hanya soal struktur, tetapi juga soal **apa yang boleh terjadi pada data**. Pikirkan: bolehkah kelas dihapus bila masih punya siswa? Bolehkah siswa tanpa kelas? Pertanyaan itu dijawab dengan `NOT NULL` pada foreign key dan aksi `ON DELETE`, yang menjadi topik bab constraint.\n\n## Rangkuman\n\n- Relasi 1:N: taruh foreign key di sisi \"banyak\".\n- Relasi N:N: buat tabel penghubung berisi dua foreign key, biasanya dengan primary key gabungan.\n- Relasi 1:1: foreign key yang juga primary key atau `UNIQUE`; dipakai untuk memisahkan data jarang dipakai atau sensitif.\n- `JOIN ... ON` menyatukan tabel berelasi; N:N butuh dua `JOIN` melewati tabel penghubung.\n- Uji relasi dengan data contoh yang sengaja tumpang tindih.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada relasi satu kelas banyak siswa, foreign key diletakkan di tabel",
+          "code": "",
+          "options": [
+            "kelas, sisi yang satu",
+            "siswa, sisi yang banyak",
+            "keduanya sekaligus",
+            "tabel ketiga yang kosong"
+          ],
+          "answer": 1,
+          "explanation": "Foreign key selalu berada di sisi banyak, menunjuk sisi satu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Relasi banyak-ke-banyak diwujudkan dengan",
+          "code": "",
+          "options": [
+            "Satu kolom berisi daftar id dipisah koma",
+            "Menggandakan tabel",
+            "Tabel penghubung berisi dua foreign key",
+            "Menghapus primary key"
+          ],
+          "answer": 2,
+          "explanation": "Tabel penghubung memecah N:N menjadi dua relasi 1:N."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Primary key gabungan di tabel penghubung berguna untuk",
+          "code": "",
+          "options": [
+            "Mencegah pasangan yang sama terdaftar dua kali",
+            "Mempercepat INSERT secara otomatis",
+            "Mengganti foreign key",
+            "Mengubah tipe kolom secara otomatis ketika baris baru ditambahkan"
+          ],
+          "answer": 0,
+          "explanation": "Kombinasi dua kolom yang unik menolak pasangan duplikat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Relasi satu-ke-satu ditegakkan dengan membuat foreign key",
+          "code": "",
+          "options": [
+            "Boleh kosong dan berulang",
+            "Bertipe teks bebas",
+            "Sekaligus menjadi primary key atau UNIQUE",
+            "Bertipe teks bebas dan boleh kosong pada baris yang sama"
+          ],
+          "answer": 2,
+          "explanation": "Keunikan di sisi anak memastikan satu induk hanya punya satu anak."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tabel penghubung siswa dan ekskul",
+          "prompt": "Lengkapi `buat_db()`. Buat `siswa(id INTEGER PRIMARY KEY, nama TEXT NOT NULL)`, `ekskul(id INTEGER PRIMARY KEY, nama TEXT NOT NULL)`, dan tabel penghubung `ikut_ekskul(siswa_id, ekskul_id)` yang kedua kolomnya foreign key `NOT NULL`, dengan primary key gabungan. Aktifkan `PRAGMA foreign_keys = ON`.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE ekskul (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\n    # TODO: buat tabel penghubung ikut_ekskul\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE ekskul (id INTEGER PRIMARY KEY, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE ikut_ekskul (siswa_id INTEGER NOT NULL REFERENCES siswa(id), ekskul_id INTEGER NOT NULL REFERENCES ekskul(id), PRIMARY KEY (siswa_id, ekskul_id))\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n\ndef isi(db):\n    db.executemany(\"INSERT INTO siswa VALUES (?, ?)\", [(1, 'Ani'), (2, 'Budi'), (3, 'Citra')])\n    db.executemany(\"INSERT INTO ekskul VALUES (?, ?)\", [(1, 'Futsal'), (2, 'Pramuka'), (3, 'Musik')])\n",
+          "tests": [
+            {
+              "name": "Satu siswa boleh ikut dua ekskul",
+              "check": "(lambda d: (isi(d), d.execute('INSERT INTO ikut_ekskul VALUES (1, 1)'), d.execute('INSERT INTO ikut_ekskul VALUES (1, 2)'), d.execute('SELECT COUNT(*) FROM ikut_ekskul').fetchone()[0])[3])(buat_db()) == 2"
+            },
+            {
+              "name": "Satu ekskul boleh diikuti dua siswa",
+              "check": "(lambda d: (isi(d), d.execute('INSERT INTO ikut_ekskul VALUES (1, 3)'), d.execute('INSERT INTO ikut_ekskul VALUES (2, 3)'), d.execute('SELECT COUNT(*) FROM ikut_ekskul WHERE ekskul_id = 3').fetchone()[0])[3])(buat_db()) == 2"
+            },
+            {
+              "name": "Pasangan yang sama dua kali ditolak",
+              "check": "(lambda d: (isi(d), d.execute('INSERT INTO ikut_ekskul VALUES (1, 1)'), gagal(lambda: d.execute('INSERT INTO ikut_ekskul VALUES (1, 1)')))[2])(buat_db())"
+            },
+            {
+              "name": "Siswa yang tidak ada ditolak",
+              "check": "(lambda d: (isi(d), gagal(lambda: d.execute('INSERT INTO ikut_ekskul VALUES (99, 1)')))[1])(buat_db())"
+            },
+            {
+              "name": "Ekskul yang tidak ada ditolak",
+              "check": "(lambda d: (isi(d), gagal(lambda: d.execute('INSERT INTO ikut_ekskul VALUES (1, 99)')))[1])(buat_db())"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Ekskul milik seorang siswa",
+          "prompt": "Basis data `db` sudah berisi tabel `siswa`, `ekskul`, dan `ikut_ekskul`. Lengkapi `ekskul_siswa(db, nama)` yang mengembalikan **list nama ekskul** yang diikuti siswa bernama `nama`, diurutkan abjad. Pakai dua `JOIN` melewati tabel penghubung.",
+          "starter": {
+            "code": "def ekskul_siswa(db, nama):\n    # TODO: JOIN siswa -> ikut_ekskul -> ekskul\n    return []\n"
+          },
+          "solution": {
+            "code": "def ekskul_siswa(db, nama):\n    baris = db.execute(\"SELECT ekskul.nama FROM siswa JOIN ikut_ekskul ON ikut_ekskul.siswa_id = siswa.id JOIN ekskul ON ekskul.id = ikut_ekskul.ekskul_id WHERE siswa.nama = ? ORDER BY ekskul.nama\", (nama,)).fetchall()\n    return [b[0] for b in baris]\n"
+          },
+          "setup": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT)\")\ndb.execute(\"CREATE TABLE ekskul (id INTEGER PRIMARY KEY, nama TEXT)\")\ndb.execute(\"CREATE TABLE ikut_ekskul (siswa_id INTEGER, ekskul_id INTEGER)\")\ndb.executemany(\"INSERT INTO siswa VALUES (?, ?)\", [(1, 'Ani'), (2, 'Budi'), (3, 'Citra')])\ndb.executemany(\"INSERT INTO ekskul VALUES (?, ?)\", [(1, 'Futsal'), (2, 'Pramuka'), (3, 'Musik')])\ndb.executemany(\"INSERT INTO ikut_ekskul VALUES (?, ?)\", [(1, 1), (1, 3), (2, 2)])\n",
+          "tests": [
+            {
+              "name": "Ani ikut Futsal dan Musik",
+              "check": "ekskul_siswa(db, 'Ani') == ['Futsal', 'Musik']"
+            },
+            {
+              "name": "Budi hanya ikut Pramuka",
+              "check": "ekskul_siswa(db, 'Budi') == ['Pramuka']"
+            },
+            {
+              "name": "Citra belum ikut apa pun",
+              "check": "ekskul_siswa(db, 'Citra') == []"
+            },
+            {
+              "name": "Nama tidak dikenal menghasilkan list kosong",
+              "check": "ekskul_siswa(db, 'Zaki') == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "anomali-dan-1nf",
+      "title": "Anomali Data dan Bentuk Normal Pertama",
+      "est_minutes": 25,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan redundansi dan tiga jenis anomali data.\n- Mengenali pelanggaran bentuk normal pertama (1NF).\n- Memperbaiki tabel yang melanggar 1NF.\n- Memahami ketergantungan fungsional sebagai dasar normalisasi.\n\n## Tabel yang tampak baik tetapi menyimpan masalah\n\nSeorang pemilik toko membuat satu tabel besar untuk semua pesanan:\n\n```text\nid_pesanan | pelanggan | kota    | produk       | harga\n1          | Ani       | Bandung | Pensil       | 3000\n2          | Ani       | Bandung | Buku tulis   | 8000\n3          | Budi      | Medan   | Pensil       | 3000\n```\n\nSekilas tidak ada yang salah. Namun perhatikan data yang berulang: \"Ani\" dan \"Bandung\" tertulis dua kali, \"Pensil\" dan harganya juga dua kali. Pengulangan data seperti ini disebut **redundansi**. Redundansi bukan sekadar boros ruang. Ia membuka tiga jenis kesalahan yang disebut **anomali**.\n\n## Tiga anomali\n\n**Anomali ubah (update).** Ani pindah ke Jakarta. Kamu harus mengubah kota di setiap baris pesanan Ani. Jika satu baris terlewat, basis data sekarang menyatakan Ani tinggal di Bandung *dan* Jakarta. Data bertentangan, dan tidak ada yang tahu mana yang benar.\n\n**Anomali sisip (insert).** Toko ingin mencatat produk baru, \"Penghapus\", sebelum ada yang membelinya. Tidak bisa, karena produk hanya bisa muncul bersama baris pesanan. Fakta tentang produk tertahan oleh fakta tentang pesanan.\n\n**Anomali hapus (delete).** Pesanan nomor 3 dibatalkan dan barisnya dihapus. Satu-satunya catatan tentang pelanggan Budi dari Medan ikut lenyap. Kita ingin menghapus pesanan, bukan menghapus pelanggan.\n\nKetiga anomali punya akar yang sama: **satu tabel menyimpan beberapa fakta yang berbeda topik**. Obatnya adalah memecah tabel agar setiap fakta tinggal di satu tempat. Proses sistematisnya disebut **normalisasi**, dan hasilnya diukur dengan **bentuk normal** (*normal form*) bernomor 1NF, 2NF, 3NF, dan seterusnya.\n\n![Redundansi dan anomali](slide:14)\n\n## Bentuk normal pertama (1NF)\n\nSebuah tabel memenuhi **1NF** bila:\n\n- **Setiap sel berisi satu nilai** (atomik), bukan daftar atau kumpulan.\n- **Tidak ada kolom berulang** seperti `hobi1`, `hobi2`, `hobi3`.\n- **Setiap baris bisa dibedakan**, yaitu ada kunci.\n\nContoh pelanggaran yang paling sering terlihat:\n\n```text\nid | nama | hobi\n1  | Ani  | musik, renang\n2  | Budi | futsal\n```\n\nSel `hobi` baris Ani berisi dua nilai. Akibatnya, pertanyaan sederhana seperti \"siapa saja yang suka renang?\" menjadi sulit. Kamu harus mencari potongan teks, dan pencarian `LIKE '%renang%'` juga akan cocok dengan \"renang indah\" atau \"berenang\". Mengubah \"renang\" menjadi \"berenang\" berarti menyunting teks di banyak sel.\n\nPerbaikannya: satu nilai per baris. Karena satu orang bisa punya banyak hobi, ini sebenarnya relasi 1:N dan paling bersih dipisah menjadi tabel sendiri.\n\n```text\nsiswa                  hobi_siswa\nid | nama              siswa_id | hobi\n1  | Ani               1        | musik\n2  | Budi              1        | renang\n                       2        | futsal\n```\n\nVersi lain yang tetap 1NF tetapi masih menyimpan nama siswa berulang adalah satu tabel `(id, nama, hobi)` dengan satu hobi per baris. Itu memenuhi 1NF, tetapi anomali redundansi nama masih ada, dan itu akan ditangani 2NF dan 3NF di bab berikutnya.\n\nKolom berulang (`hobi1`, `hobi2`, ...) juga melanggar 1NF. Masalahnya, siswa dengan empat hobi tidak muat, dan kebanyakan siswa meninggalkan kolom kosong. Mencari \"siapa yang suka futsal\" berarti memeriksa semua kolom hobi. Pemisahan menjadi baris-baris adalah jawaban yang benar.\n\n## Ketergantungan fungsional\n\nUntuk bentuk normal berikutnya kita butuh satu konsep: **ketergantungan fungsional**. Kita menulis `A → B` (\"A menentukan B\") bila setiap nilai A selalu berpasangan dengan tepat satu nilai B.\n\nContoh di data siswa:\n\n- `nis → nama`: satu NIS pasti satu nama.\n- `nis → kelas`: satu NIS pasti satu kelas.\n- `kode_pos → kota`: satu kode pos berada di satu kota.\n\nBukan ketergantungan fungsional: `nama → nis`, karena dua siswa bisa bernama sama. Ketergantungan bergantung pada **aturan dunia nyata**, bukan sekadar pada data sampel yang kebetulan kamu miliki. Cara menguji: tanyakan \"apakah mungkin satu nilai A berpasangan dengan dua nilai B?\" Jika mungkin, bukan ketergantungan fungsional.\n\nDua pola ketergantungan \"buruk\" akan kita buru di bab berikutnya:\n\n- **Ketergantungan parsial**: kolom bergantung hanya pada sebagian kunci gabungan.\n- **Ketergantungan transitif**: kolom bergantung pada kolom lain yang bukan kunci.\n\n## Menemukan pelanggaran 1NF dengan kode\n\nKadang data warisan dari spreadsheet masuk ke basis data apa adanya. Kamu bisa menyaring baris yang melanggar 1NF secara kasar dengan memeriksa tanda pemisah:\n\n```python\ndef melanggar_1nf(baris, idx):\n    return [b[0] for b in baris if \",\" in str(b[idx])]\n\ndata = [(1, \"Ani\", \"musik, renang\"), (2, \"Budi\", \"futsal\")]\nprint(melanggar_1nf(data, 2))   # [1]\n```\n\nPemeriksaan ini hanya heuristik, tetapi cukup untuk menandai baris yang perlu dibersihkan sebelum migrasi.\n\n## Latihan membaca tabel dengan mata normalisasi\n\nCobalah menilai tabel berikut sebelum membaca jawabannya:\n\n```text\nnis | nama | mapel | guru   | ruang\n1   | Ani  | MTK   | Pak Eko | R1\n1   | Ani  | IPA   | Bu Sari | R2\n2   | Budi | MTK   | Pak Eko | R1\n```\n\nPertanyaan: data apa yang berulang, dan anomali apa yang mungkin terjadi?\n\n- Setiap sel berisi satu nilai, jadi 1NF terpenuhi dengan kunci `(nis, mapel)`.\n- \"Pak Eko, R1\" tertulis dua kali karena guru dan ruang ditentukan oleh `mapel`, bukan oleh siswa. Itu redundansi.\n- **Anomali ubah:** guru MTK diganti Bu Rina, dan salah satu baris terlewat.\n- **Anomali sisip:** mapel baru \"Seni\" belum bisa dicatat sebelum ada siswa yang mengambilnya.\n- **Anomali hapus:** jika Budi dihapus dan dia satu-satunya siswa suatu mapel, data guru mapel itu ikut hilang.\n\nKetergantungan yang menyebabkannya: `mapel → guru, ruang`. Karena `mapel` hanya sebagian dari kunci gabungan, ini ketergantungan **parsial**, calon topik bab berikutnya. Kesimpulan: pemenuhan 1NF saja belum cukup. Normalisasi berlanjut ke 2NF dan 3NF untuk menyingkirkan ketergantungan seperti ini.\n\n## Rangkuman\n\n- Redundansi adalah data yang sama tertulis berulang, dan menimbulkan anomali ubah, sisip, dan hapus.\n- Normalisasi memecah tabel agar setiap fakta tinggal di satu tempat.\n- 1NF: setiap sel satu nilai, tanpa kolom berulang, dan setiap baris punya kunci.\n- Pelanggaran 1NF diperbaiki dengan satu nilai per baris, sering lewat tabel anak.\n- `A → B` berarti A menentukan B; konsep ini menjadi dasar 2NF dan 3NF.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Menghapus satu pesanan membuat data pelanggan satu-satunya ikut hilang. Ini disebut",
+          "code": "",
+          "options": [
+            "Anomali hapus",
+            "Anomali sisip",
+            "Anomali ubah",
+            "Anomali kunci"
+          ],
+          "answer": 0,
+          "explanation": "Fakta pelanggan tertahan di baris pesanan, sehingga ikut terhapus."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sel berisi 'musik, renang' melanggar",
+          "code": "",
+          "options": [
+            "3NF karena ada foreign key",
+            "Aturan primary key saja",
+            "3NF karena ada foreign key yang menunjuk tabel lain di skema",
+            "1NF karena sel berisi lebih dari satu nilai"
+          ],
+          "answer": 3,
+          "explanation": "1NF menuntut nilai atomik di setiap sel."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Ketergantungan fungsional nis → nama berarti",
+          "code": "",
+          "options": [
+            "Nama menentukan NIS",
+            "Satu NIS selalu berpasangan dengan satu nama",
+            "Dua NIS yang berbeda pasti memiliki nama yang sama persis",
+            "Dua NIS pasti punya nama sama"
+          ],
+          "answer": 1,
+          "explanation": "A → B: setiap nilai A menentukan tepat satu nilai B."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dua kolom hobi1 dan hobi2 untuk menyimpan hobi siswa adalah contoh",
+          "code": "",
+          "options": [
+            "Surrogate key",
+            "Kolom berulang yang melanggar 1NF",
+            "Constraint CHECK",
+            "Indeks gabungan"
+          ],
+          "answer": 1,
+          "explanation": "Kolom berulang tidak fleksibel dan melanggar 1NF."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Pecah hobi menjadi satu per baris",
+          "prompt": "Lengkapi `pecah_hobi(baris)`. `baris` adalah list tuple `(id, nama, hobi)` dengan `hobi` berisi satu atau beberapa hobi dipisah koma dan spasi, misalnya `\"musik, renang\"`. Kembalikan list tuple `(id, nama, satu_hobi)` dengan **satu hobi per tuple**, mempertahankan urutan.",
+          "starter": {
+            "code": "def pecah_hobi(baris):\n    hasil = []\n    # TODO: untuk tiap baris, pecah hobi lalu tambahkan satu tuple per hobi\n    return hasil\n"
+          },
+          "solution": {
+            "code": "def pecah_hobi(baris):\n    hasil = []\n    for id_, nama, hobi in baris:\n        for h in hobi.split(\",\"):\n            h = h.strip()\n            if h:\n                hasil.append((id_, nama, h))\n    return hasil\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Dua hobi menjadi dua baris",
+              "check": "pecah_hobi([(1, 'Ani', 'musik, renang')]) == [(1, 'Ani', 'musik'), (1, 'Ani', 'renang')]"
+            },
+            {
+              "name": "Satu hobi tetap satu baris",
+              "check": "pecah_hobi([(2, 'Budi', 'futsal')]) == [(2, 'Budi', 'futsal')]"
+            },
+            {
+              "name": "Urutan baris dipertahankan",
+              "check": "pecah_hobi([(1, 'Ani', 'a, b'), (2, 'Budi', 'c')]) == [(1, 'Ani', 'a'), (1, 'Ani', 'b'), (2, 'Budi', 'c')]"
+            },
+            {
+              "name": "Tiga hobi menjadi tiga baris",
+              "check": "len(pecah_hobi([(3, 'Citra', 'x, y, z')])) == 3"
+            },
+            {
+              "name": "Data kosong menghasilkan list kosong",
+              "check": "pecah_hobi([]) == []"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "normalisasi-2nf-dan-3nf",
+      "title": "Normalisasi: 2NF dan 3NF",
+      "est_minutes": 35,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menjelaskan 2NF dan 3NF beserta ketergantungan yang dilarangnya.\n- Menormalisasi tabel pesanan yang gemuk langkah demi langkah.\n- Merekonstruksi data asli dengan `JOIN` setelah tabel dipecah.\n- Memutuskan kapan denormalisasi masuk akal.\n\n## Bentuk normal kedua (2NF)\n\nTabel disebut **2NF** bila sudah 1NF dan **tidak ada ketergantungan parsial**: setiap kolom non-kunci bergantung pada **seluruh** kunci, bukan sebagian saja. Masalah ini hanya mungkin terjadi pada tabel dengan kunci gabungan.\n\nLihat tabel `item_pesanan` dengan kunci `(id_pesanan, id_produk)`:\n\n```text\nid_pesanan | id_produk | nama_produk | harga | qty\n1          | P1        | Pensil      | 3000  | 10\n1          | P2        | Buku tulis  | 8000  | 2\n2          | P1        | Pensil      | 3000  | 5\n```\n\nKolom `qty` bergantung pada pasangan lengkap `(id_pesanan, id_produk)`: jumlah yang dibeli dalam pesanan itu untuk produk itu. Tetapi `nama_produk` dan `harga` bergantung pada `id_produk` **saja**. Itu ketergantungan parsial. Akibatnya \"Pensil, 3000\" tertulis berulang setiap kali Pensil dipesan, dan mengubah harga Pensil berarti mengubah banyak baris.\n\nPerbaikannya: pindahkan kolom yang bergantung parsial ke tabelnya sendiri.\n\n```text\nproduk(id_produk, nama_produk, harga)\nitem_pesanan(id_pesanan, id_produk, qty)\n```\n\nSekarang harga Pensil disimpan sekali. Tabel dengan kunci tunggal otomatis memenuhi 2NF jika sudah 1NF, karena sebagian dari satu kolom tidak ada.\n\n## Bentuk normal ketiga (3NF)\n\nTabel **3NF** bila sudah 2NF dan **tidak ada ketergantungan transitif**: kolom non-kunci tidak boleh bergantung pada kolom non-kunci lain.\n\nTabel `pesanan(id_pesanan, tgl, id_pelanggan, nama_pelanggan, kota)` dengan kunci `id_pesanan` punya rantai berikut:\n\n```text\nid_pesanan → id_pelanggan → nama_pelanggan, kota\n```\n\n`nama_pelanggan` dan `kota` bergantung pada `id_pesanan` hanya **lewat** `id_pelanggan`. Itu ketergantungan transitif. Setiap pesanan Ani menulis ulang \"Ani, Bandung\", dan inilah akar anomali ubah di awal bab sebelumnya. Pecahkan di titik rantainya:\n\n```text\npelanggan(id_pelanggan, nama_pelanggan, kota)\npesanan(id_pesanan, tgl, id_pelanggan)\n```\n\nAda ungkapan hafalan yang membantu: setiap kolom non-kunci harus menjelaskan **kunci, seluruh kunci, dan tidak lain selain kunci**. \"Kunci\" berarti 1NF, \"seluruh kunci\" berarti 2NF, \"tidak lain selain kunci\" berarti 3NF.\n\n![Contoh normalisasi sampai 3NF](slide:18)\n\n## Studi: dari satu tabel menjadi empat\n\nMari menormalisasi tabel awal:\n\n```text\nPESANAN(id_pesanan, tgl, id_pelanggan, nama_pelanggan, kota,\n        id_produk, nama_produk, harga, qty)\n```\n\nLangkah yang kita ambil:\n\n1. **1NF.** Pastikan setiap sel satu nilai. Satu baris per produk per pesanan, kunci `(id_pesanan, id_produk)`.\n2. **2NF.** `nama_produk` dan `harga` hanya bergantung pada `id_produk`. Pindahkan ke tabel `produk`.\n3. **2NF juga.** `tgl`, `id_pelanggan`, `nama_pelanggan`, dan `kota` hanya bergantung pada `id_pesanan`. Pindahkan ke tabel `pesanan`.\n4. **3NF.** Di tabel `pesanan`, `nama_pelanggan` dan `kota` bergantung pada `id_pelanggan`. Pindahkan ke tabel `pelanggan`.\n\nHasil akhirnya empat tabel kecil, masing-masing berbicara tentang satu hal:\n\n```text\npelanggan(id, nama, kota)\nproduk(id, nama, harga)\npesanan(id, tgl, pelanggan_id)\nitem_pesanan(pesanan_id, produk_id, qty)\n```\n\nUntuk melihat tampilan lama, kita gabungkan kembali dengan `JOIN`:\n\n```sql\nSELECT pesanan.id, pelanggan.nama, produk.nama, item_pesanan.qty,\n       produk.harga * item_pesanan.qty AS subtotal\nFROM item_pesanan\nJOIN pesanan   ON pesanan.id   = item_pesanan.pesanan_id\nJOIN pelanggan ON pelanggan.id = pesanan.pelanggan_id\nJOIN produk    ON produk.id    = item_pesanan.produk_id;\n```\n\nPerhatikan: tidak ada informasi yang hilang, hanya ditata ulang. Normalisasi yang benar bersifat **lossless**: gabungan tabel hasil pecahan bisa mereproduksi data asli. Kota Ani cukup diubah di satu baris, harga Pensil juga, dan produk baru bisa dicatat tanpa menunggu ada yang membeli.\n\n## Kapan denormalisasi?\n\nNormalisasi menukar kemudahan menulis dengan lebih banyak `JOIN` saat membaca. Untuk sebagian besar aplikasi, itu pertukaran yang menguntungkan. Pengecualiannya adalah beban baca yang sangat berat, misalnya tabel laporan yang dibaca ribuan kali sehari tetapi hanya berubah malam hari. Di situ perancang kadang menyimpan salinan nilai (**denormalisasi**) untuk menghindari `JOIN` mahal.\n\nContoh yang sah: menyimpan harga satuan di `item_pesanan` pada saat transaksi. Ini bukan redundansi sembarangan. Harga produk boleh berubah, tetapi pesanan lama harus mengingat harga saat itu. Nilai itu adalah fakta historis, bukan salinan yang harus selalu sama.\n\nAturannya: **normalisasi dulu, denormalisasi hanya ketika pengukuran menunjukkan masalah**, dan tuliskan alasannya agar rekan setim paham.\n\n## Kesalahan umum saat menormalisasi\n\n- **Berhenti terlalu cepat.** Tabel sudah 1NF dan dianggap selesai. Cek tiap kolom non-kunci: apakah ia bergantung pada seluruh kunci, dan apakah ia bergantung langsung pada kunci?\n- **Menormalisasi berdasarkan data sampel.** Dua pelanggan di sampel kebetulan tinggal di kota berbeda, lalu disimpulkan kota tidak bergantung pada pelanggan. Putuskan berdasarkan aturan dunia nyata, bukan kebetulan data.\n- **Memecah berlebihan.** Memisahkan `jalan`, `kota`, `provinsi`, dan `negara` ke empat tabel itu berlebihan untuk aplikasi kecil yang hanya mencetak alamat. Normalisasi adalah alat, bukan tujuan.\n- **Lupa menjaga hubungan setelah memecah.** Setelah memecah tabel, foreign key harus dipasang kembali. Tanpa foreign key, hasil pecahan kehilangan penghubungnya.\n\nCara cepat menguji hasil normalisasi: ambil tiga atau empat baris dari tabel asli, masukkan ke tabel-tabel hasil pecahan, lalu gabungkan kembali dengan `JOIN`. Jika kamu mendapatkan tepat baris yang sama (tidak lebih, tidak kurang), pemecahanmu aman. Jika muncul baris tambahan, kemungkinan ada kolom penghubung yang salah dipilih.\n\nSatu contoh lagi agar polanya melekat. Tabel `kursus(id_kursus, nama_kursus, id_pengajar, nama_pengajar, email_pengajar)` memiliki rantai `id_kursus → id_pengajar → nama_pengajar, email_pengajar`. Kolom nama dan email pengajar bergantung lewat `id_pengajar`, jadi ia melanggar 3NF. Pengajar yang mengampu lima kursus menyimpan emailnya lima kali, dan mengganti email berarti menyunting lima baris. Setelah dipecah menjadi `pengajar(id, nama, email)` dan `kursus(id, nama, pengajar_id)`, email hanya ada di satu tempat.\n\nRumus singkat untuk diingat saat meninjau skema orang lain: untuk setiap kolom non-kunci, tanyakan \"kolom ini menjelaskan apa, dan siapa yang menentukannya?\" Jika jawabannya bukan kunci tabel itu sendiri, kolom tersebut salah tempat dan sebaiknya dipindahkan ke tabel pemiliknya.\n\n## Rangkuman\n\n- 2NF: tidak ada kolom yang bergantung hanya pada sebagian kunci gabungan.\n- 3NF: tidak ada kolom non-kunci yang bergantung pada kolom non-kunci lain.\n- Normalisasi memecah tabel di titik ketergantungan tanpa menghilangkan informasi; `JOIN` menyatukannya kembali.\n- Hasil normalisasi toko: `pelanggan`, `produk`, `pesanan`, `item_pesanan`.\n- Denormalisasi hanya untuk kasus terukur, atau untuk fakta historis seperti harga saat transaksi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Ketergantungan parsial hanya mungkin terjadi pada tabel dengan",
+          "code": "",
+          "options": [
+            "Kunci tunggal",
+            "Kolom bertipe teks",
+            "Tabel kosong",
+            "Kunci gabungan lebih dari satu kolom"
+          ],
+          "answer": 3,
+          "explanation": "Parsial berarti bergantung pada sebagian dari kunci gabungan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rantai id_pesanan → id_pelanggan → kota adalah contoh ketergantungan",
+          "code": "",
+          "options": [
+            "Transitif",
+            "Parsial",
+            "Atomik",
+            "Referensial"
+          ],
+          "answer": 0,
+          "explanation": "Kota bergantung pada kunci lewat kolom non-kunci id_pelanggan; ini dilarang 3NF."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Normalisasi yang benar bersifat lossless, artinya",
+          "code": "",
+          "options": [
+            "Tidak ada tabel baru yang dibuat",
+            "Semua kolom dihapus sehingga tabel hanya menyimpan kunci utamanya saja",
+            "Gabungan tabel hasil pecahan dapat mereproduksi data asli",
+            "Hanya baris pertama disimpan"
+          ],
+          "answer": 2,
+          "explanation": "Tidak ada informasi hilang; JOIN mengembalikan bentuk semula."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Menyimpan harga satuan di item_pesanan saat transaksi adalah",
+          "code": "",
+          "options": [
+            "Penyebab anomali hapus yang harus selalu dihindari di setiap skema",
+            "Penyebab anomali hapus",
+            "Kesalahan yang harus selalu dihindari",
+            "Fakta historis yang sah, bukan redundansi sembarangan"
+          ],
+          "answer": 3,
+          "explanation": "Harga produk bisa berubah, tetapi harga saat transaksi harus diingat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Normalisasi pesanan menjadi tiga bagian",
+          "prompt": "`DATA` adalah list tuple `(id_pesanan, id_pelanggan, nama_pelanggan, id_produk, nama_produk, harga, qty)`. Lengkapi `normalisasi(baris)` yang mengembalikan tiga hasil `(pelanggan, produk, item)`:\n\n- `pelanggan`: dict `id_pelanggan -> nama_pelanggan`\n- `produk`: dict `id_produk -> (nama_produk, harga)`\n- `item`: list tuple `(id_pesanan, id_produk, qty)`, satu per baris, urutan tetap",
+          "starter": {
+            "code": "def normalisasi(baris):\n    pelanggan, produk, item = {}, {}, []\n    # TODO: isi ketiganya tanpa duplikasi\n    return pelanggan, produk, item\n"
+          },
+          "solution": {
+            "code": "def normalisasi(baris):\n    pelanggan, produk, item = {}, {}, []\n    for id_pesanan, id_p, nama_p, id_prod, nama_prod, harga, qty in baris:\n        pelanggan[id_p] = nama_p\n        produk[id_prod] = (nama_prod, harga)\n        item.append((id_pesanan, id_prod, qty))\n    return pelanggan, produk, item\n"
+          },
+          "setup": "DATA = [\n    (1, 10, \"Ani\", 100, \"Pensil\", 3000, 10),\n    (1, 10, \"Ani\", 101, \"Buku tulis\", 8000, 2),\n    (2, 11, \"Budi\", 100, \"Pensil\", 3000, 5),\n    (3, 10, \"Ani\", 101, \"Buku tulis\", 8000, 1),\n]\n",
+          "tests": [
+            {
+              "name": "Pelanggan tanpa duplikat",
+              "check": "normalisasi(DATA)[0] == {10: 'Ani', 11: 'Budi'}"
+            },
+            {
+              "name": "Produk menyimpan nama dan harga sekali",
+              "check": "normalisasi(DATA)[1] == {100: ('Pensil', 3000), 101: ('Buku tulis', 8000)}"
+            },
+            {
+              "name": "Item tetap satu per baris asli",
+              "check": "normalisasi(DATA)[2] == [(1, 100, 10), (1, 101, 2), (2, 100, 5), (3, 101, 1)]"
+            },
+            {
+              "name": "Data kosong menghasilkan struktur kosong",
+              "check": "normalisasi([]) == ({}, {}, [])"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Total satu pesanan lewat JOIN",
+          "prompt": "Basis data `db` sudah berisi tabel `produk(id, nama, harga)` dan `item_pesanan(pesanan_id, produk_id, qty)`. Lengkapi `total_pesanan(db, pesanan_id)` yang mengembalikan jumlah `harga * qty` seluruh item pesanan itu sebagai integer. Pesanan tanpa item bernilai `0`.",
+          "starter": {
+            "code": "def total_pesanan(db, pesanan_id):\n    # TODO: JOIN item_pesanan dengan produk lalu jumlahkan harga * qty\n    return 0\n"
+          },
+          "solution": {
+            "code": "def total_pesanan(db, pesanan_id):\n    baris = db.execute(\"SELECT COALESCE(SUM(produk.harga * item_pesanan.qty), 0) FROM item_pesanan JOIN produk ON produk.id = item_pesanan.produk_id WHERE item_pesanan.pesanan_id = ?\", (pesanan_id,)).fetchone()\n    return baris[0]\n"
+          },
+          "setup": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE produk (id INTEGER PRIMARY KEY, nama TEXT, harga INTEGER)\")\ndb.execute(\"CREATE TABLE item_pesanan (pesanan_id INTEGER, produk_id INTEGER, qty INTEGER)\")\ndb.executemany(\"INSERT INTO produk VALUES (?, ?, ?)\", [(100, 'Pensil', 3000), (101, 'Buku tulis', 8000)])\ndb.executemany(\"INSERT INTO item_pesanan VALUES (?, ?, ?)\", [(1, 100, 10), (1, 101, 2), (2, 100, 5)])\n",
+          "tests": [
+            {
+              "name": "Pesanan 1 bernilai 46000",
+              "check": "total_pesanan(db, 1) == 46000"
+            },
+            {
+              "name": "Pesanan 2 bernilai 15000",
+              "check": "total_pesanan(db, 2) == 15000"
+            },
+            {
+              "name": "Pesanan tanpa item bernilai 0",
+              "check": "total_pesanan(db, 99) == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "constraint-dan-integritas-data",
+      "title": "Constraint dan Integritas Data",
+      "est_minutes": 30,
+      "slide_from": 20,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Memakai `NOT NULL`, `UNIQUE`, `CHECK`, dan `DEFAULT` untuk menjaga kualitas data.\n- Memilih aksi `ON DELETE` yang sesuai: `RESTRICT`, `CASCADE`, atau `SET NULL`.\n- Menangkap `IntegrityError` di Python.\n- Menjelaskan mengapa aturan data lebih baik ditaruh di skema daripada hanya di aplikasi.\n\n## Mengapa aturan ditaruh di basis data\n\nPernah melihat toko online yang menampilkan harga minus Rp 25.000? Biasanya penyebabnya bukan bug rumit. Seseorang memasukkan data lewat jalur yang tidak melewati pemeriksaan aplikasi: skrip impor, panel admin lama, atau aplikasi kedua yang dibuat belakangan. Semua jalur itu bermuara di basis data yang sama.\n\nPrinsipnya sederhana: **aplikasi bisa lupa, skema tidak**. Aturan yang dituliskan sebagai constraint di tabel berlaku untuk semua orang dan semua program yang menulis ke tabel itu. Pemeriksaan di aplikasi tetap berguna untuk pesan kesalahan yang ramah, tetapi pertahanan terakhir ada di basis data. Basis data yang menolak data salah di pintu masuk menghemat berjam-jam membersihkan data kotor kemudian.\n\n## Constraint tingkat kolom\n\nEmpat constraint dasar:\n\n- **`NOT NULL`**: kolom wajib diisi. `NULL` berarti \"tidak diketahui\" atau \"tidak ada nilai\", dan hanya boleh bila memang masuk akal.\n- **`UNIQUE`**: tidak boleh ada dua baris dengan nilai sama di kolom itu. Cocok untuk email, kode produk, NIS.\n- **`CHECK`**: syarat berupa ekspresi yang harus bernilai benar, misalnya `harga >= 0`.\n- **`DEFAULT`**: nilai yang dipakai bila kolom tidak diisi.\n\n```sql\nCREATE TABLE produk (\n  id    INTEGER PRIMARY KEY,\n  kode  TEXT    NOT NULL UNIQUE,\n  nama  TEXT    NOT NULL,\n  harga INTEGER NOT NULL CHECK (harga >= 0),\n  stok  INTEGER NOT NULL DEFAULT 0 CHECK (stok >= 0),\n  aktif INTEGER NOT NULL DEFAULT 1 CHECK (aktif IN (0, 1))\n);\n```\n\n![Constraint di tingkat kolom](slide:20)\n\nBeberapa catatan penting. `UNIQUE` mengizinkan beberapa `NULL` di kebanyakan DBMS, karena dua \"tidak diketahui\" tidak dianggap sama. Karena itu kolom unik yang wajib terisi perlu `NOT NULL UNIQUE`. `CHECK` boleh merujuk beberapa kolom di tingkat tabel, misalnya `CHECK (tgl_kembali >= tgl_pinjam)`. `DEFAULT` membuat `INSERT` lebih ringkas: kamu tidak perlu menyebut kolom yang nilai awalnya biasa.\n\n## Menangkap kesalahan di Python\n\nSaat constraint dilanggar, SQLite memunculkan `sqlite3.IntegrityError` dengan pesan yang menyebut constraint-nya. Aplikasi menangkapnya untuk memberi tahu pengguna:\n\n```python\nimport sqlite3\n\ndef tambah_produk(db, kode, nama, harga):\n    try:\n        db.execute(\"INSERT INTO produk (kode, nama, harga) VALUES (?, ?, ?)\",\n                   (kode, nama, harga))\n        return \"ok\"\n    except sqlite3.IntegrityError as e:\n        return f\"ditolak: {e}\"\n\nprint(tambah_produk(db, \"P1\", \"Pensil\", -5))\n# ditolak: CHECK constraint failed: harga >= 0\n```\n\nPerhatikan bahwa kesalahan ditangani sebagai bagian normal alur program, bukan sebagai bencana. Constraint yang baik membuat kesalahan data muncul **cepat dan jelas**, bukan diam-diam tersimpan lalu meledak di laporan akhir bulan.\n\n## Aksi saat induk dihapus\n\nForeign key menimbulkan pertanyaan: apa yang terjadi pada baris anak bila baris induknya dihapus? Kamu menentukannya dengan klausa `ON DELETE`:\n\n- **`RESTRICT`** (atau `NO ACTION`): penghapusan induk **ditolak** selama masih ada anak. Aman dan sering jadi pilihan terbaik untuk data penting, misalnya pelanggan yang punya pesanan.\n- **`CASCADE`**: baris anak ikut **terhapus**. Cocok untuk data yang tidak punya arti tanpa induknya, misalnya komentar pada artikel yang dihapus.\n- **`SET NULL`**: kolom foreign key anak diubah menjadi `NULL`. Cocok bila anak tetap bermakna tanpa induk, misalnya tiket yang tidak lagi ditugaskan ke siapa pun. Kolom itu tentu tidak boleh `NOT NULL`.\n\n```sql\nCREATE TABLE post (id INTEGER PRIMARY KEY, judul TEXT NOT NULL);\n\nCREATE TABLE komentar (\n  id      INTEGER PRIMARY KEY,\n  post_id INTEGER NOT NULL REFERENCES post(id) ON DELETE CASCADE,\n  isi     TEXT NOT NULL\n);\n```\n\nSetelah `DELETE FROM post WHERE id = 1`, semua komentar post itu otomatis hilang, tanpa kode tambahan. Hati-hati: `CASCADE` yang dipasang sembarangan bisa menghapus data berantai tanpa terasa. Pilih aksi berdasarkan **makna data**, bukan kebiasaan, dan ingat untuk mengaktifkan `PRAGMA foreign_keys = ON` di SQLite agar aksi ini berjalan.\n\n## Pedoman cepat\n\n- Beri `NOT NULL` pada semua kolom kecuali ada alasan jelas boleh kosong.\n- Setiap natural key yang harus unik (email, kode) diberi `UNIQUE`.\n- Rentang nilai yang masuk akal dijaga `CHECK`.\n- Tentukan `ON DELETE` secara sadar untuk setiap foreign key.\n- Tulis constraint sejak awal. Menambahkannya belakangan sulit bila data kotor sudah masuk.\n\n## Kesalahan umum soal constraint\n\n- **Semua kolom dibiarkan boleh kosong.** Itu membuka pintu bagi data setengah jadi. Mulai dengan `NOT NULL` dan longgarkan hanya jika ada alasan.\n- **Mengira `UNIQUE` melarang `NULL` ganda.** Di banyak DBMS beberapa `NULL` dianggap berbeda. Tambahkan `NOT NULL` bila kolom wajib terisi.\n- **Memakai `CHECK` untuk aturan yang berubah-ubah.** Batas \"diskon maksimal 20%\" yang sering berganti lebih baik di tabel konfigurasi daripada tertanam di `CHECK`. Gunakan `CHECK` untuk aturan yang hampir tidak pernah berubah, seperti harga tidak boleh negatif.\n- **`CASCADE` di semua tempat.** Menghapus satu pelanggan lalu menghapus ratusan pesanan bersejarah mungkin bukan yang kamu maksud. Untuk data yang punya nilai historis, `RESTRICT` lebih aman, atau gunakan kolom `aktif` untuk \"menghapus secara lunak\".\n\nTeknik *soft delete* itu layak dikenal: alih-alih `DELETE`, kamu mengubah kolom `aktif` menjadi 0 dan menyaringnya di query. Riwayat tetap utuh dan foreign key tidak patah. Harganya, setiap query harus ingat menyaring `aktif = 1`, dan kamu harus siap mengatur keunikan dengan hati-hati bila data \"terhapus\" masih ikut dihitung.\n\nSebelum melanjutkan, pastikan kamu bisa menjelaskan dengan kata-katamu sendiri mengapa `ON DELETE` perlu ditentukan untuk setiap foreign key, dan apa yang terjadi bila lupa mengaktifkan `PRAGMA foreign_keys` di SQLite.\n\n## Rangkuman\n\n- Constraint menjaga data di pintu masuk dan berlaku untuk semua program yang menulis ke tabel.\n- `NOT NULL`, `UNIQUE`, `CHECK`, dan `DEFAULT` adalah empat constraint kolom dasar.\n- Pelanggaran memunculkan `sqlite3.IntegrityError` yang bisa ditangkap.\n- `ON DELETE RESTRICT`, `CASCADE`, dan `SET NULL` menentukan nasib baris anak.\n- Pilih aksi hapus berdasarkan makna data dan tulis constraint sejak awal.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa aturan data sebaiknya juga dipasang sebagai constraint, bukan hanya di aplikasi?",
+          "code": "",
+          "options": [
+            "Karena constraint membuat aplikasi tidak perlu ada",
+            "Karena semua program yang menulis ke tabel ikut terkena aturan itu",
+            "Karena basis data tidak bisa menyimpan angka tanpa constraint",
+            "Karena basis data tidak bisa menyimpan angka tanpa adanya constraint di setiap kolom tabel"
+          ],
+          "answer": 1,
+          "explanation": "Constraint berlaku untuk setiap jalur penulisan, termasuk skrip dan aplikasi lain."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Constraint yang menjaga harga tidak negatif adalah",
+          "code": "",
+          "options": [
+            "UNIQUE (harga)",
+            "DEFAULT harga",
+            "CHECK (harga >= 0)",
+            "NOT NULL harga saja"
+          ],
+          "answer": 2,
+          "explanation": "CHECK memeriksa ekspresi bernilai benar untuk setiap baris."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Komentar sebaiknya ikut terhapus bila artikelnya dihapus. Aksi yang cocok adalah",
+          "code": "",
+          "options": [
+            "ON DELETE CASCADE",
+            "ON DELETE RESTRICT",
+            "ON UPDATE NONE",
+            "DROP TABLE"
+          ],
+          "answer": 0,
+          "explanation": "Komentar tidak bermakna tanpa artikel, sehingga CASCADE cocok."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pelanggaran constraint di sqlite3 muncul sebagai",
+          "code": "",
+          "options": [
+            "SyntaxError",
+            "ZeroDivisionError",
+            "sqlite3.IntegrityError",
+            "KeyError"
+          ],
+          "answer": 2,
+          "explanation": "Python mengangkat IntegrityError ketika constraint dilanggar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tabel produk dengan aturan lengkap",
+          "prompt": "Lengkapi `buat_db()` yang membuat tabel `produk(id INTEGER PRIMARY KEY, kode TEXT, nama TEXT, harga INTEGER, stok INTEGER)` dengan aturan: `kode` wajib dan unik, `nama` wajib, `harga` wajib dan tidak boleh negatif, `stok` bawaan `0` dan tidak boleh negatif.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: buat tabel produk lengkap dengan constraint\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"CREATE TABLE produk (id INTEGER PRIMARY KEY, kode TEXT NOT NULL UNIQUE, nama TEXT NOT NULL, harga INTEGER NOT NULL CHECK (harga >= 0), stok INTEGER NOT NULL DEFAULT 0 CHECK (stok >= 0))\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Produk valid diterima dan stok bawaan 0",
+              "check": "(lambda d: (d.execute(\"INSERT INTO produk (kode, nama, harga) VALUES ('P1', 'Pensil', 3000)\"), d.execute(\"SELECT stok FROM produk\").fetchone()[0])[1])(buat_db()) == 0"
+            },
+            {
+              "name": "Kode kembar ditolak",
+              "check": "(lambda d: (d.execute(\"INSERT INTO produk (kode, nama, harga) VALUES ('P1', 'Pensil', 3000)\"), gagal(lambda: d.execute(\"INSERT INTO produk (kode, nama, harga) VALUES ('P1', 'Pena', 5000)\")))[1])(buat_db())"
+            },
+            {
+              "name": "Harga negatif ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO produk (kode, nama, harga) VALUES ('P2', 'Buku', -1)\"))"
+            },
+            {
+              "name": "Nama kosong (NULL) ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO produk (kode, nama, harga) VALUES ('P3', NULL, 100)\"))"
+            },
+            {
+              "name": "Stok negatif ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO produk (kode, nama, harga, stok) VALUES ('P4', 'Rautan', 500, -5)\"))"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Komentar ikut terhapus bersama post",
+          "prompt": "Lengkapi `buat_db()` dengan tabel `post(id INTEGER PRIMARY KEY, judul TEXT NOT NULL)` dan `komentar(id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, isi TEXT NOT NULL)`. `post_id` adalah foreign key ke `post(id)` dengan `ON DELETE CASCADE`. Aktifkan `PRAGMA foreign_keys = ON`.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: aktifkan foreign key, buat post dan komentar dengan CASCADE\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE post (id INTEGER PRIMARY KEY, judul TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE komentar (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL REFERENCES post(id) ON DELETE CASCADE, isi TEXT NOT NULL)\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Menghapus post menghapus komentarnya",
+              "check": "(lambda d: (d.execute(\"INSERT INTO post VALUES (1, 'A')\"), d.execute(\"INSERT INTO komentar (post_id, isi) VALUES (1, 'x')\"), d.execute(\"INSERT INTO komentar (post_id, isi) VALUES (1, 'y')\"), d.execute('DELETE FROM post WHERE id = 1'), d.execute('SELECT COUNT(*) FROM komentar').fetchone()[0])[4])(buat_db()) == 0"
+            },
+            {
+              "name": "Komentar post lain tidak ikut terhapus",
+              "check": "(lambda d: (d.execute(\"INSERT INTO post VALUES (1, 'A')\"), d.execute(\"INSERT INTO post VALUES (2, 'B')\"), d.execute(\"INSERT INTO komentar (post_id, isi) VALUES (1, 'x')\"), d.execute(\"INSERT INTO komentar (post_id, isi) VALUES (2, 'y')\"), d.execute('DELETE FROM post WHERE id = 1'), d.execute('SELECT COUNT(*) FROM komentar').fetchone()[0])[5])(buat_db()) == 1"
+            },
+            {
+              "name": "Komentar untuk post yang tidak ada ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO komentar (post_id, isi) VALUES (9, 'z')\"))"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "indeks-dan-kinerja-query",
+      "title": "Indeks dan Kinerja Query",
+      "est_minutes": 25,
+      "slide_from": 22,
+      "slide_to": 23,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu indeks dan mengapa pencarian jadi lebih cepat.\n- Membuat indeks biasa, unik, dan gabungan.\n- Membaca rencana query dengan `EXPLAIN QUERY PLAN`.\n- Memutuskan kapan indeks layak dibuat dan kapan tidak.\n\n## Masalah: mencari tanpa petunjuk\n\nBayangkan mencari nama \"Ani\" di sebuah daftar satu juta siswa yang tidak berurutan. Satu-satunya cara adalah membaca dari baris pertama sampai ketemu, dan kalau Ani tidak ada, kamu membaca semuanya. Itu disebut **pindai penuh** (*full table scan*). Untuk seribu baris tidak terasa, tetapi untuk sejuta baris dan seratus pencarian per detik, server mulai kewalahan.\n\nBuku tebal punya jalan keluar: **indeks** di halaman belakang, daftar kata kunci berurutan abjad beserta nomor halamannya. Kamu membuka indeks, menemukan kata dengan cepat karena sudah urut, lalu langsung loncat ke halaman yang tepat. Indeks basis data bekerja serupa. DBMS menyimpan struktur tambahan (umumnya pohon B-tree) berisi nilai kolom yang terurut beserta lokasi barisnya. Pencarian pada struktur terurut jauh lebih cepat: kira-kira dua puluh langkah untuk satu juta baris, bukan sejuta langkah.\n\n![Apa itu indeks?](slide:22)\n\n## Membuat indeks\n\n```sql\nCREATE INDEX idx_siswa_nama ON siswa(nama);\n```\n\nSetelah ini, `SELECT * FROM siswa WHERE nama = 'Ani'` memakai indeks secara otomatis. Kamu tidak perlu mengubah query. DBMS memutuskan sendiri apakah indeks berguna untuk sebuah query. Variasi yang sering dipakai:\n\n- **Indeks unik**: `CREATE UNIQUE INDEX idx_siswa_nis ON siswa(nis)`. Selain mempercepat, ia menolak nilai kembar. Constraint `UNIQUE` dan `PRIMARY KEY` sebenarnya memakai indeks unik di baliknya, jadi kolom itu **sudah berindeks** tanpa perlu dibuatkan lagi.\n- **Indeks gabungan**: `CREATE INDEX idx_nilai_siswa_mapel ON nilai(siswa_id, mapel)`. Berguna untuk query yang memfilter kedua kolom sekaligus. Urutan kolom penting: indeks ini membantu query yang memakai `siswa_id` saja, atau `siswa_id` dan `mapel`, tetapi tidak membantu query yang hanya memakai `mapel`. Bayangkan buku telepon yang diurutkan nama belakang lalu nama depan: tidak berguna kalau kamu hanya tahu nama depan.\n\nKonvensi penamaan membantu: `idx_<tabel>_<kolom>`. Saat berkas rencana query menyebut sebuah indeks, kamu langsung tahu miliknya siapa.\n\n## Membaca rencana query\n\nBagaimana kita tahu indeks benar-benar dipakai? Minta DBMS menjelaskan rencananya. Di SQLite perintahnya `EXPLAIN QUERY PLAN`:\n\n```python\nrencana = db.execute(\n    \"EXPLAIN QUERY PLAN SELECT * FROM siswa WHERE nama = 'Ani'\"\n).fetchall()\nprint(rencana[0][3])\n```\n\nTanpa indeks keluarannya `SCAN siswa`, artinya pindai penuh. Dengan indeks keluarannya `SEARCH siswa USING INDEX idx_siswa_nama (nama=?)`, artinya pencarian lewat indeks. Dua kata kunci yang perlu dikenali:\n\n- **`SCAN`**: baca semua baris.\n- **`SEARCH`**: loncat langsung ke baris yang cocok memakai indeks atau primary key.\n\nDi PostgreSQL perintahnya `EXPLAIN` atau `EXPLAIN ANALYZE`, dengan istilah *Seq Scan* dan *Index Scan*. Konsepnya sama. Kebiasaan yang baik: sebelum menambah indeks, buktikan dulu query itu lambat dan lihat rencananya; sesudah menambah, buktikan indeksnya terpakai.\n\n## Kapan indeks membantu, kapan tidak\n\nIndeks bukan obat segala masalah. Ia punya biaya:\n\n- **Ruang.** Setiap indeks adalah salinan terurut dari kolomnya, memakan disk.\n- **Penulisan lebih lambat.** Setiap `INSERT`, `UPDATE`, dan `DELETE` harus memperbarui indeks juga. Tabel dengan sepuluh indeks menulis lebih lambat daripada yang tanpa indeks.\n\nMaka timbang manfaat dan biayanya.\n\n**Indeks biasanya layak** untuk:\n\n- kolom yang sering muncul di `WHERE`,\n- kolom penghubung `JOIN`, terutama **foreign key** (primary key sudah berindeks, foreign key di sisi anak sering belum),\n- kolom yang sering dipakai `ORDER BY` pada tabel besar.\n\n**Indeks biasanya tidak layak** untuk:\n\n- tabel kecil, karena pindai penuh sudah cukup cepat,\n- kolom dengan sedikit nilai berbeda, misalnya `aktif` yang isinya hanya 0 atau 1, karena indeks tidak menyaring banyak baris,\n- tabel yang hampir hanya ditulis dan jarang dibaca.\n\nContoh pola yang menjebak: `WHERE LOWER(nama) = 'ani'` tidak memakai indeks pada `nama`, karena nilai yang dicari sudah diolah fungsi. Begitu juga `WHERE nama LIKE '%ani'` dengan wildcard di depan. Indeks hanya membantu bila kolom dibandingkan apa adanya atau dengan awalan (`LIKE 'An%'`).\n\n## Alur kerja yang sehat\n\n1. Rancang skema dengan normalisasi dan kunci yang benar. Primary key dan `UNIQUE` sudah memberi indeks.\n2. Tambahkan indeks untuk foreign key yang sering di-`JOIN`.\n3. Biarkan aplikasi berjalan dengan data realistis. Temukan query yang lambat.\n4. Lihat rencananya, tambahkan indeks yang tepat, ukur ulang.\n\nJangan menambah indeks \"untuk jaga-jaga\" pada semua kolom. Setiap indeks adalah utang pemeliharaan.\n\n## Contoh kerja: dari lambat menjadi cepat\n\nSebuah tabel `pesanan` berisi satu juta baris, dan halaman \"riwayat pesanan saya\" lambat. Query-nya:\n\n```sql\nSELECT id, tgl FROM pesanan WHERE pelanggan_id = 42 ORDER BY tgl DESC;\n```\n\nLangkah yang kamu ambil:\n\n1. **Ukur.** Jalankan query itu dan catat waktunya, misalnya 800 milidetik.\n2. **Lihat rencana.** `EXPLAIN QUERY PLAN` menunjukkan `SCAN pesanan`: satu juta baris dibaca setiap kali halaman dibuka.\n3. **Pasang indeks yang tepat.** Karena query menyaring `pelanggan_id` lalu mengurutkan `tgl`, indeks gabungan `CREATE INDEX idx_pesanan_pelanggan_tgl ON pesanan(pelanggan_id, tgl)` cocok. Kolom penyaring ditaruh lebih dulu, kolom pengurut sesudahnya.\n4. **Lihat rencana lagi.** Sekarang `SEARCH pesanan USING INDEX ...`, dan pengurutan tambahan tidak diperlukan lagi.\n5. **Ukur ulang.** Waktunya turun menjadi beberapa milidetik.\n\nPerhatikan urutannya: ukur, lihat, ubah, lihat, ukur. Menambah indeks tanpa langkah pengukuran hanyalah tebak-tebakan. Dan jangan lupa bahwa indeks baru ini membuat setiap `INSERT` pesanan sedikit lebih lambat. Untuk aplikasi toko yang membaca riwayat jauh lebih sering daripada menulis pesanan, itu pertukaran yang menguntungkan.\n\n## Rangkuman\n\n- Indeks adalah struktur terurut yang menghindari pindai penuh; tanpa indeks DBMS membaca semua baris.\n- `CREATE INDEX`, `CREATE UNIQUE INDEX`, dan indeks gabungan membantu sesuai urutan kolomnya.\n- Primary key dan `UNIQUE` otomatis berindeks, tetapi foreign key biasanya perlu dibuatkan.\n- `EXPLAIN QUERY PLAN` menunjukkan `SCAN` (pindai penuh) atau `SEARCH` (memakai indeks).\n- Indeks memakan ruang dan memperlambat penulisan, jadi tambahkan hanya untuk query yang terbukti butuh.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tanpa indeks, mencari satu nilai di tabel besar biasanya dilakukan dengan",
+          "code": "",
+          "options": [
+            "Membaca baris satu per satu (pindai penuh)",
+            "Langsung melompat ke baris yang benar",
+            "Langsung melompat ke baris yang benar tanpa membaca baris lain di tabel",
+            "Menyalin tabel setiap pencarian"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa struktur bantu, DBMS harus memindai semua baris."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Biaya utama menambah banyak indeks adalah",
+          "code": "",
+          "options": [
+            "Query SELECT tidak bisa berjalan",
+            "Primary key hilang",
+            "Tabel tidak bisa dinormalisasi",
+            "INSERT, UPDATE, dan DELETE jadi lebih lambat serta memakan ruang"
+          ],
+          "answer": 3,
+          "explanation": "Setiap penulisan harus memperbarui seluruh indeks tabel itu."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di SQLite, hasil 'SEARCH ... USING INDEX' pada EXPLAIN QUERY PLAN berarti",
+          "code": "",
+          "options": [
+            "Query memindai seluruh tabel",
+            "Query memakai indeks",
+            "Indeks dihapus",
+            "Tabel sedang dikunci"
+          ],
+          "answer": 1,
+          "explanation": "SEARCH menandakan pencarian lewat indeks atau primary key; SCAN menandakan pindai penuh."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kolom yang paling layak diberi indeks adalah",
+          "code": "",
+          "options": [
+            "Kolom aktif yang hanya berisi 0 atau 1",
+            "Foreign key yang sering dipakai JOIN",
+            "Semua kolom tabel kecil",
+            "Kolom yang tidak pernah dicari"
+          ],
+          "answer": 1,
+          "explanation": "Kolom JOIN dan WHERE yang sering dipakai menyaring banyak baris paling diuntungkan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Pasang indeks pada nama",
+          "prompt": "Basis data `db` berisi tabel `siswa` dengan 200 baris. Lengkapi `pasang_indeks(db)` yang membuat indeks bernama `idx_siswa_nama` pada kolom `nama`.",
+          "starter": {
+            "code": "def pasang_indeks(db):\n    # TODO: CREATE INDEX idx_siswa_nama ...\n    pass\n"
+          },
+          "solution": {
+            "code": "def pasang_indeks(db):\n    db.execute(\"CREATE INDEX idx_siswa_nama ON siswa(nama)\")\n"
+          },
+          "setup": "import sqlite3\n\ndb = sqlite3.connect(\":memory:\")\ndb.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT, kelas TEXT)\")\ndb.executemany(\"INSERT INTO siswa (nama, kelas) VALUES (?, ?)\", [(\"Siswa%d\" % i, \"10\" + \"AB\"[i % 2]) for i in range(200)])\n\ndef rencana(db, sql):\n    return \" | \".join(r[3] for r in db.execute(\"EXPLAIN QUERY PLAN \" + sql))\n",
+          "tests": [
+            {
+              "name": "Sebelum dipasang, pencarian nama memindai tabel",
+              "check": "'SCAN' in rencana(db, \"SELECT * FROM siswa WHERE nama = 'Siswa5'\")"
+            },
+            {
+              "name": "Indeks idx_siswa_nama terdaftar",
+              "check": "(pasang_indeks(db), [r[0] for r in db.execute(\"SELECT name FROM sqlite_master WHERE type='index'\")])[1] == ['idx_siswa_nama']"
+            },
+            {
+              "name": "Pencarian nama memakai idx_siswa_nama",
+              "check": "'USING INDEX idx_siswa_nama' in rencana(db, \"SELECT * FROM siswa WHERE nama = 'Siswa5'\")"
+            },
+            {
+              "name": "Pencarian kelas tetap memindai karena tidak berindeks",
+              "check": "'SCAN' in rencana(db, \"SELECT * FROM siswa WHERE kelas = '10A'\")"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Indeks unik untuk NIS",
+          "prompt": "Lengkapi `buat_db()` yang membuat tabel `siswa(id INTEGER PRIMARY KEY, nis TEXT NOT NULL, nama TEXT NOT NULL)` lalu `CREATE UNIQUE INDEX idx_siswa_nis ON siswa(nis)` supaya dua siswa tidak boleh punya NIS yang sama.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    # TODO: buat tabel siswa dan indeks unik pada nis\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"CREATE TABLE siswa (id INTEGER PRIMARY KEY, nis TEXT NOT NULL, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE UNIQUE INDEX idx_siswa_nis ON siswa(nis)\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "NIS berbeda diterima",
+              "check": "(lambda d: (d.execute(\"INSERT INTO siswa (nis, nama) VALUES ('001', 'Ani')\"), d.execute(\"INSERT INTO siswa (nis, nama) VALUES ('002', 'Budi')\"), d.execute('SELECT COUNT(*) FROM siswa').fetchone()[0])[2])(buat_db()) == 2"
+            },
+            {
+              "name": "NIS kembar ditolak",
+              "check": "(lambda d: (d.execute(\"INSERT INTO siswa (nis, nama) VALUES ('001', 'Ani')\"), gagal(lambda: d.execute(\"INSERT INTO siswa (nis, nama) VALUES ('001', 'Budi')\")))[1])(buat_db())"
+            },
+            {
+              "name": "Indeks bernama idx_siswa_nis",
+              "check": "'idx_siswa_nis' in [r[0] for r in buat_db().execute(\"SELECT name FROM sqlite_master WHERE type='index'\")]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "merancang-skema-studi-kasus",
+      "title": "Merancang Skema: Studi Kasus",
+      "est_minutes": 30,
+      "slide_from": 24,
+      "slide_to": 26,
+      "body": "## Tujuan\n\n- Menjalankan langkah merancang skema dari kebutuhan sampai indeks.\n- Menerapkannya pada studi kasus perpustakaan sekolah.\n- Menguji skema dengan data dan query nyata.\n- Memakai daftar periksa untuk menilai kualitas skema.\n\n## Lima langkah merancang skema\n\nSemua bab sebelumnya bermuara pada satu alur kerja yang bisa kamu ulang untuk proyek apa pun:\n\n1. **Kenali kebutuhan.** Data apa yang harus disimpan, dan pertanyaan apa yang harus bisa dijawab? Tulis dalam bentuk kalimat dan contoh pertanyaan.\n2. **Tentukan entitas dan atribut.** Kata benda penting menjadi entitas, cirinya menjadi atribut.\n3. **Gambar ERD dan kardinalitas.** Tanya dua arah untuk setiap pasangan entitas.\n4. **Tentukan kunci dan normalisasi.** Pilih primary key, pasang foreign key, buat tabel penghubung untuk N:N, lalu periksa 1NF sampai 3NF.\n5. **Tambahkan constraint dan indeks.** `NOT NULL`, `UNIQUE`, `CHECK`, aksi `ON DELETE`, dan indeks untuk query yang sering dipakai.\n\nLangkah pertama paling sering dilewati dan paling mahal bila dilewati. Skema yang bagus menjawab pertanyaan yang benar. Skema yang sempurna untuk pertanyaan yang salah tetap gagal.\n\n![Langkah merancang skema](slide:24)\n\n## Studi kasus: perpustakaan sekolah\n\n**Kebutuhan.** Perpustakaan ingin mencatat anggota (siswa), buku, dan peminjaman. Setiap buku termasuk satu kategori, misalnya Fiksi atau Sains. Anggota boleh meminjam banyak buku, dan satu buku bisa dipinjam berkali-kali oleh orang berbeda di waktu berbeda. Pengelola ingin tahu: siapa meminjam apa, buku apa yang belum kembali, dan siapa anggota yang paling aktif.\n\n**Entitas.** `anggota`, `kategori`, `buku`, `pinjam`.\n\n**Kardinalitas.**\n\n- Satu kategori punya banyak buku, satu buku satu kategori: **1:N**.\n- Satu anggota meminjam banyak buku, satu buku dipinjam banyak anggota: **N:N**, dipecah oleh tabel `pinjam`.\n\n**Skema.**\n\n```sql\nCREATE TABLE anggota (\n  id    INTEGER PRIMARY KEY,\n  nis   TEXT NOT NULL UNIQUE,\n  nama  TEXT NOT NULL,\n  kelas TEXT NOT NULL\n);\n\nCREATE TABLE kategori (\n  id   INTEGER PRIMARY KEY,\n  nama TEXT NOT NULL UNIQUE\n);\n\nCREATE TABLE buku (\n  id          INTEGER PRIMARY KEY,\n  judul       TEXT NOT NULL,\n  kategori_id INTEGER NOT NULL REFERENCES kategori(id)\n);\n\nCREATE TABLE pinjam (\n  id          INTEGER PRIMARY KEY,\n  anggota_id  INTEGER NOT NULL REFERENCES anggota(id),\n  buku_id     INTEGER NOT NULL REFERENCES buku(id),\n  tgl_pinjam  TEXT NOT NULL,\n  tgl_kembali TEXT,\n  CHECK (tgl_kembali IS NULL OR tgl_kembali >= tgl_pinjam)\n);\n\nCREATE INDEX idx_pinjam_anggota ON pinjam(anggota_id);\nCREATE INDEX idx_pinjam_buku    ON pinjam(buku_id);\n```\n\nBeberapa keputusan layak dijelaskan:\n\n- **`tgl_kembali` boleh `NULL`.** `NULL` di sini bermakna \"belum dikembalikan\", dan itulah cara menjawab pertanyaan \"buku apa yang belum kembali\": `WHERE tgl_kembali IS NULL`.\n- **`pinjam` punya `id` sendiri**, bukan kunci gabungan `(anggota_id, buku_id)`, karena pasangan yang sama boleh muncul berkali-kali di waktu berbeda.\n- **`CHECK` antar-kolom** menolak tanggal kembali yang lebih awal dari tanggal pinjam.\n- **Indeks pada dua foreign key** mempercepat riwayat per anggota dan per buku.\n- **`kelas` sebagai teks di `anggota`** boleh disederhanakan bila perpustakaan tidak butuh data kelas lain. Jika sekolah punya tabel kelas sendiri, ganti dengan foreign key.\n\n## Menguji dengan query\n\nSkema belum teruji sebelum menjawab pertanyaan kebutuhan. Siapa saja yang masih meminjam buku?\n\n```sql\nSELECT anggota.nama, buku.judul\nFROM pinjam\nJOIN anggota ON anggota.id = pinjam.anggota_id\nJOIN buku    ON buku.id    = pinjam.buku_id\nWHERE pinjam.tgl_kembali IS NULL\nORDER BY anggota.nama;\n```\n\nSiapa anggota paling aktif?\n\n```sql\nSELECT anggota.nama, COUNT(*) AS jumlah\nFROM pinjam JOIN anggota ON anggota.id = pinjam.anggota_id\nGROUP BY anggota.id\nORDER BY jumlah DESC, anggota.nama\nLIMIT 3;\n```\n\nJika sebuah pertanyaan sulit dijawab, itu sinyal ada yang kurang di skema, bukan di query. Misalnya jika pengelola ingin menandai buku hilang atau rusak, kamu perlu kolom atau tabel baru. Menguji dengan data contoh yang beragam (anggota tanpa pinjaman, buku yang belum pernah dipinjam) juga membuka kasus tepi yang tidak terpikir saat menggambar ERD.\n\n## Daftar periksa skema yang baik\n\n- Setiap tabel punya primary key.\n- Tidak ada kolom berisi banyak nilai atau kolom berulang.\n- Setiap kolom non-kunci bergantung pada kunci, seluruh kunci, dan hanya kunci.\n- Setiap relasi dijaga foreign key dengan aksi `ON DELETE` yang disengaja.\n- Aturan data dijaga `NOT NULL`, `UNIQUE`, `CHECK`.\n- Foreign key yang sering di-`JOIN` diberi indeks.\n- Nama konsisten: satu gaya, satu bahasa.\n- Skema sudah diuji dengan query dari kebutuhan awal.\n\n## Kesalahan umum saat merancang dari nol\n\n- **Langsung membuat tabel.** Perancang yang melompati kebutuhan dan ERD cenderung menemukan masalah setelah data terisi, saat perbaikannya paling mahal.\n- **Merancang untuk semua kemungkinan.** Skema yang mencoba menampung segala hal yang mungkin dibutuhkan lima tahun lagi menjadi rumit dan sulit dipakai. Rancang untuk kebutuhan sekarang, dan biarkan skema berkembang lewat migrasi.\n- **Tidak menguji dengan data aneh.** Selalu coba anggota tanpa pinjaman, buku yang belum pernah dipinjam, dan nama dengan tanda kutip. Kasus tepi inilah yang menjatuhkan skema di produksi.\n- **Tidak mendokumentasikan keputusan.** Tuliskan mengapa `tgl_kembali` boleh `NULL`, atau mengapa `pinjam` punya `id` sendiri. Rekan setim, dan dirimu enam bulan lagi, akan berterima kasih.\n\nUntuk latihan akhir, coba kembangkan studi kasus perpustakaan: bagaimana kamu menambahkan denda keterlambatan? Pikirkan apakah denda adalah atribut `pinjam` atau entitas tersendiri, apa kardinalitasnya, dan constraint apa yang diperlukan. Proyek Skema Toko Online setelah bab ini menggabungkan semua yang sudah kamu pelajari: relasi, constraint, transaksi, indeks, dan query laporan.\n\nTerakhir, biasakan menyimpan skema sebagai file `.sql` di repositori bersama kode. Skema yang ikut dikelola versinya dapat ditinjau rekan, dibandingkan antar versi, dan dibangun ulang di komputer baru hanya dengan menjalankan satu berkas.\n\n## Rangkuman\n\n- Lima langkah: kebutuhan, entitas dan atribut, ERD, kunci dan normalisasi, constraint dan indeks.\n- Perpustakaan: `kategori` 1:N `buku`, dan `anggota` N:N `buku` lewat tabel `pinjam`.\n- `NULL` pada `tgl_kembali` bermakna belum kembali, dan `CHECK` antar-kolom menjaga tanggal.\n- Uji skema dengan query dari kebutuhan; pertanyaan yang sulit dijawab menandakan skema kurang.\n- Daftar periksa membantu menilai skema sebelum dipakai.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Langkah pertama merancang skema yang benar adalah",
+          "code": "",
+          "options": [
+            "Menulis CREATE TABLE secepatnya",
+            "Menambah indeks pada semua kolom",
+            "Menulis CREATE TABLE secepatnya lalu merapikan skema setelah data terisi penuh",
+            "Mengenali kebutuhan dan pertanyaan yang harus terjawab"
+          ],
+          "answer": 3,
+          "explanation": "Tanpa kebutuhan yang jelas, skema yang sempurna bisa menjawab pertanyaan yang salah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di tabel pinjam, tgl_kembali dibiarkan NULL untuk menandai",
+          "code": "",
+          "options": [
+            "Buku belum dikembalikan",
+            "Buku hilang",
+            "Anggota dihapus",
+            "Tanggal pinjam salah"
+          ],
+          "answer": 0,
+          "explanation": "NULL berarti nilai belum ada, dan di sini dipakai sebagai penanda belum kembali."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa pinjam memakai id sendiri, bukan kunci (anggota_id, buku_id)?",
+          "code": "",
+          "options": [
+            "Karena composite key dilarang SQL",
+            "Karena composite key dilarang oleh standar SQL dan tidak didukung SQLite sama sekali",
+            "Pasangan anggota dan buku yang sama boleh muncul berkali-kali",
+            "Agar foreign key tidak diperlukan"
+          ],
+          "answer": 2,
+          "explanation": "Peminjaman berulang di waktu berbeda akan menabrak kunci gabungan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Jika pertanyaan penting sulit dijawab dengan query, kemungkinan besar",
+          "code": "",
+          "options": [
+            "Komputernya terlalu lambat",
+            "SQL tidak bisa dipakai",
+            "Tabelnya terlalu banyak indeks",
+            "Skemanya perlu ditinjau ulang"
+          ],
+          "answer": 3,
+          "explanation": "Pertanyaan sulit dijawab sering menandakan data yang dibutuhkan belum ditampung skema."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Skema perpustakaan sekolah",
+          "prompt": "Lengkapi `buat_db()` yang membuat empat tabel dan mengaktifkan `PRAGMA foreign_keys = ON`:\n\n- `anggota`: `id` (PK), `nis` (TEXT, wajib, unik), `nama` (TEXT, wajib)\n- `kategori`: `id` (PK), `nama` (TEXT, wajib, unik)\n- `buku`: `id` (PK), `judul` (TEXT, wajib), `kategori_id` (wajib, foreign key ke `kategori`)\n- `pinjam`: `id` (PK), `anggota_id` dan `buku_id` (wajib, foreign key), `tgl_pinjam` (TEXT, wajib), `tgl_kembali` (TEXT, boleh kosong)",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    # TODO: buat anggota, kategori, buku, dan pinjam\n    return db\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef buat_db():\n    db = sqlite3.connect(\":memory:\")\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.execute(\"CREATE TABLE anggota (id INTEGER PRIMARY KEY, nis TEXT NOT NULL UNIQUE, nama TEXT NOT NULL)\")\n    db.execute(\"CREATE TABLE kategori (id INTEGER PRIMARY KEY, nama TEXT NOT NULL UNIQUE)\")\n    db.execute(\"CREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT NOT NULL, kategori_id INTEGER NOT NULL REFERENCES kategori(id))\")\n    db.execute(\"CREATE TABLE pinjam (id INTEGER PRIMARY KEY, anggota_id INTEGER NOT NULL REFERENCES anggota(id), buku_id INTEGER NOT NULL REFERENCES buku(id), tgl_pinjam TEXT NOT NULL, tgl_kembali TEXT)\")\n    return db\n"
+          },
+          "setup": "import sqlite3\n\ndef gagal(fungsi):\n    \"\"\"True bila fungsi() memunculkan sqlite3.IntegrityError.\"\"\"\n    try:\n        fungsi()\n    except sqlite3.IntegrityError:\n        return True\n    return False\n",
+          "tests": [
+            {
+              "name": "Keempat tabel ada",
+              "check": "sorted(r[0] for r in buat_db().execute(\"SELECT name FROM sqlite_master WHERE type='table'\")) == ['anggota', 'buku', 'kategori', 'pinjam']"
+            },
+            {
+              "name": "NIS kembar ditolak",
+              "check": "(lambda d: (d.execute(\"INSERT INTO anggota (nis, nama) VALUES ('001', 'Ani')\"), gagal(lambda: d.execute(\"INSERT INTO anggota (nis, nama) VALUES ('001', 'Budi')\")))[1])(buat_db())"
+            },
+            {
+              "name": "Buku tanpa kategori yang ada ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO buku (judul, kategori_id) VALUES ('Laskar Pelangi', 7)\"))"
+            },
+            {
+              "name": "Peminjaman berulang oleh anggota yang sama untuk buku yang sama diterima",
+              "check": "(lambda d: (d.execute(\"INSERT INTO anggota (nis, nama) VALUES ('001', 'Ani')\"), d.execute(\"INSERT INTO kategori (nama) VALUES ('Fiksi')\"), d.execute(\"INSERT INTO buku (judul, kategori_id) VALUES ('Laskar Pelangi', 1)\"), d.execute(\"INSERT INTO pinjam (anggota_id, buku_id, tgl_pinjam) VALUES (1, 1, '2026-01-01')\"), d.execute(\"INSERT INTO pinjam (anggota_id, buku_id, tgl_pinjam) VALUES (1, 1, '2026-02-01')\"), d.execute('SELECT COUNT(*) FROM pinjam').fetchone()[0])[5])(buat_db()) == 2"
+            },
+            {
+              "name": "Pinjam untuk anggota yang tidak ada ditolak",
+              "check": "gagal(lambda: buat_db().execute(\"INSERT INTO pinjam (anggota_id, buku_id, tgl_pinjam) VALUES (9, 9, '2026-01-01')\"))"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
