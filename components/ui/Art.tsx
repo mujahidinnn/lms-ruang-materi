@@ -48,12 +48,12 @@ export const motifOf = (slug: string) => KEYS.find(([k]) => slug.includes(k))?.[
 
 const hash = (s: string) => [...s].reduce((h, c) => (Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0), 2166136261);
 
-type Props = { slug: string; seed?: string; className?: string; bare?: boolean } & (
+type Props = { slug: string; seed?: string; className?: string } & (
   | { kind: "topic" | "track" }
   | { kind: "chapter"; number: number; total?: number }
 );
 
-// kind topic/track: 16:9 card cover (bare: no background and no motif, only the decoration). chapter: wide banner with the number.
+// kind topic/track: 16:9 card cover. chapter: wide banner with the number.
 export default function Art(props: Props) {
   const { slug, kind, className } = props;
   const h = hash(props.seed ?? slug);
@@ -86,7 +86,8 @@ export default function Art(props: Props) {
       <defs>
         <pattern id={id} width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.3" fill={INK} opacity="0.18" /></pattern>
       </defs>
-      {!props.bare && <><rect width={W_} height={H_} fill={tone} /><rect width={W_} height={H_} fill={`url(#${id})`} /></>}
+      <rect width={W_} height={H_} fill={tone} />
+      <rect width={W_} height={H_} fill={`url(#${id})`} />
       <g transform={flip ? `translate(${W_} 0) scale(-1 1)` : undefined}>
         <circle cx={mx + 30} cy={H_ / 2 + 10} r={blobR} fill={W} opacity="0.55" />
         <path d={`M${W_ - 20} ${H_ - 10}q-50-70 -${wide ? 160 : 90} -${wide ? 40 : 30}`} fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeDasharray="2 12" opacity="0.5" />
@@ -97,7 +98,7 @@ export default function Art(props: Props) {
         <circle cx={wide ? 300 : 40 + (h % 30)} cy={wide ? 150 : 140 - (h % 20)} r="7" fill={M3} stroke={INK} strokeWidth="3" />
         <path d={`M${W_ - 70 - (h % 25)} ${28 + (h % 14)}h14M${W_ - 63 - (h % 25)} ${21 + (h % 14)}v14`} stroke={INK} strokeWidth="4" strokeLinecap="round" />
         <rect x={wide ? 330 : 72 + (h % 20)} y={wide ? 40 : 22 + (h % 12)} width="14" height="14" rx="4" fill={W} stroke={INK} strokeWidth="3" transform={`rotate(${15 + (h % 30)} ${wide ? 337 : 79 + (h % 20)} ${wide ? 47 : 29 + (h % 12)})`} />
-        {!props.bare && <g transform={`translate(${mx - 50 * size} ${H_ / 2 - 50 * size}) scale(${size})`}>{Motif()}</g>}
+        <g transform={`translate(${mx - 50 * size} ${H_ / 2 - 50 * size}) scale(${size})`}>{Motif()}</g>
       </g>
       {kind === "track" && (
         <g>

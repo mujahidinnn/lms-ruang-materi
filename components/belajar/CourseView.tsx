@@ -29,7 +29,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
           <ChevronLeft aria-hidden className="size-4" />Semua kelas
         </a>
-        <header className="mt-0 grid overflow-hidden items-center gap-5 rounded-[18px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[20px] sm:p-10 md:grid-cols-[minmax(0,1fr)_24rem]">
+        <header className="mt-0 grid items-center gap-5 rounded-[18px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[20px] sm:p-10 md:grid-cols-[minmax(0,1fr)_24rem]">
           <div>
           <h1 className="text-3xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
@@ -62,9 +62,12 @@ export default function CourseView({ topic }: { topic: Topic }) {
             Versi slide
           </a>
           </div>
-          <div className="relative hidden md:block">
-            <Art bare kind="topic" slug={topic.slug} className="absolute top-1/2 left-1/2 -z-0 h-auto w-[170%]! max-w-none -translate-x-1/2 -translate-y-1/2 opacity-40" />
-            {topic.slides.length > 0 && <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} decoding="async" className="relative aspect-video w-full rounded-[16px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />}
+          <div className="hidden md:block">
+            {topic.slides.length > 0 ? (
+              <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} decoding="async" className="aspect-video w-full rounded-[16px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />
+            ) : (
+              <div className="overflow-hidden rounded-[16px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] rotate-2"><Art kind="topic" slug={topic.slug} /></div>
+            )}
           </div>
         </header>
 
