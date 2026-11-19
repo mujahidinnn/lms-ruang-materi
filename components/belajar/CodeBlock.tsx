@@ -18,7 +18,7 @@ import xml from "shiki/langs/xml.mjs";
 import yaml from "shiki/langs/yaml.mjs";
 import githubDark from "shiki/themes/github-dark.mjs";
 import githubLight from "shiki/themes/github-light.mjs";
-import { Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 // Synchronous, so chapter bodies render in one pass on the server. The
 // languages the decks use; anything else is shown as plain text.
@@ -49,9 +49,10 @@ export default function CodeBlock({ code, lang }: { code: string; lang: string }
         type="button"
         data-copy={code}
         aria-label="Salin kode"
-        className="absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-zinc-900 text-zinc-400 shadow-soft hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent"
+        className="group absolute top-2 right-2 grid size-9 place-items-center rounded-full bg-zinc-900 text-zinc-400 shadow-soft transition-colors hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent data-[copied]:text-emerald-400"
       >
-        <Copy aria-hidden className="size-4" />
+        <Copy aria-hidden className="size-4 group-data-[copied]:hidden" />
+        <Check aria-hidden className="hidden size-4 group-data-[copied]:block" />
       </button>
     </div>
   );
