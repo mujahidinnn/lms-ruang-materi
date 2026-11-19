@@ -48,7 +48,7 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
       {mode === "password" && (
         <label className={label}>
           <span className="flex items-center justify-between">Password<button type="button" onClick={() => setMode("lupa")} className={quiet}>Lupa password?</button></span>
-          <PasswordInput name="password" required autoComplete="current-password" className={field} />
+          <PasswordInput name="password" required autoComplete="current-password" placeholder="********" className={field} />
         </label>
       )}
       {state.status === "error" && (
