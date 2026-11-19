@@ -9,10 +9,10 @@ import { secondaryButton } from "@/components/ui/styles";
 const JENIS = [["salah", "Ada yang salah"], ["tidak-jelas", "Kurang jelas"], ["lainnya", "Lainnya"]] as const;
 
 // Folded under a chapter or an exam question: a typo, a wrong fact or a confusing part.
-export default function LaporBab({ chapterId, questionId, className = "mt-10 bg-zinc-900 p-4 shadow-soft" }: { chapterId?: string; questionId?: string; className?: string }) {
+export default function LaporBab({ chapterId, questionId, className = "mt-8 open:bg-zinc-900 open:p-4 open:shadow-soft" }: { chapterId?: string; questionId?: string; className?: string }) {
   return (
-    <details className={`rounded-2xl ${className}`}>
-      <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-zinc-300">
+    <details className={`group rounded-2xl ${className}`}>
+      <summary className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm text-zinc-400 hover:text-zinc-50 group-open:font-medium group-open:text-zinc-300">
         <Flag aria-hidden className="size-4" />Ada yang salah atau kurang jelas di {questionId ? "soal" : "bab"} ini?
       </summary>
       <ActionForm action="laporkan" className="mt-3 flex flex-col gap-3">
