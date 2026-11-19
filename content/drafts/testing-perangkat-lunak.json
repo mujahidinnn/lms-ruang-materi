@@ -1,0 +1,2153 @@
+{
+  "title": "Testing Perangkat Lunak",
+  "description": "Belajar menguji kode: unit test, pola Arrange-Act-Assert, test double, TDD, tes API dan async, E2E, coverage, sampai strategi tes di proyek, ditutup proyek memperbaiki keranjang belanja.",
+  "summary": "Testing adalah cara memastikan kode berjalan sesuai maksud sebelum dipakai orang. Kelas ini dimulai dari alasan kode perlu dites, perbedaan tes manual dan otomatis, lalu piramida tes yang membagi pengujian menjadi unit test, tes integrasi, dan tes end-to-end beserta proporsi yang sehat.\n\nBagian inti mengajarkan cara menulis unit test dengan fungsi assert dan runner sederhana, pola Arrange, Act, Assert, kasus batas, dan pengujian error. Kamu juga belajar test double (stub, fake, spy) untuk mengganti dependensi seperti jaringan, jam, dan database, siklus TDD merah-hijau-refaktor, serta cara menguji fungsi async dan handler API tanpa server.\n\nBagian akhir membahas tes end-to-end, coverage yang bisa menipu, tes rapuh dan flaky, lalu strategi memilih apa yang layak dites, peran CI, dan kebiasaan tim yang menjaga tes tetap sehat. Kelas ditutup dengan proyek Perbaiki Keranjang Belanja yang menggabungkan semua teknik itu.",
+  "tips": [
+    "Lingkungan latihan kelas ini tidak punya framework tes, jadi `assertSama` dan runner dibuat sendiri. Di proyek nyata kamu memakai Vitest atau Jest yang menyediakan laporan lengkap, perbandingan pintar, dan integrasi editor.",
+    "Setiap kali memperbaiki bug, tulis dulu tes yang gagal karena bug itu. Dalam beberapa bulan kumpulan tes ini menjadi catatan titik lemah proyekmu.",
+    "Uji tesmu sendiri: ubah `>=` menjadi `>` di kode dan lihat apakah ada tes yang gagal. Bila semua tetap hijau, tesmu punya celah.",
+    "Jangan kejar angka coverage. Pakai laporannya untuk menemukan baris yang belum pernah dijalankan tes, lalu putuskan mana yang layak dites.",
+    "Bila sebuah tes sulit ditulis, curigai desain kodenya: dependensi yang tersembunyi di dalam fungsi hampir selalu bisa dipindah ke parameter."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu bug?",
+      "back": "Selisih antara yang dimaksud programmer dan yang sebenarnya dikerjakan kode, sering hanya berupa hasil yang salah."
+    },
+    {
+      "front": "Apa itu tes otomatis?",
+      "back": "Kode yang memeriksa kode lain dan melaporkan lulus atau gagal tanpa campur tangan manusia."
+    },
+    {
+      "front": "Kapan sebaiknya sebuah pemeriksaan diotomatiskan?",
+      "back": "Saat ia berulang dan penting; aturan praktisnya bila sudah dilakukan manual tiga kali."
+    },
+    {
+      "front": "Apa itu unit test?",
+      "back": "Tes untuk satu unit kecil seperti satu fungsi, terpisah dari database, jaringan, dan browser."
+    },
+    {
+      "front": "Apa itu tes integrasi?",
+      "back": "Tes yang memeriksa beberapa bagian bekerja bersama, misalnya kode dengan database."
+    },
+    {
+      "front": "Apa itu tes end-to-end?",
+      "back": "Tes yang menjalankan seluruh aplikasi lewat alur pengguna sungguhan, biasanya memakai browser."
+    },
+    {
+      "front": "Apa isi piramida tes?",
+      "back": "Banyak unit test di dasar, secukupnya tes integrasi di tengah, sedikit E2E di puncak."
+    },
+    {
+      "front": "Apa itu cone es krim dalam testing?",
+      "back": "Proporsi terbalik dari piramida: banyak E2E dan sedikit unit test, sehingga tes lambat dan sering gagal."
+    },
+    {
+      "front": "Ciri nama tes yang baik?",
+      "back": "Menyebut kondisi dan hasil yang diharapkan, terbaca seperti kalimat spesifikasi."
+    },
+    {
+      "front": "Mengapa satu tes memeriksa satu perilaku?",
+      "back": "Agar saat gagal, penyebabnya jelas karena hanya ada satu alasan untuk gagal."
+    },
+    {
+      "front": "Apa itu assert?",
+      "back": "Pemeriksaan yang membandingkan hasil aktual dengan harapan dan gagal bila berbeda."
+    },
+    {
+      "front": "Mengapa runner memakai try dan catch?",
+      "back": "Agar satu tes yang gagal tidak menghentikan tes lainnya."
+    },
+    {
+      "front": "Apa itu pola Arrange, Act, Assert?",
+      "back": "Menyiapkan data, memanggil satu hal yang dites, lalu memeriksa hasilnya."
+    },
+    {
+      "front": "Mengapa uji nilai di batas?",
+      "back": "Bug seperti > versus >= hanya terlihat tepat di batas aturan."
+    },
+    {
+      "front": "Nilai rawan yang perlu diuji?",
+      "back": "Kosong, nol, negatif, sangat besar, dan tipe tak terduga seperti null."
+    },
+    {
+      "front": "Apa itu mutation testing?",
+      "back": "Menyisipkan bug kecil sengaja untuk memastikan ada tes yang gagal."
+    },
+    {
+      "front": "Apa itu test double?",
+      "back": "Pengganti palsu dari dependensi nyata yang cepat, stabil, dan bisa dikendalikan."
+    },
+    {
+      "front": "Apa itu stub?",
+      "back": "Pengganti yang mengembalikan jawaban tetap yang kita tentukan."
+    },
+    {
+      "front": "Apa itu fake?",
+      "back": "Tiruan sederhana yang benar-benar bekerja, misalnya database di memori."
+    },
+    {
+      "front": "Apa itu spy?",
+      "back": "Pengganti yang mencatat bagaimana ia dipanggil: berapa kali dan dengan argumen apa."
+    },
+    {
+      "front": "Apa itu injeksi dependensi?",
+      "back": "Menerima dependensi sebagai parameter agar mudah diganti, misalnya saat tes."
+    },
+    {
+      "front": "Apa tiga langkah TDD?",
+      "back": "Merah (tes gagal), hijau (kode paling sederhana), refaktor (rapikan, tes tetap hijau)."
+    },
+    {
+      "front": "Apa itu refaktor?",
+      "back": "Mengubah bentuk kode tanpa mengubah perilakunya, dijaga oleh tes yang hijau."
+    },
+    {
+      "front": "Mengapa tes async harus memakai await?",
+      "back": "Karena fungsi async mengembalikan Promise; tanpa menunggu, tes bisa lolos sebelum pemeriksaan jalan."
+    },
+    {
+      "front": "Apa itu coverage?",
+      "back": "Persentase kode yang dijalankan saat tes berlangsung; berguna menunjukkan area yang belum diuji."
+    },
+    {
+      "front": "Apa itu tes rapuh?",
+      "back": "Tes yang gagal saat implementasi berubah walau perilaku sama, biasanya terikat pada detail internal."
+    },
+    {
+      "front": "Apa itu tes flaky?",
+      "back": "Tes yang kadang lolos kadang gagal tanpa perubahan kode, karena waktu, urutan, data bersama, atau jaringan."
+    },
+    {
+      "front": "Apa peran CI terhadap tes?",
+      "back": "Menjalankan seluruh tes otomatis pada setiap perubahan sehingga tes menjadi pagar pengaman."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Manakah alasan terkuat mengotomatiskan sebuah pemeriksaan?",
+      "code": "",
+      "options": [
+        "Pemeriksaan itu hanya dilakukan satu kali",
+        "Pemeriksaan itu harus diulang setiap kali kode berubah",
+        "Pemeriksaan itu menilai kenyamanan warna",
+        "Pemeriksaan itu tidak punya hasil yang jelas sama sekali sehingga tak bisa diulang"
+      ],
+      "answer": 1,
+      "explanation": "Hal yang berulang paling untung bila diotomatiskan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bug yang ketahuan di produksi dibanding saat menulis kode biasanya",
+      "code": "",
+      "options": [
+        "Sama murahnya dengan bug di laptop",
+        "Lebih murah karena pengguna ikut membantu menguji secara gratis setiap hari",
+        "Lebih mahal diperbaiki karena melibatkan laporan dan rilis ulang",
+        "Tidak berbeda biayanya sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "Biaya bug naik seiring jauhnya ia ketahuan dari saat ditulis."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tes otomatis menggantikan seluruh kebutuhan tes manual.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tes manual masih berguna untuk menilai tampilan dan rasa pakai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Proporsi tes yang banyak E2E dan sedikit unit test sering disebut",
+      "code": "",
+      "options": [
+        "Piramida tes",
+        "Tes mutasi",
+        "Tes asap",
+        "Cone es krim"
+      ],
+      "answer": 3,
+      "explanation": "Itu kebalikan dari piramida yang sehat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang paling tepat dijaga tes integrasi?",
+      "code": "",
+      "options": [
+        "Kode yang menyimpan pesanan ke database lalu membacanya kembali",
+        "Fungsi yang menjumlahkan dua angka",
+        "Fungsi yang mengubah huruf menjadi kapital pada teks yang sudah ada di memori",
+        "Fungsi yang memformat tanggal dari argumen"
+      ],
+      "answer": 0,
+      "explanation": "Tes integrasi memeriksa sambungan antar bagian."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "function boleh(umur) {\n  return umur > 17;\n}\nconsole.log(boleh(17), boleh(18));",
+      "options": [
+        "true true",
+        "false true",
+        "true false",
+        "false false"
+      ],
+      "answer": 1,
+      "explanation": "Dengan > , 17 ditolak sedangkan 18 diterima; itulah bug batas klasik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama tes mana yang paling baik?",
+      "code": "",
+      "options": [
+        "test1",
+        "hitungTotal",
+        "keranjang kosong menghasilkan total nol",
+        "berfungsi"
+      ],
+      "answer": 2,
+      "explanation": "Nama yang menyebut kondisi dan hasil menjelaskan perilaku."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa satu tes sebaiknya memeriksa satu perilaku?",
+      "code": "",
+      "options": [
+        "Agar jumlah tes sebanyak mungkin",
+        "Agar tes selalu lolos",
+        "Karena framework membatasi satu pemeriksaan per berkas tes",
+        "Agar bila gagal, penyebabnya mudah diketahui"
+      ],
+      "answer": 3,
+      "explanation": "Satu alasan untuk gagal membuat diagnosis cepat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam test double, spy dipakai untuk",
+      "code": "",
+      "options": [
+        "Mencatat bagaimana ia dipanggil",
+        "Mengembalikan jawaban tetap tanpa catatan",
+        "Menjalankan seluruh aplikasi",
+        "Menggantikan database dengan tabel nyata"
+      ],
+      "answer": 0,
+      "explanation": "Spy menyimpan riwayat panggilan untuk diperiksa."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi yang menerima dependensinya lewat parameter lebih mudah dites.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Dependensi di parameter mudah diganti dengan tiruan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada TDD, langkah \"hijau\" berarti",
+      "code": "",
+      "options": [
+        "Menulis seluruh fitur sekaligus",
+        "Menulis kode paling sederhana yang membuat tes lolos",
+        "Menghapus tes yang gagal",
+        "Merapikan kode sebanyak mungkin"
+      ],
+      "answer": 1,
+      "explanation": "Hijau hanya soal membuat tes lolos dengan cara sederhana."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi async yang diuji tanpa await dapat menyebabkan",
+      "code": "",
+      "options": [
+        "Tes selalu gagal dengan pesan yang sangat jelas dan lengkap",
+        "Fungsi berjalan dua kali",
+        "Tes lolos sebelum pemeriksaan sempat berjalan",
+        "Promise otomatis dibatalkan"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa menunggu, bug tidak terdeteksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status yang tepat untuk pengguna belum login yang mengakses data pribadi adalah",
+      "code": "",
+      "options": [
+        "200",
+        "404",
+        "500",
+        "401"
+      ],
+      "answer": 3,
+      "explanation": "401 berarti belum terautentikasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Coverage paling tepat dipakai sebagai",
+      "code": "",
+      "options": [
+        "Peta area yang belum diuji",
+        "Target yang harus selalu seratus persen",
+        "Bukti bahwa semua perilaku benar",
+        "Pengganti kuis kode"
+      ],
+      "answer": 0,
+      "explanation": "Coverage menunjukkan celah, bukan kualitas pemeriksaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Penyebab umum tes flaky adalah",
+      "code": "",
+      "options": [
+        "Nama tes yang terlalu panjang",
+        "Ketergantungan pada waktu, urutan, atau data bersama",
+        "Terlalu banyak komentar di kode",
+        "Memakai fungsi assert buatan sendiri alih-alih framework resmi"
+      ],
+      "answer": 1,
+      "explanation": "Hal-hal yang tidak deterministik membuat hasil berubah-ubah."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa tujuan utama testing perangkat lunak?",
+      "code": "",
+      "options": [
+        "Memberi keyakinan yang terukur bahwa kode berjalan sesuai maksud",
+        "Membuktikan program pasti tanpa bug",
+        "Memperpanjang waktu pengembangan supaya tim lebih teliti dan hati-hati",
+        "Menggantikan kebutuhan membaca kode"
+      ],
+      "answer": 0,
+      "explanation": "Testing menurunkan kemungkinan bug pada hal yang diperiksa, bukan menjamin nol bug."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Seorang programmer menulis `>` padahal aturan menyebut \"100 ribu ke atas\". Bug seperti ini paling mungkin terlihat sebagai",
+      "code": "",
+      "options": [
+        "Error sintaks saat program dimulai",
+        "Hasil yang salah tanpa pesan error",
+        "Program berhenti total saat dijalankan",
+        "Peringatan merah dari editor"
+      ],
+      "answer": 1,
+      "explanation": "Bug logika tidak menimbulkan error; hanya hasilnya yang keliru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan tes manual masih lebih unggul?",
+      "code": "",
+      "options": [
+        "Saat memeriksa perhitungan uang berulang kali",
+        "Saat memeriksa ribuan kombinasi input",
+        "Saat menilai tampilan dan rasa pakai",
+        "Saat menjalankan pemeriksaan di setiap commit"
+      ],
+      "answer": 2,
+      "explanation": "Penilaian subjektif sulit diotomatiskan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tes otomatis paling sederhana hanya membandingkan hasil aktual dengan hasil harapan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itulah inti semua tes otomatis, dari yang paling sederhana sampai framework."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pesan gagal yang paling berguna adalah",
+      "code": "",
+      "options": [
+        "Tes gagal",
+        "Assertion failed",
+        "Terjadi kesalahan pada baris pertama kode",
+        "Harapan 10000, aktual 100000"
+      ],
+      "answer": 3,
+      "explanation": "Pesan yang menyebut kedua nilai langsung menunjuk arah masalah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Selain menangkap bug, tes juga berfungsi sebagai",
+      "code": "",
+      "options": [
+        "Dokumentasi hidup tentang cara memakai kode",
+        "Pengganti komentar yang tidak pernah usang sepanjang proyek berjalan",
+        "Pengganti kontrol versi",
+        "Alat mempercepat koneksi internet"
+      ],
+      "answer": 0,
+      "explanation": "Tes bernama jelas menjelaskan perilaku dan akan gagal bila usang."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa nilai yang dicetak pemanggilan hitungDiskon di bawah ini?",
+      "code": "function hitungDiskon(total) {\n  return total >= 100000 ? total * 0.1 : 0;\n}\nconsole.log(hitungDiskon(100000), hitungDiskon(99999));",
+      "options": [
+        "0 0",
+        "10000 0",
+        "10000 9999.9",
+        "0 10000"
+      ],
+      "answer": 1,
+      "explanation": "Tepat 100000 memenuhi syarat, sedangkan 99999 tidak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tes yang salah tulis bisa memberi rasa aman palsu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Tes yang lolos padahal tidak memeriksa apa pun lebih berbahaya daripada tidak ada tes."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tes end-to-end memeriksa",
+      "code": "",
+      "options": [
+        "Satu fungsi tanpa dunia luar",
+        "Hanya struktur tabel database",
+        "Seluruh aplikasi lewat alur pengguna sungguhan",
+        "Hanya gaya CSS halaman"
+      ],
+      "answer": 2,
+      "explanation": "E2E menjalankan aplikasi seperti pengguna."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan unit test boleh dibuat banyak adalah",
+      "code": "",
+      "options": [
+        "Tidak pernah gagal",
+        "Menggantikan semua jenis tes lain yang lebih mahal",
+        "Tidak memerlukan perawatan",
+        "Cepat, murah, dan tepat menunjuk lokasi bug"
+      ],
+      "answer": 3,
+      "explanation": "Itulah ekonomi piramida tes."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Gejala proporsi tes yang tidak sehat adalah",
+      "code": "",
+      "options": [
+        "Rangkaian tes butuh puluhan menit dan sering merah tanpa sebab jelas",
+        "Semua tes selesai dalam satu detik",
+        "Setiap tes memeriksa satu fungsi",
+        "Tes jarang dijalankan karena rangkaiannya sangat stabil dan selalu cepat"
+      ],
+      "answer": 0,
+      "explanation": "Tes lambat dan sering gagal acak menandakan terlalu banyak tes mahal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kode yang menulis ke database uji lalu membacanya kembali paling cocok dites dengan",
+      "code": "",
+      "options": [
+        "Unit test murni tanpa database",
+        "Tes integrasi",
+        "Tes manual saja",
+        "Tes keindahan tampilan"
+      ],
+      "answer": 1,
+      "explanation": "Sambungan kode dan database adalah wilayah tes integrasi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Piramida tes adalah aturan mutlak yang harus diikuti persis.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Piramida hanya panduan proporsi; aplikasi berbeda bisa butuh proporsi berbeda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa E2E dibatasi pada alur kritis?",
+      "code": "",
+      "options": [
+        "Karena tidak bisa dijalankan otomatis",
+        "Karena hasilnya selalu salah",
+        "Karena lambat, mahal dirawat, dan mudah rapuh",
+        "Karena hanya berlaku untuk aplikasi mobile"
+      ],
+      "answer": 2,
+      "explanation": "Biaya E2E tinggi, jadi dipakai hemat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh alur yang pantas dijaga E2E adalah",
+      "code": "",
+      "options": [
+        "Fungsi pembulatan angka",
+        "Format tanggal di satu fungsi pembantu kecil dalam modul",
+        "Nama variabel di dalam modul",
+        "Daftar, login, lalu menyelesaikan pembayaran"
+      ],
+      "answer": 3,
+      "explanation": "Alur kritis yang menghubungkan banyak bagian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian apa yang dimiliki setiap unit test?",
+      "code": "",
+      "options": [
+        "Nama, isi yang memanggil kode, dan pemeriksaan hasil",
+        "Hanya nama dan komentar",
+        "Database dan server",
+        "Gambar tangkapan layar"
+      ],
+      "answer": 0,
+      "explanation": "Tiga bagian inti sebuah unit test."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Bagaimana hasil perbandingan objek pada kode di bawah ini?",
+      "code": "const a = { x: 1 };\nconst b = { x: 1 };\nconsole.log(a === b, JSON.stringify(a) === JSON.stringify(b));",
+      "options": [
+        "true true",
+        "false true",
+        "true false",
+        "false false"
+      ],
+      "answer": 1,
+      "explanation": "=== membandingkan identitas objek, sedangkan JSON.stringify membandingkan isi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa pesan assert sebaiknya menyebut nilai harapan dan aktual?",
+      "code": "",
+      "options": [
+        "Agar tes berjalan lebih cepat",
+        "Agar error tidak terjadi",
+        "Agar arah masalah langsung terlihat tanpa membuka kode",
+        "Karena framework menolak pesan yang terlalu pendek untuk dibaca"
+      ],
+      "answer": 2,
+      "explanation": "Kedua nilai menunjukkan seberapa jauh hasil dari harapan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu tes sebaiknya memeriksa sebanyak mungkin perilaku sekaligus.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Satu tes untuk satu perilaku membuat penyebab gagal jelas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Runner yang tidak memakai try dan catch akan",
+      "code": "",
+      "options": [
+        "Menjalankan tes lebih cepat tanpa efek samping lain apa pun",
+        "Melaporkan semua tes lulus",
+        "Mengulang tes yang gagal otomatis",
+        "Berhenti pada tes pertama yang melempar error"
+      ],
+      "answer": 3,
+      "explanation": "Error tak tertangkap menghentikan seluruh runner."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar tes mandiri, setiap tes sebaiknya",
+      "code": "",
+      "options": [
+        "Menyiapkan sendiri semua data yang dibutuhkannya",
+        "Memakai data yang dibuat tes sebelumnya",
+        "Dijalankan selalu dalam urutan yang sama",
+        "Berbagi satu variabel global dengan seluruh tes lainnya agar cepat"
+      ],
+      "answer": 0,
+      "explanation": "Ketergantungan antartes merusak isolasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada pola AAA, blok Arrange berisi",
+      "code": "",
+      "options": [
+        "Pemeriksaan hasil",
+        "Penyiapan data dan kondisi awal",
+        "Penghapusan data",
+        "Pemanggilan hal yang dites"
+      ],
+      "answer": 1,
+      "explanation": "Arrange menyiapkan keadaan sebelum Act."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa bug sering muncul di batas aturan?",
+      "code": "",
+      "options": [
+        "Karena komputer lemah dalam menghitung angka bulat di sekitar batas aturan",
+        "Karena nilai tengah selalu salah",
+        "Karena perbedaan kecil seperti > dan >= hanya terlihat tepat di batas",
+        "Karena batas tidak bisa dites"
+      ],
+      "answer": 2,
+      "explanation": "Nilai tepat di batas membedakan kedua operator."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai uji selain batas yang umumnya rawan adalah",
+      "code": "",
+      "options": [
+        "Hanya angka genap",
+        "Hanya teks panjang",
+        "Hanya angka yang sering dipakai",
+        "Kosong, nol, negatif, dan nilai sangat besar"
+      ],
+      "answer": 3,
+      "explanation": "Nilai ekstrem sering memicu kasus tak terduga."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil rataRata untuk array kosong pada kode di bawah ini?",
+      "code": "function rataRata(daftar) {\n  return daftar.reduce((a, b) => a + b, 0) / daftar.length;\n}\nconsole.log(rataRata([]));",
+      "options": [
+        "NaN",
+        "0",
+        "undefined",
+        "Infinity"
+      ],
+      "answer": 0,
+      "explanation": "0 dibagi 0 menghasilkan NaN, contoh kasus batas yang perlu diputuskan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tes error yang benar harus",
+      "code": "",
+      "options": [
+        "Selalu lolos apa pun yang terjadi",
+        "Gagal bila error tidak dilempar",
+        "Hanya memeriksa bahwa fungsi dipanggil",
+        "Menghapus pesan error dari kode"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa throw setelah pemanggilan, tes bisa lolos diam-diam."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mutation testing bertujuan",
+      "code": "",
+      "options": [
+        "Mengubah nama tes secara acak",
+        "Menggandakan jumlah tes",
+        "Menguji apakah tes mampu mendeteksi bug yang sengaja disisipkan",
+        "Menghapus kode yang tidak dites agar proyek menjadi lebih ramping"
+      ],
+      "answer": 2,
+      "explanation": "Bila tes tetap hijau meski ada mutan, tesnya longgar."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menulis harapan sebagai salinan rumus implementasi adalah praktik yang baik.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Rumus yang salah akan ikut salah di tes; pakai nilai konkret yang dihitung terpisah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Saat memperbaiki bug, langkah yang disarankan adalah",
+      "code": "",
+      "options": [
+        "Memperbaiki kode lalu tidak menulis tes",
+        "Menghapus tes lama",
+        "Menunggu pelanggan melapor lagi",
+        "Menulis tes yang mereproduksi bug dulu, lalu memperbaiki kode"
+      ],
+      "answer": 3,
+      "explanation": "Tes itu menjaga bug yang sama tidak kembali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa kode yang memanggil API kurs langsung sulit dites?",
+      "code": "",
+      "options": [
+        "Hasilnya berubah, lambat, dan bergantung pada jaringan",
+        "Karena API kurs tidak bisa dipanggil dari JavaScript sama sekali",
+        "Karena angka tidak bisa dibandingkan",
+        "Karena fungsi tidak boleh menghitung"
+      ],
+      "answer": 0,
+      "explanation": "Dependensi luar membuat tes tidak stabil dan lambat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fake dalam test double adalah",
+      "code": "",
+      "options": [
+        "Fungsi yang selalu melempar error supaya kasus gagal bisa diuji terus-menerus",
+        "Tiruan sederhana yang benar-benar bekerja, seperti database di memori",
+        "Tes yang tidak pernah dijalankan",
+        "Salinan produksi lengkap"
+      ],
+      "answer": 1,
+      "explanation": "Fake punya perilaku nyata namun disederhanakan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa total rupiah yang dicetak kode di bawah ini?",
+      "code": "function totalRupiah(usd, ambilKurs) {\n  return usd * ambilKurs();\n}\nconsole.log(totalRupiah(2, () => 16000));",
+      "options": [
+        "160000",
+        "2",
+        "32000",
+        "NaN"
+      ],
+      "answer": 2,
+      "explanation": "Stub mengembalikan 16000 sehingga 2 x 16000 = 32000."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Spy cocok dipakai untuk memeriksa",
+      "code": "",
+      "options": [
+        "Hasil penjumlahan dua angka",
+        "Warna tombol",
+        "Panjang string kosong",
+        "Bahwa email sambutan dikirim tepat satu kali"
+      ],
+      "answer": 3,
+      "explanation": "Efek samping seperti pengiriman email diperiksa lewat riwayat panggilan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar fungsi salam bisa dites pada pukul 09.00 kapan pun, sebaiknya",
+      "code": "",
+      "options": [
+        "Menerima jam sebagai parameter yang bisa diganti",
+        "Menjalankan tes hanya pagi hari",
+        "Mengubah jam komputer setiap kali tes akan dijalankan",
+        "Menghapus pemeriksaan waktu"
+      ],
+      "answer": 0,
+      "explanation": "Jam yang diinjeksikan bisa dikendalikan di tes."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Stub dan mock sebenarnya adalah dua istilah untuk hal yang sama persis.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Stub memberi jawaban tetap, sedangkan mock/spy mencatat dan memeriksa panggilan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tes integrasi sesekali tetap diperlukan walau memakai tiruan karena",
+      "code": "",
+      "options": [
+        "Tiruan selalu salah",
+        "Tiruan bisa menyimpang dari perilaku dunia nyata",
+        "Tes integrasi selalu lebih cepat daripada unit test biasa",
+        "Tiruan tidak bisa dibuat"
+      ],
+      "answer": 1,
+      "explanation": "Sambungan nyata perlu diperiksa agar tiruan tidak menyesatkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang membedakan TDD dari cara menulis kode biasa?",
+      "code": "",
+      "options": [
+        "Tes ditulis setelah semua fitur jadi",
+        "Tidak memakai tes sama sekali",
+        "Tes ditulis lebih dulu dan gagal sebelum kodenya ada",
+        "Kode ditulis tanpa memikirkan hasil"
+      ],
+      "answer": 2,
+      "explanation": "Urutan tes dulu adalah ciri utama TDD."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada langkah hijau, kode yang ditulis sebaiknya",
+      "code": "",
+      "options": [
+        "Selengkap mungkin untuk semua kasus yang bisa dibayangkan",
+        "Ditulis tanpa dijalankan",
+        "Diberi banyak komentar panjang",
+        "Paling sederhana yang membuat tes lolos"
+      ],
+      "answer": 3,
+      "explanation": "Kerumitan baru hanya ditambah bila tes baru menuntutnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Refaktor aman dilakukan karena",
+      "code": "",
+      "options": [
+        "Tes hijau menjaga perilaku tetap sama",
+        "Refaktor tidak mengubah apa pun pada kode sehingga aman",
+        "Kode lama dihapus dulu",
+        "Tes dimatikan selama refaktor"
+      ],
+      "answer": 0,
+      "explanation": "Tes yang tetap hijau adalah bukti perilaku tidak berubah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Teks apa yang dihasilkan slugify pada kode di bawah ini?",
+      "code": "function slugify(teks) {\n  return teks.toLowerCase().replace(/[^a-z0-9]+/g, \"-\");\n}\nconsole.log(slugify(\"Halo Dunia\"));",
+      "options": [
+        "Halo-Dunia",
+        "halo-dunia",
+        "halodunia",
+        "halo dunia"
+      ],
+      "answer": 1,
+      "explanation": "Huruf menjadi kecil dan spasi diganti tanda hubung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kesalahan umum pemula TDD adalah",
+      "code": "",
+      "options": [
+        "Menulis satu tes lalu membuatnya hijau sebelum lanjut ke tes berikut",
+        "Menjalankan tes setiap langkah",
+        "Menulis banyak tes sekaligus sebelum ada yang lolos",
+        "Merapikan kode setelah hijau"
+      ],
+      "answer": 2,
+      "explanation": "Langkah besar membuat kesalahan sulit dilacak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "TDD wajib dipakai untuk setiap baris kode, termasuk eksplorasi desain tampilan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "TDD paling berguna untuk logika beraturan, bukan eksplorasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "TDD sangat cocok untuk",
+      "code": "",
+      "options": [
+        "Mencoba-coba warna tampilan",
+        "Membaca dokumentasi library baru",
+        "Menulis catatan rapat",
+        "Logika dengan banyak aturan dan kasus tepi"
+      ],
+      "answer": 3,
+      "explanation": "Putaran pendek membantu merumuskan aturan yang rumit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa tes harus menunggu hasil fungsi async?",
+      "code": "",
+      "options": [
+        "Karena fungsi itu mengembalikan Promise yang selesai nanti",
+        "Karena async selalu error",
+        "Karena Promise tidak punya nilai sehingga tidak bisa diperiksa",
+        "Karena tes tidak boleh cepat"
+      ],
+      "answer": 0,
+      "explanation": "Memeriksa Promise, bukan hasilnya, adalah kesalahan umum."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apakah r adalah Promise pada kode di bawah ini?",
+      "code": "async function f() {\n  return 5;\n}\nconst r = f();\nconsole.log(r instanceof Promise);",
+      "options": [
+        "false",
+        "true",
+        "5",
+        "undefined"
+      ],
+      "answer": 1,
+      "explanation": "Fungsi async selalu mengembalikan Promise, bahkan bila isinya nilai biasa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fetcher palsu yang mengembalikan status 500 berguna untuk",
+      "code": "",
+      "options": [
+        "Membuat jaringan lebih cepat",
+        "Menghapus kebutuhan error handling",
+        "Menguji bagaimana kode menangani kegagalan server",
+        "Mengurangi jumlah tes"
+      ],
+      "answer": 2,
+      "explanation": "Kasus gagal sulit dipancing dari server nyata."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Handler API bisa dites tanpa server karena",
+      "code": "",
+      "options": [
+        "Server tidak diperlukan untuk aplikasi apa pun yang dibuat dengan framework modern",
+        "Request selalu berhasil",
+        "Respons tidak punya status",
+        "Pada dasarnya ia fungsi yang menerima request dan mengembalikan respons"
+      ],
+      "answer": 3,
+      "explanation": "Memanggil fungsi langsung dengan request buatan sudah cukup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status yang sesuai untuk pengguna login yang tidak berhak mengakses sumber daya adalah",
+      "code": "",
+      "options": [
+        "403",
+        "401 Unauthorized",
+        "400",
+        "201"
+      ],
+      "answer": 0,
+      "explanation": "403 berarti dilarang meskipun sudah terautentikasi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tes yang memeriksa pengguna A tidak bisa membaca data pengguna B membantu mencegah celah keamanan umum.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itu menguji otorisasi tingkat objek."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa E2E dapat menangkap bug yang lolos dari unit test?",
+      "code": "",
+      "options": [
+        "Karena E2E memeriksa satu fungsi jauh lebih dalam daripada unit test",
+        "Karena ia menjalankan seluruh sambungan antarbagian",
+        "Karena E2E tidak butuh browser",
+        "Karena E2E selalu lebih cepat"
+      ],
+      "answer": 1,
+      "explanation": "Bug sambungan hanya muncul saat semua bagian bekerja bersama."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa persen yang dicetak kode di bawah ini?",
+      "code": "function persen(total, jalan) {\n  return Math.round((jalan / total) * 100);\n}\nconsole.log(persen(3, 2));",
+      "options": [
+        "66",
+        "2",
+        "67",
+        "0.67"
+      ],
+      "answer": 2,
+      "explanation": "2 dibagi 3 adalah 66,67 persen dan dibulatkan menjadi 67."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa coverage tinggi bisa menipu?",
+      "code": "",
+      "options": [
+        "Karena coverage selalu salah hitung",
+        "Karena coverage mengurangi jumlah tes",
+        "Karena hanya menghitung komentar",
+        "Karena kode bisa dijalankan tanpa pernah diperiksa hasilnya"
+      ],
+      "answer": 3,
+      "explanation": "Menjalankan kode tidak sama dengan memeriksa perilakunya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tes rapuh sering disebabkan oleh",
+      "code": "",
+      "options": [
+        "Keterikatan pada detail implementasi",
+        "Terlalu banyak memakai nama tes yang jelas",
+        "Memakai assert terlalu singkat",
+        "Menulis tes sebelum kode"
+      ],
+      "answer": 0,
+      "explanation": "Perubahan internal memecahkan tes yang tidak memeriksa perilaku."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sumber flaky yang berhubungan dengan data adalah",
+      "code": "",
+      "options": [
+        "Tiap tes punya datanya sendiri yang dibuat ulang setiap kali",
+        "Beberapa tes memakai data bersama dan saling mengganggu",
+        "Data dibuat dari nilai tetap",
+        "Data tidak pernah dipakai"
+      ],
+      "answer": 1,
+      "explanation": "Data bersama membuat hasil bergantung urutan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tes flaky yang dimatikan sementara biasanya segera dinyalakan kembali.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tes yang dimatikan jarang dinyalakan lagi dan tim belajar mengabaikan merah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian mana yang boleh dilewatkan dari pengujian?",
+      "code": "",
+      "options": [
+        "Perhitungan pajak",
+        "Alur pembayaran",
+        "Getter sepele tanpa logika",
+        "Aturan diskon kupon"
+      ],
+      "answer": 2,
+      "explanation": "Fungsi tanpa logika jarang layak dites sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Modul yang paling layak diprioritaskan memiliki",
+      "code": "",
+      "options": [
+        "Perubahan jarang dan dampak kecil bila sampai rusak",
+        "Kode paling sedikit",
+        "Nama paling pendek",
+        "Perubahan sering dan dampak besar bila rusak"
+      ],
+      "answer": 3,
+      "explanation": "Risiko adalah perkalian frekuensi ubah dan dampak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Perubahan yang membuat tes merah di CI sebaiknya tetap digabung lalu diperbaiki nanti.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Tes merah adalah penghalang gabung agar cabang utama tetap sehat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kebiasaan tim yang menjaga tes tetap sehat adalah",
+      "code": "",
+      "options": [
+        "Tes ikut dalam review dan merah segera diperbaiki",
+        "Tes ditulis oleh satu orang saja",
+        "Tes yang lambat dibiarkan menumpuk",
+        "Tes dimatikan bila mengganggu"
+      ],
+      "answer": 0,
+      "explanation": "Tes adalah kode yang dirawat bersama."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa skor risiko modul harga pada kode di bawah ini?",
+      "code": "const daftar = [\n  { nama: \"harga\", ubahPerBulan: 8, dampak: 5 },\n  { nama: \"footer\", ubahPerBulan: 1, dampak: 1 },\n];\nconst skor = (m) => m.ubahPerBulan * m.dampak;\nconsole.log(skor(daftar[0]));",
+      "options": [
+        "13",
+        "40",
+        "8",
+        "5"
+      ],
+      "answer": 1,
+      "explanation": "Skor risiko 8 x 5 sama dengan 40."
+    }
+  ],
+  "prerequisites": [
+    "javascript"
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Perbaiki Keranjang Belanja",
+    "brief": "Modul `buatKeranjang()` di kode awal dipakai toko online, tetapi tim tes menemukan beberapa bug. Tugasmu: **baca setiap pemeriksaan, temukan penyebabnya, dan perbaiki modulnya sampai semua pemeriksaan hijau.** Anggap pemeriksaan di bawah sebagai kumpulan tes yang kamu tulis dengan pola Arrange, Act, Assert.\n\nAturan keranjang:\n\n- `tambah(nama, harga, jumlah = 1)` menambah item. `jumlah` harus bilangan bulat positif; selain itu lempar `Error` berpesan `Jumlah harus bilangan bulat positif`.\n- Item dengan **nama yang sama digabung** menjadi satu baris dan jumlahnya ditambahkan.\n- `hapus(nama)` menghapus item bernama itu dan mengembalikan `true`; bila tidak ada, mengembalikan `false`.\n- `jumlahItem()` mengembalikan total jumlah semua barang.\n- `subtotal()` mengembalikan jumlah dari `harga * jumlah` seluruh item.\n- `total(kupon)` memotong 10% (dibulatkan dengan `Math.round`) bila kupon `HEMAT10` dan subtotal **100.000 atau lebih**; selain itu sama dengan subtotal.\n\nAda lebih dari satu bug. Perbaiki satu per satu dan jalankan pemeriksaan setelah tiap perubahan.",
+    "prompt": "Perbaiki modul `buatKeranjang` agar semua pemeriksaan lolos. Jangan mengubah nama fungsi dan metodenya.",
+    "starter": {
+      "code": "function buatKeranjang() {\n  const item = [];\n  return {\n    tambah(nama, harga, jumlah = 1) {\n      item.push({ nama, harga, jumlah });\n    },\n    hapus(nama) {\n      item.splice(0, 1);\n    },\n    jumlahItem() {\n      return item.reduce((n, i) => n + i.jumlah, 0);\n    },\n    subtotal() {\n      return item.reduce((n, i) => n + i.harga, 0);\n    },\n    total(kupon) {\n      const sub = this.subtotal();\n      if (kupon === \"HEMAT10\" && sub > 100000) return sub * 0.9;\n      return sub;\n    },\n  };\n}\n"
+    },
+    "solution": {
+      "code": "function buatKeranjang() {\n  const item = [];\n  return {\n    tambah(nama, harga, jumlah = 1) {\n      if (!Number.isInteger(jumlah) || jumlah <= 0) {\n        throw new Error(\"Jumlah harus bilangan bulat positif\");\n      }\n      const ada = item.find((i) => i.nama === nama);\n      if (ada) ada.jumlah += jumlah;\n      else item.push({ nama, harga, jumlah });\n    },\n    hapus(nama) {\n      const idx = item.findIndex((i) => i.nama === nama);\n      if (idx === -1) return false;\n      item.splice(idx, 1);\n      return true;\n    },\n    jumlahItem() {\n      return item.reduce((n, i) => n + i.jumlah, 0);\n    },\n    subtotal() {\n      return item.reduce((n, i) => n + i.harga * i.jumlah, 0);\n    },\n    total(kupon) {\n      const sub = this.subtotal();\n      if (kupon === \"HEMAT10\" && sub >= 100000) return Math.round(sub * 0.9);\n      return sub;\n    },\n  };\n}\n"
+    },
+    "setup": "",
+    "tests": [
+      {
+        "name": "Dua barang berbeda menghasilkan jumlah item 2",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"pensil\", 2000); k.tambah(\"buku\", 5000); return k.jumlahItem() === 2; })()"
+      },
+      {
+        "name": "Subtotal memperhitungkan jumlah tiap barang",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"pensil\", 2000, 3); k.tambah(\"buku\", 5000); return k.subtotal() === 11000; })()"
+      },
+      {
+        "name": "Nama yang sama digabung menjadi satu baris",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"pensil\", 2000); k.tambah(\"pensil\", 2000, 2); k.hapus(\"pensil\"); return k.jumlahItem() === 0; })()"
+      },
+      {
+        "name": "Hapus membuang barang yang bernama itu",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"pensil\", 2000); k.tambah(\"buku\", 5000); return k.hapus(\"buku\") === true && k.jumlahItem() === 1 && k.subtotal() === 2000; })()"
+      },
+      {
+        "name": "Hapus nama yang tidak ada mengembalikan false",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"pensil\", 2000); return k.hapus(\"buku\") === false && k.jumlahItem() === 1; })()"
+      },
+      {
+        "name": "Jumlah nol atau negatif ditolak dengan pesan yang jelas",
+        "check": "(() => { const k = buatKeranjang(); let a, b; try { k.tambah(\"pensil\", 2000, 0); } catch (e) { a = e.message; } try { k.tambah(\"pensil\", 2000, -1); } catch (e) { b = e.message; } return a === \"Jumlah harus bilangan bulat positif\" && b === a && k.jumlahItem() === 0; })()"
+      },
+      {
+        "name": "Kupon HEMAT10 berlaku tepat di 100.000",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"buku\", 100000); return k.total(\"HEMAT10\") === 90000; })()"
+      },
+      {
+        "name": "Di bawah 100.000 dan kupon salah tidak ada potongan",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"buku\", 99999); return k.total(\"HEMAT10\") === 99999 && k.total(\"SALAH\") === 99999; })()"
+      },
+      {
+        "name": "Potongan dibulatkan ke rupiah terdekat",
+        "check": "(() => { const k = buatKeranjang(); k.tambah(\"buku\", 100001); return k.total(\"HEMAT10\") === 90001; })()"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "mengapa-testing",
+      "title": "Mengapa Testing Penting",
+      "est_minutes": 25,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa kode yang berjalan belum tentu kode yang benar.\n- Membedakan tes manual dan tes otomatis beserta kelebihan masing-masing.\n- Menulis tes otomatis paling sederhana: bandingkan hasil aktual dengan hasil harapan.\n- Menyebut manfaat tes selain menangkap bug.\n\n## Kode yang jalan belum tentu benar\n\nBayangkan kamu membuat fungsi untuk menghitung diskon toko. Kamu mencobanya dengan satu angka, hasilnya masuk akal, lalu kamu menggabungkannya ke aplikasi. Dua minggu kemudian pelanggan mengeluh: belanja tepat seratus ribu rupiah tidak mendapat diskon, padahal aturannya \"seratus ribu ke atas\". Fungsimu memakai tanda `>` padahal seharusnya `>=`. Programnya tidak error, tidak ada pesan merah, dan semua halaman tampil normal. Yang salah hanya hasilnya.\n\nInilah masalah utama perangkat lunak: komputer menjalankan apa yang kamu tulis, bukan apa yang kamu maksud. Selisih di antara keduanya disebut bug, dan bug tidak mengumumkan dirinya. Satu-satunya cara menemukannya adalah memeriksa hasil program terhadap hasil yang seharusnya. Memeriksa itulah yang disebut **testing**.\n\n![Mengapa kode perlu dites](slide:3)\n\n## Biaya bug naik seiring waktu\n\nBug yang ketahuan saat kamu masih mengetik kode bisa diperbaiki dalam semenit. Bug yang ketahuan seminggu kemudian oleh rekan satu tim memakan waktu lebih lama, karena kamu harus mengingat kembali kode yang sudah kamu lupakan. Bug yang ketahuan oleh pelanggan di produksi memakan paling banyak: ada laporan, penyelidikan, perbaikan, rilis ulang, dan mungkin kerugian nyata seperti pesanan yang salah hitung atau data yang rusak.\n\nKarena itu tujuan testing bukan membuktikan program sempurna. Tujuannya menggeser penemuan bug sedekat mungkin ke saat kode ditulis, ketika biayanya paling murah. Tes yang berjalan otomatis setiap kali kamu menyimpan kode memberi umpan balik dalam hitungan detik.\n\n## Tes manual dan tes otomatis\n\nCara paling alami untuk mengetes adalah mencoba sendiri: buka aplikasi, isi formulir, klik tombol, lihat hasilnya. Ini disebut **tes manual**. Kelebihannya fleksibel dan bisa menangkap hal yang sulit diprogram, misalnya tampilan yang janggal atau alur yang membingungkan. Kekurangannya ada tiga:\n\n- Lambat: mengetes sepuluh skenario berarti sepuluh kali klik berulang.\n- Mudah terlewat: manusia lupa satu langkah, apalagi saat terburu-buru.\n- Tidak bisa diulang murah: setiap kali kode berubah, semua skenario harus dicoba lagi dari awal.\n\n**Tes otomatis** adalah kode yang memeriksa kode. Kamu menulis pemeriksaan sekali, lalu komputer menjalankannya sebanyak yang diperlukan dengan biaya hampir nol. Tes otomatis tidak bosan dan tidak lupa. Kekurangannya, kamu harus meluangkan waktu menulisnya, dan ia hanya memeriksa apa yang kamu ajarkan padanya.\n\nKeduanya saling melengkapi. Otomatiskan hal yang berulang dan penting, seperti perhitungan uang, validasi input, atau alur login. Sisakan tes manual untuk menilai rasa pakai dan tampilan. Aturan praktis yang mudah diingat: bila kamu mengetes hal yang sama untuk ketiga kalinya, saatnya mengotomatiskan.\n\n## Tes otomatis paling sederhana\n\nTes otomatis tidak butuh framework untuk dimulai. Intinya hanya tiga langkah: panggil kode, tentukan hasil yang diharapkan, bandingkan. Berikut tes untuk fungsi penjumlahan:\n\n```js\nfunction jumlah(a, b) {\n  return a + b;\n}\n\nconst aktual = jumlah(2, 3);\nconst harapan = 5;\n\nif (aktual !== harapan) {\n  throw new Error(\"Harusnya \" + harapan + \", dapat \" + aktual);\n}\n```\n\nBila fungsi `jumlah` benar, kode di atas diam saja. Bila ada bug, ia melempar error dengan pesan yang menyebut angka harapan dan angka aktual. Diam berarti lulus, error berarti gagal. Semua alat testing yang kamu temui nanti, dari Vitest sampai Jest, hanyalah pembungkus yang membuat pola ini lebih rapi: nama untuk setiap tes, laporan berwarna, dan perbandingan yang lebih pintar.\n\nPerhatikan bahwa pesan error menyebut kedua nilai. Pesan seperti \"tes gagal\" tidak membantu, sedangkan \"harusnya 5, dapat 6\" langsung memberi tahu arah masalahnya. Kebiasaan menulis pesan gagal yang jelas akan berguna sepanjang kariermu.\n\n## Fungsi pembanding buatan sendiri\n\nMenulis `if` dan `throw` berulang-ulang itu membosankan, jadi bungkus dalam satu fungsi kecil. Dalam latihan kelas ini kamu akan membuat versi sendiri bernama `assertSama`, yang menerima nilai aktual, nilai harapan, dan nama tes, lalu melaporkan apakah keduanya sama.\n\n```js\nfunction assertSama(aktual, harapan, nama) {\n  return { nama, lulus: aktual === harapan };\n}\n\nconsole.log(assertSama(1 + 1, 2, \"satu tambah satu\"));\n// { nama: 'satu tambah satu', lulus: true }\n```\n\nFungsi ini mengembalikan objek alih-alih melempar error, sehingga hasilnya bisa dikumpulkan dan ditampilkan bersama. Di bab-bab berikut kamu akan melihat dua gaya yang sama-sama umum: melempar error langsung, atau mengumpulkan hasil lalu melaporkannya di akhir.\n\n## Manfaat tes selain menangkap bug\n\nTes memberi lebih banyak daripada sekadar peringatan bug. Pertama, **keberanian mengubah kode**. Dengan tes yang menjaga perilaku lama, kamu bisa merapikan atau menambah fitur sambil yakin tidak merusak yang sudah jalan. Tanpa tes, setiap perubahan terasa seperti berjalan di atas es tipis, dan tim cenderung membiarkan kode jelek tetap jelek.\n\nKedua, **dokumentasi yang hidup**. Tes yang bernama \"diskon 10 persen untuk belanja seratus ribu\" menjelaskan aturan bisnis lebih jujur daripada komentar, karena komentar bisa usang sementara tes yang usang akan gagal. Anggota tim baru bisa membaca tes untuk memahami cara memakai sebuah modul.\n\nKetiga, **desain yang lebih baik**. Kode yang sulit dites hampir selalu kode yang terlalu terikat pada hal lain: ia memanggil jaringan, membaca jam, atau mengubah data global di tengah perhitungan. Saat kamu merasa sulit menulis tes, itu sinyal bahwa desainnya bisa dipisah lebih bersih. Bab tentang test double nanti membahas caranya.\n\n## Batas dari tes\n\nPerlu jujur soal batasnya. Tes hanya membuktikan bahwa kasus yang kamu periksa berjalan benar; ia tidak membuktikan tidak ada bug di tempat lain. Seratus tes yang lulus tidak menjamin program bebas bug, hanya menurunkan kemungkinannya untuk hal yang kamu pedulikan. Tes juga adalah kode, sehingga bisa salah dan perlu dirawat. Tes yang salah memberi rasa aman palsu, yang kadang lebih berbahaya daripada tidak punya tes sama sekali.\n\nKarena itu tujuannya adalah **keyakinan yang terukur**, bukan kesempurnaan. Pilih apa yang layak dites berdasarkan akibat bila salah, dan jangan menunggu program selesai sebelum mulai. Tes pertama yang kecil hari ini lebih berharga daripada rencana tes lengkap yang tak pernah ditulis.\n\n## Rangkuman\n\n- Kode yang berjalan tanpa error belum tentu benar; bug sering hanya berupa hasil yang salah.\n- Semakin lama bug tersembunyi, semakin mahal memperbaikinya, jadi cari sedekat mungkin dengan saat menulis kode.\n- Tes manual fleksibel tetapi lambat dan mudah terlewat; tes otomatis cepat, konsisten, dan murah diulang.\n- Tes paling sederhana membandingkan hasil aktual dengan harapan dan gagal dengan pesan yang jelas.\n- Tes memberi keberanian mengubah kode, dokumentasi hidup, dan petunjuk tentang desain.\n- Tes tidak membuktikan program bebas bug; ia memberi keyakinan terukur pada hal yang diperiksa.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa program yang berjalan tanpa error belum tentu benar?",
+          "code": "",
+          "options": [
+            "Komputer sering salah menghitung angka besar",
+            "Hasilnya bisa saja salah tanpa menimbulkan error apa pun",
+            "Bug selalu memunculkan error yang pasti terlihat oleh siapa saja",
+            "Program tanpa error pasti sudah punya tes"
+          ],
+          "answer": 1,
+          "explanation": "Bug sering hanya berupa hasil yang salah, sehingga tidak ada pesan error yang menandainya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kapan tes otomatis paling unggul dibanding tes manual?",
+          "code": "",
+          "options": [
+            "Untuk menilai apakah tampilan enak dilihat oleh pengguna",
+            "Untuk hal yang hanya dicoba satu kali",
+            "Untuk pemeriksaan yang berulang dan penting",
+            "Ketika belum ada kode yang bisa dijalankan"
+          ],
+          "answer": 2,
+          "explanation": "Tes otomatis murah diulang dan tidak lupa, jadi cocok untuk hal berulang yang penting."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Seratus tes yang lulus membuktikan program bebas dari bug.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Tes hanya membuktikan kasus yang diperiksa; bug bisa ada di tempat yang tidak dites."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "function jumlah(a, b) {\n  return a + b;\n}\nconsole.log(jumlah(2, 3) === 5);",
+          "options": [
+            "false",
+            "5",
+            "undefined",
+            "true"
+          ],
+          "answer": 3,
+          "explanation": "jumlah(2, 3) menghasilkan 5, jadi perbandingan dengan 5 bernilai true."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Fungsi assertSama",
+          "prompt": "Lengkapi `assertSama(aktual, harapan, nama)` yang mengembalikan objek `{ nama, lulus }`.\n\n- `lulus` bernilai `true` bila `aktual === harapan`, selain itu `false`\n- `nama` diteruskan apa adanya\n\nContoh: `assertSama(2 + 2, 4, \"dua tambah dua\")` menghasilkan `{ nama: \"dua tambah dua\", lulus: true }`.",
+          "starter": {
+            "code": "function assertSama(aktual, harapan, nama) {\n  // TODO: bandingkan aktual dengan harapan\n  return { nama, lulus: false };\n}\n"
+          },
+          "solution": {
+            "code": "function assertSama(aktual, harapan, nama) {\n  return { nama, lulus: aktual === harapan };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Nilai sama menghasilkan lulus true",
+              "check": "assertSama(4, 4, \"x\").lulus === true"
+            },
+            {
+              "name": "Nilai berbeda menghasilkan lulus false",
+              "check": "assertSama(4, 5, \"x\").lulus === false"
+            },
+            {
+              "name": "Nama tes diteruskan",
+              "check": "assertSama(1, 1, \"satu\").nama === \"satu\""
+            },
+            {
+              "name": "Tipe berbeda dianggap berbeda",
+              "check": "assertSama(5, \"5\", \"x\").lulus === false && assertSama(\"a\", \"a\", \"x\").lulus === true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "piramida-tes-dan-jenisnya",
+      "title": "Piramida Tes dan Jenis-Jenisnya",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Membedakan unit test, tes integrasi, dan tes end-to-end.\n- Menjelaskan bentuk piramida tes dan alasan di baliknya.\n- Menilai kapan sebuah kebutuhan cukup diuji dengan unit test dan kapan perlu jenis lain.\n- Mengenali tanda-tanda proporsi tes yang terbalik.\n\n## Tiga jenis tes\n\nTidak semua tes sama. Tes dibedakan menurut seberapa besar bagian sistem yang ikut berjalan. Makin besar bagian yang ikut, makin mirip tes itu dengan pemakaian sungguhan, tetapi makin lambat dan sulit pula menemukan penyebab bila gagal.\n\n**Unit test** memeriksa satu unit kecil, biasanya satu fungsi atau satu modul, terpisah dari dunia luar. Fungsi `hitungDiskon(total)` dites dengan memberinya angka dan memeriksa angka yang keluar. Tidak ada database, tidak ada jaringan, tidak ada browser. Karena itu unit test berjalan dalam hitungan milidetik dan hasilnya hampir selalu sama.\n\n**Tes integrasi** memeriksa beberapa bagian yang bekerja bersama. Contohnya kode penyimpan pesanan yang benar-benar menulis ke database uji, lalu membacanya kembali. Tes ini menangkap masalah sambungan: kolom yang salah nama, format data yang tidak cocok antar modul, atau query yang salah. Ia lebih lambat karena melibatkan sistem nyata, tetapi masih bisa menunjuk area bermasalah.\n\n**Tes end-to-end** (sering disingkat E2E) menjalankan seluruh aplikasi dan meniru pengguna: membuka browser, mengetik email, menekan tombol masuk, memeriksa halaman dasbor. Tes ini paling dekat dengan kenyataan, tetapi paling lambat, paling mahal dirawat, dan paling mudah gagal karena hal sepele seperti tombol yang pindah tempat.\n\n![Tiga jenis tes](slide:5)\n\n## Piramida tes\n\nDari tiga jenis itu lahirlah gambaran yang dikenal sebagai **piramida tes**. Dasarnya lebar: banyak unit test. Tengahnya lebih sempit: tes integrasi secukupnya. Puncaknya sempit: hanya sedikit tes end-to-end untuk alur yang paling penting.\n\nAlasannya ekonomi. Unit test murah ditulis, cepat dijalankan, stabil, dan bila gagal langsung menunjuk fungsi yang bermasalah. Kamu bisa punya ribuan dan menjalankannya setiap kali menyimpan berkas. Tes E2E butuh server menyala, browser, data uji, dan waktu menunggu halaman; seratus tes E2E bisa memakan setengah jam, dan sesekali gagal tanpa alasan jelas. Bila hampir seluruh tes kamu berupa E2E, tim akan berhenti menjalankannya karena terlalu lama, dan tes yang tidak dijalankan sama dengan tidak ada.\n\nProporsi yang terbalik, banyak E2E dan sedikit unit test, sering disebut **cone es krim**. Gejalanya mudah dikenali: tes butuh puluhan menit, sering merah tanpa ada perubahan kode, dan ketika merah tak ada yang tahu bagian mana yang rusak. Obatnya memindahkan pemeriksaan ke tingkat lebih bawah: kalau yang salah hanya logika diskon, cukup unit test, tak perlu membuka browser.\n\nPiramida adalah panduan proporsi, bukan aturan mutlak. Aplikasi yang hampir seluruhnya berupa sambungan antarlayanan, misalnya penghubung data, mungkin butuh lebih banyak tes integrasi. Aplikasi dengan banyak logika murni, seperti kalkulator pajak, hampir semuanya unit test. Yang penting kamu sadar proporsimu dan alasan di baliknya.\n\n## Contoh: satu fitur, tiga tingkat tes\n\nAmbil fitur \"pelanggan memakai kode kupon saat membayar\". Pemeriksaan yang berbeda cocok di tingkat berbeda.\n\nAturan kupon, misalnya HEMAT10 memberi potongan sepuluh persen dan hanya berlaku untuk belanja minimal seratus ribu, adalah logika murni. Cocok untuk unit test:\n\n```js\nfunction hitungPotongan(kupon, total) {\n  if (kupon === \"HEMAT10\" && total >= 100000) return total * 0.1;\n  return 0;\n}\n\nconsole.log(hitungPotongan(\"HEMAT10\", 100000)); // 10000\nconsole.log(hitungPotongan(\"HEMAT10\", 99999)); // 0\nconsole.log(hitungPotongan(\"SALAH\", 200000)); // 0\n```\n\nPenyimpanan pemakaian kupon ke database agar tidak dipakai dua kali adalah urusan sambungan antara kode dan database. Cocok untuk tes integrasi dengan database uji.\n\nAlur lengkap pelanggan memasukkan kupon di halaman bayar, melihat total berubah, lalu menyelesaikan pesanan adalah urusan banyak bagian sekaligus. Cocok untuk satu tes E2E saja, karena detail aturannya sudah dijaga oleh tes yang lebih murah di bawahnya.\n\n## Memilih jenis tes yang tepat\n\nGunakan tiga pertanyaan pemandu. Pertama, apa yang bisa salah? Sebutkan bugnya dengan jelas: aturan hitungan salah, query salah, tombol tidak terhubung. Kedua, tes termurah mana yang akan menangkapnya? Bila bisa ditangkap unit test, jangan pakai tes yang lebih mahal. Ketiga, seberapa parah akibatnya bila bug itu lolos? Alur pembayaran layak dijaga berlapis; teks bantuan di halaman profil tidak.\n\nDengan cara pikir ini kamu tidak mengotomatiskan semua hal membabi buta. Kamu menaruh usaha di tempat yang hasilnya terbesar, dan menyusun tes dari bawah: unit test untuk sebanyak mungkin logika, tes integrasi untuk sambungan penting, E2E hanya untuk beberapa alur yang akibatnya paling mahal bila rusak.\n\n## Tanda proporsi yang tidak sehat\n\nBeberapa gejala menunjukkan piramidamu bermasalah. Seluruh tes butuh lebih dari beberapa menit sehingga developer enggan menjalankannya sebelum menggabungkan kode. Tes sering gagal lalu lolos sendiri ketika diulang. Ketika satu tes merah, kamu harus membaca lusinan baris log untuk menebak penyebabnya. Atau sebaliknya, tidak ada satu pun tes yang memeriksa bahwa halaman dan server benar-benar tersambung, sehingga semua unit test hijau tetapi aplikasi tidak bisa dibuka.\n\nPerbaikannya tidak selalu menulis tes baru. Sering kali justru memindahkan: ubah tes E2E yang memeriksa aturan hitungan menjadi unit test, dan sisakan E2E untuk memeriksa bahwa alurnya tersambung. Hasilnya tes lebih cepat, lebih stabil, dan kegagalan lebih mudah dilacak.\n\n## Biaya tes juga perlu dihitung\n\nSetiap tes yang kamu tulis adalah kode yang harus dirawat. Tes E2E yang rapuh bisa menghabiskan lebih banyak waktu perbaikan daripada bug yang ditangkapnya. Karena itu tanyakan juga: apakah manfaat tes ini sebanding dengan ongkos menjalankan dan merawatnya? Tes murah yang menjaga logika penting hampir selalu sepadan. Tes mahal untuk detail kecil jarang sepadan.\n\n## Rangkuman\n\n- Unit test memeriksa satu fungsi atau modul terpisah dari dunia luar; cepat dan tepat menunjuk lokasi bug.\n- Tes integrasi memeriksa beberapa bagian yang bekerja bersama, misalnya kode dengan database.\n- Tes end-to-end meniru pengguna lewat browser; paling realistis tetapi paling lambat dan rapuh.\n- Piramida tes menganjurkan banyak unit test, secukupnya integrasi, dan sedikit E2E.\n- Proporsi terbalik membuat tes lambat, sering gagal, dan sulit dilacak.\n- Pilih tes termurah yang masih bisa menangkap bug yang kamu khawatirkan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Jenis tes mana yang memeriksa satu fungsi tanpa database dan jaringan?",
+          "code": "",
+          "options": [
+            "Tes end-to-end",
+            "Tes integrasi",
+            "Unit test",
+            "Tes manual"
+          ],
+          "answer": 2,
+          "explanation": "Unit test memeriksa satu unit kecil terpisah dari dunia luar."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa piramida tes memiliki dasar yang lebar?",
+          "code": "",
+          "options": [
+            "Tes end-to-end paling murah untuk ditulis",
+            "Unit test paling sulit ditulis sehingga perlu dibuat paling banyak",
+            "Piramida hanya melambangkan urutan menulis tes",
+            "Unit test murah, cepat, dan stabil sehingga boleh dibuat banyak"
+          ],
+          "answer": 3,
+          "explanation": "Dasar lebar berarti banyak tes yang cepat dan murah, sedangkan tes mahal dibatasi."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Tes end-to-end sebaiknya menjadi jenis tes yang paling banyak.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "E2E lambat dan rapuh, jadi sebaiknya sedikit dan hanya untuk alur kritis."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi hitungPotongan hanya memakai angka dan teks. Jenis tes termurah yang cocok?",
+          "code": "",
+          "options": [
+            "Unit test",
+            "Satu tes end-to-end saja",
+            "Tes manual setiap rilis",
+            "Tes integrasi dengan database nyata"
+          ],
+          "answer": 0,
+          "explanation": "Logika murni cukup dijaga unit test yang cepat dan tepat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Menentukan jenis tes",
+          "prompt": "Lengkapi `jenisTes(ciri)` yang menerima objek `{ bukaBrowser, pakaiDatabase }` (keduanya boolean) lalu mengembalikan jenis tes:\n\n- `\"e2e\"` bila `bukaBrowser` bernilai `true` (berapa pun nilai lainnya)\n- `\"integrasi\"` bila tanpa browser tetapi `pakaiDatabase` bernilai `true`\n- `\"unit\"` bila keduanya `false`",
+          "starter": {
+            "code": "function jenisTes(ciri) {\n  // TODO: e2e, integrasi, atau unit\n  return \"unit\";\n}\n"
+          },
+          "solution": {
+            "code": "function jenisTes(ciri) {\n  if (ciri.bukaBrowser) return \"e2e\";\n  if (ciri.pakaiDatabase) return \"integrasi\";\n  return \"unit\";\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Browser berarti e2e",
+              "check": "jenisTes({ bukaBrowser: true, pakaiDatabase: false }) === \"e2e\""
+            },
+            {
+              "name": "Database tanpa browser berarti integrasi",
+              "check": "jenisTes({ bukaBrowser: false, pakaiDatabase: true }) === \"integrasi\""
+            },
+            {
+              "name": "Tanpa keduanya berarti unit",
+              "check": "jenisTes({ bukaBrowser: false, pakaiDatabase: false }) === \"unit\""
+            },
+            {
+              "name": "Browser dan database berarti e2e",
+              "check": "jenisTes({ bukaBrowser: true, pakaiDatabase: true }) === \"e2e\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "unit-test-pertama",
+      "title": "Unit Test Pertama",
+      "est_minutes": 30,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menulis unit test dengan nama yang menjelaskan perilaku.\n- Membuat fungsi `assert` sederhana yang memberi pesan gagal yang jelas.\n- Membuat runner tes kecil yang menjalankan banyak tes dan melaporkan hasilnya.\n- Menjelaskan mengapa satu tes yang gagal tidak boleh menghentikan tes lain.\n\n## Anatomi sebuah unit test\n\nUnit test punya bentuk yang hampir sama di bahasa dan framework apa pun. Ia punya **nama**, **isi** yang memanggil kode yang dites, dan **pemeriksaan** terhadap hasilnya. Di Vitest atau Jest bentuknya seperti ini:\n\n```js\ntest(\"diskon 10 persen untuk belanja seratus ribu\", () => {\n  const hasil = hitungDiskon(100000);\n  expect(hasil).toBe(10000);\n});\n```\n\nLingkungan latihan di kelas ini tidak punya framework, sehingga kita membuat versi sederhana sendiri. Itu menguntungkan: kamu akan memahami isi di balik alat yang biasa dipakai, bukan hanya cara memakainya. Di dunia nyata, kamu hampir selalu memakai Vitest atau Jest karena mereka menyediakan laporan lengkap, perbandingan pintar, dan integrasi dengan editor, tetapi prinsipnya sama persis.\n\n![Anatomi unit test](slide:8)\n\n## Nama tes yang baik\n\nNama adalah bagian paling penting dari sebuah tes, karena nama itulah yang muncul saat tes gagal. Nama yang buruk: `test1`, `hitungDiskon`, atau `berfungsi`. Saat tes bernama `test1` gagal, kamu harus membuka kodenya untuk tahu apa yang dijaga. Nama yang baik menyebut kondisi dan hasil yang diharapkan: \"tidak ada diskon di bawah seratus ribu\", \"keranjang kosong menghasilkan total nol\", \"email tanpa tanda at ditolak\".\n\nAturan sederhana: nama harus terbaca seperti kalimat spesifikasi. Bila seluruh nama tes di sebuah berkas dibaca berurutan, hasilnya adalah daftar perilaku modul itu. Itulah yang dimaksud dokumentasi hidup.\n\nAturan berikutnya: **satu tes memeriksa satu perilaku**. Tes yang memeriksa lima hal sekaligus sulit dibaca, dan ketika gagal kamu tidak tahu mana dari lima hal itu yang rusak. Bukan berarti satu tes hanya boleh satu baris pemeriksaan; yang dibatasi adalah satu alasan untuk gagal.\n\n## Membuat fungsi assert\n\nInti unit test adalah perbandingan antara hasil aktual dan hasil harapan. Fungsi `assertSama` berikut melempar error bila keduanya berbeda, dengan pesan yang menyebut kedua nilai:\n\n```js\nfunction assertSama(aktual, harapan) {\n  if (aktual !== harapan) {\n    throw new Error(\"Harapan \" + harapan + \", aktual \" + aktual);\n  }\n}\n\nassertSama(1 + 1, 2); // lolos, tidak terjadi apa-apa\nassertSama(1 + 1, 3); // melempar: Harapan 3, aktual 2\n```\n\nTanda `!==` membandingkan nilai dan tipe untuk angka, string, dan boolean. Untuk array atau objek, `!==` membandingkan identitas, bukan isi, sehingga `[1] !== [1]` bernilai true. Untuk membandingkan isi, sering dipakai `JSON.stringify` pada kedua sisi, atau fungsi pembanding yang menelusuri isi. Framework besar menyediakan `toEqual` untuk itu.\n\nPesan yang jelas sangat menentukan. Bandingkan dua pesan gagal ini: \"Assertion failed\" dan \"Harapan 10000, aktual 100000\". Pesan kedua langsung memberi tahu bahwa hasilnya sepuluh kali lipat dari harapan, sehingga kamu mencurigai kesalahan desimal sebelum membuka kode.\n\n## Runner tes sederhana\n\nSatu tes saja jarang cukup. Kita butuh cara menjalankan banyak tes dan melihat ringkasannya. Itulah tugas **runner**. Runner paling sederhana menerima daftar tes, menjalankannya satu per satu, dan mengumpulkan tes yang gagal:\n\n```js\nfunction jalankan(daftar) {\n  const gagal = [];\n  for (const t of daftar) {\n    try {\n      t.fn();\n    } catch (e) {\n      gagal.push(t.nama + \": \" + e.message);\n    }\n  }\n  return { lulus: daftar.length - gagal.length, gagal };\n}\n\nconst hasil = jalankan([\n  { nama: \"satu tambah satu\", fn: () => assertSama(1 + 1, 2) },\n  { nama: \"dua kali tiga\", fn: () => assertSama(2 * 3, 7) },\n]);\nconsole.log(hasil);\n// { lulus: 1, gagal: [ 'dua kali tiga: Harapan 7, aktual 6' ] }\n```\n\nPerhatikan `try` dan `catch` di dalam perulangan. Tanpa itu, tes pertama yang melempar error akan menghentikan seluruh program, dan kamu tidak pernah tahu hasil tes sisanya. Runner yang baik mengisolasi setiap tes: gagal di satu tempat tidak boleh menyembunyikan hasil tes lain. Kamu ingin melihat semua yang rusak sekaligus, bukan memperbaiki satu, menjalankan ulang, lalu menemukan yang berikutnya.\n\n## Tes harus mandiri dan berulang\n\nDua sifat membuat unit test tepercaya. Pertama, **mandiri**: tes tidak boleh bergantung pada tes lain atau pada urutan menjalankan. Bila tes B hanya lolos karena tes A sebelumnya menyiapkan data, maka mengurutkan ulang atau menjalankan B sendirian akan merusaknya. Setiap tes menyiapkan sendiri semua yang ia butuhkan.\n\nKedua, **berulang**: dijalankan seribu kali, hasilnya sama. Tes yang bergantung pada jam, angka acak, atau data bersama yang berubah akan kadang lolos kadang gagal, dan tes seperti itu cepat kehilangan kepercayaan tim. Di bab test double kamu akan belajar menjinakkan jam dan angka acak.\n\nTerakhir, jaga agar tes **cepat**. Unit test yang butuh satu detik per tes membuat orang enggan menjalankannya. Unit test yang sehat selesai dalam hitungan milidetik, sehingga seluruh ribuan tes bisa berjalan setiap kali kamu menyimpan berkas.\n\n## Dari assert ke laporan\n\nRunner sederhana tadi hanya mengembalikan daftar kegagalan. Di alat sungguhan, laporannya jauh lebih kaya: nama tes yang lulus ditandai hijau, yang gagal merah beserta baris kodenya, dan ada ringkasan waktu. Namun isinya tetap tiga hal yang sama dengan runner kita: jalankan tiap tes, tangkap error, kumpulkan hasil. Memahami versi kecil ini membuat pesan error dari framework apa pun tidak lagi terasa seperti sihir.\n\n## Rangkuman\n\n- Unit test punya nama, isi yang memanggil kode, dan pemeriksaan hasil.\n- Nama tes harus terbaca seperti kalimat spesifikasi dan menyebut kondisi serta hasil yang diharapkan.\n- Satu tes memeriksa satu perilaku agar penyebab gagal jelas.\n- Fungsi assert membandingkan aktual dengan harapan dan gagal dengan pesan yang menyebut kedua nilai.\n- Runner menjalankan banyak tes dan memakai try dan catch agar satu kegagalan tidak menghentikan yang lain.\n- Tes yang baik mandiri, berulang, dan cepat.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa nama tes sebaiknya menyebut kondisi dan hasil yang diharapkan?",
+          "code": "",
+          "options": [
+            "Supaya nama tes selalu lebih pendek daripada kode yang dites dan mudah diketik",
+            "Karena framework mewajibkan nama yang panjang",
+            "Agar tes berjalan lebih cepat",
+            "Nama itulah yang muncul saat tes gagal dan menjelaskan perilaku yang dijaga"
+          ],
+          "answer": 3,
+          "explanation": "Saat tes gagal, nama adalah petunjuk pertama tentang apa yang rusak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa runner memakai try dan catch di dalam perulangan?",
+          "code": "",
+          "options": [
+            "Agar satu tes yang gagal tidak menghentikan tes lain",
+            "Agar seluruh tes berjalan lebih cepat",
+            "Agar error disembunyikan dari laporan",
+            "Karena perulangan for tidak bisa dipakai tanpa blok try di dalamnya"
+          ],
+          "answer": 0,
+          "explanation": "Isolasi per tes membuat semua kegagalan terlihat sekaligus."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Tes yang baru lolos setelah tes lain berjalan lebih dulu tetap tergolong mandiri.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Tes yang bergantung pada urutan tidak mandiri dan rusak bila diurutkan ulang."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "function assertSama(aktual, harapan) {\n  return aktual === harapan;\n}\nconsole.log(assertSama([1], [1]));",
+          "options": [
+            "true",
+            "false",
+            "1",
+            "undefined"
+          ],
+          "answer": 1,
+          "explanation": "=== pada array membandingkan identitas, dan dua array literal adalah objek berbeda."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Runner tes sederhana",
+          "prompt": "Lengkapi `jalankan(daftar)`. `daftar` adalah array `{ nama, fn }`. Panggil `fn` tiap tes; bila melempar error, tes itu gagal.\n\nKembalikan `{ lulus, gagal }`: `lulus` adalah jumlah tes yang tidak melempar, `gagal` adalah array **nama** tes yang melempar (urutan sesuai daftar). Satu tes yang gagal tidak boleh menghentikan tes lain.",
+          "starter": {
+            "code": "function jalankan(daftar) {\n  const gagal = [];\n  // TODO: jalankan setiap tes, tangkap error dengan try/catch\n  return { lulus: 0, gagal };\n}\n"
+          },
+          "solution": {
+            "code": "function jalankan(daftar) {\n  const gagal = [];\n  for (const t of daftar) {\n    try {\n      t.fn();\n    } catch (e) {\n      gagal.push(t.nama);\n    }\n  }\n  return { lulus: daftar.length - gagal.length, gagal };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Satu lulus dan satu gagal",
+              "check": "JSON.stringify(jalankan([{ nama: \"a\", fn: () => {} }, { nama: \"b\", fn: () => { throw new Error(\"x\"); } }])) === '{\"lulus\":1,\"gagal\":[\"b\"]}'"
+            },
+            {
+              "name": "Tes setelah yang gagal tetap dijalankan",
+              "check": "jalankan([{ nama: \"a\", fn: () => { throw new Error(\"x\"); } }, { nama: \"b\", fn: () => {} }, { nama: \"c\", fn: () => {} }]).lulus === 2"
+            },
+            {
+              "name": "Daftar kosong",
+              "check": "JSON.stringify(jalankan([])) === '{\"lulus\":0,\"gagal\":[]}'"
+            },
+            {
+              "name": "Semua gagal tercatat berurutan",
+              "check": "jalankan([{ nama: \"p\", fn: () => { throw 1; } }, { nama: \"q\", fn: () => { throw 2; } }]).gagal.join(\",\") === \"p,q\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Pesan assert yang jelas",
+          "prompt": "Tulis `assertSama(aktual, harapan)`:\n\n- bila `aktual === harapan`, tidak melakukan apa-apa\n- bila berbeda, melempar `Error` dengan pesan persis `Harapan <harapan>, aktual <aktual>`\n\nContoh: `assertSama(2, 3)` melempar pesan `Harapan 3, aktual 2`.",
+          "starter": {
+            "code": "function assertSama(aktual, harapan) {\n  // TODO: lempar Error bila berbeda\n}\n"
+          },
+          "solution": {
+            "code": "function assertSama(aktual, harapan) {\n  if (aktual !== harapan) {\n    throw new Error(\"Harapan \" + harapan + \", aktual \" + aktual);\n  }\n}\n"
+          },
+          "setup": "function tangkap(fn) {\n  try {\n    fn();\n    return null;\n  } catch (e) {\n    return e.message;\n  }\n}\n",
+          "tests": [
+            {
+              "name": "Nilai sama tidak melempar",
+              "check": "tangkap(() => assertSama(1, 1)) === null"
+            },
+            {
+              "name": "Pesan menyebut harapan dan aktual",
+              "check": "tangkap(() => assertSama(2, 3)) === \"Harapan 3, aktual 2\""
+            },
+            {
+              "name": "Berlaku juga untuk teks",
+              "check": "tangkap(() => assertSama(\"a\", \"b\")) === \"Harapan b, aktual a\""
+            },
+            {
+              "name": "Tipe berbeda dianggap berbeda",
+              "check": "tangkap(() => assertSama(1, \"1\")) === \"Harapan 1, aktual 1\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "arrange-act-assert-dan-kasus-batas",
+      "title": "Arrange, Act, Assert dan Kasus Batas",
+      "est_minutes": 30,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Menyusun tes dengan pola Arrange, Act, Assert.\n- Memilih kasus batas yang paling sering menyimpan bug.\n- Menguji bahwa sebuah fungsi melempar error pada input yang salah.\n- Menilai apakah sebuah tes benar-benar mampu menangkap bug.\n\n## Pola Arrange, Act, Assert\n\nTes yang rapi hampir selalu memiliki tiga blok berurutan. **Arrange** menyiapkan data dan kondisi awal. **Act** memanggil satu hal yang dites. **Assert** memeriksa hasilnya. Memisahkan ketiganya, bahkan dengan baris kosong atau komentar, membuat tes mudah dibaca sekilas: apa yang disiapkan, apa yang dilakukan, apa yang diharapkan.\n\n```js\ntest(\"menambah item menaikkan jumlah item\", () => {\n  // Arrange\n  const keranjang = buatKeranjang();\n  // Act\n  keranjang.tambah(\"pensil\", 2000);\n  // Assert\n  assertSama(keranjang.jumlahItem(), 1);\n});\n```\n\nAturan emas pola ini: blok Act sebaiknya hanya satu panggilan. Bila di tengah tes ada beberapa panggilan berselang-seling dengan pemeriksaan, hampir pasti tes itu memeriksa terlalu banyak hal dan perlu dipecah. Blok Arrange boleh panjang, karena menyiapkan keadaan memang bisa rumit, tetapi bila ia terlalu panjang di banyak tes, bungkus dalam fungsi pembantu bernama jelas seperti `keranjangDenganDuaItem()`.\n\n![Arrange, Act, Assert](slide:11)\n\n## Kasus batas\n\nBug paling sering muncul di perbatasan, bukan di tengah. Fungsi dengan aturan \"umur 17 tahun ke atas boleh masuk\" hampir pasti benar untuk umur 30, tetapi sering salah tepat di angka 17, karena programmer menulis `>` padahal maksudnya `>=`. Karena itu uji nilai **tepat di batas**, **satu di bawah**, dan **satu di atas**:\n\n```js\nfunction bolehMasuk(umur) {\n  return umur >= 17;\n}\n\nassertSama(bolehMasuk(16), false); // satu di bawah batas\nassertSama(bolehMasuk(17), true); // tepat di batas\nassertSama(bolehMasuk(18), true); // satu di atas batas\n```\n\nTiga tes ini menangkap bug `>` yang menyelinap: dengan `umur > 17`, tes kedua gagal karena 17 ditolak. Satu tes di nilai tengah seperti 30 tidak akan pernah menangkapnya.\n\nSelain batas aturan, ada kelompok nilai yang secara umum rawan: **kosong** (array kosong, string kosong), **nol**, **negatif**, **sangat besar**, dan **tipe yang tak terduga** seperti `null` atau `undefined`. Fungsi rata-rata yang membagi jumlah dengan panjang array akan menghasilkan `NaN` untuk array kosong, dan pertanyaan penting adalah: apa yang seharusnya terjadi? Mengembalikan 0, melempar error, atau mengembalikan `null` semuanya mungkin benar, asalkan diputuskan dan dites.\n\nCara mudah memilih kasus uji adalah membagi input menjadi kelompok yang diperlakukan sama oleh kode, lalu menguji satu wakil dari tiap kelompok plus nilai di perbatasan antarkelompok. Dengan begitu jumlah tes tetap kecil namun menjangkau semua jalur logika.\n\n## Menguji error\n\nPerilaku saat input salah adalah bagian dari kontrak fungsi sama seperti perilaku saat input benar. Fungsi `akarKuadrat(-4)` seharusnya melakukan sesuatu yang terdefinisi, misalnya melempar error dengan pesan jelas. Tes harus memastikan hal itu terjadi, dan harus **gagal bila error tidak dilempar**.\n\nBagian terakhir itu mudah terlupa. Perhatikan tes yang salah ini:\n\n```js\ntry {\n  akarKuadrat(-4);\n} catch (e) {\n  assertSama(e.message, \"Angka tidak boleh negatif\");\n}\n```\n\nBila `akarKuadrat(-4)` tidak melempar apa-apa, blok `catch` tidak pernah berjalan dan tes lolos diam-diam. Tes ini tidak bisa gagal untuk alasan yang paling penting. Versi yang benar menambahkan kegagalan setelah pemanggilan:\n\n```js\nfunction harusMelempar(fn, pesan) {\n  try {\n    fn();\n  } catch (e) {\n    assertSama(e.message, pesan);\n    return;\n  }\n  throw new Error(\"Harusnya melempar error, tetapi tidak\");\n}\n\nharusMelempar(() => akarKuadrat(-4), \"Angka tidak boleh negatif\");\n```\n\nFungsi pembantu `harusMelempar` memastikan dua hal: error memang dilempar, dan pesannya sesuai. Periksa pesan atau jenis error, bukan hanya adanya error, karena kode bisa melempar error yang salah, misalnya error karena bug lain, dan tes yang hanya memeriksa \"ada error\" akan tetap lolos.\n\n## Apakah tesmu benar-benar menangkap bug?\n\nTes yang lolos tidak otomatis tes yang baik. Cara menguji tesmu sendiri adalah sengaja menyisipkan bug kecil ke kode, misalnya mengganti `>=` dengan `>`, lalu melihat apakah ada tes yang gagal. Bila semua tes tetap hijau, berarti ada celah: tesmu tidak memeriksa perilaku itu. Teknik ini dikenal sebagai **mutation testing**, dan ada alat yang melakukannya otomatis. Kamu bisa meniru versi manualnya kapan saja.\n\nLatihan di bab ini memakai gagasan itu: kamu menulis tes untuk fungsi, dan tesmu harus lolos pada versi yang benar tetapi gagal pada versi yang sengaja dibuat bug. Tes yang meloloskan versi bug adalah tes yang terlalu longgar.\n\n## Menjaga tes tetap jujur\n\nDua kebiasaan buruk merusak nilai tes. Pertama, mengubah harapan di tes supaya hijau tanpa memahami mengapa hasilnya berubah. Bila tes gagal, tanyakan dulu: apakah kodenya yang salah atau harapannya yang usang? Kedua, menulis tes yang memeriksa hasil dengan cara yang sama persis seperti kodenya menghitung. Tes yang menyalin rumus dari implementasi akan ikut salah bila rumusnya salah. Tulis harapan sebagai nilai konkret yang kamu hitung sendiri di luar kode, misalnya \"100.000 dikali 10 persen adalah 10.000\".\n\n## Satu bug, satu tes\n\nKebiasaan yang sangat berguna: setiap kali kamu memperbaiki bug, tulis dulu tes yang gagal karena bug itu, baru perbaiki kodenya sampai tes lolos. Tes itu kemudian menjaga bug yang sama agar tidak muncul lagi. Setelah beberapa bulan, kumpulan tes seperti ini menjadi catatan sejarah kesalahan proyekmu, dan hampir tidak ada bug lama yang bisa kembali tanpa ketahuan.\n\n## Rangkuman\n\n- Pola Arrange, Act, Assert memisahkan menyiapkan, melakukan, dan memeriksa agar tes mudah dibaca.\n- Bug banyak bersembunyi di batas, jadi uji nilai tepat di batas, satu di bawah, dan satu di atas.\n- Uji juga nilai rawan: kosong, nol, negatif, sangat besar, dan tipe tak terduga.\n- Tes error harus gagal bila error tidak dilempar dan sebaiknya memeriksa pesan atau jenis error.\n- Uji tesmu dengan menyisipkan bug kecil dan memastikan ada tes yang gagal.\n- Tulis harapan sebagai nilai konkret, bukan salinan rumus implementasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada pola Arrange, Act, Assert, apa tugas blok Act?",
+          "code": "",
+          "options": [
+            "Memanggil satu hal yang dites",
+            "Menyiapkan data awal",
+            "Membandingkan hasil dengan harapan",
+            "Menghapus data setelah tes selesai"
+          ],
+          "answer": 0,
+          "explanation": "Act adalah langkah menjalankan hal yang dites, idealnya satu panggilan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aturan: umur 17 tahun ke atas boleh masuk. Kumpulan nilai uji yang terbaik?",
+          "code": "",
+          "options": [
+            "1, 30, dan 100",
+            "16, 17, dan 18",
+            "17, 17, dan 17",
+            "30, 31, dan 32"
+          ],
+          "answer": 1,
+          "explanation": "Nilai di sekitar batas menangkap kesalahan > versus >=."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Tes error yang hanya memakai try dan catch akan tetap lolos bila fungsi tidak melempar error.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Blok catch tidak pernah berjalan, jadi tidak ada yang gagal; perlu throw setelah pemanggilan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa tujuan menyisipkan bug kecil ke kode untuk menguji tesmu sendiri?",
+          "code": "",
+          "options": [
+            "Memperbaiki bug asli di kode produksi",
+            "Membuat coverage mencapai seratus persen pada seluruh berkas kode proyek",
+            "Memastikan ada tes yang gagal sehingga terbukti tesmu mendeteksi bug",
+            "Menambah jumlah baris kode"
+          ],
+          "answer": 2,
+          "explanation": "Bila semua tes tetap hijau meski ada bug, tesmu punya celah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Tes yang menangkap bug batas",
+          "prompt": "Aturan: umur 17 tahun ke atas boleh masuk. `bolehBenar` benar, sedangkan `bolehBug1`, `bolehBug2`, dan `bolehBug3` sengaja salah di batas.\n\nTulis `tesBoleh(impl)` yang mengembalikan `true` bila `impl` lolos semua pemeriksaanmu dan `false` bila ada yang gagal. Tesmu harus meloloskan versi benar tetapi menolak ketiga versi bug. Uji nilai tepat di batas, satu di bawah, dan satu di atas.",
+          "starter": {
+            "code": "function tesBoleh(impl) {\n  // TODO: periksa batas 16, 17, dan 18\n  return impl(30) === true;\n}\n"
+          },
+          "solution": {
+            "code": "function tesBoleh(impl) {\n  return impl(16) === false && impl(17) === true && impl(18) === true;\n}\n"
+          },
+          "setup": "const bolehBenar = (umur) => umur >= 17;\nconst bolehBug1 = (umur) => umur > 17;\nconst bolehBug2 = (umur) => umur >= 18;\nconst bolehBug3 = (umur) => umur >= 16;\n",
+          "tests": [
+            {
+              "name": "Versi benar lolos",
+              "check": "tesBoleh(bolehBenar) === true"
+            },
+            {
+              "name": "Menolak bug di batas 17 (memakai >)",
+              "check": "tesBoleh(bolehBug1) === false"
+            },
+            {
+              "name": "Menolak bug batas terlalu tinggi (18)",
+              "check": "tesBoleh(bolehBug2) === false"
+            },
+            {
+              "name": "Menolak bug batas terlalu rendah (16)",
+              "check": "tesBoleh(bolehBug3) === false"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Menguji error",
+          "prompt": "Lengkapi `harusMelempar(fn, pesan)` yang memanggil `fn` lalu mengembalikan:\n\n- `true` bila `fn` melempar error dengan `message` sama dengan `pesan`\n- `false` bila `fn` melempar error dengan pesan lain\n- `false` bila `fn` **tidak** melempar apa pun\n\nFungsi `akar(n)` di setup melempar `Negatif` untuk angka di bawah nol.",
+          "starter": {
+            "code": "function harusMelempar(fn, pesan) {\n  // TODO: tangkap error dan periksa pesannya\n  return true;\n}\n"
+          },
+          "solution": {
+            "code": "function harusMelempar(fn, pesan) {\n  try {\n    fn();\n  } catch (e) {\n    return e.message === pesan;\n  }\n  return false;\n}\n"
+          },
+          "setup": "function akar(n) {\n  if (n < 0) throw new Error(\"Negatif\");\n  return Math.sqrt(n);\n}\n",
+          "tests": [
+            {
+              "name": "Error dengan pesan sesuai",
+              "check": "harusMelempar(() => akar(-1), \"Negatif\") === true"
+            },
+            {
+              "name": "Tidak melempar dianggap gagal",
+              "check": "harusMelempar(() => akar(4), \"Negatif\") === false"
+            },
+            {
+              "name": "Pesan berbeda dianggap gagal",
+              "check": "harusMelempar(() => akar(-1), \"Lain\") === false"
+            },
+            {
+              "name": "Error dari kode lain dengan pesan berbeda",
+              "check": "harusMelempar(() => { throw new Error(\"Rusak\"); }, \"Negatif\") === false"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "test-double-stub-dan-mock",
+      "title": "Test Double: Stub, Fake, dan Spy",
+      "est_minutes": 30,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa kode yang bergantung pada dunia luar sulit dites.\n- Membedakan stub, fake, spy, dan mock.\n- Memakai injeksi dependensi lewat parameter agar kode mudah dites.\n- Menguji efek samping, seperti pengiriman email, tanpa mengirim apa pun.\n\n## Masalah: kode yang bergantung pada dunia luar\n\nFungsi yang murni mudah dites: beri input, periksa output. Tetapi banyak kode nyata bergantung pada hal di luar dirinya. Fungsi yang mengonversi dolar ke rupiah memanggil API kurs lewat internet. Fungsi pendaftaran mengirim email sambutan. Fungsi laporan memakai jam sekarang. Fungsi undian memakai angka acak.\n\nMenguji kode seperti itu apa adanya bermasalah. Tes jadi lambat karena menunggu jaringan. Tes jadi tidak stabil karena kurs berubah setiap menit dan jaringan kadang putus. Tes jadi berbahaya, karena setiap kali dijalankan ia mengirim email sungguhan ke pelanggan. Dan beberapa kasus mustahil dipancing: bagaimana kamu menguji perilaku saat server kurs error kalau server itu hampir selalu sehat?\n\nSolusinya adalah **test double**, pengganti palsu yang bisa kamu kendalikan sepenuhnya. Namanya meminjam istilah film, stunt double: pemeran pengganti untuk adegan berbahaya. Dengan test double, kode yang dites tetap berjalan seperti biasa, tetapi dunia luarnya diganti tiruan yang cepat, deterministik, dan aman.\n\n![Mengapa perlu test double](slide:14)\n\n## Injeksi dependensi lewat parameter\n\nAgar bisa diganti, dependensi tidak boleh ditulis permanen di dalam fungsi. Bandingkan dua versi ini:\n\n```js\n// Sulit dites: kurs diambil langsung dari internet\nasync function totalRupiah(usd) {\n  const kurs = await ambilKursDariInternet();\n  return usd * kurs;\n}\n\n// Mudah dites: kurs datang dari luar lewat parameter\nfunction totalRupiah(usd, ambilKurs) {\n  return usd * ambilKurs();\n}\n```\n\nVersi kedua menerima fungsi `ambilKurs` sebagai parameter. Di produksi kamu mengirim fungsi yang benar-benar memanggil internet. Di tes kamu mengirim fungsi tiruan yang selalu mengembalikan 16000. Teknik ini disebut **injeksi dependensi**, dan namanya terdengar rumit padahal hanya berarti \"terima apa yang kamu butuhkan sebagai parameter\". Tidak perlu framework apa pun.\n\nIni juga alasan mengapa sulit menulis tes sering menjadi sinyal desain: kode yang menyembunyikan dependensinya di dalam fungsi hampir selalu bisa dirapikan dengan memindahkan dependensi itu ke parameter.\n\n## Stub dan fake\n\n**Stub** adalah test double paling sederhana: sebuah fungsi atau objek yang mengembalikan jawaban tetap yang kamu tentukan. Kamu memakainya untuk mengendalikan apa yang diterima kode yang dites.\n\n```js\nconst kursTetap = () => 16000;\nassertSama(totalRupiah(2, kursTetap), 32000);\n\nconst kursError = () => {\n  throw new Error(\"server kurs mati\");\n};\nharusMelempar(() => totalRupiah(2, kursError), \"server kurs mati\");\n```\n\nStub kedua memancing kasus yang sulit dihasilkan secara nyata: server kurs gagal. Dengan stub, kamu bisa menguji kasus gagal sesering kasus berhasil.\n\n**Fake** adalah tiruan yang benar-benar bekerja, hanya dengan cara lebih sederhana. Contoh klasik adalah database di memori: objek dengan metode `simpan` dan `cari` yang menyimpan data di sebuah array alih-alih server database sungguhan. Fake berguna ketika kode yang dites memakai dependensi berkali-kali dan perilakunya perlu konsisten, misalnya menyimpan lalu membaca kembali.\n\n```js\nfunction buatDbPalsu() {\n  const data = [];\n  return {\n    simpan: (u) => data.push(u),\n    cari: (email) => data.find((u) => u.email === email),\n  };\n}\n```\n\n## Spy dan mock\n\nKadang yang ingin kamu periksa bukan nilai kembalian, melainkan **apa yang terjadi di sepanjang jalan**: apakah email dikirim, berapa kali, ke siapa. Untuk itu dipakai **spy**, test double yang mencatat setiap panggilan terhadapnya.\n\n```js\nfunction buatSpy() {\n  const f = (...argumen) => {\n    f.panggilan.push(argumen);\n  };\n  f.panggilan = [];\n  return f;\n}\n\nconst kirimEmail = buatSpy();\ndaftarkan(\"ani@mail.id\", kirimEmail);\n\nassertSama(kirimEmail.panggilan.length, 1);\nassertSama(kirimEmail.panggilan[0][0], \"ani@mail.id\");\n```\n\n**Mock** adalah spy yang membawa harapan sendiri, misalnya \"harus dipanggil tepat satu kali dengan argumen ini\" dan melaporkan sendiri bila harapan itu tak terpenuhi. Dalam praktik, istilah spy dan mock sering dipakai bergantian, dan framework seperti Vitest menyediakan `vi.fn()` yang berfungsi sebagai keduanya. Yang penting kamu paham gagasannya: fungsi pengganti yang bisa diperiksa riwayat panggilannya.\n\n## Hati-hati dengan terlalu banyak mock\n\nMock sangat berguna, tetapi berlebihan membuat tes rapuh. Tes yang memeriksa bahwa fungsi A memanggil fungsi B tepat dua kali dengan urutan tertentu terikat pada **cara** kode bekerja, bukan **apa** yang dihasilkannya. Ketika kamu merapikan kode tanpa mengubah perilaku, tes seperti itu gagal padahal tidak ada yang rusak.\n\nPedoman sehat: sebisa mungkin periksa hasil yang bisa diamati dari luar, yaitu nilai kembalian atau keadaan akhir. Pakai spy atau mock hanya untuk efek samping yang memang bagian dari kontrak, seperti \"email sambutan dikirim sekali\". Dan jangan meniru hal yang tidak kamu miliki secara membabi buta: bila kamu meniru API pihak ketiga, pastikan sesekali ada tes integrasi yang memeriksa tiruanmu masih sesuai dengan kenyataan.\n\n## Contoh: mengendalikan waktu dan angka acak\n\nDua dependensi yang sering terlupa adalah jam dan angka acak. Fungsi yang berbunyi \"tampilkan salam sesuai jam sekarang\" memanggil jam sistem, sehingga hasilnya berbeda tiap waktu dan tesnya akan lolos di pagi hari lalu gagal di malam hari. Solusinya sama dengan kurs: terima jam sebagai parameter.\n\n```js\nfunction salam(ambilJam) {\n  const jam = ambilJam();\n  if (jam < 11) return \"Selamat pagi\";\n  if (jam < 15) return \"Selamat siang\";\n  return \"Selamat sore\";\n}\n\nassertSama(salam(() => 9), \"Selamat pagi\");\nassertSama(salam(() => 14), \"Selamat siang\");\n```\n\nDengan jam palsu, kamu bisa menguji pukul sembilan pagi kapan pun tes dijalankan, bahkan tengah malam. Pola yang sama berlaku untuk angka acak: terima fungsi pembangkit angka sebagai parameter, lalu di tes berikan fungsi yang mengembalikan nilai tetap.\n\n## Rangkuman\n\n- Kode yang bergantung pada jaringan, database, jam, atau angka acak sulit dites apa adanya.\n- Test double adalah pengganti palsu yang cepat, stabil, dan bisa dikendalikan.\n- Injeksi dependensi lewat parameter membuat dependensi mudah diganti saat tes.\n- Stub mengembalikan jawaban tetap, fake adalah tiruan yang bekerja sederhana, spy mencatat panggilan, mock membawa harapan.\n- Gunakan spy atau mock untuk efek samping, bukan untuk memeriksa detail cara kerja internal.\n- Terlalu banyak mock membuat tes rapuh karena terikat pada implementasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi utama test double?",
+          "code": "",
+          "options": [
+            "Mempercepat penulisan implementasi asli yang sedang dikembangkan tim",
+            "Menggantikan dependensi nyata dengan tiruan yang bisa dikendalikan",
+            "Menghapus kebutuhan akan unit test",
+            "Menampilkan hasil tes dengan warna"
+          ],
+          "answer": 1,
+          "explanation": "Test double membuat tes cepat, stabil, dan mampu memancing kasus sulit."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Stub paling tepat digambarkan sebagai",
+          "code": "",
+          "options": [
+            "Pengganti yang mencatat setiap panggilan",
+            "Database lengkap di dalam memori",
+            "Pengganti yang mengembalikan jawaban tetap",
+            "Tes yang menjalankan seluruh aplikasi"
+          ],
+          "answer": 2,
+          "explanation": "Stub hanya memberi jawaban yang kamu tentukan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Memberi dependensi lewat parameter mempermudah penggantiannya saat tes.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Injeksi dependensi lewat parameter adalah cara paling sederhana mengganti dependensi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "function buatSpy() {\n  const f = (...arg) => f.panggilan.push(arg);\n  f.panggilan = [];\n  return f;\n}\nconst s = buatSpy();\ns(\"a\");\ns(\"b\", \"c\");\nconsole.log(s.panggilan.length);",
+          "options": [
+            "1",
+            "3",
+            "0",
+            "2"
+          ],
+          "answer": 3,
+          "explanation": "Spy dipanggil dua kali, jadi ada dua catatan panggilan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Stub kurs",
+          "prompt": "Lengkapi `totalRupiah(usd, ambilKurs)`. `ambilKurs` adalah fungsi tanpa argumen yang mengembalikan kurs. Hasilnya `usd * ambilKurs()`. Panggil `ambilKurs` tepat satu kali.",
+          "starter": {
+            "code": "function totalRupiah(usd, ambilKurs) {\n  // TODO: kalikan usd dengan kurs dari ambilKurs()\n  return 0;\n}\n"
+          },
+          "solution": {
+            "code": "function totalRupiah(usd, ambilKurs) {\n  return usd * ambilKurs();\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Memakai kurs dari stub",
+              "check": "totalRupiah(2, () => 16000) === 32000"
+            },
+            {
+              "name": "Kurs berbeda menghasilkan total berbeda",
+              "check": "totalRupiah(3, () => 15000) === 45000"
+            },
+            {
+              "name": "Nol dolar menghasilkan nol",
+              "check": "totalRupiah(0, () => 16000) === 0"
+            },
+            {
+              "name": "ambilKurs dipanggil tepat satu kali",
+              "check": "(() => { let n = 0; totalRupiah(1, () => { n++; return 1; }); return n === 1; })()"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Membuat spy",
+          "prompt": "Tulis `buatSpy()` yang mengembalikan sebuah fungsi. Setiap kali fungsi itu dipanggil, ia mencatat array argumennya ke properti `panggilan` miliknya sendiri (array), misalnya `s(1, 2)` menambah `[1, 2]`.\n\nTiap spy punya riwayat sendiri dan `panggilan` dimulai kosong.",
+          "starter": {
+            "code": "function buatSpy() {\n  // TODO: kembalikan fungsi yang mencatat argumennya di .panggilan\n  return () => {};\n}\n"
+          },
+          "solution": {
+            "code": "function buatSpy() {\n  const f = (...argumen) => {\n    f.panggilan.push(argumen);\n  };\n  f.panggilan = [];\n  return f;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Spy baru belum punya panggilan",
+              "check": "buatSpy().panggilan.length === 0"
+            },
+            {
+              "name": "Mencatat argumen tiap panggilan",
+              "check": "(() => { const s = buatSpy(); s(1, 2); s(\"a\"); return JSON.stringify(s.panggilan) === '[[1,2],[\"a\"]]'; })()"
+            },
+            {
+              "name": "Memanggil tanpa argumen tetap tercatat",
+              "check": "(() => { const s = buatSpy(); s(); return s.panggilan.length === 1 && s.panggilan[0].length === 0; })()"
+            },
+            {
+              "name": "Dua spy punya riwayat terpisah",
+              "check": "(() => { const a = buatSpy(); const b = buatSpy(); a(1); return a.panggilan.length === 1 && b.panggilan.length === 0; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "tdd-merah-hijau-refaktor",
+      "title": "TDD: Merah, Hijau, Refaktor",
+      "est_minutes": 30,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menjalankan siklus TDD: merah, hijau, refaktor.\n- Menulis tes dulu lalu kode paling sederhana yang membuatnya lolos.\n- Menambah kasus uji secara bertahap hingga aturan lengkap.\n- Merapikan kode dengan aman berkat tes yang sudah ada.\n\n## Apa itu TDD\n\n**Test-Driven Development** (TDD) membalik urutan yang biasa. Biasanya kita menulis kode lalu mengetesnya. Di TDD, tes ditulis lebih dulu, gagal karena kodenya belum ada, baru kemudian kode ditulis sampai tes lolos. Awalnya terasa janggal, tetapi urutan ini memaksa kamu menjawab pertanyaan penting sebelum mengetik implementasi: bagaimana fungsi ini akan dipakai, dan apa hasil yang benar?\n\nTDD bukan soal memiliki banyak tes. Ia teknik desain dan disiplin kerja dalam langkah-langkah kecil, di mana setiap langkah punya bukti: tes yang tadinya merah kini hijau. Banyak developer berpengalaman memakai TDD untuk logika yang rumit atau penuh aturan, dan tidak memakainya untuk eksplorasi cepat atau tampilan. Tidak ada keharusan menerapkannya di mana-mana.\n\n![Siklus TDD](slide:18)\n\n## Siklus merah, hijau, refaktor\n\nTDD berjalan dalam putaran pendek yang terdiri dari tiga langkah.\n\n**Merah.** Tulis satu tes untuk perilaku kecil yang belum ada, jalankan, dan pastikan **gagal**. Langkah melihat tes gagal ini penting: ia membuktikan tes itu mampu gagal. Tes yang langsung hijau sebelum kodenya ada berarti tesnya tidak memeriksa apa-apa.\n\n**Hijau.** Tulis kode **paling sederhana** yang membuat tes itu lolos, bahkan jika kodenya terlihat naif atau memalsukan hasil dengan mengembalikan angka tetap. Tujuannya cuma satu: hijau. Jangan memikirkan kasus lain dulu.\n\n**Refaktor.** Dengan tes hijau sebagai jaring pengaman, rapikan kodenya: beri nama lebih jelas, hilangkan duplikasi, sederhanakan. Setelah setiap perubahan kecil, jalankan tes. Bila merah, kamu tahu persis perubahan terakhirlah penyebabnya.\n\nLalu ulangi dengan tes berikutnya. Satu putaran seharusnya memakan beberapa menit, bukan jam. Langkah kecil membuat kesalahan mudah dilacak: bila tes gagal, hanya beberapa baris yang baru kamu ubah.\n\n## Contoh: fungsi tahun kabisat\n\nAturan tahun kabisat: habis dibagi 4 adalah kabisat, kecuali habis dibagi 100 yang bukan kabisat, kecuali habis dibagi 400 yang kabisat lagi. Mari bangun fungsinya dengan TDD.\n\n**Putaran 1, merah:** tulis tes pertama.\n\n```js\nassertSama(kabisat(2024), true);\n// ReferenceError: kabisat is not defined (merah)\n```\n\n**Hijau:** kode paling sederhana yang membuatnya lolos.\n\n```js\nfunction kabisat(tahun) {\n  return tahun % 4 === 0;\n}\n```\n\n**Putaran 2, merah:** tambahkan tes untuk pengecualian abad.\n\n```js\nassertSama(kabisat(1900), false);\n// Harapan false, aktual true (merah)\n```\n\n**Hijau:** tambahkan aturan seratus.\n\n```js\nfunction kabisat(tahun) {\n  return tahun % 4 === 0 && tahun % 100 !== 0;\n}\n```\n\n**Putaran 3, merah:** tes untuk pengecualian dari pengecualian.\n\n```js\nassertSama(kabisat(2000), true);\n// Harapan true, aktual false (merah)\n```\n\n**Hijau:**\n\n```js\nfunction kabisat(tahun) {\n  return (tahun % 4 === 0 && tahun % 100 !== 0) || tahun % 400 === 0;\n}\n```\n\nPerhatikan bagaimana aturan tumbuh sedikit demi sedikit, dan setiap aturan punya tes yang membuktikannya. Pada akhirnya kamu mempunyai fungsi dan sekaligus kumpulan tes yang mendokumentasikan tiga aturan itu.\n\n## Refaktor dengan aman\n\nTahap refaktor sering dilewati padahal inilah alasan TDD menghasilkan kode yang rapi. **Refaktor** adalah mengubah bentuk kode tanpa mengubah perilakunya. Tes hijau adalah definisi \"perilaku belum berubah\": selama semua tes tetap hijau, kamu boleh merombak apa saja di dalam.\n\nMisalnya, fungsi kabisat di atas bisa dipecah agar lebih mudah dibaca:\n\n```js\nfunction kabisat(tahun) {\n  const habisDibagi = (n) => tahun % n === 0;\n  if (habisDibagi(400)) return true;\n  if (habisDibagi(100)) return false;\n  return habisDibagi(4);\n}\n```\n\nTiga tes yang sudah ada tetap lolos, jadi kamu yakin perilakunya sama. Dua aturan untuk refaktor: ubah satu hal lalu jalankan tes, dan jangan mencampur refaktor dengan penambahan fitur dalam satu langkah. Bila tes merah setelah langkah yang berisi dua hal, kamu tidak tahu mana penyebabnya.\n\nSatu catatan penting: tes yang bagus bertahan melalui refaktor. Bila tesmu gagal setiap kali kamu merapikan kode padahal perilakunya sama, tesmu terikat pada detail implementasi dan perlu ditulis ulang agar memeriksa perilaku saja.\n\n## Kapan TDD berguna, kapan tidak\n\nTDD paling terasa manfaatnya untuk logika dengan banyak aturan dan kasus tepi: perhitungan harga, validasi, parser, aturan bisnis. Di sana tes pertama membantu merumuskan aturan, dan putaran pendek mencegah kamu tersesat. TDD juga sangat cocok saat memperbaiki bug: tulis tes yang mereproduksi bug, lihat ia merah, perbaiki, lihat ia hijau.\n\nTDD kurang berguna saat kamu belum tahu apa yang sedang dibangun, misalnya mencoba-coba desain tampilan atau mengeksplorasi library baru. Di situ kamu boleh bereksperimen dulu tanpa tes, lalu menulis tes setelah arahnya jelas. Yang penting adalah tes tidak ditunda selamanya. Banyak tim menggabungkan keduanya: TDD untuk inti logika, dan tes sesudahnya untuk bagian lain.\n\n## Kesalahan umum saat memulai TDD\n\nPemula sering melakukan tiga kesalahan. Pertama, menulis terlalu banyak tes sekaligus sebelum ada satu pun yang lolos, sehingga langkah menjadi besar dan sulit dilacak. Tulis satu tes, buat hijau, baru lanjut. Kedua, melompati langkah melihat tes merah, padahal itulah bukti tes mampu mendeteksi masalah. Ketiga, menulis kode lebih rumit dari yang dibutuhkan tes saat ini, misalnya langsung membuat aturan lengkap padahal baru satu kasus yang dites. Biarkan tes berikutnya yang menuntut kerumitan tambahan.\n\nJika merasa lambat di awal, itu wajar. TDD membutuhkan latihan beberapa minggu sebelum langkah kecil terasa alami, dan manfaatnya paling terlihat saat kamu harus mengubah kode lama dengan percaya diri.\n\n## Rangkuman\n\n- TDD menulis tes lebih dulu, lalu kode yang membuatnya lolos, dalam putaran kecil.\n- Siklusnya merah (tes gagal), hijau (kode paling sederhana), refaktor (rapikan, tes tetap hijau).\n- Melihat tes gagal dulu membuktikan tes itu mampu mendeteksi masalah.\n- Aturan tumbuh bertahap, dan setiap aturan punya tes yang membuktikannya.\n- Refaktor mengubah bentuk tanpa mengubah perilaku; ubah satu hal lalu jalankan tes.\n- TDD paling berguna untuk logika beraturan dan perbaikan bug, kurang untuk eksplorasi awal.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Urutan yang benar pada siklus TDD adalah",
+          "code": "",
+          "options": [
+            "Hijau, merah, refaktor",
+            "Refaktor, merah, hijau",
+            "Merah, hijau, refaktor",
+            "Hijau, refaktor, merah"
+          ],
+          "answer": 2,
+          "explanation": "Tes gagal dulu, lalu dibuat lolos, lalu kode dirapikan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa kita memastikan tes gagal dulu sebelum menulis kodenya?",
+          "code": "",
+          "options": [
+            "Karena tes harus selalu merah di akhir",
+            "Agar kode yang ditulis menjadi lebih panjang dan terlihat rumit",
+            "Supaya langkah refaktor bisa dilewati",
+            "Untuk membuktikan tes itu mampu mendeteksi masalah"
+          ],
+          "answer": 3,
+          "explanation": "Tes yang tidak pernah terlihat gagal belum terbukti berguna."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Saat refaktor, perilaku kode boleh berubah selama tesnya diperbarui.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Refaktor mengubah bentuk tanpa mengubah perilaku."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode berikut?",
+          "code": "const kabisat = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;\nconsole.log(kabisat(1900), kabisat(2000));",
+          "options": [
+            "false true",
+            "true true",
+            "false false",
+            "true false"
+          ],
+          "answer": 0,
+          "explanation": "1900 habis dibagi 100 tetapi tidak 400, sedangkan 2000 habis dibagi 400."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "TDD: tahun kabisat",
+          "prompt": "Ikuti aturan yang diwakili tes: tahun kabisat bila habis dibagi 4, kecuali habis dibagi 100 (bukan kabisat), kecuali habis dibagi 400 (kabisat lagi).\n\nLengkapi `kabisat(tahun)` yang mengembalikan `true` atau `false`. Kode awal hanya memakai aturan pertama, jadi beberapa tes berwarna merah. Jadikan semuanya hijau.",
+          "starter": {
+            "code": "function kabisat(tahun) {\n  return tahun % 4 === 0;\n}\n"
+          },
+          "solution": {
+            "code": "function kabisat(tahun) {\n  return (tahun % 4 === 0 && tahun % 100 !== 0) || tahun % 400 === 0;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "2024 kabisat",
+              "check": "kabisat(2024) === true"
+            },
+            {
+              "name": "2023 bukan kabisat",
+              "check": "kabisat(2023) === false"
+            },
+            {
+              "name": "1900 bukan kabisat",
+              "check": "kabisat(1900) === false"
+            },
+            {
+              "name": "2000 kabisat",
+              "check": "kabisat(2000) === true"
+            },
+            {
+              "name": "2100 bukan kabisat",
+              "check": "kabisat(2100) === false"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "TDD: slugify",
+          "prompt": "Tulis `slugify(teks)` yang membuat slug URL:\n\n- ubah ke huruf kecil\n- setiap rangkaian karakter selain huruf a-z dan angka 0-9 menjadi satu tanda `-`\n- buang tanda `-` di awal dan akhir\n\nContoh: `slugify(\"  Belajar  JS! \")` menghasilkan `belajar-js`.",
+          "starter": {
+            "code": "function slugify(teks) {\n  // TODO: huruf kecil, ganti simbol dengan -, rapikan ujung\n  return teks.toLowerCase();\n}\n"
+          },
+          "solution": {
+            "code": "function slugify(teks) {\n  return teks\n    .toLowerCase()\n    .replace(/[^a-z0-9]+/g, \"-\")\n    .replace(/^-+|-+$/g, \"\");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Spasi menjadi tanda hubung",
+              "check": "slugify(\"Halo Dunia\") === \"halo-dunia\""
+            },
+            {
+              "name": "Simbol dan spasi ganda dirapikan",
+              "check": "slugify(\"  Belajar  JS! \") === \"belajar-js\""
+            },
+            {
+              "name": "Tanda hubung berulang digabung",
+              "check": "slugify(\"A--B\") === \"a-b\""
+            },
+            {
+              "name": "Teks kosong tetap kosong",
+              "check": "slugify(\"\") === \"\""
+            },
+            {
+              "name": "Angka dipertahankan",
+              "check": "slugify(\"Kelas 101\") === \"kelas-101\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "menguji-async-dan-api",
+      "title": "Menguji Fungsi Async dan API",
+      "est_minutes": 30,
+      "slide_from": 20,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Menguji fungsi async dengan benar, termasuk menunggu hasilnya.\n- Mengganti pemanggilan jaringan dengan fetcher palsu.\n- Menguji handler API dengan memanggilnya langsung memakai request buatan.\n- Memeriksa kode status untuk jalur sukses maupun jalur gagal.\n\n## Fungsi async dan jebakan lupa menunggu\n\nBanyak kode modern bersifat asinkron: mengambil data dari server, membaca berkas, atau menunggu database. Fungsi `async` mengembalikan **Promise**, yaitu janji bahwa hasilnya akan tersedia nanti. Tes untuk fungsi seperti itu harus menunggu janji terpenuhi sebelum memeriksa hasil.\n\nJebakan paling umum adalah lupa `await`. Perhatikan tes ini:\n\n```js\nasync function namaPengguna(id, ambil) {\n  const res = await ambil(\"/pengguna/\" + id);\n  return res.status === 200 ? res.data.nama : null;\n}\n\n// SALAH: tidak menunggu, yang dibandingkan adalah Promise\nassertSama(namaPengguna(1, palsu), \"Ani\");\n```\n\nPada baris itu `namaPengguna(1, palsu)` menghasilkan objek Promise, bukan teks \"Ani\", jadi pembandingan gagal untuk alasan yang membingungkan. Lebih berbahaya lagi bila pemeriksaan berada di dalam `then` atau fungsi yang tidak ditunggu: tes selesai dan dinyatakan lulus sebelum pemeriksaan sempat berjalan, sehingga bug apa pun tidak terdeteksi. Tes seperti itu hijau selamanya, apa pun yang terjadi.\n\nVersi yang benar menunggu hasilnya:\n\n```js\ntest(\"mengembalikan nama bila status 200\", async () => {\n  const nama = await namaPengguna(1, palsu);\n  assertSama(nama, \"Ani\");\n});\n```\n\nFungsi tes sendiri ditandai `async`, dan runner harus menunggu fungsi itu selesai. Runner yang tidak menunggu hanya akan menjalankan tes lalu langsung melaporkan lulus. Itu sebabnya framework resmi mendukung tes async secara bawaan.\n\n## Fetcher palsu\n\nFungsi di atas menerima `ambil` sebagai parameter, sama seperti pola injeksi dependensi di bab sebelumnya. Di produksi `ambil` adalah fungsi yang memanggil `fetch` sungguhan. Di tes, kamu memberinya fungsi async palsu yang langsung mengembalikan jawaban buatan tanpa jaringan:\n\n```js\nconst palsu = async () => ({ status: 200, data: { nama: \"Ani\" } });\nconst tidakAda = async () => ({ status: 404, data: null });\nconst error = async () => {\n  throw new Error(\"jaringan putus\");\n};\n\nassertSama(await namaPengguna(1, palsu), \"Ani\");\nassertSama(await namaPengguna(2, tidakAda), null);\n```\n\nTes dengan fetcher palsu berjalan dalam milidetik, tidak bergantung pada internet, dan bisa memancing kasus yang sulit: status 404, status 500, jaringan putus, atau jawaban yang rusak. Setiap kasus itu adalah jalur kode yang bisa saja bermasalah di produksi, dan sekarang kamu bisa mengujinya sesering yang kamu mau.\n\nMenguji bahwa fungsi async melempar error juga perlu menunggu. Bentuknya mirip dengan versi sinkron, tetapi pemanggilan dan penangkapan error dibungkus dengan `await`:\n\n```js\nasync function harusMenolak(fn, pesan) {\n  try {\n    await fn();\n  } catch (e) {\n    assertSama(e.message, pesan);\n    return;\n  }\n  throw new Error(\"Harusnya ditolak, tetapi berhasil\");\n}\n```\n\n## Menguji API tanpa jaringan\n\nHandler sebuah endpoint pada dasarnya adalah fungsi: masuk request, keluar respons berisi status dan isi. Karena itu kamu bisa mengetes API **tanpa menyalakan server dan tanpa jaringan**, cukup memanggil handler langsung dengan request buatan dan memeriksa respons yang kembali. Ambil contoh handler login yang menerima dependensi database:\n\n```js\nfunction login(req, db) {\n  if (!req.email || !req.password) return { status: 400 };\n  const user = db.cari(req.email);\n  if (!user || user.password !== req.password) return { status: 401 };\n  return { status: 200, body: { nama: user.nama } };\n}\n```\n\nDengan database palsu yang dibuat di dalam tes, kamu bisa memeriksa semua cabangnya:\n\n```js\nconst db = {\n  cari: (email) =>\n    email === \"ani@mail.id\" ? { nama: \"Ani\", password: \"rahasia\" } : null,\n};\n\nassertSama(login({}, db).status, 400); // data tidak lengkap\nassertSama(login({ email: \"x@mail.id\", password: \"a\" }, db).status, 401); // tidak dikenal\nassertSama(login({ email: \"ani@mail.id\", password: \"salah\" }, db).status, 401); // password salah\nassertSama(login({ email: \"ani@mail.id\", password: \"rahasia\" }, db).status, 200); // sukses\n```\n\n![Menguji API tanpa jaringan](slide:21)\n\n## Uji jalur gagal, bukan hanya jalur mulus\n\nKesalahan yang sangat umum adalah hanya mengetes skenario bahagia: login dengan data benar berhasil. Padahal sebagian besar bug keamanan dan bug yang mengganggu pengguna ada di jalur gagal. Apa yang terjadi saat email kosong? Saat password salah? Saat pengguna tidak ada? Saat database error? Setiap pertanyaan itu layak dijawab oleh satu tes.\n\nDaftar status yang biasa diuji untuk sebuah endpoint: 200 atau 201 untuk sukses, 400 untuk input tidak valid, 401 untuk belum login, 403 untuk tidak berhak, 404 untuk data tidak ada, dan 500 untuk kegagalan di sisi server. Tes yang memeriksa bahwa pengguna A tidak bisa membaca data pengguna B (status 403 atau 404) mencegah salah satu kelas celah keamanan paling umum.\n\nIngat juga bahwa tes dengan fetcher dan database palsu memeriksa **logika** handler, bukan bahwa sambungan nyata ke database atau jaringan berfungsi. Untuk itu tetap diperlukan sedikit tes integrasi yang memakai database uji sungguhan. Kombinasi yang sehat: banyak tes cepat dengan dependensi palsu untuk semua cabang logika, dan beberapa tes integrasi untuk memastikan sambungannya benar.\n\n## Menguji API sungguhan di proyek nyata\n\nDi proyek Express atau framework lain, ada alat yang membuat tes API lebih ringkas, misalnya Supertest yang mengirim request ke aplikasi tanpa membuka port jaringan sungguhan. Prinsipnya sama dengan yang kamu pelajari: kirim request buatan, periksa status dan isi respons. Lingkungan latihan di kelas ini tidak memiliki library tersebut, jadi kita memanggil handler sebagai fungsi biasa. Konsepnya terbawa utuh ke alat apa pun yang kamu pakai kelak.\n\n## Rangkuman\n\n- Fungsi async mengembalikan Promise; tes harus memakai await agar memeriksa hasil, bukan Promise-nya.\n- Tes yang lupa menunggu bisa lulus sebelum pemeriksaan berjalan, sehingga bug tidak terdeteksi.\n- Fetcher palsu menggantikan jaringan sehingga tes cepat, stabil, dan bisa memancing status 404 atau error.\n- Handler API adalah fungsi, jadi bisa dites dengan request buatan tanpa menyalakan server.\n- Uji jalur gagal (400, 401, 403, 404) sama seriusnya dengan jalur sukses.\n- Tes dengan dependensi palsu perlu dilengkapi sedikit tes integrasi untuk sambungan nyata.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dihasilkan fungsi async bila dipanggil tanpa await?",
+          "code": "",
+          "options": [
+            "Hasil akhirnya langsung",
+            "Nilai undefined",
+            "Error sinkron",
+            "Sebuah Promise"
+          ],
+          "answer": 3,
+          "explanation": "Fungsi async selalu mengembalikan Promise."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa memakai fetcher palsu pada tes fungsi yang mengambil data?",
+          "code": "",
+          "options": [
+            "Agar tes cepat, stabil, dan bisa memancing status seperti 404",
+            "Agar fungsi aslinya tidak perlu ditulis",
+            "Agar jaringan sungguhan ikut diuji",
+            "Karena fetch tidak bisa dipakai di JavaScript pada peramban modern"
+          ],
+          "answer": 0,
+          "explanation": "Fetcher palsu menghilangkan jaringan dan memudahkan kasus gagal."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menguji hanya skenario berhasil sudah cukup untuk endpoint login.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Jalur gagal seperti password salah dan input kosong sama pentingnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Handler login menerima request dengan email kosong. Status yang paling tepat?",
+          "code": "",
+          "options": [
+            "200",
+            "400",
+            "401",
+            "404"
+          ],
+          "answer": 1,
+          "explanation": "Input yang tidak lengkap adalah permintaan buruk, yaitu 400."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Fetcher palsu",
+          "prompt": "Lengkapi fungsi async `namaPengguna(id, ambil)`.\n\n- panggil `await ambil(\"/pengguna/\" + id)` yang mengembalikan `{ status, data }`\n- status `200`: kembalikan `data.nama`\n- status `404`: kembalikan `null`\n- status lain: lempar `Error` dengan pesan `Server error`",
+          "starter": {
+            "code": "async function namaPengguna(id, ambil) {\n  // TODO: ambil data lalu tangani status 200, 404, dan lainnya\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "async function namaPengguna(id, ambil) {\n  const res = await ambil(\"/pengguna/\" + id);\n  if (res.status === 200) return res.data.nama;\n  if (res.status === 404) return null;\n  throw new Error(\"Server error\");\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Status 200 mengembalikan nama",
+              "check": "(await namaPengguna(1, async () => ({ status: 200, data: { nama: \"Ani\" } }))) === \"Ani\""
+            },
+            {
+              "name": "Status 404 mengembalikan null",
+              "check": "(await namaPengguna(1, async () => ({ status: 404, data: null }))) === null"
+            },
+            {
+              "name": "Status 500 melempar Server error",
+              "check": "(await namaPengguna(1, async () => ({ status: 500 })).then(() => false, (e) => e.message === \"Server error\")) === true"
+            },
+            {
+              "name": "Alamat yang dipanggil memuat id",
+              "check": "(await (async () => { let p; await namaPengguna(7, async (x) => { p = x; return { status: 404 }; }); return p === \"/pengguna/7\"; })()) === true"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Handler login",
+          "prompt": "Lengkapi `login(req, db)` yang mengembalikan objek respons:\n\n- `{ status: 400 }` bila `req.email` atau `req.password` kosong\n- `{ status: 401 }` bila pengguna tidak ada di `db.cari(email)` atau passwordnya berbeda\n- `{ status: 200, body: { nama } }` bila cocok\n\n`db` di setup adalah database palsu.",
+          "starter": {
+            "code": "function login(req, db) {\n  // TODO: periksa input, cari pengguna, cocokkan password\n  return { status: 200 };\n}\n"
+          },
+          "solution": {
+            "code": "function login(req, db) {\n  if (!req.email || !req.password) return { status: 400 };\n  const user = db.cari(req.email);\n  if (!user || user.password !== req.password) return { status: 401 };\n  return { status: 200, body: { nama: user.nama } };\n}\n"
+          },
+          "setup": "const db = {\n  cari: (email) => (email === \"ani@mail.id\" ? { nama: \"Ani\", password: \"rahasia\" } : null),\n};\n",
+          "tests": [
+            {
+              "name": "Data tidak lengkap menghasilkan 400",
+              "check": "login({ email: \"ani@mail.id\" }, db).status === 400 && login({}, db).status === 400"
+            },
+            {
+              "name": "Pengguna tidak dikenal menghasilkan 401",
+              "check": "login({ email: \"x@mail.id\", password: \"a\" }, db).status === 401"
+            },
+            {
+              "name": "Password salah menghasilkan 401",
+              "check": "login({ email: \"ani@mail.id\", password: \"salah\" }, db).status === 401"
+            },
+            {
+              "name": "Login benar menghasilkan 200 dengan nama",
+              "check": "JSON.stringify(login({ email: \"ani@mail.id\", password: \"rahasia\" }, db)) === '{\"status\":200,\"body\":{\"nama\":\"Ani\"}}'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "e2e-coverage-dan-tes-rapuh",
+      "title": "E2E, Coverage, dan Tes Rapuh",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu tes end-to-end dan kapan layak dipakai.\n- Menghitung dan menafsirkan coverage dengan benar.\n- Mengenali penyebab tes rapuh dan tes flaky.\n- Memperbaiki atau menyingkirkan tes yang merusak kepercayaan.\n\n## Tes end-to-end\n\nTes **end-to-end** (E2E) menjalankan seluruh aplikasi dan meniru pengguna sungguhan. Alat seperti Playwright atau Cypress membuka browser nyata, membuka halaman, mengetik di kolom, menekan tombol, lalu memeriksa apa yang tampil di layar. Sebuah tes E2E untuk toko online mungkin berbunyi: buka beranda, cari \"pensil\", masukkan ke keranjang, buka halaman bayar, isi alamat, dan pastikan halaman konfirmasi muncul.\n\nKekuatan E2E adalah ia menangkap bug sambungan yang tidak terlihat unit test: tombol yang tidak terhubung ke fungsi yang benar, halaman yang memanggil alamat API yang salah, atau konfigurasi server yang keliru. Semua unit test bisa hijau sementara aplikasi tidak bisa dipakai karena satu sambungan putus. Itulah celah yang ditutup E2E.\n\nKelemahannya sudah dibahas di bab piramida: lambat, mahal dirawat, dan rapuh. Satu tes bisa memakan puluhan detik karena harus menyalakan browser dan menunggu halaman. Karena itu pakai E2E **hanya untuk alur paling kritis**, seperti daftar, login, dan pembayaran, bukan untuk setiap aturan kecil. Aturan hitungan diskon cukup dijaga unit test.\n\n![Tes end-to-end](slide:22)\n\n## Apa itu coverage\n\n**Coverage** (cakupan) adalah persentase kode yang dijalankan saat tes berlangsung. Alat khusus menandai setiap baris atau cabang yang tersentuh tes, lalu melaporkan angkanya. Bila modulmu punya seratus baris dan tesmu menjalankan delapan puluh di antaranya, coverage-nya delapan puluh persen.\n\nInformasi paling berharga dari laporan coverage justru bukan angkanya, melainkan **baris yang tidak tersentuh**. Cabang `if` yang tidak pernah dijalankan tes adalah kode yang tidak pernah kamu uji: mungkin penanganan error, mungkin kasus tepi. Laporan menunjukkan di mana celah itu, sehingga kamu bisa memutuskan apakah perlu menambah tes.\n\nMenghitung coverage sederhana sekali:\n\n```js\nfunction persenCoverage(totalBaris, barisTerjalani) {\n  if (totalBaris === 0) return 0;\n  return Math.round((barisTerjalani / totalBaris) * 100);\n}\n\nconsole.log(persenCoverage(100, 80)); // 80\nconsole.log(persenCoverage(0, 0)); // 0\n```\n\n## Coverage bisa menipu\n\nAngka coverage mudah disalahgunakan karena ia hanya mengukur apakah kode **dijalankan**, bukan apakah hasilnya **diperiksa**. Perhatikan:\n\n```js\nfunction bagi(a, b) {\n  return a / b;\n}\n\n// Tes ini memberi coverage 100 persen, tetapi tidak memeriksa apa pun\nbagi(10, 2);\n```\n\nPemanggilan `bagi(10, 2)` membuat semua baris fungsi tersentuh, sehingga laporannya seratus persen, tetapi tidak ada satu pun pemeriksaan. Jika fungsi itu diubah menjadi `a * b`, tes tetap hijau. Coverage tinggi tanpa pemeriksaan yang berarti hanyalah angka kosong.\n\nKarena itu, jangan jadikan coverage sebagai target tersendiri. Begitu angka menjadi target, orang menulis tes yang hanya menyentuh kode demi menaikkan persentase. Gunakan coverage sebagai **peta**: ia menunjukkan area yang belum diuji, bukan bukti bahwa area lain sudah teruji dengan baik. Angka delapan puluh persen yang berisi pemeriksaan bermakna jauh lebih berharga daripada sembilan puluh sembilan persen yang kosong.\n\n## Tes rapuh\n\nTes **rapuh** (brittle) adalah tes yang gagal setiap kali implementasi berubah walaupun perilaku yang terlihat dari luar tetap sama. Penyebab paling umum adalah tes yang terikat pada detail internal. Contohnya tes yang memeriksa fungsi pembantu dipanggil tiga kali dengan urutan tertentu, atau tes E2E yang mencari tombol lewat posisinya di halaman, bukan lewat labelnya.\n\nTes rapuh membuat tim lelah. Setiap perubahan kecil memunculkan puluhan tes merah yang bukan bug sungguhan, sehingga orang mulai mengabaikan tes merah atau sekadar memperbarui tes agar hijau tanpa berpikir. Ketika itu terjadi, tes kehilangan fungsinya sebagai alarm.\n\nObatnya adalah mengetes **perilaku**, bukan **implementasi**. Periksa apa yang dihasilkan fungsi, bukan bagaimana ia mencapainya. Pada E2E, cari elemen lewat label atau peran yang bermakna bagi pengguna, misalnya tombol bernama \"Bayar\", bukan lewat urutan elemen atau nama kelas CSS yang gampang berubah.\n\n## Tes flaky\n\nTes **flaky** adalah tes yang kadang lolos dan kadang gagal tanpa ada perubahan kode. Ini lebih berbahaya dari tes rapuh karena sifatnya acak: kamu menekan tombol jalankan ulang sampai hijau, lalu lanjut. Penyebab umumnya:\n\n- **Waktu**: tes bergantung pada jam, atau pada menunggu dengan batas waktu yang terlalu pas.\n- **Urutan**: tes B hanya lolos bila tes A berjalan lebih dulu.\n- **Data bersama**: beberapa tes memakai database atau berkas yang sama dan saling mengganggu.\n- **Jaringan atau layanan luar**: tes bergantung pada sesuatu yang tidak selalu tersedia.\n- **Angka acak**: hasil bergantung pada nilai yang berbeda setiap kali.\n\nCara mendeteksi flaky sederhana: jalankan tes yang sama berkali-kali pada kode yang sama. Tes yang hasilnya campuran lulus dan gagal adalah flaky. Perbaikannya menyingkirkan sumber ketidakpastian: pakai jam palsu, beri setiap tes datanya sendiri, ganti layanan luar dengan test double, dan tetapkan benih untuk angka acak.\n\nJangan membiarkan tes flaky tinggal. Satu tes flaky yang dimatikan sementara jarang dinyalakan lagi, dan tim belajar bahwa merah bisa diabaikan. Perbaiki akar masalahnya atau hapus tes itu dan tulis ulang. Tes yang tak bisa dipercaya lebih buruk daripada tidak punya tes.\n\n## Memilih alat dan menjaga keseimbangan\n\nUntuk E2E di web, Playwright dan Cypress adalah pilihan populer. Keduanya bisa merekam alur, menunggu elemen muncul secara otomatis, dan mengambil tangkapan layar saat gagal. Namun ingat prinsip piramida: alat yang bagus tidak mengubah fakta bahwa E2E lebih mahal daripada unit test. Pakai sedikit, untuk alur yang akibat kegagalannya paling mahal.\n\n## Rangkuman\n\n- Tes E2E meniru pengguna lewat browser; menangkap bug sambungan tetapi lambat dan mahal, jadi pakai hanya untuk alur kritis.\n- Coverage adalah persentase kode yang dijalankan tes; paling berguna untuk menunjukkan baris yang belum diuji.\n- Coverage tinggi tidak menjamin tes bermakna karena menjalankan kode tidak sama dengan memeriksa hasilnya.\n- Tes rapuh gagal saat implementasi berubah padahal perilaku sama; obatnya mengetes perilaku, bukan detail internal.\n- Tes flaky kadang lolos kadang gagal; penyebabnya waktu, urutan, data bersama, jaringan, atau angka acak.\n- Perbaiki atau hapus tes flaky agar kepercayaan pada tes tetap terjaga.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa informasi paling berharga dari laporan coverage?",
+          "code": "",
+          "options": [
+            "Daftar baris yang tidak pernah dijalankan tes",
+            "Angka persen yang setinggi mungkin dari seluruh tes",
+            "Jumlah tes yang lulus",
+            "Kecepatan seluruh tes"
+          ],
+          "answer": 0,
+          "explanation": "Baris tak tersentuh menunjukkan celah pengujian."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Coverage seratus persen menjamin semua perilaku sudah diperiksa.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Coverage hanya mengukur kode dijalankan, bukan hasilnya diperiksa."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tes yang kadang lolos kadang gagal tanpa perubahan kode disebut",
+          "code": "",
+          "options": [
+            "Rapuh",
+            "Flaky",
+            "Mutan",
+            "Redundan"
+          ],
+          "answer": 1,
+          "explanation": "Itulah definisi tes flaky."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cara mengurangi tes E2E yang rapuh adalah",
+          "code": "",
+          "options": [
+            "Menambah jeda tidur acak di setiap langkah agar halaman sempat muat",
+            "Menjalankan tes berulang sampai hijau",
+            "Mencari elemen lewat label bermakna, bukan posisi atau kelas CSS",
+            "Menghapus semua pemeriksaan"
+          ],
+          "answer": 2,
+          "explanation": "Label yang bermakna bagi pengguna jarang berubah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Hitung coverage",
+          "prompt": "Lengkapi `persenCoverage(totalBaris, barisTerjalani)` yang mengembalikan persentase baris yang dijalankan tes, **dibulatkan** ke bilangan bulat terdekat.\n\nBila `totalBaris` sama dengan 0, kembalikan 0 (jangan menghasilkan `NaN`).",
+          "starter": {
+            "code": "function persenCoverage(totalBaris, barisTerjalani) {\n  // TODO: hitung persen dan bulatkan\n  return 0;\n}\n"
+          },
+          "solution": {
+            "code": "function persenCoverage(totalBaris, barisTerjalani) {\n  if (totalBaris === 0) return 0;\n  return Math.round((barisTerjalani / totalBaris) * 100);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "80 dari 100 baris",
+              "check": "persenCoverage(100, 80) === 80"
+            },
+            {
+              "name": "Dibulatkan ke terdekat",
+              "check": "persenCoverage(3, 2) === 67"
+            },
+            {
+              "name": "Tanpa baris menghasilkan 0",
+              "check": "persenCoverage(0, 0) === 0"
+            },
+            {
+              "name": "Semua baris terjalani",
+              "check": "persenCoverage(40, 40) === 100"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Mencari tes flaky",
+          "prompt": "Lengkapi `cariFlaky(hasil)`. `hasil` adalah objek yang kuncinya nama tes dan nilainya array boolean hasil beberapa kali menjalankan tes yang sama (`true` lulus, `false` gagal).\n\nKembalikan array nama tes yang **hasilnya campuran** (pernah lulus dan pernah gagal), sesuai urutan kunci. Tes yang selalu lulus atau selalu gagal bukan flaky.",
+          "starter": {
+            "code": "function cariFlaky(hasil) {\n  // TODO: kembalikan nama tes yang hasilnya campuran\n  return [];\n}\n"
+          },
+          "solution": {
+            "code": "function cariFlaky(hasil) {\n  return Object.keys(hasil).filter((nama) => {\n    const r = hasil[nama];\n    return r.includes(true) && r.includes(false);\n  });\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Mengenali tes dengan hasil campuran",
+              "check": "cariFlaky({ a: [true, false, true], b: [true, true, true] }).join(\",\") === \"a\""
+            },
+            {
+              "name": "Selalu gagal bukan flaky",
+              "check": "cariFlaky({ a: [false, false], b: [true, false] }).join(\",\") === \"b\""
+            },
+            {
+              "name": "Urutan mengikuti kunci",
+              "check": "cariFlaky({ x: [true, false], y: [false, true], z: [true] }).join(\",\") === \"x,y\""
+            },
+            {
+              "name": "Tanpa tes flaky menghasilkan array kosong",
+              "check": "cariFlaky({ a: [true], b: [false] }).length === 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "strategi-testing-proyek",
+      "title": "Strategi Testing di Proyek",
+      "est_minutes": 25,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Menentukan bagian kode yang paling layak dites berdasarkan risiko.\n- Menjelaskan peran CI dalam menjaga tes tetap dijalankan.\n- Menerapkan kebiasaan tim yang membuat tes tetap sehat dalam jangka panjang.\n- Memakai daftar periksa untuk menilai kualitas sebuah tes.\n\n## Apa yang layak dites\n\nMenguji segalanya tidak mungkin dan tidak perlu. Waktu menulis dan merawat tes terbatas, jadi pertanyaan strateginya: **bagian mana yang paling layak dijaga?** Beberapa pedoman membantu menjawabnya.\n\nPertama, **logika bisnis dan perhitungan uang**. Kesalahan di sini langsung berakibat nyata: pelanggan salah tagih, stok tidak sinkron, pajak keliru. Fungsi diskon, ongkos kirim, dan total belanja layak punya tes teliti, termasuk kasus batas.\n\nKedua, **kode yang sering berubah**. Semakin sering sebuah modul diubah, semakin besar peluang perubahan itu merusak sesuatu, dan semakin besar manfaat tes sebagai jaring pengaman. Kode yang tidak pernah disentuh bertahun-tahun lebih rendah prioritasnya.\n\nKetiga, **kode yang pernah bermasalah**. Setiap bug yang diperbaiki sebaiknya mendapat satu tes yang mereproduksinya, supaya bug itu tidak bisa kembali diam-diam. Seiring waktu, kumpulan tes ini menjadi catatan titik lemah proyekmu.\n\nKeempat, **alur yang akibatnya mahal bila gagal**: login, pembayaran, pendaftaran, penghapusan data. Alur-alur ini layak dijaga berlapis, dari unit test sampai satu tes E2E.\n\n![Apa yang layak dites](slide:25)\n\n## Apa yang tidak perlu dites\n\nSama pentingnya tahu apa yang boleh dilewatkan. Kode bawaan framework atau library sudah dites oleh pembuatnya; kamu tidak perlu memastikan bahwa `Array.prototype.map` bekerja. Fungsi sepele tanpa logika, seperti getter yang mengembalikan satu properti, jarang layak dites sendiri. Tampilan yang sering berubah dan murni estetika lebih cocok dinilai manusia daripada tes otomatis yang rapuh.\n\nMenguji hal-hal ini menambah beban perawatan tanpa menambah keyakinan. Ingat bahwa setiap tes adalah kode yang harus dirawat, jadi tes yang tidak menjaga sesuatu yang berarti justru menjadi beban.\n\nPendekatan yang praktis untuk memprioritaskan adalah menilai setiap modul dengan dua faktor: seberapa sering ia berubah dan seberapa parah akibatnya bila rusak. Modul yang sering berubah dan berakibat parah, seperti perhitungan harga, berada di urutan teratas. Modul yang jarang berubah dan berakibat ringan berada di bawah.\n\n```js\nfunction skorRisiko(modul) {\n  return modul.ubahPerBulan * modul.dampak;\n}\n\nconst daftar = [\n  { nama: \"harga\", ubahPerBulan: 8, dampak: 5 },\n  { nama: \"footer\", ubahPerBulan: 1, dampak: 1 },\n];\ndaftar.sort((a, b) => skorRisiko(b) - skorRisiko(a));\nconsole.log(daftar[0].nama); // harga\n```\n\n## Tes di CI\n\nTes yang hanya dijalankan kadang-kadang oleh satu orang di laptopnya akan segera usang. Agar tes benar-benar menjaga kualitas, ia harus dijalankan **otomatis dan konsisten** pada setiap perubahan. Itulah peran **CI** (continuous integration): sebuah layanan yang setiap kali ada push atau pull request menjalankan seluruh tes di lingkungan bersih, lalu melaporkan hasilnya.\n\nContoh berkas konfigurasi GitHub Actions yang sangat ringkas:\n\n```yaml\non: [push, pull_request]\njobs:\n  tes:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci\n      - run: npm test\n```\n\nDengan CI, perubahan yang membuat tes merah diberi tanda jelas dan tidak boleh digabung ke cabang utama. Ini mengubah tes dari saran menjadi pagar pengaman yang ditegakkan. Syaratnya tes harus **cepat dan stabil**: tes yang butuh setengah jam atau sering gagal acak akan membuat tim mencari jalan memintas.\n\nCI juga menangkap masalah \"jalan di laptopku\": tes yang bergantung pada pengaturan khusus mesin satu orang akan gagal di lingkungan bersih, dan itu pertanda ada dependensi tersembunyi yang perlu dirapikan.\n\n## Kebiasaan tim yang menjaga tes tetap sehat\n\nBeberapa kebiasaan sederhana menentukan apakah tes menjadi aset atau beban dalam jangka panjang.\n\n- **Tes ikut dalam review.** Perubahan kode yang tidak membawa tes patut dipertanyakan, dan tes yang buruk patut dikomentari seperti kode lain.\n- **Merah segera diperbaiki.** Ketika tes merah di cabang utama, itu menjadi prioritas pertama, bukan hal yang menunggu.\n- **Satu bug, satu tes.** Setiap perbaikan bug membawa tes yang mencegahnya kembali.\n- **Hapus tes yang sudah tidak berguna.** Tes untuk fitur yang sudah dihapus atau tes yang selalu dimatikan hanya menambah kebisingan.\n- **Rawat kecepatan.** Bila rangkaian tes mulai lambat, cari yang bisa dipindah ke tingkat lebih bawah atau dijalankan paralel.\n\n## Daftar periksa tes yang baik\n\nGunakan pertanyaan berikut untuk menilai sebuah tes sebelum menggabungkannya. Apakah tes ini **cepat**? Apakah **mandiri**, tidak bergantung pada tes lain atau urutan? Apakah hasilnya **sama setiap kali**? Apakah namanya **menjelaskan perilaku** yang dijaga? Apakah ia punya **satu alasan untuk gagal**? Apakah ia memeriksa **perilaku** yang terlihat dari luar, bukan detail implementasi? Dan saat gagal, apakah **pesannya langsung menunjuk masalah**?\n\nBila sebagian besar jawabannya ya, tes itu kemungkinan sehat. Tes bagus memberimu keberanian mengubah kode karena kamu tahu alarm akan berbunyi bila ada yang rusak. Tes buruk membuatmu takut menyentuh kode atau justru mengabaikan alarm. Tujuan akhir bukan banyaknya tes, melainkan seberapa besar kepercayaanmu terhadap perubahan yang akan dikirim.\n\n## Memulai dari proyek yang sudah berjalan\n\nBila proyekmu belum punya tes, jangan mencoba menulis semuanya sekaligus. Mulailah dari tiga langkah kecil: tulis tes untuk bug berikutnya yang kamu perbaiki, tambahkan tes untuk kode yang akan kamu ubah sebelum mengubahnya, lalu pasang CI agar tes yang ada selalu berjalan. Dalam beberapa bulan, bagian yang paling sering berubah akan terlindungi tanpa perlu proyek besar menulis tes dari nol.\n\n## Rangkuman\n\n- Prioritaskan tes berdasarkan risiko: logika bisnis, kode yang sering berubah, bug lama, dan alur yang mahal bila gagal.\n- Lewatkan kode bawaan framework, fungsi sepele, dan tampilan estetis yang sering berubah.\n- CI menjalankan seluruh tes otomatis pada setiap push sehingga tes menjadi pagar pengaman yang ditegakkan.\n- Tes harus cepat dan stabil agar tim mau dan mampu mengandalkannya.\n- Kebiasaan tim: tes ikut review, merah segera diperbaiki, satu bug satu tes, hapus tes tak berguna.\n- Nilai kualitas tes lewat daftar periksa: cepat, mandiri, berulang, bernama jelas, satu alasan gagal, mengetes perilaku.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagian kode mana yang paling layak dites lebih dulu?",
+          "code": "",
+          "options": [
+            "Getter yang hanya mengembalikan satu properti",
+            "Perhitungan harga yang sering berubah",
+            "Kode bawaan framework",
+            "Teks bantuan di halaman profil"
+          ],
+          "answer": 1,
+          "explanation": "Logika uang yang sering berubah berisiko tinggi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa peran CI terhadap tes?",
+          "code": "",
+          "options": [
+            "Menulis tes menggantikan developer sehingga tidak perlu manusia",
+            "Menghapus tes yang lambat",
+            "Menjalankan seluruh tes otomatis pada setiap perubahan",
+            "Memastikan program bebas bug"
+          ],
+          "answer": 2,
+          "explanation": "CI membuat tes ditegakkan secara konsisten."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Setiap bug yang diperbaiki sebaiknya mendapat satu tes yang mereproduksinya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Tes itu mencegah bug yang sama kembali."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tes yang gagal setiap kali kode dirapikan padahal perilakunya sama kemungkinan besar",
+          "code": "",
+          "options": [
+            "Terlalu sedikit memakai mock",
+            "Memiliki coverage terlalu tinggi",
+            "Terlalu cepat dijalankan",
+            "Terikat pada detail implementasi"
+          ],
+          "answer": 3,
+          "explanation": "Tes yang baik memeriksa perilaku, bukan cara kerja internal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Urutkan modul berdasarkan risiko",
+          "prompt": "Lengkapi `urutkanRisiko(daftar)`. Tiap modul berbentuk `{ nama, ubahPerBulan, dampak }`. Skor risiko adalah `ubahPerBulan * dampak`.\n\nKembalikan array **nama** modul dari skor tertinggi ke terendah. Jangan mengubah urutan `daftar` aslinya.",
+          "starter": {
+            "code": "function urutkanRisiko(daftar) {\n  // TODO: hitung skor, urutkan menurun, kembalikan nama\n  return daftar.map((m) => m.nama);\n}\n"
+          },
+          "solution": {
+            "code": "function urutkanRisiko(daftar) {\n  return [...daftar]\n    .sort((a, b) => b.ubahPerBulan * b.dampak - a.ubahPerBulan * a.dampak)\n    .map((m) => m.nama);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Skor tertinggi di depan",
+              "check": "urutkanRisiko([{ nama: \"footer\", ubahPerBulan: 1, dampak: 1 }, { nama: \"harga\", ubahPerBulan: 8, dampak: 5 }]).join(\",\") === \"harga,footer\""
+            },
+            {
+              "name": "Skor dihitung dari perkalian kedua faktor",
+              "check": "urutkanRisiko([{ nama: \"a\", ubahPerBulan: 10, dampak: 1 }, { nama: \"b\", ubahPerBulan: 3, dampak: 5 }]).join(\",\") === \"b,a\""
+            },
+            {
+              "name": "Daftar kosong menghasilkan array kosong",
+              "check": "urutkanRisiko([]).length === 0"
+            },
+            {
+              "name": "Daftar asli tidak diubah",
+              "check": "(() => { const d = [{ nama: \"p\", ubahPerBulan: 1, dampak: 1 }, { nama: \"q\", ubahPerBulan: 9, dampak: 9 }]; urutkanRisiko(d); return d[0].nama === \"p\"; })()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

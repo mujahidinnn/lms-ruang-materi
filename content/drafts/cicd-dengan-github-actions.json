@@ -1,0 +1,2012 @@
+{
+  "title": "CI/CD dengan GitHub Actions",
+  "description": "Belajar mengotomatiskan build, tes, dan deploy dengan GitHub Actions: workflow YAML, pemicu, job, cache, matriks, secrets, deploy Docker dan VPS, rilis, rollback, serta debugging.",
+  "summary": "Kelas ini memperkenalkan CI/CD sebagai cara menggantikan rilis manual yang rawan salah dengan proses otomatis yang konsisten. Kamu mempelajari perbedaan Continuous Integration, Continuous Delivery, dan Continuous Deployment, lalu menggambar alur pipeline dari commit sampai produksi.\n\nBagian inti mengajarkan GitHub Actions dari dasar: menulis workflow YAML, memilih pemicu dengan filter branch, tag, dan path, menyusun job dan step di runner, mengurutkan job dengan needs, mempercepat run dengan cache, memindahkan hasil dengan artefak, menjalankan banyak kombinasi lewat matriks, serta mengelola secrets dan environment dengan aman.\n\nBagian akhir menyatukan semuanya: workflow CI untuk proyek Node.js dengan branch protection, deploy otomatis image Docker ke registry dan ke Vercel atau VPS, alur staging lalu produksi, strategi rilis, versi semantik, rollback, dan cara mendiagnosis workflow yang gagal. Latihan kode melatih logika di balik konfigurasi, dan proyek akhir membangun pemeriksa workflow sederhana.",
+  "tips": [
+    "Latihan kode di kelas ini melatih logika di balik konfigurasi, misalnya menghitung matriks atau memilih cache. Workflow YAML sungguhan tidak bisa dijalankan di browser, jadi coba contohnya di repositori GitHub milikmu sendiri.",
+    "Buat repositori percobaan dan tulis workflow bersama bab demi bab. Satu push yang gagal mengajarkan lebih banyak daripada membaca dua halaman teori.",
+    "Saat workflow gagal, baca log dari step merah yang pertama. Kegagalan di awal sering menimbulkan kegagalan lanjutan di step sesudahnya.",
+    "Mulai dari workflow kecil yang hanya menjalankan tes. Tambahkan cache, matriks, dan deploy satu per satu ketika kamu benar-benar membutuhkannya.",
+    "Jangan pernah menulis token atau kata sandi di berkas YAML, dan jangan mencetak secrets ke log meskipun untuk debugging."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu CI?",
+      "back": "Continuous Integration: sering menggabungkan kode dengan build dan tes otomatis di setiap penggabungan."
+    },
+    {
+      "front": "Apa beda Continuous Delivery dan Continuous Deployment?",
+      "back": "Delivery menjaga hasil siap rilis dan menunggu keputusan manusia, Deployment merilis otomatis tanpa tombol."
+    },
+    {
+      "front": "Apa itu pipeline?",
+      "back": "Rangkaian tahap otomatis dari pemicu, persiapan, pemeriksaan, build, sampai deploy."
+    },
+    {
+      "front": "Mengapa umpan balik CI harus cepat?",
+      "back": "Bug yang ketahuan cepat lebih murah diperbaiki karena kodenya masih segar."
+    },
+    {
+      "front": "Di mana workflow disimpan?",
+      "back": "Di folder .github/workflows/ dalam repositori, sebagai berkas YAML."
+    },
+    {
+      "front": "Apa fungsi kunci on?",
+      "back": "Menentukan peristiwa yang memicu workflow, seperti push atau pull_request."
+    },
+    {
+      "front": "Apa itu runner?",
+      "back": "Mesin virtual yang menjalankan job, dipilih lewat runs-on."
+    },
+    {
+      "front": "Apa beda run dan uses?",
+      "back": "run menjalankan perintah shell, uses memanggil action siap pakai."
+    },
+    {
+      "front": "Mengapa versi action disematkan?",
+      "back": "Agar workflow tidak berubah perilaku saat action diperbarui, misalnya actions/checkout@v4."
+    },
+    {
+      "front": "Mengapa YAML tidak boleh memakai tab?",
+      "back": "YAML hanya mengenal spasi untuk indentasi, tab menyebabkan galat."
+    },
+    {
+      "front": "Kapan teks YAML perlu diberi kutip?",
+      "back": "Saat mengandung karakter khusus seperti titik dua, tanda pagar, atau diawali tanda bintang."
+    },
+    {
+      "front": "Apa fungsi filter paths?",
+      "back": "Membatasi pemicu hanya bila berkas tertentu berubah."
+    },
+    {
+      "front": "Apa itu workflow_dispatch?",
+      "back": "Pemicu yang menambahkan tombol Run workflow untuk menjalankan workflow secara manual."
+    },
+    {
+      "front": "Zona waktu apa yang dipakai schedule?",
+      "back": "UTC."
+    },
+    {
+      "front": "Apa fungsi needs?",
+      "back": "Membuat sebuah job menunggu job lain lolos sebelum berjalan."
+    },
+    {
+      "front": "Mengapa setiap job butuh checkout sendiri?",
+      "back": "Karena tiap job berjalan di runner baru yang bersih."
+    },
+    {
+      "front": "Apa itu cache dalam Actions?",
+      "back": "Penyimpanan folder dependensi antar run untuk mempercepat workflow."
+    },
+    {
+      "front": "Mengapa hash lockfile dipakai di key cache?",
+      "back": "Agar key berubah tepat saat dependensi berubah sehingga cache tidak basi."
+    },
+    {
+      "front": "Apa fungsi restore-keys?",
+      "back": "Daftar awalan key cadangan yang dicoba berurutan bila key persis tidak ditemukan."
+    },
+    {
+      "front": "Apa beda cache dan artefak?",
+      "back": "Cache untuk mempercepat, artefak adalah hasil run yang diunggah dan dibagikan."
+    },
+    {
+      "front": "Apa itu matriks build?",
+      "back": "Satu definisi job yang dijalankan untuk setiap kombinasi nilai, seperti versi Node dan sistem operasi."
+    },
+    {
+      "front": "Bagaimana menghitung jumlah job matriks?",
+      "back": "Kalikan panjang tiap sumbu, kurangi exclude, tambah include."
+    },
+    {
+      "front": "Bagaimana memakai secret di workflow?",
+      "back": "Simpan di pengaturan repositori lalu panggil dengan ${{ secrets.NAMA }}, jangan tulis di YAML."
+    },
+    {
+      "front": "Apa fungsi environment?",
+      "back": "Memisahkan secrets per tujuan dan bisa meminta persetujuan atau membatasi branch sebelum deploy."
+    },
+    {
+      "front": "Mengapa CI memakai npm ci?",
+      "back": "Memasang versi persis sesuai lockfile sehingga build dapat diulang."
+    },
+    {
+      "front": "Apa fungsi branch protection?",
+      "back": "Mewajibkan status check dan review lolos sebelum pull request bisa digabung."
+    },
+    {
+      "front": "Mengapa image diberi tag SHA commit?",
+      "back": "Agar setiap build unik dan bisa dilacak ke commit yang tepat."
+    },
+    {
+      "front": "Apa itu rollback?",
+      "back": "Memasang kembali versi sebelumnya yang sehat setelah rilis bermasalah."
+    },
+    {
+      "front": "Bagaimana format versi semantik?",
+      "back": "MAJOR.MINOR.PATCH: major untuk perubahan tak kompatibel, minor untuk fitur baru, patch untuk perbaikan bug."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kepanjangan dari CI dalam CI/CD?",
+      "code": "",
+      "options": [
+        "Code Inspection",
+        "Central Interface",
+        "Continuous Installation",
+        "Continuous Integration"
+      ],
+      "answer": 3,
+      "explanation": "CI adalah Continuous Integration."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas workflow harus berformat",
+      "code": "",
+      "options": [
+        "JSON saja",
+        "YAML",
+        "XML",
+        "Markdown"
+      ],
+      "answer": 1,
+      "explanation": "Workflow GitHub Actions ditulis dalam YAML."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci mana yang menentukan peristiwa pemicu workflow?",
+      "code": "",
+      "options": [
+        "on",
+        "jobs",
+        "runs-on",
+        "steps"
+      ],
+      "answer": 0,
+      "explanation": "Kunci on menyebut kapan workflow dijalankan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci runs-on dipakai untuk",
+      "code": "",
+      "options": [
+        "Menentukan kapan job berhenti berjalan dan menandai hasilnya sebagai sukses atau gagal",
+        "Memberi nama pada step",
+        "Memilih jenis runner yang menjalankan job",
+        "Menyimpan variabel rahasia"
+      ],
+      "answer": 2,
+      "explanation": "runs-on memilih mesin, misalnya ubuntu-latest."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Step yang memakai action ditulis dengan kunci",
+      "code": "",
+      "options": [
+        "run",
+        "uses",
+        "env",
+        "needs"
+      ],
+      "answer": 1,
+      "explanation": "uses memanggil action siap pakai, run menjalankan perintah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa isi kunci with pada sebuah step?",
+      "code": "",
+      "options": [
+        "Daftar job yang ditunggu",
+        "Pemicu workflow",
+        "Masukan untuk action",
+        "Nama runner"
+      ],
+      "answer": 2,
+      "explanation": "with memberi parameter ke action."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar job lint dan tes berjalan bersamaan, kamu perlu",
+      "code": "",
+      "options": [
+        "Menaruh keduanya di satu step yang sama supaya dijalankan oleh satu perintah saja",
+        "Memakai schedule",
+        "Memakai environment",
+        "Tidak memberi needs di antara keduanya"
+      ],
+      "answer": 3,
+      "explanation": "Tanpa needs, job berjalan paralel."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ekspresi untuk membaca secret bernama TOKEN adalah",
+      "code": "",
+      "options": [
+        "${{ secrets.TOKEN }}",
+        "$TOKEN.secret",
+        "{{ env.TOKEN }}",
+        "secrets(TOKEN)"
+      ],
+      "answer": 0,
+      "explanation": "Secrets dibaca dengan konteks secrets."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cache bisa dihapus kapan saja, sehingga workflow harus",
+      "code": "",
+      "options": [
+        "Menolak berjalan sama sekali bila cache tidak ditemukan sampai seseorang membuatnya ulang",
+        "Tetap berjalan benar walau tanpa cache",
+        "Selalu membuat cache baru",
+        "Menyimpan rahasia di dalamnya"
+      ],
+      "answer": 1,
+      "explanation": "Cache hanya optimasi, bukan syarat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tag Git yang cocok memicu filter tags: [\"v*\"] adalah",
+      "code": "",
+      "options": [
+        "v2.0.1",
+        "rilis-2",
+        "2.0.1",
+        "stabil"
+      ],
+      "answer": 0,
+      "explanation": "Pola v* cocok dengan tag yang diawali huruf v."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Docker image biasanya diunggah ke",
+      "code": "",
+      "options": [
+        "Folder .github",
+        "Berkas package.json",
+        "Tab Issues",
+        "Registry seperti ghcr.io"
+      ],
+      "answer": 3,
+      "explanation": "Registry adalah tempat penyimpanan image."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jenis rilis yang pertama kali diberikan ke sebagian kecil pengguna disebut",
+      "code": "",
+      "options": [
+        "Rilis ulang",
+        "Rilis diam",
+        "Rilis bertahap (canary)",
+        "Rilis penuh"
+      ],
+      "answer": 2,
+      "explanation": "Canary membatasi dampak bila ada masalah."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Secrets sebaiknya ditulis langsung di berkas YAML agar mudah ditemukan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Rahasia tidak boleh ditulis di YAML."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Satu run adalah satu kali workflow berjalan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Run adalah satu eksekusi workflow."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Berapa job yang dihasilkan matriks ini?",
+      "code": "strategy:\n  matrix:\n    node: [18, 20, 22]\n    os: [ubuntu-latest, windows-latest]",
+      "options": [
+        "6 job",
+        "2 job",
+        "3 job",
+        "5 job"
+      ],
+      "answer": 0,
+      "explanation": "3 x 2 = 6 kombinasi."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Praktik menggabungkan kode sering-sering dengan pemeriksaan otomatis disebut",
+      "code": "",
+      "options": [
+        "Continuous Integration",
+        "Continuous Planning",
+        "Continuous Monitoring",
+        "Continuous Documentation"
+      ],
+      "answer": 0,
+      "explanation": "Itu definisi CI."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jika deploy ke produksi menunggu tombol manusia, praktiknya disebut",
+      "code": "",
+      "options": [
+        "Continuous Integration",
+        "Continuous Delivery",
+        "Continuous Testing",
+        "Continuous Deployment"
+      ],
+      "answer": 1,
+      "explanation": "Delivery berhenti di keputusan manusia."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jika perubahan yang lolos tes langsung rilis tanpa tombol, itu disebut",
+      "code": "",
+      "options": [
+        "Continuous Delivery",
+        "Continuous Design",
+        "Continuous Deployment",
+        "Continuous Debugging"
+      ],
+      "answer": 2,
+      "explanation": "Deployment otomatis penuh."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alasan utama umpan balik CI harus cepat adalah",
+      "code": "",
+      "options": [
+        "Supaya server produksi tidak mati ketika terlalu banyak orang menggabungkan kode setiap hari",
+        "Supaya komentar review berkurang",
+        "Supaya menit runner habis",
+        "Memperbaiki bug lebih murah saat kodenya masih segar di ingatan"
+      ],
+      "answer": 3,
+      "explanation": "Semakin cepat kabar buruk, semakin murah perbaikannya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rangkaian tahap otomatis dari commit sampai produksi disebut",
+      "code": "",
+      "options": [
+        "Branch",
+        "Pipeline",
+        "Fork",
+        "Registry"
+      ],
+      "answer": 1,
+      "explanation": "Itu definisi pipeline."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada pipeline, tahap yang gagal akan",
+      "code": "",
+      "options": [
+        "Menghentikan tahap sesudahnya",
+        "Mengulang seluruh tahap sebelumnya",
+        "Menghapus riwayat commit",
+        "Mengabaikan hasil dan lanjut deploy"
+      ],
+      "answer": 0,
+      "explanation": "Pipeline berhenti di tahap pertama yang gagal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alat CI/CD yang dipakai di kelas ini adalah",
+      "code": "",
+      "options": [
+        "Jenkins",
+        "CircleCI",
+        "GitHub Actions",
+        "Travis CI"
+      ],
+      "answer": 2,
+      "explanation": "Kelas ini fokus pada GitHub Actions."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berkas workflow dengan nama deploy.yml harus berada di",
+      "code": "",
+      "options": [
+        "workflows/deploy.yml di folder paling atas repositori, tanpa titik di depan",
+        ".github/deploy.yml",
+        "actions/deploy.yml",
+        ".github/workflows/deploy.yml"
+      ],
+      "answer": 3,
+      "explanation": "Hanya folder .github/workflows yang dibaca."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Runner adalah",
+      "code": "",
+      "options": [
+        "Mesin virtual yang menjalankan job",
+        "Berkas YAML yang berisi seluruh daftar job beserta urutan langkahnya masing-masing",
+        "Akun pemilik repositori",
+        "Tag versi rilis"
+      ],
+      "answer": 0,
+      "explanation": "Runner mengeksekusi job."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Contoh nilai runs-on yang valid adalah",
+      "code": "",
+      "options": [
+        "linux-newest",
+        "server-utama",
+        "github-runner",
+        "ubuntu-latest"
+      ],
+      "answer": 3,
+      "explanation": "ubuntu-latest adalah runner GitHub yang umum."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam YAML, daftar item ditulis dengan",
+      "code": "",
+      "options": [
+        "Tanda kurung kurawal yang membungkus semua item dalam satu baris panjang saja",
+        "Tanda tanya",
+        "Tanda hubung diikuti spasi",
+        "Tanda titik koma"
+      ],
+      "answer": 2,
+      "explanation": "Item daftar diawali '- '."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Teks YAML seperti Langkah: dua sebaiknya",
+      "code": "",
+      "options": [
+        "Ditulis tanpa spasi",
+        "Diberi tanda kutip",
+        "Dipecah jadi dua baris",
+        "Dihapus titik duanya"
+      ],
+      "answer": 1,
+      "explanation": "Titik dua di tengah teks perlu kutip."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa job pertama biasanya memuat actions/checkout?",
+      "code": "",
+      "options": [
+        "Agar workflow cepat selesai karena checkout otomatis memasang seluruh dependensi proyek sekaligus",
+        "Agar secrets tersamarkan",
+        "Agar kode repositori tersedia di runner",
+        "Agar versi Node terpasang"
+      ],
+      "answer": 2,
+      "explanation": "Runner kosong tanpa checkout."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perbedaan run dan uses pada step adalah",
+      "code": "",
+      "options": [
+        "run hanya untuk runner Windows, sedangkan uses hanya dipakai untuk runner Linux",
+        "run untuk rahasia, uses untuk variabel",
+        "run hanya di job pertama",
+        "run menjalankan perintah shell, uses memanggil action"
+      ],
+      "answer": 3,
+      "explanation": "Dua cara menulis step."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian nama sebelum @ pada actions/checkout@v4 menunjuk",
+      "code": "",
+      "options": [
+        "Pemilik dan nama repositori action",
+        "Versi action yang akan dipakai, ditulis lengkap dengan nomor mayor dan minornya",
+        "Nama job",
+        "Jenis runner"
+      ],
+      "answer": 0,
+      "explanation": "@v4 adalah versinya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar step multi-baris menjalankan beberapa perintah, tulis run dengan",
+      "code": "",
+      "options": [
+        "Tanda &",
+        "Tanda |",
+        "Tanda #",
+        "Tanda @"
+      ],
+      "answer": 1,
+      "explanation": "Tanda | membuat blok teks."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pemicu mana yang memeriksa kode dari pull request?",
+      "code": "",
+      "options": [
+        "release",
+        "pull_request",
+        "schedule",
+        "workflow_call"
+      ],
+      "answer": 1,
+      "explanation": "pull_request terjadi saat PR dibuka atau diperbarui."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pemicu yang jalan saat rilis dibuat di GitHub adalah",
+      "code": "",
+      "options": [
+        "push",
+        "fork",
+        "issues",
+        "release"
+      ],
+      "answer": 3,
+      "explanation": "release terkait pembuatan rilis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cron 0 2 * * 1 berjalan pada",
+      "code": "",
+      "options": [
+        "Senin pukul 02.00 UTC",
+        "Setiap hari pukul 02.00 WIB",
+        "Tanggal 2 setiap bulan",
+        "Setiap 2 jam"
+      ],
+      "answer": 0,
+      "explanation": "Kolom: menit 0, jam 2, hari Senin."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa tag filter ditulis dengan kutip, misalnya \"v*\"?",
+      "code": "",
+      "options": [
+        "Agar semua tag yang cocok otomatis diubah menjadi huruf besar sebelum dibandingkan",
+        "Agar filter berlaku untuk branch",
+        "Tanda bintang di awal nilai YAML perlu diberi kutip",
+        "Agar workflow berjalan manual"
+      ],
+      "answer": 2,
+      "explanation": "Bintang punya arti khusus di YAML."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila branches dan paths dipakai bersamaan pada satu pemicu,",
+      "code": "",
+      "options": [
+        "Salah satu cukup terpenuhi sehingga workflow terpicu bila branch atau berkasnya cocok",
+        "Hanya paths yang berlaku",
+        "Hanya branches yang berlaku",
+        "Keduanya harus terpenuhi sekaligus"
+      ],
+      "answer": 3,
+      "explanation": "Filter bekerja bersama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara menguji workflow terjadwal tanpa menunggu jadwal adalah",
+      "code": "",
+      "options": [
+        "Mengubah zona waktu repositori",
+        "Menambah workflow_dispatch",
+        "Menghapus kunci schedule",
+        "Menjalankan di laptop saja"
+      ],
+      "answer": 1,
+      "explanation": "Tombol manual membantu pengujian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dua job tanpa needs akan",
+      "code": "",
+      "options": [
+        "Berjalan bergantian",
+        "Gagal otomatis",
+        "Berjalan bersamaan",
+        "Berjalan di mesin yang sama"
+      ],
+      "answer": 2,
+      "explanation": "Default-nya paralel."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Job dengan needs: [lint, tes] berjalan bila",
+      "code": "",
+      "options": [
+        "Keduanya lolos",
+        "Salah satu lolos",
+        "Keduanya selesai walau gagal",
+        "Tidak ada yang berjalan"
+      ],
+      "answer": 0,
+      "explanation": "Semua job yang ditunggu harus lolos."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ekspresi yang menghasilkan hash commit saat ini adalah",
+      "code": "",
+      "options": [
+        "${{ github.tag }}",
+        "${{ github.sha }}",
+        "${{ runner.hash }}",
+        "${{ job.commit }}"
+      ],
+      "answer": 1,
+      "explanation": "github.sha berisi hash commit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Variabel lingkungan untuk semua step dalam satu job ditulis dengan kunci env di",
+      "code": "",
+      "options": [
+        "Level job",
+        "Level workflow saja",
+        "Level repositori saja",
+        "Level cache"
+      ],
+      "answer": 0,
+      "explanation": "env boleh di workflow, job, atau step."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Memecah satu job menjadi dua masuk akal bila",
+      "code": "",
+      "options": [
+        "Kedua bagian saling berbagi folder kerja dan hasil build yang dibuat sebelumnya",
+        "Hanya satu langkah yang ada",
+        "Pekerjaan bisa berjalan paralel dan independen",
+        "Ingin runner lebih sedikit"
+      ],
+      "answer": 2,
+      "explanation": "Pecah untuk paralelisme."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hal yang terjadi pada runner setelah job selesai adalah",
+      "code": "",
+      "options": [
+        "Disimpan untuk run berikutnya",
+        "Dipakai ulang oleh job lain",
+        "Dikunci untuk pemilik",
+        "Mesinnya dibuang"
+      ],
+      "answer": 3,
+      "explanation": "Runner baru tiap job."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Key cache yang tidak pernah berubah mengakibatkan",
+      "code": "",
+      "options": [
+        "Cache tidak pernah dipakai",
+        "Cache basi dipakai terus",
+        "Cache terhapus tiap run",
+        "Workflow gagal"
+      ],
+      "answer": 1,
+      "explanation": "Key tidak berubah, isi lama dipulihkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Key cache yang berisi github.sha akan",
+      "code": "",
+      "options": [
+        "Selalu cocok sehingga cache dipakai ulang di semua commit yang pernah dibuat di repositori",
+        "Mengenkripsi cache",
+        "Mempercepat semua run",
+        "Hampir tidak pernah cocok sehingga cache jarang dipakai"
+      ],
+      "answer": 3,
+      "explanation": "SHA berubah setiap commit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jika key persis tidak ada, actions/cache akan mencoba",
+      "code": "",
+      "options": [
+        "Menghapus semua cache lama yang tersimpan lalu memulai pembuatan cache baru dari nol",
+        "Membuat workflow gagal",
+        "Awalan dari restore-keys secara berurutan",
+        "Memakai artefak"
+      ],
+      "answer": 2,
+      "explanation": "Awalan dicoba berurutan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Aksi untuk mengunggah hasil run agar bisa diunduh adalah",
+      "code": "",
+      "options": [
+        "actions/upload-artifact",
+        "actions/cache",
+        "actions/checkout",
+        "actions/setup-node"
+      ],
+      "answer": 0,
+      "explanation": "Artefak diunggah dengan upload-artifact."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara aman memindahkan folder dist dari job build ke job deploy adalah",
+      "code": "",
+      "options": [
+        "Menganggapnya otomatis ada",
+        "Artefak",
+        "Menyimpannya di secrets",
+        "Menulisnya di komentar commit"
+      ],
+      "answer": 1,
+      "explanation": "Job berbeda butuh artefak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Matriks dengan 3 versi Node dan 3 sistem operasi menghasilkan",
+      "code": "",
+      "options": [
+        "3 job",
+        "6 job",
+        "9 job",
+        "12 job"
+      ],
+      "answer": 2,
+      "explanation": "3 x 3 = 9."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi untuk membuang kombinasi tertentu dari matriks adalah",
+      "code": "",
+      "options": [
+        "omit",
+        "remove",
+        "skip",
+        "exclude"
+      ],
+      "answer": 3,
+      "explanation": "exclude membuang kombinasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dengan fail-fast: false, bila satu kombinasi gagal maka",
+      "code": "",
+      "options": [
+        "Kombinasi lain tetap diselesaikan",
+        "Semua kombinasi lain dibatalkan seketika begitu satu kombinasi pertama dinyatakan gagal",
+        "Workflow dinyatakan sukses",
+        "Kombinasi lain diulang"
+      ],
+      "answer": 0,
+      "explanation": "fail-fast false menjaga semua kombinasi selesai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai secret di log ditampilkan sebagai",
+      "code": "",
+      "options": [
+        "Kosong",
+        "Teks asli",
+        "Hash SHA",
+        "***"
+      ],
+      "answer": 3,
+      "explanation": "GitHub menyamarkan nilai secret."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa secret sebaiknya diteruskan lewat env?",
+      "code": "",
+      "options": [
+        "Agar tidak ikut tampil di baris perintah",
+        "Agar pekerjaan berjalan lebih cepat karena variabel lingkungan tidak perlu dienkripsi dulu",
+        "Agar bisa dibaca semua orang",
+        "Agar tidak perlu dienkripsi"
+      ],
+      "answer": 0,
+      "explanation": "env menghindari rahasia di baris perintah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pull request dari fork tidak menerima secrets karena",
+      "code": "",
+      "options": [
+        "Fork tidak punya runner sendiri sehingga GitHub menjalankannya tanpa rahasia apa pun",
+        "Secrets hanya untuk branch main",
+        "Mencegah orang asing mencuri rahasia lewat kode di PR",
+        "GitHub tidak mendukung fork"
+      ],
+      "answer": 2,
+      "explanation": "Pembatasan keamanan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Variabel yang bukan rahasia, misalnya nama domain, sebaiknya disimpan sebagai",
+      "code": "",
+      "options": [
+        "Secrets",
+        "Variables (vars)",
+        "Artefak",
+        "Cache"
+      ],
+      "answer": 1,
+      "explanation": "vars untuk nilai yang terlihat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Environment production berguna untuk",
+      "code": "",
+      "options": [
+        "Memisahkan rahasia dan meminta persetujuan sebelum deploy",
+        "Mempercepat build dengan memberi tambahan memori dan prosesor khusus pada runner produksi",
+        "Menggantikan branch",
+        "Menghapus log"
+      ],
+      "answer": 0,
+      "explanation": "Environment membawa aturan sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Langkah pertama yang lazim pada CI Node.js setelah checkout dan setup-node adalah",
+      "code": "",
+      "options": [
+        "npm publish",
+        "npm start",
+        "npm ci",
+        "npm login"
+      ],
+      "answer": 2,
+      "explanation": "Memasang dependensi dulu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan umum langkah pemeriksaan dalam CI adalah",
+      "code": "",
+      "options": [
+        "Build, deploy, lalu lint",
+        "Lint, tes, lalu build",
+        "Deploy, tes, lalu lint",
+        "Tes, deploy, lalu lint"
+      ],
+      "answer": 1,
+      "explanation": "Dari yang tercepat ke terlama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kode keluar 0 pada sebuah perintah berarti",
+      "code": "",
+      "options": [
+        "Gagal total",
+        "Dilewati",
+        "Menunggu input",
+        "Sukses"
+      ],
+      "answer": 3,
+      "explanation": "Nol adalah sukses."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Branch protection dengan status check wajib membuat",
+      "code": "",
+      "options": [
+        "Semua commit lama dihapus otomatis dari riwayat sampai seluruh pemeriksaan selesai dijalankan",
+        "Workflow dihapus",
+        "Runner dimatikan",
+        "Tombol merge tidak aktif sampai pemeriksaan hijau"
+      ],
+      "answer": 3,
+      "explanation": "Hasil CI menjadi syarat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tes yang kadang lolos kadang gagal tanpa perubahan kode disebut",
+      "code": "",
+      "options": [
+        "Flaky",
+        "Stabil",
+        "Idempoten",
+        "Deterministik"
+      ],
+      "answer": 0,
+      "explanation": "Flaky merusak kepercayaan pada CI."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci timeout-minutes pada job berguna untuk",
+      "code": "",
+      "options": [
+        "Menunda job beberapa menit sebelum mulai agar runner lain sempat menyelesaikan pekerjaannya",
+        "Menyetel zona waktu",
+        "Membatasi job yang macet agar tidak memakan jam runner",
+        "Menambah jatah menit"
+      ],
+      "answer": 2,
+      "explanation": "Batas waktu menghemat sumber daya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk memperbolehkan job menulis paket ke ghcr.io, kamu menambahkan",
+      "code": "",
+      "options": [
+        "env: PACKAGES: write yang ditulis di level step paling akhir sebelum login registry",
+        "permissions: packages: write",
+        "needs: packages",
+        "on: packages"
+      ],
+      "answer": 1,
+      "explanation": "Izin ditulis di kunci permissions."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Token bawaan yang cukup untuk login ke ghcr.io adalah",
+      "code": "",
+      "options": [
+        "SSH_KEY",
+        "NPM_TOKEN",
+        "DOCKER_PASSWORD",
+        "GITHUB_TOKEN"
+      ],
+      "answer": 3,
+      "explanation": "GITHUB_TOKEN dibuat otomatis tiap run."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa hanya memakai tag latest berisiko?",
+      "code": "",
+      "options": [
+        "Sulit melacak commit mana dan sulit kembali ke versi sebelumnya",
+        "Karena latest tidak didukung Docker sehingga image yang diunggah akan ditolak registry",
+        "Karena latest membuat image besar",
+        "Karena latest hanya untuk Linux"
+      ],
+      "answer": 0,
+      "explanation": "Tag unik per build lebih aman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Agar job deploy hanya berjalan dari branch main, tulis",
+      "code": "",
+      "options": [
+        "on: main-only yang ditulis di bawah kunci jobs untuk menyaring semua peristiwa",
+        "if: github.ref == 'refs/heads/main'",
+        "needs: main",
+        "env: BRANCH=main"
+      ],
+      "answer": 1,
+      "explanation": "Kondisi if memfilter job."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Deploy ke VPS lewat SSH sebaiknya memakai",
+      "code": "",
+      "options": [
+        "Pengguna root untuk semua pekerjaan supaya tidak ada langkah yang terhambat izin akses",
+        "Kata sandi di berkas YAML",
+        "Pengguna khusus dengan hak terbatas",
+        "Akses tanpa autentikasi"
+      ],
+      "answer": 2,
+      "explanation": "Hak seminimal mungkin."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prinsip penting memakai staging adalah",
+      "code": "",
+      "options": [
+        "Menggunakan data nyata semua pengguna supaya hasil ujiannya benar-benar mirip dengan kenyataan",
+        "Menghindari persetujuan manual",
+        "Membangun ulang untuk tiap tujuan",
+        "Meniru produksi untuk uji terakhir sebelum rilis"
+      ],
+      "answer": 3,
+      "explanation": "Staging adalah uji akhir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada versi semantik, perubahan yang merusak kompatibilitas menaikkan",
+      "code": "",
+      "options": [
+        "MINOR",
+        "PATCH",
+        "MAJOR",
+        "BUILD"
+      ],
+      "answer": 2,
+      "explanation": "MAJOR untuk perubahan tidak kompatibel."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perbaikan bug kecil tanpa perubahan perilaku menaikkan",
+      "code": "",
+      "options": [
+        "MAJOR",
+        "PATCH",
+        "MINOR",
+        "RELEASE"
+      ],
+      "answer": 1,
+      "explanation": "PATCH untuk perbaikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hal yang perlu diwaspadai saat rollback kode adalah",
+      "code": "",
+      "options": [
+        "Migrasi database yang sudah berjalan tidak ikut mundur",
+        "Image lama otomatis rusak begitu versi baru dirilis sehingga tidak bisa dipasang kembali",
+        "Tag versi hilang sendiri",
+        "Runner menolak deploy ulang"
+      ],
+      "answer": 0,
+      "explanation": "Data tidak otomatis kembali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi catatan rilis adalah",
+      "code": "",
+      "options": [
+        "Menyimpan secrets deploy supaya semua anggota tim bisa membacanya ketika sedang menyiapkan rilis",
+        "Menjelaskan apa yang berubah di setiap versi",
+        "Mempercepat deploy",
+        "Menggantikan tes"
+      ],
+      "answer": 1,
+      "explanation": "Catatan rilis membantu pelacakan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila workflow tidak muncul sama sekali di tab Actions, penyebab paling mungkin adalah",
+      "code": "",
+      "options": [
+        "Galat YAML atau pemicu yang tidak cocok",
+        "Tes gagal di salah satu step pertama sehingga seluruh pipeline dibatalkan oleh GitHub",
+        "Cache habis",
+        "Runner penuh"
+      ],
+      "answer": 0,
+      "explanation": "Workflow belum mulai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara menambah detail log saat debugging adalah",
+      "code": "",
+      "options": [
+        "Menghapus semua step lain supaya log hanya berisi satu baris perintah yang bermasalah saja",
+        "Menghapus secrets",
+        "Mengaktifkan debug logging pada run ulang",
+        "Mengganti runner ke Windows"
+      ],
+      "answer": 2,
+      "explanation": "Debug logging menampilkan rincian tambahan."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Nama job boleh memakai spasi dan tanda seru karena bebas.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Hanya huruf, angka, tanda hubung, dan garis bawah."
+    }
+  ],
+  "prerequisites": [
+    "github"
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Pemeriksa Workflow",
+    "brief": "Bangun **Pemeriksa Workflow**: sebuah fungsi `periksaWorkflow(wf)` yang menilai workflow GitHub Actions yang sudah di-parse dari YAML menjadi objek, lalu mengembalikan **daftar masalah** (array teks). Workflow yang benar menghasilkan array kosong.\n\nContoh workflow yang benar:\n\n```js\n{\n  name: \"CI\",\n  on: \"push\",\n  jobs: {\n    tes: { \"runs-on\": \"ubuntu-latest\", steps: [{ uses: \"actions/checkout@v4\" }, { run: \"npm test\" }] },\n    deploy: { \"runs-on\": \"ubuntu-latest\", needs: \"tes\", steps: [{ run: \"./deploy.sh\" }] }\n  }\n}\n```\n\n**Aturan dan teks masalah yang harus persis sama** (urutan pemeriksaan tidak penting, setiap masalah muncul sekali):\n\n1. Tidak ada kunci `on`: `\"tidak ada pemicu\"`.\n2. `jobs` tidak ada atau kosong: `\"tidak ada job\"`.\n3. Job tanpa `runs-on`: `\"job <nama>: tidak ada runs-on\"`.\n4. Job tanpa `steps` atau `steps` kosong: `\"job <nama>: tidak ada step\"`.\n5. Step yang tidak punya tepat satu dari `run` atau `uses`: `\"job <nama>, step <n>: harus punya run atau uses\"` (n mulai dari 1).\n6. Step `uses` yang tidak mengandung `@` (tanpa versi): `\"job <nama>, step <n>: uses tanpa versi\"`.\n7. `needs` yang menunjuk job tidak dikenal: `\"job <nama>: needs ke job tidak dikenal <x>\"`.\n\n`needs` boleh teks atau daftar. Satu workflow boleh memicu beberapa masalah sekaligus.",
+    "prompt": "Lengkapi fungsi `periksaWorkflow(wf)` sesuai tujuh aturan di brief. Kembalikan array teks masalah, kosong bila workflow benar.",
+    "starter": {
+      "code": "function periksaWorkflow(wf) {\n  const masalah = [];\n  // TODO: periksa on, jobs, runs-on, steps, run/uses, versi action, dan needs\n  return masalah;\n}\n"
+    },
+    "solution": {
+      "code": "function periksaWorkflow(wf) {\n  const masalah = [];\n  if (!(\"on\" in wf)) masalah.push(\"tidak ada pemicu\");\n  const jobs = wf.jobs ?? {};\n  const nama = Object.keys(jobs);\n  if (nama.length === 0) masalah.push(\"tidak ada job\");\n  for (const n of nama) {\n    const job = jobs[n];\n    if (!job[\"runs-on\"]) masalah.push(`job ${n}: tidak ada runs-on`);\n    const steps = job.steps ?? [];\n    if (steps.length === 0) masalah.push(`job ${n}: tidak ada step`);\n    steps.forEach((s, i) => {\n      const label = `job ${n}, step ${i + 1}`;\n      const punyaRun = \"run\" in s;\n      const punyaUses = \"uses\" in s;\n      if (punyaRun === punyaUses) masalah.push(`${label}: harus punya run atau uses`);\n      else if (punyaUses && !String(s.uses).includes(\"@\")) masalah.push(`${label}: uses tanpa versi`);\n    });\n    for (const perlu of [].concat(job.needs ?? [])) {\n      if (!nama.includes(perlu)) masalah.push(`job ${n}: needs ke job tidak dikenal ${perlu}`);\n    }\n  }\n  return masalah;\n}\n"
+    },
+    "setup": "const BAIK = {\n  name: \"CI\",\n  on: \"push\",\n  jobs: {\n    tes: { \"runs-on\": \"ubuntu-latest\", steps: [{ uses: \"actions/checkout@v4\" }, { run: \"npm test\" }] },\n    deploy: { \"runs-on\": \"ubuntu-latest\", needs: \"tes\", steps: [{ run: \"./deploy.sh\" }] }\n  }\n};\nconst salin = (o) => JSON.parse(JSON.stringify(o));\n",
+    "tests": [
+      {
+        "name": "Workflow yang benar tidak punya masalah",
+        "check": "periksaWorkflow(BAIK).length === 0"
+      },
+      {
+        "name": "Tanpa on dilaporkan",
+        "check": "(() => { const w = salin(BAIK); delete w.on; return periksaWorkflow(w).includes(\"tidak ada pemicu\"); })()"
+      },
+      {
+        "name": "jobs kosong dilaporkan",
+        "check": "periksaWorkflow({ on: \"push\", jobs: {} }).includes(\"tidak ada job\") && periksaWorkflow({ on: \"push\" }).includes(\"tidak ada job\")"
+      },
+      {
+        "name": "Job tanpa runs-on dilaporkan dengan namanya",
+        "check": "(() => { const w = salin(BAIK); delete w.jobs.tes[\"runs-on\"]; return periksaWorkflow(w).includes(\"job tes: tidak ada runs-on\"); })()"
+      },
+      {
+        "name": "Job tanpa step dilaporkan",
+        "check": "(() => { const w = salin(BAIK); w.jobs.deploy.steps = []; return periksaWorkflow(w).includes(\"job deploy: tidak ada step\"); })()"
+      },
+      {
+        "name": "Step tanpa run dan uses dilaporkan dengan nomornya",
+        "check": "(() => { const w = salin(BAIK); w.jobs.tes.steps[1] = { name: \"kosong\" }; return periksaWorkflow(w).includes(\"job tes, step 2: harus punya run atau uses\"); })()"
+      },
+      {
+        "name": "Step dengan run sekaligus uses dilaporkan",
+        "check": "(() => { const w = salin(BAIK); w.jobs.tes.steps[0] = { run: \"x\", uses: \"a/b@v1\" }; return periksaWorkflow(w).includes(\"job tes, step 1: harus punya run atau uses\"); })()"
+      },
+      {
+        "name": "uses tanpa versi dilaporkan",
+        "check": "(() => { const w = salin(BAIK); w.jobs.tes.steps[0] = { uses: \"actions/checkout\" }; return periksaWorkflow(w).includes(\"job tes, step 1: uses tanpa versi\"); })()"
+      },
+      {
+        "name": "needs ke job tak dikenal dilaporkan",
+        "check": "(() => { const w = salin(BAIK); w.jobs.deploy.needs = [\"tes\", \"hantu\"]; return periksaWorkflow(w).includes(\"job deploy: needs ke job tidak dikenal hantu\"); })()"
+      },
+      {
+        "name": "Beberapa masalah muncul bersamaan dan tiap masalah sekali",
+        "check": "(() => { const w = salin(BAIK); delete w.on; delete w.jobs.tes[\"runs-on\"]; const m = periksaWorkflow(w); return m.length === 2 && m.includes(\"tidak ada pemicu\") && m.includes(\"job tes: tidak ada runs-on\"); })()"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "konsep-ci-cd",
+      "title": "Konsep CI/CD dan Pipeline",
+      "est_minutes": 20,
+      "slide_from": 2,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan masalah yang muncul bila build, tes, dan rilis dikerjakan manual.\n- Membedakan Continuous Integration, Continuous Delivery, dan Continuous Deployment.\n- Menggambar alur pipeline dari commit sampai produksi.\n- Menyebutkan manfaat umpan balik yang cepat bagi sebuah tim.\n\n## Cerita dari rilis manual\n\nBayangkan sebuah tim kecil yang membangun aplikasi toko online. Setiap Jumat sore, satu orang bernama Dewi menyiapkan rilis. Ia menarik kode terbaru ke laptopnya, menjalankan tes seingatnya, membuat build, lalu mengunggah hasilnya ke server lewat FTP. Prosesnya makan satu jam dan hanya Dewi yang hafal urutannya.\n\nSuatu Jumat Dewi sakit. Rekannya, Raka, mencoba mengikuti catatan di kepala orang lain. Ia lupa menjalankan satu langkah migrasi data, dan pelanggan melihat halaman error sepanjang malam. Tidak ada yang salah dengan niat Raka. Yang salah adalah prosesnya: bergantung pada ingatan manusia dan mesin yang berbeda-beda.\n\nMasalah serupa muncul di banyak tim:\n\n- **Hasil berbeda di tiap mesin.** Tes lolos di laptop A karena versi Node-nya baru, tetapi gagal di laptop B.\n- **Langkah terlewat.** Lupa lint, lupa tes, lupa mengganti nomor versi.\n- **Bug ketahuan terlambat.** Tiga orang menggabungkan kode di hari yang sama, dan baru saat rilis ternyata perubahan mereka saling bertabrakan.\n- **Rilis besar dan menakutkan.** Karena rilis jarang, sekali rilis isinya banyak. Kalau ada yang rusak, sulit melacak penyebabnya.\n\nJawabannya adalah mengotomatiskan pekerjaan berulang itu supaya dijalankan mesin yang sama, dengan langkah yang sama, setiap kali.\n\n## Continuous Integration\n\n**Continuous Integration (CI)** adalah kebiasaan menggabungkan perubahan kode sering-sering, dan setiap penggabungan memicu proses otomatis: pasang dependensi, build, jalankan tes, dan jalankan lint. Kata kuncinya adalah *sering* dan *otomatis*.\n\nDengan CI, tabrakan antar perubahan ketahuan dalam hitungan menit, bukan hari. Pengembang yang mendorong kode langsung mendapat kabar: hijau berarti aman, merah berarti ada yang perlu diperbaiki. Karena ia baru saja menulis kodenya, memperbaikinya jadi murah.\n\nCI bukan alat tertentu. Ia adalah praktik, dan alat seperti GitHub Actions hanya mewujudkannya. Tim yang memakai alat tetapi jarang menggabungkan kode, atau membiarkan build merah berhari-hari, sebenarnya belum menerapkan CI.\n\n## Continuous Delivery dan Continuous Deployment\n\nSingkatan **CD** punya dua arti yang sering tertukar:\n\n- **Continuous Delivery**: setiap perubahan yang lolos CI menghasilkan paket yang *siap* dirilis kapan saja. Keputusan merilis tetap ada di tangan manusia, biasanya lewat satu tombol atau persetujuan.\n- **Continuous Deployment**: selangkah lebih jauh. Perubahan yang lolos semua pemeriksaan langsung dirilis ke produksi tanpa tombol manusia.\n\nMana yang cocok? Itu tergantung toleransi risiko. Aplikasi internal sederhana bisa memakai Continuous Deployment. Aplikasi keuangan biasanya berhenti di Continuous Delivery dan menambah persetujuan manual. Yang penting, proses rilisnya sendiri sudah otomatis dan dapat diulang, sehingga *keputusan* rilis menjadi satu-satunya bagian manusiawi.\n\nRingkasnya, CI memastikan kode bisa digabung dan dites. Continuous Delivery memastikan hasilnya selalu siap dirilis. Continuous Deployment merilisnya otomatis.\n\n![Perbedaan CI, Continuous Delivery, dan Deployment](slide:3)\n\n## Pipeline: dari commit sampai produksi\n\nRangkaian tahap otomatis itu disebut **pipeline**. Pipeline sederhana untuk aplikasi web biasanya begini:\n\n1. **Pemicu.** Seseorang melakukan push atau membuka pull request.\n2. **Persiapan.** Mesin bersih mengambil kode lalu memasang dependensi.\n3. **Pemeriksaan.** Lint dan tes dijalankan.\n4. **Build.** Aplikasi dikemas, misalnya menjadi folder `dist` atau image Docker.\n5. **Deploy.** Bila semua tahap sebelumnya lolos, hasil build dikirim ke staging atau produksi.\n\nAturan pentingnya: pipeline berhenti di tahap pertama yang gagal. Tidak ada gunanya mengirim build ke produksi kalau tes merah. Setiap tahap juga memberi tahu hasilnya, entah lewat tanda centang di pull request, email, atau notifikasi obrolan.\n\nContoh urutan yang tampak dalam bentuk daftar perintah:\n\n```text\ngit push\n  -> npm ci\n  -> npm run lint\n  -> npm test\n  -> npm run build\n  -> deploy\n```\n\nPerhatikan bahwa semua perintah ini sudah biasa kamu jalankan sendiri. CI/CD tidak menciptakan pekerjaan baru. Ia hanya memindahkan pekerjaan yang sama ke mesin yang konsisten.\n\n## Manfaat bagi tim\n\nMengapa tim mau repot menyiapkan semua ini?\n\n- **Umpan balik cepat.** Semakin cepat kamu tahu ada yang rusak, semakin sedikit kode lain yang dibangun di atas kerusakan itu.\n- **Konsistensi.** Mesin menjalankan langkah yang sama persis tiap kali. Tidak ada lagi \"di laptop saya jalan\".\n- **Rilis kecil dan sering.** Perubahan kecil lebih mudah dites, lebih mudah dilacak, dan lebih mudah dibatalkan.\n- **Pengetahuan tidak terkunci di satu kepala.** Proses rilis tertulis sebagai kode di repositori, bisa dibaca dan diperbaiki siapa saja.\n- **Kepercayaan diri.** Tim berani mengubah kode karena ada jaring pengaman.\n\nAda juga biayanya. Pipeline perlu dirawat, tes yang lambat memperlambat semua orang, dan pipeline yang terlalu rumit justru sulit dipahami. Mulailah dari yang kecil: satu workflow yang menjalankan tes. Tambahkan tahap lain saat kamu benar-benar membutuhkannya.\n\n## Mengapa GitHub Actions\n\nAda banyak layanan CI/CD: Jenkins, GitLab CI, CircleCI, dan lainnya. Kelas ini memakai **GitHub Actions** karena sudah menyatu dengan GitHub: workflow disimpan di repositori yang sama dengan kodenya, hasilnya tampil di pull request, dan repositori publik mendapat menit runner gratis. Konsep yang kamu pelajari di sini, seperti pemicu, job, cache, matriks, dan secrets, juga ada di layanan lain dengan istilah yang mirip, jadi ilmunya tidak terkunci pada satu produk.\n\n## Istilah yang akan sering kamu temui\n\nSebelum masuk ke praktik, kenali beberapa istilah yang muncul di seluruh kelas ini. **Build** adalah proses mengubah kode sumber menjadi sesuatu yang bisa dijalankan atau dikirim. **Artefak** adalah hasil dari sebuah proses, misalnya folder `dist` atau image Docker. **Runner** adalah mesin yang menjalankan pipeline. **Lingkungan** (environment) adalah tempat aplikasi berjalan, misalnya staging dan produksi. Dan **rollback** adalah kembali ke versi sebelumnya yang sehat. Kamu tidak perlu menghafalnya sekarang, setiap istilah akan dibahas lagi di bab yang relevan.\n\n## Rangkuman\n\n- Rilis manual bergantung pada ingatan dan mesin masing-masing, sehingga rawan salah dan tidak konsisten.\n- CI berarti menggabungkan kode sering-sering dengan build dan tes otomatis di setiap penggabungan.\n- Continuous Delivery menjaga hasil build selalu siap rilis, sedangkan Continuous Deployment merilisnya otomatis tanpa tombol manusia.\n- Pipeline adalah rangkaian tahap dari pemicu, persiapan, pemeriksaan, build, sampai deploy, dan berhenti di tahap pertama yang gagal.\n- Manfaat utamanya adalah umpan balik cepat, konsistensi, dan rilis yang kecil serta sering.\n- GitHub Actions dipakai di kelas ini karena menyatu dengan repositori GitHub.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Masalah utama rilis yang dikerjakan manual adalah",
+          "code": "",
+          "options": [
+            "Bergantung pada ingatan manusia dan mesin yang berbeda-beda",
+            "Kode tidak bisa disimpan di Git sehingga setiap rilis harus dikirim lewat surel",
+            "Pelanggan tidak mau memakai aplikasi baru",
+            "Server menolak semua unggahan berkas"
+          ],
+          "answer": 0,
+          "explanation": "Proses manual tidak konsisten dan mudah melewatkan langkah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Continuous Integration berarti",
+          "code": "",
+          "options": [
+            "Merilis ke produksi setiap hari tanpa tes agar pengguna cepat mendapat fitur baru terbaru",
+            "Menulis dokumentasi proyek secara berkala",
+            "Menyimpan semua kode di satu folder bersama",
+            "Sering menggabungkan kode dengan build dan tes otomatis di setiap penggabungan"
+          ],
+          "answer": 3,
+          "explanation": "CI menekankan penggabungan sering dan pemeriksaan otomatis."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perbedaan Continuous Delivery dan Continuous Deployment terletak pada",
+          "code": "",
+          "options": [
+            "Bahasa pemrograman yang dipakai oleh tim ketika menulis aplikasinya sehari-hari",
+            "Jumlah anggota tim yang terlibat",
+            "Ada tidaknya tombol keputusan manusia sebelum rilis ke produksi",
+            "Ukuran repositori Git yang dipakai"
+          ],
+          "answer": 2,
+          "explanation": "Delivery menunggu keputusan manusia, Deployment merilis otomatis."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pipeline sebaiknya tetap melanjutkan ke tahap deploy walaupun tes gagal.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Pipeline berhenti di tahap pertama yang gagal."
+        }
+      ],
+      "exercises": []
+    },
+    {
+      "slug": "anatomi-workflow-yaml",
+      "title": "Anatomi Workflow YAML",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Menulis workflow pertama di folder `.github/workflows/`.\n- Menjelaskan fungsi `name`, `on`, `jobs`, `runs-on`, dan `steps`.\n- Menulis YAML dengan indentasi dan tanda kutip yang benar.\n- Membaca hasil sebuah run di tab Actions.\n\n## Workflow adalah berkas YAML\n\nDi GitHub Actions, sebuah **workflow** adalah berkas YAML yang disimpan di folder `.github/workflows/` dalam repositori. Nama berkasnya bebas, misalnya `ci.yml`. Begitu berkas itu ada di branch, GitHub otomatis membacanya dan menjalankannya saat pemicunya terjadi. Tidak ada server yang perlu kamu pasang sendiri.\n\nBerikut workflow paling sederhana yang berguna:\n\n```yaml\nname: CI\non: push\njobs:\n  tes:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"Halo, Actions\"\n```\n\nMari bedah per baris:\n\n- `name: CI` memberi nama yang tampil di tab Actions. Boleh dihilangkan, tetapi nama yang jelas memudahkan kamu mencari workflow di antara banyak lainnya.\n- `on: push` menyatakan workflow dijalankan setiap ada push ke repositori. Bab berikutnya membahas pemicu lebih dalam.\n- `jobs:` berisi daftar pekerjaan. Di sini hanya ada satu job bernama `tes`. Nama job bebas, tetapi hanya boleh memakai huruf, angka, tanda hubung, dan garis bawah.\n- `runs-on: ubuntu-latest` memilih jenis mesin virtual (runner) yang menjalankan job.\n- `steps:` berisi urutan langkah di dalam job. Langkah pertama memakai action `actions/checkout` untuk mengambil kode repositori ke runner. Tanpa langkah ini, runner hanya punya mesin kosong, tanpa kodemu. Langkah kedua menjalankan satu perintah shell.\n\n![Contoh workflow pertama](slide:5)\n\n## Aturan dasar YAML\n\nYAML mudah dibaca, tetapi ketat soal tata letak. Kesalahan kecil membuat workflow tidak mau mulai. Pegang aturan berikut:\n\n1. **Indentasi memakai spasi, bukan tab.** Dua spasi per tingkat adalah kebiasaan umum. Setiap anak harus lebih menjorok daripada induknya.\n2. **Daftar memakai tanda hubung diikuti spasi.** Setiap item `steps` diawali `- `.\n3. **Pasangan kunci dan nilai memakai titik dua diikuti spasi.** `name: CI`, bukan `name:CI`.\n4. **Beri tanda kutip pada teks yang mengandung karakter khusus**, misalnya titik dua, tanda pagar, atau diawali tanda bintang. `name: \"Langkah: dua\"` aman, sedangkan `name: Langkah: dua` memicu galat.\n5. **Komentar diawali tanda pagar.** Semua setelah `#` pada baris itu diabaikan.\n\nContoh yang benar:\n\n```yaml\njobs:\n  build:\n    steps:\n      - name: Langkah satu\n        run: npm ci\n      - name: \"Langkah: dua\"\n        run: npm test   # komentar\n```\n\nPerhatikan bahwa `name` dan `run` pada satu item daftar sejajar secara vertikal. Itu karena keduanya milik item yang sama, bukan dua item berbeda.\n\nSatu jebakan yang sering menjebak pemula: angka seperti `node-version: 22` dibaca sebagai angka, padahal `22.10` bisa terbaca sebagai `22.1`. Bila versi punya nol di belakang, beri tanda kutip: `\"22.10\"`.\n\n## Step: run atau uses\n\nSetiap step melakukan satu dari dua hal:\n\n- **`run`** menjalankan perintah shell, persis seperti kalau kamu mengetiknya di terminal. Untuk beberapa baris, pakai tanda `|`:\n\n```yaml\n- name: Pasang dan tes\n  run: |\n    npm ci\n    npm test\n```\n\n- **`uses`** memakai *action*, yaitu potongan otomasi siap pakai yang dibuat orang lain atau GitHub sendiri. `actions/checkout@v4` adalah contohnya, dengan `@v4` menyebut versi yang dipakai.\n\nField `name` pada step bersifat opsional. Bila ada, ia menjadi judul step di log. Bila tidak ada, GitHub memakai isi `run` atau nama action, dan itu kadang sulit dibaca. Memberi nama pada step penting membuat log lebih ramah saat kamu mencari kesalahan.\n\n## Melihat hasil run\n\nSetelah kamu push berkas workflow, buka tab **Actions** di repositori. Kamu akan melihat daftar workflow di sisi kiri dan daftar *run* di tengah. Satu **run** adalah satu kali workflow berjalan, dipicu oleh satu peristiwa tertentu.\n\nKlik sebuah run untuk melihat job di dalamnya. Klik job untuk membuka log tiap step. Step yang sukses ditandai centang hijau, step yang gagal ditandai silang merah, dan step yang dilewati ditandai abu-abu. Bila sebuah step gagal, step sesudahnya otomatis dilewati dan job dinyatakan gagal.\n\nHasil yang sama juga tampil di pull request: di bagian bawah halaman ada daftar pemeriksaan dengan status tiap workflow. Itulah cara tim melihat apakah sebuah perubahan aman digabung.\n\nSaat sebuah run gagal, kebiasaan terbaik adalah membuka log dan mencari step merah yang *pertama*. Kesalahan di step awal sering menimbulkan kesalahan lain di step sesudahnya, jadi memperbaiki yang pertama biasanya menyelesaikan semuanya.\n\n## Latihan kecil untuk dicoba di repositori sendiri\n\n1. Buat repositori baru di GitHub.\n2. Buat berkas `.github/workflows/ci.yml` dengan isi workflow di atas.\n3. Commit dan push, lalu buka tab Actions.\n4. Ubah `echo \"Halo, Actions\"` menjadi `echo \"Halo, ${{ github.actor }}\"`, push lagi, dan lihat nama akunmu muncul di log.\n\nLatihan ini cukup untuk merasakan siklusnya: ubah berkas, push, lihat hasil, perbaiki.\n\n## Kesalahan yang sering dialami pemula\n\nBeberapa jebakan muncul hampir di setiap orang yang baru menulis workflow pertama.\n\n- **Folder salah.** Berkas harus berada tepat di `.github/workflows/`, lengkap dengan titik di depan `github` dan nama `workflows` berakhiran huruf s. Berkas di folder lain tidak pernah dibaca.\n- **Berkas ada di branch yang belum digabung.** Sebagian pemicu, termasuk tombol manual dan jadwal, hanya aktif bila berkas berada di branch bawaan repositori.\n- **Lupa checkout.** Runner hanya mesin kosong. Tanpa `actions/checkout`, perintah seperti `npm test` gagal karena tidak menemukan `package.json`.\n- **Galat YAML yang tersembunyi.** Bila ada kesalahan sintaks, workflow tidak muncul atau ditandai gagal tanpa menjalankan step apa pun. Tab Actions biasanya menampilkan pesan baris mana yang bermasalah, jadi baca pesannya sebelum menebak.\n\nSatu kebiasaan baik: setelah menulis berkas, baca ulang indentasinya dengan mata, lalu push ke branch percobaan dan lihat hasilnya sebelum menggabungkan ke `main`. Kesalahan kecil di tahap ini murah diperbaiki, dan setiap percobaan memberi kamu pemahaman baru tentang cara GitHub membaca berkasmu.\n\n## Rangkuman\n\n- Workflow adalah berkas YAML di `.github/workflows/` yang dijalankan GitHub saat pemicunya terjadi.\n- Kerangka dasarnya terdiri dari `name`, `on`, `jobs`, lalu di dalam job ada `runs-on` dan `steps`.\n- YAML memakai spasi untuk indentasi, tanda hubung untuk daftar, dan kutip untuk teks yang mengandung karakter khusus.\n- Step memakai `run` untuk perintah shell atau `uses` untuk action siap pakai, dan sebaiknya diberi `name`.\n- Tab Actions menampilkan setiap run, job, dan log step, dan baca dari step merah yang pertama.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Workflow GitHub Actions disimpan di folder",
+          "code": "",
+          "options": [
+            ".github/workflows/",
+            "docs/actions/",
+            ".git/hooks/",
+            "src/workflows/"
+          ],
+          "answer": 0,
+          "explanation": "Hanya berkas YAML di .github/workflows/ yang dibaca GitHub sebagai workflow."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi kunci jobs pada workflow adalah",
+          "code": "",
+          "options": [
+            "Menentukan kapan workflow dipicu oleh peristiwa tertentu di repositori yang bersangkutan",
+            "Menyimpan rahasia terenkripsi",
+            "Memberi nama pada repositori",
+            "Memuat daftar pekerjaan yang dijalankan"
+          ],
+          "answer": 3,
+          "explanation": "jobs berisi pekerjaan, sedangkan pemicu ditulis di kunci on."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa step actions/checkout biasanya ada di awal job?",
+          "code": "",
+          "options": [
+            "Tanpanya berkas YAML tidak bisa dibaca oleh GitHub sehingga workflow tidak akan pernah mulai",
+            "Ia memasang Node.js secara otomatis",
+            "Runner awalnya kosong dan belum punya kode repositori",
+            "Ia mempercepat semua step sesudahnya"
+          ],
+          "answer": 2,
+          "explanation": "Tanpa checkout, perintah seperti npm test tidak menemukan berkas proyek."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "YAML memperbolehkan tab sebagai pengganti spasi untuk indentasi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "YAML hanya memakai spasi untuk indentasi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Hitung step dalam workflow",
+          "prompt": "Sebuah workflow yang sudah di-parse dari YAML berbentuk objek, misalnya:\n\n```js\n{ name: \"CI\", on: \"push\", jobs: { tes: { steps: [{ run: \"npm test\" }, { run: \"npm run build\" }] } } }\n```\n\nLengkapi fungsi `jumlahStep(wf)` yang mengembalikan **total step dari semua job**. Job yang tidak punya `steps` dihitung 0 step.\n\nContoh: workflow di atas menghasilkan `2`. Gunakan `return`, bukan `console.log`.",
+          "starter": {
+            "code": "function jumlahStep(wf) {\n  // TODO: jumlahkan panjang steps dari setiap job\n}\n"
+          },
+          "solution": {
+            "code": "function jumlahStep(wf) {\n  let total = 0;\n  for (const job of Object.values(wf.jobs ?? {})) {\n    total += (job.steps ?? []).length;\n  }\n  return total;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Satu job dengan dua step menghasilkan 2",
+              "check": "jumlahStep({ jobs: { tes: { steps: [{ run: \"a\" }, { run: \"b\" }] } } }) === 2"
+            },
+            {
+              "name": "Step dari beberapa job dijumlahkan",
+              "check": "jumlahStep({ jobs: { a: { steps: [{}, {}, {}] }, b: { steps: [{}] } } }) === 4"
+            },
+            {
+              "name": "Job tanpa steps dihitung 0",
+              "check": "jumlahStep({ jobs: { a: { \"runs-on\": \"x\" }, b: { steps: [{}] } } }) === 1"
+            },
+            {
+              "name": "Workflow tanpa jobs menghasilkan 0",
+              "check": "jumlahStep({}) === 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pemicu-workflow",
+      "title": "Pemicu Workflow (on)",
+      "est_minutes": 20,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menentukan peristiwa yang memicu workflow dengan kunci `on`.\n- Memfilter pemicu berdasarkan branch, tag, dan path.\n- Menjalankan workflow secara manual dan terjadwal.\n- Memilih pemicu yang menghemat menit runner.\n\n## Kunci on: kapan workflow berjalan\n\nSetiap workflow harus menyatakan **kapan** ia berjalan, dan itu ditulis di kunci `on`. Bentuk paling sederhana menyebut satu peristiwa:\n\n```yaml\non: push\n```\n\nUntuk beberapa peristiwa sekaligus, tulis sebagai daftar:\n\n```yaml\non: [push, pull_request]\n```\n\nDua peristiwa ini paling sering dipakai. `push` terjadi setiap ada commit baru yang didorong ke repositori. `pull_request` terjadi saat pull request dibuka, diperbarui dengan commit baru, atau dibuka kembali. Kombinasi keduanya memastikan kode diperiksa baik saat kamu bekerja di branch sendiri maupun saat usulanmu ditinjau.\n\nMengapa tidak cukup `push` saja? Karena pull request dari *fork* orang lain tidak membuat push di repositorimu. Dengan `pull_request`, kontribusi dari luar juga ikut diperiksa.\n\n## Memfilter dengan branches, tags, dan paths\n\nBentuk daftar tidak punya tempat untuk filter. Kalau ingin filter, ubah peristiwa menjadi objek:\n\n```yaml\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n```\n\nArtinya: jalankan saat ada push ke `main`, dan saat ada pull request yang *menuju* `main`. Push ke branch fitur tidak memicu apa pun, kecuali pull request-nya dibuka.\n\nAda tiga filter utama:\n\n- **`branches`** membatasi pada branch tertentu. Pola dengan tanda bintang diperbolehkan, misalnya `release/**` untuk semua branch di bawah `release/`.\n- **`tags`** membatasi pada tag. Pola `v*` cocok dengan `v1`, `v1.4.2`, dan seterusnya. Ini cara umum memicu rilis: kamu membuat tag versi, lalu workflow rilis berjalan.\n- **`paths`** membatasi pada berkas yang berubah. Bila hanya `README.md` yang diubah, tidak perlu menjalankan tes aplikasi.\n\n```yaml\non:\n  push:\n    branches: [main]\n    tags: [\"v*\"]\n    paths:\n      - \"src/**\"\n      - package.json\n```\n\nAda dua hal yang perlu diingat. Pertama, tanda bintang di awal nilai YAML harus diberi kutip, itulah sebabnya `\"v*\"` ditulis dengan tanda kutip. Kedua, bila `branches` dan `paths` dipakai bersamaan, keduanya harus terpenuhi sekaligus. Sebuah push ke `main` yang hanya mengubah `README.md` tidak akan memicu contoh di atas.\n\n![Filter branch, tag, dan path](slide:9)\n\n## Pemicu lain yang berguna\n\nSelain `push` dan `pull_request`, ada beberapa pemicu yang layak kamu kenal:\n\n- **`workflow_dispatch`** menambahkan tombol *Run workflow* di tab Actions sehingga workflow bisa dijalankan manual. Berguna untuk tugas yang kamu mau picu sendiri, misalnya deploy darurat atau pembersihan data.\n- **`schedule`** menjalankan workflow berdasarkan jadwal cron. Waktunya memakai zona UTC, jadi jam 02.00 UTC berarti jam 09.00 WIB.\n- **`release`** berjalan saat sebuah rilis dibuat atau dipublikasikan di GitHub.\n- **`workflow_call`** membuat workflow bisa dipanggil oleh workflow lain, sehingga langkah yang sama tidak perlu ditulis berulang.\n\nContoh workflow yang berjalan manual dan setiap Senin dini hari:\n\n```yaml\non:\n  workflow_dispatch:\n  schedule:\n    - cron: \"0 2 * * 1\"\n```\n\nFormat cron memiliki lima kolom: menit, jam, hari dalam bulan, bulan, dan hari dalam minggu. Jadi `0 2 * * 1` dibaca \"menit 0, jam 2, setiap tanggal, setiap bulan, hari Senin\". Tanda bintang berarti \"semua nilai\". Perhatikan bahwa jadwal paling rapat yang didukung adalah setiap lima menit, dan eksekusinya bisa tertunda bila GitHub sedang sibuk.\n\n## Memilih pemicu yang hemat\n\nSetiap run memakai menit runner. Untuk repositori publik gratis, tetapi untuk repositori privat jatahnya terbatas. Pemicu yang terlalu longgar membuang jatah itu. Beberapa kebiasaan baik:\n\n- Pakai `paths` agar perubahan dokumentasi tidak memicu build dan tes yang panjang.\n- Batasi `push` ke `main` dan biarkan branch fitur diperiksa lewat `pull_request`. Dengan begitu, satu commit di branch fitur yang sudah punya pull request tidak diperiksa dua kali.\n- Untuk tugas berat yang jarang dibutuhkan, pakai `workflow_dispatch` atau `schedule`, bukan setiap push.\n\nAda juga pertanyaan yang perlu kamu jawab sebelum menulis `on`: *siapa yang boleh memicunya, dan apa yang boleh dilakukannya?* Workflow yang dipicu pull request dari fork berjalan dengan izin terbatas dan tanpa akses ke secrets, justru supaya orang asing tidak bisa mencuri rahasiamu lewat kode di pull request. Bab tentang secrets akan membahas hal ini.\n\n## Menguji pemicu tanpa menunggu\n\nSalah satu frustrasi pemula adalah menunggu jadwal cron untuk tahu apakah workflow-nya benar. Triknya, tambahkan `workflow_dispatch` di samping `schedule`. Kamu bisa menekan tombol *Run workflow* untuk mencoba isinya kapan saja, dan jadwalnya tetap berjalan seperti biasa. Hanya saja, tombol itu baru muncul bila berkas workflow sudah berada di branch bawaan repositori.\n\n## Contoh: tiga workflow, tiga pemicu\n\nAgar terbayang, bayangkan satu repositori aplikasi web dengan tiga kebutuhan berbeda.\n\n1. **Pemeriksaan kode.** Dipicu `pull_request` ke `main` dan `push` ke `main`. Menjalankan lint dan tes. Ini pemeriksaan utama yang wajib hijau sebelum merge.\n2. **Rilis.** Dipicu `push` dengan filter `tags: [\"v*\"]`. Membangun image dan menerbitkannya. Tidak berjalan di commit biasa sehingga tidak boros.\n3. **Pemeriksaan tautan rusak di dokumentasi.** Dipicu `schedule` seminggu sekali dan `workflow_dispatch` untuk percobaan. Tidak perlu berjalan di setiap commit karena tautan tidak rusak seketika.\n\nKetiganya hidup di berkas terpisah dalam folder yang sama, masing-masing dengan pemicu yang paling pas. Memecah workflow berdasarkan tujuan membuat tiap berkas pendek, mudah dibaca, dan mudah diubah tanpa mengganggu yang lain. Itu lebih baik daripada satu berkas raksasa dengan banyak kondisi `if` untuk membedakan situasi.\n\n## Memilih pemicu untuk kasus nyata\n\nCara cepat memilih pemicu adalah bertanya tiga hal. *Kapan hasilnya dibutuhkan?* Bila setiap perubahan perlu diperiksa, pakai `pull_request`. *Siapa yang mulai?* Bila manusia yang memutuskan, pakai `workflow_dispatch`. *Seberapa sering?* Bila rutin dan tidak terikat perubahan kode, pakai `schedule`. Dan bila aksinya terkait penandaan versi, pakai filter `tags`. Jawaban atas ketiga pertanyaan itu hampir selalu menunjuk pemicu yang tepat tanpa perlu menebak.\n\n## Rangkuman\n\n- Kunci `on` menentukan peristiwa pemicu; bentuk paling umum adalah `push` dan `pull_request`.\n- Filter `branches`, `tags`, dan `paths` mengubah peristiwa menjadi objek dan harus terpenuhi bersamaan.\n- Pola dengan tanda bintang harus diberi tanda kutip di YAML.\n- `workflow_dispatch` memberi tombol manual, `schedule` memakai cron dalam UTC, dan `release` serta `workflow_call` melengkapinya.\n- Filter yang tepat menghemat menit runner dan menjaga umpan balik tetap relevan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bentuk on mana yang memicu workflow hanya untuk push ke branch main?",
+          "code": "",
+          "options": [
+            "on: [push, main] yang dibaca GitHub sebagai dua peristiwa berbeda sekaligus",
+            "on: { push: { branches: [main] } }",
+            "on: push-main",
+            "on: { branch: main }"
+          ],
+          "answer": 1,
+          "explanation": "Filter branches ditulis di dalam objek peristiwa push."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pemicu workflow_dispatch berguna untuk",
+          "code": "",
+          "options": [
+            "Menjalankan workflow secara manual lewat tombol Run workflow",
+            "Menjalankan workflow setiap menit secara otomatis tanpa perlu seseorang menekan tombol apa pun",
+            "Membatalkan run yang sedang berjalan",
+            "Menghubungkan dua repositori berbeda"
+          ],
+          "answer": 0,
+          "explanation": "workflow_dispatch menambahkan tombol manual di tab Actions."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Zona waktu yang dipakai pemicu schedule adalah",
+          "code": "",
+          "options": [
+            "WIB",
+            "Zona waktu pemilik repositori",
+            "UTC",
+            "Zona waktu runner"
+          ],
+          "answer": 2,
+          "explanation": "Jadwal cron GitHub Actions selalu memakai UTC."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Filter paths membuat workflow tidak berjalan bila hanya berkas di luar daftar yang berubah.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "paths membatasi pemicu pada berkas yang berubah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Apakah workflow terpicu?",
+          "prompt": "Kunci `on` di workflow boleh berbentuk tiga hal: **teks** (`\"push\"`), **daftar** (`[\"push\", \"pull_request\"]`), atau **objek** dengan filter (`{ push: { branches: [\"main\"] } }`).\n\nLengkapi `cocokTrigger(on, event, branch)` yang mengembalikan `true` bila workflow terpicu oleh `event` pada `branch`:\n\n- teks: terpicu bila sama dengan `event`.\n- daftar: terpicu bila `event` ada di dalamnya.\n- objek: terpicu bila `event` menjadi kunci. Bila ada `branches` untuk event itu, `branch` harus ada di dalamnya. Tanpa `branches`, branch apa pun cocok.\n\nContoh: `cocokTrigger({ push: { branches: [\"main\"] } }, \"push\", \"dev\")` menghasilkan `false`.",
+          "starter": {
+            "code": "function cocokTrigger(on, event, branch) {\n  // TODO: tangani tiga bentuk on: teks, daftar, objek\n  return false;\n}\n"
+          },
+          "solution": {
+            "code": "function cocokTrigger(on, event, branch) {\n  if (typeof on === \"string\") return on === event;\n  if (Array.isArray(on)) return on.includes(event);\n  if (!(event in on)) return false;\n  const filter = on[event]?.branches;\n  return filter ? filter.includes(branch) : true;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Bentuk teks dicocokkan dengan event",
+              "check": "cocokTrigger(\"push\", \"push\", \"x\") === true && cocokTrigger(\"push\", \"pull_request\", \"x\") === false"
+            },
+            {
+              "name": "Bentuk daftar memeriksa keanggotaan",
+              "check": "cocokTrigger([\"push\", \"pull_request\"], \"pull_request\", \"x\") === true && cocokTrigger([\"push\"], \"release\", \"x\") === false"
+            },
+            {
+              "name": "Objek tanpa filter cocok untuk semua branch",
+              "check": "cocokTrigger({ push: null }, \"push\", \"fitur\") === true"
+            },
+            {
+              "name": "Filter branches dihormati",
+              "check": "cocokTrigger({ push: { branches: [\"main\"] } }, \"push\", \"main\") === true && cocokTrigger({ push: { branches: [\"main\"] } }, \"push\", \"dev\") === false"
+            },
+            {
+              "name": "Event yang tidak terdaftar tidak memicu",
+              "check": "cocokTrigger({ push: {} }, \"release\", \"main\") === false"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "job-step-dan-runner",
+      "title": "Job, Step, dan Runner",
+      "est_minutes": 25,
+      "slide_from": 11,
+      "slide_to": 13,
+      "body": "## Tujuan\n\n- Membedakan job, step, dan runner.\n- Memilih `runs-on` dan memakai action dengan `uses` dan `with`.\n- Mengatur urutan job dengan `needs`.\n- Menjelaskan mengapa setiap job berjalan di mesin yang bersih.\n\n## Tiga lapisan: workflow, job, step\n\nSebuah workflow tersusun dari tiga lapis. Memahami batasnya akan menghindarkanmu dari banyak kebingungan.\n\n- **Workflow** adalah seluruh berkas YAML dan satu pemicu.\n- **Job** adalah sekumpulan step yang berjalan di *satu runner*. Sebuah workflow bisa punya banyak job.\n- **Step** adalah satu langkah di dalam job: menjalankan satu perintah (`run`) atau memakai satu action (`uses`).\n\nSedangkan **runner** adalah mesin virtual yang menjalankan job. GitHub menyediakan runner siap pakai dengan sistem operasi Ubuntu, Windows, dan macOS. Kamu memilihnya lewat `runs-on`, misalnya `runs-on: ubuntu-latest`. Untuk kebanyakan proyek web, Ubuntu cukup dan paling murah.\n\nSatu fakta penting: **setiap job mendapat runner baru yang bersih**. Berkas yang dibuat di job A tidak otomatis ada di job B, karena mereka berjalan di mesin yang berbeda. Sebaliknya, semua step *di dalam* satu job berbagi mesin dan folder kerja yang sama, sehingga hasil `npm ci` di step kedua masih ada ketika step ketiga menjalankan `npm test`.\n\n![Job, step, dan runner](slide:11)\n\n## Memakai action dengan uses dan with\n\nDaripada menulis semua perintah sendiri, kamu bisa memakai **action**, yaitu paket otomasi yang dibagikan komunitas atau GitHub. Cara memanggilnya adalah `uses`, dan masukan untuk action diberikan lewat `with`:\n\n```yaml\nsteps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n    with:\n      node-version: 22\n  - run: npm ci\n```\n\nTiga langkah ini hampir menjadi awalan baku. `actions/checkout` mengambil kode ke runner. `actions/setup-node` memasang Node.js versi yang diminta. Baru setelah itu perintah `npm ci` bisa jalan.\n\nPerhatikan penulisan `actions/checkout@v4`. Bagian sebelum `@` adalah pemilik dan nama repositori action, bagian sesudahnya adalah versi. **Selalu sematkan versi.** Bila kamu menulis tanpa versi atau memakai cabang yang berubah, hari ini workflow-mu lolos dan besok bisa gagal karena action-nya diperbarui. Untuk action pihak ketiga yang kurang kamu percayai, sebagian tim bahkan menyematkan hash commit penuh supaya isinya tidak bisa diganti diam-diam.\n\nSatu step boleh memakai `uses` atau `run`, tetapi tidak keduanya sekaligus.\n\n## Variabel dan konteks di dalam job\n\nDi dalam workflow kamu bisa membaca informasi lewat ekspresi `${{ ... }}`. Beberapa yang sering dipakai:\n\n- `${{ github.actor }}`: nama akun yang memicu run.\n- `${{ github.sha }}`: hash commit yang sedang diproses.\n- `${{ github.ref_name }}`: nama branch atau tag.\n- `${{ runner.os }}`: sistem operasi runner.\n\nUntuk menyetel variabel lingkungan di level job atau step, pakai `env`:\n\n```yaml\njobs:\n  tes:\n    runs-on: ubuntu-latest\n    env:\n      NODE_ENV: test\n    steps:\n      - run: echo \"Branch ${{ github.ref_name }}\"\n```\n\n`env` di level job berlaku untuk semua step di job itu. Level step hanya untuk step tersebut. Variabel yang lebih spesifik menimpa yang lebih umum.\n\n## Mengurutkan job dengan needs\n\nSecara bawaan, semua job dalam satu workflow berjalan **bersamaan**. Itu bagus untuk mempercepat: lint dan tes bisa berjalan paralel. Tetapi sering ada urutan yang wajib dijaga, misalnya deploy hanya boleh berjalan setelah tes lolos.\n\nDi situlah `needs` dipakai:\n\n```yaml\njobs:\n  tes:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"tes\"\n  deploy:\n    needs: tes\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"deploy\"\n```\n\nJob `deploy` menunggu `tes` selesai. Bila `tes` gagal, `deploy` otomatis dilewati. Untuk menunggu beberapa job, tulis sebagai daftar: `needs: [lint, tes]`. Job akan jalan hanya bila *semuanya* lolos.\n\nKarena setiap job punya mesin sendiri, job yang menunggu tidak otomatis memiliki hasil build dari job sebelumnya. Untuk memindahkan berkas antar job, kamu memakai artefak, yang dibahas di bab berikutnya. Jangan mengira folder `dist` yang dibuat di job build akan tersedia di job deploy.\n\n## Rancang job dengan tujuan jelas\n\nSatu pertanyaan desain yang sering muncul: kapan memecah job, kapan menyatukannya?\n\n- **Pecah** bila pekerjaan bisa berjalan paralel dan independen, misalnya lint dan tes. Hasilnya lebih cepat dan kegagalannya lebih mudah dibaca.\n- **Satukan** bila langkahnya saling bergantung erat dan berbagi hasil, misalnya pasang dependensi lalu build. Memecahnya berarti mengulang pemasangan di tiap job.\n\nAturan praktis: mulai dengan satu job. Pecah setelah kamu merasakan manfaat nyata, misalnya waktu tunggu terlalu lama atau kamu butuh hasil terpisah di pull request.\n\n## Contoh lengkap: tes paralel lalu deploy\n\nBerikut kerangka yang memakai semua yang baru dibahas: dua job paralel yang harus lolos sebelum job ketiga berjalan.\n\n```yaml\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm run lint\n  tes:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm test\n  deploy:\n    needs: [lint, tes]\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"Semua lolos, siap deploy\"\n```\n\nJob `lint` dan `tes` jalan bersamaan di dua mesin berbeda, sehingga waktu totalnya mengikuti yang paling lama, bukan penjumlahan keduanya. Job `deploy` baru mulai setelah keduanya hijau. Perhatikan bahwa `lint` dan `tes` sama-sama menjalankan `actions/checkout` dan `npm ci`, karena mesin mereka terpisah. Duplikasi kecil itu adalah harga paralelisme, dan cache di bab berikutnya meringankannya.\n\n## Menamai job dan step dengan baik\n\nNama membuat log mudah dibaca. Beri job nama yang menyebut tujuannya, seperti `cek-kode` atau `rilis-image`, bukan `job1`. Beri step nama kalimat pendek yang menjelaskan apa yang dikerjakan, misalnya *Pasang dependensi* atau *Jalankan tes unit*. Saat sebuah run gagal pukul dua pagi, nama yang jelas membuat penyebabnya terbaca sekilas tanpa harus membuka setiap baris perintah.\n\n## Rangkuman\n\n- Workflow berisi job, job berisi step, dan job berjalan di runner yang dipilih lewat `runs-on`.\n- Setiap job memakai runner baru yang bersih, sementara step dalam satu job berbagi mesin yang sama.\n- `uses` memanggil action dengan versi tersemat dan `with` memberi masukannya, sedangkan `run` menjalankan perintah shell.\n- Ekspresi `${{ ... }}` membaca konteks seperti `github.sha`, dan `env` menyetel variabel lingkungan.\n- `needs` mengurutkan job; job yang ditunggu gagal berarti job itu dilewati.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang terjadi bila job deploy memakai needs: tes dan job tes gagal?",
+          "code": "",
+          "options": [
+            "Job deploy tetap berjalan",
+            "Job deploy dilewati",
+            "Job tes diulang otomatis sampai lolos",
+            "Seluruh repositori dikunci sementara"
+          ],
+          "answer": 1,
+          "explanation": "needs membuat job menunggu dan dilewati bila job yang ditunggu gagal."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Berkas yang dibuat di job A",
+          "code": "",
+          "options": [
+            "Selalu tersedia di semua job lain karena seluruh job berbagi satu folder kerja yang sama",
+            "Disalin otomatis ke job berikutnya",
+            "Tidak otomatis tersedia di job B karena mesinnya berbeda",
+            "Dihapus setelah satu step selesai"
+          ],
+          "answer": 2,
+          "explanation": "Setiap job punya runner baru, jadi berkas perlu dipindahkan dengan artefak."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa versi action sebaiknya disematkan seperti @v4?",
+          "code": "",
+          "options": [
+            "Agar action berjalan jauh lebih cepat karena GitHub menyimpan salinannya di setiap runner",
+            "Agar log lebih pendek",
+            "Agar secrets tersamarkan",
+            "Agar workflow tidak berubah perilaku saat action diperbarui"
+          ],
+          "answer": 3,
+          "explanation": "Versi tersemat membuat hasil dapat diprediksi."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Semua step di dalam satu job berbagi mesin dan folder kerja yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Step dalam satu job berjalan di runner yang sama."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Urutan job dengan needs",
+          "prompt": "Kumpulan job disimpan sebagai objek, dan `needs` boleh berupa teks atau daftar:\n\n```js\n{ tes: {}, deploy: { needs: \"tes\" }, lint: {} }\n```\n\nLengkapi `urutanJob(jobs)` yang mengembalikan **daftar nama job** dalam urutan eksekusi: sebuah job hanya muncul setelah semua job di `needs`-nya. Proses per gelombang: ambil semua job yang sudah siap (sesuai urutan di objek), tambahkan ke hasil, ulangi sampai habis.\n\nBila tidak ada job yang siap padahal masih tersisa (artinya ada siklus), lempar `new Error(\"siklus\")`.\n\nContoh: contoh di atas menghasilkan `[\"tes\", \"lint\", \"deploy\"]`.",
+          "starter": {
+            "code": "function urutanJob(jobs) {\n  const hasil = [];\n  // TODO: ulangi gelombang sampai semua job masuk hasil\n  return hasil;\n}\n"
+          },
+          "solution": {
+            "code": "function urutanJob(jobs) {\n  const nama = Object.keys(jobs);\n  const hasil = [];\n  const selesai = new Set();\n  while (hasil.length < nama.length) {\n    const siap = nama.filter((n) => {\n      if (selesai.has(n)) return false;\n      const perlu = [].concat(jobs[n].needs ?? []);\n      return perlu.every((p) => selesai.has(p));\n    });\n    if (siap.length === 0) throw new Error(\"siklus\");\n    for (const n of siap) {\n      hasil.push(n);\n      selesai.add(n);\n    }\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Job tanpa needs mempertahankan urutan objek",
+              "check": "JSON.stringify(urutanJob({ a: {}, b: {}, c: {} })) === '[\"a\",\"b\",\"c\"]'"
+            },
+            {
+              "name": "needs berupa teks menunda job",
+              "check": "JSON.stringify(urutanJob({ deploy: { needs: \"tes\" }, tes: {} })) === '[\"tes\",\"deploy\"]'"
+            },
+            {
+              "name": "needs berupa daftar menunggu semuanya",
+              "check": "JSON.stringify(urutanJob({ c: { needs: [\"a\", \"b\"] }, a: {}, b: { needs: \"a\" } })) === '[\"a\",\"b\",\"c\"]'"
+            },
+            {
+              "name": "Contoh dari soal",
+              "check": "JSON.stringify(urutanJob({ tes: {}, deploy: { needs: \"tes\" }, lint: {} })) === '[\"tes\",\"lint\",\"deploy\"]'"
+            },
+            {
+              "name": "Siklus melempar galat",
+              "check": "(() => { try { urutanJob({ a: { needs: \"b\" }, b: { needs: \"a\" } }); return false; } catch (e) { return e.message === \"siklus\"; } })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "cache-dan-artefak",
+      "title": "Cache dan Artefak",
+      "est_minutes": 25,
+      "slide_from": 14,
+      "slide_to": 16,
+      "body": "## Tujuan\n\n- Menjelaskan mengapa cache mempercepat workflow.\n- Menulis kunci cache dan `restore-keys` yang benar.\n- Membedakan cache dari artefak.\n- Memindahkan hasil build antar job dengan artefak.\n\n## Mengapa workflow terasa lambat\n\nSetiap job berjalan di runner yang bersih. Artinya, setiap kali workflow berjalan, runner memulai dari nol: tidak ada `node_modules`, tidak ada paket yang diunduh sebelumnya. Untuk proyek Node.js sedang, memasang dependensi bisa makan satu sampai dua menit, dan itu terjadi di *setiap* run, padahal dependensinya hampir tidak berubah.\n\n**Cache** menyelesaikannya. GitHub menyimpan folder yang kamu tunjuk di akhir sebuah run, lalu memulihkannya di run berikutnya. Alih-alih mengunduh ulang semua paket, runner cukup menarik salinan yang sudah tersimpan, dan langkah pemasangan menjadi jauh lebih cepat.\n\nPertanyaan pentingnya: kapan cache boleh dipakai ulang, dan kapan harus dibuang? Jawabannya ada pada **kunci cache**.\n\n## Kunci cache dan hash lockfile\n\nSetiap cache disimpan dengan sebuah **key**. Saat workflow berjalan, GitHub mencari cache dengan key yang *persis sama*. Bila ketemu (disebut *cache hit*), isinya dipulihkan. Bila tidak (*cache miss*), step berjalan normal dan cache baru disimpan di akhir job.\n\nKuncinya harus berubah ketika isi yang disimpan sudah tidak valid. Untuk dependensi, tanda paling tepat adalah isi lockfile. Fungsi `hashFiles` menghitung hash dari berkas yang kamu sebut:\n\n```yaml\n- uses: actions/cache@v4\n  with:\n    path: ~/.npm\n    key: npm-${{ hashFiles('package-lock.json') }}\n    restore-keys: npm-\n```\n\nSelama `package-lock.json` tidak berubah, hash-nya sama dan cache dipakai. Begitu kamu menambah atau memperbarui paket, lockfile berubah, hash berubah, key baru tidak ketemu, dan cache baru dibuat. Dengan cara ini cache tidak pernah basi.\n\nSering ditambahkan juga bagian sistem operasi ke dalam key, misalnya `${{ runner.os }}-npm-...`, karena cache untuk Linux tidak cocok dipakai di Windows.\n\n![Memakai actions/cache](slide:15)\n\n## restore-keys: cadangan yang mendekati\n\nBagaimana kalau key persis tidak ada, tetapi ada cache lama yang *hampir* cocok? Lebih baik memulihkan cache lama itu daripada mulai dari nol, karena sebagian besar paket sama. Itulah gunanya `restore-keys`.\n\n`restore-keys` adalah daftar **awalan** key. Bila key persis tidak ketemu, GitHub mencari cache yang key-nya diawali salah satu nilai itu, dan memakai yang paling baru. Urutan penulisan menentukan prioritas: awalan yang pertama dicoba lebih dulu.\n\nContohnya, pada konfigurasi di atas, `restore-keys: npm-` cocok dengan key lama `npm-abc123`. Run itu memulihkan cache lama, `npm ci` hanya mengunduh paket yang berubah, lalu cache baru disimpan dengan key yang baru.\n\nAturannya, ringkas:\n\n1. Cari cache dengan key persis. Kalau ada, selesai.\n2. Kalau tidak ada, coba tiap awalan di `restore-keys` secara berurutan.\n3. Kalau semua gagal, mulai tanpa cache.\n\n## Jalan pintas: cache bawaan setup action\n\nUntuk bahasa populer, action `setup-*` punya opsi cache sendiri sehingga kamu tidak perlu menulis `actions/cache` manual:\n\n```yaml\n- uses: actions/setup-node@v4\n  with:\n    node-version: 22\n    cache: npm\n```\n\nOpsi `cache: npm` otomatis menyimpan folder cache npm dengan key dari lockfile. Ini lebih ringkas dan mengurangi peluang salah tulis. Gunakan `actions/cache` langsung hanya bila kebutuhanmu khusus, misalnya menyimpan hasil kompilasi atau folder yang tidak dikenal action tersebut.\n\nDua catatan keamanan dan kebersihan: jangan menyimpan rahasia di dalam cache, karena cache bisa dibaca workflow lain di repositori yang sama. Dan GitHub menghapus cache yang lama tidak dipakai serta membatasi total ukurannya, jadi jangan menaruh berkas raksasa di sana.\n\n## Artefak: hasil yang dibagikan dan diunduh\n\nCache dan artefak sering tertukar, padahal tujuannya berbeda.\n\n- **Cache** untuk *mempercepat* run berikutnya. Isinya bisa dibuang kapan saja tanpa mengubah hasil.\n- **Artefak** adalah *hasil* sebuah run yang ingin kamu simpan atau bagikan: build akhir, laporan tes, tangkapan layar kegagalan, atau log.\n\nArtefak diunggah dengan `actions/upload-artifact` dan bisa diunduh dari halaman run, atau diambil job lain dengan `actions/download-artifact`:\n\n```yaml\n- uses: actions/upload-artifact@v4\n  with:\n    name: dist\n    path: dist/\n```\n\nCara ini juga yang menjawab masalah bab sebelumnya: job `build` mengunggah folder `dist` sebagai artefak, lalu job `deploy` mengunduhnya. Dengan begitu job deploy memakai berkas yang *persis sama* dengan yang dites, tanpa membangun ulang.\n\nArtefak punya masa simpan. Bawaannya sekitar 90 hari, dan bisa kamu perpendek dengan `retention-days` untuk menghemat ruang. Untuk laporan tes yang hanya dibutuhkan sebentar, tujuh hari sudah cukup.\n\n## Salah kaprah yang sering terjadi\n\n- *\"Cache selalu memperbaiki lambat.\"* Tidak. Cache kecil yang dipulihkan lebih lama daripada mengunduh ulang justru memperlambat. Ukur dulu waktunya.\n- *\"Cache pasti selalu ada.\"* Cache bisa terhapus kapan saja. Workflow harus tetap berjalan benar tanpa cache, hanya lebih lambat.\n- *\"Artefak sama dengan cache.\"* Artefak adalah keluaran untuk dibaca atau dipakai ulang secara sengaja, sedangkan cache hanya optimasi.\n\n## Kunci cache yang baik: contoh dan kesalahan\n\nMenulis kunci cache terlihat sepele, tetapi di sinilah banyak orang tersandung. Bandingkan beberapa pilihan untuk proyek Node.js:\n\n- `key: npm` tidak pernah berubah, sehingga cache lama dipakai selamanya walau dependensi sudah berganti. Cache menjadi basi.\n- `key: npm-${{ github.sha }}` berubah di setiap commit, sehingga hampir tidak pernah cocok dan cache nyaris tidak dipakai. Manfaatnya hilang.\n- `key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}` berubah hanya saat lockfile berubah dan terpisah per sistem operasi. Ini pilihan yang seimbang.\n\nPrinsipnya: key harus berubah *tepat* saat isi cache tidak lagi valid, tidak lebih sering, tidak lebih jarang. Lalu tambahkan `restore-keys` dengan awalan yang sama, misalnya `${{ runner.os }}-npm-`, sebagai jaring pengaman. Bila ragu apakah cache bekerja, lihat log step cache: ia menyebut *Cache restored* atau *Cache not found*, dan itu petunjuk paling jelas untuk menyesuaikan key.\n\n## Rangkuman\n\n- Runner baru tiap job, sehingga dependensi diunduh ulang; cache menyimpan folder antar run untuk menghemat waktu.\n- Key cache harus berubah saat isinya basi, dan hash lockfile lewat `hashFiles` adalah tandanya.\n- `restore-keys` berisi awalan cadangan yang dicoba berurutan bila key persis tidak ditemukan.\n- Opsi `cache` pada `setup-node` dan action sejenis adalah jalan pintas yang lebih ringkas.\n- Artefak adalah hasil run yang diunggah dan diunduh, termasuk untuk memindahkan berkas antar job.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cache dipakai terutama untuk",
+          "code": "",
+          "options": [
+            "Menyimpan hasil akhir build supaya bisa diunduh oleh pengguna lain setelah run selesai",
+            "Mempercepat run berikutnya dengan memulihkan dependensi",
+            "Menyimpan rahasia deploy",
+            "Memindahkan kode antar repositori"
+          ],
+          "answer": 1,
+          "explanation": "Cache adalah optimasi kecepatan, bukan penyimpanan hasil."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa hash lockfile cocok dipakai sebagai bagian key cache?",
+          "code": "",
+          "options": [
+            "Key berubah tepat saat dependensi berubah",
+            "Karena hash selalu sama di setiap run sehingga cache tidak pernah perlu dibuat ulang lagi",
+            "Karena lockfile terenkripsi",
+            "Karena GitHub mewajibkannya"
+          ],
+          "answer": 0,
+          "explanation": "Hash lockfile membuat cache baru saat dependensi berganti."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Fungsi restore-keys adalah",
+          "code": "",
+          "options": [
+            "Daftar kunci rahasia yang dipakai untuk masuk ke server tujuan saat proses deploy berlangsung",
+            "Daftar job yang harus diulang",
+            "Daftar berkas yang dikecualikan",
+            "Daftar awalan cadangan bila key persis tidak ditemukan"
+          ],
+          "answer": 3,
+          "explanation": "restore-keys mencari cache yang key-nya diawali nilai tersebut."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Artefak dan cache memiliki tujuan yang sama sehingga bisa saling menggantikan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Cache untuk kecepatan, artefak untuk hasil yang dibagikan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memilih cache yang dipulihkan",
+          "prompt": "Cache tersimpan sebagai daftar key, **urut dari paling lama ke paling baru**. Lengkapi `pilihCache(key, restoreKeys, tersimpan)` yang meniru aturan `actions/cache`:\n\n1. Bila `key` persis ada di `tersimpan`, kembalikan `key`.\n2. Bila tidak, coba setiap awalan di `restoreKeys` secara berurutan. Untuk satu awalan, ambil key **paling baru** di `tersimpan` yang diawali awalan itu, lalu kembalikan.\n3. Bila semua gagal, kembalikan `null`.\n\nContoh: `pilihCache(\"npm-c3\", [\"npm-\"], [\"npm-a1\", \"npm-b2\"])` menghasilkan `\"npm-b2\"`.",
+          "starter": {
+            "code": "function pilihCache(key, restoreKeys, tersimpan) {\n  // TODO: cocok persis dulu, lalu awalan dari restoreKeys\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function pilihCache(key, restoreKeys, tersimpan) {\n  if (tersimpan.includes(key)) return key;\n  for (const awalan of restoreKeys) {\n    const cocok = tersimpan.filter((k) => k.startsWith(awalan));\n    if (cocok.length) return cocok[cocok.length - 1];\n  }\n  return null;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Key persis dipakai lebih dulu",
+              "check": "pilihCache(\"npm-a1\", [\"npm-\"], [\"npm-a1\", \"npm-b2\"]) === \"npm-a1\""
+            },
+            {
+              "name": "Awalan memilih key paling baru",
+              "check": "pilihCache(\"npm-c3\", [\"npm-\"], [\"npm-a1\", \"npm-b2\"]) === \"npm-b2\""
+            },
+            {
+              "name": "Awalan dicoba berurutan",
+              "check": "pilihCache(\"x-9\", [\"linux-\", \"npm-\"], [\"npm-a1\", \"win-z\"]) === \"npm-a1\""
+            },
+            {
+              "name": "Tanpa kecocokan hasilnya null",
+              "check": "pilihCache(\"npm-c3\", [\"yarn-\"], [\"npm-a1\"]) === null"
+            },
+            {
+              "name": "Tersimpan kosong hasilnya null",
+              "check": "pilihCache(\"k\", [\"k\"], []) === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "matriks-secrets-dan-environment",
+      "title": "Matriks, Secrets, dan Environment",
+      "est_minutes": 25,
+      "slide_from": 17,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Menjalankan satu job untuk banyak kombinasi dengan `strategy.matrix`.\n- Menghitung jumlah job yang dihasilkan sebuah matriks.\n- Menyimpan dan memakai secrets tanpa membocorkannya.\n- Memakai environment untuk memisahkan rahasia dan meminta persetujuan.\n\n## Matriks: satu definisi, banyak kombinasi\n\nMisalkan kamu membuat library yang harus jalan di Node 20 dan Node 22, di Linux dan Windows. Menulis empat job yang hampir identik membosankan dan mudah salah. **Matriks build** menyelesaikannya: kamu menulis job sekali, lalu GitHub menjalankannya untuk setiap kombinasi.\n\n```yaml\njobs:\n  tes:\n    strategy:\n      matrix:\n        node: [20, 22]\n        os: [ubuntu-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node }}\n      - run: npm ci\n      - run: npm test\n```\n\nNilai di dalam matriks dibaca lewat `${{ matrix.nama }}`. Pada contoh ini ada dua sumbu, `node` dan `os`, masing-masing dengan dua nilai. GitHub membuat **hasil kali**: 2 × 2 = 4 job, dan semuanya berjalan paralel.\n\n![Matriks build](slide:17)\n\n## Menghitung dan menyesuaikan kombinasi\n\nJumlah job adalah perkalian panjang tiap sumbu. Tiga versi Node dan tiga sistem operasi menjadi sembilan job. Matriks besar cepat menghabiskan menit runner, jadi hitung dulu sebelum menambah sumbu.\n\nDua kunci tambahan membantu menyesuaikan:\n\n- **`exclude`** membuang kombinasi tertentu, misalnya Node 20 di Windows yang tidak kamu dukung.\n- **`include`** menambahkan kombinasi ekstra di luar hasil kali, atau menambahkan nilai tambahan pada kombinasi tertentu.\n\n```yaml\nstrategy:\n  fail-fast: false\n  matrix:\n    node: [20, 22]\n    os: [ubuntu-latest, windows-latest]\n    exclude:\n      - node: 20\n        os: windows-latest\n```\n\nContoh ini menghasilkan 2 × 2 − 1 = 3 job. Bila ada `include` dengan satu entri baru, jumlahnya bertambah satu.\n\nKunci `fail-fast` juga penting. Bawaannya `true`: begitu satu kombinasi gagal, GitHub membatalkan kombinasi lain yang masih berjalan. Itu menghemat menit, tetapi menyembunyikan informasi seperti \"gagal hanya di Windows\". Setel `fail-fast: false` bila kamu ingin melihat hasil semua kombinasi.\n\n## Secrets: menyimpan rahasia dengan aman\n\nWorkflow sering butuh rahasia: token deploy, kunci SSH, kata sandi database uji. Rahasia itu **tidak boleh** ditulis di berkas YAML, karena repositori bisa dibaca banyak orang dan riwayat Git tidak mudah dihapus.\n\nGunakan **secrets**. Tambahkan lewat *Settings, Secrets and variables, Actions* di repositori, lalu panggil dengan `${{ secrets.NAMA }}`:\n\n```yaml\n- name: Deploy\n  run: ./deploy.sh\n  env:\n    TOKEN: ${{ secrets.DEPLOY_TOKEN }}\n```\n\nBeberapa sifat penting secrets:\n\n- Nilainya tersimpan terenkripsi dan tidak bisa dibaca kembali dari antarmuka.\n- GitHub **menyamarkan** nilainya di log menjadi `***`. Tetapi penyamaran ini hanya mencocokkan teks persis. Bila skripmu mengubah nilainya (misalnya base64), versi yang diubah bisa lolos tampil di log.\n- Teruskan secret lewat `env`, jangan menyisipkannya langsung ke dalam baris perintah, supaya tidak ikut tampil di riwayat perintah.\n- Workflow dari pull request *fork* tidak mendapat secrets. Ini disengaja, supaya kontributor asing tidak bisa mencuri rahasia lewat kode di pull request.\n\nUntuk nilai yang bukan rahasia, misalnya nama domain atau versi, pakai **variables** (`vars`) yang dipanggil dengan `${{ vars.NAMA }}`. Nilainya terlihat dan bisa diubah tanpa menyentuh berkas workflow.\n\nToken bawaan `GITHUB_TOKEN` dibuat otomatis untuk setiap run dan cukup untuk banyak keperluan, misalnya mengunggah image ke `ghcr.io`. Batasi izinnya dengan kunci `permissions` agar hanya sebesar yang dibutuhkan.\n\n## Environment: rahasia per tujuan dan persetujuan\n\nRahasia untuk staging tidak boleh sama dengan rahasia produksi. **Environment** adalah wadah bernama, seperti `staging` dan `production`, yang membawa secrets, variabel, dan aturan sendiri. Sebuah job memilihnya dengan kunci `environment`:\n\n```yaml\ndeploy:\n  runs-on: ubuntu-latest\n  environment: production\n  steps:\n    - run: ./deploy.sh\n```\n\nKeuntungan environment:\n\n- **Pemisahan rahasia.** Job yang memakai `production` mendapat secrets produksi, job staging hanya mendapat milik staging.\n- **Persetujuan manual.** Kamu bisa mewajibkan satu atau beberapa orang menyetujui sebelum job berjalan. Run akan berhenti dan menunggu.\n- **Pembatasan branch.** Environment produksi bisa dibatasi hanya untuk branch `main`, sehingga branch fitur tidak bisa memicu deploy produksi.\n\nKombinasi ini memberi pengaman yang kuat: tes berjalan otomatis, tetapi deploy ke produksi menunggu persetujuan seseorang.\n\n## Contoh: matriks dengan include\n\nKadang satu kombinasi butuh pengaturan khusus. `include` menambahkan entri atau melengkapi kombinasi yang ada:\n\n```yaml\nstrategy:\n  matrix:\n    node: [20, 22]\n    include:\n      - node: 22\n        eksperimental: true\n```\n\nEntri `include` yang cocok dengan kombinasi yang sudah ada, di sini Node 22, menambahkan variabel `eksperimental` ke kombinasi itu. Kamu lalu bisa membaca `${{ matrix.eksperimental }}` di step mana pun. Sedangkan entri yang tidak cocok dengan kombinasi mana pun dibuat sebagai job baru.\n\nSatu prinsip menghitung yang perlu dihafal: jumlah job adalah hasil kali sumbu, dikurangi kombinasi yang terkena `exclude`, ditambah entri `include` yang membentuk kombinasi baru. Membiasakan diri menghitung sebelum menulis mencegah kejutan tagihan menit runner di repositori privat.\n\n## Praktik aman dengan secrets\n\nBeberapa kebiasaan melindungi rahasiamu. Gunakan **hak sekecil mungkin**: token deploy cukup untuk deploy, bukan untuk mengelola seluruh akun. **Putar rahasia secara berkala** dan segera ganti bila dicurigai bocor, karena menghapus baris dari riwayat Git tidak menghapusnya dari salinan orang lain. **Jangan mencetak** secret ke log, bahkan untuk debugging. Dan bila sebuah secret terlanjur tampil di log atau commit, anggap sudah bocor: cabut dan buat yang baru, jangan hanya berharap tidak ada yang melihat.\n\nTerakhir, ingat bahwa matriks dan secrets sering dipakai bersama. Bila job matriks perlu rahasia, panggil `${{ secrets.NAMA }}` seperti biasa; nilainya sama untuk semua kombinasi, sehingga tidak perlu menyalinnya per kombinasi.\n\n## Rangkuman\n\n- Matriks menjalankan satu job untuk setiap kombinasi nilai, dan jumlah job adalah hasil kali panjang sumbunya.\n- `exclude` membuang kombinasi, `include` menambah, dan `fail-fast: false` membiarkan semua kombinasi selesai.\n- Rahasia disimpan sebagai secrets, dipanggil dengan `${{ secrets.NAMA }}`, dan tidak pernah ditulis di berkas YAML.\n- Penyamaran log hanya mencocokkan teks persis, dan pull request dari fork tidak menerima secrets.\n- Environment memisahkan secrets per tujuan, bisa meminta persetujuan, dan bisa dibatasi pada branch tertentu.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Matriks dengan node: [20, 22] dan os: [ubuntu, windows] menghasilkan",
+          "code": "",
+          "options": [
+            "2 job",
+            "3 job",
+            "4 job",
+            "6 job"
+          ],
+          "answer": 2,
+          "explanation": "Jumlah job adalah hasil kali panjang tiap sumbu: 2 x 2 = 4."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Cara yang tepat memakai token deploy di workflow adalah",
+          "code": "",
+          "options": [
+            "Menuliskannya langsung di berkas YAML supaya semua anggota tim selalu bisa menemukannya dengan mudah",
+            "Menyimpannya sebagai secret lalu memanggil secrets.NAMA",
+            "Menaruhnya di README repositori",
+            "Mengirimkannya lewat komentar pull request"
+          ],
+          "answer": 1,
+          "explanation": "Rahasia tidak boleh ditulis di berkas yang bisa dibaca banyak orang."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Keuntungan memakai environment production adalah",
+          "code": "",
+          "options": [
+            "Rahasia terpisah dan deploy bisa meminta persetujuan",
+            "Job otomatis berjalan jauh lebih cepat karena runner produksi memakai mesin yang lebih besar",
+            "Log tidak bisa dibaca siapa pun",
+            "Matriks tidak lagi diperlukan"
+          ],
+          "answer": 0,
+          "explanation": "Environment membawa secrets dan aturan sendiri."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Workflow dari pull request fork menerima semua secrets repositori.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Fork tidak mendapat secrets agar rahasia tidak dicuri."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Berapa job yang dihasilkan matriks?",
+          "prompt": "Sebuah matriks berbentuk objek. Kunci biasa berisi daftar nilai, sedangkan `exclude` dan `include` berisi daftar entri:\n\n```js\n{ node: [20, 22], os: [\"ubuntu\", \"windows\"], exclude: [{ node: 20, os: \"windows\" }] }\n```\n\nLengkapi `jumlahJob(matrix)`:\n\n- Kalikan panjang daftar nilai semua kunci biasa (selain `exclude` dan `include`).\n- Kurangi dengan banyaknya entri `exclude` (anggap setiap entri membuang tepat satu kombinasi).\n- Tambahkan banyaknya entri `include` (anggap setiap entri membuat satu job baru).\n\nContoh di atas menghasilkan `3`.",
+          "starter": {
+            "code": "function jumlahJob(matrix) {\n  // TODO: kalikan panjang tiap sumbu, lalu sesuaikan exclude dan include\n  return 0;\n}\n"
+          },
+          "solution": {
+            "code": "function jumlahJob(matrix) {\n  const { exclude = [], include = [], ...sumbu } = matrix;\n  const hasilKali = Object.values(sumbu).reduce((total, nilai) => total * nilai.length, 1);\n  return hasilKali - exclude.length + include.length;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Satu sumbu menghasilkan panjang daftarnya",
+              "check": "jumlahJob({ node: [18, 20, 22] }) === 3"
+            },
+            {
+              "name": "Dua sumbu dikalikan",
+              "check": "jumlahJob({ node: [20, 22], os: [\"a\", \"b\"] }) === 4"
+            },
+            {
+              "name": "exclude mengurangi kombinasi",
+              "check": "jumlahJob({ node: [20, 22], os: [\"a\", \"b\"], exclude: [{ node: 20, os: \"b\" }] }) === 3"
+            },
+            {
+              "name": "include menambah job",
+              "check": "jumlahJob({ node: [20, 22], include: [{ node: 24 }] }) === 3"
+            },
+            {
+              "name": "Tiga sumbu dikalikan",
+              "check": "jumlahJob({ a: [1, 2], b: [1, 2, 3], c: [1, 2] }) === 12"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "build-dan-tes-otomatis",
+      "title": "Build dan Tes Otomatis",
+      "est_minutes": 25,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Menyusun workflow CI untuk proyek Node.js: pasang, lint, tes, build.\n- Menjelaskan mengapa `npm ci` lebih cocok untuk CI daripada `npm install`.\n- Menjadikan hasil CI sebagai syarat merge lewat branch protection.\n- Menjaga tes tetap andal dan cepat.\n\n## Workflow CI untuk proyek Node.js\n\nSekarang semua potongan sebelumnya disatukan menjadi workflow yang benar-benar berguna. Berikut CI standar untuk proyek Node.js:\n\n```yaml\nname: CI\non:\n  push:\n    branches: [main]\n  pull_request:\njobs:\n  cek:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: npm\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build\n```\n\nUrutan langkahnya disengaja. **Lint** lebih dulu karena paling cepat dan menangkap kesalahan gaya atau bug sederhana. **Tes** berikutnya karena memeriksa perilaku. **Build** terakhir karena memastikan kode bisa dikemas. Bila lint gagal, tidak perlu menunggu tes yang lebih lama.\n\nPerhatikan bahwa workflow ini tidak butuh trik apa pun. Setiap baris `run` adalah perintah yang sudah kamu jalankan di laptop. Itu tanda CI yang sehat: kalau berjalan di laptop, ia berjalan di CI, dan sebaliknya.\n\n![Build dan tes otomatis](slide:20)\n\n## npm ci, bukan npm install\n\nDi CI, pakai `npm ci`, bukan `npm install`. Perbedaannya:\n\n- `npm install` boleh memperbarui versi paket dalam batas yang diizinkan `package.json`, dan bisa mengubah lockfile.\n- `npm ci` memasang versi **persis** seperti yang tercatat di `package-lock.json`, menghapus `node_modules` lebih dulu, dan gagal bila lockfile dan `package.json` tidak sinkron.\n\nUntuk CI, perilaku kedua itulah yang kamu mau: build yang dapat diulang. Bila hari ini lolos dengan versi tertentu, besok pun memakai versi yang sama. Kalau ada paket yang rilis versi baru dengan bug, CI-mu tidak tiba-tiba rusak karenanya.\n\nPrinsip yang sama berlaku di ekosistem lain: pakai lockfile, dan pasang persis sesuai lockfile.\n\n## Kode keluar menentukan lulus atau gagal\n\nBagaimana GitHub tahu sebuah step berhasil? Dari **kode keluar** (exit code) perintahnya. Kode `0` berarti sukses, angka lain berarti gagal. Perintah seperti `npm test` otomatis keluar dengan kode bukan nol bila ada tes yang gagal, sehingga step menjadi merah dan job berhenti.\n\nAkibatnya, kamu bisa membuat pemeriksaan sendiri dengan skrip sederhana. Skrip yang `exit 1` saat menemukan masalah akan menggagalkan workflow:\n\n```yaml\n- name: Pastikan tidak ada console.log\n  run: \"! grep -rn 'console.log' src/\"\n```\n\nHati-hati dengan perintah yang menelan kegagalan, misalnya `npm test || true`. Tambahan `|| true` membuat step selalu hijau walau tes merah, dan itu menghapus seluruh manfaat CI. Kalau sebuah pemeriksaan memang boleh gagal tanpa menghentikan job, gunakan `continue-on-error: true` secara sadar dan beri komentar alasannya.\n\n## Gerbang kualitas dengan branch protection\n\nCI yang hijau atau merah tidak berarti apa-apa kalau orang tetap bisa menggabungkan kode yang merah. Agar hasil CI mengikat, aktifkan **branch protection** untuk `main` di pengaturan repositori:\n\n- Wajibkan **status check** tertentu lolos sebelum merge. Pilih nama job yang kamu buat, misalnya `cek`.\n- Wajibkan **review** dari minimal satu orang.\n- Larang push langsung ke `main`, sehingga semua perubahan lewat pull request.\n- Wajibkan branch dalam keadaan mutakhir terhadap `main` sebelum merge.\n\nHasilnya, tombol *Merge* di pull request tidak aktif sampai semua pemeriksaan hijau. Aturan itu berlaku sama untuk semua anggota, termasuk pemilik repositori bila opsi pembatasannya dinyalakan. Inilah yang mengubah CI dari sekadar informasi menjadi gerbang kualitas.\n\nSatu jebakan: nama status check yang diwajibkan harus sama dengan nama job. Bila kamu mengganti nama job tanpa memperbarui aturan, pull request bisa menunggu pemeriksaan yang tidak pernah muncul.\n\n## Menjaga tes tetap andal dan cepat\n\nCI hanya berguna selama orang memercayainya. Dua musuh utamanya adalah tes yang tidak stabil dan tes yang lambat.\n\n**Tes tidak stabil (flaky)** kadang lolos, kadang gagal, tanpa perubahan kode. Akibatnya orang mulai menekan tombol *Re-run* tanpa membaca kegagalannya, lalu abai pada merah yang asli. Cara menghadapinya:\n\n- Cari penyebabnya: ketergantungan pada waktu, urutan tes, jaringan, atau data bersama.\n- Bila belum bisa diperbaiki, karantina tes itu dan catat sebagai tugas, jangan dibiarkan merusak kepercayaan.\n- Jangan menutupinya dengan pengulangan otomatis tanpa batas.\n\n**Tes lambat** menghambat semua orang. Beberapa langkah:\n\n- Pasang `timeout-minutes` agar job macet tidak menghabiskan jam runner berjam-jam.\n- Pisahkan tes cepat (unit) dan tes lambat (end-to-end), dan jalankan yang lambat hanya saat perlu.\n- Pakai cache dan matriks dengan hemat.\n\n```yaml\njobs:\n  cek:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n```\n\nTarget yang masuk akal: umpan balik CI kurang dari sepuluh menit. Lebih lama dari itu, orang berpindah tugas dan menunda memperbaiki merah.\n\n## Menambahkan laporan dan pemeriksaan tambahan\n\nSetelah dasar berjalan, kamu bisa menambah pemeriksaan yang memberi umpan balik lebih kaya. Beberapa yang umum dipakai:\n\n- **Laporan cakupan tes.** Jalankan tes dengan opsi cakupan lalu unggah hasilnya sebagai artefak supaya bisa dibuka setelah run selesai.\n- **Pemeriksaan tipe.** Untuk proyek TypeScript, tambahkan step `npx tsc --noEmit` yang memeriksa tipe tanpa menghasilkan berkas.\n- **Audit dependensi.** Step `npm audit` memberi tahu paket yang punya kerentanan diketahui. Putuskan dulu tingkat keparahan yang membuat build gagal, karena audit yang terlalu galak membuat semua orang kesal.\n- **Pemeriksaan format.** Perintah seperti `prettier --check` memastikan gaya kode seragam tanpa perdebatan di review.\n\nPrinsipnya, tambahkan pemeriksaan hanya bila ada masalah nyata yang ingin dicegah. Setiap step baru menambah waktu tunggu dan satu hal lagi yang bisa rusak. Pemeriksaan yang tidak pernah menangkap apa pun dan tidak dipercaya orang lebih baik dibuang, bukan ditumpuk.\n\n## Rangkuman\n\n- Workflow CI Node.js standar berisi checkout, setup-node dengan cache, `npm ci`, lint, tes, dan build.\n- `npm ci` memasang versi persis sesuai lockfile sehingga build dapat diulang.\n- Kode keluar bukan nol menggagalkan step, dan `|| true` menghapus manfaat pemeriksaan.\n- Branch protection mewajibkan status check dan review sehingga hasil CI mengikat sebelum merge.\n- Tes yang flaky merusak kepercayaan, dan `timeout-minutes` serta pemisahan tes cepat dan lambat menjaga CI tetap berguna.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa CI memakai npm ci, bukan npm install?",
+          "code": "",
+          "options": [
+            "Memasang versi persis sesuai lockfile sehingga build dapat diulang",
+            "Karena npm ci lebih singkat diketik daripada npm install dan hasilnya selalu sama persis",
+            "Karena npm install dilarang di Linux",
+            "Karena npm ci tidak butuh jaringan"
+          ],
+          "answer": 0,
+          "explanation": "npm ci menjaga dependensi sama persis dengan lockfile."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang menentukan sebuah step dianggap gagal?",
+          "code": "",
+          "options": [
+            "Log yang dicetak berisi kata error atau warning di salah satu barisnya yang pertama",
+            "Step berjalan lebih dari satu menit",
+            "Step tidak punya nama",
+            "Perintahnya keluar dengan kode bukan nol"
+          ],
+          "answer": 3,
+          "explanation": "Kode keluar nol berarti sukses, selain itu gagal."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Agar hasil CI mengikat sebelum merge, kamu perlu",
+          "code": "",
+          "options": [
+            "Menambah komentar di pull request yang mengingatkan semua anggota agar menunggu hasil pemeriksaan",
+            "Mengganti nama job menjadi main",
+            "Mengaktifkan branch protection dengan status check wajib",
+            "Menjalankan CI hanya di laptop"
+          ],
+          "answer": 2,
+          "explanation": "Branch protection membuat merge terkunci sampai check hijau."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menulis npm test || true membuat pemeriksaan tetap bermakna karena step selalu hijau.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "|| true menyembunyikan kegagalan sehingga CI tidak berguna."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Boleh digabung atau belum?",
+          "prompt": "Branch protection mewajibkan beberapa status check lolos. Hasil pemeriksaan sebuah pull request berbentuk daftar objek, misalnya `[{ name: \"cek\", status: \"success\" }, { name: \"lint\", status: \"failure\" }]`.\n\nLengkapi `bolehMerge(cek, wajib)` yang mengembalikan `true` hanya bila **setiap nama di `wajib`** ada di `cek` dengan `status` tepat `\"success\"`. Pemeriksaan yang tidak diwajibkan tidak memengaruhi hasil, dan pemeriksaan wajib yang belum muncul dianggap belum lolos.\n\nContoh: `bolehMerge([{ name: \"cek\", status: \"success\" }], [\"cek\"])` menghasilkan `true`.",
+          "starter": {
+            "code": "function bolehMerge(cek, wajib) {\n  // TODO: semua nama di wajib harus punya status success\n  return false;\n}\n"
+          },
+          "solution": {
+            "code": "function bolehMerge(cek, wajib) {\n  return wajib.every((nama) => cek.some((c) => c.name === nama && c.status === \"success\"));\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Semua wajib lolos berarti boleh",
+              "check": "bolehMerge([{ name: \"cek\", status: \"success\" }, { name: \"lint\", status: \"success\" }], [\"cek\", \"lint\"]) === true"
+            },
+            {
+              "name": "Satu wajib gagal berarti tidak boleh",
+              "check": "bolehMerge([{ name: \"cek\", status: \"success\" }, { name: \"lint\", status: \"failure\" }], [\"cek\", \"lint\"]) === false"
+            },
+            {
+              "name": "Pemeriksaan tak wajib diabaikan",
+              "check": "bolehMerge([{ name: \"cek\", status: \"success\" }, { name: \"lain\", status: \"failure\" }], [\"cek\"]) === true"
+            },
+            {
+              "name": "Wajib yang belum muncul dianggap belum lolos",
+              "check": "bolehMerge([{ name: \"cek\", status: \"success\" }], [\"cek\", \"lint\"]) === false"
+            },
+            {
+              "name": "Status pending belum cukup",
+              "check": "bolehMerge([{ name: \"cek\", status: \"pending\" }], [\"cek\"]) === false"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "deploy-otomatis",
+      "title": "Deploy Otomatis: Docker, Vercel, dan VPS",
+      "est_minutes": 25,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Membangun dan mengunggah image Docker ke registry dari workflow.\n- Memberi tag image dengan SHA commit dan versi rilis.\n- Menjelaskan beberapa cara deploy: Vercel dan VPS lewat SSH.\n- Merancang alur staging lalu produksi dengan artefak yang sama.\n\n## Dari CI ke CD\n\nSampai di sini, workflow-mu hanya memeriksa kode. Sekarang kita tutup lingkarannya: bila semua pemeriksaan lolos, hasilnya dikirim ke tempat pengguna mengaksesnya. Ada banyak tujuan deploy, tetapi polanya sama: **bangun artefak yang bisa dirilis, simpan di tempat yang aman, lalu pasang di tujuan**.\n\nDua prinsip akan menjaga deploy-mu waras:\n\n1. **Deploy hanya setelah tes lolos.** Gunakan `needs` agar job deploy menunggu job tes.\n2. **Deploy dari branch yang tepat.** Biasanya hanya dari `main` atau dari tag rilis, bukan dari branch fitur.\n\n```yaml\ndeploy:\n  needs: cek\n  if: github.ref == 'refs/heads/main'\n  runs-on: ubuntu-latest\n```\n\nKunci `if` membuat job hanya berjalan bila kondisinya benar. Pada contoh ini, job deploy dilewati untuk pull request atau branch selain `main`.\n\n## Image Docker ke registry\n\nBila aplikasimu dikemas sebagai image Docker, workflow bisa membangunnya dan mengunggahnya ke **registry**, yaitu tempat penyimpanan image. GitHub menyediakan `ghcr.io` (GitHub Container Registry) yang terhubung langsung dengan akunmu.\n\n```yaml\npermissions:\n  contents: read\n  packages: write\nsteps:\n  - uses: actions/checkout@v4\n  - uses: docker/login-action@v3\n    with:\n      registry: ghcr.io\n      username: ${{ github.actor }}\n      password: ${{ secrets.GITHUB_TOKEN }}\n  - uses: docker/build-push-action@v6\n    with:\n      push: true\n      tags: ghcr.io/akun/app:${{ github.sha }}\n```\n\nBeberapa hal yang perlu dipahami:\n\n- **`permissions`** menyempitkan hak `GITHUB_TOKEN`. Di sini token hanya boleh membaca kode dan menulis paket, tidak lebih.\n- **`docker/login-action`** masuk ke registry. Untuk `ghcr.io`, `GITHUB_TOKEN` bawaan sudah cukup, jadi tidak perlu membuat token baru.\n- **`docker/build-push-action`** membangun image lalu mengunggahnya bila `push: true`.\n\n![Image Docker ke registry](slide:23)\n\n## Memberi tag yang bisa dilacak\n\nTag image menentukan versi mana yang akan dijalankan. Kesalahan klasik adalah hanya memakai tag `latest`, karena tidak jelas `latest` itu commit yang mana, dan sulit kembali ke versi sebelumnya.\n\nPola yang lebih baik memakai dua jenis tag:\n\n- **SHA commit**, misalnya `app:3f9a2c1`. Unik untuk setiap build dan bisa dilacak ke commit yang tepat.\n- **Versi rilis**, misalnya `app:1.4.2`, dibuat saat kamu menandai rilis dengan tag Git `v1.4.2`.\n\nKamu boleh menambahkan `latest` sebagai penunjuk kenyamanan, tetapi sistem produksi sebaiknya menunjuk ke tag yang tetap. Dengan tag unik per build, memutar balik rilis cukup dengan menjalankan tag lama. Docker mendukung beberapa tag untuk satu image, sehingga semuanya bisa diberikan dalam satu build.\n\n## Deploy ke Vercel atau VPS\n\nCara deploy tergantung tujuannya.\n\n**Vercel** punya integrasi Git sendiri. Bila repositori disambungkan, Vercel otomatis membangun dan menerbitkan setiap push, tanpa kamu menulis step deploy. Bila kamu ingin kendali penuh dari GitHub Actions, pakai Vercel CLI dengan token yang disimpan sebagai secret.\n\n**VPS** (server sewaan) biasanya diakses lewat SSH. Simpan kunci privat sebagai secret, lalu workflow masuk ke server dan menjalankan skrip deploy:\n\n```yaml\n- name: Deploy lewat SSH\n  run: ssh deploy@server './deploy.sh'\n  env:\n    SSH_KEY: ${{ secrets.SSH_KEY }}\n```\n\nBeberapa kebiasaan baik untuk deploy ke VPS:\n\n- Buat pengguna khusus `deploy` dengan hak terbatas, bukan `root`.\n- Simpan sidik jari host server agar koneksi tidak rentan penyadapan.\n- Letakkan semua langkah pemasangan di dalam satu skrip `deploy.sh` di server atau di repositori, sehingga bisa dijalankan manual juga bila workflow bermasalah.\n- Jangan menaruh kunci privat di repositori.\n\n## Staging lalu produksi\n\nMengirim langsung ke produksi berisiko. Banyak tim memakai **staging**, lingkungan yang meniru produksi, sebagai uji terakhir sebelum rilis sesungguhnya. Alurnya:\n\n1. Tes lolos.\n2. Deploy otomatis ke staging.\n3. Seseorang memeriksa staging, atau uji otomatis tambahan berjalan.\n4. Deploy ke produksi, biasanya menunggu persetujuan lewat environment.\n\nPrinsip pentingnya: **yang dites dan yang dirilis harus berkas yang sama**. Jangan membangun ulang untuk produksi, karena build kedua bisa berbeda dari yang sudah dites. Bangun sekali, simpan sebagai artefak atau image bertag SHA, lalu pasang artefak yang sama di staging dan produksi. Perbedaan antar lingkungan dipegang oleh konfigurasi dan secrets, bukan oleh kode yang berbeda.\n\n## Contoh: satu workflow dari tes sampai rilis\n\nMenyatukan semuanya, berikut kerangka yang menjalankan tes, lalu menerbitkan image hanya dari `main`:\n\n```yaml\njobs:\n  cek:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm ci && npm test\n  rilis:\n    needs: cek\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n      packages: write\n    steps:\n      - uses: actions/checkout@v4\n      - uses: docker/login-action@v3\n        with:\n          registry: ghcr.io\n          username: ${{ github.actor }}\n          password: ${{ secrets.GITHUB_TOKEN }}\n```\n\nPada pull request, hanya job `cek` yang berjalan karena `rilis` dilewati oleh kondisi `if`. Setelah merge ke `main`, kedua job berjalan berurutan. Susunan ini sederhana tetapi sudah memenuhi prinsip utama: tes dulu, rilis hanya dari branch yang tepat, dan hak token disempitkan hanya untuk job yang membutuhkannya.\n\n## Mengamankan deploy\n\nDeploy adalah titik paling sensitif dalam pipeline, jadi beri perhatian ekstra. Batasi siapa yang boleh memicunya lewat environment dan branch protection. Simpan kunci deploy sebagai secrets, bukan di repositori. Gunakan akun deploy dengan hak terbatas di server. Dan catat setiap deploy: siapa yang memicu, versi apa, kapan. Riwayat itu sangat berharga saat kamu harus menelusuri kapan sebuah masalah mulai muncul.\n\n## Rangkuman\n\n- Deploy otomatis mengikuti pola: bangun artefak, simpan, lalu pasang di tujuan, dan hanya setelah tes lolos serta dari branch yang tepat.\n- Image Docker diunggah ke registry seperti `ghcr.io` dengan `docker/login-action` dan `docker/build-push-action`, dan `permissions` menyempitkan hak token.\n- Tag dengan SHA commit membuat setiap build bisa dilacak, sedangkan tag versi menandai rilis.\n- Vercel bisa memakai integrasi Git, dan VPS biasanya dijangkau lewat SSH dengan kunci di secrets dan pengguna berhak terbatas.\n- Alur staging lalu produksi memakai artefak yang sama, dengan persetujuan environment sebelum produksi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tag image yang paling mudah dilacak ke commit tertentu adalah",
+          "code": "",
+          "options": [
+            "latest",
+            "terbaru",
+            "stabil",
+            "SHA commit"
+          ],
+          "answer": 3,
+          "explanation": "SHA unik untuk setiap commit dan bisa ditelusuri."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi kunci permissions pada workflow?",
+          "code": "",
+          "options": [
+            "Menyempitkan hak GITHUB_TOKEN seperlunya",
+            "Menentukan siapa yang boleh memicu workflow",
+            "Mengatur warna status check",
+            "Menambah jumlah menit runner"
+          ],
+          "answer": 0,
+          "explanation": "permissions membatasi apa yang boleh dilakukan token."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Prinsip penting alur staging lalu produksi adalah",
+          "code": "",
+          "options": [
+            "Produksi harus selalu dibangun ulang dari awal supaya terpisah dari hasil build staging",
+            "Staging tidak perlu mirip produksi",
+            "Berkas yang dites dan yang dirilis harus sama",
+            "Deploy dilakukan sebelum tes selesai"
+          ],
+          "answer": 2,
+          "explanation": "Membangun ulang bisa menghasilkan berkas yang berbeda dari yang dites."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kunci privat SSH untuk deploy sebaiknya disimpan sebagai secret, bukan di repositori.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Kunci privat tidak boleh masuk ke repositori."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Tag image yang bisa dilacak",
+          "prompt": "Saat membangun image, kamu ingin tag yang bisa dilacak. Lengkapi `tagImage(repo, sha, ref)` yang mengembalikan **daftar tag lengkap**:\n\n- Selalu ada `repo:` diikuti **tujuh karakter pertama** `sha`.\n- Bila `ref` berbentuk `refs/tags/v<versi>`, tambahkan juga `repo:<versi>` (tanpa huruf v) di urutan kedua.\n\nContoh: `tagImage(\"ghcr.io/akun/app\", \"3f9a2c1d8e\", \"refs/tags/v1.4.2\")` menghasilkan `[\"ghcr.io/akun/app:3f9a2c1\", \"ghcr.io/akun/app:1.4.2\"]`.",
+          "starter": {
+            "code": "function tagImage(repo, sha, ref) {\n  // TODO: tag sha7, ditambah tag versi bila ref adalah tag v*\n  return [];\n}\n"
+          },
+          "solution": {
+            "code": "function tagImage(repo, sha, ref) {\n  const tags = [`${repo}:${sha.slice(0, 7)}`];\n  const awalan = \"refs/tags/v\";\n  if (ref.startsWith(awalan)) tags.push(`${repo}:${ref.slice(awalan.length)}`);\n  return tags;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Branch biasa hanya mendapat tag SHA",
+              "check": "JSON.stringify(tagImage(\"r/a\", \"3f9a2c1d8e\", \"refs/heads/main\")) === '[\"r/a:3f9a2c1\"]'"
+            },
+            {
+              "name": "SHA dipotong tujuh karakter",
+              "check": "tagImage(\"r/a\", \"abcdef0123456789\", \"refs/heads/x\")[0] === \"r/a:abcdef0\""
+            },
+            {
+              "name": "Tag v* menambah tag versi tanpa huruf v",
+              "check": "JSON.stringify(tagImage(\"ghcr.io/akun/app\", \"3f9a2c1d8e\", \"refs/tags/v1.4.2\")) === '[\"ghcr.io/akun/app:3f9a2c1\",\"ghcr.io/akun/app:1.4.2\"]'"
+            },
+            {
+              "name": "Tag selain v* tidak menambah tag versi",
+              "check": "tagImage(\"r/a\", \"1234567890\", \"refs/tags/beta\").length === 1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rilis-rollback-dan-debugging",
+      "title": "Rilis, Rollback, dan Debugging Workflow",
+      "est_minutes": 25,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Memilih strategi rilis yang menekan risiko: rilis bertahap dan feature flag.\n- Memberi versi rilis dengan versi semantik.\n- Merencanakan rollback dan melatihnya sebelum dibutuhkan.\n- Mendiagnosis workflow yang gagal secara sistematis.\n\n## Rilis bukan akhir cerita\n\nDeploy otomatis tidak otomatis menjadikan rilis aman. Kode yang lolos tes tetap bisa bermasalah di produksi: data nyata berbeda dari data uji, beban lebih besar, dan pengguna melakukan hal yang tak terpikirkan. Karena itu tim yang matang memikirkan tiga hal sekaligus: *bagaimana merilis dengan hati-hati*, *bagaimana mundur dengan cepat*, dan *bagaimana mengetahui apa yang salah*.\n\n## Strategi rilis\n\nBeberapa teknik menekan risiko tanpa mengorbankan kecepatan:\n\n- **Rilis bertahap (canary).** Versi baru diberikan dulu ke sebagian kecil pengguna, misalnya lima persen. Bila tidak ada masalah, porsinya dinaikkan sampai semua. Bila ada masalah, hanya sebagian kecil yang terdampak.\n- **Feature flag.** Kode fitur baru ikut dirilis tetapi dalam keadaan mati. Fitur dinyalakan belakangan, untuk sebagian pengguna dulu atau pada waktu yang dipilih. Memisahkan *deploy* dari *rilis fitur* membuat deploy menjadi peristiwa yang membosankan, dan itu justru bagus.\n- **Rilis kecil dan sering.** Perubahan sedikit mudah diperiksa dan dibatalkan. Rilis besar yang dikumpulkan sebulan sekali justru lebih berbahaya.\n\nTiap teknik punya biaya. Rilis bertahap butuh infrastruktur yang bisa membagi lalu lintas. Feature flag menambah cabang kode yang harus dibersihkan setelah fitur stabil, kalau tidak kodenya penuh flag usang.\n\n![Strategi rilis](slide:26)\n\n## Versi semantik dan catatan rilis\n\nRilis butuh nama yang bermakna. **Versi semantik** (semantic versioning) memakai format `MAJOR.MINOR.PATCH`, misalnya `1.4.2`:\n\n- **PATCH** naik untuk perbaikan bug yang tidak mengubah perilaku yang dijanjikan (`1.4.2` menjadi `1.4.3`).\n- **MINOR** naik untuk fitur baru yang tetap kompatibel (`1.4.3` menjadi `1.5.0`).\n- **MAJOR** naik untuk perubahan yang merusak kompatibilitas (`1.5.0` menjadi `2.0.0`).\n\nTag Git `v1.4.2` bisa memicu workflow rilis lewat `on: push: tags: [\"v*\"]`. Workflow itu membangun image, memberi tag versi, dan membuat rilis di GitHub. Sertakan **catatan rilis** yang menjelaskan apa yang berubah, karena itu yang dibaca orang saat mencari penyebab sebuah masalah. GitHub bisa membuat draf catatan otomatis dari pull request yang digabung.\n\n## Rollback: mundur dengan cepat\n\nSesempurna apa pun pipeline-mu, suatu saat sebuah rilis akan bermasalah. Pertanyaannya bukan *apakah*, tetapi *seberapa cepat kamu bisa kembali*.\n\n**Rollback** adalah memasang kembali versi sebelumnya yang sehat. Agar bisa dilakukan cepat:\n\n- **Simpan setiap versi.** Image bertag SHA atau versi harus tetap tersedia di registry. Jangan menghapusnya terburu-buru.\n- **Jadikan rollback satu perintah atau satu tombol.** Menimpa dengan versi lama tidak seharusnya butuh proses panjang.\n- **Waspadai perubahan data.** Rollback kode mudah, tetapi migrasi database yang sudah berjalan tidak otomatis ikut mundur. Rancang migrasi supaya kompatibel dengan versi lama dan baru (ubah dalam beberapa tahap), sehingga mundur tetap aman.\n- **Latih sebelum dibutuhkan.** Prosedur yang belum pernah dicoba biasanya gagal tepat saat dibutuhkan.\n\n```text\n# deploy ulang versi sehat\ndocker pull ghcr.io/akun/app:v1.4.1\ndocker compose up -d\n```\n\nRollback cepat jauh lebih murah daripada memperbaiki bug sambil panik dengan pengguna yang menunggu. Memutuskan untuk mundur lebih dulu, memperbaiki belakangan, adalah kebiasaan yang menyelamatkan banyak tim.\n\n## Debugging workflow\n\nTak peduli seberapa teliti, workflow-mu akan sesekali gagal. Pendekatan sistematis mempercepat perbaikan:\n\n1. **Bedakan jenis kegagalan.** Bila workflow tidak mulai sama sekali, atau tidak muncul di tab Actions, biasanya ada galat YAML atau pemicu tidak cocok. Bila workflow berjalan tetapi sebuah step merah, masalahnya ada pada perintah.\n2. **Baca log dari step merah yang pertama.** Kegagalan di awal sering menimbulkan kegagalan lanjutan. Perbaiki yang pertama dulu.\n3. **Periksa kesalahan yang paling umum.** Indentasi YAML salah, nama secret salah ketik, versi action tidak ada, path berkas keliru, atau izin `permissions` kurang.\n4. **Aktifkan log debug.** Ulangi run dengan opsi *Enable debug logging*, atau setel secret `ACTIONS_STEP_DEBUG` ke `true`, untuk melihat detail tambahan.\n5. **Reproduksi di mesin lokal.** Jalankan perintah yang sama di terminal. Bila tampak berbeda, periksa versi Node dan variabel lingkungan.\n6. **Cetak konteks.** Tambahkan step sementara seperti `run: echo \"${{ github.ref }}\"` untuk memastikan nilai yang kamu kira benar-benar seperti itu.\n\nSatu kebiasaan yang menghemat waktu: ubah sedikit-sedikit. Mengubah lima hal sekaligus lalu gagal membuatmu tak tahu mana penyebabnya. Dan ingat, jangan mencetak secrets ke log demi debugging.\n\n## Menutup lingkaran\n\nKelas ini membawamu dari pertanyaan \"mengapa otomasi?\" sampai pipeline lengkap: pemicu, job dan step, cache, matriks, secrets, tes, deploy, rilis, dan rollback. Langkah berikutnya sederhana: pilih satu proyekmu sendiri, tulis workflow CI yang menjalankan tes, aktifkan branch protection, lalu tambahkan deploy ketika kamu sudah nyaman. Pipeline yang baik tumbuh sedikit demi sedikit.\n\n## Daftar periksa sebelum merilis\n\nMenutup bab ini, berikut daftar singkat yang bisa kamu tempel di dokumentasi tim:\n\n- Semua pemeriksaan CI hijau dan branch protection aktif.\n- Versi baru diberi tag semantik dan catatan rilis ditulis.\n- Image atau artefak versi sebelumnya masih tersedia untuk rollback.\n- Migrasi data kompatibel dengan versi lama dan baru.\n- Ada orang yang bertugas memantau setelah rilis, dan cara memantaunya jelas, misalnya halaman status atau dasbor galat.\n- Prosedur rollback sudah pernah dicoba, bukan hanya ditulis.\n\nDaftar ini terasa remeh, tetapi justru hal remeh yang paling sering terlewat saat tim terburu-buru. Mengubahnya menjadi kebiasaan, atau lebih baik lagi menjadi pemeriksaan otomatis di pipeline, mengurangi ketergantungan pada kehati-hatian seseorang pada hari tertentu.\n\n## Rangkuman\n\n- Rilis yang aman butuh strategi: rilis bertahap, feature flag, dan perubahan kecil yang sering.\n- Versi semantik `MAJOR.MINOR.PATCH` memberi arti pada nomor versi, dan tag `v*` bisa memicu workflow rilis.\n- Rollback harus cepat: simpan setiap versi, jadikan prosedurnya sederhana, waspadai migrasi data, dan latih sebelum dibutuhkan.\n- Debugging dimulai dengan membedakan galat YAML dari galat perintah, lalu membaca log dari step merah yang pertama.\n- Ubah sedikit-sedikit, gunakan log debug, dan jangan pernah mencetak secrets ke log.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Pada versi 1.4.2, angka 4 disebut",
+          "code": "",
+          "options": [
+            "MAJOR",
+            "PATCH",
+            "BUILD",
+            "MINOR"
+          ],
+          "answer": 3,
+          "explanation": "Format MAJOR.MINOR.PATCH, angka tengah adalah MINOR."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Manfaat feature flag adalah",
+          "code": "",
+          "options": [
+            "Menghapus kebutuhan tes karena fitur baru hanya dinyalakan setelah dipakai pengguna sungguhan",
+            "Memisahkan deploy kode dari penyalaan fitur",
+            "Mempercepat build image",
+            "Menggantikan kebutuhan rollback"
+          ],
+          "answer": 1,
+          "explanation": "Kode bisa dirilis dalam keadaan mati lalu dinyalakan belakangan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hal paling penting agar rollback cepat adalah",
+          "code": "",
+          "options": [
+            "Menyimpan setiap versi dan melatih prosedurnya",
+            "Menghapus versi lama setiap minggu supaya registry tetap bersih dan tidak penuh sampai kapan pun",
+            "Menunggu laporan pengguna dulu",
+            "Mengubah kode langsung di server"
+          ],
+          "answer": 0,
+          "explanation": "Versi lama harus tersedia dan prosedur sudah pernah dicoba."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Saat workflow gagal, langkah pertama yang tepat adalah",
+          "code": "",
+          "options": [
+            "Menghapus berkas workflow lalu menulis ulang dari awal agar semua kesalahan lama ikut hilang",
+            "Mengulang run sampai hijau",
+            "Membaca log dari step merah yang pertama",
+            "Menonaktifkan branch protection"
+          ],
+          "answer": 2,
+          "explanation": "Kegagalan awal sering menimbulkan kegagalan lanjutan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Menaikkan versi semantik",
+          "prompt": "Versi semantik berbentuk `MAJOR.MINOR.PATCH`. Lengkapi `naikkanVersi(versi, jenis)` dengan `jenis` berupa `\"patch\"`, `\"minor\"`, atau `\"major\"`:\n\n- `patch`: naikkan angka terakhir.\n- `minor`: naikkan angka tengah dan setel patch ke 0.\n- `major`: naikkan angka pertama dan setel minor serta patch ke 0.\n\nContoh: `naikkanVersi(\"1.4.2\", \"minor\")` menghasilkan `\"1.5.0\"`.",
+          "starter": {
+            "code": "function naikkanVersi(versi, jenis) {\n  const [major, minor, patch] = versi.split(\".\").map(Number);\n  // TODO: kembalikan versi baru sesuai jenis\n}\n"
+          },
+          "solution": {
+            "code": "function naikkanVersi(versi, jenis) {\n  const [major, minor, patch] = versi.split(\".\").map(Number);\n  if (jenis === \"major\") return `${major + 1}.0.0`;\n  if (jenis === \"minor\") return `${major}.${minor + 1}.0`;\n  return `${major}.${minor}.${patch + 1}`;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "patch menaikkan angka terakhir",
+              "check": "naikkanVersi(\"1.4.2\", \"patch\") === \"1.4.3\""
+            },
+            {
+              "name": "minor mereset patch",
+              "check": "naikkanVersi(\"1.4.2\", \"minor\") === \"1.5.0\""
+            },
+            {
+              "name": "major mereset minor dan patch",
+              "check": "naikkanVersi(\"1.4.2\", \"major\") === \"2.0.0\""
+            },
+            {
+              "name": "Angka dua digit dihitung sebagai angka",
+              "check": "naikkanVersi(\"0.9.9\", \"patch\") === \"0.9.10\" && naikkanVersi(\"0.9.9\", \"minor\") === \"0.10.0\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Pilih versi untuk rollback",
+          "prompt": "Riwayat rilis disimpan dari yang **paling lama ke paling baru**, misalnya `[{ versi: \"1.4.0\", sehat: true }, { versi: \"1.4.1\", sehat: true }, { versi: \"1.4.2\", sehat: false }]`. Rilis terakhir adalah yang sedang berjalan dan bermasalah.\n\nLengkapi `pilihRollback(rilis)` yang mengembalikan **`versi` terbaru yang sehat sebelum rilis terakhir**, atau `null` bila tidak ada.\n\nContoh di atas menghasilkan `\"1.4.1\"`.",
+          "starter": {
+            "code": "function pilihRollback(rilis) {\n  // TODO: cari mundur dari rilis sebelum yang terakhir\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function pilihRollback(rilis) {\n  for (let i = rilis.length - 2; i >= 0; i--) {\n    if (rilis[i].sehat) return rilis[i].versi;\n  }\n  return null;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Mengembalikan rilis sehat sebelumnya",
+              "check": "pilihRollback([{ versi: \"1.4.0\", sehat: true }, { versi: \"1.4.1\", sehat: true }, { versi: \"1.4.2\", sehat: false }]) === \"1.4.1\""
+            },
+            {
+              "name": "Melewati rilis yang tidak sehat",
+              "check": "pilihRollback([{ versi: \"1.0.0\", sehat: true }, { versi: \"1.1.0\", sehat: false }, { versi: \"1.2.0\", sehat: false }]) === \"1.0.0\""
+            },
+            {
+              "name": "Rilis terakhir sendiri tidak dipilih",
+              "check": "pilihRollback([{ versi: \"1.0.0\", sehat: true }]) === null"
+            },
+            {
+              "name": "Tanpa rilis sehat hasilnya null",
+              "check": "pilihRollback([{ versi: \"1.0.0\", sehat: false }, { versi: \"1.1.0\", sehat: false }]) === null"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

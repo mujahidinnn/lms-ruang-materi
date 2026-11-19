@@ -1,0 +1,305 @@
+{
+  "theme": "cicd",
+  "deck": "CI/CD dengan GitHub Actions",
+  "kicker": "KELAS",
+  "subtitle": "Dari konsep, workflow YAML, cache dan matriks, sampai build, tes, dan deploy otomatis",
+  "slides": [
+    { "title": "CI/CD dengan GitHub Actions" },
+    {
+      "title": "Masalah rilis manual",
+      "kicker": "KONSEP CI/CD",
+      "bullets": [
+        "Build dan tes dijalankan dari laptop masing-masing, hasilnya bisa berbeda",
+        "Langkah rilis dihafal satu orang, mudah ada yang terlewat",
+        "Bug baru ketahuan setelah kode digabung, lalu semua ikut terhambat",
+        "Rilis jarang dan besar, sehingga risikonya juga besar"
+      ],
+      "note": "Ingat: yang membosankan dan berulang adalah tugas untuk mesin."
+    },
+    {
+      "title": "CI, Continuous Delivery, dan Deployment",
+      "kicker": "KONSEP CI/CD",
+      "bullets": [
+        "CI: setiap perubahan otomatis di-build dan dites",
+        "Continuous Delivery: hasil build selalu siap rilis, tombolnya ditekan manusia",
+        "Continuous Deployment: lolos tes langsung rilis tanpa tombol",
+        "Pipeline = rangkaian tahap dari commit sampai produksi"
+      ]
+    },
+    {
+      "title": "Alur pipeline sederhana",
+      "kicker": "KONSEP CI/CD",
+      "bullets": [
+        "1. Push atau buka pull request",
+        "2. Pasang dependensi lalu build",
+        "3. Jalankan tes dan lint",
+        "4. Bila lolos, deploy ke staging atau produksi",
+        "Gagal di tahap mana pun = berhenti dan beri tahu"
+      ],
+      "note": "Semakin cepat umpan balik, semakin murah memperbaiki bug."
+    },
+    {
+      "title": "Workflow pertama",
+      "kicker": "ANATOMI WORKFLOW",
+      "bullets": [
+        "Berkas YAML di .github/workflows/",
+        "name: nama yang tampil di tab Actions",
+        "on: peristiwa pemicu",
+        "jobs: daftar pekerjaan"
+      ],
+      "code": "name: CI\non: push\njobs:\n  tes:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"Halo, Actions\""
+    },
+    {
+      "title": "Aturan dasar YAML",
+      "kicker": "ANATOMI WORKFLOW",
+      "bullets": [
+        "Indentasi memakai spasi, bukan tab",
+        "Daftar diawali tanda hubung dan spasi",
+        "Teks dengan titik dua atau tanda khusus perlu diberi kutip",
+        "Komentar diawali tanda pagar"
+      ],
+      "code": "jobs:\n  build:\n    steps:\n      - name: Langkah satu\n        run: npm ci\n      - name: \"Langkah: dua\"\n        run: npm test   # komentar"
+    },
+    {
+      "title": "Di mana hasilnya dilihat",
+      "kicker": "ANATOMI WORKFLOW",
+      "bullets": [
+        "Tab Actions: daftar run per workflow",
+        "Satu run = satu kali workflow berjalan",
+        "Klik job untuk melihat log tiap step",
+        "Centang hijau lolos, silang merah gagal",
+        "Status juga muncul di pull request"
+      ],
+      "note": "Log adalah sumber jawaban pertama saat workflow gagal."
+    },
+    {
+      "title": "Satu peristiwa atau banyak",
+      "kicker": "TRIGGER",
+      "bullets": [
+        "Satu peristiwa: on: push",
+        "Beberapa: daftar di dalam tanda kurung siku",
+        "Dengan filter: peristiwa menjadi objek",
+        "push dan pull_request paling sering dipakai"
+      ],
+      "code": "on: [push, pull_request]\n\n# atau dengan filter\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]"
+    },
+    {
+      "title": "Filter branch, tag, dan path",
+      "kicker": "TRIGGER",
+      "bullets": [
+        "branches: hanya untuk branch tertentu",
+        "tags: untuk rilis bertanda v*",
+        "paths: hanya bila berkas tertentu berubah",
+        "Hemat menit runner dengan filter yang tepat"
+      ],
+      "code": "on:\n  push:\n    branches: [main]\n    tags: [\"v*\"]\n    paths:\n      - \"src/**\"\n      - package.json"
+    },
+    {
+      "title": "Pemicu lain",
+      "kicker": "TRIGGER",
+      "bullets": [
+        "workflow_dispatch: tombol Run workflow manual",
+        "schedule: jadwal cron, waktunya UTC",
+        "release: saat rilis dibuat di GitHub",
+        "workflow_call: dipanggil workflow lain"
+      ],
+      "code": "on:\n  workflow_dispatch:\n  schedule:\n    - cron: \"0 2 * * 1\"   # Senin 02.00 UTC"
+    },
+    {
+      "title": "Job, step, dan runner",
+      "kicker": "JOB DAN STEP",
+      "bullets": [
+        "Job: kumpulan step yang jalan di satu runner",
+        "Step: satu perintah (run) atau satu action (uses)",
+        "Runner: mesin virtual yang menjalankan job",
+        "runs-on memilih jenis runner, misalnya ubuntu-latest"
+      ],
+      "note": "Setiap job mendapat mesin baru yang bersih."
+    },
+    {
+      "title": "run versus uses",
+      "kicker": "JOB DAN STEP",
+      "bullets": [
+        "run: menjalankan perintah shell",
+        "uses: memakai action siap pakai",
+        "with: memberi masukan ke action",
+        "Sematkan versi action, misalnya @v4"
+      ],
+      "code": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n    with:\n      node-version: 22\n  - run: npm ci"
+    },
+    {
+      "title": "Job berurutan dengan needs",
+      "kicker": "JOB DAN STEP",
+      "bullets": [
+        "Tanpa needs, semua job jalan bersamaan",
+        "needs membuat job menunggu job lain lolos",
+        "Bila job yang ditunggu gagal, job ini dilewati",
+        "Cocok untuk urutan tes, build, lalu deploy"
+      ],
+      "code": "jobs:\n  tes:\n    runs-on: ubuntu-latest\n  deploy:\n    needs: tes\n    runs-on: ubuntu-latest"
+    },
+    {
+      "title": "Mengapa cache",
+      "kicker": "CACHE DAN ARTEFAK",
+      "bullets": [
+        "Runner baru tiap run, dependensi diunduh ulang",
+        "Cache menyimpan folder dependensi antar run",
+        "Kunci cache menentukan kapan cache dipakai",
+        "Hash lockfile membuat cache baru saat dependensi berubah"
+      ]
+    },
+    {
+      "title": "Memakai actions/cache",
+      "kicker": "CACHE DAN ARTEFAK",
+      "bullets": [
+        "path: folder yang disimpan",
+        "key: kunci tepat untuk cache ini",
+        "restore-keys: awalan cadangan bila key tidak ada",
+        "setup-node punya opsi cache: npm yang lebih ringkas"
+      ],
+      "code": "- uses: actions/cache@v4\n  with:\n    path: ~/.npm\n    key: npm-${{ hashFiles('package-lock.json') }}\n    restore-keys: npm-"
+    },
+    {
+      "title": "Artefak",
+      "kicker": "CACHE DAN ARTEFAK",
+      "bullets": [
+        "Artefak: berkas hasil run yang bisa diunduh",
+        "Contoh: laporan tes, build, atau log",
+        "Dibagi antar job lewat upload dan download",
+        "Cache untuk mempercepat, artefak untuk hasil"
+      ],
+      "code": "- uses: actions/upload-artifact@v4\n  with:\n    name: dist\n    path: dist/"
+    },
+    {
+      "title": "Matriks build",
+      "kicker": "MATRIKS DAN SECRETS",
+      "bullets": [
+        "Satu definisi job, dijalankan untuk banyak kombinasi",
+        "Contoh: beberapa versi Node dan beberapa sistem operasi",
+        "Jumlah job = hasil kali panjang tiap sumbu",
+        "fail-fast: false agar kombinasi lain tetap selesai"
+      ],
+      "code": "strategy:\n  matrix:\n    node: [20, 22]\n    os: [ubuntu-latest, windows-latest]\nruns-on: ${{ matrix.os }}"
+    },
+    {
+      "title": "Secrets dan variabel",
+      "kicker": "MATRIKS DAN SECRETS",
+      "bullets": [
+        "Secrets: rahasia terenkripsi di pengaturan repositori",
+        "Dipanggil dengan ${{ secrets.NAMA }}",
+        "Nilainya disamarkan di log",
+        "Jangan menulis token langsung di berkas YAML",
+        "Variabel (vars) untuk nilai yang bukan rahasia"
+      ]
+    },
+    {
+      "title": "Environment dan persetujuan",
+      "kicker": "MATRIKS DAN SECRETS",
+      "bullets": [
+        "Environment: kelompok secrets per tujuan, misalnya production",
+        "Bisa mewajibkan persetujuan manusia sebelum job jalan",
+        "Bisa dibatasi untuk branch tertentu",
+        "Job memilihnya dengan kunci environment"
+      ],
+      "code": "deploy:\n  runs-on: ubuntu-latest\n  environment: production\n  steps:\n    - run: ./deploy.sh\n      env:\n        TOKEN: ${{ secrets.DEPLOY_TOKEN }}"
+    },
+    {
+      "title": "Build dan tes otomatis",
+      "kicker": "BUILD DAN TES",
+      "bullets": [
+        "Gunakan npm ci agar versi dependensi persis sesuai lockfile",
+        "Urutan umum: lint, tes, lalu build",
+        "Perintah yang keluar dengan kode bukan nol membuat step gagal",
+        "Satu step gagal menghentikan job"
+      ],
+      "code": "steps:\n  - uses: actions/checkout@v4\n  - uses: actions/setup-node@v4\n    with: { node-version: 22, cache: npm }\n  - run: npm ci\n  - run: npm run lint\n  - run: npm test\n  - run: npm run build"
+    },
+    {
+      "title": "Gerbang kualitas",
+      "kicker": "BUILD DAN TES",
+      "bullets": [
+        "Branch protection mewajibkan status check lolos",
+        "Pull request tidak bisa digabung bila CI merah",
+        "Tambahkan review sebagai syarat kedua",
+        "Aturan berlaku sama untuk semua anggota"
+      ],
+      "note": "CI hanya melindungi bila hasilnya benar-benar menjadi syarat merge."
+    },
+    {
+      "title": "Menjaga tes tetap andal",
+      "kicker": "BUILD DAN TES",
+      "bullets": [
+        "Tes yang kadang gagal (flaky) merusak kepercayaan pada CI",
+        "Perbaiki atau karantina, jangan sekadar diulang",
+        "Beri batas waktu dengan timeout-minutes",
+        "Pisahkan tes cepat dan tes lambat"
+      ],
+      "code": "jobs:\n  tes:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10"
+    },
+    {
+      "title": "Image Docker ke registry",
+      "kicker": "DEPLOY OTOMATIS",
+      "bullets": [
+        "Build image dari Dockerfile di dalam workflow",
+        "Login ke registry, misalnya ghcr.io",
+        "Beri tag dengan SHA commit agar bisa dilacak",
+        "GITHUB_TOKEN bawaan cukup untuk ghcr.io"
+      ],
+      "code": "permissions:\n  contents: read\n  packages: write\nsteps:\n  - uses: docker/login-action@v3\n    with:\n      registry: ghcr.io\n      username: ${{ github.actor }}\n      password: ${{ secrets.GITHUB_TOKEN }}"
+    },
+    {
+      "title": "Deploy ke Vercel atau VPS",
+      "kicker": "DEPLOY OTOMATIS",
+      "bullets": [
+        "Vercel: sambungkan repositori, atau pakai CLI dengan token di secrets",
+        "VPS: masuk lewat SSH dengan kunci di secrets",
+        "Jalankan skrip deploy yang sama setiap kali",
+        "Deploy hanya dari branch main"
+      ],
+      "code": "- name: Deploy lewat SSH\n  run: ssh deploy@server './deploy.sh'\n  env:\n    SSH_KEY: ${{ secrets.SSH_KEY }}"
+    },
+    {
+      "title": "Staging lalu produksi",
+      "kicker": "DEPLOY OTOMATIS",
+      "bullets": [
+        "Staging meniru produksi untuk uji terakhir",
+        "Produksi menunggu persetujuan environment",
+        "Gunakan artefak yang sama, jangan build ulang",
+        "Satu run, dua tujuan, dua tingkat kepercayaan"
+      ],
+      "note": "Yang dites dan yang dirilis harus berkas yang sama."
+    },
+    {
+      "title": "Strategi rilis",
+      "kicker": "RILIS DAN DEBUGGING",
+      "bullets": [
+        "Rilis bertahap: sebagian pengguna dulu, lalu semua",
+        "Feature flag: kode ada, fitur dinyalakan belakangan",
+        "Tag versi semantik, misalnya v1.4.2",
+        "Catat apa yang berubah di setiap rilis"
+      ]
+    },
+    {
+      "title": "Rollback",
+      "kicker": "RILIS DAN DEBUGGING",
+      "bullets": [
+        "Rilis lama harus tetap bisa dipasang ulang",
+        "Simpan image atau build tiap versi",
+        "Rollback cepat lebih murah daripada memperbaiki sambil panik",
+        "Latih prosedurnya sebelum dibutuhkan"
+      ],
+      "code": "# deploy ulang versi sehat\ndocker pull ghcr.io/akun/app:v1.4.1\ndocker compose up -d"
+    },
+    {
+      "title": "Debugging workflow",
+      "kicker": "RILIS DAN DEBUGGING",
+      "bullets": [
+        "Baca log dari step yang pertama kali merah",
+        "Periksa indentasi YAML dan nama secret",
+        "Jalankan ulang dengan debug logging bila perlu",
+        "Uji perintah yang sama di mesin lokal"
+      ],
+      "note": "Bedakan error YAML (workflow tidak mulai) dari error perintah (step merah)."
+    }
+  ]
+}
