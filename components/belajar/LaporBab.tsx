@@ -11,7 +11,7 @@ const JENIS = [["salah", "Ada yang salah"], ["tidak-jelas", "Kurang jelas"], ["l
 // Folded under a chapter or an exam question: a typo, a wrong fact or a confusing part.
 export default function LaporBab({ chapterId, questionId, className = "mt-8 border-2 border-dashed border-zinc-700 px-3 open:border-solid open:border-transparent open:bg-zinc-900 open:p-4 open:shadow-soft" }: { chapterId?: string; questionId?: string; className?: string }) {
   return (
-    <details className={`group rounded-2xl ${className}`}>
+    <details className={`group rounded-xl ${className}`}>
       <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 text-sm font-semibold text-zinc-300 hover:text-zinc-50 group-open:min-h-11 group-open:text-zinc-50 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-800"><Flag className="size-4" /></span>
         <span className="min-w-0 flex-1">Ada yang salah atau kurang jelas di {questionId ? "soal" : "bab"} ini?</span>

@@ -9,7 +9,7 @@ import Terkirim from "./Terkirim";
 
 const ACTION = { password: rpc("masuk"), link: rpc("kirimLink"), lupa: rpc("lupaPassword") };
 type Mode = keyof typeof ACTION;
-export const field = "min-h-12 w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-4 text-zinc-50 outline-none focus-visible:ring-2 focus-visible:ring-accent";
+export const field = "min-h-12 w-full rounded-[18px] border border-zinc-800 bg-zinc-950 px-4 text-zinc-50 outline-none focus-visible:ring-2 focus-visible:ring-accent";
 const label = "grid gap-1.5 text-sm font-medium text-zinc-300";
 const quiet = "-my-3 py-3 text-sm font-semibold text-accent hover:underline";
 
@@ -52,7 +52,7 @@ export default function MasukForm({ next, galat }: { next: string; galat: boolea
         </label>
       )}
       {state.status === "error" && (
-        <p role="alert" className="rounded-2xl bg-tile-pink px-4 py-3 text-sm">
+        <p role="alert" className="rounded-xl bg-tile-pink px-4 py-3 text-sm">
           {state.message}
           {state.daftar && <> <a href={`/daftar?next=${encodeURIComponent(next)}`} className="font-bold underline">Belum punya akun? Daftar</a></>}
         </p>

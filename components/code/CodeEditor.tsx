@@ -53,5 +53,5 @@ export default function CodeEditor({ value, onChange, language, label }: { value
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, label]);
 
-  return <div ref={host} className="code-editor overflow-hidden rounded-2xl bg-zinc-950 text-sm" />;
+  return <div ref={host} className="code-editor overflow-hidden rounded-[18px] bg-zinc-950 text-sm" />;
 }

@@ -57,7 +57,7 @@ function RowMenu({ p }: { p: Person }) {
         <MoreHorizontal aria-hidden className="size-4" />Aksi
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 shadow-soft">
+        <div role="menu" className="absolute right-0 z-20 mt-2 w-56 rounded-[18px] border border-zinc-800 bg-zinc-900 p-1.5 shadow-soft">
           <ActionForm
             action="gantiRole"
             data-confirm={p.admin ? `Jadikan ${p.name} siswa?` : `Jadikan ${p.name} admin?`}

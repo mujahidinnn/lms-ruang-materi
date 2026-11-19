@@ -7,7 +7,7 @@ import ClassPath from "./ClassPath";
 import { chip, primaryButton } from "@/components/ui/styles";
 import Art from "@/components/ui/Art";
 import { totalMinutes } from "@/lib/chapters";
-import { coverSrc } from "@/lib/slides";
+import { coverSrc, retryWith } from "@/lib/slides";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
 
@@ -29,7 +29,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
         <a href="/kelas" className="mt-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50">
           <ChevronLeft aria-hidden className="size-4" />Semua kelas
         </a>
-        <header className="mt-0 grid items-center gap-5 rounded-[18px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[20px] sm:p-10 md:grid-cols-[minmax(0,1fr)_24rem]">
+        <header className="mt-0 grid items-center gap-5 rounded-[18px] bg-tile-lavender p-5 sm:mt-2 sm:gap-8 sm:rounded-[18px] sm:p-10 md:grid-cols-[minmax(0,1fr)_24rem]">
           <div>
           <h1 className="text-3xl font-bold tracking-tight text-balance sm:text-5xl">
             {topic.title}
@@ -64,9 +64,9 @@ export default function CourseView({ topic }: { topic: Topic }) {
           </div>
           <div className="hidden md:block">
             {topic.slides.length > 0 ? (
-              <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} decoding="async" className="aspect-video w-full rounded-[16px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />
+              <img src={coverSrc(topic)} {...retryWith(topic.slides[0].src)} alt={`Sampul materi ${topic.title}`} decoding="async" className="aspect-video w-full rounded-[18px] border-2 border-noir object-cover shadow-[4px_4px_0_0_var(--color-noir)] rotate-2" />
             ) : (
-              <div className="overflow-hidden rounded-[16px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] rotate-2"><Art kind="topic" slug={topic.slug} /></div>
+              <div className="overflow-hidden rounded-[18px] border-2 border-noir shadow-[4px_4px_0_0_var(--color-noir)] rotate-2"><Art kind="topic" slug={topic.slug} /></div>
             )}
           </div>
         </header>
@@ -99,7 +99,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
                 <li key={c.id}>
                   <a
                     href={`/belajar/${topic.slug}/${c.slug}`}
-                    className="group flex min-h-16 items-center gap-4 rounded-2xl bg-zinc-900 py-2 pr-2 pl-3 shadow-soft hover:bg-zinc-800 sm:bg-zinc-800/50 sm:shadow-none"
+                    className="group flex min-h-16 items-center gap-4 rounded-xl bg-zinc-900 py-2 pr-2 pl-3 shadow-soft hover:bg-zinc-800 sm:bg-zinc-800/50 sm:shadow-none"
                   >
                     <span
                       className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums ${done.has(c.id) ? "border-2 border-noir bg-matcha-300 text-noir" : "bg-zinc-800 text-zinc-300 sm:bg-zinc-900"}`}

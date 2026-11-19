@@ -31,7 +31,7 @@ export default function QuestionEditor({
   n: number;
 }) {
   return (
-    <li className="rounded-2xl bg-zinc-800/40 p-4">
+    <li className="rounded-xl bg-zinc-800/40 p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-zinc-800 text-xs font-bold tabular-nums">{n}</span>
         <span className="text-xs text-zinc-500">{TYPE[q.type]}</span>
@@ -39,7 +39,7 @@ export default function QuestionEditor({
       </div>
       <p className="mt-3 font-medium text-zinc-50">{q.prompt}</p>
       {q.code && (
-        <pre className="mt-2 overflow-x-auto rounded-2xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
+        <pre className="mt-2 overflow-x-auto rounded-xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
       )}
       <ol className="mt-3 grid gap-1.5 sm:grid-cols-2">
         {q.options.map((opt, i) => (

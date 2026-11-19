@@ -126,7 +126,7 @@ export default function ChapterQuiz({
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-noir text-xs text-on-noir tabular-nums">{qi + 1}</span>
                     <span className="pt-0.5">{q.prompt}</span>
                   </p>
-                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
+                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-[18px] bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
                   <div role="group" aria-label={`Pilihan jawaban soal ${qi + 1}`} className="mt-3 grid gap-2">
                     {q.options.map((opt, n) => {
                       const chosen = picked === n;
@@ -139,7 +139,7 @@ export default function ChapterQuiz({
                           aria-pressed={chosen}
                           aria-disabled={picked !== undefined}
                           onClick={(e) => pick(q.id, n, e.currentTarget)}
-                          className={`flex min-h-12 items-center gap-3 rounded-2xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "answer-shake border-noir bg-tile-pink" : picked !== undefined ? "cursor-default border-zinc-800 bg-zinc-900 opacity-50" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
+                          className={`flex min-h-12 items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-accent ${right ? "border-noir bg-tile-mint" : wrong ? "answer-shake border-noir bg-tile-pink" : picked !== undefined ? "cursor-default border-zinc-800 bg-zinc-900 opacity-50" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}
                         >
                           {/* Letters, all alike: color appears only once answered. */}
                           <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${right || wrong ? "bg-noir text-on-noir" : "bg-zinc-800 text-zinc-300"}`}>{"ABCD"[n]}</span>
@@ -151,13 +151,13 @@ export default function ChapterQuiz({
                     })}
                   </div>
                   {picked === q.answer && (
-                    <p className="mt-3 rounded-2xl bg-matcha-100 px-4 py-3 text-sm leading-relaxed text-noir">
+                    <p className="mt-3 rounded-xl bg-matcha-100 px-4 py-3 text-sm leading-relaxed text-noir">
                       <strong>Tepat. </strong>{q.explanation}
                     </p>
                   )}
                   {/* Wrong: no explanation yet (it would give the answer away), just a retry. */}
                   {picked !== undefined && picked !== q.answer && (
-                    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl bg-tile-pink px-4 py-3 text-sm text-noir">
+                    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-tile-pink px-4 py-3 text-sm text-noir">
                       <p className="flex-1"><strong>Belum tepat.</strong> Baca lagi soalnya, lalu pilih jawaban lain.</p>
                       <button
                         type="button"
@@ -187,18 +187,18 @@ export default function ChapterQuiz({
         )}
         <div aria-live="polite" className="mt-5 empty:hidden">
           {exercises.length > 0 && !allPassed && (finished || questions.length === 0) && (
-            <p className="rounded-2xl bg-tile-butter px-4 py-3 text-sm">Selesaikan latihan kode di atas untuk menyelesaikan bab ini.</p>
+            <p className="rounded-xl bg-tile-butter px-4 py-3 text-sm">Selesaikan latihan kode di atas untuk menyelesaikan bab ini.</p>
           )}
-          {status === "blocked" && <p className="rounded-2xl bg-tile-butter px-4 py-3 text-sm">{blocked}</p>}
+          {status === "blocked" && <p className="rounded-xl bg-tile-butter px-4 py-3 text-sm">{blocked}</p>}
           {((finished && allPassed) || status === "saved") && (
-            <p className="flex items-center gap-2 rounded-2xl bg-tile-mint px-4 py-3 font-semibold"><Pesta className="size-7 [--icon-tint:var(--color-matcha-500)]" />Bab selesai</p>
+            <p className="flex items-center gap-2 rounded-xl bg-tile-mint px-4 py-3 font-semibold"><Pesta className="size-7 [--icon-tint:var(--color-matcha-500)]" />Bab selesai</p>
           )}
           {/* How it went: first-try score, and which questions are worth a re-read. */}
           {finished && (() => {
             const retried = questions.map((q, i) => (tried[q.id]?.length ? i + 1 : 0)).filter(Boolean);
             const first = questions.length - retried.length;
             return (
-              <div className="mt-3 rounded-2xl bg-zinc-950 px-4 py-3 text-sm">
+              <div className="mt-3 rounded-[18px] bg-zinc-950 px-4 py-3 text-sm">
                 <p className="font-semibold">{first} dari {questions.length} soal benar di percobaan pertama.</p>
                 <p className="mt-1 text-zinc-400">
                   {retried.length === 0

@@ -15,7 +15,7 @@ export default function AjakTeman({ code, joined, origin }: { code: string; join
   return (
     <div className="mt-4 grid gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="rounded-2xl bg-zinc-800 px-4 py-2 font-mono text-lg font-bold tracking-widest">{code}</span>
+        <span className="rounded-xl bg-zinc-800 px-4 py-2 font-mono text-lg font-bold tracking-widest">{code}</span>
         <button type="button" onClick={copy} className={smallButton}>
           {copied ? <Check aria-hidden className="size-4" /> : <Copy aria-hidden className="size-4" />}
           <span aria-live="polite">{copied ? "Tersalin" : "Salin link"}</span>

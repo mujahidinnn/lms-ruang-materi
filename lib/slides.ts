@@ -31,6 +31,21 @@ export function mediumSrc(slide: Slide): string {
   return slide.src.replace(/\.avif$/, "-1600.avif");
 }
 
+// Spread onto <img>: one retry with the full slide when the small variant
+// fails, including failures that happened before hydration (no onError then).
+export function retryWith(src: string) {
+  const swap = (el: HTMLImageElement) => {
+    el.onerror = null;
+    if (el.getAttribute("src") !== src) el.src = src;
+  };
+  return {
+    onError: (e: { currentTarget: HTMLImageElement }) => swap(e.currentTarget),
+    ref: (el: HTMLImageElement | null) => {
+      if (el?.complete && el.naturalWidth === 0) swap(el);
+    },
+  };
+}
+
 export function coverSrc(presentation: Presentation): string {
   return presentation.slides[0].src.replace(/slide-\d+\.avif$/, "cover.avif");
 }

@@ -94,7 +94,7 @@ export default function LoadBalancer({ title }: { title: string }) {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {servers.map((s, i) => (
-          <button key={i} type="button" aria-pressed={!s.up} onClick={() => setServers((all) => all.map((x, k) => (k === i ? { up: !x.up, active: x.up ? 0 : x.active } : x)))} className="flex min-h-11 items-center justify-between gap-2 rounded-2xl bg-zinc-800 px-4 py-2 text-left text-sm aria-pressed:ring-2 aria-pressed:ring-red-400">
+          <button key={i} type="button" aria-pressed={!s.up} onClick={() => setServers((all) => all.map((x, k) => (k === i ? { up: !x.up, active: x.up ? 0 : x.active } : x)))} className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-zinc-800 px-4 py-2 text-left text-sm aria-pressed:ring-2 aria-pressed:ring-red-400">
             <span><span className="font-bold">Server {i + 1}</span><span className="block text-xs text-zinc-400">{served[i]} request dilayani</span></span>
             <span className="text-xs font-bold underline underline-offset-2">{s.up ? "Matikan" : "Hidupkan"}</span>
           </button>

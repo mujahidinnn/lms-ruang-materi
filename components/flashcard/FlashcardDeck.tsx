@@ -68,7 +68,7 @@ export default function FlashcardDeck({ cards, masukHref, end }: { cards: Card[]
       <button
         type="button"
         onClick={() => setFlipped((f) => !f)}
-        className="group relative block aspect-[3/2] w-full [perspective:1200px] rounded-[20px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:aspect-[2/1]"
+        className="group relative block aspect-[3/2] w-full [perspective:1200px] rounded-[18px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:aspect-[2/1]"
       >
         <span
           className={`relative block size-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? "[transform:rotateY(180deg)]" : ""}`}
@@ -117,7 +117,7 @@ function Face({ label, text, hidden, back = false }: { label: string; text: stri
   return (
     <span
       aria-hidden={hidden}
-      className={`absolute inset-0 flex flex-col rounded-[20px] p-6 text-left [backface-visibility:hidden] sm:p-10 ${
+      className={`absolute inset-0 flex flex-col rounded-[18px] p-6 text-left [backface-visibility:hidden] sm:p-10 ${
         back ? "[transform:rotateY(180deg)] bg-zinc-900 shadow-soft" : "bg-tile-lavender"
       }`}
     >

@@ -7,7 +7,7 @@ import { CloudUpload, LogIn } from "lucide-react";
 export default function SimpanProgres({ text }: { text: string }) {
   const q = `?next=${encodeURIComponent(location.pathname)}`;
   return (
-    <div role="status" className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-noir bg-tile-butter px-4 py-3 text-noir">
+    <div role="status" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border-2 border-noir bg-tile-butter px-4 py-3 text-noir">
       <CloudUpload aria-hidden className="size-5 shrink-0" />
       <p className="min-w-48 flex-1 text-sm"><strong>Belum tersimpan.</strong> {text}</p>
       <div className="flex items-center gap-1">

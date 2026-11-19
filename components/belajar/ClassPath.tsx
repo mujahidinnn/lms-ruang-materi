@@ -102,7 +102,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
         <Step href={`/belajar/${topic.slug}/proyek`} icon={<Proyek className="size-7" />} title={`Proyek akhir: ${topic.project.title}`} text="Bangun sendiri, diperiksa otomatis" tone="bg-matcha-300" done={status?.project_passed} />
       )}
       <li className="flex flex-wrap items-center gap-4 rounded-[18px] border-2 border-noir bg-noir p-5 text-on-noir">
-        <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-2xl bg-matcha-300 text-noir"><Medali className="size-7 [--icon-tint:var(--color-matcha-600)]" /></span>
+        <span className="grid size-11 shrink-0 -rotate-6 place-items-center rounded-xl bg-matcha-300 text-noir"><Medali className="size-7 [--icon-tint:var(--color-matcha-600)]" /></span>
         <span className="min-w-0 flex-1">
           <span className="block font-bold">Sertifikat</span>
           <span className="block text-sm text-on-noir/80">Bukti kamu menguasai {topic.title}, dengan kode yang bisa dicek siapa saja.</span>
@@ -134,7 +134,7 @@ export default function ClassPath({ topic, signedIn }: { topic: Topic; signedIn:
           <Lock aria-hidden className="size-5 text-on-noir/50" />
         )}
         {klaim && !status?.code && (
-          <form onSubmit={terbitkan} className="grid w-full gap-4 rounded-2xl bg-on-noir/10 p-4">
+          <form onSubmit={terbitkan} className="grid w-full gap-4 rounded-xl bg-on-noir/10 p-4">
             <label className="grid gap-1.5 text-sm font-semibold">
               Nama di sertifikat
               <input

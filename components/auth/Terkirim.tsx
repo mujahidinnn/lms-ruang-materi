@@ -24,12 +24,12 @@ export default function Terkirim({ state, onResend, onBack, busy }: { state: Mas
   const what = WHAT[state.kind ?? "link"];
   return (
     <div role="status" className="grid gap-4">
-      <span className="grid size-14 -rotate-6 place-items-center rounded-2xl border-2 border-noir bg-matcha-300 text-noir"><Surat className="size-9" /></span>
+      <span className="grid size-14 -rotate-6 place-items-center rounded-xl border-2 border-noir bg-matcha-300 text-noir"><Surat className="size-9" /></span>
       <div>
         <p className="text-2xl font-extrabold tracking-tight">{what.title}</p>
         <p className="mt-1 text-zinc-300">Kami kirim email ke <strong className="text-zinc-50">{state.email}</strong>. {what.text}</p>
       </div>
-      <ul className="grid gap-1 rounded-2xl bg-zinc-800/60 p-4 text-sm text-zinc-400">
+      <ul className="grid gap-1 rounded-xl bg-zinc-800/60 p-4 text-sm text-zinc-400">
         <li>Belum masuk? Cek folder <strong>Spam</strong> atau <strong>Promosi</strong>.</li>
         <li>Link berlaku 1 jam dan hanya bisa dipakai sekali.</li>
       </ul>

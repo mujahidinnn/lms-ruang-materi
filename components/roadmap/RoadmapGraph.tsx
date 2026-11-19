@@ -64,7 +64,7 @@ export default function RoadmapGraph({
               tabIndex={-1}
               onClick={() => onSelect?.(n.id)}
               style={{ left: x(n), top: y(n), width: W, height: H }}
-              className={`absolute flex items-center gap-1.5 rounded-2xl border-2 px-2.5 text-left text-[13px] transition-colors ${
+              className={`absolute flex items-center gap-1.5 rounded-xl border-2 px-2.5 text-left text-[13px] transition-colors ${
                 selected === n.id
                   ? "border-zinc-50 bg-zinc-900 text-zinc-50 ring-4 ring-primary"
                   : state === "selesai"

@@ -106,7 +106,7 @@ export default function PracticeQuiz({
 
   if (prep && set.length === 0) {
     return (
-      <div className="rounded-[20px] bg-tile-butter p-5 sm:p-8">
+      <div className="rounded-[18px] bg-tile-butter p-5 sm:p-8">
         <p className="text-2xl font-bold tracking-tight">Try out sebelum ujian</p>
         <p className="mt-2 max-w-xl text-zinc-300">
           {Math.min(prep.size, questions.length)} soal acak dari latihan dan kuis tiap bab. Kunci dan pembahasan langsung muncul setelah kamu menjawab. Lulus di nilai {prep.passScore}, sama seperti ujian.
@@ -120,7 +120,7 @@ export default function PracticeQuiz({
     const correct = set.length - wrong.length;
     const { score, win } = setResult(correct, set.length, prep?.passScore);
     return (
-      <div aria-live="polite" className={`rounded-[20px] p-5 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
+      <div aria-live="polite" className={`rounded-[18px] p-5 sm:p-8 ${win ? "bg-tile-mint" : "bg-zinc-900 shadow-soft"}`}>
         {win && <Pesta className="size-14 [--icon-tint:var(--color-matcha-500)]" />}
         <p className="mt-2 text-5xl font-bold tracking-tight tabular-nums">
           {prep ? `Nilai ${score}` : `${correct} dari ${set.length} benar`}
@@ -172,7 +172,7 @@ export default function PracticeQuiz({
 
       <h2 className="mt-5 text-xl leading-snug sm:mt-8 sm:text-2xl font-bold tracking-tight text-balance">{q.prompt}</h2>
       {q.code && (
-        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
+        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
 
       <div role="group" aria-label="Pilihan jawaban" className="mt-6 grid gap-2">
@@ -189,7 +189,7 @@ export default function PracticeQuiz({
               aria-pressed={picked === n}
               disabled={checked}
               onClick={() => answer(n)}
-              className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3 py-2.5 text-left shadow-soft transition-[background-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${
+              className={`flex min-h-14 items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left shadow-soft transition-[background-color,transform] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${
                 isAnswer
                   ? "answer-pop border-transparent bg-tile-mint"
                   : isWrong

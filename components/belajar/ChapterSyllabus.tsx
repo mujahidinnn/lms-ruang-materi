@@ -63,7 +63,7 @@ export default function ChapterSyllabus({
             <a
               href={`/belajar/${topicSlug}/${c.slug}`}
               aria-current={c.slug === current ? "page" : undefined}
-              className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 text-sm ${c.slug === current ? "bg-primary text-on-primary" : "text-zinc-300 hover:bg-zinc-800"}`}
+              className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm ${c.slug === current ? "bg-primary text-on-primary" : "text-zinc-300 hover:bg-zinc-800"}`}
             >
               <span
                 className={`grid size-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${done.has(c.id) ? "border-2 border-noir bg-matcha-300 text-noir" : ""}`}
@@ -119,7 +119,7 @@ export default function ChapterSyllabus({
             role="dialog"
             aria-modal="true"
             aria-label="Daftar bab"
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[20px] bg-zinc-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-soft lg:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[18px] bg-zinc-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-soft lg:hidden"
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-lg font-bold">Daftar bab</p>

@@ -15,7 +15,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
         className={`group flex h-full flex-col p-5 transition-transform sm:p-6 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${card}`}
       >
         <div className="flex items-center gap-3">
-          <span className="grid size-11 -rotate-6 place-items-center rounded-2xl sm:size-14 sm:rounded-[20px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
+          <span className="grid size-11 -rotate-6 place-items-center rounded-xl sm:size-14 sm:rounded-[18px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
             <TrackIcon slug={track.slug} className="size-7 sm:size-9" />
           </span>
           <span className={`${mutedChip} tabular-nums`}>{track.nodeCount} kelas</span>

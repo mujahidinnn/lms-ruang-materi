@@ -85,7 +85,7 @@ export default function MqttPubSub({ title }: { title: string }) {
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {subs.map((s, i) => (
-          <div key={s.name} className={`rounded-2xl bg-zinc-800 p-3 ${last?.hit[i] ? "ring-2 ring-matcha-400" : ""}`}>
+          <div key={s.name} className={`rounded-xl bg-zinc-800 p-3 ${last?.hit[i] ? "ring-2 ring-matcha-400" : ""}`}>
             <label className="grid gap-1 text-xs font-bold">Filter {s.name}
               <select value={s.filter} onChange={(e) => { setSubs(subs.map((x, k) => (k === i ? { ...x, filter: e.target.value, got: [] } : x))); setLast(null); }} className="min-h-11 rounded-xl border-2 border-noir bg-zinc-900 px-2 font-mono text-sm text-inherit">
                 {FILTERS.map((f) => <option key={f}>{f}</option>)}

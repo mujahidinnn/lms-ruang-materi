@@ -39,7 +39,7 @@ export default function MikrotikTerminal({ lines }: { lines: string[] }) {
   const prompt = last ? PROMPT_RE.exec(last)![0] : PROMPT;
   useEffect(() => { body.current?.scrollTo({ top: body.current.scrollHeight, left: 0 }); }, [lines]);
   return (
-    <figure className="overflow-hidden rounded-2xl bg-noir text-[13px] leading-6 text-on-noir shadow-soft">
+    <figure className="overflow-hidden rounded-xl bg-noir text-[13px] leading-6 text-on-noir shadow-soft">
       <figcaption className="flex items-center gap-2 bg-white/[0.06] px-4 py-2.5">
         <span aria-hidden className="size-3 rounded-full bg-matcha-200" />
         <span aria-hidden className="size-3 rounded-full bg-matcha-300" />

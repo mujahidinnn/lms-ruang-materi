@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { coverSrc, type Presentation } from "@/lib/slides";
+import { coverSrc, retryWith, type Presentation } from "@/lib/slides";
 
 // A bright matcha folder with a foam pocket, ink-outlined like a sticker.
 // Fixed colors: the folder always sits on the black hero panel.
@@ -131,13 +131,13 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         <svg viewBox="0 0 24 24" className="absolute top-2 right-4 size-4 fill-noir"><path d="M12 0c.9 6.4 4.7 10.6 12 12-7.3 1.4-11.1 5.6-12 12-.9-6.4-4.7-10.6-12-12C7.3 10.6 11.1 6.4 12 0Z" /></svg>
       </span>
 
-      <div ref={box} className={`relative aspect-4/3 rounded-[20px] rounded-tl-none ${FOLDER}`}>
+      <div ref={box} className={`relative aspect-4/3 rounded-[18px] rounded-tl-none ${FOLDER}`}>
         {topics.map((t, i) => {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
-          const base = `absolute block aspect-video overflow-hidden rounded-2xl ${SLOTS[slot] ?? HIDDEN}`;
+          const base = `absolute block aspect-video overflow-hidden rounded-xl ${SLOTS[slot] ?? HIDDEN}`;
           const motion = dragging && isFront ? "" : leaving && isFront ? "transition-[transform,opacity] duration-[450ms] ease-in motion-reduce:transition-none" : "transition-[top,left,right,rotate,translate,transform,opacity,filter] duration-300 ease-out motion-reduce:transition-none";
-          const img = <img src={coverSrc(t)} alt="" draggable={false} decoding="async" loading={isFront ? "eager" : "lazy"} fetchPriority={isFront ? "high" : "auto"} className="absolute inset-0 size-full object-cover" />;
+          const img = <img src={coverSrc(t)} {...retryWith(t.slides[0].src)} alt="" draggable={false} decoding="async" loading={isFront ? "eager" : "lazy"} fetchPriority={isFront ? "high" : "auto"} className="absolute inset-0 size-full object-cover" />;
 
           if (!isFront) return <div key={t.slug} aria-hidden className={`${base} ${motion}`}>{img}</div>;
 

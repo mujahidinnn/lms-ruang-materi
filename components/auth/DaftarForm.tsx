@@ -66,7 +66,7 @@ export default function DaftarForm({ next }: { next: string }) {
         <legend className="mb-1.5 text-sm font-medium text-zinc-300">Usia</legend>
         <div className="grid grid-cols-2 gap-2">
           {USIA.map((u) => (
-            <label key={u.value} className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-2xl border-2 border-transparent bg-zinc-800/60 px-3.5 text-sm font-semibold text-zinc-300 has-checked:border-noir has-checked:bg-matcha-100 has-checked:text-noir">
+            <label key={u.value} className="flex min-h-12 cursor-pointer items-center gap-2.5 rounded-xl border-2 border-transparent bg-zinc-800/60 px-3.5 text-sm font-semibold text-zinc-300 has-checked:border-noir has-checked:bg-matcha-100 has-checked:text-noir">
               <input type="radio" name="usia" value={u.value} required defaultChecked={last?.get("usia") === u.value} onChange={() => setUsia(u.value)} className="size-4 shrink-0 accent-(--accent)" />
               {u.title}
             </label>
@@ -75,7 +75,7 @@ export default function DaftarForm({ next }: { next: string }) {
         <span aria-live="polite" className={hint}>{USIA.find((u) => u.value === usia)?.note ?? "Pilih sesuai usiamu. Pendaftar di bawah 18 tahun perlu izin orang tua atau wali."}</span>
       </fieldset>
       {state.status === "error" && (
-        <p role="alert" className="rounded-2xl bg-tile-pink px-4 py-3 text-sm">
+        <p role="alert" className="rounded-xl bg-tile-pink px-4 py-3 text-sm">
           {state.message}
           {state.message?.includes("sudah terdaftar") && <> <a href={`/masuk?next=${encodeURIComponent(next)}`} className="font-bold underline">Masuk</a></>}
         </p>

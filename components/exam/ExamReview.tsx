@@ -37,7 +37,7 @@ export default function ExamReview({ review, slug, children }: { review: Review;
             <p className="text-xs text-zinc-500">Soal {n + 1}</p>
             <p className="mt-1 text-lg font-semibold">{q.prompt}</p>
             {q.code && (
-              <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
+              <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
             )}
             <ul className="mt-3 space-y-1 text-sm">
               {q.options.map((opt, i) => {

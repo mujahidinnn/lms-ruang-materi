@@ -36,11 +36,11 @@ export default function MarkdownBase({
           img: ({ src, alt }) => {
             // Hydrated in the browser by ReaderScripts; this text is the fallback.
             const sim = typeof src === "string" ? parseSimRef(src) : null;
-            if (sim) return <span data-sim={sim} data-title={alt} className="my-5 block rounded-2xl bg-zinc-900 p-5 text-sm text-zinc-400 shadow-soft">Simulasi interaktif: {alt || sim}</span>;
+            if (sim) return <span data-sim={sim} data-title={alt} className="my-5 block rounded-[18px] bg-zinc-900 p-5 text-sm text-zinc-400 shadow-soft">Simulasi interaktif: {alt || sim}</span>;
             const diagram = typeof src === "string" ? parseDiagramRef(src) : null;
             if (diagram) {
               return (
-                <figure className="my-5 overflow-hidden rounded-2xl shadow-soft">
+                <figure className="my-5 overflow-hidden rounded-xl shadow-soft">
                   {/* Diagrams are 1200 units wide; on a phone the labels shrink below 7px, so the picture keeps a 680px floor and scrolls inside the card. */}
                   <div className="scrollbar-thin overflow-x-auto bg-white">
                     <img src={diagramSrc(diagram)} alt={alt || `Diagram ${diagram}`} className="h-auto w-full min-w-[680px] bg-white" />
@@ -53,7 +53,7 @@ export default function MarkdownBase({
             const slide = typeof src === "string" ? resolveSlideRef(src, slides) : null;
             if (!slide) return null;
             return (
-              <a href={slide.src} target="_blank" rel="noopener" className="my-5 block overflow-hidden rounded-2xl shadow-soft">
+              <a href={slide.src} target="_blank" rel="noopener" className="my-5 block overflow-hidden rounded-xl shadow-soft">
                 <img src={mediumSrc(slide)} width={slide.width} height={slide.height} alt={alt || `Slide ${slide.index}`} loading="lazy" className="h-auto w-full" />
               </a>
             );
@@ -70,7 +70,7 @@ export default function MarkdownBase({
             return renderCode ? (
               renderCode(code, lang ?? "text")
             ) : (
-              <pre className="scrollbar-thin my-5 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{code}</code></pre>
+              <pre className="scrollbar-thin my-5 overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{code}</code></pre>
             );
           },
           a: ({ href, children }) => (

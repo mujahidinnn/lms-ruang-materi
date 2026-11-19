@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // CodeMirror needs the DOM: loaded in the browser only, after mount.
 const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
-const editorSkeleton = <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />;
+const editorSkeleton = <div className="h-40 animate-pulse rounded-[18px] bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
 const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"], mikrotik: ["code"] };
@@ -166,22 +166,22 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
       </div>
 
       {ex.kind === "web" && (
-        <iframe ref={preview} title={`Preview ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-2xl border-0 bg-white" />
+        <iframe ref={preview} title={`Preview ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-[18px] border-0 bg-white" />
       )}
 
       <div aria-live="polite" className="mt-4 space-y-3 empty:hidden">
         {out?.error && (
-          <p className="rounded-2xl bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Error:</span> {out.error}</p>
+          <p className="rounded-xl bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Error:</span> {out.error}</p>
         )}
         {out && out.logs.length > 0 && (
           ex.kind === "mikrotik" ? <MikrotikTerminal lines={out.logs.flatMap((l) => l.split("\n"))} /> : (
-            <pre className="scrollbar-thin max-h-48 overflow-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
+            <pre className="scrollbar-thin max-h-48 overflow-auto rounded-[18px] bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
           )
         )}
         {out && out.results.length > 0 && (
           <ul className="space-y-2">
             {out.results.map((r, ri) => (
-              <li key={ri} className={`flex items-start gap-2 rounded-2xl px-4 py-3 text-sm ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
+              <li key={ri} className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${r.pass ? "bg-tile-mint" : "bg-tile-pink"}`}>
                 {r.pass ? <Check aria-label="lolos" className="mt-0.5 size-4 shrink-0" /> : <X aria-label="gagal" className="mt-0.5 size-4 shrink-0" />}
                 <span>
                   <span className="font-medium">{r.name}</span>

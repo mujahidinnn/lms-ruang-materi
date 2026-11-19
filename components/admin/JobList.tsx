@@ -131,7 +131,7 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
   const { label, Icon, tone } = STATUS[j.status];
   return (
     <li className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-[18px] bg-zinc-900 p-4 shadow-soft sm:p-5">
-      <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-2xl ${TILE[j.status]}`}>
+      <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-xl ${TILE[j.status]}`}>
         <Icon className={`size-5 ${tone} ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
       </span>
       <div className={`min-w-0 flex-1 ${j.status === "done" ? "basis-32" : "basis-56"}`}>

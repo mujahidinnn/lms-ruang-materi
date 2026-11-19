@@ -76,7 +76,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
                   id={`node-${n.id}`}
                   type="button"
                   onClick={() => pick(n.id)}
-                  className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border-2 px-4 py-2 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-xl border-2 px-4 py-2 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                     state === "selesai" ? "border-transparent bg-tile-mint" : state === "sedang" ? "border-transparent bg-tile-lavender" : "border-transparent bg-zinc-900 hover:bg-zinc-800"
                   } ${n.optional ? "!border-dashed !border-zinc-700" : ""}`}
                 >
@@ -96,7 +96,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             <div aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSelected(null)} />
             <section
               aria-labelledby="node-title"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[20px] bg-zinc-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft lg:static lg:z-auto lg:max-h-none lg:rounded-[18px]"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[18px] bg-zinc-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft lg:static lg:z-auto lg:max-h-none lg:rounded-[18px]"
             >
               <div className="flex items-start gap-3">
                 <h2 id="node-title" ref={heading} tabIndex={-1} className="flex-1 text-2xl font-bold tracking-tight outline-none">

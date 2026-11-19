@@ -19,7 +19,7 @@ export default function RowEditor({
   fields: { name: string; label: string }[];
 }) {
   return (
-    <li className="rounded-2xl bg-zinc-800/40 p-4">
+    <li className="rounded-xl bg-zinc-800/40 p-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1 space-y-1">
           {fields.map((f, i) => (

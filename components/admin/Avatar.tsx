@@ -10,7 +10,7 @@ export default function Avatar({ name, src, admin = false, className = "size-11 
   const dialog = useRef<HTMLDialogElement>(null);
   if (!src?.startsWith("https://")) {
     return (
-      <span aria-hidden className={`${className} grid shrink-0 place-items-center rounded-2xl font-bold ${admin ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-300"}`}>
+      <span aria-hidden className={`${className} grid shrink-0 place-items-center rounded-xl font-bold ${admin ? "bg-primary text-on-primary" : "bg-zinc-800 text-zinc-300"}`}>
         {name.charAt(0).toUpperCase()}
       </span>
     );
@@ -19,7 +19,7 @@ export default function Avatar({ name, src, admin = false, className = "size-11 
   const large = src.replace(/=s\d+(-c)?$/, "=s640-c");
   return (
     <>
-      <button type="button" aria-label={`Lihat foto ${name}`} onClick={() => dialog.current?.showModal()} className={`${className} shrink-0 cursor-zoom-in overflow-hidden rounded-2xl bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}>
+      <button type="button" aria-label={`Lihat foto ${name}`} onClick={() => dialog.current?.showModal()} className={`${className} shrink-0 cursor-zoom-in overflow-hidden rounded-xl bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent`}>
         <img src={src} alt="" referrerPolicy="no-referrer" loading="lazy" className="size-full object-cover" />
       </button>
       <dialog
@@ -29,7 +29,7 @@ export default function Avatar({ name, src, admin = false, className = "size-11 
         className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-[18px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm"
       >
         <div className="grid gap-4 p-4">
-          <img src={large} alt={`Foto profil ${name}`} referrerPolicy="no-referrer" className="aspect-square w-full rounded-2xl bg-zinc-800 object-cover" />
+          <img src={large} alt={`Foto profil ${name}`} referrerPolicy="no-referrer" className="aspect-square w-full rounded-xl bg-zinc-800 object-cover" />
           <div className="flex items-center justify-between gap-3 px-1">
             <p className="truncate font-semibold">{name}</p>
             <button type="button" aria-label="Tutup" onClick={() => dialog.current?.close()} className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-zinc-800 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent">

@@ -16,7 +16,7 @@ export const iconButton =
   `grid size-11 shrink-0 place-items-center rounded-full bg-zinc-900 text-zinc-300 shadow-soft transition-colors hover:text-zinc-50 ${focus}`;
 
 // A white surface on the lavender canvas.
-export const card = "rounded-[28px] bg-zinc-900 shadow-soft";
+export const card = "rounded-[18px] bg-zinc-900 shadow-soft";
 
 // Pill chip for counts, filters and small states. Pass the background:
 // chip + " bg-tile-mint", or mutedChip for the plain grey one.

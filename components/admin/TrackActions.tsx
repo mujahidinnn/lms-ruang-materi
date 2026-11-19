@@ -29,7 +29,7 @@ export default function TrackActions({ slug, published, hasDraft }: { slug: stri
       </button>
       <div aria-live="polite">
         {(state.error || state.ok) && (
-          <p className={`rounded-2xl px-4 py-3 text-sm ${state.error ? "bg-tile-pink" : "bg-tile-mint"}`}>
+          <p className={`rounded-xl px-4 py-3 text-sm ${state.error ? "bg-tile-pink" : "bg-tile-mint"}`}>
             {state.error ?? state.ok}
           </p>
         )}

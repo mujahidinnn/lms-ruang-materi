@@ -45,7 +45,7 @@ export default function ChapterEditor({ topic, c, n, slides }: { topic: string; 
           <button type="button" onClick={() => setPreview(true)} aria-pressed={preview} className={smallButton}><Eye aria-hidden className="size-4" />Pratinjau</button>
         </div>
         <textarea name="body" aria-label="Isi bab (markdown)" value={body} onChange={(e) => setBody(e.target.value)} rows={16} hidden={preview} className={`${field} font-mono leading-relaxed`} />
-        {preview && <div className="rounded-2xl bg-zinc-950 p-5"><MarkdownBase body={body} slides={slides} /></div>}
+        {preview && <div className="rounded-[18px] bg-zinc-950 p-5"><MarkdownBase body={body} slides={slides} /></div>}
         <p className="text-xs text-zinc-500">Sisipkan slide dengan <code className="font-mono">![keterangan](slide:12)</code>.</p>
         <div className="flex flex-wrap items-center gap-2">
           <button className={`${smallButton} bg-primary font-semibold text-on-primary hover:bg-primary-hover hover:text-on-primary`}>Simpan bab</button>

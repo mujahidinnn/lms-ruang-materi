@@ -28,7 +28,7 @@ export default function NilaiFilter({ exams, ujian, status, cari }: { exams: rea
     <>
       <Select label="Ujian" value={ujian} options={[["", "Semua ujian"], ...exams]} onChange={(v) => go({ ujian: v })} className="w-full sm:w-64" />
       <Select label="Hasil" value={status} options={HASIL} onChange={(v) => go({ status: v })} className="w-full sm:w-44" />
-      <label className="flex min-w-0 flex-1 basis-48 items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
+      <label className="flex min-w-0 flex-1 basis-48 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
         <Search aria-hidden className="size-4 shrink-0 text-zinc-500" />
         <span className="sr-only">Cari murid</span>
         <input type="search" value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Cari nama atau email" className="min-h-12 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />

@@ -757,10 +757,17 @@ tilted sticker labels and four-point sparkles. Every new screen follows it.
   `/admin/*` sit in `src/components/AppShell.astro`, a white sidebar from lg
   and a top bar with a scrolling link row on phones. Public pages keep
   `SiteHeader`.
-- **Cards and tiles**: `card` = `rounded-[28px] bg-zinc-900 shadow-soft`, no
-  borders. Tiles use the same radius with a pastel background. Sheets,
-  folders and big panels go to `rounded-[32px]`; inner items to
-  `rounded-2xl`. `shadow-soft` is the only shadow.
+- **Radius** (concentric rule: outer = inner + the padding between them).
+  Scale: `rounded-[18px]` for every surface (card, tile, panel, popover,
+  code block), `rounded-xl` (12px) for items inside a surface (rows,
+  alerts, icon tiles, inputs), `rounded-md`/`rounded-lg` for tiny things
+  (kbd, inline code), `rounded-full` for pills and circles. When the
+  padding is smaller than the outer radius, derive the inner one: p-1 gives
+  14px, p-1.5 gives 12px, p-2 gives 10px (`rounded-[10px]`). With padding of
+  18px or more the inner radius is free, so use 12px. No other values.
+- **Cards and tiles**: `card` = `rounded-[18px] bg-zinc-900 shadow-soft`, no
+  borders. Tiles use the same radius with a pastel background.
+  `shadow-soft` is the only shadow.
 - **Chips**: `chip` plus a background (`bg-tile-*`), or `mutedChip`; pills
   for counts, filters and states ("33 slide", "lulus").
 - **Page frame**: `<body>` is at least `100dvh` tall and full width

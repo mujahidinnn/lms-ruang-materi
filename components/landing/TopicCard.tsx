@@ -2,7 +2,7 @@ import ArrowBadge from "@/components/ui/ArrowBadge";
 import { chip, tile } from "@/components/ui/styles";
 import { totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
-import { coverSrc } from "@/lib/slides";
+import { coverSrc, retryWith } from "@/lib/slides";
 
 type CardTopic = Pick<Topic, "slug" | "title" | "description" | "slideCount" | "slides" | "chapters">;
 
@@ -24,8 +24,8 @@ export default function TopicCard({ topic, index }: { topic: CardTopic; index: n
           <h3 className="text-lg sm:text-2xl leading-tight font-bold tracking-tight text-balance">{topic.title}</h3>
           <p className="mt-1 line-clamp-2 sm:mt-2 text-sm leading-relaxed text-zinc-200">{topic.description}</p>
         </div>
-        <div className="relative col-start-2 row-span-2 row-start-1 aspect-video self-center overflow-hidden rounded-xl sm:self-auto sm:rounded-2xl">
-          <img src={coverSrc(topic)} alt={`Sampul materi ${topic.title}`} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+        <div className="relative col-start-2 row-span-2 row-start-1 aspect-video self-center overflow-hidden rounded-xl sm:self-auto sm:rounded-xl">
+          <img src={coverSrc(topic)} {...retryWith(topic.slides[0].src)} alt={`Sampul materi ${topic.title}`} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
         </div>
       </a>
     </li>
