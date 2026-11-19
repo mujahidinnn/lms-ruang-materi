@@ -18,3 +18,16 @@ test("mqtt wildcards", () => {
   expect(matches("rumah/#", "rumah/dapur/suhu")).toBe(true);
   expect(matches("rumah/dapur/suhu", "rumah/dapur")).toBe(false);
 });
+
+import { bezier, EASINGS, paintOrder } from "./css";
+
+test("z-index is ignored on static cards", () => {
+  expect(paintOrder([{ pos: "static", z: 9 }, { pos: "relative", z: 1 }, { pos: "relative", z: 1 }])).toEqual([0, 1, 2]);
+  expect(paintOrder([{ pos: "relative", z: 3 }, { pos: "static", z: 9 }, { pos: "relative", z: 2 }])).toEqual([1, 2, 0]);
+});
+
+test("bezier endpoints and linear", () => {
+  expect(bezier(EASINGS.ease, 0)).toBeCloseTo(0);
+  expect(bezier(EASINGS["ease-in-out"], 1)).toBeCloseTo(1);
+  expect(bezier(EASINGS.linear, 0.3)).toBeCloseTo(0.3);
+});
