@@ -1,0 +1,132 @@
+---
+import { Download } from "lucide-react";
+import { secondaryButton } from "@/components/ui/styles";
+import { createClient } from "@/lib/supabase/server";
+import AppShell from "../../components/AppShell.astro";
+import Base from "../../layouts/Base.astro";
+import { adminOnly } from "../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+
+type Attempt = {
+  id: string;
+  user_id: string;
+  score: number | null;
+  passed: boolean | null;
+  started_at: string;
+  submitted_at: string;
+  exams: { topics: { slug: string; title: string } };
+};
+
+const LIMIT = 500;
+const q = Astro.url.searchParams;
+const examId = q.get("ujian") ?? "";
+const status = q.get("status") === "lulus" || q.get("status") === "belum" ? q.get("status") : "";
+const cari = (q.get("cari") ?? "").trim().toLowerCase();
+
+const db = await createClient();
+let query = db
+  .from("exam_attempts")
+  .select("id, user_id, score, passed, started_at, submitted_at, exams(topics(slug, title))")
+  .not("submitted_at", "is", null)
+  .order("submitted_at", { ascending: false })
+  .limit(LIMIT);
+if (examId) query = query.eq("exam_id", examId);
+if (status) query = query.eq("passed", status === "lulus");
+
+const [{ data }, { data: people }, { data: examData }] = await Promise.all([
+  query,
+  db.rpc("admin_users"),
+  db.from("exams").select("id, topics(title)").order("created_at"),
+]);
+type Who = { name: string; email: string };
+const names = new Map<string, Who>(
+  ((people ?? []) as { user_id: string; display_name: string | null; email: string }[]).map((p) => [p.user_id, { name: p.display_name || p.email, email: p.email }]),
+);
+const exams = (examData ?? []) as unknown as { id: string; topics: { title: string } }[];
+const rows = ((data ?? []) as unknown as Attempt[])
+  .map((a) => ({ ...a, who: (names.get(a.user_id) ?? { name: "(akun dihapus)", email: "" }) as Who }))
+  .filter((a) => !cari || `${a.who.name} ${a.who.email}`.toLowerCase().includes(cari));
+
+const fmt = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+
+if (q.get("format") === "csv") {
+  const cell = (v: string | number | null) => {
+    const s = String(v ?? "");
+    // Guard against spreadsheet formula injection from names.
+    return `"${(/^[=+\-@\t\r]/.test(s) ? `'${s}` : s).replaceAll('"', '""')}"`;
+  };
+  const lines = [["Nama", "Email", "Ujian", "Nilai", "Hasil", "Selesai"].join(",")].concat(
+    rows.map((a) => [a.who.name, a.who.email, a.exams.topics.title, a.score, a.passed ? "Lulus" : "Belum lulus", a.submitted_at].map(cell).join(",")),
+  );
+  return new Response("﻿" + lines.join("\r\n"), {
+    headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="nilai-ujian.csv"', "cache-control": "no-store" },
+  });
+}
+
+const csvHref = `?${new URLSearchParams({ ...(examId && { ujian: examId }), ...(status && { status }), ...(cari && { cari }), format: "csv" })}`;
+const passedCount = rows.filter((r) => r.passed).length;
+const avg = rows.length ? Math.round(rows.reduce((s, r) => s + (r.score ?? 0), 0) / rows.length) : 0;
+const input = "min-h-11 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 text-sm outline-none focus:ring-2 focus:ring-accent";
+---
+
+<Base title="Nilai" description="Hasil ujian semua murid, bisa disaring dan diunduh sebagai CSV." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto max-w-5xl">
+      <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Nilai</h1>
+      <p class="mt-2 text-sm text-zinc-400">Setiap percobaan ujian yang sudah dikirim, terbaru di atas.</p>
+
+      <form method="get" class="mt-5 flex flex-wrap items-center gap-3">
+        <label class="sr-only" for="f-ujian">Ujian</label>
+        <select id="f-ujian" name="ujian" class={`${input} min-w-0 max-w-full basis-56`}>
+          <option value="">Semua ujian</option>
+          {exams.map((e) => <option value={e.id} selected={e.id === examId}>{e.topics.title}</option>)}
+        </select>
+        <label class="sr-only" for="f-status">Hasil</label>
+        <select id="f-status" name="status" class={input}>
+          <option value="">Semua hasil</option>
+          <option value="lulus" selected={status === "lulus"}>Lulus</option>
+          <option value="belum" selected={status === "belum"}>Belum lulus</option>
+        </select>
+        <label class="sr-only" for="f-cari">Cari murid</label>
+        <input id="f-cari" type="search" name="cari" value={cari} placeholder="Cari nama atau email" class={`${input} min-w-0 flex-1 basis-48`} />
+        <button class={secondaryButton}>Terapkan</button>
+        <a href={csvHref} class={secondaryButton} download><Download aria-hidden className="size-4" />Unduh CSV</a>
+      </form>
+
+      <p class="mt-4 text-sm tabular-nums text-zinc-400">
+        {rows.length} percobaan, {passedCount} lulus, rata-rata {avg}{data && data.length >= LIMIT ? `. Menampilkan ${LIMIT} terbaru, saring untuk mempersempit.` : ""}
+      </p>
+
+      {rows.length === 0 ? (
+        <p class="mt-6 text-zinc-400">Tidak ada percobaan yang cocok.</p>
+      ) : (
+        <div class="mt-4 overflow-x-auto rounded-[28px] bg-zinc-900 px-5 shadow-soft">
+          <table class="w-full min-w-[40rem] text-left text-sm">
+            <thead class="text-xs text-zinc-500">
+              <tr class="border-b border-zinc-800">
+                <th scope="col" class="py-3 pr-3 font-normal">Murid</th>
+                <th scope="col" class="py-3 pr-3 font-normal">Ujian</th>
+                <th scope="col" class="py-3 pr-3 text-right font-normal">Nilai</th>
+                <th scope="col" class="py-3 pr-3 font-normal">Hasil</th>
+                <th scope="col" class="py-3 font-normal">Selesai</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-800">
+              {rows.map((a) => (
+                <tr>
+                  <td class="max-w-56 truncate py-3 pr-3"><a href={`/admin/pengguna/${a.user_id}`} class="font-medium hover:text-accent">{a.who.name}</a></td>
+                  <td class="max-w-56 truncate py-3 pr-3"><a href={`/admin/topik/${a.exams.topics.slug}#ujian`} class="hover:text-accent">{a.exams.topics.title}</a></td>
+                  <td class="py-3 pr-3 text-right font-bold tabular-nums">{a.score}</td>
+                  <td class="py-3 pr-3"><span class={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-medium ${a.passed ? "bg-tile-mint text-zinc-50" : "bg-tile-butter text-zinc-50"}`}>{a.passed ? "Lulus" : "Belum lulus"}</span></td>
+                  <td class="py-3 text-xs text-zinc-500"><time datetime={a.submitted_at}>{fmt.format(new Date(a.submitted_at))}</time></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </AppShell>
+</Base>
