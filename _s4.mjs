@@ -1,0 +1,16 @@
+import { chromium, devices } from "playwright";
+const b = await chromium.launch({ executablePath: "/usr/bin/google-chrome" });
+const c = await b.newContext({ ...devices["Pixel 7"] });
+const p = await c.newPage();
+await p.goto("http://localhost:4321/masuk");
+await p.locator("input[type=email]").fill(process.env.DEV_STUDENT_EMAIL);
+await p.locator("input[type=password]").fill(process.env.DEV_STUDENT_PASSWORD);
+await p.keyboard.press("Enter"); await p.waitForTimeout(3000);
+await p.goto("http://localhost:4321/profil#rekap"); await p.waitForTimeout(2500);
+const cell = p.locator("[role=img] [data-tip]").last();
+await cell.scrollIntoViewIfNeeded();
+await cell.tap();
+await p.waitForTimeout(200);
+console.log(await p.locator("body > [role=tooltip]").allTextContents());
+await p.screenshot({ path: process.argv[2] });
+await b.close();
