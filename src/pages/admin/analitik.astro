@@ -20,8 +20,15 @@ if (!a) return Astro.rewrite("/404");
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const chapters = a.chapters.slice(0, 10);
 const topics = a.topics.filter((t) => t.started > 0);
+const learners = topics.reduce((n, t) => n + t.started, 0);
+const finished = topics.reduce((n, t) => n + t.finished, 0);
+const tiles = [
+  { label: "Murid belajar", value: learners, note: "pembukaan kelas, semua kelas", tone: "bg-tile-mint" },
+  { label: "Kelas diselesaikan", value: finished, note: `${pct(finished, learners)}% dari yang dibuka`, tone: "bg-tile-lavender" },
+  { label: "Soal perlu dicek", value: a.questions.filter((q) => pct(q.wrong, q.seen) >= 70).length, note: "salah 70% atau lebih", tone: "bg-tile-peach" },
+];
 const card = "rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6";
-const bar = (v: number, tone: string) => `<div aria-hidden class="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full ${tone}" style="width:${v}%"></div></div>`;
+const bar = (v: number, tone: string) => `<div aria-hidden class="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800"><div class="h-full rounded-full ${tone}" style="width:${v}%"></div></div>`;
 ---
 
 <Base title="Analitik" description="Di mana murid berhenti belajar dan soal ujian mana yang paling sering salah." noindex>
@@ -31,6 +38,16 @@ const bar = (v: number, tone: string) => `<div aria-hidden class="mt-1.5 h-2 ove
         <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Analitik</h1>
         <p class="mt-2 text-sm text-zinc-400">Bahan untuk memperbaiki materi: kelas yang jarang selesai, bab tempat murid berhenti, dan soal yang sering salah.</p>
       </div>
+
+      <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {tiles.map((t) => (
+          <div class={`rounded-[28px] p-5 ${t.tone}`}>
+            <dt class="text-sm text-zinc-300">{t.label}</dt>
+            <dd class="mt-1 text-4xl font-bold tabular-nums text-zinc-50">{t.value}</dd>
+            <p class="mt-1 text-xs text-zinc-300">{t.note}</p>
+          </div>
+        ))}
+      </dl>
 
       <section aria-labelledby="kelas" class={card}>
         <h2 id="kelas" class="text-lg font-bold tracking-tight">Kelas selesai</h2>
@@ -83,7 +100,10 @@ const bar = (v: number, tone: string) => `<div aria-hidden class="mt-1.5 h-2 ove
                     <span class="line-clamp-2 text-sm group-hover:text-accent">{q.prompt}</span>
                     <span class="mt-0.5 block text-xs text-zinc-500">{q.topic}</span>
                   </span>
-                  <span class="shrink-0 text-right text-sm tabular-nums"><span class="font-bold">{pct(q.wrong, q.seen)}% salah</span><span class="block text-xs text-zinc-500">{q.wrong} dari {q.seen}</span></span>
+                  <span class="shrink-0 text-right">
+                    <span class={`inline-flex min-h-7 items-center rounded-full px-3 text-xs font-semibold tabular-nums ${pct(q.wrong, q.seen) >= 70 ? "bg-tile-pink text-zinc-50" : "bg-zinc-800"}`}>{pct(q.wrong, q.seen)}% salah</span>
+                    <span class="mt-1 block text-xs tabular-nums text-zinc-500">{q.wrong} dari {q.seen} percobaan</span>
+                  </span>
                 </a>
               </li>
             ))}
