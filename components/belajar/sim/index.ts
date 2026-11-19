@@ -51,4 +51,7 @@ export const sims: Record<string, () => Promise<{ default: ComponentType<{ title
   "python-loop": () => import("./PythonLoop"),
   "ts-narrowing": () => import("./TsNarrowing"),
   "password-hash": () => import("./PasswordHash"),
+  "docker-volume": () => import("./DockerVolume"),
+  "docker-network": () => import("./DockerNetwork"),
+  "sdlc-waterfall-agile": () => import("./SdlcWaterfallAgile"),
 };

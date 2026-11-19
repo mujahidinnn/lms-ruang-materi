@@ -107,6 +107,12 @@ const ADD = [
     text: "## Coba sendiri: tipe menyempit\n\nMaju langkah demi langkah dan perhatikan tipe variabel menyempit setelah setiap pengecekan.\n\n![Narrowing tipe di TypeScript](sim:ts-narrowing)\n\n" },
   { topic: "autentikasi-dan-keamanan-api", chapter: "menyimpan-password-dengan-aman", before: "## Pilih algoritma yang lambat", sim: "password-hash",
     text: "## Coba sendiri: bocor dan diserang\n\nBandingkan tiga cara menyimpan password, lalu lihat apa yang bisa dibongkar penyerang dari database yang bocor.\n\n![Menyimpan password dengan hash, salt, dan iterasi](sim:password-hash)\n\n" },
+  { topic: "docker-dan-deployment", chapter: "volume-dan-network", before: "## Cadangan dan Perawatan Volume", sim: "docker-volume",
+    text: "## Coba Sendiri: Data di Container dan Volume\n\nPilih cara penyimpanan, tulis data, hapus container, lalu buat container baru. Bandingkan tanpa volume, named volume, dan bind mount.\n\n![Data hilang atau aman setelah docker rm](sim:docker-volume)\n\n" },
+  { topic: "docker-dan-deployment", chapter: "volume-dan-network", before: "## Port: Publikasi dan Internal", sim: "docker-network",
+    text: "## Coba Sendiri: Nama, IP, dan Port\n\nCoba ping dari web ke db lewat nama atau IP di network bawaan dan network buatan, lalu curl dari host dengan dan tanpa `-p`.\n\n![Jangkauan antar container dan dari host](sim:docker-network)\n\n" },
+  { topic: "sdlc", chapter: "iteratif-spiral-dan-agile", before: "## Agile dengan Kerangka Scrum", sim: "sdlc-waterfall-agile",
+    text: "## Waterfall dan Agile pada proyek yang sama\n\nBandingkan dua cara mengerjakan proyek 6 fitur yang sama. Waterfall baru menunjukkan software di akhir, sedangkan Agile mengirim beberapa fitur di tiap sprint dan mendapat umpan balik lebih sering. Nyalakan perubahan kebutuhan di tengah jalan: Waterfall harus mengulang kebutuhan dan desain, Agile cukup menyerapnya di sprint berikutnya.\n\n![Waterfall dibanding Agile pada proyek yang sama](sim:sdlc-waterfall-agile)\n\n" },
 ];
 
 const patch = (body, a) => {
