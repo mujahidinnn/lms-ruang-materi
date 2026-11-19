@@ -7,7 +7,7 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 // Same layout as the auth emails (lib/email-layout.mjs). Blank lines in the
 // body start a new paragraph.
-export function announcementHtml({ title, body, link }: { title: string; body: string; link?: string | null }) {
+export function announcementHtml({ title, body, link, chip = "Pengumuman", footnote }: { title: string; body: string; link?: string | null; chip?: string; footnote?: string }) {
   const intro = body
     .split(/\n{2,}/)
     .map((p) => esc(p).replace(/\n/g, "<br>"))
@@ -17,9 +17,9 @@ export function announcementHtml({ title, body, link }: { title: string; body: s
     site: SITE_URL,
     title: esc(title),
     intro,
-    chip: "Pengumuman",
+    chip,
     button: url ? { label: "Buka di Ruang Materi", url: esc(url) } : undefined,
-    footnote: `Kamu menerima email ini karena punya akun Ruang Materi. Matikan email pengumuman kapan saja di <a href="${SITE_URL}/profil" style="color:#46681c;">pengaturan profil</a>.`,
+    footnote: footnote ?? `Kamu menerima email ini karena punya akun Ruang Materi. Matikan email pengumuman kapan saja di <a href="${SITE_URL}/profil" style="color:#46681c;">pengaturan profil</a>.`,
   });
 }
 

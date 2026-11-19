@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { announcementHtml, sendEmails } from "@/lib/announce-mail";
 import { getCurrentUser, requireAdmin } from "@/lib/dal";
 import { refresh } from "@/lib/request";
 import { createClient } from "@/lib/supabase/server";
@@ -28,8 +29,34 @@ export async function selesaikanLaporan(_: State, form: FormData): Promise<State
   await requireAdmin();
   const id = z.uuid().safeParse(form.get("id"));
   if (!id.success) return { error: "Laporan tidak valid." };
-  const { error } = await (await createClient()).from("chapter_reports").update({ status: "selesai" }).eq("id", id.data);
+  const db = await createClient();
+  const { data: r, error } = await db
+    .from("chapter_reports")
+    .update({ status: "selesai" })
+    .eq("id", id.data)
+    .eq("status", "baru")
+    .select("user_id, chapters(title), exam_questions(prompt)")
+    .maybeSingle();
   if (error) return { error: "Gagal menyimpan." };
+  if (r) await kabari(db, r as unknown as Done);
   refresh();
   return { ok: "Selesai." };
+}
+
+type Done = { user_id: string; chapters: { title: string } | null; exam_questions: { prompt: string } | null };
+
+// Tell the reporter it was handled. A mail failure never undoes "selesai".
+async function kabari(db: Awaited<ReturnType<typeof createClient>>, r: Done) {
+  try {
+    const { data } = await db.rpc("admin_users");
+    const to = ((data ?? []) as { user_id: string; email: string }[]).find((p) => p.user_id === r.user_id)?.email;
+    if (!to) return;
+    const what = r.chapters ? `bab "${r.chapters.title}"` : `soal ujian "${(r.exam_questions?.prompt ?? "").slice(0, 120)}"`;
+    await sendEmails([to], "Laporanmu sudah ditangani", announcementHtml({
+      title: "Laporanmu sudah ditangani",
+      body: `Terima kasih sudah melaporkan ${what}. Materinya sudah kami periksa dan diperbaiki kalau memang perlu.`,
+      chip: "Laporan",
+      footnote: "Kamu menerima email ini karena mengirim laporan di Ruang Materi.",
+    }));
+  } catch {}
 }
