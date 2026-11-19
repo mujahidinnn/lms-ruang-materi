@@ -3,6 +3,7 @@ import Select from "@/components/ui/Select";
 import { Monitor, Smartphone, Trash2 } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import { field } from "@/components/admin/editor";
+import PasswordInput from "@/components/auth/PasswordInput";
 import AjakTeman from "@/components/profil/AjakTeman";
 import ExportButton from "@/components/dashboard/ExportButton";
 import { card, primaryButton } from "@/components/ui/styles";
@@ -38,7 +39,7 @@ const { data: ids } = await db.auth.getUserIdentities();
 const methods = [...new Set((ids?.identities ?? []).map((i) => METODE[i.provider] ?? i.provider))];
 const { data: sessions } = await db.rpc("my_sessions");
 const WIN: Record<string, string> = { "10.0": "10/11", "6.3": "8.1", "6.1": "7" };
-const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; ip: string | null; created_at: string; refreshed_at: string; current: boolean }[]).map((x) => {
+const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; ip: string | null; country: string | null; created_at: string; refreshed_at: string; current: boolean }[]).map((x) => {
   const ua = x.user_agent ?? "";
   const ver = (re: RegExp) => ua.match(re)?.[1]?.split(".")[0];
   const [b, bv] = /Edg\/(\d+)/.test(ua) ? ["Edge", ver(/Edg\/([\d.]+)/)] : /OPR\/(\d+)/.test(ua) ? ["Opera", ver(/OPR\/([\d.]+)/)] : /Firefox\/(\d+)/.test(ua) ? ["Firefox", ver(/Firefox\/([\d.]+)/)] : /(?:Chrome|CriOS)\/(\d+)/.test(ua) ? ["Chrome", ver(/(?:Chrome|CriOS)\/([\d.]+)/)] : /Safari\//.test(ua) ? ["Safari", ver(/Version\/([\d.]+)/)] : ["Browser", undefined];
@@ -46,6 +47,7 @@ const perangkat = ((sessions ?? []) as { id: string; user_agent: string | null; 
   const model = ua.match(/Android [\d.]+; ([^;)]+)/)?.[1]?.replace(/ Build.*/, "");
   return { ...x, nama: `${b}${bv ? ` ${bv}` : ""}${os ? ` · ${os}` : ""}`, model: model && model !== "K" ? model : null, hp: /Android|iPhone|iPad|Mobile/.test(ua) };
 });
+const negara = new Intl.DisplayNames(["id"], { type: "region" });
 const tgl = (d: string) => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: p?.timezone ?? "Asia/Jakarta" });
 const zone = p?.timezone ?? "Asia/Jakarta";
 ---
@@ -145,11 +147,11 @@ const zone = p?.timezone ?? "Asia/Jakarta";
           <input type="email" name="username" autocomplete="username" value={user.email} readonly hidden />
           <label class="text-sm text-zinc-400">
             Password baru
-            <input name="password" type="password" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
+            <PasswordInput client:load name="password" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
           </label>
           <label class="text-sm text-zinc-400">
             Ulangi password
-            <input name="confirm" type="password" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
+            <PasswordInput client:load name="confirm" required minlength={8} maxlength={72} autocomplete="new-password" class={`${field} mt-1`} />
           </label>
           <button class={`${primaryButton} justify-self-start`}>Simpan password</button>
         </ActionForm>
@@ -166,7 +168,7 @@ const zone = p?.timezone ?? "Asia/Jakarta";
                 <div class="min-w-0 flex-1">
                   <p class="font-semibold">{x.nama}{x.model && <span class="font-normal text-zinc-400"> · {x.model}</span>}</p>
                   <p class="mt-0.5 text-xs text-zinc-400">Masuk {tgl(x.created_at)}{!x.current && <> · aktif {tgl(x.refreshed_at)}</>}</p>
-                  {x.ip && <p class="text-xs text-zinc-400">IP {x.ip}</p>}
+                  {(x.ip || x.country) && <p class="text-xs text-zinc-400">{[x.country && (negara.of(x.country) ?? x.country), x.ip && `IP ${x.ip}`].filter(Boolean).join(" · ")}</p>}
                 </div>
                 {x.current && <span class="shrink-0 rounded-full bg-matcha-300 px-2.5 py-0.5 text-xs font-bold text-noir">Perangkat ini</span>}
               </li>
