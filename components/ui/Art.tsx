@@ -53,7 +53,7 @@ type Props = { slug: string; seed?: string; className?: string; bare?: boolean }
   | { kind: "chapter"; number: number; total?: number }
 );
 
-// kind topic/track: 16:9 card cover (bare: no background, a loose illustration). chapter: wide banner with the number.
+// kind topic/track: 16:9 card cover (bare: no background and no motif, only the decoration). chapter: wide banner with the number.
 export default function Art(props: Props) {
   const { slug, kind, className } = props;
   const h = hash(props.seed ?? slug);
@@ -97,7 +97,7 @@ export default function Art(props: Props) {
         <circle cx={wide ? 300 : 40 + (h % 30)} cy={wide ? 150 : 140 - (h % 20)} r="7" fill={M3} stroke={INK} strokeWidth="3" />
         <path d={`M${W_ - 70 - (h % 25)} ${28 + (h % 14)}h14M${W_ - 63 - (h % 25)} ${21 + (h % 14)}v14`} stroke={INK} strokeWidth="4" strokeLinecap="round" />
         <rect x={wide ? 330 : 72 + (h % 20)} y={wide ? 40 : 22 + (h % 12)} width="14" height="14" rx="4" fill={W} stroke={INK} strokeWidth="3" transform={`rotate(${15 + (h % 30)} ${wide ? 337 : 79 + (h % 20)} ${wide ? 47 : 29 + (h % 12)})`} />
-        <g transform={`translate(${mx - 50 * size} ${H_ / 2 - 50 * size}) scale(${size})`}>{Motif()}</g>
+        {!props.bare && <g transform={`translate(${mx - 50 * size} ${H_ / 2 - 50 * size}) scale(${size})`}>{Motif()}</g>}
       </g>
       {kind === "track" && (
         <g>
