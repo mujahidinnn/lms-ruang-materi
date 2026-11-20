@@ -20,7 +20,7 @@ def load(key):
     return SimpleNamespace(
         ink=_C(d["ink"]), accent=_C(d["accent"]), light=_C(d["accentLight"]), card=_C(d["card"]), line=_C(d["line"]),
         amber=_mix(d["accent"], "FFFFFF", 0.5), deep=_mix(d["ink"], d["accent"], 0.22), mid=_mix(d["ink"], d["accent"], 0.45),
-        grey=_C("64748B"), font=d["font"], scale=d["scale"], motif=d["motif"],
+        grey=_C("64748B"), font=d["font"], scale=d["scale"], motif=d["motif"], logo=d.get("logo"), accent_hex=d["accent"],
     )
 
 
