@@ -1,7 +1,7 @@
 "use client";
 
-import { Mail, Search, Send } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Mail, Search, Send, X } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import Select from "@/components/ui/Select";
 import { confirmDialog } from "@/lib/confirm";
 import { rpc } from "@/lib/rpc";
@@ -15,6 +15,17 @@ export type Person = { id: string; name: string; email: string };
 
 const AUDIENCES = [["all", "Semua pengguna"], ["student", "Hanya siswa"], ["admin", "Hanya admin"], ["users", "Pengguna tertentu"]] as const;
 const AUDIENCE_TEXT = { all: "semua pengguna", student: "semua siswa", admin: "semua admin", users: "pengguna yang dipilih" } as const;
+
+type Template = { name: string; title: string; body: string; link: string; audience: keyof typeof AUDIENCE_TEXT };
+const TEMPLATES: Template[] = [
+  { name: "Kelas baru", title: "Kelas [nama kelas] sudah terbit", body: "Kelas baru sudah tersedia di Ruang Materi: [nama kelas].\n\nCocok untuk kamu yang ingin [tujuan belajar]. Yuk mulai belajar sekarang.", link: "/kelas/[slug-kelas]", audience: "all" },
+  { name: "Materi diperbarui", title: "Materi [nama kelas] diperbarui", body: "Kami baru saja memperbarui materi di kelas [nama kelas]: [apa yang berubah].\n\nProgres belajarmu tetap aman. Silakan cek bagian yang baru.", link: "/kelas/[slug-kelas]", audience: "student" },
+  { name: "Fitur baru", title: "Fitur baru: [nama fitur]", body: "Sekarang kamu bisa [apa yang bisa dilakukan].\n\nCara memakainya: [langkah singkat].", link: "", audience: "all" },
+  { name: "Jadwal pemeliharaan", title: "Pemeliharaan sistem [tanggal]", body: "Pada [tanggal] pukul [jam] WIB, Ruang Materi akan dipelihara sekitar [durasi]. Selama itu situs mungkin tidak bisa diakses.\n\nMohon maaf atas ketidaknyamanannya.", link: "", audience: "all" },
+  { name: "Gangguan teratasi", title: "Gangguan sudah teratasi", body: "Tadi sempat ada gangguan pada [bagian yang terdampak]. Sekarang sudah pulih dan berjalan normal.\n\nTerima kasih sudah bersabar. Data dan progresmu tidak terpengaruh.", link: "", audience: "all" },
+  { name: "Semangat belajar", title: "Ayo lanjutkan belajarmu", body: "Sudah lama tidak belajar? Sedikit demi sedikit tetap berarti. Lanjutkan dari materi terakhirmu hari ini.", link: "/dasbor", audience: "student" },
+  { name: "Untuk admin", title: "Info untuk admin: [topik]", body: "[Sampaikan info atau tugas untuk admin].\n\nBatas waktu: [tanggal].", link: "/admin", audience: "admin" },
+];
 
 export default function PengumumanForm({ people }: { people: Person[] }) {
   const [title, setTitle] = useState("");
@@ -32,6 +43,15 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
   const matches = people.filter((p) => !term || `${p.name} ${p.email}`.toLowerCase().includes(term));
   const toggle = (id: string) => setPicked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
 
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [preview, setPreview] = useState<Template | null>(null);
+  const open = (t: Template) => { setPreview(t); dialog.current?.showModal(); };
+  const apply = async (t: Template) => {
+    dialog.current?.close();
+    if ((title || body) && !(await confirmDialog({ title: "Ganti isi form?", text: "Judul, isi, tautan, dan penerima akan diganti dengan template.", action: "Ganti" }))) return;
+    setTitle(t.title); setBody(t.body); setLink(t.link); setAudience(t.audience);
+  };
+
   const submit = () =>
     start(async () => {
       const where = [web && "banner di Dashboard", email && "email"].filter(Boolean).join(" dan ");
@@ -45,6 +65,38 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+      <div className="text-sm text-zinc-400">
+        Template (opsional)
+        <div className="mt-1 flex flex-wrap gap-2">
+          {TEMPLATES.map((t) => <button key={t.name} type="button" onClick={() => open(t)} className={smallButton}>{t.name}</button>)}
+        </div>
+        <p className="mt-1 text-xs text-zinc-500">Ganti teks dalam [kurung siku] sebelum mengirim.</p>
+      </div>
+      <dialog
+        ref={dialog}
+        aria-label="Pratinjau template"
+        onClick={(e) => e.target === dialog.current && dialog.current?.close()}
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-[18px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+      >
+        {preview && (
+          <div className="grid gap-4 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Template: {preview.name}</p>
+              <button type="button" aria-label="Tutup" onClick={() => dialog.current?.close()} className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-zinc-800 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent"><X aria-hidden className="size-4" /></button>
+            </div>
+            <div className="grid gap-2 rounded-xl border border-zinc-800 p-4">
+              <p className="font-semibold">{preview.title}</p>
+              {preview.body.split("\n\n").map((para, i) => <p key={i} className="text-sm leading-relaxed text-zinc-300">{para}</p>)}
+              {preview.link && <p className="text-sm text-accent">{preview.link}</p>}
+            </div>
+            <p className="text-xs text-zinc-500">Penerima: {AUDIENCE_TEXT[preview.audience]}</p>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={() => apply(preview)} className={primaryButton}>Pakai template</button>
+              <button type="button" onClick={() => dialog.current?.close()} className={smallButton}>Batal</button>
+            </div>
+          </div>
+        )}
+      </dialog>
       <label className="text-sm text-zinc-400">
         Judul
         <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required placeholder="Contoh: Kelas MikroTik sudah terbit" className={`${field} mt-1`} />
