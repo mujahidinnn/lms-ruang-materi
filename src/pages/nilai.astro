@@ -1,5 +1,5 @@
 ---
-import { trackIcon } from "@/components/ui/icons";
+import { TrackIcon } from "@/components/ui/icons";
 import TrackProgress from "@/components/dashboard/TrackProgress";
 import { card, chip } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
@@ -8,14 +8,14 @@ import Base from "../layouts/Base.astro";
 import { signedIn } from "../lib/guard";
 
 type AttemptRow = { score: number | null; passed: boolean | null; exam_id: string; exams: { max_attempts: number; topics: { slug: string; title: string } | null } | null };
-type TrackRow = { id: string; slug: string; title: string };
+type TrackRow = { id: string; slug: string; icon: string | null; title: string };
 
 const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 const db = await createClient();
 const [{ data: attempts }, { data: tracks }, { data: levels }, { data: badges }, { data: streak }, { data: certs }] = await Promise.all([
   db.from("exam_attempts").select("score, passed, exam_id, exams(max_attempts, topics(slug, title))").eq("user_id", user.id).order("created_at"),
-  db.from("tracks").select("id, slug, title").order("created_at"),
+  db.from("tracks").select("id, slug, icon, title").order("created_at"),
   db.from("track_levels").select("slug, core_passed, core_total"),
   db.from("badges").select("track_id").eq("user_id", user.id),
   db.from("learning_streaks").select("best_days").eq("user_id", user.id).maybeSingle(),
@@ -139,12 +139,11 @@ for (const a of (attempts ?? []) as unknown as AttemptRow[]) {
           <ul class="mt-3 grid gap-2">
             {((tracks ?? []) as TrackRow[]).map((t) => {
               const got = earned.has(t.id);
-              const Icon = trackIcon(t.slug);
               return (
                 <li
                   class={`flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium ${got ? "bg-tile-butter text-zinc-50" : "border border-dashed border-zinc-600 text-zinc-400"}`}
                 >
-                  <Icon className={`size-7 ${got ? "" : "opacity-60"}`} />
+                  <TrackIcon slug={t.slug} icon={t.icon} className={`size-7 ${got ? "" : "opacity-60"}`} />
                   {t.title}
                   <span class="sr-only">{got ? ", didapat" : ", belum"}</span>
                 </li>

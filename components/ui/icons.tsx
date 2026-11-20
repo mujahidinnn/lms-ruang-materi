@@ -213,21 +213,48 @@ export const Robot = (p: P) => (
   </Svg>
 );
 
-// One icon per roadmap track, by a word in its slug; anything else gets the route icon.
-const TRACK_ICONS = [
-  [/frontend|web/, Frontend],
-  [/git/, Cabang],
-  [/backend|api/, Backend],
-  [/infrastruktur|server|jaringan/, Infrastruktur],
-  [/elektronika|iot|robot/, Robot],
-  [/data|basis/, Data],
-  [/mobile/, Mobile],
-  [/ui-ux|desain/, UiUx],
-  [/cloud|devops/, Awan],
-] as const;
-export const trackIcon = (slug: string) => TRACK_ICONS.find(([re]) => re.test(slug))?.[1] ?? Jalur;
-export function TrackIcon({ slug, className }: { slug: string; className?: string }) {
-  const Icon = trackIcon(slug); // picked from a fixed module-level list, not created here
+// One icon per roadmap track. A track picks a preset key, or inline <svg> markup
+// (shown through <img>, so scripts in it never run); with neither, a word in
+// its slug decides, and anything else gets the route icon.
+export const TRACK_PRESETS = {
+  frontend: ["Frontend", Frontend],
+  git: ["Cabang", Cabang],
+  backend: ["Backend", Backend],
+  infrastruktur: ["Infrastruktur", Infrastruktur],
+  robot: ["Robot", Robot],
+  data: ["Data", Data],
+  mobile: ["Mobile", Mobile],
+  "ui-ux": ["UI dan UX", UiUx],
+  cloud: ["Awan", Awan],
+  jalur: ["Jalur", Jalur],
+  proyek: ["Proyek", Proyek],
+  ujian: ["Ujian", Ujian],
+  api: ["Api", Api],
+  medali: ["Medali", Medali],
+  sasaran: ["Sasaran", Sasaran],
+  slide: ["Slide", Slide],
+} as const;
+export type PresetKey = keyof typeof TRACK_PRESETS;
+const BY_SLUG: [RegExp, PresetKey][] = [
+  [/frontend|web/, "frontend"],
+  [/git/, "git"],
+  [/backend|api/, "backend"],
+  [/infrastruktur|server|jaringan/, "infrastruktur"],
+  [/elektronika|iot|robot/, "robot"],
+  [/data|basis/, "data"],
+  [/mobile/, "mobile"],
+  [/ui-ux|desain/, "ui-ux"],
+  [/cloud|devops/, "cloud"],
+];
+export const isSvg = (icon: string | null | undefined): icon is string => !!icon && icon.trimStart().startsWith("<svg");
+// <img> only draws a standalone SVG that declares its namespace.
+export const svgSrc = (svg: string) =>
+  `data:image/svg+xml,${encodeURIComponent(/xmlns=/.test(svg) ? svg : svg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"'))}`;
+export const trackIcon = (slug: string, icon?: string | null) =>
+  TRACK_PRESETS[(icon && icon in TRACK_PRESETS ? icon : BY_SLUG.find(([re]) => re.test(slug))?.[1] ?? "jalur") as PresetKey][1];
+export function TrackIcon({ slug, icon, className }: { slug: string; icon?: string | null; className?: string }) {
+  if (isSvg(icon)) return <img src={svgSrc(icon)} alt="" aria-hidden className={`${className ?? ""} object-contain`} />;
+  const Icon = trackIcon(slug, icon); // picked from a fixed module-level list, not created here
   // eslint-disable-next-line react-hooks/static-components
   return <Icon className={className} />;
 }

@@ -168,8 +168,8 @@ export function getChapter(topicSlug: string, chapterSlug: string): Promise<Chap
 }
 
 // steps: the class titles in path order, for the card.
-export type TrackSummary = { slug: string; title: string; description: string; nodeCount: number; steps: string[] };
-export type Track = Omit<TrackSummary, "nodeCount" | "steps"> & { nodes: RoadmapNode[]; edges: RoadmapEdge[] };
+export type TrackSummary = { slug: string; icon: string | null; title: string; description: string; nodeCount: number; steps: string[] };
+export type Track = Omit<TrackSummary, "nodeCount" | "steps" | "icon"> & { nodes: RoadmapNode[]; edges: RoadmapEdge[] };
 
 type TrackRow = {
   slug: string;
@@ -212,13 +212,13 @@ export function getTracks(): Promise<TrackSummary[]> {
   return cached(`getTracks`, async () => {
     const { data, error } = await publicClient
       .from("tracks")
-      .select("slug, title, description, track_nodes(position, topics(title))")
+      .select("slug, icon, title, description, track_nodes(position, topics(title))")
       .order("created_at");
     if (error) throw new Error(`getTracks: ${error.message}`);
     return data
       .map((t) => {
         const nodes = (t.track_nodes as unknown as { position: number; topics: { title: string } | null }[]).filter((n) => n.topics).toSorted((a, b) => a.position - b.position);
-        return { slug: t.slug, title: t.title, description: t.description, nodeCount: nodes.length, steps: nodes.map((n) => n.topics!.title) };
+        return { slug: t.slug, icon: t.icon, title: t.title, description: t.description, nodeCount: nodes.length, steps: nodes.map((n) => n.topics!.title) };
       })
       .filter((t) => t.nodeCount > 0);
   });

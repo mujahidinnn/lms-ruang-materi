@@ -1,12 +1,12 @@
 "use client";
 
-import { Mail, Search, Send, X } from "lucide-react";
+import { BookPlus, CircleCheck, Flame, Megaphone, Mail, RefreshCw, Search, Send, ShieldCheck, Sparkles, Wrench, X, type LucideIcon } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import Select from "@/components/ui/Select";
 import { confirmDialog } from "@/lib/confirm";
 import { rpc } from "@/lib/rpc";
 import { field, smallButton } from "./editor";
-import { primaryButton } from "@/components/ui/styles";
+import { primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 
 const kirim = rpc("kirimPengumuman");
 const tes = rpc("kirimTesPengumuman");
@@ -16,16 +16,19 @@ export type Person = { id: string; name: string; email: string };
 const AUDIENCES = [["all", "Semua pengguna"], ["student", "Hanya siswa"], ["admin", "Hanya admin"], ["users", "Pengguna tertentu"]] as const;
 const AUDIENCE_TEXT = { all: "semua pengguna", student: "semua siswa", admin: "semua admin", users: "pengguna yang dipilih" } as const;
 
-type Template = { name: string; title: string; body: string; link: string; audience: keyof typeof AUDIENCE_TEXT };
+type Template = { icon: LucideIcon; hint: string; name: string; title: string; body: string; link: string; audience: keyof typeof AUDIENCE_TEXT };
 const TEMPLATES: Template[] = [
-  { name: "Kelas baru", title: "Kelas [nama kelas] sudah terbit", body: "Kelas baru sudah tersedia di Ruang Materi: [nama kelas].\n\nCocok untuk kamu yang ingin [tujuan belajar]. Yuk mulai belajar sekarang.", link: "/kelas/[slug-kelas]", audience: "all" },
-  { name: "Materi diperbarui", title: "Materi [nama kelas] diperbarui", body: "Kami baru saja memperbarui materi di kelas [nama kelas]: [apa yang berubah].\n\nProgres belajarmu tetap aman. Silakan cek bagian yang baru.", link: "/kelas/[slug-kelas]", audience: "student" },
-  { name: "Fitur baru", title: "Fitur baru: [nama fitur]", body: "Sekarang kamu bisa [apa yang bisa dilakukan].\n\nCara memakainya: [langkah singkat].", link: "", audience: "all" },
-  { name: "Jadwal pemeliharaan", title: "Pemeliharaan sistem [tanggal]", body: "Pada [tanggal] pukul [jam] WIB, Ruang Materi akan dipelihara sekitar [durasi]. Selama itu situs mungkin tidak bisa diakses.\n\nMohon maaf atas ketidaknyamanannya.", link: "", audience: "all" },
-  { name: "Gangguan teratasi", title: "Gangguan sudah teratasi", body: "Tadi sempat ada gangguan pada [bagian yang terdampak]. Sekarang sudah pulih dan berjalan normal.\n\nTerima kasih sudah bersabar. Data dan progresmu tidak terpengaruh.", link: "", audience: "all" },
-  { name: "Semangat belajar", title: "Ayo lanjutkan belajarmu", body: "Sudah lama tidak belajar? Sedikit demi sedikit tetap berarti. Lanjutkan dari materi terakhirmu hari ini.", link: "/dasbor", audience: "student" },
-  { name: "Untuk admin", title: "Info untuk admin: [topik]", body: "[Sampaikan info atau tugas untuk admin].\n\nBatas waktu: [tanggal].", link: "/admin", audience: "admin" },
+  { icon: BookPlus, hint: "Kabarkan kelas yang baru terbit", name: "Kelas baru", title: "Kelas [nama kelas] sudah terbit", body: "Kelas baru sudah tersedia di Ruang Materi: [nama kelas].\n\nCocok untuk kamu yang ingin [tujuan belajar]. Yuk mulai belajar sekarang.", link: "/kelas/[slug-kelas]", audience: "all" },
+  { icon: RefreshCw, hint: "Ada bab atau isi yang berubah", name: "Materi diperbarui", title: "Materi [nama kelas] diperbarui", body: "Kami baru saja memperbarui materi di kelas [nama kelas]: [apa yang berubah].\n\nProgres belajarmu tetap aman. Silakan cek bagian yang baru.", link: "/kelas/[slug-kelas]", audience: "student" },
+  { icon: Sparkles, hint: "Kenalkan fitur yang baru ada", name: "Fitur baru", title: "Fitur baru: [nama fitur]", body: "Sekarang kamu bisa [apa yang bisa dilakukan].\n\nCara memakainya: [langkah singkat].", link: "", audience: "all" },
+  { icon: Wrench, hint: "Situs sempat tidak bisa dibuka", name: "Jadwal pemeliharaan", title: "Pemeliharaan sistem [tanggal]", body: "Pada [tanggal] pukul [jam] WIB, Ruang Materi akan dipelihara sekitar [durasi]. Selama itu situs mungkin tidak bisa diakses.\n\nMohon maaf atas ketidaknyamanannya.", link: "", audience: "all" },
+  { icon: CircleCheck, hint: "Kabar bahwa semuanya sudah normal", name: "Gangguan teratasi", title: "Gangguan sudah teratasi", body: "Tadi sempat ada gangguan pada [bagian yang terdampak]. Sekarang sudah pulih dan berjalan normal.\n\nTerima kasih sudah bersabar. Data dan progresmu tidak terpengaruh.", link: "", audience: "all" },
+  { icon: Flame, hint: "Dorongan untuk lanjut belajar", name: "Semangat belajar", title: "Ayo lanjutkan belajarmu", body: "Sudah lama tidak belajar? Sedikit demi sedikit tetap berarti. Lanjutkan dari materi terakhirmu hari ini.", link: "/dasbor", audience: "student" },
+  { icon: ShieldCheck, hint: "Info atau tugas khusus admin", name: "Untuk admin", title: "Info untuk admin: [topik]", body: "[Sampaikan info atau tugas untuk admin].\n\nBatas waktu: [tanggal].", link: "/admin", audience: "admin" },
 ];
+
+// [placeholder] parts get a matcha highlighter so the admin sees what to fill in.
+const marked = (text: string) => text.split(/(\[[^\]]+\])/).map((part, i) => (part.startsWith("[") ? <mark key={i} className="rounded bg-matcha-300 px-1 text-noir">{part.slice(1, -1)}</mark> : part));
 
 export default function PengumumanForm({ people }: { people: Person[] }) {
   const [title, setTitle] = useState("");
@@ -65,13 +68,18 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
-      <div className="text-sm text-zinc-400">
-        Template (opsional)
-        <div className="mt-1 flex flex-wrap gap-2">
-          {TEMPLATES.map((t) => <button key={t.name} type="button" onClick={() => open(t)} className={smallButton}>{t.name}</button>)}
+      <fieldset>
+        <legend className="text-sm text-zinc-400">Mulai dari template, atau tulis sendiri di bawah</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {TEMPLATES.map((t, i) => (
+            <button key={t.name} type="button" onClick={() => open(t)} className={`${tile(i)} group flex min-h-24 cursor-pointer flex-col items-start gap-1 rounded-2xl p-3 text-left text-zinc-50 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none`}>
+              <t.icon aria-hidden className="size-5" />
+              <span className="mt-auto text-sm font-bold leading-tight">{t.name}</span>
+              <span className="text-xs leading-snug text-zinc-700">{t.hint}</span>
+            </button>
+          ))}
         </div>
-        <p className="mt-1 text-xs text-zinc-500">Ganti teks dalam [kurung siku] sebelum mengirim.</p>
-      </div>
+      </fieldset>
       <dialog
         ref={dialog}
         aria-label="Pratinjau template"
@@ -81,15 +89,21 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
         {preview && (
           <div className="grid gap-4 p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Template: {preview.name}</p>
+              <h3 className="text-lg">{preview.name}</h3>
               <button type="button" aria-label="Tutup" onClick={() => dialog.current?.close()} className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-zinc-800 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent"><X aria-hidden className="size-4" /></button>
             </div>
-            <div className="grid gap-2 rounded-xl border border-zinc-800 p-4">
-              <p className="font-semibold">{preview.title}</p>
-              {preview.body.split("\n\n").map((para, i) => <p key={i} className="text-sm leading-relaxed text-zinc-300">{para}</p>)}
-              {preview.link && <p className="text-sm text-accent">{preview.link}</p>}
+            <div>
+              <p className="mb-2 text-xs text-zinc-500">Begini tampilannya di Dashboard murid</p>
+              <section className="rounded-[18px] bg-tile-butter p-5 ring-1 ring-zinc-800">
+                <p className="flex items-center gap-2 text-sm font-semibold text-zinc-50"><Megaphone aria-hidden className="size-4" />Pengumuman</p>
+                <h2 className="mt-2 text-lg font-bold tracking-tight text-zinc-50">{marked(preview.title)}</h2>
+                <div className="mt-1 grid gap-2 text-sm leading-relaxed text-zinc-50">{preview.body.split("\n\n").map((para, i) => <p key={i}>{marked(para)}</p>)}</div>
+                {preview.link && <span className={`${secondaryButton} mt-4`}>Buka</span>}
+              </section>
             </div>
-            <p className="text-xs text-zinc-500">Penerima: {AUDIENCE_TEXT[preview.audience]}</p>
+            <p className="text-xs leading-relaxed text-zinc-400">
+              Tautan: <span className="text-zinc-50">{preview.link ? marked(preview.link) : "tidak ada"}</span>. Penerima: <span className="text-zinc-50">{AUDIENCE_TEXT[preview.audience]}</span>. Isi bagian yang disorot setelah template dipakai.
+            </p>
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={() => apply(preview)} className={primaryButton}>Pakai template</button>
               <button type="button" onClick={() => dialog.current?.close()} className={smallButton}>Batal</button>

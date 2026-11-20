@@ -1,6 +1,7 @@
 import { invalidateContent } from "@/lib/cache";
 import { redirect, refresh } from "@/lib/request";
 import { z } from "zod";
+import { TRACK_PRESETS } from "@/components/ui/icons";
 import { audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,17 @@ export type RoadmapState = { error?: string; ok?: string };
 
 const slug = z.string().regex(/^[a-z0-9-]+$/, "Slug hanya huruf kecil, angka dan tanda hubung.");
 const id = z.uuid();
+
+// "" = automatic, a preset key, or inline SVG. The SVG is shown through <img>,
+// where scripts never run; the checks keep out junk and oversized input.
+const icon = z
+  .string()
+  .trim()
+  .max(8000, "SVG terlalu besar, maksimal 8 KB.")
+  .refine((v) => !v || v in TRACK_PRESETS || (/^<svg[\s>]/.test(v) && /<\/svg>$/.test(v)), "Ikon harus berupa pilihan atau kode SVG utuh (<svg ...>...</svg>).")
+  .refine((v) => !/<script|<foreignObject|\son\w+\s*=/i.test(v), "SVG tidak boleh berisi script atau event.")
+  // <img> needs the namespace to draw a standalone SVG.
+  .transform((v) => (v.startsWith("<svg") && !/xmlns=/.test(v) ? v.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"') : v) || null);
 
 // Trigger messages (P0001) are written for people; anything else is not.
 function fail(error: { code?: string; message: string }, fallback: string): RoadmapState {
@@ -25,7 +37,7 @@ function done() {
 export async function buatTrack(_: RoadmapState, form: FormData): Promise<RoadmapState> {
   await requireAdmin();
   const parsed = z
-    .object({ slug, title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim() })
+    .object({ slug, title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), icon })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -38,7 +50,7 @@ export async function simpanTrack(_: RoadmapState, form: FormData): Promise<Road
   await requireAdmin();
   const track = slug.parse(form.get("track"));
   const parsed = z
-    .object({ title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), slug: slug.optional() })
+    .object({ title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), icon, slug: slug.optional() })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 

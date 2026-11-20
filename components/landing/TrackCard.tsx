@@ -16,7 +16,7 @@ export default function TrackCard({ track }: { track: TrackSummary }) {
       >
         <div className="flex items-center gap-3">
           <span className="grid size-11 -rotate-6 place-items-center rounded-xl sm:size-14 sm:rounded-[18px] border-2 border-noir bg-matcha-200 text-noir shadow-[3px_3px_0_0_var(--color-noir)] transition-transform group-hover:rotate-0">
-            <TrackIcon slug={track.slug} className="size-7 sm:size-9" />
+            <TrackIcon slug={track.slug} icon={track.icon} className="size-7 sm:size-9" />
           </span>
           <span className={`${mutedChip} tabular-nums`}>{track.nodeCount} kelas</span>
           <span className="ml-auto"><ArrowBadge /></span>
