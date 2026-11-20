@@ -140,7 +140,7 @@ function reverseProxy() {
   s += tile(30, 200, 200, 120, ["Browser"], { fill: "#ffffff", size: 28 });
   s += tile(360, 150, 330, 220, [], { fill: PINK });
   s += label(360, 150, 330, 220, ["Reverse proxy", "(Caddy atau Nginx)", "sertifikat TLS", "port 80 dan 443"], { size: 24 });
-  s += tile(820, 200, 340, 120, ["Aplikasi Node", "http://api:3000"], { fill: M1, size: 26 });
+  s += tile(820, 200, 340, 120, ["Aplikasi Node", "api:3000"], { fill: M1, size: 26 });
   s += arrow(235, 260, 355, 260);
   s += text(295, 235, "HTTPS", { size: 22, anchor: "middle", weight: 700 });
   s += arrow(695, 260, 815, 260);
