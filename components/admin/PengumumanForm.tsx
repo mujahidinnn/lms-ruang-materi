@@ -1,6 +1,6 @@
 "use client";
 
-import { BookPlus, CircleCheck, Flame, Megaphone, Mail, RefreshCw, Search, Send, ShieldCheck, Sparkles, Wrench, X, type LucideIcon } from "lucide-react";
+import { BookPlus, CircleCheck, Flame, Megaphone, Mail, Pencil, RefreshCw, Search, Send, ShieldCheck, Sparkles, Wrench, X, type LucideIcon } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import Select from "@/components/ui/Select";
 import { confirmDialog } from "@/lib/confirm";
@@ -47,6 +47,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
   const toggle = (id: string) => setPicked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
 
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Template | null>(null);
   const open = (t: Template) => { setPreview(t); dialog.current?.showModal(); };
   const apply = async (t: Template) => {
@@ -75,9 +76,14 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
             <button key={t.name} type="button" onClick={() => open(t)} className={`${tile(i)} group flex min-h-24 cursor-pointer flex-col items-start gap-1 rounded-2xl p-3 text-left text-zinc-50 transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none`}>
               <t.icon aria-hidden className="size-5" />
               <span className="mt-auto text-sm font-bold leading-tight">{t.name}</span>
-              <span className="text-xs leading-snug text-zinc-700">{t.hint}</span>
+              <span className="text-xs leading-snug text-zinc-50/70">{t.hint}</span>
             </button>
           ))}
+          <button type="button" onClick={() => titleInput.current?.focus()} className="flex min-h-24 cursor-pointer flex-col items-start gap-1 rounded-2xl border-2 border-dashed border-zinc-700 p-3 text-left text-zinc-50 hover:bg-zinc-800/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+            <Pencil aria-hidden className="size-5" />
+            <span className="mt-auto text-sm font-bold leading-tight">Tulis sendiri</span>
+            <span className="text-xs leading-snug text-zinc-400">Mulai dari kosong</span>
+          </button>
         </div>
       </fieldset>
       <dialog
@@ -89,7 +95,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
         {preview && (
           <div className="grid gap-4 p-5">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg">{preview.name}</h3>
+              <h3 className="text-xl font-extrabold">{preview.name}</h3>
               <button type="button" aria-label="Tutup" onClick={() => dialog.current?.close()} className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full bg-zinc-800 hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-accent"><X aria-hidden className="size-4" /></button>
             </div>
             <div>
@@ -113,7 +119,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
       </dialog>
       <label className="text-sm text-zinc-400">
         Judul
-        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required placeholder="Contoh: Kelas MikroTik sudah terbit" className={`${field} mt-1`} />
+        <input ref={titleInput} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} required placeholder="Contoh: Kelas MikroTik sudah terbit" className={`${field} mt-1`} />
       </label>
       <label className="text-sm text-zinc-400">
         <span className="flex justify-between">Isi<span className="tabular-nums text-zinc-500">{body.length}/2000</span></span>
