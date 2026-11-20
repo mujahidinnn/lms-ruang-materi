@@ -213,6 +213,100 @@ export const Robot = (p: P) => (
   </Svg>
 );
 
+// More icons for roadmap tracks.
+export const Terminal = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="7" width="40" height="34" rx="5" style={paper} />
+    <path d="M12 18l7 6-7 6" /><path d="M24 31h12" />
+    <rect x="4" y="7" width="40" height="8" rx="4" style={tint} /><path d="M10 11h.01M16 11h.01" strokeWidth={4} />
+  </Svg>
+);
+export const Globe = (p: P) => (
+  <Svg {...p}>
+    <circle cx="24" cy="24" r="19" style={paper} />
+    <path d="M24 5c-9 9-9 29 0 38M24 5c9 9 9 29 0 38M5 24h38" />
+    <path d="M9 14h30M9 34h30" strokeWidth={2.500} />
+    <circle cx="24" cy="24" r="6" style={tint} />
+  </Svg>
+);
+export const Kontainer = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 4l17 9v22l-17 9-17-9V13z" style={paper} />
+    <path d="M7 13l17 9 17-9M24 22v22" />
+    <path d="M24 22l17-9v22l-17 9z" style={tint} />
+  </Svg>
+);
+export const Roket = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 4c8 5 11 14 9 26H15C13 18 16 9 24 4z" style={paper} />
+    <circle cx="24" cy="18" r="4" style={tint} />
+    <path d="M15 24l-7 9 8-1M33 24l7 9-8-1" style={tint} />
+    <path d="M20 36c0 4 2 7 4 8 2-1 4-4 4-8" />
+  </Svg>
+);
+export const Grafik = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="5" width="40" height="38" rx="5" style={paper} />
+    <rect x="11" y="26" width="6" height="11" rx="1.500" style={tint} />
+    <rect x="21" y="18" width="6" height="19" rx="1.500" style={tint} />
+    <rect x="31" y="11" width="6" height="26" rx="1.500" style={tint} />
+  </Svg>
+);
+export const Buku = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 12c-4-4-11-5-18-4v29c7-1 14 0 18 4 4-4 11-5 18-4V8c-7-1-14 0-18 4z" style={paper} />
+    <path d="M24 12v29" />
+    <path d="M12 16h7M12 23h7M29 16h7" strokeWidth={2.500} />
+    <path d="M29 22h7v6h-7z" style={tint} />
+  </Svg>
+);
+export const Kunci = (p: P) => (
+  <Svg {...p}>
+    <rect x="9" y="21" width="30" height="21" rx="5" style={tint} />
+    <path d="M15 21v-6a9 9 0 0 1 18 0v6" style={{ fill: "none" }} />
+    <circle cx="24" cy="30" r="3" style={paper} /><path d="M24 33v4" />
+  </Svg>
+);
+export const Otak = (p: P) => (
+  <Svg {...p}>
+    <rect x="11" y="11" width="26" height="26" rx="6" style={paper} />
+    <rect x="18" y="18" width="12" height="12" rx="3" style={tint} />
+    <path d="M18 4v7M30 4v7M18 37v7M30 37v7M4 18h7M4 30h7M37 18h7M37 30h7" />
+  </Svg>
+);
+export const Lampu = (p: P) => (
+  <Svg {...p}>
+    <path d="M17 33c0-4-6-6-6-13a13 13 0 0 1 26 0c0 7-6 9-6 13z" style={paper} />
+    <path d="M17 33h14v5a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3z" style={tint} />
+    <path d="M20 41h8M24 12v9M20 17l4 4 4-4" strokeWidth={2.500} />
+  </Svg>
+);
+export const Gir = (p: P) => (
+  <Svg {...p}>
+    <path d="M20 4h8l1.500 5 4-2 5.600 5.600-2 4L42 20v8l-5 1.500 2 4-5.600 5.600-4-2L28 44h-8l-1.500-5-4 2L9 35.400l2-4L6 28v-8l5-1.500-2-4L14.600 9l4 2z" style={paper} />
+    <circle cx="24" cy="24" r="7" style={tint} />
+  </Svg>
+);
+export const Uji = (p: P) => (
+  <Svg {...p}>
+    <path d="M18 5h12M20 5v13L8 38a4 4 0 0 0 4 6h24a4 4 0 0 0 4-6L28 18V5" style={paper} />
+    <path d="M13 32h22l5 8a3 3 0 0 1-3 4H11a3 3 0 0 1-3-4z" style={tint} />
+    <path d="M20 26h.01M27 29h.01" strokeWidth={4} />
+  </Svg>
+);
+export const Palet = (p: P) => (
+  <Svg {...p}>
+    <path d="M24 5C13 5 5 13 5 23s8 19 18 19c4 0 5-3 3-6s-1-7 4-7h6c5 0 7-3 7-7 0-9-8-17-19-17z" style={paper} />
+    <circle cx="15" cy="22" r="3" style={tint} /><circle cx="22" cy="14" r="3" style={tint} /><circle cx="32" cy="16" r="3" style={tint} />
+  </Svg>
+);
+export const Game = (p: P) => (
+  <Svg {...p}>
+    <path d="M13 13h22c6 0 9 6 10 15 1 8-5 9-8 4l-3-4H14l-3 4c-3 5-9 4-8-4 1-9 4-15 10-15z" style={paper} />
+    <path d="M14 20v8M10 24h8" /><circle cx="31" cy="21" r="2.500" style={tint} /><circle cx="37" cy="26" r="2.500" style={tint} />
+  </Svg>
+);
+
 // One icon per roadmap track. A track picks a preset key, or inline <svg> markup
 // (shown through <img>, so scripts in it never run); with neither, a word in
 // its slug decides, and anything else gets the route icon.
@@ -233,6 +327,19 @@ export const TRACK_PRESETS = {
   medali: ["Medali", Medali],
   sasaran: ["Sasaran", Sasaran],
   slide: ["Slide", Slide],
+  terminal: ["Terminal", Terminal],
+  globe: ["Web", Globe],
+  kontainer: ["Kontainer", Kontainer],
+  roket: ["Roket", Roket],
+  grafik: ["Grafik", Grafik],
+  buku: ["Buku", Buku],
+  kunci: ["Keamanan", Kunci],
+  otak: ["AI", Otak],
+  lampu: ["Ide", Lampu],
+  gir: ["Pengaturan", Gir],
+  uji: ["Pengujian", Uji],
+  palet: ["Desain", Palet],
+  game: ["Game", Game],
 } as const;
 export type PresetKey = keyof typeof TRACK_PRESETS;
 const BY_SLUG: [RegExp, PresetKey][] = [
