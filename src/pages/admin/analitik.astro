@@ -1,5 +1,5 @@
 ---
-import { Award, BookOpenCheck, ClipboardCheck, TriangleAlert } from "lucide-react";
+import { Award, BookOpenCheck, ChevronDown, ClipboardCheck, TriangleAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -170,7 +170,7 @@ const cardRows = ((cardData ?? []) as unknown as Card[])
   .slice(0, 8);
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const topics = a.topics.filter((t) => t.started > 0);
-const chapters = a.chapters.slice(0, 10);
+const chapters = a.chapters.slice(0, 30);
 const learners = topics.reduce((n, t) => n + t.started, 0);
 const finished = topics.reduce((n, t) => n + t.finished, 0);
 const avgScore = attempts.length ? Math.round(attempts.reduce((s, t) => s + (t.score ?? 0), 0) / attempts.length) : 0;
@@ -360,7 +360,7 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
               })}
             </ul>
             {topics.length > 10 && (
-              <button type="button" data-more class="mt-3 min-h-11 w-full rounded-xl border border-zinc-800 text-sm font-medium text-zinc-300 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" aria-expanded="false">Tampilkan semua ({topics.length})</button>
+              <button type="button" data-more class="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 text-sm font-medium text-zinc-300 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" ><ChevronDown aria-hidden className="size-4" />Tampilkan semua ({topics.length})</button>
             )}
           </div>
         )}
@@ -372,11 +372,12 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
         {chapters.length === 0 ? (
           <p class="mt-4 text-sm text-zinc-400">Belum cukup data. Muncul setelah sebuah kelas dibuka minimal 3 murid.</p>
         ) : (
+          <>
           <ol class="mt-4 grid gap-4">
-            {chapters.map((c) => {
+            {chapters.map((c, i) => {
               const p = pct(c.done, c.started);
               return (
-                <li>
+                <li hidden={i >= 10} data-extra>
                   <a href={`/admin/topik/${c.slug}`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
                     <p class="flex items-baseline justify-between gap-3 text-sm">
                       <span class="min-w-0 truncate"><span class="font-medium group-hover:text-accent">Bab {c.position + 1}: {c.title}</span> <span class="text-zinc-500">{c.topic}</span></span>
@@ -388,6 +389,10 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
               );
             })}
           </ol>
+          {chapters.length > 10 && (
+            <button type="button" data-more class="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 text-sm font-medium text-zinc-300 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent"><ChevronDown aria-hidden className="size-4" />Tampilkan semua ({chapters.length})</button>
+          )}
+          </>
         )}
       </section>
 
@@ -397,12 +402,11 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
         {a.questions.length === 0 ? (
           <p class="mt-4 text-sm text-zinc-400">Belum cukup percobaan ujian.</p>
         ) : (
-          <>
           <ol class="mt-4 divide-y divide-zinc-800">
-            {a.questions.map((q, i) => {
+            {a.questions.map((q) => {
               const p = pct(q.wrong, q.seen);
               return (
-                <li hidden={i >= 10} data-extra class="py-3">
+                <li class="py-3">
                   <a href={`/admin/topik/${q.slug}#ujian`} class="group block focus-visible:outline-2 focus-visible:outline-accent">
                     <p class="flex items-start justify-between gap-4 text-sm">
                       <span class="line-clamp-2 min-w-0 group-hover:text-accent">{q.prompt}</span>
@@ -418,10 +422,6 @@ const track = "h-2.5 overflow-hidden rounded-full bg-zinc-800";
               );
             })}
           </ol>
-          {a.questions.length > 10 && (
-              <button type="button" data-more class="mt-3 min-h-11 w-full rounded-xl border border-zinc-800 text-sm font-medium text-zinc-300 hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" aria-expanded="false">Tampilkan semua ({a.questions.length})</button>
-          )}
-          </>
         )}
       </section>
 
