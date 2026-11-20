@@ -4,7 +4,7 @@
 // replaced by the draft, so admin edits survive.
 //
 //   npm run add:sims            (drafts)   npm run add:sims -- --db
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
 // `before` is the heading the block goes in front of.
@@ -115,6 +115,19 @@ const ADD = [
     text: "## Waterfall dan Agile pada proyek yang sama\n\nBandingkan dua cara mengerjakan proyek 6 fitur yang sama. Waterfall baru menunjukkan software di akhir, sedangkan Agile mengirim beberapa fitur di tiap sprint dan mendapat umpan balik lebih sering. Nyalakan perubahan kebutuhan di tengah jalan: Waterfall harus mengulang kebutuhan dan desain, Agile cukup menyerapnya di sprint berikutnya.\n\n![Waterfall dibanding Agile pada proyek yang sama](sim:sdlc-waterfall-agile)\n\n" },
   { topic: "html-css-javascript", chapter: "tiga-pilar-web", before: "## Tiga pilar dan tanggung jawabnya", sim: "rumah-web",
     text: "![Rumah web: kerangka HTML, cat dan perabot CSS, listrik JavaScript](sim:rumah-web)\n\n" },
+  { topic: "kubernetes-dasar", chapter: "deployment-dan-rolling-update", before: "## Rollback", sim: "rolling-update", text: "![Rolling update Deployment](sim:rolling-update)\n\n" },
+  { topic: "kubernetes-dasar", chapter: "service-dan-ingress", before: "## Jenis-jenis Service", sim: "service-pod", text: "![Service membagi request ke Pod](sim:service-pod)\n\n" },
+  { topic: "monitoring-dan-observabilitas", chapter: "persentil-dan-latensi", before: "## Persentil", sim: "persentil-latensi", text: "![Histogram latensi dan persentil](sim:persentil-latensi)\n\n" },
+  { topic: "monitoring-dan-observabilitas", chapter: "sli-slo-dan-error-budget", before: "## Burn rate", sim: "error-budget", text: "![Error budget dan insiden](sim:error-budget)\n\n" },
+  { topic: "expressjs", chapter: "middleware", before: "## Lima Jenis Middleware di Express", sim: "middleware-flow", text: "## Coba sendiri: rantai middleware\n\nPilih skenario request lalu kirim. Perhatikan di mana request berhenti dan mana yang memanggil next(). Tukar urutan auth dan validasi untuk melihat bahwa urutan pendaftaran mengubah hasil.\n\n![Rantai middleware: logger, auth, validasi, handler, error handler](sim:middleware-flow)\n\n" },
+  { topic: "sql", chapter: "agregasi-dan-relasi-antar-tabel", before: "![Teknik JOIN](slide:15)", sim: "sql-groupby-having", text: "![GROUP BY, WHERE, dan HAVING tahap demi tahap](sim:sql-groupby-having)\n\n" },
+  { topic: "aplikasi-mobile-navigasi-data-dan-rilis", chapter: "navigasi-stack-dan-tab", before: "## Menguji navigasi tanpa layar", sim: "navigasi-stack", text: "## Coba sendiri: tumpukan per tab\n\nPush beberapa layar di tab Kelas, pindah tab, lalu kembali: tumpukannya masih utuh. Coba juga deep link untuk melihat tumpukan layar yang terbentuk.\n\n![Navigasi stack dan tab pada ponsel](sim:navigasi-stack)\n\n" },
+  { topic: "computational-thinking", chapter: "robot-di-petak-dan-rangkuman", before: "## Robot di Petak dalam JavaScript", sim: "robot-petak", text: "![Robot di petak: susun perintah, jalankan, dan perbaiki](sim:robot-petak)\n\nCoba rute contoh di Level 1, lalu selesaikan Level 3 dengan ULANGI. Robot menurut persis apa adanya, jadi tabrakan berarti ada perintah yang perlu diperbaiki.\n\n" },
+  { topic: "github", chapter: "fork-issues-projects-dan-github-flow", before: "## GitHub Flow langkah demi langkah", sim: "github-flow", text: "## Alur GitHub Flow dalam diagram\n\nBranch, commit, push, pull request, review, merge, lalu hapus branch. Main baru berubah saat merge. Ganti peran ke kontributor luar untuk melihat alur fork.\n\n![Diagram GitHub Flow: main, branch fitur, dan fork](sim:github-flow)\n\n" },
+  { topic: "vuejs", chapter: "konsep-inti-vue", before: "![Siklus Hidup Komponen](slide:26)", sim: "vue-reaktif", text: "![Grafik dependensi ref ke computed ke tampilan](sim:vue-reaktif)\n\n" },
+  { topic: "mikrotik-routeros-dasar", chapter: "firewall-filter", before: "## Melindungi Router (Chain Input)", sim: "firewall-nat", text: "![Firewall filter dan NAT: jalur paket](sim:firewall-nat)\n\n" },
+  { topic: "jaringan-komputer", chapter: "model-osi-dan-tcp-ip", before: "## TCP dan UDP", sim: "dns-tcp-handshake", text: "![DNS lookup dan TCP handshake](sim:dns-tcp-handshake)\n\n" },
+  { topic: "dasar-komputer-dan-os", chapter: "komponen-internal-cpu-memori", before: "## RAM dan ROM", sim: "cpu-fetch-execute", text: "![CPU: fetch, decode, execute](sim:cpu-fetch-execute)\n\n" },
 ];
 
 const patch = (body, a) => {
@@ -128,6 +141,7 @@ const patch = (body, a) => {
 const esc = (t) => JSON.stringify(t).slice(1, -1);
 for (const a of ADD) {
   const f = `content/drafts/${a.topic}.json`;
+  if (!existsSync(f)) { console.log("draft", a.chapter, "tidak ada draf, dilewati"); continue; } // sql, nodejs, expressjs, vuejs: hanya di DB
   const raw = readFileSync(f, "utf8");
   const key = `\\n${esc(a.before)}\\n`;
   let state = "skip";
