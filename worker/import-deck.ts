@@ -81,7 +81,7 @@ try {
   const slides = await render(work, `${job.slug}/${job.id}`);
   log(`rendered ${slides.length} slides`);
 
-  maybe(await db.from("import_jobs").update({ status: "drafting" }).eq("id", jobId), "status drafting");
+  maybe(await db.from("import_jobs").update({ status: "drafting", progress: 10 }).eq("id", jobId), "status drafting");
   const pdf = await readFile(path.join(work, "deck.pdf"));
   const known = must(await db.from("topics").select("slug"), "slugs").map((t) => t.slug).filter((s) => s !== job.slug);
   // claude:manual reads a class written by hand (content/drafts/<slug>.json,
@@ -111,6 +111,8 @@ try {
       throw Object.assign(new Error(`output tidak valid (${where})`), { name: "SchemaError" });
     }
     log(`outline: ${cls.data.outline.length} chapters`);
+    const setProgress = (n: number) => db.from("import_jobs").update({ progress: Math.round(n) }).eq("id", jobId).then(() => {});
+    await setProgress(20);
 
     // Stage 2: each chapter on its own, one retry; a chapter that still fails
     // is left out (assembleDraft needs at least 4).
@@ -127,6 +129,7 @@ try {
       }
       log(`chapter ${i + 1}/${cls.data.outline.length}: ${got ? "ok" : "dropped"}`);
       chapters.push(got);
+      await setProgress(20 + (70 * (i + 1)) / cls.data.outline.length);
     }
 
     // One repair call for an exercise whose solution fails its own checks.

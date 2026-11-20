@@ -21,6 +21,7 @@ export type Job = {
   status: "queued" | "rendering" | "drafting" | "done" | "failed";
   error: string | null;
   created_at: string;
+  progress: number;
 };
 
 const STATUS = {
@@ -31,6 +32,8 @@ const STATUS = {
   failed: { label: "Gagal", Icon: XCircle, tone: "text-red-500" },
 };
 
+const PROGRESS = { queued: [3, "Langkah 1 dari 3: menunggu giliran"], rendering: [6, "Langkah 2 dari 3: merender slide"], drafting: [10, "Langkah 3 dari 3: menyusun draf (paling lama)"] } as const;
+const pct = (j: Job) => (j.status === "drafting" ? Math.max(j.progress, 10) : PROGRESS[j.status as keyof typeof PROGRESS][0]);
 const RECENT = 6;
 const active = (j: Job) => j.status === "queued" || j.status === "rendering" || j.status === "drafting";
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -141,6 +144,14 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
           <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
           <span className="rounded-full bg-zinc-800 px-2 py-0.5 font-mono">{j.model}</span>
         </p>
+        {active(j) && (
+          <div className="mt-3">
+            <div role="progressbar" aria-label="Progres impor" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct(j)} className="h-2 overflow-hidden rounded-full bg-zinc-800">
+              <div className={`h-full rounded-full bg-brand transition-[width] duration-700 ${j.status === "queued" ? "" : "animate-pulse motion-reduce:animate-none"}`} style={{ width: `${pct(j)}%` }} />
+            </div>
+            <p className="mt-1 text-xs tabular-nums text-zinc-500">{PROGRESS[j.status as keyof typeof PROGRESS][1]}{j.status === "drafting" ? `, ${pct(j)}%` : ""}</p>
+          </div>
+        )}
         {j.status === "failed" && (
           <div className="mt-2 text-sm text-zinc-300">
             {importErrorText(j.error)}
