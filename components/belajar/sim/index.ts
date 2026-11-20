@@ -53,5 +53,6 @@ export const sims: Record<string, () => Promise<{ default: ComponentType<{ title
   "password-hash": () => import("./PasswordHash"),
   "docker-volume": () => import("./DockerVolume"),
   "docker-network": () => import("./DockerNetwork"),
+  "rumah-web": () => import("./RumahWeb"),
   "sdlc-waterfall-agile": () => import("./SdlcWaterfallAgile"),
 };

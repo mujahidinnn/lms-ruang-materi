@@ -113,6 +113,8 @@ const ADD = [
     text: "## Coba Sendiri: Nama, IP, dan Port\n\nCoba ping dari web ke db lewat nama atau IP di network bawaan dan network buatan, lalu curl dari host dengan dan tanpa `-p`.\n\n![Jangkauan antar container dan dari host](sim:docker-network)\n\n" },
   { topic: "sdlc", chapter: "iteratif-spiral-dan-agile", before: "## Agile dengan Kerangka Scrum", sim: "sdlc-waterfall-agile",
     text: "## Waterfall dan Agile pada proyek yang sama\n\nBandingkan dua cara mengerjakan proyek 6 fitur yang sama. Waterfall baru menunjukkan software di akhir, sedangkan Agile mengirim beberapa fitur di tiap sprint dan mendapat umpan balik lebih sering. Nyalakan perubahan kebutuhan di tengah jalan: Waterfall harus mengulang kebutuhan dan desain, Agile cukup menyerapnya di sprint berikutnya.\n\n![Waterfall dibanding Agile pada proyek yang sama](sim:sdlc-waterfall-agile)\n\n" },
+  { topic: "html-css-javascript", chapter: "tiga-pilar-web", before: "## Tiga pilar dan tanggung jawabnya", sim: "rumah-web",
+    text: "![Rumah web: kerangka HTML, cat dan perabot CSS, listrik JavaScript](sim:rumah-web)\n\n" },
 ];
 
 const patch = (body, a) => {
