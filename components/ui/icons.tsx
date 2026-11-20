@@ -150,10 +150,12 @@ export const Mobile = (p: P) => (
 );
 export const UiUx = (p: P) => (
   <Svg {...p}>
-    <path d="M10 12L6 38M38 10l4 26" strokeWidth={2} />
-    <path d="M10 38C12 8 36 40 38 10" style={{ fill: "none" }} />
-    <rect x="3" y="35" width="7" height="7" rx="2" style={paper} /><rect x="38" y="33" width="7" height="7" rx="2" style={paper} />
-    <circle cx="10" cy="11" r="4.500" style={tint} /><circle cx="38" cy="9" r="4.500" style={tint} />
+    <rect x="4" y="6" width="32" height="34" rx="5" style={paper} />
+    <path d="M4 15h32" />
+    <rect x="9" y="20" width="22" height="9" rx="2.500" style={tint} />
+    <path d="M9 34h10" />
+    <path d="M44 20L32 38l-5 2 1-5 12-18z" style={paper} />
+    <path d="M38 24l4 3" />
   </Svg>
 );
 export const Awan = (p: P) => (
