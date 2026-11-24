@@ -19,9 +19,16 @@ const usia = (form: FormData) => {
 export async function simpanProfil(_: State, form: FormData): Promise<State> {
   const user = await requireUser("/profil");
   const parsed = z
-    .object({ display_name: z.string().trim().max(80), timezone: z.string().min(1).max(64) })
+    .object({
+      display_name: z.string().trim().max(80),
+      timezone: z.string().min(1).max(64),
+      weekly_goal: z.union([z.literal(""), z.coerce.number().int().min(1).max(14)]).default(""),
+      public_handle: z.string().trim().toLowerCase().regex(/^([a-z0-9-]{3,30})?$/, "Alamat profil: 3 sampai 30 huruf kecil, angka, atau tanda hubung.").default(""),
+    })
     .safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "Nama paling panjang 80 karakter." };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Isian tidak valid." };
+  // Showing a name to others is for adults only; the database functions check too.
+  const adult = usia(form) === "dewasa";
 
   const { error } = await (await createClient())
     .from("profiles")
@@ -29,11 +36,14 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
       display_name: parsed.data.display_name || null,
       timezone: parsed.data.timezone,
       announce_email: form.get("announce_email") === "on",
+      weekly_goal: parsed.data.weekly_goal === "" ? null : parsed.data.weekly_goal,
+      leaderboard_opt_in: adult && form.get("leaderboard_opt_in") === "on",
+      public_handle: adult && parsed.data.display_name && parsed.data.public_handle ? parsed.data.public_handle : null,
       age_group: usia(form),
       guardian_consent: usia(form) !== null,
     })
     .eq("user_id", user.id);
-  if (error) return { error: "Gagal menyimpan. Periksa zona waktunya." };
+  if (error) return { error: error.code === "23505" ? "Alamat profil itu sudah dipakai orang lain." : "Gagal menyimpan. Periksa zona waktunya." };
   return { ok: "Tersimpan." };
 }
 

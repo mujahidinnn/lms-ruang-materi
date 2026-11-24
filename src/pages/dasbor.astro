@@ -1,5 +1,5 @@
 ---
-import { Bookmark, BookOpen, Check, ClipboardCheck, Code2, Megaphone, Play, Presentation, ShieldCheck, X } from "lucide-react";
+import { Bookmark, BookOpen, Check, Target, Trophy, ClipboardCheck, Code2, Megaphone, Play, Presentation, ShieldCheck, X } from "lucide-react";
 import { Api, Kartu, Medali } from "@/components/ui/icons";
 import { card, chip, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +13,7 @@ const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 
 const db = await createClient();
-const { data: me } = await db.from("profiles").select("display_name, guardian_consent").eq("user_id", user.id).single();
+const { data: me } = await db.from("profiles").select("display_name, guardian_consent, weekly_goal").eq("user_id", user.id).single();
 // A name and the guardian consent come first (/mulai), so progress saves.
 if (!me?.display_name?.trim() || (user.role !== "admin" && !me.guardian_consent)) return Astro.redirect("/mulai?next=/dasbor");
 const name = me.display_name.trim();
@@ -23,13 +23,14 @@ type Row = {
   last_slide: number;
   topics: { id: string; slug: string; title: string; slides: { count: number }[]; chapters: { id: string; slug: string; title: string; position: number }[] } | null;
 };
-const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }, { data: notices }, { data: saved }] = await Promise.all([
+const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }, { data: notices }, { data: saved }, { data: weekDone }] = await Promise.all([
   db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count), chapters(id, slug, title, position))").eq("user_id", user.id).order("updated_at", { ascending: false }),
   db.from("chapter_progress").select("chapter_id").eq("user_id", user.id),
   db.from("learning_streaks").select("current_days").eq("user_id", user.id).maybeSingle(),
   db.rpc("flashcard_queue"),
   db.from("announcements").select("id, title, body, link_url").eq("on_web", true).gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("created_at", { ascending: false }).limit(1),
   db.from("chapter_notes").select("note, bookmarked, chapters(slug, title, topics(slug, title))").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(6),
+  db.rpc("my_week_chapters"),
 ]);
 type Saved = { note: string; bookmarked: boolean; chapters: { slug: string; title: string; topics: { slug: string; title: string } } | null };
 const keep = ((saved ?? []) as unknown as Saved[]).filter((n) => n.chapters);
@@ -121,6 +122,25 @@ const days = streak?.current_days ?? 0;
             <li class="max-sm:order-last"><a href="/flashcard" class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-on-noir/10 px-3 sm:min-h-11 sm:px-4 hover:bg-on-noir/20"><Kartu className="size-6 text-on-noir [--icon-paper:var(--noir)]" />{due > 0 ? `${due} flashcard siap diulang` : "Flashcard"}</a></li>
             <li><a href="/nilai" class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-on-noir/10 px-3 sm:min-h-11 sm:px-4 hover:bg-on-noir/20"><Medali className="size-6 text-on-noir [--icon-paper:var(--noir)]" />Pencapaian</a></li>
           </ul>
+        </section>
+
+        <section aria-labelledby="target" class={`flex flex-wrap items-center gap-4 p-4 sm:p-5 ${card}`}>
+          <span aria-hidden class="grid size-12 shrink-0 place-items-center rounded-xl bg-tile-mint text-zinc-50"><Target className="size-6" /></span>
+          {me.weekly_goal ? (
+            <div class="min-w-0 flex-1 basis-56">
+              <h2 id="target" class="font-bold">Target minggu ini: <span class="tabular-nums">{Math.min(weekDone ?? 0, me.weekly_goal)} dari {me.weekly_goal} bab</span>{(weekDone ?? 0) >= me.weekly_goal && " 🎉"}</h2>
+              <span aria-hidden="true" class="mt-2 block h-2 rounded-full bg-zinc-800"><span class="block h-full rounded-full bg-brand" style={{ width: `${Math.min(100, Math.round(((weekDone ?? 0) / me.weekly_goal) * 100))}%` }} /></span>
+            </div>
+          ) : (
+            <div class="min-w-0 flex-1 basis-56">
+              <h2 id="target" class="font-bold">Belum punya target belajar</h2>
+              <p class="text-sm text-zinc-400">Atur berapa bab per minggu yang ingin kamu selesaikan.</p>
+            </div>
+          )}
+          <span class="flex flex-wrap gap-2">
+            <a href="/profil" class={secondaryButton}>{me.weekly_goal ? "Ubah target" : "Atur target"}</a>
+            <a href="/peringkat" class={secondaryButton}><Trophy aria-hidden className="size-4" />Peringkat</a>
+          </span>
         </section>
 
         <section aria-labelledby="kelasku">

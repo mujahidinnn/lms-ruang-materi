@@ -1,0 +1,48 @@
+---
+import { Trophy } from "lucide-react";
+import { card, secondaryButton } from "@/components/ui/styles";
+import { createClient } from "@/lib/supabase/server";
+import SiteHeader from "../components/SiteHeader.astro";
+import Base from "../layouts/Base.astro";
+import { signedIn } from "../lib/guard";
+
+const user = await signedIn(Astro);
+if (user instanceof Response) return user;
+const db = await createClient();
+const [{ data }, { data: me }] = await Promise.all([
+  db.rpc("weekly_leaderboard"),
+  db.from("profiles").select("leaderboard_opt_in").eq("user_id", user.id).single(),
+]);
+const rows = (data ?? []) as { rank: number; name: string; chapters: number; me: boolean }[];
+---
+
+<Base title="Peringkat mingguan" description="Siapa yang paling banyak menyelesaikan bab minggu ini." noindex>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-2xl">
+        <h1 class="flex items-center gap-3 text-3xl font-extrabold sm:text-5xl"><Trophy aria-hidden className="size-8 sm:size-10" />Peringkat mingguan</h1>
+        <p class="mt-2 text-zinc-400">Bab yang selesai sejak Senin. Hanya murid dewasa yang memilih tampil di sini.</p>
+        {!me?.leaderboard_opt_in && (
+          <div class={`mt-6 flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 ${card}`}>
+            <p class="text-sm">Kamu belum tampil di peringkat. Aktifkan di Profil kalau mau ikut.</p>
+            <a href="/profil" class={secondaryButton}>Buka Profil</a>
+          </div>
+        )}
+        {rows.length === 0 ? (
+          <p class="mt-8 text-zinc-400">Belum ada yang menyelesaikan bab minggu ini. Jadilah yang pertama.</p>
+        ) : (
+          <ol class="mt-6 grid gap-2">
+            {rows.map((r) => (
+              <li class={`flex items-center gap-4 p-3 sm:p-4 ${card} ${r.me ? "ring-2 ring-accent" : ""}`}>
+                <span class="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-800 font-extrabold tabular-nums">{r.rank}</span>
+                <span class="min-w-0 flex-1 truncate font-semibold">{r.name}{r.me && <span class="ml-2 text-xs font-bold text-accent">kamu</span>}</span>
+                <span class="text-sm font-semibold tabular-nums text-zinc-300">{r.chapters} bab</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </main>
+  </div>
+</Base>

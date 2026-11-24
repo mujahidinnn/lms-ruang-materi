@@ -22,7 +22,7 @@ const user = await signedIn(Astro);
 if (user instanceof Response) return user;
 const db = await createClient();
 const [{ data: p }, { data: refRow }, { data: recap }, { data: st }, { data: certs }, { data: bdg }] = await Promise.all([
-  db.from("profiles").select("display_name, timezone, guardian_consent, age_group, announce_email").eq("user_id", user.id).single(),
+  db.from("profiles").select("display_name, timezone, guardian_consent, age_group, announce_email, weekly_goal, leaderboard_opt_in, public_handle").eq("user_id", user.id).single(),
   db.rpc("my_referral").maybeSingle(),
   db.rpc("admin_user_recap", { target: user.id }),
   db.from("learning_streaks").select("current_days, best_days").eq("user_id", user.id).maybeSingle(),
@@ -110,6 +110,23 @@ const zone = p?.timezone ?? "Asia/Jakarta";
             <input type="checkbox" name="announce_email" checked={p?.announce_email ?? true} class="size-4 accent-[var(--color-brand)]" />
             Kirimi aku email pengumuman dari Ruang Materi
           </label>
+          <label class="text-sm text-zinc-400">
+            Target belajar per minggu
+            <Select client:load name="weekly_goal" label="Target belajar" value={String(p?.weekly_goal ?? "")} options={[["", "Tanpa target"], ...[1, 2, 3, 4, 5, 7, 10, 14].map((n) => [String(n), `${n} bab per minggu`] as [string, string])]} className="mt-1" />
+          </label>
+          <fieldset class="grid gap-3 rounded-xl border border-zinc-800 p-4 text-sm text-zinc-300">
+            <legend class="px-1 text-zinc-400">Tampil ke orang lain (opsional, 18 tahun ke atas)</legend>
+            <label class="flex min-h-11 items-center gap-3">
+              <input type="checkbox" name="leaderboard_opt_in" checked={p?.leaderboard_opt_in ?? false} class="size-4 accent-[var(--color-brand)]" />
+              Tampilkan namaku di peringkat mingguan
+            </label>
+            <label class="text-zinc-400">
+              Alamat profil publik, kosongkan kalau tidak mau
+              <span class="mt-1 flex items-center gap-1 rounded-xl bg-zinc-800/60 px-3"><span class="text-zinc-500">/u/</span><input name="public_handle" maxlength={30} value={p?.public_handle ?? ""} placeholder="namamu" class="min-h-11 w-full bg-transparent text-zinc-50 outline-none placeholder:text-zinc-500" /></span>
+              <span class="mt-1 block text-xs text-zinc-500">Menampilkan nama, sertifikat, dan lencanamu. Perlu nama tampilan dan persetujuan usia 18+.</span>
+            </label>
+            {p?.public_handle && <a href={`/u/${p.public_handle}`} class="text-accent hover:underline">Lihat profil publikmu</a>}
+          </fieldset>
           <fieldset class="grid gap-2 text-sm text-zinc-300">
             <legend class="mb-1 text-zinc-400">Usia dan persetujuan</legend>
             {[
