@@ -30,7 +30,7 @@ const TEMPLATES: Template[] = [
 // [placeholder] parts get a matcha highlighter so the admin sees what to fill in.
 const marked = (text: string) => text.split(/(\[[^\]]+\])/).map((part, i) => (part.startsWith("[") ? <mark key={i} className="rounded bg-matcha-300 px-1 text-noir">{part.slice(1, -1)}</mark> : part));
 
-export default function PengumumanForm({ people }: { people: Person[] }) {
+export default function PengumumanForm({ people, emailToday }: { people: Person[]; emailToday: number }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [link, setLink] = useState("");
@@ -171,6 +171,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || !title.trim() || !body.trim() || (audience === "users" && picked.length === 0)} className={primaryButton}><Send aria-hidden className="size-4" />{pending ? "Mengirim..." : "Kirim pengumuman"}</button>
         <button type="button" disabled={pending || !title.trim() || !body.trim()} onClick={() => start(async () => setMsg(await tes(content)))} className={smallButton}><Mail aria-hidden className="size-4" />Kirim tes ke saya</button>
+        <p className="text-xs tabular-nums text-zinc-500 sm:ml-auto">Kuota email hari ini: {emailToday}/100 terpakai</p>
       </div>
       <p aria-live="polite" className={`text-sm empty:hidden ${msg.error ? "text-red-500" : "text-accent"}`}>{msg.error ?? msg.ok}</p>
     </form>

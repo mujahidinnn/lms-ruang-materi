@@ -21,6 +21,9 @@ const { data } = await (await createClient())
   .order("created_at", { ascending: false })
   .limit(30);
 const items = (data ?? []) as Row[];
+// Resend's free day resets at 00:00 UTC. Counts announcements only, not test sends.
+const utcDay = new Date().toISOString().slice(0, 10);
+const emailToday = items.filter((a) => a.created_at.slice(0, 10) === utcDay).reduce((n, a) => n + a.email_sent, 0);
 const { data: all } = await (await createClient()).rpc("admin_users");
 const people = ((all ?? []) as { user_id: string; email: string; display_name: string | null; confirmed: boolean }[])
   .filter((u) => u.confirmed)
@@ -36,7 +39,7 @@ const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", 
       <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Pengumuman</h1>
       <p class="mt-2 text-sm text-zinc-400">Tampil sebagai kartu di Dashboard murid, dikirim ke email, atau keduanya.</p>
 
-      <div class="mt-6"><PengumumanForm client:load people={people} /></div>
+      <div class="mt-6"><PengumumanForm client:load people={people} emailToday={emailToday} /></div>
 
       <h2 class="mt-10 text-xl font-bold tracking-tight">Riwayat</h2>
       {!items.length ? (
