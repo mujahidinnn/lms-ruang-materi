@@ -12,6 +12,7 @@ import * as flashcard from "./flashcard";
 import * as laporan from "./laporan";
 import * as latihan from "./latihan";
 import * as masuk from "./masuk";
+import * as masukan from "./masukan";
 import * as profil from "./profil";
 import * as ujian from "./ujian";
 
@@ -38,6 +39,7 @@ export const ACTIONS = {
   ...pick(laporan),
   ...pick(latihan),
   ...pick(masuk),
+  ...pick(masukan),
   ...pick(profil),
   ...pick(ujian),
 };
