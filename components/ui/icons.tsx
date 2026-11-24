@@ -337,12 +337,12 @@ export const StudioNgoding = (p: P) => (
     <path d="M19 24l-5 4.500 5 4.500M29 24l5 4.500-5 4.500M26 22l-4 13" />
   </Svg>
 );
-export const StudioBug = (p: P) => (
+export const StudioRancang = (p: P) => (
   <Svg {...p}>
-    <path d="M21 11l-3-6M27 11l3-6" />
-    <ellipse cx="24" cy="29" rx="10" ry="13" style={tint} />
-    <circle cx="24" cy="15" r="6" style={paper} />
-    <path d="M24 20v22M14 25H6M14 33H6M34 25h8M34 33h8M16 40l-4 4M32 40l4 4" />
+    <rect x="6" y="6" width="36" height="36" rx="5" style={paper} />
+    <path d="M6 17h36M19 17v25" />
+    <rect x="23" y="22" width="15" height="6" rx="2" style={tint} />
+    <rect x="23" y="32" width="15" height="6" rx="2" style={tint} />
   </Svg>
 );
 export const StudioAlur = (p: P) => (
@@ -359,6 +359,14 @@ export const StudioDeploy = (p: P) => (
     <path d="M5 27h32M21 11c-7 8-7 24 0 32M21 11c7 8 7 24 0 32" />
     <circle cx="37" cy="12" r="8" style={tint} />
     <path d="M37 16V8M33 12l4-4 4 4" />
+  </Svg>
+);
+export const StudioDokumen = (p: P) => (
+  <Svg {...p}>
+    <path d="M10 5h20l8 8v30H10z" style={paper} />
+    <path d="M30 5v8h8" />
+    <rect x="15" y="19" width="18" height="11" rx="3" style={tint} />
+    <path d="M15 36h18" />
   </Svg>
 );
 export const Video = (p: P) => (
