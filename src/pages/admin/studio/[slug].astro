@@ -1,0 +1,90 @@
+---
+import { ArrowDown, ArrowUp, ExternalLink, Plus, Trash2 } from "lucide-react";
+import ActionForm from "@/components/admin/ActionForm";
+import StudioStepEditor from "@/components/admin/StudioStepEditor";
+import { dangerButton, field, smallButton } from "@/components/admin/editor";
+import { getDef } from "@/lib/studio/data";
+import { stageTitle } from "@/lib/studio/stages";
+import AppShell from "../../../components/AppShell.astro";
+import Base from "../../../layouts/Base.astro";
+import { adminOnly } from "../../../lib/guard";
+
+const user = await adminOnly(Astro);
+if (user instanceof Response) return user;
+const { slug } = Astro.params as { slug: string };
+const data = await getDef(slug);
+if (!data) return Astro.rewrite("/404");
+const { def, steps } = data;
+---
+
+<Base title={`${def.title} · Studio Proyek`} description="Edit proyek Studio Proyek." noindex>
+  <AppShell set="admin" email={user.email}>
+    <div class="mx-auto max-w-4xl">
+      <a href="/admin/studio" class="inline-flex min-h-11 items-center text-sm font-semibold text-zinc-400 hover:text-zinc-50">&larr; Studio Proyek</a>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">{def.title}</h1>
+        <a href={`/studio-proyek/${def.slug}`} class={smallButton}><ExternalLink aria-hidden className="size-4" />Lihat sebagai murid</a>
+      </div>
+
+      <section aria-labelledby="info" class="mt-6 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+        <h2 id="info" class="text-xl font-bold">Tentang proyek</h2>
+        <ActionForm client:load action="simpanProyekStudio" className="mt-4 grid gap-4">
+          <input type="hidden" name="id" value={def.id} />
+          <label class="text-sm text-zinc-400">Judul<input name="title" value={def.title} required minlength="3" maxlength="80" class={`${field} mt-1`} /></label>
+          <label class="text-sm text-zinc-400">Ringkasan (tampil di kartu proyek)<textarea name="summary" rows="3" maxlength="400" class={`${field} mt-1`}>{def.summary}</textarea></label>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <label class="text-sm text-zinc-400">Tingkat
+              <select name="level" class={`${field} mt-1`}>
+                <option value="pemula" selected={def.level === "pemula"}>Pemula</option>
+                <option value="menengah" selected={def.level === "menengah"}>Menengah</option>
+                <option value="lanjut" selected={def.level === "lanjut"}>Lanjut</option>
+              </select>
+            </label>
+            <label class="text-sm text-zinc-400">Perkiraan jam<input name="est_hours" type="number" min="1" max="200" value={def.est_hours ?? ""} class={`${field} mt-1`} /></label>
+            <label class="text-sm text-zinc-400">Status
+              <select name="status" class={`${field} mt-1`}>
+                <option value="draft" selected={def.status === "draft"}>Draf (hanya admin)</option>
+                <option value="published" selected={def.status === "published"}>Terbit (murid berakses melihat)</option>
+              </select>
+            </label>
+          </div>
+          <p class="text-xs text-zinc-500">Alamat proyek: <span class="font-mono">/studio-proyek/{def.slug}</span>. Slug tidak bisa diubah karena progres murid terikat padanya.</p>
+          <div><button class={`${smallButton} bg-primary font-semibold text-on-primary hover:bg-primary-hover hover:text-on-primary`}>Simpan proyek</button></div>
+        </ActionForm>
+      </section>
+
+      <section aria-labelledby="langkah" class="mt-8">
+        <h2 id="langkah" class="text-xl font-bold">Langkah ({steps.length})</h2>
+        <p class="mt-1 text-sm text-zinc-400">Urutan di sini adalah urutan murid mengerjakan. Tiap langkah masuk ke salah satu dari delapan tahap.</p>
+        <ol class="mt-3 grid gap-3">
+          {steps.map((s, i) => (
+            <li>
+              <details class="group rounded-[18px] bg-zinc-900 px-5 py-1 shadow-soft">
+                <summary class="flex min-h-14 cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
+                  <span aria-hidden class="grid size-8 shrink-0 place-items-center rounded-full bg-noir text-sm font-bold tabular-nums text-on-noir">{i + 1}</span>
+                  <span class="min-w-0 flex-1"><span class="block truncate font-semibold">{s.title}</span><span class="block text-xs text-zinc-500">{stageTitle(s.stage)} · {s.checks.length} butir · {s.materials.length} bahan</span></span>
+                  <span class="flex items-center gap-1" onclick="event.stopPropagation()">
+                    <form method="post" action="/rpc/geserLangkahStudio"><input type="hidden" name="id" value={s.id} /><input type="hidden" name="arah" value="naik" /><button aria-label="Naikkan" disabled={i === 0} class={`${smallButton} disabled:opacity-40`}><ArrowUp aria-hidden className="size-4" /></button></form>
+                    <form method="post" action="/rpc/geserLangkahStudio"><input type="hidden" name="id" value={s.id} /><input type="hidden" name="arah" value="turun" /><button aria-label="Turunkan" disabled={i === steps.length - 1} class={`${smallButton} disabled:opacity-40`}><ArrowDown aria-hidden className="size-4" /></button></form>
+                  </span>
+                </summary>
+                <div class="pb-4"><StudioStepEditor client:load step={{ id: s.id, stage: s.stage, slug: s.slug, title: s.title, body: s.body, est_minutes: s.est_minutes, materials: s.materials, checks: s.checks }} /></div>
+              </details>
+            </li>
+          ))}
+        </ol>
+        <form method="post" action="/rpc/tambahLangkahStudio" class="mt-4">
+          <input type="hidden" name="def" value={def.id} />
+          <button class={smallButton}><Plus aria-hidden className="size-4" />Tambah langkah</button>
+        </form>
+      </section>
+
+      <section class="mt-12 border-t border-zinc-800 pt-6">
+        <form method="post" action="/rpc/hapusProyekStudio" data-confirm={`Hapus proyek "${def.title}"?`} data-confirm-text="Semua langkahnya ikut terhapus. Centang dan alamat yang sudah dikirim murid tidak ikut dihapus." data-confirm-action="Hapus" data-confirm-danger>
+          <input type="hidden" name="id" value={def.id} />
+          <button class={dangerButton}><Trash2 aria-hidden className="size-4" />Hapus proyek</button>
+        </form>
+      </section>
+    </div>
+  </AppShell>
+</Base>
