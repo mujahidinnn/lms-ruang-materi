@@ -5,9 +5,14 @@ import { card, secondaryButton } from "@/components/ui/styles";
 import { SITE_URL } from "@/lib/site";
 import SiteHeader from "../components/SiteHeader.astro";
 import Base from "../layouts/Base.astro";
-import { publicPage } from "../lib/cdn";
+import { getCurrentUser } from "@/lib/dal";
+import { STUDIO_FEATURE, STUDIO_PROJECT, STUDIO_TITLES } from "@/lib/studio/portofolio";
+import { createClient } from "@/lib/supabase/server";
 
-publicPage(Astro);
+// Early access: accounts in feature_access see the first project here. The
+// page is per-visitor now, so it is not cached publicly.
+const user = await getCurrentUser();
+const early = user ? (await (await createClient()).rpc("has_feature", { p_feature: STUDIO_FEATURE })).data === true : false;
 
 // A real sequence, so the numbers mean something.
 const STAGES = [
@@ -32,6 +37,18 @@ const STAGES = [
           <span class="inline-flex items-center gap-2 rounded-full border-2 border-noir bg-matcha-300 px-4 py-2 text-sm leading-none font-extrabold tracking-wider text-noir uppercase shadow-[3px_3px_0_0_var(--color-noir)] sm:text-base"><span aria-hidden class="size-2.5 animate-pulse rounded-full bg-noir motion-reduce:animate-none"></span>Segera</span>
         </div>
         <p class="mt-3 max-w-2xl text-lg text-zinc-400">Tempat membangun proyek nyata dari nol sampai online, supaya kamu punya karya untuk portofolio. Kami sedang menyiapkannya.</p>
+
+        {early && (
+          <a href={`/studio-proyek/${STUDIO_PROJECT}`} class="group mt-8 flex flex-wrap items-center gap-4 rounded-[18px] border-2 border-noir bg-matcha-100 p-5 text-noir shadow-[4px_4px_0_0_var(--color-noir)] sm:p-6">
+            <span aria-hidden class="grid size-14 shrink-0 place-items-center rounded-2xl bg-noir text-on-noir"><Rocket className="size-7" /></span>
+            <span class="min-w-0 flex-1 basis-56">
+              <span class="block text-xs font-bold">Akses awal, hanya untuk akunmu</span>
+              <span class="block font-(family-name:--font-bricolage) text-xl font-extrabold tracking-tight sm:text-2xl">{STUDIO_TITLES[STUDIO_PROJECT]}</span>
+              <span class="mt-1 block text-sm text-noir/80">Proyek pertama: dari brief sampai online, delapan tahap dengan daftar periksa.</span>
+            </span>
+            <span class="inline-flex min-h-12 items-center gap-2 rounded-full bg-noir px-6 font-bold text-on-noir">Mulai<ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none" /></span>
+          </a>
+        )}
 
         <h2 class="mt-10 text-xl font-extrabold sm:text-2xl">Yang akan kamu lalui</h2>
         <ol class="mt-4 grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
