@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import type { EditorLanguage } from "@/components/code/CodeEditor";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
 import { primaryButton, secondaryButton } from "@/components/ui/styles";
+import { splitDocument } from "@/lib/code/playground";
 import type { ExerciseFiles, SandboxKind } from "@/lib/code/sandbox-doc";
 
 const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
@@ -15,11 +16,11 @@ type Part = keyof ExerciseFiles;
 type Example = { label: string; files: ExerciseFiles };
 const MODES: { id: Mode; label: string; parts: Part[]; file: string; examples: Example[] }[] = [
   {
-    id: "web", label: "Web", parts: ["html", "css", "js"], file: "",
+    id: "web", label: "Web", parts: ["html"], file: "index.html",
     examples: [
-      { label: "Tombol interaktif", files: { html: "<h1>Halo, Ruang Materi!</h1>\n<button id=\"tombol\">Klik aku</button>", css: "body { font-family: system-ui; padding: 1rem; }\nbutton { padding: .5rem 1rem; }", js: "document.getElementById(\"tombol\").onclick = () => {\n  document.querySelector(\"h1\").textContent = \"Kamu mengklik!\";\n};" } },
-      { label: "Kartu profil", files: { html: "<article class=\"kartu\">\n  <div class=\"avatar\">R</div>\n  <h2>Rani</h2>\n  <p>Belajar web dari nol</p>\n</article>", css: "body { display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f3ed; font-family: system-ui; }\n.kartu { background: white; padding: 2rem; border-radius: 1.25rem; text-align: center; box-shadow: 0 8px 24px #0002; }\n.avatar { width: 4rem; height: 4rem; margin: 0 auto 1rem; display: grid; place-items: center; border-radius: 50%; background: #b7d97a; font-size: 1.5rem; font-weight: 700; }", js: "" } },
-      { label: "Hitung klik", files: { html: "<p>Jumlah klik: <b id=\"n\">0</b></p>\n<button id=\"tambah\">Tambah</button>", css: "body { font-family: system-ui; padding: 1rem; }\nb { font-size: 2rem; }", js: "let n = 0;\ndocument.getElementById(\"tambah\").onclick = () => {\n  document.getElementById(\"n\").textContent = ++n;\n};" } },
+      { label: "Tombol interaktif", files: { html: "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Tombol interaktif</title>\n  <style>\n    body { font-family: system-ui; padding: 1rem; }\n    button { padding: .5rem 1rem; }\n  </style>\n</head>\n<body>\n  <h1>Halo, Ruang Materi!</h1>\n  <button id=\"tombol\">Klik aku</button>\n\n  <script>\n    document.getElementById(\"tombol\").onclick = () => {\n      document.querySelector(\"h1\").textContent = \"Kamu mengklik!\";\n    };\n  </script>\n</body>\n</html>" } },
+      { label: "Kartu profil", files: { html: "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Kartu profil</title>\n  <style>\n    body { display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f3ed; font-family: system-ui; }\n    .kartu { background: white; padding: 2rem; border-radius: 1.25rem; text-align: center; box-shadow: 0 8px 24px #0002; }\n    .avatar { width: 4rem; height: 4rem; margin: 0 auto 1rem; display: grid; place-items: center; border-radius: 50%; background: #b7d97a; font-size: 1.5rem; font-weight: 700; }\n  </style>\n</head>\n<body>\n  <article class=\"kartu\">\n    <div class=\"avatar\">R</div>\n    <h2>Rani</h2>\n    <p>Belajar web dari nol</p>\n  </article>\n</body>\n</html>" } },
+      { label: "Hitung klik", files: { html: "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Hitung klik</title>\n  <style>\n    body { font-family: system-ui; padding: 1rem; }\n    b { font-size: 2rem; }\n  </style>\n</head>\n<body>\n  <p>Jumlah klik: <b id=\"n\">0</b></p>\n  <button id=\"tambah\">Tambah</button>\n\n  <script>\n    let n = 0;\n    document.getElementById(\"tambah\").onclick = () => {\n      document.getElementById(\"n\").textContent = ++n;\n    };\n  </script>\n</body>\n</html>" } },
     ],
   },
   {
@@ -41,7 +42,8 @@ const MODES: { id: Mode; label: string; parts: Part[]; file: string; examples: E
 ];
 const LANG: Record<Part, EditorLanguage> = { html: "html", css: "css", js: "javascript", code: "javascript" };
 const LABEL: Record<Part, string> = { html: "index.html", css: "style.css", js: "script.js", code: "kode" };
-const key = (m: Mode) => `ruang-materi:playground:${m}`;
+// "web-html": the web draft used to be three files (html, css, js); a new key keeps old drafts from loading.
+const key = (m: Mode) => `ruang-materi:playground:${m === "web" ? "web-html" : m}`;
 const mod = (id: Mode) => MODES.find((m) => m.id === id)!;
 
 function read(m: Mode): ExerciseFiles {
@@ -68,6 +70,7 @@ export default function Playground() {
   const [mounted, setMounted] = useState(false);
   const [out, setOut] = useState<RunResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [notes, setNotes] = useState<string[]>([]);
   const preview = useRef<HTMLIFrameElement>(null);
   const { run } = useSandbox();
 
@@ -77,7 +80,14 @@ export default function Playground() {
   const go = useCallback(async () => {
     setBusy(true);
     if (mode === "python") setOut({ logs: ["Menyiapkan Python (sekali per kunjungan, beberapa detik)..."], results: [] });
-    setOut(await run({ kind: mode, files, setup: "", tests: [], previewEl: mode === "web" ? preview.current : null }));
+    if (mode === "web") {
+      const { files: parts, notes: n } = splitDocument(files.html ?? "");
+      setNotes(n);
+      setOut(await run({ kind: "web", files: parts, setup: "", tests: [], previewEl: preview.current, early: true }));
+    } else {
+      setNotes([]);
+      setOut(await run({ kind: mode, files, setup: "", tests: [] }));
+    }
     setBusy(false);
   }, [mode, files, run]);
 
@@ -94,6 +104,7 @@ export default function Playground() {
     setFiles(f);
     setVersion((v) => v + 1);
     setOut(null);
+    setNotes([]);
   }
 
   function edit(p: Part, v: string) {
@@ -157,6 +168,11 @@ export default function Playground() {
             <h2 className="px-1 text-sm font-bold">{mode === "web" ? "Hasil" : "Keluaran"}</h2>
             <span aria-live="polite" className="ml-auto px-1 text-xs text-zinc-500">{mode === "web" ? "Diperbarui otomatis saat kamu mengetik" : "Ctrl + Enter untuk menjalankan"}</span>
           </div>
+          {mode === "web" && notes.length > 0 && (
+            <ul className="grid gap-1 border-b-2 border-noir bg-tile-butter px-4 py-3 text-sm text-zinc-50">
+              {notes.map((n) => <li key={n}><span className="font-semibold">Catatan:</span> {n}</li>)}
+            </ul>
+          )}
           {mode === "web" ? (
             <iframe ref={preview} title="Hasil" sandbox="allow-scripts" className={`${body} w-full border-0 bg-white`} />
           ) : (
@@ -168,6 +184,7 @@ export default function Playground() {
             </div>
           )}
           {mode === "web" && out?.error && <p className="border-t-2 border-noir bg-tile-pink px-4 py-3 text-sm"><span className="font-semibold">Error:</span> {out.error}</p>}
+          {mode === "web" && out && out.logs.length > 0 && <pre className="max-h-32 overflow-auto border-t-2 border-noir bg-zinc-950 px-4 py-3 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>}
         </div>
       </div>
     </section>

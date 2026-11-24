@@ -65,8 +65,10 @@ const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, bas
   return { logs, results };
 };
 
-export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; nonce: string }): string {
-  const { kind, files, setup, tests, nonce } = input;
+// early: run the learner's JS at DOMContentLoaded instead of load, so slow images or
+// fonts cannot eat the time limit (the playground sets it).
+export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; nonce: string; early?: boolean }): string {
+  const { kind, files, setup, tests, nonce, early } = input;
   const head = '<!doctype html><html><head><meta charset="utf-8">';
   const post = `const post = (m) => parent.postMessage({ nonce: ${embed(nonce)}, ...m }, "*");`;
   if (kind === "python") {
@@ -93,7 +95,7 @@ w.onerror = (e) => { e.preventDefault(); post({ logs: [], results: [], error: e.
     // The harness sits in <head> and waits for load, so broken learner
     // markup (an unclosed <textarea>, say) cannot swallow it.
     const css = (files.css ?? "").replace(/<\/style/gi, "<\\/style");
-    return `${head}<style>${css}</style><script>${post} addEventListener("load", () => ${onPage});</script></head><body>${files.html ?? ""}</body></html>`;
+    return `${head}<style>${css}</style><script>${post} addEventListener("${early ? "DOMContentLoaded" : "load"}", () => ${onPage});</script></head><body>${files.html ?? ""}</body></html>`;
   }
 
   // js/express run in a Worker, so a runaway loop never blocks the page

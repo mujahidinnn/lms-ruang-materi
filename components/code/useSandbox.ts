@@ -5,7 +5,7 @@ import type { Check, CheckResult } from "@/lib/code/check-node";
 import { buildSandboxDoc, type ExerciseFiles, type SandboxKind } from "@/lib/code/sandbox-doc";
 
 export type RunResult = { logs: string[]; results: CheckResult[]; error?: string };
-export type RunInput = { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; previewEl?: HTMLIFrameElement | null };
+export type RunInput = { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; previewEl?: HTMLIFrameElement | null; early?: boolean };
 
 // Runs one exercise in a sandboxed iframe (scripts only, no same-origin).
 // Web exercises reuse the visible preview iframe; the rest get a hidden one
