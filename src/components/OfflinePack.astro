@@ -1,0 +1,19 @@
+---
+// Asks the service worker to save the whole course for offline reading, at
+// most once a day per course. See precache() in public/sw.js.
+const { slug, chapters } = Astro.props as { slug: string; chapters: string[] };
+const urls = [`/belajar/${slug}`, ...chapters.map((c) => `/belajar/${slug}/${c}`)];
+---
+
+<script is:inline define:vars={{ slug, urls }}>
+  (function () {
+    if (!("serviceWorker" in navigator) || (navigator.connection && navigator.connection.saveData)) return;
+    var key = "rm-offline:" + slug;
+    try { if (Date.now() - Number(localStorage.getItem(key) || 0) < 864e5) return; } catch (e) {}
+    navigator.serviceWorker.ready.then(function (r) {
+      if (!r.active) return;
+      r.active.postMessage({ type: "precache", urls: urls });
+      try { localStorage.setItem(key, String(Date.now())); } catch (e) {}
+    });
+  })();
+</script>

@@ -1,6 +1,6 @@
 // Hand-written service worker. Caches an allowlist only; everything else
 // goes straight to the network. Bump VERSION on every change to this file.
-const VERSION = "rm-9";
+const VERSION = "rm-10";
 const STATIC = `${VERSION}-static`;
 const PAGES = `${VERSION}-pages`;
 const OFFLINE = "/offline.html";
@@ -20,6 +20,7 @@ self.addEventListener("activate", (event) => {
 
 // Sent on sign-out, so a shared phone keeps no pages from the last learner.
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "precache") event.waitUntil(precache(event.data.urls));
   if (event.data === "clear-pages") event.waitUntil(caches.delete(PAGES).then(() => caches.open(PAGES)).then((c) => c.add(OFFLINE)));
 });
 
@@ -33,6 +34,42 @@ async function cacheFirst(request, cors = false) {
   const response = await fetch(cors ? new Request(request.url, { mode: "cors", credentials: "omit" }) : request);
   if (response.ok) (await caches.open(STATIC)).put(request, response.clone());
   return response;
+}
+
+// Opening one chapter saves the whole course: every chapter page, plus the
+// scripts, styles and slide images each page references. Chunks imported by
+// other chunks are followed too. Best effort; a failed fetch is skipped.
+// ponytail: a course is ~10 pages and a few MB; add a size cap if that grows.
+const ASSET = /(?:https?:\/\/[^"'\s,)]+\/storage\/v1\/object\/public\/slides\/[^"'\s,)]+|\/(?:_astro|praktik|ilustrasi|icons)\/[^"'\s,)]+)/g;
+async function precache(urls) {
+  const pages = await caches.open(PAGES);
+  const seen = new Set();
+  const queue = [];
+  const take = (text) => {
+    for (const m of text.match(ASSET) ?? []) {
+      const abs = new URL(m, self.location.origin).href;
+      if (!seen.has(abs)) { seen.add(abs); queue.push(abs); }
+    }
+  };
+  for (const u of urls.filter((u) => typeof u === "string" && u.startsWith("/belajar/"))) {
+    try {
+      const res = await fetch(u);
+      if (!res.ok) continue;
+      await pages.put(u, res.clone());
+      take(await res.text());
+    } catch {}
+  }
+  while (queue.length) {
+    await Promise.all(queue.splice(0, 6).map(async (abs) => {
+      try {
+        const res = await cacheFirst(new Request(abs), abs.includes("/storage/"));
+        if (abs.endsWith(".js")) {
+          const text = await res.clone().text();
+          for (const m of text.matchAll(/["']\.\/([\w.-]+\.(?:js|css))["']/g)) take(`/_astro/${m[1]}`);
+        }
+      } catch {}
+    }));
+  }
 }
 
 // A slow network falls back to the cached page after 4 seconds instead of
