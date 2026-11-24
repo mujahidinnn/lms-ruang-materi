@@ -38,3 +38,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: node worker/import-deck.ts --job-id "$JOB_ID"
+      - name: Mark job failed if the worker died (timeout or cancel)
+        if: failure() || cancelled()
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -fsS -X PATCH "$SUPABASE_URL/rest/v1/import_jobs?id=eq.$JOB_ID&status=in.(queued,rendering,drafting)" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"failed","error":"Worker berhenti sebelum selesai (waktu habis atau dibatalkan). Ulangi impor."}'
