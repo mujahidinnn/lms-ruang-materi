@@ -27,8 +27,8 @@ export async function simpanProfil(_: State, form: FormData): Promise<State> {
     })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Isian tidak valid." };
-  // Showing a name to others is for adults only; the database functions check too.
-  const adult = usia(form) === "dewasa";
+  // Sharing needs consent on file (adult, or parent/guardian); the database functions check too.
+  const adult = usia(form) !== null;
 
   const { error } = await (await createClient())
     .from("profiles")
