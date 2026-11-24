@@ -20,6 +20,7 @@ const send = content.extend({
   email: z.boolean(),
 });
 
+const used = (q?: string) => (q ? ` Kuota Resend hari ini: ${q}/100 terpakai.` : "");
 const first = (e: z.ZodError) => e.issues[0]?.message ?? "Isian tidak valid.";
 
 // One email to the admin who is writing, so the look is checked before it
@@ -30,8 +31,8 @@ export async function kirimTesPengumuman(input: unknown): Promise<Result> {
   if (!parsed.success) return { error: first(parsed.error) };
   const { title, body, link } = parsed.data;
   try {
-    const { sent } = await sendEmails([admin.email], `[Tes] ${title}`, announcementHtml({ title, body, link }));
-    return sent ? { ok: `Email tes terkirim ke ${admin.email}.` } : { error: "Email tes gagal terkirim." };
+    const { sent, quota } = await sendEmails([admin.email], `[Tes] ${title}`, announcementHtml({ title, body, link }));
+    return sent ? { ok: `Email tes terkirim ke ${admin.email}.${used(quota)}` } : { error: "Email tes gagal terkirim." };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Email tes gagal terkirim." };
   }
@@ -58,9 +59,9 @@ export async function kirimPengumuman(input: unknown): Promise<Result> {
     const { data: rcpt } = await db.rpc("announce_recipients", { p_audience: audience, p_ids: audience === "users" ? userIds : [] });
     const to = ((rcpt ?? []) as { email: string }[]).map((r) => r.email);
     try {
-      const { sent, failed } = to.length ? await sendEmails(to, title, announcementHtml({ title, body, link })) : { sent: 0, failed: 0 };
+      const { sent, failed, quota } = to.length ? await sendEmails(to, title, announcementHtml({ title, body, link })) : { sent: 0, failed: 0, quota: undefined };
       await db.from("announcements").update({ email_sent: sent, email_failed: failed }).eq("id", row.id);
-      note += ` Email: ${sent} terkirim${failed ? `, ${failed} gagal` : ""}${to.length ? "" : " (tidak ada penerima)"}.`;
+      note += ` Email: ${sent} terkirim${failed ? `, ${failed} gagal` : ""}${to.length ? "" : " (tidak ada penerima)"}.${used(quota)}`;
     } catch (e) {
       note += ` Email gagal: ${e instanceof Error ? e.message : "kesalahan tak dikenal"}.`;
     }

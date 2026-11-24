@@ -167,7 +167,7 @@ export default function PengumumanForm({ people }: { people: Person[] }) {
           </ul>
         </div>
       )}
-      {email && <p className="rounded-xl bg-tile-butter p-3 text-xs leading-relaxed text-zinc-700">Email hanya ke akun yang sudah dikonfirmasi dan tidak mematikan email pengumuman. Kuota gratis Resend 100 email per hari.</p>}
+      {email && <p className="rounded-xl bg-tile-butter p-3 text-xs leading-relaxed text-zinc-50">Email hanya ke akun yang sudah dikonfirmasi dan tidak mematikan email pengumuman. Kuota gratis Resend 100 email per hari.</p>}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending || !title.trim() || !body.trim() || (audience === "users" && picked.length === 0)} className={primaryButton}><Send aria-hidden className="size-4" />{pending ? "Mengirim..." : "Kirim pengumuman"}</button>
         <button type="button" disabled={pending || !title.trim() || !body.trim()} onClick={() => start(async () => setMsg(await tes(content)))} className={smallButton}><Mail aria-hidden className="size-4" />Kirim tes ke saya</button>

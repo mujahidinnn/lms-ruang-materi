@@ -27,11 +27,12 @@ export function announcementHtml({ title, body, link, chip = "Pengumuman", footn
 // see each other), up to 100 per call. ponytail: sequential chunks with a
 // pause for Resend's 2 requests per second; a queue if lists grow past a few
 // hundred, since this runs inside one request.
-export async function sendEmails(to: string[], subject: string, html: string): Promise<{ sent: number; failed: number }> {
+export async function sendEmails(to: string[], subject: string, html: string): Promise<{ sent: number; failed: number; quota?: string }> {
   const key = process.env.RESEND_API_KEY ?? import.meta.env.RESEND_API_KEY; // astro dev only fills import.meta.env
   if (!key) throw new Error("RESEND_API_KEY belum diatur di server.");
   let sent = 0;
   let failed = 0;
+  let quota: string | undefined;
   for (let i = 0; i < to.length; i += 100) {
     const chunk = to.slice(i, i + 100);
     const res = await fetch("https://api.resend.com/emails/batch", {
@@ -39,9 +40,11 @@ export async function sendEmails(to: string[], subject: string, html: string): P
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify(chunk.map((address) => ({ from: FROM, to: [address], subject, html }))),
     });
+    // Resend reports emails used today on every response (free plan: 100/day).
+    quota = res.headers.get("x-resend-daily-quota") ?? quota;
     if (res.ok) sent += chunk.length;
     else failed += chunk.length;
     if (i + 100 < to.length) await new Promise((r) => setTimeout(r, 600));
   }
-  return { sent, failed };
+  return { sent, failed, quota };
 }
