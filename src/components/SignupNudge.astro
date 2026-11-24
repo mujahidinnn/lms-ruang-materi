@@ -1,0 +1,83 @@
+---
+import { Check, X } from "lucide-react";
+import { primaryButton, secondaryButton } from "@/components/ui/styles";
+
+// Two optional invitations to sign up for guests, both closable: the first
+// after 30 seconds on the site, the second after about 2 more minutes of
+// browsing. Then never again (GuestNotice stays as the quiet reminder).
+// Time counts only while the tab is visible, across pages, in localStorage.
+// Skipped on sign-in, exam, practice and admin pages, and for signed-in
+// visitors (data-auth, set before first paint in Base.astro).
+const BENEFITS = ["Progres bab dan kuis tersimpan", "Streak, catatan, dan target belajar", "Sertifikat dengan tautan keaslian"];
+---
+
+<dialog
+  data-nudge
+  aria-labelledby="nudge-judul"
+  class="m-auto w-[min(92vw,30rem)] rounded-[24px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50"
+>
+  <div class="relative p-6 sm:p-7">
+    <button type="button" data-nudge-close aria-label="Tutup" class="absolute top-3 right-3 grid size-11 place-items-center rounded-full hover:bg-zinc-800"><X aria-hidden className="size-5" /></button>
+    <div class="flex h-32 items-end justify-center overflow-hidden rounded-[18px] border-2 border-noir bg-matcha-100">
+      <img data-nudge-art src="/ilustrasi/baca.svg" alt="" width="890" height="1220" decoding="async" class="h-[92%] w-auto" />
+    </div>
+    <h2 id="nudge-judul" data-nudge-title class="mt-5 pr-8 font-(family-name:--font-bricolage) text-2xl font-extrabold tracking-tight text-balance"></h2>
+    <p data-nudge-text class="mt-2 text-sm leading-relaxed text-zinc-400"></p>
+    <ul class="mt-4 grid gap-2 text-sm">
+      {BENEFITS.map((b) => <li class="flex items-center gap-2"><Check aria-hidden className="size-4 shrink-0 text-accent" />{b}</li>)}
+    </ul>
+    <div class="mt-6 flex flex-wrap gap-2">
+      <a data-nudge-signup autofocus href="/daftar" class={primaryButton}>Daftar gratis</a>
+      <button type="button" data-nudge-close class={secondaryButton}><span data-nudge-later>Nanti saja</span></button>
+    </div>
+    <p class="mt-4 text-sm text-zinc-400">Sudah punya akun? <a data-nudge-login href="/masuk" class="font-semibold text-accent hover:underline">Masuk</a></p>
+  </div>
+</dialog>
+
+<script>
+  const root = document.documentElement;
+  const KEY = "ruang-materi:ajakan-daftar";
+  const SKIP = /^\/(masuk|daftar|mulai|ujian|latihan|flashcard|admin|privasi|offline)/;
+  const COPY = [
+    { art: "baca", title: "Simpan progres belajarmu, gratis", text: "Daftar sekitar satu menit. Kamu tetap bisa menjelajah tanpa akun, tapi progresnya tidak akan tersimpan.", later: "Nanti saja" },
+    { art: "sertifikat", title: "Masih menjelajah? Jangan sampai progresmu hilang", text: "Tanpa akun, bab yang sudah kamu baca dan jawaban kuis tidak tersimpan. Daftar sekarang dan lanjutkan dari titik ini.", later: "Lanjut menjelajah" },
+  ];
+  type State = { sec: number; shown: number; at: number };
+
+  const dialog = document.querySelector<HTMLDialogElement>("[data-nudge]");
+  if (dialog && !("auth" in root.dataset) && !SKIP.test(location.pathname)) {
+    let s: State = { sec: 0, shown: 0, at: 0 };
+    try { s = { ...s, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") }; } catch {}
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
+
+    function show(stage: number) {
+      const c = COPY[stage - 1];
+      dialog!.querySelector("[data-nudge-title]")!.textContent = c.title;
+      dialog!.querySelector("[data-nudge-text]")!.textContent = c.text;
+      dialog!.querySelector("[data-nudge-later]")!.textContent = c.later;
+      dialog!.querySelector<HTMLImageElement>("[data-nudge-art]")!.src = `/ilustrasi/${c.art}.svg`;
+      const next = encodeURIComponent(location.pathname + location.search);
+      dialog!.querySelector<HTMLAnchorElement>("[data-nudge-signup]")!.href = `/daftar?next=${next}`;
+      dialog!.querySelector<HTMLAnchorElement>("[data-nudge-login]")!.href = `/masuk?next=${next}`;
+      s.shown = stage;
+      s.at = s.sec;
+      save();
+      dialog!.showModal();
+    }
+
+    dialog.querySelectorAll("[data-nudge-close]").forEach((b) => b.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+
+    if (s.shown < 2) {
+      const timer = setInterval(() => {
+        if ("auth" in root.dataset || document.cookie.includes("-auth-token")) return clearInterval(timer);
+        if (document.hidden || dialog.open || document.querySelector("dialog[open]")) return;
+        s.sec += 1;
+        if (s.sec % 5 === 0) save();
+        if (s.shown === 0 && s.sec >= 30) show(1);
+        else if (s.shown === 1 && s.sec >= s.at + 120) { show(2); clearInterval(timer); }
+      }, 1000);
+      addEventListener("pagehide", save);
+    }
+  }
+</script>
