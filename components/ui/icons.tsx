@@ -307,6 +307,68 @@ export const Game = (p: P) => (
   </Svg>
 );
 
+// Studio Proyek: one icon per stage, plus video.
+export const StudioBrief = (p: P) => (
+  <Svg {...p}>
+    <rect x="9" y="8" width="30" height="35" rx="5" style={paper} />
+    <rect x="17" y="4" width="14" height="8" rx="3" style={tint} />
+    <path d="M16 24h16M16 31h10" />
+  </Svg>
+);
+export const StudioIde = (p: P) => (
+  <Svg {...p}>
+    <path d="M14 31a8 8 0 0 1-1-16 10 10 0 0 1 19-2 8 8 0 0 1 4 18z" style={paper} />
+    <path d="M24 14l2.500 5.500L32 22l-5.500 2.500L24 30l-2.500-5.500L16 22l5.500-2.500z" style={tint} />
+    <circle cx="13" cy="38" r="3" style={paper} />
+    <circle cx="7" cy="44" r="2" style={tint} />
+  </Svg>
+);
+export const StudioTeknologi = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 33l18 9 18-9-18-9z" style={tint} />
+    <path d="M6 25l18 9 18-9-18-9z" style={paper} />
+    <path d="M6 17l18 9 18-9-18-9z" style={paper} />
+  </Svg>
+);
+export const StudioNgoding = (p: P) => (
+  <Svg {...p}>
+    <rect x="5" y="8" width="38" height="32" rx="6" style={paper} />
+    <path d="M5 14a6 6 0 0 1 6-6h26a6 6 0 0 1 6 6v2H5z" style={tint} />
+    <path d="M19 24l-5 4.500 5 4.500M29 24l5 4.500-5 4.500M26 22l-4 13" />
+  </Svg>
+);
+export const StudioBug = (p: P) => (
+  <Svg {...p}>
+    <path d="M21 11l-3-6M27 11l3-6" />
+    <ellipse cx="24" cy="29" rx="10" ry="13" style={tint} />
+    <circle cx="24" cy="15" r="6" style={paper} />
+    <path d="M24 20v22M14 25H6M14 33H6M34 25h8M34 33h8M16 40l-4 4M32 40l4 4" />
+  </Svg>
+);
+export const StudioAlur = (p: P) => (
+  <Svg {...p}>
+    <circle cx="9" cy="11" r="5" style={paper} />
+    <path d="M14 11h16a7 7 0 0 1 0 14H18a7 7 0 0 0 0 14h12" />
+    <circle cx="38" cy="39" r="7" style={tint} />
+    <path d="M34.500 39l2.500 2.500 4.500-5" />
+  </Svg>
+);
+export const StudioDeploy = (p: P) => (
+  <Svg {...p}>
+    <circle cx="21" cy="27" r="16" style={paper} />
+    <path d="M5 27h32M21 11c-7 8-7 24 0 32M21 11c7 8 7 24 0 32" />
+    <circle cx="37" cy="12" r="8" style={tint} />
+    <path d="M37 16V8M33 12l4-4 4 4" />
+  </Svg>
+);
+export const Video = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="8" width="40" height="28" rx="6" style={paper} />
+    <path d="M20 16l11 6-11 6z" style={tint} />
+    <path d="M14 43h20" />
+  </Svg>
+);
+
 // One icon per roadmap track. A track picks a preset key, or inline <svg> markup
 // (shown through <img>, so scripts in it never run); with neither, a word in
 // its slug decides, and anything else gets the route icon.
