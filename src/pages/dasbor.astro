@@ -1,5 +1,5 @@
 ---
-import { BookOpen, Check, ClipboardCheck, Code2, Megaphone, Play, Presentation, ShieldCheck, X } from "lucide-react";
+import { Bookmark, BookOpen, Check, ClipboardCheck, Code2, Megaphone, Play, Presentation, ShieldCheck, X } from "lucide-react";
 import { Api, Kartu, Medali } from "@/components/ui/icons";
 import { card, chip, primaryButton, secondaryButton, tile } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
@@ -23,13 +23,16 @@ type Row = {
   last_slide: number;
   topics: { id: string; slug: string; title: string; slides: { count: number }[]; chapters: { id: string; slug: string; title: string; position: number }[] } | null;
 };
-const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }, { data: notices }] = await Promise.all([
+const [{ data: progress }, { data: doneRows }, { data: streak }, { data: queue }, { data: notices }, { data: saved }] = await Promise.all([
   db.from("progress").select("state, last_slide, topics(id, slug, title, slides(count), chapters(id, slug, title, position))").eq("user_id", user.id).order("updated_at", { ascending: false }),
   db.from("chapter_progress").select("chapter_id").eq("user_id", user.id),
   db.from("learning_streaks").select("current_days").eq("user_id", user.id).maybeSingle(),
   db.rpc("flashcard_queue"),
   db.from("announcements").select("id, title, body, link_url").eq("on_web", true).gte("created_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("created_at", { ascending: false }).limit(1),
+  db.from("chapter_notes").select("note, bookmarked, chapters(slug, title, topics(slug, title))").eq("user_id", user.id).order("updated_at", { ascending: false }).limit(6),
 ]);
+type Saved = { note: string; bookmarked: boolean; chapters: { slug: string; title: string; topics: { slug: string; title: string } } | null };
+const keep = ((saved ?? []) as unknown as Saved[]).filter((n) => n.chapters);
 const notice = notices?.[0];
 const done = new Set((doneRows ?? []).map((r) => r.chapter_id));
 // RLS returns only published chapters; a pulled topic comes back null.
@@ -155,6 +158,23 @@ const days = streak?.current_days ?? 0;
             </div>
           )}
         </section>
+
+        {keep.length > 0 && (
+          <section aria-labelledby="simpanan">
+            <h2 id="simpanan" class="text-xl sm:text-2xl font-extrabold">Bab ditandai dan catatanmu</h2>
+            <ul class="mt-2 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-4">
+              {keep.map((n) => (
+                <li>
+                  <a href={`/belajar/${n.chapters!.topics.slug}/${n.chapters!.slug}`} class={`flex h-full flex-col gap-1 p-4 hover:bg-zinc-800 sm:p-5 ${card}`}>
+                    <span class="flex items-center gap-2 text-xs font-semibold text-zinc-400">{n.bookmarked && <Bookmark aria-hidden className="size-3.5 fill-current text-accent" />}{n.chapters!.topics.title}</span>
+                    <span class="font-bold">{n.chapters!.title}</span>
+                    {n.note && <span class="line-clamp-2 text-sm text-zinc-400">{n.note}</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </main>
   </div>

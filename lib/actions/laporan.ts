@@ -9,7 +9,7 @@ type State = { error?: string; ok?: string };
 const report = z.object({
   chapter_id: z.uuid().optional(),
   question_id: z.uuid().optional(),
-  kind: z.enum(["salah", "tidak-jelas", "lainnya"]),
+  kind: z.enum(["salah", "tidak-jelas", "lainnya", "pertanyaan"]),
   note: z.string().trim().min(1, "Tulis apa yang perlu diperbaiki.").max(500, "Paling panjang 500 karakter."),
 });
 
@@ -35,7 +35,7 @@ export async function selesaikanLaporan(_: State, form: FormData): Promise<State
     .update({ status: "selesai" })
     .eq("id", id.data)
     .eq("status", "baru")
-    .select("user_id, chapters(title), exam_questions(prompt)")
+    .select("user_id, kind, chapters(title), exam_questions(prompt)")
     .maybeSingle();
   if (error) return { error: "Gagal menyimpan." };
   if (r) await kabari(db, r as unknown as Done);
@@ -43,7 +43,7 @@ export async function selesaikanLaporan(_: State, form: FormData): Promise<State
   return { ok: "Selesai." };
 }
 
-type Done = { user_id: string; chapters: { title: string } | null; exam_questions: { prompt: string } | null };
+type Done = { user_id: string; kind: string; chapters: { title: string } | null; exam_questions: { prompt: string } | null };
 
 // Tell the reporter it was handled. A mail failure never undoes "selesai".
 async function kabari(db: Awaited<ReturnType<typeof createClient>>, r: Done) {
@@ -52,11 +52,14 @@ async function kabari(db: Awaited<ReturnType<typeof createClient>>, r: Done) {
     const to = ((data ?? []) as { user_id: string; email: string }[]).find((p) => p.user_id === r.user_id)?.email;
     if (!to) return;
     const what = r.chapters ? `bab "${r.chapters.title}"` : `soal ujian "${(r.exam_questions?.prompt ?? "").slice(0, 120)}"`;
-    await sendEmails([to], "Laporanmu sudah ditangani", announcementHtml({
-      title: "Laporanmu sudah ditangani",
-      body: `Terima kasih sudah melaporkan ${what}. Materinya sudah kami periksa dan diperbaiki kalau memang perlu.`,
-      chip: "Laporan",
-      footnote: "Kamu menerima email ini karena mengirim laporan di Ruang Materi.",
+    const ask = r.kind === "pertanyaan";
+    await sendEmails([to], ask ? "Pertanyaanmu sudah dijawab" : "Laporanmu sudah ditangani", announcementHtml({
+      title: ask ? "Pertanyaanmu sudah dijawab" : "Laporanmu sudah ditangani",
+      body: ask
+        ? `Terima kasih sudah bertanya tentang ${what}. Kami sudah menanggapinya dan menyesuaikan materi kalau perlu. Buka bab itu lagi untuk melihat perubahannya.`
+        : `Terima kasih sudah melaporkan ${what}. Materinya sudah kami periksa dan diperbaiki kalau memang perlu.`,
+      chip: ask ? "Pertanyaan" : "Laporan",
+      footnote: `Kamu menerima email ini karena mengirim ${ask ? "pertanyaan" : "laporan"} di Ruang Materi.`,
     }));
   } catch {}
 }
