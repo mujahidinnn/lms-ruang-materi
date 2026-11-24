@@ -35,8 +35,10 @@ export default function SubmitUrl({ project, saved, handle }: { project: string;
 
   async function remove() {
     const db = createClient();
-    const { error } = await db.from("studio_projects").delete().eq("project", project);
+    const { data, error } = await db.from("studio_projects").delete().eq("project", project).select();
     if (error) return setMsg({ error: "Gagal menghapus." });
+    // A row an admin hid cannot be deleted by its owner, so nothing comes back.
+    if (!data?.length) return setMsg({ error: "Alamat ini tidak bisa dihapus. Hubungi admin lewat halaman Masukan dan saran." });
     setUrl("");
     setCurrent(null);
     setMsg({ ok: "Dihapus dari profilmu." });
