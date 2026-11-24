@@ -26,3 +26,8 @@ test("leaves JSON data scripts alone and warns about modules", () => {
   expect(r.files.js).toContain("import x");
   expect(r.notes[0]).toContain("module");
 });
+
+test("reads the page title like a browser tab", () => {
+  expect(splitDocument("<head><title> Halo &amp;\n dunia </title></head>").title).toBe("Halo & dunia");
+  expect(splitDocument("<h1>tanpa judul</h1>").title).toBe("");
+});

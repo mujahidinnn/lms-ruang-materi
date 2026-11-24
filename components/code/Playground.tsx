@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, RotateCcw } from "lucide-react";
+import { Globe, Play, RotateCcw } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { EditorLanguage } from "@/components/code/CodeEditor";
 import { useSandbox, type RunResult } from "@/components/code/useSandbox";
@@ -71,6 +71,7 @@ export default function Playground() {
   const [out, setOut] = useState<RunResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState<string[]>([]);
+  const [tabTitle, setTabTitle] = useState("");
   const preview = useRef<HTMLIFrameElement>(null);
   const { run } = useSandbox();
 
@@ -81,8 +82,9 @@ export default function Playground() {
     setBusy(true);
     if (mode === "python") setOut({ logs: ["Menyiapkan Python (sekali per kunjungan, beberapa detik)..."], results: [] });
     if (mode === "web") {
-      const { files: parts, notes: n } = splitDocument(files.html ?? "");
+      const { files: parts, notes: n, title } = splitDocument(files.html ?? "");
       setNotes(n);
+      setTabTitle(title);
       setOut(await run({ kind: "web", files: parts, setup: "", tests: [], previewEl: preview.current, early: true }));
     } else {
       setNotes([]);
@@ -105,6 +107,7 @@ export default function Playground() {
     setVersion((v) => v + 1);
     setOut(null);
     setNotes([]);
+    setTabTitle("");
   }
 
   function edit(p: Part, v: string) {
@@ -168,6 +171,15 @@ export default function Playground() {
             <h2 className="px-1 text-sm font-bold">{mode === "web" ? "Hasil" : "Keluaran"}</h2>
             <span aria-live="polite" className="ml-auto px-1 text-xs text-zinc-500">{mode === "web" ? "Diperbarui otomatis saat kamu mengetik" : "Ctrl + Enter untuk menjalankan"}</span>
           </div>
+          {mode === "web" && (
+            <div className="flex items-end gap-3 border-b-2 border-noir bg-zinc-800 px-3 pt-2">
+              <div className="flex min-w-0 max-w-[16rem] items-center gap-2 rounded-t-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium" title="Judul tab browser, dari tag <title>">
+                <Globe aria-hidden className="size-3.5 shrink-0 text-zinc-400" />
+                <span className={`truncate ${tabTitle ? "" : "text-zinc-500"}`}>{tabTitle || "Tanpa judul"}</span>
+              </div>
+              <p className="min-w-0 pb-1.5 text-xs text-zinc-500">{tabTitle ? "Judul tab dari tag <title>" : "Tambahkan <title> di <head> agar tab punya nama"}</p>
+            </div>
+          )}
           {mode === "web" && notes.length > 0 && (
             <ul className="grid gap-1 border-b-2 border-noir bg-tile-butter px-4 py-3 text-sm text-zinc-50">
               {notes.map((n) => <li key={n}><span className="font-semibold">Catatan:</span> {n}</li>)}

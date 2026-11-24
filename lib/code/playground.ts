@@ -8,8 +8,12 @@ const attr = (tag: string, name: string) => {
   return m ? (m[1] ?? m[2] ?? m[3]) : undefined;
 };
 
-export function splitDocument(src: string): { files: { html: string; css: string; js: string }; notes: string[] } {
+const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'" };
+
+export function splitDocument(src: string): { files: { html: string; css: string; js: string }; notes: string[]; title: string } {
   const notes: string[] = [];
+  // What a browser tab would show: the first <title>, entities decoded.
+  const title = (src.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i)?.[1] ?? "").replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => ENTITIES[e]).replace(/\s+/g, " ").trim();
   const css: string[] = [];
   const js: string[] = [];
   const html = src
@@ -35,5 +39,5 @@ export function splitDocument(src: string): { files: { html: string; css: string
       notes.push(`"${from}" tidak ada di playground. Tulis CSS-nya langsung di <style> dalam HTML ini.`);
       return "";
     });
-  return { files: { html, css: css.join("\n"), js: js.join("\n") }, notes: [...new Set(notes)] };
+  return { files: { html, css: css.join("\n"), js: js.join("\n") }, notes: [...new Set(notes)], title };
 }
