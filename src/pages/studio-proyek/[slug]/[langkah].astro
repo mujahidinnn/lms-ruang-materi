@@ -1,0 +1,84 @@
+---
+import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
+import ChapterMarkdown from "@/components/belajar/markdown";
+import Checklist from "@/components/studio/Checklist";
+import Materials from "@/components/studio/Materials";
+import { card, primaryButton, secondaryButton } from "@/components/ui/styles";
+import { getCurrentUser } from "@/lib/dal";
+import { doneItems, getDef } from "@/lib/studio/data";
+import { stageIndex, stageTitle } from "@/lib/studio/stages";
+import SiteHeader from "../../../components/SiteHeader.astro";
+import StudioProgress from "../../../components/StudioProgress.astro";
+import Base from "../../../layouts/Base.astro";
+
+// Early access: RLS returns nothing to accounts without the feature, so they
+// get the same 404 as a page that does not exist.
+const user = await getCurrentUser();
+if (!user) return Astro.rewrite("/404");
+const { slug, langkah } = Astro.params as { slug: string; langkah: string };
+const data = await getDef(slug);
+const i = data ? data.steps.findIndex((s) => s.slug === langkah) : -1;
+if (!data || i < 0 || data.def.status !== "published" && user.role !== "admin") return Astro.rewrite("/404");
+const { def, steps } = data;
+const step = steps[i];
+const prev = steps[i - 1];
+const next = steps[i + 1];
+const done = await doneItems(user.id, def.slug);
+const total = steps.reduce((n, s) => n + s.checks.length, 0);
+const doneCount = steps.reduce((n, s) => n + s.checks.filter((c) => done.has(c.id)).length, 0);
+---
+
+<Base title={`${step.title} · ${def.title}`} description={`Langkah ${i + 1} dari ${steps.length} di proyek ${def.title}.`} noindex>
+  <div class="relative flex flex-1 flex-col">
+    <SiteHeader />
+    <main class="flex-1 px-5 pb-20 sm:px-10">
+      <div class="mx-auto max-w-3xl">
+        <a href={`/studio-proyek/${def.slug}`} class="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-zinc-400 hover:text-zinc-50"><ArrowLeft aria-hidden className="size-4" />{def.title}</a>
+        <ul class="mt-2 flex flex-wrap gap-2 text-xs font-bold tabular-nums">
+          <li class="rounded-full border-2 border-noir bg-matcha-300 px-3 py-1 text-noir">Tahap {stageIndex(step.stage) + 1}: {stageTitle(step.stage)}</li>
+          <li class="rounded-full bg-zinc-900 px-3 py-1 text-zinc-300 shadow-soft">Langkah {i + 1} dari {steps.length}</li>
+          {step.est_minutes && <li class="inline-flex items-center gap-1 rounded-full bg-zinc-900 px-3 py-1 text-zinc-300 shadow-soft"><Clock aria-hidden className="size-3.5" />{step.est_minutes} menit</li>}
+        </ul>
+        <h1 class="mt-4 text-3xl leading-[1.1] font-extrabold text-balance sm:text-5xl">{step.title}</h1>
+
+        <div class="mt-8 max-w-[68ch]"><ChapterMarkdown body={step.body} slides={[]} /></div>
+
+        {step.materials.length > 0 && (
+          <section aria-labelledby="bahan" class="mt-10">
+            <h2 id="bahan" class="text-xl font-extrabold">Bahan</h2>
+            <p class="mt-1 mb-3 text-sm text-zinc-400">Salin atau unduh, lalu pakai di proyekmu.</p>
+            <Materials client:load items={step.materials} />
+          </section>
+        )}
+
+        {step.checks.length > 0 && (
+          <section aria-labelledby="periksa" class={`mt-10 p-5 sm:p-6 ${card}`}>
+            <h2 id="periksa" class="text-xl font-extrabold">Periksa dirimu</h2>
+            <p class="mt-1 text-sm text-zinc-400">Centang setelah benar-benar selesai. Progresmu tersimpan.</p>
+            <div class="mt-3"><Checklist client:load project={def.slug} items={step.checks} done={step.checks.filter((c) => done.has(c.id)).map((c) => c.id)} /></div>
+          </section>
+        )}
+
+        <div class={`mt-6 p-5 ${card}`}><StudioProgress total={total} done={doneCount} /></div>
+
+        <nav aria-label="Langkah lain" class="mt-8 grid gap-3 sm:grid-cols-2">
+          {prev ? (
+            <a href={`/studio-proyek/${def.slug}/${prev.slug}`} class="flex min-h-20 flex-col justify-center rounded-[18px] bg-zinc-900 px-5 py-3 shadow-soft hover:bg-zinc-800">
+              <span class="flex items-center gap-1 text-xs font-semibold text-zinc-400"><ArrowLeft aria-hidden className="size-3.5" />Sebelumnya</span>
+              <span class="font-bold">{prev.title}</span>
+            </a>
+          ) : <span />}
+          {next ? (
+            <a href={`/studio-proyek/${def.slug}/${next.slug}`} class="flex min-h-20 flex-col justify-center rounded-[18px] border-2 border-noir bg-noir px-5 py-3 text-on-noir sm:items-end sm:text-right">
+              <span class="flex items-center gap-1 text-xs font-semibold text-on-noir/70">Berikutnya<ArrowRight aria-hidden className="size-3.5" /></span>
+              <span class="font-bold">{next.title}</span>
+            </a>
+          ) : (
+            <a href={`/studio-proyek/${def.slug}#hasil`} class={`${primaryButton} min-h-20 rounded-[18px]`}>Selesai, kirim hasil akhir<ArrowRight aria-hidden className="size-4" /></a>
+          )}
+        </nav>
+        <p class="mt-6"><a href={`/studio-proyek/${def.slug}`} class={secondaryButton}>Lihat semua langkah</a></p>
+      </div>
+    </main>
+  </div>
+</Base>

@@ -2,12 +2,12 @@
 
 import { Check } from "lucide-react";
 import { useState } from "react";
-import type { StudioItem } from "@/lib/studio/portofolio";
+import type { Check as Item } from "@/lib/studio/schema";
 import { createClient } from "@/lib/supabase/client";
 
 // One step's checklist. Ticks are saved per learner (RLS allows only their own
 // rows); the page tells the progress bar through an event.
-export default function Checklist({ project, items, done }: { project: string; items: StudioItem[]; done: string[] }) {
+export default function Checklist({ project, items, done }: { project: string; items: Item[]; done: string[] }) {
   const [ticked, setTicked] = useState(() => new Set(done));
   const [error, setError] = useState("");
 
