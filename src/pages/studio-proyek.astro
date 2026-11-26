@@ -7,6 +7,7 @@ import SiteHeader from "../components/SiteHeader.astro";
 import Base from "../layouts/Base.astro";
 import { getCurrentUser } from "@/lib/dal";
 import { doneItems, getDef, listDefs } from "@/lib/studio/data";
+import { coverFor } from "@/lib/studio/covers";
 import { LEVELS, STUDIO_FEATURE } from "@/lib/studio/stages";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,7 +21,7 @@ const projects = user && early
       const [full, done] = await Promise.all([getDef(d.slug), doneItems(user.id, d.slug)]);
       const total = (full?.steps ?? []).reduce((n, s) => n + s.checks.length, 0);
       const count = (full?.steps ?? []).reduce((n, s) => n + s.checks.filter((c) => done.has(c.id)).length, 0);
-      return { slug: d.slug, title: d.title, summary: d.summary, level: d.level, hours: d.est_hours, total, done: count, pct: total ? Math.round((count / total) * 100) : 0 };
+      return { cover: coverFor(d.slug), slug: d.slug, title: d.title, summary: d.summary, level: d.level, hours: d.est_hours, total, done: count, pct: total ? Math.round((count / total) * 100) : 0 };
     }))
   : [];
 
@@ -56,10 +57,12 @@ const STAGES = [
               {projects.map((p) => (
                 <li>
                   <a href={`/studio-proyek/${p.slug}`} class="group flex h-full flex-col gap-3 rounded-[18px] border-2 border-noir bg-matcha-100 p-5 text-noir shadow-[4px_4px_0_0_var(--color-noir)] sm:p-6">
-                    <span class="flex items-center justify-between gap-3">
-                      <span aria-hidden class="grid size-12 place-items-center rounded-2xl bg-noir text-on-noir"><Rocket className="size-6" /></span>
-                      <span class="rounded-full bg-noir/10 px-3 py-1 text-xs font-bold">{LEVELS[p.level]}{p.hours ? ` · ${p.hours} jam` : ""}</span>
-                    </span>
+                    {p.cover
+                      ? <span class="relative block"><img src={p.cover} alt="" width="800" height="597" loading="lazy" decoding="async" class="aspect-[16/9] w-full rounded-xl border-2 border-noir bg-[#f3f3ec] object-cover" /><span class="absolute top-3 right-3 rounded-full border-2 border-noir bg-matcha-300 px-3 py-1 text-xs font-bold">{LEVELS[p.level]}{p.hours ? ` · ${p.hours} jam` : ""}</span></span>
+                      : <span class="flex items-center justify-between gap-3">
+                          <span aria-hidden class="grid size-12 place-items-center rounded-2xl bg-noir text-on-noir"><Rocket className="size-6" /></span>
+                          <span class="rounded-full bg-noir/10 px-3 py-1 text-xs font-bold">{LEVELS[p.level]}{p.hours ? ` · ${p.hours} jam` : ""}</span>
+                        </span>}
                     <span class="font-(family-name:--font-bricolage) text-xl font-extrabold tracking-tight sm:text-2xl">{p.title}</span>
                     {p.summary && <span class="text-sm leading-relaxed text-noir/80">{p.summary}</span>}
                     <span class="mt-auto pt-2">

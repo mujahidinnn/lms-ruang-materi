@@ -1,0 +1,57 @@
+# Ilustrasi kartu Studio Proyek
+
+Dijalankan dengan skrip Gemini web dari porto/sopi:
+
+    cd scripts/studio-covers && node ~/Desktop/project/porto/sopi/scripts/gemini-web.mjs "Studio Proyek" ../../.cache/studio-covers
+    node scripts/studio-covers/convert.mjs
+
+## Studio Proyek
+
+1. `portofolio.png` (4:3)
+A laptop showing a personal website layout with a round avatar circle and project cards, a small paper resume and a rocket sticker beside it. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+2. `aplikasi-daftar-tugas.png` (4:3)
+A big phone screen with a to-do checklist: three rows with checkboxes, two ticked, one trash can icon, a pencil leaning on the phone. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+3. `landing-page-umkm.png` (4:3)
+A small warung coffee shop front with an awning, next to a browser window showing a simple landing page, a chat bubble with a phone icon and a map pin. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+4. `aplikasi-cuaca.png` (4:3)
+A phone showing a big sun partly behind a cloud and a row of seven small forecast columns, a raindrop and a location pin floating nearby. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+5. `studi-kasus-desain-aplikasi.png` (4:3)
+A designer's canvas with three phone wireframes connected by arrows, a pen tool cursor, color swatch circles and sticky notes. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+6. `analisis-penjualan.png` (4:3)
+A notebook-style data sheet with a bar chart and a rising line chart, a shopping bag and a magnifying glass over the chart. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+7. `api-catatan.png` (4:3)
+A server box connected by curly braces and arrows to a stack of note cards and a database cylinder, request and response arrows between them. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+8. `jaringan-kantor-kecil.png` (4:3)
+A small router with antennas connected by cables to two laptops, a printer and a wifi symbol, a little office plant. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+9. `catatan-keuangan-mobile.png` (4:3)
+A phone showing a wallet balance with up and down arrows, coins stacked beside it, a small pie chart and a receipt. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+10. `sistem-login-aman.png` (4:3)
+A login form window with a password field of dots, a big padlock and a shield with a check mark, a key beside it. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+11. `dasbor-admin-react.png` (4:3)
+A wide admin dashboard screen with a sidebar, a data table, a bar chart and a donut chart, an atom-like orbit symbol as a small sticker. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+12. `deploy-aplikasi-docker.png` (4:3)
+Stacked shipping containers on a small cargo boat sailing toward a cloud server with an upload arrow and a lock. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+13. `monitoring-layanan.png` (4:3)
+A monitor screen with a heartbeat line graph and gauges, a bell with an alert ring, a small magnifying glass on a log list. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+14. `aplikasi-chat-realtime.png` (4:3)
+Two phones facing each other exchanging speech bubbles with lightning bolts between them, a small typing-dots bubble. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+15. `sistem-pesanan-terdistribusi.png` (4:3)
+Several small connected boxes (order, stock, payment) linked by arrows into a loop around a shopping cart, with a queue of small envelopes. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
+16. `platform-saas-multi-tenant.png` (4:3)
+A cloud building with several separate apartment-like windows each with its own small person icon, a credit card and a calendar sticker. Flat vector sticker illustration for a Gen Z learning app. Thick uniform black ink outlines, bold simple shapes, slight playful tilt, strict palette only: off-white background #f3f3ec, matcha green #c6e59a, pale matcha #e3edc8, pure white #ffffff, ink black #0f100d. No other colors, no gradients, no shadows except a hard black offset shadow under the main object, a few small four-point sparkles as accents. One clear central scene, generous empty margin, no text, no letters, no numbers, no logos, no watermark. Landscape 4:3.
+
