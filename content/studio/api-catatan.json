@@ -1,0 +1,548 @@
+{
+  "slug": "api-catatan",
+  "title": "REST API Catatan",
+  "summary": "Bangun REST API catatan dengan Node.js, Express, dan PostgreSQL: rancang endpoint dan tabel, tulis CRUD dengan validasi dan kode status yang tepat, uji dengan curl dan tes otomatis, lalu online-kan di Render dengan database Neon.",
+  "level": "menengah",
+  "est_hours": 12,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "siapa-pemakai-api",
+      "title": "Tentukan siapa pemakai API-mu",
+      "est_minutes": 15,
+      "body": "## API juga punya pengguna\n\nPengguna API bukan orang yang menekan tombol, melainkan **developer lain** (atau dirimu sendiri bulan depan) yang menulis aplikasi di atasnya: aplikasi web, aplikasi HP, atau skrip kecil. Mereka tidak bisa melihat kodemu. Yang mereka lihat hanya alamat, request, dan respons. Jadi brief API berbicara tentang **kontrak**, bukan tampilan.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat ini: **\"API ini dipakai oleh ___ untuk ___.\"** Contoh: \"dipakai oleh aplikasi web to-do sederhana untuk menyimpan dan mencari catatan\".\n2. Tulis tiga hal yang **pasti** bisa dilakukan lewat API-mu di versi pertama.\n3. Tulis tujuan pribadimu. Proyek ini bagus untuk melamar posisi **backend** atau **full-stack junior**, karena menunjukkan kamu paham HTTP, database, dan pengujian.\n4. Tulis batas versi pertama. Saran kuat: **tanpa login dan tanpa akun pengguna**. Autentikasi adalah proyek tersendiri. Lebih baik API kecil yang rapi daripada API besar yang setengah jadi.\n\n> Ukuran keberhasilan proyek ini sederhana: orang lain bisa memakai API-mu hanya dengan membaca README, tanpa bertanya padamu.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "m-api-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief API Catatan\n\nAPI ini dipakai oleh ___ untuk ___.\n\nTiga hal yang pasti bisa dilakukan:\n1. ___\n2. ___\n3. ___\n\nTujuan pribadi: ___\nTidak dibuat di versi pertama: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-brief-pemakai",
+          "text": "Aku sudah menulis kalimat \"API ini dipakai oleh ... untuk ...\"."
+        },
+        {
+          "id": "api-brief-tiga",
+          "text": "Aku punya tiga hal yang pasti bisa dilakukan lewat API-ku."
+        },
+        {
+          "id": "api-brief-batas",
+          "text": "Aku sudah menulis batas versi pertama, termasuk tanpa login."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-fitur-catatan",
+      "title": "Petakan fitur dan data catatan",
+      "est_minutes": 30,
+      "body": "## Pikirkan dalam kata benda dan kata kerja\n\nCara mudah merancang API: cari **kata benda** (data yang disimpan) dan **kata kerja** (apa yang dilakukan pada data itu). Di proyek ini kata bendanya satu saja: **catatan**. Kata kerjanya hampir selalu empat yang sama, yang disebut CRUD: *Create, Read, Update, Delete*.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis data yang dimiliki satu catatan. Untuk tiap data, tulis apakah wajib atau boleh kosong. Misalnya judul wajib, isi boleh kosong.\n2. Tulis semua yang ingin dilakukan pemakai terhadap catatan, dalam bahasa sehari-hari: \"melihat semua catatan\", \"mencari catatan berisi kata belanja\", \"menyematkan catatan penting di atas\".\n3. Untuk tiap keinginan, tandai **wajib** atau **nanti**. Fitur \"nanti\" ditulis di README sebagai rencana, bukan dikerjakan sekarang.\n4. Tulis tiga hal yang bisa **salah**: judul kosong, catatan yang dicari tidak ada, body yang dikirim bukan JSON. Daftar ini akan jadi bahan validasi dan tes.\n\n## Contoh pemetaan\n\n| Keinginan | Kata kerja | Prioritas |\n| --- | --- | --- |\n| Menulis catatan baru | Create | wajib |\n| Melihat daftar dan mencari | Read | wajib |\n| Menyematkan catatan | Update | wajib |\n| Menghapus catatan | Delete | wajib |\n| Memberi label warna | Update | nanti |\n\nPemikiran tentang hal yang bisa salah sering membedakan developer junior yang siap kerja dari yang belum. Jangan dilewati.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "api-ide-data",
+          "text": "Aku sudah menulis data apa saja yang dimiliki satu catatan."
+        },
+        {
+          "id": "api-ide-crud",
+          "text": "Setiap keinginan pemakai sudah kupetakan ke Create, Read, Update, atau Delete."
+        },
+        {
+          "id": "api-ide-prioritas",
+          "text": "Fitur sudah kutandai wajib atau nanti."
+        },
+        {
+          "id": "api-ide-gagal",
+          "text": "Aku menulis minimal tiga hal yang bisa salah."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-stack-backend",
+      "title": "Pilih stack: Node.js, Express, PostgreSQL",
+      "est_minutes": 25,
+      "body": "## Alat yang banyak dipakai dan cukup sederhana\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Runtime | Node.js 22 LTS atau lebih baru | JavaScript di server, sudah punya test runner dan pembaca `.env` bawaan |\n| Framework | Express 5 | Kecil, dokumentasinya matang, dan sejak versi 5 error di fungsi `async` otomatis diteruskan ke penanganan error |\n| Database | PostgreSQL | Database relasional yang dipakai di banyak perusahaan, tersedia gratis di Neon atau Supabase |\n| Driver | `pg` (node-postgres) | Menulis SQL langsung, jadi kamu benar-benar belajar SQL, bukan hanya ORM |\n| Uji | `node:test` + `supertest` | Tanpa framework tes tambahan, supertest mengirim request ke app tanpa membuka port |\n\nKenapa tidak memakai ORM? ORM boleh dipakai di proyek berikutnya. Untuk proyek pertama, menulis SQL sendiri membuatmu paham apa yang sebenarnya terjadi di database, dan itu sering ditanyakan saat wawancara.\n\n## Yang perlu kamu siapkan\n\n1. Pasang Node.js 22 atau lebih baru. Cek dengan `node -v`.\n2. Siapkan PostgreSQL lokal. Pilihan termudah: Docker (perintahnya ada di langkah berikutnya). Tidak punya Docker? Buat proyek gratis di Neon dan pakai database itu sejak awal.\n3. Pasang alat pengirim request: `curl` (biasanya sudah ada) dan, kalau suka tampilan grafis, ekstensi **Thunder Client** di VS Code.\n4. Tulis dua alasan pilihan stack ini dengan kata-katamu sendiri.\n",
+      "materials": [
+        {
+          "id": "m-api-express-v5",
+          "kind": "tautan",
+          "name": "Express: panduan pindah ke versi 5",
+          "url": "https://expressjs.com/en/guide/migrating-5.html"
+        },
+        {
+          "id": "m-api-pg-intro",
+          "kind": "tautan",
+          "name": "Dokumentasi node-postgres",
+          "url": "https://node-postgres.com/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-tek-node",
+          "text": "Node.js 22 atau lebih baru sudah terpasang."
+        },
+        {
+          "id": "api-tek-postgres",
+          "text": "Aku punya PostgreSQL yang bisa dipakai (Docker lokal atau Neon)."
+        },
+        {
+          "id": "api-tek-alat",
+          "text": "curl atau Thunder Client siap dipakai."
+        },
+        {
+          "id": "api-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memilih stack ini."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-endpoint-dan-tabel",
+      "title": "Rancang endpoint dan tabel",
+      "est_minutes": 60,
+      "body": "## Kontrak dulu, kode belakangan\n\nRancangan API yang ditulis sebelum ngoding mencegah perubahan mendadak yang membuat pemakai API kebingungan. Ada dua yang perlu dirancang: **endpoint** (pintu masuk dari luar) dan **tabel** (bentuk data di database).\n\n## Prinsip endpoint REST\n\n- Path memakai kata benda jamak: `/api/notes`, bukan `/api/ambilCatatan`. Kata kerjanya ada di metode HTTP.\n- `GET` membaca, `POST` membuat, `PATCH` mengubah sebagian, `DELETE` menghapus.\n- Kode status menceritakan hasilnya: **201** untuk berhasil dibuat, **204** untuk berhasil tanpa isi, **400** untuk request yang tidak bisa dibaca, **404** untuk data yang tidak ada, **422** untuk data yang terbaca tetapi melanggar aturan, **500** untuk kesalahan di server.\n- Bentuk error selalu sama, supaya pemakai cukup menulis satu kode penanganan.\n\n## Prinsip tabel\n\n- Kolom `id` dibuat otomatis oleh database dengan `GENERATED ALWAYS AS IDENTITY`.\n- Aturan penting dipasang juga di database (`NOT NULL`, `CHECK`), bukan hanya di JavaScript. Database adalah penjaga terakhir.\n- Simpan waktu dengan `TIMESTAMPTZ` supaya zona waktu tidak membingungkan.\n\n## Yang perlu kamu kerjakan\n\n1. Baca rancangan endpoint di bagian Bahan. Sesuaikan dengan hasil Brainstorming-mu, tapi jaga tetap kecil.\n2. Untuk tiap endpoint, pastikan kamu tahu kode status suksesnya dan error apa saja yang mungkin.\n3. Baca `schema.sql`. Cocokkan setiap kolom dengan data catatan yang kamu tulis sebelumnya.\n4. Simpan kedua berkas: `rancangan.md` dan `schema.sql`. Keduanya masuk ke repositori nanti.\n\n> Kenapa PATCH, bukan PUT? PUT berarti mengganti seluruh catatan, PATCH hanya mengubah field yang dikirim. Untuk menyematkan catatan, cukup kirim `{\"pinned\": true}`. Tulis alasan ini di README, karena ini contoh keputusan desain yang bagus untuk diceritakan.\n",
+      "materials": [
+        {
+          "id": "m-api-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan API Catatan\n\nSemua respons berupa JSON. Error selalu berbentuk { \"error\": \"...\", \"details\": {...} }.\n\n| Metode | Path | Body | Sukses | Error yang mungkin |\n| --- | --- | --- | --- | --- |\n| GET | /health | - | 200 | 500 |\n| GET | /api/notes?q=&limit= | - | 200 (array) | 500 |\n| GET | /api/notes/:id | - | 200 | 400, 404 |\n| POST | /api/notes | { title, content?, pinned? } | 201 + header Location | 400, 422 |\n| PATCH | /api/notes/:id | minimal satu dari title, content, pinned | 200 | 400, 404, 422 |\n| DELETE | /api/notes/:id | - | 204 (tanpa body) | 400, 404 |\n\nAturan data:\n- title: teks, wajib saat membuat, 1-120 karakter setelah spasi di tepi dibuang\n- content: teks, boleh kosong, maksimal 10000 karakter\n- pinned: true atau false, bawaan false\n"
+        },
+        {
+          "id": "m-api-schema",
+          "kind": "kode",
+          "name": "schema.sql",
+          "lang": "sql",
+          "content": "CREATE TABLE IF NOT EXISTS notes (\n  id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  title      TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),\n  content    TEXT NOT NULL DEFAULT '',\n  pinned     BOOLEAN NOT NULL DEFAULT false,\n  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n);\n"
+        },
+        {
+          "id": "m-api-status-mdn",
+          "kind": "tautan",
+          "name": "MDN: daftar kode status HTTP",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-ran-endpoint",
+          "text": "Aku punya tabel endpoint dengan metode, path, dan kode status sukses."
+        },
+        {
+          "id": "api-ran-error",
+          "text": "Untuk tiap endpoint aku tahu kode error yang mungkin muncul."
+        },
+        {
+          "id": "api-ran-tabel",
+          "text": "schema.sql sudah cocok dengan data catatan dari langkah Brainstorming."
+        },
+        {
+          "id": "api-ran-patch",
+          "text": "Aku bisa menjelaskan beda PATCH dan PUT."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-express",
+      "title": "Siapkan proyek Express dan koneksi database",
+      "est_minutes": 60,
+      "body": "## Kerangka yang bisa menyala\n\nTarget langkah ini: server menyala dan `GET /health` menjawab `{\"status\":\"ok\"}` setelah benar-benar menyapa database.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu. Baris Docker boleh dilewati kalau kamu memakai Neon.\n2. Buka `package.json` dan samakan dengan versi di bagian Bahan, terutama `\"type\": \"module\"` (supaya bisa memakai `import`) dan bagian `scripts`. Biarkan `dependencies` yang dibuat npm.\n3. Buat `.env.example` dan `.gitignore` dari bagian Bahan. Salin `.env.example` menjadi `.env`, lalu isi `DATABASE_URL` dengan alamat database-mu. Kalau memakai Neon, salin connection string dari dashboard Neon.\n4. Simpan `schema.sql` dari langkah Merancang di folder paling atas, buat `scripts/init-db.js`, lalu jalankan `npm run db:init`.\n5. Buat `src/db.js`, `src/app.js`, dan `src/server.js`.\n6. Jalankan `npm run dev`, lalu buka http://localhost:3000/health di browser.\n7. Commit dengan pesan `Siapkan kerangka Express dan koneksi Postgres`.\n\n## Kenapa app dan server dipisah?\n\n`app.js` hanya menyusun aplikasi, `server.js` yang membuka port. Dengan begitu, tes nanti bisa mengimpor `app` tanpa menyalakan server sungguhan.\n\n## Kalau gagal\n\n- `ECONNREFUSED`: Postgres belum jalan, atau port di `DATABASE_URL` salah. Cek dengan `docker ps`.\n- `password authentication failed`: periksa nama pengguna dan kata sandi di `DATABASE_URL`.\n- `Cannot use import statement outside a module`: `\"type\": \"module\"` belum ada di `package.json`.\n\n> Berkas `.env` berisi rahasia. Pastikan `.env` ada di `.gitignore` **sebelum** commit pertama.\n",
+      "materials": [
+        {
+          "id": "m-api-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "mkdir api-catatan && cd api-catatan\ngit init\nnpm init -y\nnpm install express pg\nnpm install --save-dev supertest\nmkdir src scripts test\n\n# Postgres lokal lewat Docker (lewati kalau memakai Neon sejak awal)\ndocker run --name pg-catatan -e POSTGRES_PASSWORD=rahasia -e POSTGRES_DB=catatan -p 5432:5432 -d postgres:17\n"
+        },
+        {
+          "id": "m-api-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"api-catatan\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": {\n    \"node\": \">=22\"\n  },\n  \"scripts\": {\n    \"dev\": \"node --watch --env-file=.env src/server.js\",\n    \"start\": \"node src/server.js\",\n    \"db:init\": \"node --env-file=.env scripts/init-db.js\",\n    \"test\": \"node --env-file=.env --test\"\n  }\n}\n"
+        },
+        {
+          "id": "m-api-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "PORT=3000\nDATABASE_URL=postgres://postgres:rahasia@localhost:5432/catatan\n"
+        },
+        {
+          "id": "m-api-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules/\n.env\n"
+        },
+        {
+          "id": "m-api-initdb",
+          "kind": "kode",
+          "name": "scripts/init-db.js",
+          "lang": "javascript",
+          "content": "import { readFile } from \"node:fs/promises\";\nimport { pool } from \"../src/db.js\";\n\nconst sql = await readFile(new URL(\"../schema.sql\", import.meta.url), \"utf8\");\nawait pool.query(sql);\nawait pool.end();\nconsole.log(\"Tabel notes siap.\");\n"
+        },
+        {
+          "id": "m-api-db",
+          "kind": "kode",
+          "name": "src/db.js",
+          "lang": "javascript",
+          "content": "import pg from \"pg\";\n\n// Satu pool untuk seluruh aplikasi. Pool membuka beberapa koneksi\n// dan memakainya bergantian, jadi jangan buat pool baru per request.\nexport const pool = new pg.Pool({\n  connectionString: process.env.DATABASE_URL,\n});\n"
+        },
+        {
+          "id": "m-api-app-v1",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { pool } from \"./db.js\";\n\nexport const app = express();\n\napp.use(express.json({ limit: \"100kb\" }));\n\napp.get(\"/health\", async (req, res) => {\n  await pool.query(\"SELECT 1\");\n  res.json({ status: \"ok\" });\n});\n"
+        },
+        {
+          "id": "m-api-server",
+          "kind": "kode",
+          "name": "src/server.js",
+          "lang": "javascript",
+          "content": "import { app } from \"./app.js\";\n\nconst port = Number(process.env.PORT) || 3000;\n\napp.listen(port, () => {\n  console.log(`API berjalan di http://localhost:${port}`);\n});\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-setup-health",
+          "text": "GET /health menjawab {\"status\":\"ok\"}."
+        },
+        {
+          "id": "api-setup-tabel",
+          "text": "npm run db:init berhasil dan tabel notes sudah ada."
+        },
+        {
+          "id": "api-setup-env",
+          "text": ".env tidak ikut ter-commit, .env.example ikut."
+        },
+        {
+          "id": "api-setup-commit",
+          "text": "Kerangka proyek sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "fondasi-error-dan-validasi",
+      "title": "Pasang fondasi penanganan error dan validasi",
+      "est_minutes": 60,
+      "body": "## Putuskan cara gagal sebelum menulis fitur\n\nSebagian besar kode backend sebenarnya mengurus kasus gagal. Kalau cara gagal diputuskan di awal, setiap endpoint cukup melempar error dan semuanya dijawab dengan bentuk yang sama.\n\n## Tiga bagian kecil\n\n1. **`HttpError`**: error biasa yang membawa kode status. Di endpoint cukup tulis `throw new HttpError(404, \"Catatan tidak ditemukan\")`.\n2. **`errorHandler`**: satu tempat yang mengubah semua error menjadi respons JSON. Error yang tidak dikenal dicatat di log dan dijawab 500 **tanpa** membocorkan detail, karena pesan error database bisa berisi nama tabel atau isi query.\n3. **`validate.js`**: memeriksa id dan body. Semua masukan dari luar dianggap belum bisa dipercaya sampai lolos pemeriksaan.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/errors.js` dan `src/validate.js` dari bagian Bahan.\n2. Perbarui `src/app.js`: pasang `notFound` dan `errorHandler` di **paling bawah**. Urutan di Express penting: middleware error harus didaftarkan setelah semua rute.\n3. Jalankan server dan coba buka http://localhost:3000/tidak-ada. Hasilnya harus 404 berbentuk JSON, bukan halaman HTML.\n4. Baca `parseNote` baris demi baris. Pastikan kamu paham kenapa `title` yang isinya hanya spasi ditolak dan kenapa `pinned: \"true\"` (teks) juga ditolak.\n5. Commit dengan pesan `Tambah penanganan error dan validasi`.\n\n## Catatan Express 5\n\nDi Express 4, error di dalam fungsi `async` harus ditangkap manual dengan `try/catch` lalu `next(err)`. Di Express 5, error yang dilempar di fungsi `async` otomatis sampai ke `errorHandler`. Karena itu kode di langkah berikutnya tidak punya `try/catch` sama sekali.\n",
+      "materials": [
+        {
+          "id": "m-api-errors",
+          "kind": "kode",
+          "name": "src/errors.js",
+          "lang": "javascript",
+          "content": "export class HttpError extends Error {\n  constructor(status, message, details) {\n    super(message);\n    this.status = status;\n    this.details = details;\n  }\n}\n\nexport function notFound(req, res) {\n  res.status(404).json({ error: `Rute ${req.method} ${req.path} tidak ada` });\n}\n\n// Express mengenali middleware error dari jumlah parameternya (4),\n// jadi `next` harus tetap ditulis walau tidak dipakai.\nexport function errorHandler(err, req, res, next) {\n  if (err instanceof HttpError) {\n    return res.status(err.status).json({ error: err.message, details: err.details });\n  }\n  if (err.type === \"entity.parse.failed\") {\n    return res.status(400).json({ error: \"Body bukan JSON yang valid\" });\n  }\n  if (err.expose && err.status) {\n    return res.status(err.status).json({ error: err.message });\n  }\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n}\n"
+        },
+        {
+          "id": "m-api-validate",
+          "kind": "kode",
+          "name": "src/validate.js",
+          "lang": "javascript",
+          "content": "import { HttpError } from \"./errors.js\";\n\nconst MAX_INT = 2147483647;\n\nexport function parseId(raw) {\n  const id = Number(raw);\n  if (!Number.isInteger(id) || id < 1 || id > MAX_INT) {\n    throw new HttpError(400, \"id harus bilangan bulat positif\");\n  }\n  return id;\n}\n\n// partial = true dipakai PATCH: field boleh tidak dikirim, tapi minimal satu.\nexport function parseNote(body, { partial = false } = {}) {\n  if (body === null || typeof body !== \"object\" || Array.isArray(body)) {\n    throw new HttpError(400, \"Body harus berupa objek JSON\");\n  }\n\n  const errors = {};\n  const note = {};\n\n  if (body.title !== undefined) {\n    const title = typeof body.title === \"string\" ? body.title.trim() : \"\";\n    if (title.length === 0) errors.title = \"wajib berupa teks dan tidak boleh kosong\";\n    else if (title.length > 120) errors.title = \"maksimal 120 karakter\";\n    else note.title = title;\n  } else if (!partial) {\n    errors.title = \"wajib diisi\";\n  }\n\n  if (body.content !== undefined) {\n    if (typeof body.content !== \"string\") errors.content = \"harus berupa teks\";\n    else if (body.content.length > 10000) errors.content = \"maksimal 10000 karakter\";\n    else note.content = body.content;\n  }\n\n  if (body.pinned !== undefined) {\n    if (typeof body.pinned !== \"boolean\") errors.pinned = \"harus true atau false\";\n    else note.pinned = body.pinned;\n  }\n\n  if (Object.keys(errors).length > 0) {\n    throw new HttpError(422, \"Data catatan tidak valid\", errors);\n  }\n  if (partial && Object.keys(note).length === 0) {\n    throw new HttpError(400, \"Kirim minimal satu field: title, content, atau pinned\");\n  }\n  return note;\n}\n"
+        },
+        {
+          "id": "m-api-app-v2",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { pool } from \"./db.js\";\nimport { errorHandler, notFound } from \"./errors.js\";\n\nexport const app = express();\n\napp.use(express.json({ limit: \"100kb\" }));\n\napp.get(\"/health\", async (req, res) => {\n  await pool.query(\"SELECT 1\");\n  res.json({ status: \"ok\" });\n});\n\n// Rute catatan akan dipasang di sini pada langkah berikutnya.\n\n// Dua baris ini harus selalu paling bawah.\napp.use(notFound);\napp.use(errorHandler);\n"
+        },
+        {
+          "id": "m-api-express-error",
+          "kind": "tautan",
+          "name": "Express: penanganan error",
+          "url": "https://expressjs.com/en/guide/error-handling.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-err-404",
+          "text": "Rute yang tidak ada dijawab 404 dalam bentuk JSON."
+        },
+        {
+          "id": "api-err-urutan",
+          "text": "notFound dan errorHandler terpasang paling bawah di app.js."
+        },
+        {
+          "id": "api-err-paham",
+          "text": "Aku bisa menjelaskan kenapa error 500 tidak menampilkan detail aslinya."
+        },
+        {
+          "id": "api-err-commit",
+          "text": "Fondasi error dan validasi sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "endpoint-baca-catatan",
+      "title": "Tulis endpoint membaca dan mencari catatan",
+      "est_minutes": 90,
+      "body": "## Mulai dari membaca\n\nEndpoint baca paling aman dikerjakan dulu, karena tidak mengubah data. Sambil menulisnya, kamu berlatih aturan paling penting di backend: **query berparameter**.\n\n## Bahaya menempel string ke SQL\n\nJangan pernah menulis seperti ini:\n\n```js\n// SALAH: rawan SQL injection\npool.query(`SELECT * FROM notes WHERE title ILIKE '%${q}%'`);\n```\n\nKalau seseorang mengirim `q` berisi tanda kutip dan perintah SQL, perintah itu ikut dijalankan. Dengan `$1`, `$2`, dan array nilai, `pg` mengirim SQL dan nilainya **terpisah** ke database, sehingga nilai itu selalu diperlakukan sebagai data, bukan perintah.\n\n## Yang perlu kamu kerjakan\n\n1. Buat folder `src/routes` dan berkas `src/routes/notes.js` dari bagian Bahan.\n2. Di `src/app.js`, tambahkan import dan pasang router **sebelum** `notFound`:\n\n```js\nimport { notes } from \"./routes/notes.js\";\n// ...\napp.use(\"/api/notes\", notes);\n```\n\nVersi lengkap `app.js` ada di bagian Bahan.\n3. Isi beberapa catatan contoh lewat SQL editor database-mu atau `psql`, misalnya `INSERT INTO notes (title, content) VALUES ('Belanja', 'Beras dan telur');`.\n4. Coba di browser: `/api/notes`, `/api/notes?q=beras`, `/api/notes?limit=1`, `/api/notes/1`, `/api/notes/999`, dan `/api/notes/abc`. Perhatikan kode status masing-masing di tab Network DevTools.\n5. Commit dengan pesan `Tambah endpoint baca dan cari catatan`.\n\n## Perhatikan\n\n- `limit` dibatasi 1 sampai 100. Tanpa batas, satu request bisa meminta sejuta baris dan membuat server kewalahan.\n- Catatan yang disematkan (`pinned`) selalu tampil paling atas, lalu urut dari yang terbaru diubah.\n",
+      "materials": [
+        {
+          "id": "m-api-notes-read",
+          "kind": "kode",
+          "name": "src/routes/notes.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport { pool } from \"../db.js\";\nimport { HttpError } from \"../errors.js\";\nimport { parseId } from \"../validate.js\";\n\nexport const notes = Router();\n\nnotes.get(\"/\", async (req, res) => {\n  const q = typeof req.query.q === \"string\" ? req.query.q.trim() : \"\";\n  const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 100);\n\n  // Nilai dari pengguna selalu lewat $1, $2, ... dan tidak pernah\n  // ditempel ke string SQL. Itulah yang mencegah SQL injection.\n  const { rows } = await pool.query(\n    `SELECT * FROM notes\n     WHERE $1 = '' OR title ILIKE '%' || $1 || '%' OR content ILIKE '%' || $1 || '%'\n     ORDER BY pinned DESC, updated_at DESC\n     LIMIT $2`,\n    [q, limit]\n  );\n  res.json(rows);\n});\n\nnotes.get(\"/:id\", async (req, res) => {\n  const id = parseId(req.params.id);\n  const { rows } = await pool.query(\"SELECT * FROM notes WHERE id = $1\", [id]);\n  if (rows.length === 0) throw new HttpError(404, \"Catatan tidak ditemukan\");\n  res.json(rows[0]);\n});\n"
+        },
+        {
+          "id": "m-api-app-final",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { pool } from \"./db.js\";\nimport { errorHandler, notFound } from \"./errors.js\";\nimport { notes } from \"./routes/notes.js\";\n\nexport const app = express();\n\napp.use(express.json({ limit: \"100kb\" }));\n\napp.get(\"/health\", async (req, res) => {\n  await pool.query(\"SELECT 1\");\n  res.json({ status: \"ok\" });\n});\n\napp.use(\"/api/notes\", notes);\n\n// Dua baris ini harus selalu paling bawah.\napp.use(notFound);\napp.use(errorHandler);\n"
+        },
+        {
+          "id": "m-api-pg-queries",
+          "kind": "tautan",
+          "name": "node-postgres: query berparameter",
+          "url": "https://node-postgres.com/features/queries"
+        },
+        {
+          "id": "m-api-express-routing",
+          "kind": "tautan",
+          "name": "Express: routing dan Router",
+          "url": "https://expressjs.com/en/guide/routing.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-baca-daftar",
+          "text": "GET /api/notes mengembalikan array catatan."
+        },
+        {
+          "id": "api-baca-cari",
+          "text": "Pencarian ?q= dan batas ?limit= berfungsi."
+        },
+        {
+          "id": "api-baca-status",
+          "text": "id yang tidak ada dijawab 404, id yang bukan angka dijawab 400."
+        },
+        {
+          "id": "api-baca-param",
+          "text": "Semua nilai dari pengguna masuk lewat $1, $2, bukan ditempel ke string SQL."
+        },
+        {
+          "id": "api-baca-commit",
+          "text": "Endpoint baca sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "endpoint-tulis-catatan",
+      "title": "Tulis endpoint membuat, mengubah, dan menghapus",
+      "est_minutes": 120,
+      "body": "## Saatnya mengubah data\n\nTiga endpoint terakhir melengkapi CRUD. Ketiganya mengikuti pola yang sama: **validasi dulu, baru sentuh database, lalu jawab dengan kode status yang tepat.**\n\n## Yang perlu kamu kerjakan\n\n1. Di `src/routes/notes.js`, ubah import validasi menjadi `import { parseId, parseNote } from \"../validate.js\";`.\n2. Tambahkan tiga rute dari bagian Bahan di bawah rute GET.\n3. Coba `POST` dengan Thunder Client: metode POST, URL `http://localhost:3000/api/notes`, tab Body pilih JSON, isi `{\"title\": \"Catatan pertama\"}`. Hasilnya harus **201**, dengan header `Location` berisi alamat catatan baru.\n4. Coba `PATCH` dengan body `{\"pinned\": true}`. Judul dan isi harus tetap seperti semula.\n5. Coba `DELETE`. Hasilnya **204** tanpa body. Lalu `GET` catatan yang sama: harus 404.\n6. Commit dengan pesan `Lengkapi CRUD catatan`.\n\n## Hal yang sering terlewat\n\n- **`RETURNING *`** membuat database langsung mengembalikan baris yang baru dibuat atau diubah, jadi tidak perlu query kedua.\n- **`COALESCE($2, title)`** berarti \"pakai nilai baru kalau dikirim, kalau tidak pakai nilai lama\". Karena itu field yang tidak dikirim diubah menjadi `null` dulu sebelum masuk query.\n- **`rowCount`** dari `DELETE` memberi tahu berapa baris yang terhapus. Nol berarti catatannya tidak ada, jadi jawab 404, bukan 204.\n- **`updated_at`** diperbarui manual di query `UPDATE`. Kalau lupa, urutan daftar catatan jadi salah.\n- Request tanpa header `Content-Type: application/json` membuat `req.body` kosong. `parseNote` menjawabnya dengan 400 dan pesan yang jelas, bukan error 500.\n\n## Uji batas sebelum lanjut\n\nKirim `{\"title\": \"   \"}`, `{\"title\": 123}`, dan `{\"pinned\": \"ya\"}`. Ketiganya harus dijawab **422** dengan `details` yang menunjuk field yang salah.\n",
+      "materials": [
+        {
+          "id": "m-api-notes-write",
+          "kind": "kode",
+          "name": "src/routes/notes.js (tambahan)",
+          "lang": "javascript",
+          "content": "// Tambahkan di bawah rute GET pada src/routes/notes.js,\n// dan ubah import validasi menjadi:\n// import { parseId, parseNote } from \"../validate.js\";\n\nnotes.post(\"/\", async (req, res) => {\n  const note = parseNote(req.body);\n  const { rows } = await pool.query(\n    `INSERT INTO notes (title, content, pinned)\n     VALUES ($1, $2, $3)\n     RETURNING *`,\n    [note.title, note.content ?? \"\", note.pinned ?? false]\n  );\n  res.status(201).location(`/api/notes/${rows[0].id}`).json(rows[0]);\n});\n\nnotes.patch(\"/:id\", async (req, res) => {\n  const id = parseId(req.params.id);\n  const note = parseNote(req.body, { partial: true });\n\n  // COALESCE: kalau field tidak dikirim (null), nilai lama dipertahankan.\n  const { rows } = await pool.query(\n    `UPDATE notes SET\n       title = COALESCE($2, title),\n       content = COALESCE($3, content),\n       pinned = COALESCE($4, pinned),\n       updated_at = now()\n     WHERE id = $1\n     RETURNING *`,\n    [id, note.title ?? null, note.content ?? null, note.pinned ?? null]\n  );\n  if (rows.length === 0) throw new HttpError(404, \"Catatan tidak ditemukan\");\n  res.json(rows[0]);\n});\n\nnotes.delete(\"/:id\", async (req, res) => {\n  const id = parseId(req.params.id);\n  const { rowCount } = await pool.query(\"DELETE FROM notes WHERE id = $1\", [id]);\n  if (rowCount === 0) throw new HttpError(404, \"Catatan tidak ditemukan\");\n  res.status(204).end();\n});\n"
+        },
+        {
+          "id": "m-api-express-res",
+          "kind": "tautan",
+          "name": "Express 5: referensi objek response",
+          "url": "https://expressjs.com/en/5x/api.html#res"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-tulis-post",
+          "text": "POST menjawab 201 dengan header Location."
+        },
+        {
+          "id": "api-tulis-patch",
+          "text": "PATCH hanya mengubah field yang dikirim."
+        },
+        {
+          "id": "api-tulis-delete",
+          "text": "DELETE menjawab 204, dan catatan yang sudah dihapus menjawab 404."
+        },
+        {
+          "id": "api-tulis-422",
+          "text": "Body yang melanggar aturan dijawab 422 dengan details per field."
+        },
+        {
+          "id": "api-tulis-commit",
+          "text": "CRUD lengkap sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-manual-curl",
+      "title": "Uji manual dengan curl dan Thunder Client",
+      "est_minutes": 45,
+      "body": "## Jadilah pemakai API-mu sendiri\n\nSebelum menulis tes otomatis, jalani semua endpoint seperti developer yang baru pertama kali memakai API-mu. Opsi `-i` pada curl menampilkan kode status dan header, bukan hanya body, dan justru dua hal itulah yang sedang diuji.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan server dengan `npm run dev`.\n2. Jalankan perintah di `uji-manual.sh` satu per satu, bukan sekaligus. Ganti id `1` dengan id yang benar dari hasil POST.\n3. Untuk tiap perintah, cocokkan kode status dengan tabel di `rancangan.md`. Tandai yang tidak cocok.\n4. Ulangi alur yang sama di Thunder Client dan simpan request-nya dalam satu **Collection** bernama `API Catatan`. Collection ini bisa diekspor dan dibagikan.\n5. Perhatikan terminal server selama pengujian. Tidak boleh ada error yang tercatat untuk kasus yang seharusnya 400, 404, atau 422. Error di log hanya wajar untuk 500.\n\n## Kasus nakal yang layak dicoba\n\n- Body sangat besar (lebih dari 100 KB). Harus ditolak dengan 413, bukan membuat server macet.\n- `q` berisi tanda kutip, misalnya `?q=it's`. Harus tetap 200, bukan 500. Ini bukti query berparameter bekerja.\n- `limit=-5` dan `limit=abc`. Harus tetap 200 dengan jumlah yang masuk akal.\n\nCatat setiap bug yang kamu temukan dan cara memperbaikinya. Satu cerita debugging yang jujur sangat bernilai di wawancara.\n",
+      "materials": [
+        {
+          "id": "m-api-curl",
+          "kind": "kode",
+          "name": "uji-manual.sh",
+          "lang": "bash",
+          "content": "BASE=http://localhost:3000\n\n# 1. Server dan database hidup?\ncurl -i $BASE/health\n\n# 2. Buat catatan (harus 201 dan ada header Location)\ncurl -i -X POST $BASE/api/notes \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Ide proyek\",\"content\":\"API catatan dengan Express\"}'\n\n# 3. Daftar dan cari\ncurl -i \"$BASE/api/notes\"\ncurl -i \"$BASE/api/notes?q=express&limit=5\"\n\n# 4. Baca satu (ganti 1 dengan id dari langkah 2)\ncurl -i $BASE/api/notes/1\n\n# 5. Ubah sebagian\ncurl -i -X PATCH $BASE/api/notes/1 \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"pinned\":true}'\n\n# 6. Hapus (harus 204), lalu baca lagi (harus 404)\ncurl -i -X DELETE $BASE/api/notes/1\ncurl -i $BASE/api/notes/1\n\n# 7. Kasus gagal\ncurl -i $BASE/api/notes/abc                                  # 400\ncurl -i -X POST $BASE/api/notes -H \"Content-Type: application/json\" -d '{}'          # 422\ncurl -i -X POST $BASE/api/notes -H \"Content-Type: application/json\" -d '{\"title\":'   # 400\ncurl -i $BASE/tidak-ada                                      # 404\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-manual-semua",
+          "text": "Semua endpoint sudah kucoba dan kode statusnya cocok dengan rancangan."
+        },
+        {
+          "id": "api-manual-gagal",
+          "text": "Kasus gagal (400, 404, 422) sudah kucoba."
+        },
+        {
+          "id": "api-manual-kutip",
+          "text": "Pencarian dengan tanda kutip tetap menjawab 200."
+        },
+        {
+          "id": "api-manual-koleksi",
+          "text": "Request tersimpan di Collection Thunder Client."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-otomatis-node-test",
+      "title": "Tulis tes otomatis dengan node:test dan supertest",
+      "est_minutes": 90,
+      "body": "## Uji sekali tulis, jalankan selamanya\n\nUji manual bagus untuk menemukan masalah, tapi melelahkan kalau diulang setiap ada perubahan. Tes otomatis memastikan perubahan besok tidak merusak yang sudah jalan hari ini.\n\n`supertest` mengirim request langsung ke objek `app` tanpa membuka port. Inilah alasan `app.js` dan `server.js` dipisah sejak awal.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `test/notes.test.js` dari bagian Bahan.\n2. Jalankan `npm test`. Node otomatis mencari berkas berakhiran `.test.js`.\n3. Pastikan kelima tes lulus. Kalau ada yang gagal, baca pesannya: `node:assert` menampilkan nilai yang diharapkan dan nilai yang didapat.\n4. Rusak kodemu dengan sengaja. Misalnya ubah `res.status(201)` menjadi `res.status(200)`, lalu jalankan tes lagi. Tes harus gagal. Kembalikan seperti semula. Tes yang tidak pernah gagal belum tentu menguji sesuatu.\n5. Tambahkan minimal satu tes milikmu sendiri, misalnya `PATCH` dengan body kosong harus 400, atau `DELETE` id yang tidak ada harus 404.\n6. Commit dengan pesan `Tambah tes otomatis`.\n\n## Penting soal database tes\n\nTes ini benar-benar menulis ke database di `DATABASE_URL`. Jalankan hanya terhadap database lokal atau database khusus pengembangan, **jangan** terhadap database produksi. Tes alur lengkap menghapus catatan yang dibuatnya sendiri, jadi database tetap bersih.\n\n`after(() => pool.end())` menutup koneksi setelah semua tes selesai. Tanpa baris ini, proses tes bisa menggantung karena koneksi database masih terbuka.\n",
+      "materials": [
+        {
+          "id": "m-api-test",
+          "kind": "kode",
+          "name": "test/notes.test.js",
+          "lang": "javascript",
+          "content": "import { test, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport request from \"supertest\";\nimport { app } from \"../src/app.js\";\nimport { pool } from \"../src/db.js\";\n\n// Tutup koneksi database supaya proses tes bisa selesai.\nafter(() => pool.end());\n\ntest(\"GET /health mengembalikan ok\", async () => {\n  const res = await request(app).get(\"/health\");\n  assert.equal(res.status, 200);\n  assert.deepEqual(res.body, { status: \"ok\" });\n});\n\ntest(\"alur lengkap: buat, baca, ubah, hapus\", async () => {\n  const created = await request(app)\n    .post(\"/api/notes\")\n    .send({ title: \"Belanja\", content: \"Beras, telur\" });\n  assert.equal(created.status, 201);\n  const id = created.body.id;\n  assert.equal(created.headers.location, `/api/notes/${id}`);\n\n  const read = await request(app).get(`/api/notes/${id}`);\n  assert.equal(read.status, 200);\n  assert.equal(read.body.title, \"Belanja\");\n\n  const updated = await request(app).patch(`/api/notes/${id}`).send({ pinned: true });\n  assert.equal(updated.status, 200);\n  assert.equal(updated.body.pinned, true);\n  assert.equal(updated.body.title, \"Belanja\");\n\n  const deleted = await request(app).delete(`/api/notes/${id}`);\n  assert.equal(deleted.status, 204);\n\n  const gone = await request(app).get(`/api/notes/${id}`);\n  assert.equal(gone.status, 404);\n});\n\ntest(\"POST tanpa title ditolak dengan 422\", async () => {\n  const res = await request(app).post(\"/api/notes\").send({ content: \"tanpa judul\" });\n  assert.equal(res.status, 422);\n  assert.ok(res.body.details.title);\n});\n\ntest(\"id yang bukan angka ditolak dengan 400\", async () => {\n  const res = await request(app).get(\"/api/notes/abc\");\n  assert.equal(res.status, 400);\n});\n\ntest(\"JSON rusak ditolak dengan 400\", async () => {\n  const res = await request(app)\n    .post(\"/api/notes\")\n    .set(\"Content-Type\", \"application/json\")\n    .send('{\"title\": ');\n  assert.equal(res.status, 400);\n});\n"
+        },
+        {
+          "id": "m-api-node-test",
+          "kind": "tautan",
+          "name": "Node.js: dokumentasi test runner",
+          "url": "https://nodejs.org/api/test.html"
+        },
+        {
+          "id": "m-api-supertest",
+          "kind": "tautan",
+          "name": "supertest di npm",
+          "url": "https://www.npmjs.com/package/supertest"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-tes-lulus",
+          "text": "npm test menjalankan semua tes dan semuanya lulus."
+        },
+        {
+          "id": "api-tes-rusak",
+          "text": "Aku sudah merusak kode dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "api-tes-sendiri",
+          "text": "Aku menambah minimal satu tes buatanku sendiri."
+        },
+        {
+          "id": "api-tes-db",
+          "text": "Tes hanya berjalan terhadap database lokal atau pengembangan."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-render-dan-neon",
+      "title": "Online-kan di Render dengan database Neon",
+      "est_minutes": 90,
+      "body": "## Dari localhost ke internet\n\nAPI yang hanya hidup di laptopmu belum bisa dipakai orang lain. Kita butuh dua hal: **database online** (Neon) dan **server yang menjalankan Node** (Render). Keduanya punya paket gratis. Tampilan dashboard bisa berubah, jadi kalau ada yang berbeda, ikuti dokumentasi resminya.\n\n## 1. Database di Neon\n\n1. Buat akun dan proyek baru di Neon. Pilih region yang dekat dengan region Render yang akan kamu pakai, misalnya Singapore.\n2. Salin **connection string** dari dashboard. Bentuknya `postgresql://...neon.tech/...?sslmode=require`. Bagian `sslmode=require` wajib ada.\n3. Buka **SQL Editor** di Neon, tempel isi `schema.sql`, lalu jalankan. Tabel `notes` sekarang ada di database online.\n\nKalau sejak awal kamu sudah memakai Neon untuk pengembangan, buat **branch** atau database terpisah untuk produksi, supaya tes tidak mengotori data produksi.\n\n## 2. Server di Render\n\n1. Pastikan semua perubahan sudah di-push ke GitHub.\n2. Di Render, buat **Web Service** baru dan hubungkan ke repositori `api-catatan`.\n3. Isi pengaturannya: Build Command `npm install`, Start Command `npm start`, paket **Free**.\n4. Di bagian **Environment**, tambahkan `DATABASE_URL` berisi connection string Neon. `PORT` tidak perlu diisi, karena Render mengisinya sendiri dan kodemu sudah membacanya dari `process.env.PORT`.\n5. Isi **Health Check Path** dengan `/health`.\n6. Tunggu sampai status **Live**, lalu buka `https://NAMA-LAYANAN.onrender.com/health`.\n\n## 3. Uji ulang di alamat publik\n\nJalankan ulang `uji-manual.sh` dengan `BASE` diganti alamat Render-mu.\n\n## Kalau gagal\n\n- Build gagal: buka tab **Logs**. Sering penyebabnya versi Node terlalu lama, padahal `engines` di `package.json` sudah meminta Node 22 atau lebih baru.\n- `/health` menjawab 500: `DATABASE_URL` salah ketik atau tabel belum dibuat di Neon.\n- Request pertama lambat: paket gratis Render tidur setelah beberapa saat tanpa pengunjung. Ini wajar, tulis di README supaya pemakai tidak kaget.\n",
+      "materials": [
+        {
+          "id": "m-api-render-docs",
+          "kind": "tautan",
+          "name": "Render: deploy aplikasi Express",
+          "url": "https://render.com/docs/deploy-node-express-app"
+        },
+        {
+          "id": "m-api-render-free",
+          "kind": "tautan",
+          "name": "Render: batasan paket gratis",
+          "url": "https://render.com/docs/free"
+        },
+        {
+          "id": "m-api-neon-connect",
+          "kind": "tautan",
+          "name": "Neon: menghubungkan aplikasi ke database",
+          "url": "https://neon.tech/docs/connect/connect-from-any-app"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-dep-neon",
+          "text": "Tabel notes sudah dibuat di database Neon."
+        },
+        {
+          "id": "api-dep-env",
+          "text": "DATABASE_URL terpasang di Environment Render, tidak di dalam kode."
+        },
+        {
+          "id": "api-dep-health",
+          "text": "/health di alamat Render menjawab {\"status\":\"ok\"}."
+        },
+        {
+          "id": "api-dep-crud",
+          "text": "Alur buat, baca, ubah, hapus berhasil di alamat publik."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-tabel-endpoint",
+      "title": "Tulis README dengan tabel endpoint",
+      "est_minutes": 45,
+      "body": "## README adalah antarmuka API-mu\n\nAPI tidak punya tampilan, jadi README-lah yang dibaca orang pertama kali. Ingat ukuran keberhasilan dari brief: orang lain bisa memakai API-mu hanya dengan membaca README.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template di bagian Bahan ke `README.md` dan ganti semua `___`.\n2. Pastikan tabel endpoint sama persis dengan kode yang berjalan. Cara cepat memeriksanya: minta seorang teman mencoba satu endpoint hanya berbekal README.\n3. Isi **Keputusan desain** dengan dua keputusan nyata, misalnya kenapa PATCH dan bukan PUT, kenapa 422 untuk validasi, atau kenapa SQL langsung tanpa ORM.\n4. Isi **Yang kupelajari** dengan tiga hal dan satu rencana berikutnya, misalnya autentikasi, paginasi dengan cursor, atau label.\n5. Ekspor Collection Thunder Client ke berkas JSON dan simpan di repositori, supaya orang bisa langsung mencoba.\n6. Commit, push, lalu isi deskripsi repositori GitHub dengan satu kalimat dan alamat Render-mu.\n7. Kirim alamat API-mu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membangun backend utuh: merancang kontrak, menulis SQL yang aman, menangani error dengan rapi, menguji otomatis, dan merilisnya ke internet. Itu inti pekerjaan backend developer sehari-hari. Langkah logis berikutnya adalah membuat tampilan web yang memakai API ini.\n",
+      "materials": [
+        {
+          "id": "m-api-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# API Catatan\n\nREST API untuk menyimpan catatan: buat, baca, cari, ubah, dan hapus.\nDibangun dengan Node.js, Express 5, dan PostgreSQL.\n\n**URL publik:** https://___.onrender.com\n(Paket gratis Render tidur saat sepi, jadi request pertama bisa butuh sekitar satu menit.)\n\n## Endpoint\n\n| Metode | Path | Keterangan | Sukses |\n| --- | --- | --- | --- |\n| GET | /health | Cek server dan database | 200 |\n| GET | /api/notes | Daftar catatan. Query: `q` (cari), `limit` (1-100, bawaan 20) | 200 |\n| GET | /api/notes/:id | Satu catatan | 200 |\n| POST | /api/notes | Buat catatan. Body: `title` (wajib), `content`, `pinned` | 201 |\n| PATCH | /api/notes/:id | Ubah sebagian. Minimal satu field | 200 |\n| DELETE | /api/notes/:id | Hapus catatan | 204 |\n\nBentuk error:\n\n```json\n{ \"error\": \"Data catatan tidak valid\", \"details\": { \"title\": \"wajib diisi\" } }\n```\n\n| Kode | Arti |\n| --- | --- |\n| 400 | id atau body tidak bisa dibaca |\n| 404 | Catatan atau rute tidak ada |\n| 422 | Body terbaca, tapi isinya tidak memenuhi aturan |\n| 500 | Kesalahan di server |\n\n## Contoh\n\n```bash\ncurl -X POST https://___.onrender.com/api/notes \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Halo\",\"content\":\"Catatan pertama\"}'\n```\n\n## Menjalankan di komputer sendiri\n\n1. `npm install`\n2. Salin `.env.example` menjadi `.env`, lalu isi `DATABASE_URL`.\n3. `npm run db:init` untuk membuat tabel.\n4. `npm run dev`, lalu buka http://localhost:3000/health\n5. `npm test` untuk menjalankan tes otomatis.\n\n## Keputusan desain\n\n- ___ (contoh: kenapa PATCH, bukan PUT)\n- ___\n\n## Yang kupelajari\n\n- ___\n- ___\n- ___\n\nYang ingin kutambah berikutnya: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "api-dok-tabel",
+          "text": "README berisi tabel endpoint yang cocok dengan kode."
+        },
+        {
+          "id": "api-dok-jalankan",
+          "text": "README menjelaskan cara menjalankan dan menguji di komputer sendiri."
+        },
+        {
+          "id": "api-dok-keputusan",
+          "text": "Aku menulis dua keputusan desain beserta alasannya."
+        },
+        {
+          "id": "api-dok-tautan",
+          "text": "Alamat API publik terpasang di README dan deskripsi repositori."
+        }
+      ]
+    }
+  ]
+}
