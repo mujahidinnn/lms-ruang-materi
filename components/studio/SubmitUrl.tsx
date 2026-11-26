@@ -48,7 +48,7 @@ export default function SubmitUrl({ project, saved, handle }: { project: string;
     <form onSubmit={save} className="grid gap-3">
       <label className="text-sm text-zinc-400">
         <span className="font-semibold text-zinc-300">Alamat situs yang sudah online</span>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" maxLength={300} placeholder="https://namamu.github.io/portofolio" className={`${field} mt-1 w-full`} />
+        <input value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" maxLength={300} placeholder="https://… (situs, repo, atau prototipe)" className={`${field} mt-1 w-full`} />
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <button disabled={busy || !url.trim()} className={primaryButton}>{current ? "Perbarui alamat" : "Simpan alamat"}</button>
