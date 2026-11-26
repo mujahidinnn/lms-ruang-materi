@@ -1,0 +1,530 @@
+{
+  "slug": "catatan-keuangan-mobile",
+  "title": "Aplikasi Catatan Keuangan (Mobile)",
+  "summary": "Bangun aplikasi pencatat keuangan pribadi dengan React Native dan Expo: catat pemasukan dan pengeluaran, lihat daftar per hari, saldo bulanan, dan ringkasan per kategori, simpan data di HP dengan SQLite, uji di Expo Go, lalu buat APK dengan EAS Build dan bagikan.",
+  "level": "menengah",
+  "est_hours": 14,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-kebiasaan-uangmu",
+      "title": "Kenali kebiasaan uangmu",
+      "est_minutes": 15,
+      "body": "## Aplikasi ini untuk satu orang: kamu\n\nKebanyakan orang berhenti mencatat keuangan setelah seminggu. Alasannya hampir selalu sama: mencatat terasa lama. Karena itu tujuan proyek ini sederhana: **mencatat satu transaksi harus selesai dalam 10 detik**, langsung dari HP, tanpa internet.\n\nKamu akan membuat **Uangku**, aplikasi Android (dan iOS) untuk mencatat pemasukan dan pengeluaran pribadi. Datanya tersimpan di HP, bukan di server.\n\n## Yang perlu kamu kerjakan\n\n1. Lihat mutasi rekening atau dompet digitalmu seminggu terakhir. Tulis lima transaksi yang paling sering terjadi, misalnya makan siang, ojek, atau isi pulsa.\n2. Lengkapi kalimat ini: **\"Uangku membantu ___ supaya tahu ___ setiap akhir bulan.\"**\n3. Tulis satu pertanyaan yang ingin kamu jawab dengan aplikasi ini, misalnya *\"Uangku paling banyak habis untuk apa?\"*\n4. Tulis apa yang **tidak** dibuat di versi pertama: sinkronisasi cloud, login, banyak mata uang, anggaran, grafik rumit.\n\n> Aplikasi kecil yang kamu pakai sendiri setiap hari lebih meyakinkan di portofolio daripada aplikasi besar yang tidak pernah dipakai siapa pun.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "uk-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief Uangku\n\nUangku membantu ___ supaya tahu ___ setiap akhir bulan.\n\nLima transaksi yang paling sering:\n1. ___\n2. ___\n3. ___\n4. ___\n5. ___\n\nPertanyaan yang ingin dijawab: ___\n\nTarget: mencatat satu transaksi dalam 10 detik.\n\nTidak dibuat di versi pertama: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-brief-kalimat",
+          "text": "Aku sudah melengkapi kalimat \"Uangku membantu ... supaya tahu ...\"."
+        },
+        {
+          "id": "uk-brief-transaksi",
+          "text": "Aku menulis lima transaksi yang paling sering kulakukan."
+        },
+        {
+          "id": "uk-brief-pertanyaan",
+          "text": "Aku punya satu pertanyaan yang ingin dijawab aplikasi ini."
+        },
+        {
+          "id": "uk-brief-batas",
+          "text": "Aku menulis hal yang tidak dibuat di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-fitur-uangku",
+      "title": "Petakan fitur dan alur mencatat",
+      "est_minutes": 30,
+      "body": "## Dari kebiasaan ke daftar fitur\n\nAmbil lima transaksi dari langkah Brief, lalu bayangkan kamu mencatatnya satu per satu di HP. Setiap ketukan yang terasa merepotkan adalah calon masalah.\n\n## Fitur versi pertama\n\n| Fitur | Kenapa perlu |\n| --- | --- |\n| Catat pemasukan atau pengeluaran | Inti aplikasi |\n| Kategori pilihan, bukan ketik bebas | Lebih cepat dan bisa dijumlahkan |\n| Tanggal, otomatis hari ini | Kebanyakan transaksi dicatat di hari yang sama |\n| Daftar per hari dalam satu bulan | Mudah mencari transaksi yang salah catat |\n| Total masuk, keluar, dan saldo | Menjawab \"uangku tinggal berapa?\" |\n| Ringkasan per kategori | Menjawab \"uangku habis untuk apa?\" |\n| Hapus transaksi | Salah catat pasti terjadi |\n\n## Yang perlu kamu kerjakan\n\n1. Tentukan daftar kategori pengeluaran dan pemasukanmu. Cukup 4 sampai 6 untuk tiap jenis, dan selalu sediakan **Lainnya**.\n2. Tulis alur mencatat sebagai urutan ketukan, misalnya: buka aplikasi, tekan **+**, ketik jumlah, pilih kategori, tekan **Simpan**. Hitung ketukannya.\n3. Tulis tiga kesalahan input yang mungkin terjadi, misalnya jumlah kosong, tanggal salah ketik, atau lupa memilih kategori. Ketiganya akan ditangani oleh validasi.\n4. Tandai fitur yang paling mungkin kamu potong kalau waktu habis. Biasanya ringkasan kategori.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "uk-ide-kategori",
+          "text": "Aku punya daftar kategori pengeluaran dan pemasukan, masing-masing dengan Lainnya."
+        },
+        {
+          "id": "uk-ide-alur",
+          "text": "Aku menulis alur mencatat sebagai urutan ketukan."
+        },
+        {
+          "id": "uk-ide-salah",
+          "text": "Aku menulis tiga kesalahan input yang perlu dicegah."
+        },
+        {
+          "id": "uk-ide-potong",
+          "text": "Aku tahu fitur mana yang dipotong kalau waktu habis."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-expo-dan-sqlite",
+      "title": "Pilih Expo, Expo Router, dan SQLite",
+      "est_minutes": 25,
+      "body": "## Satu kode untuk Android dan iOS\n\n**React Native** memakai React yang mungkin sudah kamu kenal, tapi hasilnya komponen asli HP, bukan halaman web. **Expo** membuat React Native jauh lebih mudah: tidak perlu memasang Android Studio untuk mulai, cukup aplikasi **Expo Go** di HP.\n\n## Keputusan dan alasannya\n\n1. **Expo (SDK terbaru) dan TypeScript.** Template bawaan Expo sudah memakai TypeScript. Tipe data membantu ketika bentuk transaksi dipakai di banyak layar.\n2. **Expo Router.** Setiap berkas di folder `app/` otomatis menjadi layar, mirip routing berbasis berkas di Next.js atau Astro.\n3. **expo-sqlite.** Database SQLite yang tersimpan di HP. Dibanding AsyncStorage (penyimpanan kunci dan nilai), SQLite bisa menjumlahkan dan mengelompokkan data dengan SQL, jadi total bulanan dan ringkasan kategori cukup satu query.\n4. **Intl.NumberFormat bawaan JavaScript** untuk format Rupiah. Tidak perlu pustaka tambahan.\n5. **EAS Build** untuk membuat berkas APK di server Expo, jadi laptopmu tidak perlu kuat menjalankan Android Studio.\n\n## Yang kamu butuhkan\n\n- Node.js versi LTS terbaru, editor kode, dan Git.\n- HP Android atau iPhone dengan aplikasi **Expo Go** dari Play Store atau App Store.\n- Akun Expo gratis (dibuat di expo.dev) untuk langkah build nanti.\n\nTulis dua alasan kenapa kamu memilih SQLite dibanding AsyncStorage. Pertanyaan semacam ini sering muncul di wawancara mobile developer.\n",
+      "materials": [
+        {
+          "id": "uk-m-expo-mulai",
+          "kind": "tautan",
+          "name": "Expo: membuat proyek baru",
+          "url": "https://docs.expo.dev/get-started/create-a-project/"
+        },
+        {
+          "id": "uk-m-router",
+          "kind": "tautan",
+          "name": "Expo Router: pengenalan",
+          "url": "https://docs.expo.dev/router/introduction/"
+        },
+        {
+          "id": "uk-m-sqlite",
+          "kind": "tautan",
+          "name": "Expo: referensi expo-sqlite",
+          "url": "https://docs.expo.dev/versions/latest/sdk/sqlite/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memakai SQLite dibanding AsyncStorage."
+        },
+        {
+          "id": "uk-tek-node",
+          "text": "Node.js LTS, editor kode, dan Git sudah terpasang."
+        },
+        {
+          "id": "uk-tek-expogo",
+          "text": "Expo Go sudah terpasang di HP-ku."
+        },
+        {
+          "id": "uk-tek-akun",
+          "text": "Aku sudah punya akun Expo."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-layar-dan-tabel",
+      "title": "Rancang tiga layar dan satu tabel",
+      "est_minutes": 60,
+      "body": "## Tiga layar sudah cukup\n\n```text\nBeranda (/)               Catat (/tambah)          Ringkasan (/ringkasan)\n+-----------------+       +-----------------+      +-----------------+\n| <  November 2026 > |    | [Keluar][Masuk] |      | [Keluar][Masuk] |\n| Saldo Rp 1.250.000 |    | Jumlah: [     ] |      | Total Rp 830.000|\n| Masuk ...  Keluar..|    | Kategori: chip  |      | Makan   45%     |\n| Lihat per kategori |    | Tanggal: [    ] |      | ######....      |\n| Kamis, 26 November |    | Catatan: [    ] |      | Transport 20%   |\n|  Makan   -15.000   |    | [   Simpan    ] |      | ###.......      |\n|                (+) |    +-----------------+      +-----------------+\n+-----------------+\n```\n\n## Satu tabel\n\n| Kolom | Tipe | Aturan |\n| --- | --- | --- |\n| `id` | INTEGER | kunci utama, bertambah otomatis |\n| `jenis` | TEXT | hanya `masuk` atau `keluar` |\n| `jumlah` | INTEGER | rupiah utuh, lebih dari 0 |\n| `kategori` | TEXT | wajib |\n| `catatan` | TEXT | boleh kosong |\n| `tanggal` | TEXT | format `TTTT-BB-HH` |\n\n## Dua keputusan penting\n\n1. **Jumlah disimpan sebagai bilangan bulat**, bukan desimal. Rupiah tidak memakai sen, dan bilangan desimal di komputer bisa menghasilkan selisih kecil seperti `0.30000000000000004`.\n2. **Tanggal disimpan sebagai teks `TTTT-BB-HH`.** Format ini bisa diurutkan dan dibandingkan sebagai teks: `'2026-11-05' < '2026-11-26'`. Satu bulan cukup diambil dengan `tanggal BETWEEN '2026-11-01' AND '2026-11-31'`.\n\nSaldo dihitung dari **semua** transaksi sampai akhir bulan yang dilihat, bukan hanya bulan itu, supaya sisa uang bulan lalu ikut terbawa.\n\n## Yang perlu kamu kerjakan\n\nGambar ketiga layar di kertas versi kamu sendiri, lalu tulis rancangan tabel dan dua keputusan di atas dengan kata-katamu. Simpan sebagai `RANCANGAN.md` di proyek nanti.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "uk-ran-layar",
+          "text": "Aku menggambar sketsa tiga layar: beranda, catat, dan ringkasan."
+        },
+        {
+          "id": "uk-ran-tabel",
+          "text": "Aku menulis rancangan tabel transaksi beserta aturan tiap kolom."
+        },
+        {
+          "id": "uk-ran-bulat",
+          "text": "Aku bisa menjelaskan kenapa jumlah disimpan sebagai bilangan bulat."
+        },
+        {
+          "id": "uk-ran-tanggal",
+          "text": "Aku bisa menjelaskan kenapa tanggal disimpan sebagai teks TTTT-BB-HH."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-expo",
+      "title": "Siapkan proyek Expo dan database",
+      "est_minutes": 60,
+      "body": "## Dari nol sampai tampil di HP\n\n1. Buat proyek dengan template bawaan (sudah berisi TypeScript dan Expo Router):\n\n```bash\nnpx create-expo-app@latest uangku\ncd uangku\nnpm run reset-project\nnpx expo install expo-sqlite\n```\n\n`reset-project` memindahkan layar contoh ke folder lain dan menyisakan folder `app/` yang bersih. Kalau skrip itu tidak ada di versi template-mu, hapus saja layar contoh di `app/` secara manual.\n\n2. Buat folder `lib/` **bersebelahan** dengan folder `app/`. Kalau template-mu menaruh layar di `src/app/`, buat `src/lib/`. Semua import di proyek ini memakai jalur relatif seperti `../lib/db`, jadi cukup letaknya yang bersebelahan.\n3. Salin `lib/db.ts`, `app/_layout.tsx`, dan `app/index.tsx` dari bagian Bahan.\n4. Jalankan `npx expo start`, lalu pindai kode QR dengan Expo Go (Android) atau aplikasi Kamera (iPhone). HP dan laptop harus di Wi-Fi yang sama. Kalau tidak bisa, coba `npx expo start --tunnel`.\n5. Layar harus menampilkan **\"SQLite ... siap dipakai.\"**\n\n## Cara kerja database di sini\n\n- `SQLiteProvider` membuka berkas `uangku.db` sekali, lalu menjalankan `migrateDb` sebelum layar mana pun tampil.\n- `PRAGMA user_version` adalah nomor versi yang disimpan di dalam berkas database. Kalau nanti tabel berubah, tambahkan blok `if (versi < 2)` tanpa menghapus data pemakai.\n- Layar mana pun cukup memanggil `useSQLiteContext()` untuk memakai database.\n\nJangan menekan **w** (web) untuk menguji. expo-sqlite di web butuh pengaturan tambahan, dan proyek ini menargetkan HP.\n\nCommit dengan pesan `Siapkan proyek Expo dan SQLite`.\n",
+      "materials": [
+        {
+          "id": "uk-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "npx create-expo-app@latest uangku\ncd uangku\nnpm run reset-project\nnpx expo install expo-sqlite\nmkdir lib\nnpx expo start\n"
+        },
+        {
+          "id": "uk-m-db",
+          "kind": "kode",
+          "name": "lib/db.ts",
+          "lang": "typescript",
+          "content": "import type { SQLiteDatabase } from 'expo-sqlite';\n\nconst VERSI_DB = 1;\n\n// Dipanggil sekali oleh SQLiteProvider saat aplikasi dibuka.\nexport async function migrateDb(db: SQLiteDatabase) {\n  const baris = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');\n  const versi = baris?.user_version ?? 0;\n  if (versi >= VERSI_DB) return;\n\n  if (versi === 0) {\n    await db.execAsync(`\n      PRAGMA journal_mode = WAL;\n      CREATE TABLE IF NOT EXISTS transaksi (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        jenis TEXT NOT NULL CHECK (jenis IN ('masuk', 'keluar')),\n        jumlah INTEGER NOT NULL CHECK (jumlah > 0),\n        kategori TEXT NOT NULL,\n        catatan TEXT NOT NULL DEFAULT '',\n        tanggal TEXT NOT NULL,\n        dibuat TEXT NOT NULL DEFAULT (datetime('now'))\n      );\n      CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON transaksi (tanggal);\n    `);\n  }\n  // Perubahan tabel berikutnya: tambah blok if (versi < 2) { ... } dan naikkan VERSI_DB.\n  await db.execAsync(`PRAGMA user_version = ${VERSI_DB}`);\n}\n"
+        },
+        {
+          "id": "uk-m-layout",
+          "kind": "kode",
+          "name": "app/_layout.tsx",
+          "lang": "tsx",
+          "content": "import { Stack } from 'expo-router';\nimport { SQLiteProvider } from 'expo-sqlite';\nimport { migrateDb } from '../lib/db';\n\nexport default function RootLayout() {\n  return (\n    <SQLiteProvider databaseName=\"uangku.db\" onInit={migrateDb}>\n      <Stack screenOptions={{ headerTintColor: '#1b1d1a' }} />\n    </SQLiteProvider>\n  );\n}\n"
+        },
+        {
+          "id": "uk-m-index-awal",
+          "kind": "kode",
+          "name": "app/index.tsx",
+          "lang": "tsx",
+          "content": "import { useEffect, useState } from 'react';\nimport { Text, View } from 'react-native';\nimport { Stack } from 'expo-router';\nimport { useSQLiteContext } from 'expo-sqlite';\n\nexport default function Beranda() {\n  const db = useSQLiteContext();\n  const [versi, setVersi] = useState('...');\n\n  useEffect(() => {\n    db.getFirstAsync<{ v: string }>('SELECT sqlite_version() AS v').then((r) => setVersi(r?.v ?? '?'));\n  }, [db]);\n\n  return (\n    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>\n      <Stack.Screen options={{ title: 'Uangku' }} />\n      <Text>SQLite {versi} siap dipakai.</Text>\n    </View>\n  );\n}\n"
+        },
+        {
+          "id": "uk-m-expogo",
+          "kind": "tautan",
+          "name": "Expo: menjalankan proyek di Expo Go",
+          "url": "https://docs.expo.dev/get-started/start-developing/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-set-jalan",
+          "text": "Aplikasi terbuka di HP lewat Expo Go."
+        },
+        {
+          "id": "uk-set-sqlite",
+          "text": "Layar menampilkan versi SQLite tanpa error merah."
+        },
+        {
+          "id": "uk-set-migrasi",
+          "text": "Aku bisa menjelaskan fungsi PRAGMA user_version di migrateDb."
+        },
+        {
+          "id": "uk-set-commit",
+          "text": "Aku sudah commit kerangka proyek."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "logika-uang-dan-validasi",
+      "title": "Tulis logika Rupiah, tanggal, dan validasi",
+      "est_minutes": 60,
+      "body": "## Pisahkan logika dari tampilan\n\nSemua yang tidak butuh layar dikumpulkan di `lib/uang.ts`: tipe data, daftar kategori, format Rupiah, urusan tanggal, dan validasi form. Keuntungannya, logika ini bisa diuji langsung dengan Node.js tanpa membuka HP.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `lib/uang.ts` dari bagian Bahan. Ganti isi `KATEGORI` dengan kategori dari langkah Brainstorming.\n2. Baca fungsi `rupiah`. `Intl.NumberFormat('id-ID', ...)` sudah tahu bahwa Indonesia memakai titik sebagai pemisah ribuan, jadi `1250000` menjadi `Rp 1.250.000`. Formatter dibuat sekali di luar fungsi karena membuatnya cukup mahal.\n3. Baca `tanggalValid`. Triknya: ubah teks menjadi `Date`, lalu kembali menjadi teks. JavaScript diam-diam mengubah `2026-02-30` menjadi 2 Maret, jadi hasilnya tidak sama dan tanggal itu ditolak.\n4. Baca `validasi`. Fungsi ini menerima isi form (semuanya teks) dan mengembalikan **salah satu** dari dua bentuk: `{ ok: true, data }` yang siap disimpan, atau `{ ok: false, galat }` berisi pesan untuk tiap kolom yang salah. TypeScript memaksa layar memeriksa `ok` sebelum memakai `data`.\n5. Buat `test/uang.test.mjs`, lalu jalankan:\n\n```bash\nnode --test test/uang.test.mjs\n```\n\nPerintah ini butuh Node.js 22.18 atau lebih baru, yang bisa langsung membaca berkas `.ts`. Semua tes harus lulus. Coba rusak satu baris di `validasi` dan lihat tes mana yang gagal, lalu kembalikan.\n\nCommit dengan pesan `Tambah logika uang dan validasi`.\n",
+      "materials": [
+        {
+          "id": "uk-m-uang",
+          "kind": "kode",
+          "name": "lib/uang.ts",
+          "lang": "typescript",
+          "content": "export type Jenis = 'masuk' | 'keluar';\n\nexport type Transaksi = {\n  id: number;\n  jenis: Jenis;\n  jumlah: number; // rupiah utuh, tanpa sen\n  kategori: string;\n  catatan: string;\n  tanggal: string; // TTTT-BB-HH\n};\n\nexport type FormTransaksi = {\n  jenis: Jenis;\n  jumlah: string;\n  kategori: string;\n  tanggal: string;\n  catatan: string;\n};\n\nexport type Galat = Partial<Record<keyof FormTransaksi, string>>;\n\nexport const KATEGORI: Record<Jenis, string[]> = {\n  keluar: ['Makan', 'Transport', 'Belanja', 'Tagihan', 'Hiburan', 'Lainnya'],\n  masuk: ['Gaji', 'Uang saku', 'Freelance', 'Lainnya'],\n};\n\nconst formatRupiah = new Intl.NumberFormat('id-ID', {\n  style: 'currency',\n  currency: 'IDR',\n  minimumFractionDigits: 0,\n  maximumFractionDigits: 0,\n});\n\nexport const rupiah = (n: number) => formatRupiah.format(n);\n\nconst dua = (n: number) => String(n).padStart(2, '0');\n\nexport const keTanggal = (d: Date) =>\n  `${d.getFullYear()}-${dua(d.getMonth() + 1)}-${dua(d.getDate())}`;\n\nexport const hariIni = () => keTanggal(new Date());\nexport const bulanIni = () => hariIni().slice(0, 7);\n\nfunction keDate(tanggal: string) {\n  const [t, b, h] = tanggal.split('-').map(Number);\n  return new Date(t, b - 1, h || 1);\n}\n\n// Tanggal valid kalau bolak-balik Date tetap sama: 2026-02-30 akan jadi 2026-03-02.\nexport function tanggalValid(s: string) {\n  return /^\\d{4}-\\d{2}-\\d{2}$/.test(s) && keTanggal(keDate(s)) === s;\n}\n\nexport const geserBulan = (bulan: string, n: number) => {\n  const d = keDate(bulan);\n  return keTanggal(new Date(d.getFullYear(), d.getMonth() + n, 1)).slice(0, 7);\n};\n\n// Tanggal disimpan sebagai teks TTTT-BB-HH, jadi perbandingan teks sama dengan urutan waktu.\nexport const rentangBulan = (bulan: string): [string, string] => [`${bulan}-01`, `${bulan}-31`];\n\nexport const labelBulan = (bulan: string) =>\n  keDate(bulan).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });\n\nexport const labelHari = (tanggal: string) =>\n  keDate(tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });\n\nexport function totalBulan(daftar: Transaksi[]) {\n  let masuk = 0;\n  let keluar = 0;\n  for (const t of daftar) {\n    if (t.jenis === 'masuk') masuk += t.jumlah;\n    else keluar += t.jumlah;\n  }\n  return { masuk, keluar };\n}\n\n// Daftar sudah urut tanggal turun dari database, jadi cukup dipotong tiap ganti tanggal.\nexport function kelompokkanPerHari(daftar: Transaksi[]) {\n  const grup: { title: string; data: Transaksi[] }[] = [];\n  for (const t of daftar) {\n    const akhir = grup[grup.length - 1];\n    if (akhir && akhir.title === t.tanggal) akhir.data.push(t);\n    else grup.push({ title: t.tanggal, data: [t] });\n  }\n  return grup;\n}\n\nexport function validasi(\n  f: FormTransaksi,\n): { ok: true; data: Omit<Transaksi, 'id'> } | { ok: false; galat: Galat } {\n  const galat: Galat = {};\n  const angka = Number(f.jumlah.replace(/[.\\s]/g, ''));\n\n  if (!f.jumlah.trim()) galat.jumlah = 'Isi jumlahnya.';\n  else if (!Number.isInteger(angka) || angka <= 0) galat.jumlah = 'Jumlah harus angka bulat lebih dari 0.';\n  else if (angka > 1_000_000_000_000) galat.jumlah = 'Jumlahnya terlalu besar.';\n\n  if (!KATEGORI[f.jenis].includes(f.kategori)) galat.kategori = 'Pilih salah satu kategori.';\n\n  if (!tanggalValid(f.tanggal)) galat.tanggal = 'Tulis tanggal dengan format TTTT-BB-HH, misalnya 2026-11-26.';\n  else if (f.tanggal > hariIni()) galat.tanggal = 'Tanggal tidak boleh di masa depan.';\n\n  if (f.catatan.length > 100) galat.catatan = 'Catatan paling panjang 100 karakter.';\n\n  if (Object.keys(galat).length > 0) return { ok: false, galat };\n  return {\n    ok: true,\n    data: { jenis: f.jenis, jumlah: angka, kategori: f.kategori, catatan: f.catatan.trim(), tanggal: f.tanggal },\n  };\n}\n"
+        },
+        {
+          "id": "uk-m-tes",
+          "kind": "kode",
+          "name": "test/uang.test.mjs",
+          "lang": "javascript",
+          "content": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { geserBulan, kelompokkanPerHari, rupiah, tanggalValid, totalBulan, validasi } from '../lib/uang.ts';\n\nconst form = { jenis: 'keluar', jumlah: '15.000', kategori: 'Makan', tanggal: '2026-01-05', catatan: ' bakso ' };\n\ntest('rupiah memakai titik sebagai pemisah ribuan', () => {\n  assert.equal(rupiah(1250000).replace(/\\s/g, ' '), 'Rp 1.250.000');\n});\n\ntest('tanggal tidak nyata ditolak', () => {\n  assert.equal(tanggalValid('2026-02-28'), true);\n  assert.equal(tanggalValid('2026-02-30'), false);\n  assert.equal(tanggalValid('26-2-1'), false);\n});\n\ntest('geser bulan melewati pergantian tahun', () => {\n  assert.equal(geserBulan('2026-12', 1), '2027-01');\n  assert.equal(geserBulan('2026-01', -1), '2025-12');\n});\n\ntest('validasi menerima form benar dan merapikan isinya', () => {\n  const hasil = validasi(form);\n  assert.equal(hasil.ok, true);\n  assert.equal(hasil.data.jumlah, 15000);\n  assert.equal(hasil.data.catatan, 'bakso');\n});\n\ntest('validasi menolak jumlah, kategori, dan tanggal yang salah', () => {\n  const hasil = validasi({ ...form, jumlah: '12,5', kategori: 'Gaji', tanggal: '2999-01-01' });\n  assert.equal(hasil.ok, false);\n  assert.deepEqual(Object.keys(hasil.galat).sort(), ['jumlah', 'kategori', 'tanggal']);\n});\n\ntest('total dan kelompok per hari', () => {\n  const daftar = [\n    { id: 3, jenis: 'keluar', jumlah: 20000, kategori: 'Makan', catatan: '', tanggal: '2026-01-05' },\n    { id: 2, jenis: 'masuk', jumlah: 500000, kategori: 'Gaji', catatan: '', tanggal: '2026-01-05' },\n    { id: 1, jenis: 'keluar', jumlah: 5000, kategori: 'Transport', catatan: '', tanggal: '2026-01-04' },\n  ];\n  assert.deepEqual(totalBulan(daftar), { masuk: 500000, keluar: 25000 });\n  assert.deepEqual(kelompokkanPerHari(daftar).map((g) => [g.title, g.data.length]), [['2026-01-05', 2], ['2026-01-04', 1]]);\n});\n"
+        },
+        {
+          "id": "uk-m-intl",
+          "kind": "tautan",
+          "name": "MDN: Intl.NumberFormat",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat"
+        },
+        {
+          "id": "uk-m-nodetest",
+          "kind": "tautan",
+          "name": "Node.js: test runner",
+          "url": "https://nodejs.org/api/test.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-log-kategori",
+          "text": "KATEGORI sudah berisi kategoriku sendiri."
+        },
+        {
+          "id": "uk-log-tes",
+          "text": "node --test lulus untuk semua tes."
+        },
+        {
+          "id": "uk-log-tanggal",
+          "text": "Aku bisa menjelaskan cara tanggalValid menolak 2026-02-30."
+        },
+        {
+          "id": "uk-log-union",
+          "text": "Aku paham kenapa validasi mengembalikan ok: true atau ok: false."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "form-catat-transaksi",
+      "title": "Buat form catat transaksi",
+      "est_minutes": 120,
+      "body": "## Layar terpenting di aplikasi\n\nForm ini menentukan apakah aplikasimu dipakai atau ditinggalkan. Targetnya tetap: 10 detik per transaksi.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `lib/db.ts (tambahan form)` dari bagian Bahan: satu baris import di atas dan fungsi `tambahTransaksi` di bawah.\n2. Buat `app/tambah.tsx` dari bagian Bahan. Expo Router otomatis membuat layar di alamat `/tambah`.\n3. Sementara, tambahkan tombol menuju form di `app/index.tsx` supaya bisa dicoba: `<Link href=\"/tambah\">Catat</Link>` (import `Link` dari `expo-router`). Layar ini akan diganti seluruhnya di langkah berikutnya.\n4. Coba simpan form kosong. Pesan merah harus muncul di bawah jumlah dan kategori.\n5. Isi dengan benar lalu simpan. Layar harus kembali ke beranda.\n\n## Hal yang perlu kamu perhatikan\n\n- **Query berparameter.** `runAsync('INSERT ... VALUES (?, ?, ...)', nilai1, nilai2)` mengirim nilai terpisah dari teks SQL. Jangan pernah menyusun SQL dengan menyambung teks dari input pemakai, karena itu celah SQL injection.\n- **Tombol dikunci saat menyimpan** (`menyimpan`) supaya ketukan ganda tidak membuat dua transaksi.\n- **Ganti jenis mengosongkan kategori**, karena kategori pemasukan dan pengeluaran berbeda.\n- `keyboardType=\"number-pad\"` langsung membuka papan angka. Validasi tetap diperlukan karena pemakai bisa menempelkan teks.\n- Tanggal diketik sebagai teks supaya tidak menambah pustaka. Kalau ingin pemilih tanggal, `@react-native-community/datetimepicker` bisa dipasang nanti.\n\nCommit dengan pesan `Tambah form catat transaksi`.\n",
+      "materials": [
+        {
+          "id": "uk-m-db-tambah",
+          "kind": "kode",
+          "name": "lib/db.ts (tambahan form)",
+          "lang": "typescript",
+          "content": "// 1) Tambahkan di bawah baris import yang sudah ada di lib/db.ts:\nimport { rentangBulan, type Jenis, type Transaksi } from './uang';\n\n// 2) Tambahkan di bagian paling bawah lib/db.ts:\nexport function tambahTransaksi(db: SQLiteDatabase, t: Omit<Transaksi, 'id'>) {\n  return db.runAsync(\n    'INSERT INTO transaksi (jenis, jumlah, kategori, catatan, tanggal) VALUES (?, ?, ?, ?, ?)',\n    t.jenis,\n    t.jumlah,\n    t.kategori,\n    t.catatan,\n    t.tanggal,\n  );\n}\n"
+        },
+        {
+          "id": "uk-m-tambah",
+          "kind": "kode",
+          "name": "app/tambah.tsx",
+          "lang": "tsx",
+          "content": "import { useState } from 'react';\nimport { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';\nimport { router, Stack } from 'expo-router';\nimport { useSQLiteContext } from 'expo-sqlite';\nimport { tambahTransaksi } from '../lib/db';\nimport { KATEGORI, hariIni, validasi, type FormTransaksi, type Galat, type Jenis } from '../lib/uang';\n\nexport default function Tambah() {\n  const db = useSQLiteContext();\n  const [form, setForm] = useState<FormTransaksi>({\n    jenis: 'keluar',\n    jumlah: '',\n    kategori: '',\n    tanggal: hariIni(),\n    catatan: '',\n  });\n  const [galat, setGalat] = useState<Galat>({});\n  const [menyimpan, setMenyimpan] = useState(false);\n\n  const ubah = (kolom: 'jumlah' | 'kategori' | 'tanggal' | 'catatan', nilai: string) =>\n    setForm((f) => ({ ...f, [kolom]: nilai }));\n\n  const gantiJenis = (jenis: Jenis) => setForm((f) => ({ ...f, jenis, kategori: '' }));\n\n  async function simpan() {\n    const hasil = validasi(form);\n    if (!hasil.ok) {\n      setGalat(hasil.galat);\n      return;\n    }\n    setMenyimpan(true);\n    try {\n      await tambahTransaksi(db, hasil.data);\n      router.back();\n    } catch (e) {\n      setMenyimpan(false);\n      Alert.alert('Gagal menyimpan', e instanceof Error ? e.message : String(e));\n    }\n  }\n\n  return (\n    <ScrollView contentContainerStyle={s.layar} keyboardShouldPersistTaps=\"handled\">\n      <Stack.Screen options={{ title: 'Catat transaksi' }} />\n\n      <View style={s.baris}>\n        {(['keluar', 'masuk'] as const).map((j) => (\n          <Pressable\n            key={j}\n            onPress={() => gantiJenis(j)}\n            style={[s.chip, form.jenis === j && s.chipAktif]}\n            accessibilityRole=\"button\"\n            accessibilityState={{ selected: form.jenis === j }}\n          >\n            <Text style={form.jenis === j ? s.chipTeksAktif : undefined}>\n              {j === 'keluar' ? 'Pengeluaran' : 'Pemasukan'}\n            </Text>\n          </Pressable>\n        ))}\n      </View>\n\n      <Text style={s.label}>Jumlah (Rp)</Text>\n      <TextInput\n        style={s.input}\n        value={form.jumlah}\n        onChangeText={(v) => ubah('jumlah', v)}\n        keyboardType=\"number-pad\"\n        placeholder=\"15000\"\n      />\n      {galat.jumlah ? <Text style={s.galat}>{galat.jumlah}</Text> : null}\n\n      <Text style={s.label}>Kategori</Text>\n      <View style={[s.baris, s.bungkus]}>\n        {KATEGORI[form.jenis].map((k) => (\n          <Pressable\n            key={k}\n            onPress={() => ubah('kategori', k)}\n            style={[s.chip, form.kategori === k && s.chipAktif]}\n            accessibilityRole=\"button\"\n            accessibilityState={{ selected: form.kategori === k }}\n          >\n            <Text style={form.kategori === k ? s.chipTeksAktif : undefined}>{k}</Text>\n          </Pressable>\n        ))}\n      </View>\n      {galat.kategori ? <Text style={s.galat}>{galat.kategori}</Text> : null}\n\n      <Text style={s.label}>Tanggal (TTTT-BB-HH)</Text>\n      <TextInput\n        style={s.input}\n        value={form.tanggal}\n        onChangeText={(v) => ubah('tanggal', v)}\n        placeholder=\"2026-11-26\"\n        maxLength={10}\n      />\n      {galat.tanggal ? <Text style={s.galat}>{galat.tanggal}</Text> : null}\n\n      <Text style={s.label}>Catatan (opsional)</Text>\n      <TextInput\n        style={s.input}\n        value={form.catatan}\n        onChangeText={(v) => ubah('catatan', v)}\n        placeholder=\"Nasi goreng dekat kampus\"\n        maxLength={100}\n      />\n      {galat.catatan ? <Text style={s.galat}>{galat.catatan}</Text> : null}\n\n      <Pressable style={[s.tombol, menyimpan && s.redup]} onPress={simpan} disabled={menyimpan}>\n        <Text style={s.tombolTeks}>{menyimpan ? 'Menyimpan...' : 'Simpan'}</Text>\n      </Pressable>\n    </ScrollView>\n  );\n}\n\nconst s = StyleSheet.create({\n  layar: { padding: 16, gap: 8 },\n  baris: { flexDirection: 'row', gap: 8 },\n  bungkus: { flexWrap: 'wrap' },\n  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: '#c9ccc4' },\n  chipAktif: { backgroundColor: '#1b1d1a', borderColor: '#1b1d1a' },\n  chipTeksAktif: { color: '#fff' },\n  label: { marginTop: 12, fontWeight: '600' },\n  input: { borderWidth: 1, borderColor: '#c9ccc4', borderRadius: 10, padding: 12, fontSize: 16 },\n  galat: { color: '#b3261e' },\n  tombol: { marginTop: 24, backgroundColor: '#1b1d1a', borderRadius: 12, padding: 16, alignItems: 'center' },\n  redup: { opacity: 0.5 },\n  tombolTeks: { color: '#fff', fontWeight: '700', fontSize: 16 },\n});\n"
+        },
+        {
+          "id": "uk-m-textinput",
+          "kind": "tautan",
+          "name": "React Native: TextInput",
+          "url": "https://reactnative.dev/docs/textinput"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-form-kosong",
+          "text": "Form kosong menampilkan pesan galat, bukan tersimpan."
+        },
+        {
+          "id": "uk-form-simpan",
+          "text": "Transaksi yang benar tersimpan dan layar kembali ke beranda."
+        },
+        {
+          "id": "uk-form-param",
+          "text": "Query INSERT memakai tanda ?, bukan sambungan teks."
+        },
+        {
+          "id": "uk-form-ganda",
+          "text": "Tombol Simpan tidak bisa ditekan dua kali saat menyimpan."
+        },
+        {
+          "id": "uk-form-commit",
+          "text": "Aku sudah commit form catat transaksi."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "daftar-per-hari-dan-saldo",
+      "title": "Tampilkan daftar per hari, total, dan saldo",
+      "est_minutes": 120,
+      "body": "## Beranda yang menjawab \"uangku tinggal berapa?\"\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `lib/db.ts (tambahan beranda)` ke bawah `lib/db.ts`: `transaksiBulan`, `saldoSampai`, dan `hapusTransaksi`.\n2. Ganti seluruh `app/index.tsx` dengan versi di bagian Bahan.\n3. Catat beberapa transaksi dengan tanggal berbeda, termasuk satu di bulan lalu. Periksa bahwa daftar terkelompok per hari dan hari terbaru ada di atas.\n4. Geser ke bulan lalu dengan tombol **‹**. Saldo di bulan ini harus sudah termasuk transaksi bulan lalu.\n5. Tekan lama satu transaksi, pilih **Hapus**, dan pastikan total ikut berubah.\n\n## Hal yang perlu kamu perhatikan\n\n- **`useFocusEffect`** memuat ulang data setiap beranda tampil lagi, termasuk setelah kembali dari form. `useEffect` biasa tidak cukup, karena beranda tidak dibuang saat form dibuka.\n- **`SectionList`** adalah daftar berkelompok bawaan React Native. Ia butuh data berbentuk `[{ title, data: [...] }]`, persis yang dihasilkan `kelompokkanPerHari`. Seperti `FlatList`, ia hanya menggambar baris yang terlihat, jadi tetap ringan walau transaksinya ratusan.\n- **Total bulan dihitung di JavaScript** dari daftar yang sudah diambil, sedangkan **saldo dihitung di SQL**, karena saldo butuh semua transaksi sebelumnya yang tidak ikut diambil.\n- `COALESCE(SUM(...), 0)` menjaga hasil tetap 0, bukan `null`, ketika belum ada transaksi.\n\nCommit dengan pesan `Tampilkan daftar per hari dan saldo`.\n",
+      "materials": [
+        {
+          "id": "uk-m-db-daftar",
+          "kind": "kode",
+          "name": "lib/db.ts (tambahan beranda)",
+          "lang": "typescript",
+          "content": "// Tambahkan di bagian paling bawah lib/db.ts.\nexport function transaksiBulan(db: SQLiteDatabase, bulan: string) {\n  const [awal, akhir] = rentangBulan(bulan);\n  return db.getAllAsync<Transaksi>(\n    `SELECT id, jenis, jumlah, kategori, catatan, tanggal\n     FROM transaksi\n     WHERE tanggal BETWEEN ? AND ?\n     ORDER BY tanggal DESC, id DESC`,\n    awal,\n    akhir,\n  );\n}\n\n// Saldo = semua pemasukan dikurangi semua pengeluaran sampai akhir bulan itu.\nexport async function saldoSampai(db: SQLiteDatabase, bulan: string) {\n  const baris = await db.getFirstAsync<{ saldo: number }>(\n    `SELECT COALESCE(SUM(CASE WHEN jenis = 'masuk' THEN jumlah ELSE -jumlah END), 0) AS saldo\n     FROM transaksi\n     WHERE tanggal <= ?`,\n    rentangBulan(bulan)[1],\n  );\n  return baris?.saldo ?? 0;\n}\n\nexport function hapusTransaksi(db: SQLiteDatabase, id: number) {\n  return db.runAsync('DELETE FROM transaksi WHERE id = ?', id);\n}\n"
+        },
+        {
+          "id": "uk-m-index",
+          "kind": "kode",
+          "name": "app/index.tsx",
+          "lang": "tsx",
+          "content": "import { useCallback, useState } from 'react';\nimport { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';\nimport { Link, Stack, useFocusEffect } from 'expo-router';\nimport { useSQLiteContext } from 'expo-sqlite';\nimport { hapusTransaksi, saldoSampai, transaksiBulan } from '../lib/db';\nimport {\n  bulanIni,\n  geserBulan,\n  kelompokkanPerHari,\n  labelBulan,\n  labelHari,\n  rupiah,\n  totalBulan,\n  type Transaksi,\n} from '../lib/uang';\n\nexport default function Beranda() {\n  const db = useSQLiteContext();\n  const [bulan, setBulan] = useState(bulanIni);\n  const [daftar, setDaftar] = useState<Transaksi[]>([]);\n  const [saldo, setSaldo] = useState(0);\n\n  const muat = useCallback(async () => {\n    setDaftar(await transaksiBulan(db, bulan));\n    setSaldo(await saldoSampai(db, bulan));\n  }, [db, bulan]);\n\n  // Dipanggil setiap layar ini tampil lagi, misalnya setelah kembali dari form.\n  useFocusEffect(\n    useCallback(() => {\n      muat();\n    }, [muat]),\n  );\n\n  function konfirmasiHapus(t: Transaksi) {\n    Alert.alert('Hapus transaksi?', `${t.kategori} ${rupiah(t.jumlah)}`, [\n      { text: 'Batal', style: 'cancel' },\n      {\n        text: 'Hapus',\n        style: 'destructive',\n        onPress: async () => {\n          await hapusTransaksi(db, t.id);\n          muat();\n        },\n      },\n    ]);\n  }\n\n  const { masuk, keluar } = totalBulan(daftar);\n\n  return (\n    <View style={s.layar}>\n      <Stack.Screen options={{ title: 'Uangku' }} />\n\n      <View style={s.navBulan}>\n        <Pressable onPress={() => setBulan(geserBulan(bulan, -1))} hitSlop={12} accessibilityLabel=\"Bulan sebelumnya\">\n          <Text style={s.panah}>‹</Text>\n        </Pressable>\n        <Text style={s.judulBulan}>{labelBulan(bulan)}</Text>\n        <Pressable onPress={() => setBulan(geserBulan(bulan, 1))} hitSlop={12} accessibilityLabel=\"Bulan berikutnya\">\n          <Text style={s.panah}>›</Text>\n        </Pressable>\n      </View>\n\n      <View style={s.kartu}>\n        <Text style={s.kecil}>Saldo sampai akhir bulan</Text>\n        <Text style={s.saldo}>{rupiah(saldo)}</Text>\n        <View style={s.baris}>\n          <Text style={s.masuk}>Masuk {rupiah(masuk)}</Text>\n          <Text style={s.keluar}>Keluar {rupiah(keluar)}</Text>\n        </View>\n        <Link href={{ pathname: '/ringkasan', params: { bulan } }} style={s.tautan}>\n          Lihat per kategori\n        </Link>\n      </View>\n\n      <SectionList\n        sections={kelompokkanPerHari(daftar)}\n        keyExtractor={(t) => String(t.id)}\n        renderSectionHeader={({ section }) => <Text style={s.hari}>{labelHari(section.title)}</Text>}\n        renderItem={({ item }) => (\n          <Pressable onLongPress={() => konfirmasiHapus(item)} style={s.item}>\n            <View style={s.isi}>\n              <Text style={s.kategori}>{item.kategori}</Text>\n              {item.catatan ? <Text style={s.kecil}>{item.catatan}</Text> : null}\n            </View>\n            <Text style={item.jenis === 'masuk' ? s.masuk : s.keluar}>\n              {item.jenis === 'masuk' ? '+' : '-'}\n              {rupiah(item.jumlah)}\n            </Text>\n          </Pressable>\n        )}\n        ListEmptyComponent={<Text style={s.kosong}>Belum ada transaksi di bulan ini.</Text>}\n        contentContainerStyle={s.daftar}\n      />\n\n      <Link href=\"/tambah\" asChild>\n        <Pressable style={s.fab} accessibilityLabel=\"Catat transaksi\">\n          <Text style={s.fabTeks}>+</Text>\n        </Pressable>\n      </Link>\n    </View>\n  );\n}\n\nconst s = StyleSheet.create({\n  layar: { flex: 1, backgroundColor: '#f6f7f2' },\n  navBulan: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },\n  panah: { fontSize: 28, paddingHorizontal: 8 },\n  judulBulan: { fontSize: 18, fontWeight: '700' },\n  kartu: { marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: '#fff', gap: 6 },\n  saldo: { fontSize: 28, fontWeight: '800' },\n  baris: { flexDirection: 'row', justifyContent: 'space-between' },\n  masuk: { color: '#1f6f4a', fontWeight: '600' },\n  keluar: { color: '#b3261e', fontWeight: '600' },\n  tautan: { marginTop: 6, color: '#1f6f4a', fontWeight: '600' },\n  daftar: { padding: 16, paddingBottom: 96 },\n  hari: { marginTop: 12, marginBottom: 4, fontWeight: '700', color: '#55594f' },\n  item: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#fff', marginBottom: 6 },\n  isi: { flex: 1 },\n  kategori: { fontWeight: '600' },\n  kecil: { color: '#55594f' },\n  kosong: { textAlign: 'center', marginTop: 32, color: '#55594f' },\n  fab: {\n    position: 'absolute',\n    right: 20,\n    bottom: 28,\n    width: 60,\n    height: 60,\n    borderRadius: 30,\n    backgroundColor: '#1b1d1a',\n    alignItems: 'center',\n    justifyContent: 'center',\n  },\n  fabTeks: { color: '#fff', fontSize: 30, lineHeight: 32 },\n});\n"
+        },
+        {
+          "id": "uk-m-sectionlist",
+          "kind": "tautan",
+          "name": "React Native: SectionList",
+          "url": "https://reactnative.dev/docs/sectionlist"
+        },
+        {
+          "id": "uk-m-focus",
+          "kind": "tautan",
+          "name": "Expo Router: useFocusEffect",
+          "url": "https://docs.expo.dev/router/reference/hooks/#usefocuseffect"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-dft-hari",
+          "text": "Daftar terkelompok per hari dengan hari terbaru di atas."
+        },
+        {
+          "id": "uk-dft-bulan",
+          "text": "Tombol bulan sebelumnya dan berikutnya berfungsi."
+        },
+        {
+          "id": "uk-dft-saldo",
+          "text": "Saldo bulan ini sudah termasuk transaksi bulan lalu."
+        },
+        {
+          "id": "uk-dft-hapus",
+          "text": "Tekan lama lalu Hapus menghapus transaksi dan memperbarui total."
+        },
+        {
+          "id": "uk-dft-commit",
+          "text": "Aku sudah commit beranda."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "ringkasan-per-kategori",
+      "title": "Buat ringkasan per kategori",
+      "est_minutes": 75,
+      "body": "## Menjawab \"uangku habis untuk apa?\"\n\nDi sini kekuatan SQLite terasa: pengelompokan dan penjumlahan dikerjakan database dalam satu query, bukan dengan perulangan di JavaScript.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `lib/db.ts (tambahan ringkasan)` ke bawah `lib/db.ts`.\n2. Buat `app/ringkasan.tsx` dari bagian Bahan.\n3. Dari beranda, tekan **Lihat per kategori**. Bulan yang sedang dilihat ikut terkirim lewat parameter alamat (`/ringkasan?bulan=2026-11`) dan dibaca dengan `useLocalSearchParams`.\n4. Pindah antara **Pengeluaran** dan **Pemasukan**. Persentase tiap kategori jika dijumlahkan harus sekitar 100%.\n5. Cocokkan satu angka secara manual: jumlahkan semua transaksi Makan bulan ini di beranda, lalu bandingkan dengan ringkasan.\n\n## Batang tanpa pustaka grafik\n\nBatang persentase dibuat dari dua `View` dalam satu baris: yang berwarna diberi `flex: total kategori`, sisanya `flex: total semua - total kategori`. Flexbox membagi lebarnya sesuai perbandingan itu. Tidak perlu pustaka grafik untuk tampilan sesederhana ini.\n\n## Tantangan opsional\n\nTambahkan kolom \"rata-rata per hari\" untuk pengeluaran: total dibagi jumlah hari di bulan itu. Petunjuk: `new Date(tahun, bulan, 0).getDate()` memberi jumlah hari dalam satu bulan.\n\nCommit dengan pesan `Tambah ringkasan per kategori`.\n",
+      "materials": [
+        {
+          "id": "uk-m-db-ringkasan",
+          "kind": "kode",
+          "name": "lib/db.ts (tambahan ringkasan)",
+          "lang": "typescript",
+          "content": "// Tambahkan di bagian paling bawah lib/db.ts.\nexport type BarisKategori = { kategori: string; total: number; banyak: number };\n\nexport function ringkasanKategori(db: SQLiteDatabase, bulan: string, jenis: Jenis) {\n  const [awal, akhir] = rentangBulan(bulan);\n  return db.getAllAsync<BarisKategori>(\n    `SELECT kategori, SUM(jumlah) AS total, COUNT(*) AS banyak\n     FROM transaksi\n     WHERE jenis = ? AND tanggal BETWEEN ? AND ?\n     GROUP BY kategori\n     ORDER BY total DESC`,\n    jenis,\n    awal,\n    akhir,\n  );\n}\n"
+        },
+        {
+          "id": "uk-m-ringkasan",
+          "kind": "kode",
+          "name": "app/ringkasan.tsx",
+          "lang": "tsx",
+          "content": "import { useEffect, useState } from 'react';\nimport { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';\nimport { Stack, useLocalSearchParams } from 'expo-router';\nimport { useSQLiteContext } from 'expo-sqlite';\nimport { ringkasanKategori, type BarisKategori } from '../lib/db';\nimport { bulanIni, labelBulan, rupiah, type Jenis } from '../lib/uang';\n\nexport default function Ringkasan() {\n  const db = useSQLiteContext();\n  const { bulan = bulanIni() } = useLocalSearchParams<{ bulan?: string }>();\n  const [jenis, setJenis] = useState<Jenis>('keluar');\n  const [baris, setBaris] = useState<BarisKategori[]>([]);\n\n  useEffect(() => {\n    ringkasanKategori(db, bulan, jenis).then(setBaris);\n  }, [db, bulan, jenis]);\n\n  const total = baris.reduce((a, b) => a + b.total, 0);\n\n  return (\n    <View style={s.layar}>\n      <Stack.Screen options={{ title: `Ringkasan ${labelBulan(bulan)}` }} />\n\n      <View style={s.tab}>\n        {(['keluar', 'masuk'] as const).map((j) => (\n          <Pressable\n            key={j}\n            onPress={() => setJenis(j)}\n            style={[s.chip, jenis === j && s.chipAktif]}\n            accessibilityRole=\"button\"\n            accessibilityState={{ selected: jenis === j }}\n          >\n            <Text style={jenis === j ? s.chipTeksAktif : undefined}>\n              {j === 'keluar' ? 'Pengeluaran' : 'Pemasukan'}\n            </Text>\n          </Pressable>\n        ))}\n      </View>\n\n      <Text style={s.total}>Total {rupiah(total)}</Text>\n\n      <FlatList\n        data={baris}\n        keyExtractor={(b) => b.kategori}\n        renderItem={({ item }) => (\n          <View style={s.item}>\n            <View style={s.atas}>\n              <Text style={s.nama}>\n                {item.kategori} ({item.banyak}x)\n              </Text>\n              <Text>\n                {rupiah(item.total)} · {Math.round((item.total / total) * 100)}%\n              </Text>\n            </View>\n            <View style={s.batang}>\n              <View style={[s.isiBatang, { flex: item.total }]} />\n              <View style={{ flex: total - item.total }} />\n            </View>\n          </View>\n        )}\n        ListEmptyComponent={<Text style={s.kosong}>Belum ada data di bulan ini.</Text>}\n      />\n    </View>\n  );\n}\n\nconst s = StyleSheet.create({\n  layar: { flex: 1, padding: 16, backgroundColor: '#f6f7f2' },\n  tab: { flexDirection: 'row', gap: 8 },\n  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: '#c9ccc4' },\n  chipAktif: { backgroundColor: '#1b1d1a', borderColor: '#1b1d1a' },\n  chipTeksAktif: { color: '#fff' },\n  total: { fontSize: 22, fontWeight: '800', marginVertical: 16 },\n  item: { marginBottom: 14, gap: 6 },\n  atas: { flexDirection: 'row', justifyContent: 'space-between' },\n  nama: { fontWeight: '600' },\n  batang: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#e4e6df' },\n  isiBatang: { backgroundColor: '#1f6f4a' },\n  kosong: { textAlign: 'center', marginTop: 32, color: '#55594f' },\n});\n"
+        },
+        {
+          "id": "uk-m-params",
+          "kind": "tautan",
+          "name": "Expo Router: parameter URL",
+          "url": "https://docs.expo.dev/router/reference/url-parameters/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-rgk-buka",
+          "text": "Layar ringkasan terbuka dari beranda dengan bulan yang sama."
+        },
+        {
+          "id": "uk-rgk-jenis",
+          "text": "Tombol Pengeluaran dan Pemasukan mengganti isi ringkasan."
+        },
+        {
+          "id": "uk-rgk-cocok",
+          "text": "Satu total kategori sudah kucocokkan manual dengan daftar di beranda."
+        },
+        {
+          "id": "uk-rgk-commit",
+          "text": "Aku sudah commit ringkasan per kategori."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-di-hp-sungguhan",
+      "title": "Uji di HP seperti pemakai sungguhan",
+      "est_minutes": 90,
+      "body": "## Dua lapis pengujian\n\n1. **Tes otomatis** untuk logika: `node --test test/uang.test.mjs` dari langkah sebelumnya. Jalankan lagi sekarang, semuanya harus lulus.\n2. **Uji manual di HP** untuk semua yang menyentuh layar dan database. Jalani daftar di bagian Bahan satu per satu di Expo Go dan beri tanda pada yang lulus.\n\n## Yang paling sering ketahuan saat uji\n\n- **Data hilang setelah aplikasi ditutup.** Tutup Expo Go sepenuhnya dari daftar aplikasi terbaru, buka lagi, lalu periksa data masih ada. Inilah bukti bahwa penyimpanan lokal bekerja.\n- **Keyboard menutupi tombol Simpan** di HP berlayar kecil. Karena form ada di dalam `ScrollView`, kamu cukup menggulir. Kalau masih mengganggu, pelajari `KeyboardAvoidingView`.\n- **Teks Rupiah terpotong** untuk angka jutaan di layar sempit. Coba jumlah `999999999`.\n- **Mode pesawat.** Aplikasi harus tetap berfungsi penuh tanpa internet.\n\n## Pakai sendiri selama tiga hari\n\nUji terbaik untuk aplikasi seperti ini adalah memakainya. Catat semua pengeluaranmu selama tiga hari. Tulis setiap hal yang terasa lambat atau membingungkan, lalu perbaiki satu yang paling mengganggu.\n\nTulis hasil uji di `RANCANGAN.md` atau README: berapa butir lulus, apa yang kamu perbaiki.\n",
+      "materials": [
+        {
+          "id": "uk-m-daftar-uji",
+          "kind": "kode",
+          "name": "daftar-uji.md",
+          "lang": "markdown",
+          "content": "# Daftar uji Uangku\n\n- [ ] node --test test/uang.test.mjs lulus\n- [ ] Simpan form kosong: muncul galat jumlah dan kategori\n- [ ] Jumlah 12,5 atau abc ditolak\n- [ ] Tanggal 2026-02-30 ditolak\n- [ ] Tanggal besok ditolak\n- [ ] Ganti Pengeluaran ke Pemasukan mengosongkan kategori\n- [ ] Transaksi tersimpan dan muncul di hari yang benar\n- [ ] Total masuk, keluar, dan saldo cocok dengan hitungan manual\n- [ ] Saldo bulan ini termasuk transaksi bulan lalu\n- [ ] Hapus transaksi memperbarui total\n- [ ] Ringkasan per kategori cocok dengan daftar\n- [ ] Data masih ada setelah Expo Go ditutup dan dibuka lagi\n- [ ] Semua fitur jalan dalam mode pesawat\n- [ ] Angka 999999999 tidak terpotong\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-uji-otomatis",
+          "text": "Semua tes otomatis lulus."
+        },
+        {
+          "id": "uk-uji-daftar",
+          "text": "Aku menjalani seluruh daftar uji di HP."
+        },
+        {
+          "id": "uk-uji-awet",
+          "text": "Data tetap ada setelah aplikasi ditutup dan dibuka lagi."
+        },
+        {
+          "id": "uk-uji-tigahari",
+          "text": "Aku memakai aplikasinya sendiri selama tiga hari dan memperbaiki satu masalah."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "build-apk-dengan-eas",
+      "title": "Buat APK dengan EAS Build dan bagikan",
+      "est_minutes": 90,
+      "body": "## Dari Expo Go menjadi aplikasi sungguhan\n\nSelama ini aplikasimu berjalan di dalam Expo Go. Agar orang lain bisa memasangnya tanpa Expo Go, kamu perlu berkas **APK**. EAS Build membuatnya di server Expo, jadi laptopmu tidak perlu Android Studio.\n\n## Langkah-langkah\n\n1. Buka `app.json`. Ganti `name` menjadi `Uangku` dan tambahkan `\"package\": \"com.namamu.uangku\"` di dalam bagian `android` (huruf kecil, tanpa spasi). Nama paket ini tidak bisa diganti setelah aplikasi dipasang orang.\n2. Jalankan perintah di bagian Bahan: pasang EAS CLI, login, lalu `eas build:configure`.\n3. Buka `eas.json` yang baru dibuat. Pastikan profil `preview` berisi `\"buildType\": \"apk\"` seperti contoh di Bahan. Tanpa itu, hasil build adalah AAB untuk Play Store yang tidak bisa dipasang langsung.\n4. Jalankan `eas build -p android --profile preview`. Akun gratis masuk antrean, jadi bisa butuh 10 sampai 30 menit.\n5. Setelah selesai, terminal dan halaman build di expo.dev menampilkan tautan unduh dan kode QR.\n6. Pasang APK di HP-mu. Android akan meminta izin \"instal aplikasi tidak dikenal\" karena APK tidak dari Play Store, dan itu wajar.\n7. Buka aplikasinya **tanpa** Expo Go dan jalankan ulang beberapa butir daftar uji.\n\n## Membagikan\n\nKirim tautan halaman build ke dua teman dan minta mereka memasang serta mencatat satu transaksi. Untuk portofolio, unggah APK ke **GitHub Releases** di repositorimu supaya tautannya tidak bergantung pada akun Expo.\n\n## Kalau gagal\n\nBuka log build di expo.dev. Penyebab tersering: `package` belum diisi, versi paket tidak cocok (jalankan `npx expo install --check`), atau ada error TypeScript (jalankan `npx tsc --noEmit`).\n",
+      "materials": [
+        {
+          "id": "uk-m-eas-cmd",
+          "kind": "kode",
+          "name": "perintah-eas.sh",
+          "lang": "bash",
+          "content": "npm install -g eas-cli\neas login\neas build:configure\neas build -p android --profile preview\n"
+        },
+        {
+          "id": "uk-m-eas-json",
+          "kind": "kode",
+          "name": "eas.json",
+          "lang": "json",
+          "content": "{\n  \"cli\": {\n    \"version\": \">= 16.0.0\",\n    \"appVersionSource\": \"remote\"\n  },\n  \"build\": {\n    \"preview\": {\n      \"distribution\": \"internal\",\n      \"android\": {\n        \"buildType\": \"apk\"\n      }\n    },\n    \"production\": {\n      \"autoIncrement\": true\n    }\n  }\n}\n"
+        },
+        {
+          "id": "uk-m-eas-apk",
+          "kind": "tautan",
+          "name": "EAS Build: membuat APK untuk dipasang langsung",
+          "url": "https://docs.expo.dev/build-reference/apk/"
+        },
+        {
+          "id": "uk-m-eas-intro",
+          "kind": "tautan",
+          "name": "EAS Build: pengenalan",
+          "url": "https://docs.expo.dev/build/introduction/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-dep-paket",
+          "text": "app.json sudah berisi android.package milikku."
+        },
+        {
+          "id": "uk-dep-apk",
+          "text": "Build preview selesai dan menghasilkan berkas APK."
+        },
+        {
+          "id": "uk-dep-pasang",
+          "text": "APK terpasang dan berjalan di HP tanpa Expo Go."
+        },
+        {
+          "id": "uk-dep-bagikan",
+          "text": "Minimal satu orang lain sudah memasang APK-ku."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-proyek",
+      "title": "Tulis README dan kirim proyekmu",
+      "est_minutes": 45,
+      "body": "## Perekrut tidak akan memasang APK sebelum membaca README\n\nUntuk aplikasi mobile, README adalah etalase. Orang ingin melihat tangkapan layar dan tautan unduh dalam lima detik pertama.\n\n## Yang perlu kamu kerjakan\n\n1. Ambil tangkapan layar ketiga layar dari HP: beranda, form, dan ringkasan. Simpan di folder `gambar/`.\n2. Salin template README di bagian Bahan, lalu lengkapi semua bagian `___`.\n3. Isi bagian **Keputusan teknis** dengan alasanmu sendiri: kenapa SQLite, kenapa jumlah bilangan bulat, kenapa tanggal teks. Bagian ini yang membedakan proyekmu dari tutorial yang disalin.\n4. Pastikan `.gitignore` bawaan Expo masih ada, lalu push semuanya ke GitHub.\n5. Tambahkan tautan APK (GitHub Releases atau halaman build Expo) di deskripsi repositori.\n6. Kirim tautan repositori GitHub-mu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu sudah membuat aplikasi mobile yang bisa dipasang orang lain: dari brief, rancangan tabel, kode, tes, sampai APK. Langkah lanjutan yang masuk akal: ekspor data ke CSV, anggaran per kategori, atau rilis ke Play Store dengan profil `production`.\n",
+      "materials": [
+        {
+          "id": "uk-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Uangku\n\nAplikasi catatan keuangan pribadi untuk Android dan iOS. Mencatat pemasukan dan pengeluaran, menampilkan saldo bulanan, dan ringkasan per kategori. Semua data tersimpan di HP, tanpa internet.\n\n**Unduh APK:** ___\n\n## Tampilan\n\n![Beranda](gambar/beranda.png)\n![Catat transaksi](gambar/tambah.png)\n![Ringkasan](gambar/ringkasan.png)\n\n## Fitur\n\n- Catat pemasukan dan pengeluaran dengan kategori dan tanggal\n- Daftar per hari, total bulanan, dan saldo\n- Ringkasan per kategori\n- Validasi form dan format Rupiah\n\n## Teknologi\n\n- React Native, Expo, Expo Router, TypeScript\n- expo-sqlite untuk penyimpanan lokal\n- EAS Build untuk APK\n\n## Keputusan teknis\n\n- SQLite dibanding AsyncStorage karena ___\n- Jumlah disimpan sebagai bilangan bulat karena ___\n- Tanggal disimpan sebagai teks TTTT-BB-HH karena ___\n\n## Menjalankan\n\n```bash\nnpm install\nnpx expo start\nnode --test test/uang.test.mjs\n```\n\n## Yang kupelajari\n\n- ___\n- ___\n\nBerikutnya: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "uk-dok-readme",
+          "text": "README berisi fitur, teknologi, cara menjalankan, dan tautan APK."
+        },
+        {
+          "id": "uk-dok-gambar",
+          "text": "README menampilkan tangkapan layar tiga layar."
+        },
+        {
+          "id": "uk-dok-alasan",
+          "text": "Bagian Keputusan teknis kutulis dengan alasanku sendiri."
+        },
+        {
+          "id": "uk-dok-kirim",
+          "text": "Tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}

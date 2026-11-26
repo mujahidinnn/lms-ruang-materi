@@ -1,0 +1,627 @@
+{
+  "slug": "aplikasi-chat-realtime",
+  "title": "Aplikasi Chat Realtime",
+  "summary": "Bangun chat multi-room dengan Node.js dan WebSocket: protokol pesan bertipe, presence, indikator mengetik, riwayat di PostgreSQL dengan cursor, reconnect tanpa pesan hilang atau ganda, rate limit, lalu jalankan dua instance lewat Redis pub/sub, uji beban, dan online-kan dengan TLS.",
+  "level": "lanjut",
+  "est_hours": 24,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-batas-aplikasi-chat",
+      "title": "Tentukan batas aplikasi chat",
+      "est_minutes": 20,
+      "body": "## Chat itu mudah, chat yang tidak kehilangan pesan itu sulit\n\nDemo chat sepuluh baris bisa kamu temukan di mana-mana. Yang jarang ada: chat yang tetap benar saat sinyal HP putus, saat server di-restart, dan saat ada dua server yang melayani pengguna berbeda. Di proyek ini kamu membangun yang kedua, dan itulah yang membuatnya layak dipamerkan.\n\n## Yang akan kamu bangun\n\nAplikasi chat **multi-room** dengan server Node.js:\n\n- Pengguna masuk dengan token yang ditandatangani, lalu bergabung ke beberapa room.\n- Pesan tersimpan di PostgreSQL dan bisa dimuat mundur halaman demi halaman.\n- Daftar siapa yang online dan tanda \"sedang mengetik\".\n- Klien yang putus akan tersambung lagi sendiri dan mengejar pesan yang terlewat, tanpa pesan ganda.\n- Dua instance server berjalan bersamaan, disambungkan lewat Redis pub/sub.\n- Batas ukuran pesan dan rate limit supaya satu klien nakal tidak merusak semuanya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template di bagian Bahan ke catatanmu.\n2. Tulis satu kalimat untuk siapa chat ini, misalnya \"grup belajar kelas yang ingin diskusi tanpa grup WhatsApp\".\n3. Tulis tiga **janji** yang harus ditepati aplikasimu, dalam bahasa pengguna. Contoh: \"pesan yang sudah centang tidak pernah hilang\".\n4. Tulis apa yang **tidak** dibuat: misalnya pesan pribadi, unggah gambar, edit pesan, notifikasi push.\n\n> Proyek ini tingkat lanjut, sekitar 24 jam. Batas yang jelas sejak awal adalah cara utama supaya proyek ini selesai.\n",
+      "materials": [
+        {
+          "id": "m-chat-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Aplikasi Chat Realtime\n\nUntuk: ___ yang ingin ___.\n\nTiga janji ke pengguna:\n1. ___\n2. ___\n3. ___\n\nTidak dibuat di versi pertama:\n- ___\n- ___\n\nBukti selesai: dua instance server, satu klien di tiap instance, pesan saling sampai.\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-brief-pengguna",
+          "text": "Aku menulis satu kalimat untuk siapa chat ini dibuat."
+        },
+        {
+          "id": "chat-brief-janji",
+          "text": "Aku menulis tiga janji ke pengguna dalam bahasa sehari-hari."
+        },
+        {
+          "id": "chat-brief-batas",
+          "text": "Aku menulis daftar fitur yang tidak dibuat di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-fitur-dan-kasus-gagal",
+      "title": "Petakan fitur dan kasus gagal",
+      "est_minutes": 45,
+      "body": "## Pikirkan saat semuanya salah\n\nDi aplikasi realtime, jalur bahagia hanya separuh cerita. Separuh lainnya: koneksi putus di tengah kirim, pesan tiba dua kali, server mati saat ada 50 orang tersambung. Kumpulkan skenario itu **sekarang**, karena tiap skenario akan menentukan desain protokolmu.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis alur pengguna dari awal sampai akhir: buka halaman, isi nama, masuk room, kirim pesan, tutup laptop, buka lagi.\n2. Untuk tiap langkah, tanyakan: **apa yang terjadi kalau koneksi putus tepat di sini?** Tulis jawabanmu di tabel seperti contoh di bawah.\n3. Tambahkan tiga skenario dari sisi server: server di-restart saat deploy, satu klien mengirim 1000 pesan per detik, dan klien mengirim teks 5 MB.\n4. Tandai skenario yang **harus** ditangani di versi pertama. Sisanya tulis di bagian \"batasan\" README nanti.\n\n| Skenario | Akibat kalau diabaikan | Ide penanganan |\n| --- | --- | --- |\n| Putus setelah kirim, sebelum dapat konfirmasi | Pengguna kirim ulang, pesan ganda | Tiap pesan punya id buatan klien, server menolak id yang sama |\n| Putus 2 menit, room tetap ramai | Ada lubang di percakapan | Saat masuk lagi, minta pesan setelah id terakhir |\n| Pengguna A di server 1, B di server 2 | Pesan A tidak pernah sampai ke B | ___ |\n| ___ | ___ | ___ |\n\nBaris ketiga sengaja dikosongkan. Coba tebak jawabannya sebelum langkah Teknologi.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "chat-ide-alur",
+          "text": "Aku menulis alur pengguna dari buka halaman sampai kembali lagi."
+        },
+        {
+          "id": "chat-ide-putus",
+          "text": "Untuk tiap langkah alur, aku menulis akibat kalau koneksi putus di situ."
+        },
+        {
+          "id": "chat-ide-server",
+          "text": "Aku menambahkan skenario restart server, banjir pesan, dan pesan raksasa."
+        },
+        {
+          "id": "chat-ide-prioritas",
+          "text": "Aku menandai skenario yang wajib ditangani di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-ws-postgres-redis",
+      "title": "Pilih ws, PostgreSQL, dan Redis",
+      "est_minutes": 45,
+      "body": "## ws atau Socket.IO?\n\nKeduanya pilihan yang sah. Proyek ini memakai **`ws`**, dengan alasan yang bisa kamu ulangi di wawancara:\n\n| | `ws` | Socket.IO |\n| --- | --- | --- |\n| Protokol di kabel | WebSocket murni (RFC 6455) | Protokol sendiri di atas WebSocket atau long-polling |\n| Klien browser | `WebSocket` bawaan, tanpa pustaka | Wajib memakai pustaka klien Socket.IO |\n| Room, ack, reconnect | Kamu buat sendiri | Sudah tersedia |\n| Banyak server | Kamu sambungkan sendiri lewat Redis | Ada adapter Redis siap pakai |\n\nSocket.IO menyembunyikan justru bagian yang ingin kamu pelajari di proyek ini: protokol pesan, reconnect, dan fan-out antar server. Dengan `ws` kamu menulis semuanya, jadi kamu bisa menjelaskan tiap baris. Di pekerjaan nyata yang mengejar waktu rilis, Socket.IO sering pilihan yang lebih masuk akal. Tulis itu juga di catatan trade-off-mu.\n\n## Sisa tumpukan\n\n- **Node.js 22**: punya `fetch`, `--env-file`, `--watch`, dan test runner bawaan.\n- **PostgreSQL**: riwayat pesan butuh urutan dan id yang pasti. Kolom identity memberi id berurutan yang dipakai sebagai cursor.\n- **Redis pub/sub**: jalan pintas antar instance server. Pub/sub Redis tidak menyimpan apa pun: pesan yang terbit saat sebuah instance tidak mendengar akan hilang untuk instance itu. Itu sebabnya Postgres tetap jadi sumber kebenaran, dan Redis hanya pengantar cepat.\n- **Docker Compose**: menjalankan Postgres, Redis, dan dua instance aplikasi di laptopmu dengan satu perintah.\n- **Render**: hosting dengan TLS otomatis, mendukung WebSocket, dan menyediakan Postgres serta Key Value (kompatibel Redis).\n\n## Yang perlu kamu kerjakan\n\n1. Pasang Node.js 22 atau lebih baru dan Docker Desktop (atau Docker Engine). Cek dengan `node -v` dan `docker compose version`.\n2. Baca README `ws` sampai bagian contoh server, dan halaman pub/sub di dokumentasi Redis.\n3. Tulis dua alasan pilihanmu antara `ws` dan Socket.IO dengan kata-katamu sendiri.\n",
+      "materials": [
+        {
+          "id": "m-chat-ws",
+          "kind": "tautan",
+          "name": "ws: README dan contoh",
+          "url": "https://github.com/websockets/ws"
+        },
+        {
+          "id": "m-chat-socketio",
+          "kind": "tautan",
+          "name": "Socket.IO: dokumentasi v4 (pembanding)",
+          "url": "https://socket.io/docs/v4/"
+        },
+        {
+          "id": "m-chat-redis-pubsub",
+          "kind": "tautan",
+          "name": "Redis: pub/sub",
+          "url": "https://redis.io/docs/latest/develop/pubsub/"
+        },
+        {
+          "id": "m-chat-mdn-ws",
+          "kind": "tautan",
+          "name": "MDN: WebSocket di browser",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/WebSocket"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-tek-node",
+          "text": "node -v menunjukkan versi 22 atau lebih baru."
+        },
+        {
+          "id": "chat-tek-docker",
+          "text": "docker compose version berjalan di komputerku."
+        },
+        {
+          "id": "chat-tek-alasan",
+          "text": "Aku menulis dua alasan memilih ws (atau Socket.IO) dengan kata-kataku sendiri."
+        },
+        {
+          "id": "chat-tek-redis",
+          "text": "Aku bisa menjelaskan kenapa Redis pub/sub tidak cukup untuk menyimpan riwayat."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-protokol-dan-arsitektur",
+      "title": "Rancang protokol, tabel, dan arsitektur",
+      "est_minutes": 120,
+      "body": "## Protokol adalah kontrak\n\nKlien dan server hanya bisa bekerja sama kalau keduanya sepakat soal bentuk pesan. Tulis kontrak itu **sebelum** kode, di berkas `PROTOCOL.md`. Kontrak di bagian Bahan sudah memuat keputusan penting:\n\n- **Event bertipe.** Tiap pesan JSON punya `type`, jadi server cukup satu `switch`, dan event yang tidak dikenal langsung ditolak.\n- **Versi.** Field `v` di tiap event. Kalau suatu hari bentuk pesan berubah total, server bisa melayani klien lama dan baru sekaligus.\n- **`cid` buatan klien.** Klien membuat id acak sebelum mengirim. Kalau klien mengirim ulang setelah putus, server mengenali `cid` yang sama dan tidak menyimpan dua kali. Ini disebut operasi *idempotent*.\n- **Cursor berbasis `id`, bukan nomor halaman.** \"Beri 50 pesan sebelum id 812\" tetap benar walaupun ada pesan baru masuk. \"Halaman 3\" bergeser setiap ada pesan baru.\n\n## Arsitektur\n\n```text\n browser A          browser B\n     |  wss://          |  wss://\n [instance 1]      [instance 2]      <- masing-masing tahu socket miliknya sendiri\n     |   \\            /   |\n     |    [Redis pub/sub]            <- menyiarkan event ke semua instance\n     |                     |\n     +----[PostgreSQL]-----+         <- sumber kebenaran: semua pesan\n```\n\nAlur kirim pesan: klien mengirim `send` ke instance 1, instance 1 menyimpan ke Postgres, membalas `ack` ke pengirim, lalu menerbitkan event `message` ke Redis. Semua instance (termasuk instance 1) menerima event itu dan meneruskannya ke socket di room tersebut.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `PROTOCOL.md` dan `schema.sql` dari bagian Bahan ke folder proyek baru bernama `chat-realtime`.\n2. Baca `schema.sql`. Temukan dua hal: constraint yang mencegah pesan ganda, dan index yang membuat query riwayat cepat.\n3. Gambar ulang diagram arsitektur dengan tanganmu sendiri, lalu tandai di mana pesan bisa tertunda atau hilang.\n4. Jawab pertanyaan dari langkah Brainstorming: bagaimana pesan dari pengguna di instance 1 sampai ke pengguna di instance 2?\n",
+      "materials": [
+        {
+          "id": "m-chat-protocol",
+          "kind": "kode",
+          "name": "PROTOCOL.md",
+          "lang": "markdown",
+          "content": "# Protokol chat v1\n\nSemua event adalah JSON satu objek dengan field `v` (versi) dan `type`.\nServer menolak `v` yang tidak dikenal dengan error `bad_version`.\n\n## Klien ke server\n\n| type    | field                     | arti                                              |\n|---------|---------------------------|---------------------------------------------------|\n| join    | room, after?              | masuk room; `after` = id terakhir yang dimiliki   |\n| leave   | room                      | keluar room                                       |\n| send    | room, cid, text           | kirim pesan; `cid` = id unik buatan klien         |\n| history | room, before              | minta 50 pesan dengan id < before                 |\n| typing  | room                      | sedang mengetik (maks 1 per 2 detik dari klien)   |\n\n## Server ke klien\n\n| type     | field                          | arti                                           |\n|----------|--------------------------------|------------------------------------------------|\n| hello    | user                           | koneksi diterima                               |\n| joined   | room, messages[], more         | pesan awal (50 terbaru) atau yang terlewat     |\n| message  | id, room, user, cid, text, ts  | pesan baru di room                             |\n| ack      | room, cid, id                  | pesan dengan cid ini tersimpan dengan id ini   |\n| history  | room, messages[], more         | halaman pesan lebih lama                       |\n| presence | room, members[]                | daftar yang online di room                     |\n| typing   | room, user                     | user sedang mengetik                           |\n| error    | code, cid?, room?              | permintaan ditolak                             |\n\n## Aturan\n\n- room: huruf kecil, angka, tanda minus, 1-32 karakter.\n- text: 1-1000 karakter setelah di-trim. Frame WebSocket maksimal 4 KB.\n- Rate limit: 5 event per detik per koneksi, boleh burst sampai 10.\n- Pesan diurutkan dan di-dedup berdasarkan `id`. Klien wajib membuang id yang sudah ada.\n- Menambah field baru = tetap v1. Mengubah arti atau menghapus field = v2.\n"
+        },
+        {
+          "id": "m-chat-schema",
+          "kind": "kode",
+          "name": "schema.sql",
+          "lang": "sql",
+          "content": "create table if not exists messages (\n  id bigint generated always as identity primary key,\n  room text not null,\n  user_name text not null,\n  cid text not null,\n  body text not null check (char_length(body) between 1 and 1000),\n  created_at timestamptz not null default now(),\n  unique (user_name, cid)\n);\n\n-- Riwayat per room selalu dibaca berdasarkan id, dari yang terbaru.\ncreate index if not exists messages_room_id on messages (room, id desc);\n"
+        },
+        {
+          "id": "m-chat-pg-identity",
+          "kind": "tautan",
+          "name": "PostgreSQL: kolom identity",
+          "url": "https://www.postgresql.org/docs/current/ddl-identity-columns.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-ran-protokol",
+          "text": "PROTOCOL.md ada di folder proyek dan aku paham tiap event."
+        },
+        {
+          "id": "chat-ran-idempoten",
+          "text": "Aku bisa menjelaskan kenapa cid buatan klien mencegah pesan ganda."
+        },
+        {
+          "id": "chat-ran-cursor",
+          "text": "Aku bisa menjelaskan kenapa cursor id lebih aman daripada nomor halaman."
+        },
+        {
+          "id": "chat-ran-diagram",
+          "text": "Aku menggambar ulang diagram arsitektur dan menandai titik rawan."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-dan-layanan",
+      "title": "Siapkan proyek, Postgres, dan Redis",
+      "est_minutes": 90,
+      "body": "## Fondasi dulu\n\nLangkah ini menyiapkan proyek Node.js, menyalakan Postgres dan Redis lewat Docker, dan membuat dua modul penghubung: `db.js` untuk Postgres dan `bus.js` untuk Redis.\n\n## Langkah-langkah\n\n1. Di folder `chat-realtime`, buat `package.json` dari bagian Bahan, lalu jalankan `npm install ws pg redis`. Perhatikan `\"type\": \"module\"` supaya bisa memakai `import`.\n2. Buat `compose.yaml`, `Dockerfile`, `.dockerignore`, `.gitignore`, dan `.env.example` dari bagian Bahan.\n3. Salin `.env.example` menjadi `.env`, lalu isi `TOKEN_SECRET` dengan hasil perintah yang tertulis di komentarnya.\n4. Jalankan **hanya** database dan Redis dulu: `docker compose up -d postgres redis`. `schema.sql` otomatis dijalankan Postgres saat volume masih kosong.\n5. Cek tabelnya: `docker compose exec postgres psql -U chat -c '\\d messages'`.\n6. Buat `src/db.js` dan `src/bus.js`.\n7. `git init`, lalu commit dengan pesan `Siapkan proyek, Postgres, dan Redis`.\n\n## Kenapa dua koneksi Redis?\n\nKoneksi Redis yang sedang `SUBSCRIBE` masuk mode khusus dan tidak boleh menjalankan perintah lain. Karena itu `bus.js` memakai satu koneksi untuk `PUBLISH` dan perintah presence, dan satu salinan (`duplicate()`) khusus mendengar.\n\n## Kalau gagal\n\n- `schema.sql` tidak jalan: skrip di `docker-entrypoint-initdb.d` hanya berjalan saat volume baru. Jalankan `docker compose down -v` lalu naikkan lagi.\n- Port 5432 atau 6379 sudah dipakai: hentikan Postgres/Redis lokalmu, atau ganti port kiri di `compose.yaml`.\n",
+      "materials": [
+        {
+          "id": "m-chat-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"chat-realtime\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": { \"node\": \">=22\" },\n  \"scripts\": {\n    \"start\": \"node src/server.js\",\n    \"dev\": \"node --watch --env-file=.env src/server.js\",\n    \"test\": \"node --test\"\n  },\n  \"dependencies\": {\n    \"pg\": \"^8.23.1\",\n    \"redis\": \"^6.4.0\",\n    \"ws\": \"^8.23.0\"\n  }\n}\n"
+        },
+        {
+          "id": "m-chat-compose",
+          "kind": "kode",
+          "name": "compose.yaml",
+          "lang": "yaml",
+          "content": "services:\n  postgres:\n    image: postgres:17\n    environment:\n      POSTGRES_USER: chat\n      POSTGRES_PASSWORD: chat\n      POSTGRES_DB: chat\n    ports: [\"5432:5432\"]\n    volumes:\n      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro\n      - pgdata:/var/lib/postgresql/data\n  redis:\n    image: redis:7-alpine\n    ports: [\"6379:6379\"]\n  app1: &app\n    build: .\n    restart: unless-stopped   # kalau Redis belum siap saat start, coba lagi\n    depends_on: [postgres, redis]\n    environment: &env\n      DATABASE_URL: postgres://chat:chat@postgres:5432/chat\n      REDIS_URL: redis://redis:6379\n      TOKEN_SECRET: ganti-dengan-rahasia-acak-minimal-32-karakter\n      INSTANCE_NAME: app1\n    ports: [\"3001:3000\"]\n  app2:\n    <<: *app\n    environment:\n      <<: *env\n      INSTANCE_NAME: app2\n    ports: [\"3002:3000\"]\nvolumes:\n  pgdata:\n"
+        },
+        {
+          "id": "m-chat-dockerfile",
+          "kind": "kode",
+          "name": "Dockerfile",
+          "lang": "dockerfile",
+          "content": "FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"src/server.js\"]\n"
+        },
+        {
+          "id": "m-chat-dockerignore",
+          "kind": "kode",
+          "name": ".dockerignore",
+          "lang": "text",
+          "content": "node_modules\n.env\n.git\n"
+        },
+        {
+          "id": "m-chat-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules\n.env\n"
+        },
+        {
+          "id": "m-chat-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "DATABASE_URL=postgres://chat:chat@localhost:5432/chat\nREDIS_URL=redis://localhost:6379\n# Buat dengan: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"\nTOKEN_SECRET=\nPORT=3000\n# Kosongkan saat lokal. Di produksi isi alamat situsmu, mis. https://chat-kamu.onrender.com\nALLOWED_ORIGINS=\n"
+        },
+        {
+          "id": "m-chat-db",
+          "kind": "kode",
+          "name": "src/db.js",
+          "lang": "javascript",
+          "content": "import pg from \"pg\";\n\n// bigint (int8) dikembalikan pg sebagai teks. Id pesan kita jauh di bawah 2^53, jadi aman jadi Number.\npg.types.setTypeParser(20, Number);\n\nexport const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });\n"
+        },
+        {
+          "id": "m-chat-bus",
+          "kind": "kode",
+          "name": "src/bus.js",
+          "lang": "javascript",
+          "content": "import { createClient } from \"redis\";\n\n// Satu koneksi untuk perintah biasa dan publish, satu lagi khusus subscribe\n// (koneksi yang sedang subscribe tidak boleh menjalankan perintah lain).\nexport const redis = createClient({ url: process.env.REDIS_URL });\nconst sub = redis.duplicate();\nredis.on(\"error\", (e) => console.error(\"redis:\", e.message));\nsub.on(\"error\", (e) => console.error(\"redis sub:\", e.message));\nawait Promise.all([redis.connect(), sub.connect()]);\n\n// ponytail: satu channel untuk semua room; tiap instance menerima semua event.\n// Pecah jadi channel per room kalau jumlah room dan pesan sudah besar.\nconst CHANNEL = \"chat:events\";\nexport const publish = (ev) => redis.publish(CHANNEL, JSON.stringify(ev));\nexport const subscribe = (fn) => sub.subscribe(CHANNEL, (raw) => fn(JSON.parse(raw)));\nexport const closeBus = () => Promise.all([redis.close(), sub.close()]);\n"
+        },
+        {
+          "id": "m-chat-node-redis",
+          "kind": "tautan",
+          "name": "node-redis: dokumentasi klien",
+          "url": "https://github.com/redis/node-redis"
+        },
+        {
+          "id": "m-chat-compose-docs",
+          "kind": "tautan",
+          "name": "Docker Compose: dokumentasi",
+          "url": "https://docs.docker.com/compose/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-siap-layanan",
+          "text": "docker compose ps menunjukkan postgres dan redis berjalan."
+        },
+        {
+          "id": "chat-siap-tabel",
+          "text": "Tabel messages ada, lengkap dengan constraint unique (user_name, cid)."
+        },
+        {
+          "id": "chat-siap-env",
+          "text": ".env berisi TOKEN_SECRET acak dan tidak ikut ter-commit."
+        },
+        {
+          "id": "chat-siap-commit",
+          "text": "Commit pertama sudah dibuat."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "autentikasi-saat-upgrade",
+      "title": "Server HTTP dan autentikasi saat upgrade",
+      "est_minutes": 120,
+      "body": "## Tolak sebelum tersambung\n\nKoneksi WebSocket dimulai sebagai request HTTP biasa dengan header `Upgrade: websocket`. Saat itulah waktu terbaik memeriksa identitas: kalau token tidak sah, server menjawab `401` dan socket ditutup **sebelum** ada koneksi WebSocket. Tidak ada sumber daya yang terbuang untuk tamu tak diundang.\n\n## Bagian-bagiannya\n\n- **`src/token.js`**: token = isi (nama dan waktu kedaluwarsa) yang ditandatangani HMAC-SHA256 dengan `TOKEN_SECRET`. Siapa pun bisa membaca isinya, tapi tidak ada yang bisa mengubahnya tanpa rahasia. Perbandingan tanda tangan memakai `timingSafeEqual` supaya waktu respons tidak membocorkan berapa karakter yang cocok.\n- **`src/server.js`**: server HTTP biasa untuk `/`, `/health`, dan `POST /token`, lalu event `upgrade` yang memeriksa token dan `Origin`. `maxPayload: 4096` membuat `ws` menutup frame lebih dari 4 KB dengan kode 1009. Ada juga ping tiap 30 detik untuk membersihkan koneksi mati, dan penanganan `SIGTERM` untuk deploy.\n- **`src/hub.js` sementara**: hanya menyapa dan memantulkan pesan, supaya kamu bisa menguji server sekarang. Langkah berikutnya menggantinya.\n\n> `POST /token` di proyek ini sengaja hanya meminta nama, tanpa kata sandi, supaya fokus tetap di realtime. Tulis ini sebagai batasan di README. Di aplikasi sungguhan, token diterbitkan setelah login berhasil.\n\n## Langkah-langkah\n\n1. Buat `src/token.js`, `src/server.js`, dan `src/hub.js` (versi sementara) dari bagian Bahan.\n2. Buat `public/index.html` berisi satu baris `<p>segera</p>`. Server membacanya saat menyala.\n3. Jalankan `npm run dev`, lalu buka http://localhost:3000/health.\n4. Ambil token dan uji dari konsol DevTools di halaman http://localhost:3000 dengan potongan kode `uji-konsol.js`.\n5. Ubah satu huruf token lalu coba lagi. Koneksi harus gagal (di tab Network terlihat status 401).\n6. Commit dengan pesan `Tambah server dan autentikasi upgrade`.\n\nToken dikirim lewat query string karena API `WebSocket` di browser tidak bisa memasang header `Authorization`. Akibatnya token bisa tercatat di log akses, jadi umurnya dibuat pendek (1 jam).\n",
+      "materials": [
+        {
+          "id": "m-chat-token",
+          "kind": "kode",
+          "name": "src/token.js",
+          "lang": "javascript",
+          "content": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\nconst SECRET = process.env.TOKEN_SECRET;\nif (!SECRET || SECRET.length < 32) throw new Error(\"TOKEN_SECRET wajib diisi, minimal 32 karakter\");\n\nconst sign = (data) => createHmac(\"sha256\", SECRET).update(data).digest(\"base64url\");\n\n// Token = base64url(payload) + \".\" + tanda tangan HMAC. Mirip JWT, tanpa dependensi.\nexport function issueToken(user, ttlSec = 3600) {\n  const exp = Math.floor(Date.now() / 1000) + ttlSec;\n  const data = Buffer.from(JSON.stringify({ user, exp })).toString(\"base64url\");\n  return `${data}.${sign(data)}`;\n}\n\n// Mengembalikan nama pengguna kalau token sah dan belum kedaluwarsa, selain itu null.\nexport function verifyToken(token) {\n  const [data, sig] = String(token ?? \"\").split(\".\");\n  if (!data || !sig) return null;\n  const a = Buffer.from(sig);\n  const b = Buffer.from(sign(data));\n  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;\n  const { user, exp } = JSON.parse(Buffer.from(data, \"base64url\").toString());\n  return exp > Date.now() / 1000 ? user : null;\n}\n"
+        },
+        {
+          "id": "m-chat-server",
+          "kind": "kode",
+          "name": "src/server.js",
+          "lang": "javascript",
+          "content": "import { createServer } from \"node:http\";\nimport { readFile } from \"node:fs/promises\";\nimport { hostname } from \"node:os\";\nimport { WebSocketServer } from \"ws\";\nimport { issueToken, verifyToken } from \"./token.js\";\nimport { onConnection, startHub } from \"./hub.js\";\n\nconst PORT = Number(process.env.PORT ?? 3000);\nconst INSTANCE = process.env.INSTANCE_NAME ?? hostname();\nconst ORIGINS = (process.env.ALLOWED_ORIGINS ?? \"\").split(\",\").filter(Boolean);\nconst NAME = /^[a-zA-Z0-9_]{2,20}$/;\nconst page = await readFile(new URL(\"../public/index.html\", import.meta.url));\n\nfunction json(res, status, body) {\n  res.writeHead(status, { \"content-type\": \"application/json\" });\n  res.end(JSON.stringify(body));\n}\n\nconst server = createServer(async (req, res) => {\n  if (req.method === \"GET\" && req.url === \"/\") {\n    res.writeHead(200, { \"content-type\": \"text/html; charset=utf-8\" });\n    return res.end(page);\n  }\n  if (req.method === \"GET\" && req.url === \"/health\") return json(res, 200, { status: \"ok\", instance: INSTANCE });\n  if (req.method === \"POST\" && req.url === \"/token\") {\n    // DEMO: siapa pun bisa meminta token untuk nama apa pun. Di aplikasi sungguhan,\n    // token baru diterbitkan setelah login (sesi atau kata sandi) berhasil.\n    let body = \"\";\n    for await (const chunk of req) {\n      body += chunk;\n      if (body.length > 1000) return json(res, 413, { error: \"body terlalu besar\" });\n    }\n    let name;\n    try { name = JSON.parse(body).name; } catch {}\n    if (typeof name !== \"string\" || !NAME.test(name)) return json(res, 400, { error: \"nama 2-20 huruf, angka, atau _\" });\n    return json(res, 200, { token: issueToken(name) });\n  }\n  json(res, 404, { error: \"tidak ditemukan\" });\n});\n\n// maxPayload: frame lebih besar dari 4 KB langsung ditutup oleh ws dengan kode 1009.\nconst wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });\n\nserver.on(\"upgrade\", (req, socket, head) => {\n  socket.on(\"error\", console.error);\n  const url = new URL(req.url, \"http://localhost\");\n  // Browser tidak bisa memasang header Authorization di WebSocket, jadi token dikirim lewat query.\n  const user = url.pathname === \"/ws\" ? verifyToken(url.searchParams.get(\"token\")) : null;\n  const originOk = ORIGINS.length === 0 || ORIGINS.includes(req.headers.origin);\n  if (!user || !originOk) {\n    socket.write(\"HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n\");\n    return socket.destroy();\n  }\n  socket.removeListener(\"error\", console.error);\n  wss.handleUpgrade(req, socket, head, (ws) => wss.emit(\"connection\", ws, user));\n});\n\n// Koneksi yang diam-diam putus (HP masuk terowongan) tidak memicu close. Ping tiap 30 detik membersihkannya.\nwss.on(\"connection\", (ws, user) => {\n  ws.isAlive = true;\n  ws.on(\"pong\", () => { ws.isAlive = true; });\n  onConnection(ws, user);\n});\nconst heartbeat = setInterval(() => {\n  for (const ws of wss.clients) {\n    if (!ws.isAlive) { ws.terminate(); continue; }\n    ws.isAlive = false;\n    ws.ping();\n  }\n}, 30_000);\n\n// Saat deploy, instance lama dimatikan dengan SIGTERM. Tutup dengan 1012 supaya klien langsung reconnect.\nprocess.on(\"SIGTERM\", () => {\n  clearInterval(heartbeat);\n  for (const ws of wss.clients) ws.close(1012, \"server restart\");\n  server.close();\n  setTimeout(() => process.exit(0), 2000);\n});\n\nawait startHub();\nserver.listen(PORT, () => console.log(`[${INSTANCE}] siap di http://localhost:${PORT}`));\n"
+        },
+        {
+          "id": "m-chat-hub-sementara",
+          "kind": "kode",
+          "name": "src/hub.js (sementara)",
+          "lang": "javascript",
+          "content": "// Sementara: hanya menyapa dan memantulkan pesan. Diganti total di langkah berikutnya.\nexport async function startHub() {}\n\nexport function onConnection(ws, user) {\n  ws.send(JSON.stringify({ v: 1, type: \"hello\", user }));\n  ws.on(\"message\", (raw) => ws.send(raw.toString()));\n  ws.on(\"error\", (err) => console.warn(err.message));\n}\n"
+        },
+        {
+          "id": "m-chat-uji-konsol",
+          "kind": "kode",
+          "name": "uji-konsol.js",
+          "lang": "javascript",
+          "content": "// Tempel di konsol DevTools saat membuka http://localhost:3000\nconst { token } = await (await fetch(\"/token\", { method: \"POST\", body: JSON.stringify({ name: \"ani\" }) })).json();\nconst ws = new WebSocket(`ws://localhost:3000/ws?token=${token}`);\nws.onmessage = (e) => console.log(\"dari server:\", e.data);\nws.onopen = () => ws.send(\"halo\");\n// Harus muncul: {\"v\":1,\"type\":\"hello\",\"user\":\"ani\"} lalu halo\n"
+        },
+        {
+          "id": "m-chat-rfc6455",
+          "kind": "tautan",
+          "name": "RFC 6455: protokol WebSocket",
+          "url": "https://www.rfc-editor.org/rfc/rfc6455"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-auth-health",
+          "text": "GET /health menjawab status ok."
+        },
+        {
+          "id": "chat-auth-hello",
+          "text": "Dengan token sah, konsol menampilkan event hello dan pantulan pesanku."
+        },
+        {
+          "id": "chat-auth-tolak",
+          "text": "Token yang diubah satu hurufnya ditolak dengan 401."
+        },
+        {
+          "id": "chat-auth-commit",
+          "text": "Server dan autentikasi sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "validasi-protokol-dan-rate-limit",
+      "title": "Validasi protokol dan rate limit",
+      "est_minutes": 120,
+      "body": "## Semua yang datang dari klien belum bisa dipercaya\n\nSiapa pun bisa membuka konsol dan mengirim apa saja lewat socket-mu. Satu pintu masuk yang memeriksa semua event membuat sisa kode bisa berasumsi datanya sudah bersih.\n\n## Dua bagian di `src/protocol.js`\n\n1. **`parseClientEvent`**: mengurai JSON, mengecek versi, nama room, dan field tiap tipe event. Hasilnya objek bersih, atau `{ error: \"kode\" }`. Perhatikan: hasilnya objek baru berisi field yang dikenal saja, bukan objek kiriman klien.\n2. **`tokenBucket`**: tiap koneksi punya \"ember\" berisi token. Tiap event memakai satu token, dan ember terisi lagi 5 token per detik sampai maksimal 10. Mengetik cepat masih lolos, banjir pesan tidak.\n\n## Langkah-langkah\n\n1. Buat `src/protocol.js` dan `test/protocol.test.js` dari bagian Bahan.\n2. Jalankan `npm test`. Ketiga tes harus lulus.\n3. Tambahkan satu kasus tes milikmu sendiri, misalnya `cid` yang terlalu pendek, dan pastikan hasilnya `bad_cid`.\n4. Commit dengan pesan `Validasi protokol dan rate limit`.\n\n## Pikirkan batasnya\n\nRate limit ini **per koneksi** dan disimpan di memori instance. Pengguna yang membuka lima tab mendapat lima ember. Untuk batas per pengguna lintas instance, ember harus pindah ke Redis. Catat ini sebagai trade-off: lebih sederhana dan cepat, tapi bisa diakali dengan banyak koneksi.\n",
+      "materials": [
+        {
+          "id": "m-chat-protocol-js",
+          "kind": "kode",
+          "name": "src/protocol.js",
+          "lang": "javascript",
+          "content": "// Semua event dari klien lewat sini dulu. Tidak ada yang dipercaya sebelum lolos.\nexport const VERSION = 1;\nexport const MAX_TEXT = 1000;\nconst ROOM = /^[a-z0-9-]{1,32}$/;\nconst CID = /^[A-Za-z0-9-]{8,64}$/;\nconst isId = (n) => Number.isSafeInteger(n) && n >= 0;\n\nexport function parseClientEvent(raw) {\n  let ev;\n  try {\n    ev = JSON.parse(raw);\n  } catch {\n    return { error: \"bad_json\" };\n  }\n  if (ev === null || typeof ev !== \"object\") return { error: \"bad_json\" };\n  if (ev.v !== VERSION) return { error: \"bad_version\" };\n  if (typeof ev.room !== \"string\" || !ROOM.test(ev.room)) return { error: \"bad_room\" };\n  const { type, room } = ev;\n\n  switch (type) {\n    case \"join\":\n      if (ev.after !== undefined && !isId(ev.after)) return { error: \"bad_cursor\" };\n      return { type, room, after: ev.after };\n    case \"leave\":\n    case \"typing\":\n      return { type, room };\n    case \"send\": {\n      if (typeof ev.cid !== \"string\" || !CID.test(ev.cid)) return { error: \"bad_cid\" };\n      const text = typeof ev.text === \"string\" ? ev.text.trim() : \"\";\n      if (!text || text.length > MAX_TEXT) return { error: \"bad_text\", cid: ev.cid };\n      return { type, room, cid: ev.cid, text };\n    }\n    case \"history\":\n      if (!isId(ev.before)) return { error: \"bad_cursor\" };\n      return { type, room, before: ev.before };\n    default:\n      return { error: \"bad_type\" };\n  }\n}\n\n// Token bucket: rate token per detik, maksimal burst token tersimpan.\nexport function tokenBucket(rate, burst) {\n  let tokens = burst;\n  let last = Date.now();\n  return () => {\n    const now = Date.now();\n    tokens = Math.min(burst, tokens + ((now - last) / 1000) * rate);\n    last = now;\n    if (tokens < 1) return false;\n    tokens -= 1;\n    return true;\n  };\n}\n"
+        },
+        {
+          "id": "m-chat-protocol-test",
+          "kind": "kode",
+          "name": "test/protocol.test.js",
+          "lang": "javascript",
+          "content": "import { test } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { parseClientEvent, tokenBucket } from \"../src/protocol.js\";\n\nconst p = (o) => parseClientEvent(JSON.stringify(o));\n\ntest(\"event sah diterima\", () => {\n  assert.deepEqual(p({ v: 1, type: \"join\", room: \"umum\" }), { type: \"join\", room: \"umum\", after: undefined });\n  assert.deepEqual(p({ v: 1, type: \"send\", room: \"umum\", cid: \"abc12345\", text: \"  halo \" }),\n    { type: \"send\", room: \"umum\", cid: \"abc12345\", text: \"halo\" });\n});\n\ntest(\"event rusak ditolak\", () => {\n  assert.equal(parseClientEvent(\"{bukan json\").error, \"bad_json\");\n  assert.equal(parseClientEvent(\"null\").error, \"bad_json\");\n  assert.equal(p({ v: 2, type: \"join\", room: \"umum\" }).error, \"bad_version\");\n  assert.equal(p({ v: 1, type: \"join\", room: \"Umum Besar\" }).error, \"bad_room\");\n  assert.equal(p({ v: 1, type: \"send\", room: \"umum\", cid: \"abc12345\", text: \"   \" }).error, \"bad_text\");\n  assert.equal(p({ v: 1, type: \"send\", room: \"umum\", cid: \"abc12345\", text: \"x\".repeat(1001) }).error, \"bad_text\");\n  assert.equal(p({ v: 1, type: \"history\", room: \"umum\", before: -1 }).error, \"bad_cursor\");\n  assert.equal(p({ v: 1, type: \"hapus\", room: \"umum\" }).error, \"bad_type\");\n});\n\ntest(\"token bucket menolak setelah burst habis\", () => {\n  const allow = tokenBucket(1, 3);\n  assert.deepEqual([allow(), allow(), allow(), allow()], [true, true, true, false]);\n});\n"
+        },
+        {
+          "id": "m-chat-node-test",
+          "kind": "tautan",
+          "name": "Node.js: test runner bawaan",
+          "url": "https://nodejs.org/api/test.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-val-tes",
+          "text": "npm test lulus untuk semua tes protokol."
+        },
+        {
+          "id": "chat-val-tes-baru",
+          "text": "Aku menambahkan minimal satu kasus tes sendiri."
+        },
+        {
+          "id": "chat-val-bucket",
+          "text": "Aku bisa menjelaskan cara kerja token bucket dalam dua kalimat."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "room-pesan-presence-dan-riwayat",
+      "title": "Room, pesan, presence, dan riwayat",
+      "est_minutes": 270,
+      "body": "## Jantung aplikasi\n\nGanti `src/hub.js` sementara dengan versi lengkap, lalu tambahkan `src/presence.js`. Di sinilah semua keputusan dari langkah Merancang menjadi kode.\n\n## Baca kodenya per bagian\n\n- **`rooms`**: Map dari nama room ke kumpulan socket **di instance ini saja**. Instance lain punya Map sendiri.\n- **`deliver`**: dipanggil untuk tiap event dari Redis. Ia meneruskan event ke socket lokal di room itu. Pengirim pun menerima pesannya sendiri lewat jalur ini, jadi semua orang melihat urutan yang sama.\n- **`join`**: socket didaftarkan ke room **sebelum** query riwayat. Kalau urutannya dibalik, pesan yang masuk di antara query dan pendaftaran akan hilang. Harganya, satu pesan bisa datang dua kali, dan klien membuang duplikat berdasarkan `id`.\n- **`send`**: `insert ... on conflict (user_name, cid) do nothing`. Kalau `cid` sudah ada, server mengambil pesan lama, membalas `ack` dengan id yang sama, dan **tidak** menyiarkannya lagi.\n- **`history`**: `where id < $before order by id desc limit 50`, lalu dibalik supaya urut naik. Index `(room, id desc)` membuat query ini cepat walau tabelnya besar.\n- **presence**: sorted set Redis per room, skornya waktu terakhir terlihat. Tiap 10 detik instance memperbarui skor penggunanya. Kalau sebuah instance mati mendadak, penggunanya hilang dari daftar sendiri setelah 30 detik.\n- **`ws.on(\"error\")`**: tanpa listener ini, frame kebesaran yang ditolak `ws` akan melempar error yang mematikan proses Node. Jangan dihapus.\n\n## Langkah-langkah\n\n1. Buat `src/presence.js` dan ganti `src/hub.js` dengan versi di bagian Bahan.\n2. Jalankan `npm run dev`. Pastikan Postgres dan Redis dari Compose masih menyala.\n3. Uji dari konsol dengan `uji-room.js`: masuk room, kirim pesan, lalu kirim lagi dengan `cid` yang sama. `ack` kedua harus membawa `id` yang sama.\n4. Buka tab kedua dengan nama lain di room yang sama. Event `presence` di tab pertama harus berisi dua nama.\n5. Cek isi tabel: `docker compose exec postgres psql -U chat -c 'select id, room, user_name, body from messages'`.\n6. Commit dengan pesan `Room, pesan, presence, dan riwayat`.\n",
+      "materials": [
+        {
+          "id": "m-chat-presence",
+          "kind": "kode",
+          "name": "src/presence.js",
+          "lang": "javascript",
+          "content": "import { redis } from \"./bus.js\";\n\n// Presence = sorted set per room: anggota = nama pengguna, skor = waktu terakhir terlihat.\n// Instance yang mati berhenti memperbarui skor, jadi penggunanya hilang sendiri setelah TTL.\nconst TTL = 30_000;\nconst key = (room) => `presence:${room}`;\n\nexport const touch = (room, user) => redis.zAdd(key(room), { score: Date.now(), value: user });\nexport const remove = (room, user) => redis.zRem(key(room), user);\n\nexport async function list(room) {\n  await redis.zRemRangeByScore(key(room), 0, Date.now() - TTL);\n  return redis.zRange(key(room), 0, -1);\n}\n"
+        },
+        {
+          "id": "m-chat-hub",
+          "kind": "kode",
+          "name": "src/hub.js",
+          "lang": "javascript",
+          "content": "import { pool } from \"./db.js\";\nimport { publish, subscribe } from \"./bus.js\";\nimport { VERSION, parseClientEvent, tokenBucket } from \"./protocol.js\";\nimport * as presence from \"./presence.js\";\n\nconst MAX_ROOMS = 10;\nconst PAGE = 50;\nconst RESUME_LIMIT = 200;\nconst COLS = `id, room, user_name as \"user\", cid, body as text, created_at as ts`;\n\n// room -> Set<ws>, hanya koneksi di instance ini. Instance lain punya Map sendiri.\nconst rooms = new Map();\n\nfunction send(ws, ev) {\n  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ v: VERSION, ...ev }));\n}\n\n// Semua event yang perlu sampai ke banyak orang lewat Redis, termasuk ke instance ini sendiri.\nfunction deliver(ev) {\n  for (const ws of rooms.get(ev.room) ?? []) {\n    if (ev.type === \"typing\" && ws.user === ev.user) continue;\n    send(ws, ev);\n  }\n}\n\nasync function broadcastPresence(room) {\n  await publish({ type: \"presence\", room, members: await presence.list(room) });\n}\n\nconst handlers = {\n  async join(ws, { room, after }) {\n    if (!ws.rooms.has(room) && ws.rooms.size >= MAX_ROOMS) {\n      return send(ws, { type: \"error\", code: \"too_many_rooms\", room });\n    }\n    if (!rooms.has(room)) rooms.set(room, new Set());\n    rooms.get(room).add(ws);\n    ws.rooms.add(room);\n    await presence.touch(room, ws.user);\n\n    // Koneksi sudah terdaftar di room SEBELUM query, jadi tidak ada pesan yang jatuh di celah.\n    // Akibatnya satu pesan bisa datang dua kali (live dan dari query): klien membuang duplikat berdasarkan id.\n    const { rows } = after === undefined\n      ? await pool.query(\n          `select * from (select ${COLS} from messages where room = $1 order by id desc limit $2) t order by id`,\n          [room, PAGE])\n      : await pool.query(\n          `select ${COLS} from messages where room = $1 and id > $2 order by id limit $3`,\n          [room, after, RESUME_LIMIT]);\n    send(ws, { type: \"joined\", room, messages: rows, more: after === undefined && rows.length === PAGE });\n    await broadcastPresence(room);\n  },\n\n  async leave(ws, { room }) {\n    await leaveRoom(ws, room);\n  },\n\n  async send(ws, { room, cid, text }) {\n    if (!ws.rooms.has(room)) return send(ws, { type: \"error\", code: \"not_in_room\", room, cid });\n    // cid unik per pengguna: kalau klien mengirim ulang setelah reconnect, pesan tidak tersimpan dua kali.\n    const ins = await pool.query(\n      `insert into messages (room, user_name, cid, body) values ($1, $2, $3, $4)\n       on conflict (user_name, cid) do nothing returning ${COLS}`,\n      [room, ws.user, cid, text]);\n    const msg = ins.rows[0]\n      ?? (await pool.query(`select ${COLS} from messages where user_name = $1 and cid = $2`, [ws.user, cid])).rows[0];\n    send(ws, { type: \"ack\", room, cid, id: msg.id });\n    if (ins.rows[0]) await publish({ type: \"message\", ...msg });\n  },\n\n  async history(ws, { room, before }) {\n    if (!ws.rooms.has(room)) return send(ws, { type: \"error\", code: \"not_in_room\", room });\n    const { rows } = await pool.query(\n      `select ${COLS} from messages where room = $1 and id < $2 order by id desc limit $3`,\n      [room, before, PAGE]);\n    send(ws, { type: \"history\", room, messages: rows.reverse(), more: rows.length === PAGE });\n  },\n\n  async typing(ws, { room }) {\n    if (ws.rooms.has(room)) await publish({ type: \"typing\", room, user: ws.user });\n  },\n};\n\nasync function leaveRoom(ws, room) {\n  if (!ws.rooms.delete(room)) return;\n  const set = rooms.get(room);\n  set.delete(ws);\n  if (set.size === 0) rooms.delete(room);\n  // Pengguna yang sama mungkin masih membuka tab lain di instance ini.\n  // ponytail: tab di instance LAIN tidak terlihat dari sini; heartbeat-nya mengembalikan nama itu dalam <=10 detik.\n  if (![...set].some((other) => other.user === ws.user)) {\n    await presence.remove(room, ws.user);\n  }\n  await broadcastPresence(room);\n}\n\nexport function onConnection(ws, user) {\n  ws.user = user;\n  ws.rooms = new Set();\n  const allow = tokenBucket(5, 10);\n  let strikes = 0;\n  send(ws, { type: \"hello\", user });\n\n  ws.on(\"message\", async (raw, isBinary) => {\n    if (!allow()) {\n      send(ws, { type: \"error\", code: \"rate_limited\" });\n      if (++strikes > 20) ws.close(1008, \"rate limit\");\n      return;\n    }\n    const ev = isBinary ? { error: \"bad_json\" } : parseClientEvent(raw.toString());\n    if (ev.error) return send(ws, { type: \"error\", code: ev.error, cid: ev.cid });\n    try {\n      await handlers[ev.type](ws, ev);\n    } catch (err) {\n      console.error(err);\n      send(ws, { type: \"error\", code: \"server_error\", cid: ev.cid });\n    }\n  });\n\n  // Tanpa listener ini, frame kebesaran (ws menutupnya dengan 1009) melempar 'error' dan mematikan proses.\n  ws.on(\"error\", (err) => console.warn(`ws ${user}:`, err.message));\n\n  ws.on(\"close\", async () => {\n    for (const room of [...ws.rooms]) await leaveRoom(ws, room).catch(console.error);\n  });\n}\n\nexport async function startHub() {\n  await subscribe(deliver);\n  // Perbarui \"terakhir terlihat\" semua pengguna yang tersambung ke instance ini.\n  setInterval(() => {\n    for (const [room, set] of rooms) {\n      for (const user of new Set([...set].map((ws) => ws.user))) presence.touch(room, user).catch(console.error);\n    }\n  }, 10_000).unref();\n}\n"
+        },
+        {
+          "id": "m-chat-uji-room",
+          "kind": "kode",
+          "name": "uji-room.js",
+          "lang": "javascript",
+          "content": "// Konsol DevTools di http://localhost:3000\nconst { token } = await (await fetch(\"/token\", { method: \"POST\", body: JSON.stringify({ name: \"ani\" }) })).json();\nconst ws = new WebSocket(`ws://localhost:3000/ws?token=${token}`);\nconst kirim = (ev) => ws.send(JSON.stringify({ v: 1, ...ev }));\nws.onmessage = (e) => console.log(JSON.parse(e.data));\nws.onopen = () => {\n  kirim({ type: \"join\", room: \"umum\" });\n  kirim({ type: \"send\", room: \"umum\", cid: \"coba-0001\", text: \"halo semua\" });\n  kirim({ type: \"send\", room: \"umum\", cid: \"coba-0001\", text: \"halo semua\" }); // dikirim ulang\n};\n// Perhatikan: dua ack dengan id sama, tapi hanya satu event message.\n"
+        },
+        {
+          "id": "m-chat-node-pg",
+          "kind": "tautan",
+          "name": "node-postgres: dokumentasi",
+          "url": "https://node-postgres.com/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-hub-kirim",
+          "text": "Pesan tersimpan di tabel messages dan diterima event message di room."
+        },
+        {
+          "id": "chat-hub-idempoten",
+          "text": "Mengirim ulang cid yang sama menghasilkan ack dengan id sama dan tidak ada baris ganda."
+        },
+        {
+          "id": "chat-hub-presence",
+          "text": "Dua tab di room yang sama saling terlihat di event presence."
+        },
+        {
+          "id": "chat-hub-riwayat",
+          "text": "Event history mengembalikan pesan dengan id lebih kecil dari before."
+        },
+        {
+          "id": "chat-hub-commit",
+          "text": "Hub lengkap sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "klien-web-dan-reconnect",
+      "title": "Klien web dengan reconnect dan kirim ulang",
+      "est_minutes": 210,
+      "body": "## Klien yang tahan banting\n\nKlien tanpa framework, satu berkas HTML. Bagian terpentingnya bukan tampilan, tapi perilakunya saat koneksi putus.\n\n## Tiga mekanisme yang perlu kamu pahami\n\n1. **Reconnect dengan backoff dan jitter.** Setelah putus, klien menunggu 0,5 detik, lalu 1, 2, 4 detik, dan seterusnya sampai maksimal 30 detik. Waktunya diacak sebagian. Bayangkan server restart dengan 1000 klien: tanpa acakan, semuanya menyerbu di milidetik yang sama.\n2. **Mengejar ketinggalan.** Klien mengingat id pesan terakhir tiap room. Saat tersambung lagi, ia mengirim `join` dengan `after` berisi id itu, dan server hanya mengirim yang terlewat.\n3. **Outbox.** Pesan yang belum mendapat `ack` disimpan di `outbox` dan tampil pudar. Saat tersambung lagi, semua isi outbox dikirim ulang dengan `cid` yang sama. Berkat constraint unik di server, kirim ulang tidak pernah membuat pesan ganda.\n\nIsi pesan ditampilkan dengan `textContent`, bukan `innerHTML`. Pesan berisi `<img src=x onerror=...>` hanya akan tampil sebagai teks.\n\n## Langkah-langkah\n\n1. Ganti `public/index.html` dengan versi di bagian Bahan, lalu muat ulang server.\n2. Buka dua jendela browser, isi nama berbeda, masuk ke room yang sama, dan mengobrol.\n3. Matikan server (Ctrl+C) saat tab terbuka. Status harus berubah jadi \"terputus\". Kirim satu pesan, pesan itu tampil pudar.\n4. Nyalakan server lagi. Dalam beberapa detik status kembali tersambung dan pesan pudar terkirim, tanpa ganda.\n5. Di DevTools, buka Network lalu pilih koneksi `ws`. Tab Messages memperlihatkan semua event yang lewat. Cocokkan dengan PROTOCOL.md.\n6. Commit dengan pesan `Klien web dengan reconnect`.\n",
+      "materials": [
+        {
+          "id": "m-chat-client",
+          "kind": "kode",
+          "name": "public/index.html",
+          "lang": "html",
+          "content": "<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Chat Realtime</title>\n  <style>\n    body { margin: 0; font-family: system-ui, sans-serif; display: grid; grid-template-rows: auto 1fr auto; height: 100dvh; }\n    header, form { display: flex; gap: .5rem; padding: .5rem; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #ddd; }\n    main { display: grid; grid-template-columns: 1fr 10rem; overflow: hidden; }\n    #log { overflow-y: auto; padding: .5rem; list-style: none; margin: 0; }\n    #log .pending { opacity: .5; }\n    aside { border-left: 1px solid #ddd; padding: .5rem; overflow-y: auto; }\n    #status[data-s=\"on\"] { color: green; } #status[data-s=\"off\"] { color: crimson; }\n    #typing { min-height: 1.2em; padding: 0 .5rem; font-size: .85rem; color: #666; }\n    .tab[aria-current=\"true\"] { font-weight: 700; }\n  </style>\n</head>\n<body>\n  <header>\n    <input id=\"name\" placeholder=\"namamu\" maxlength=\"20\" aria-label=\"Nama\">\n    <input id=\"room\" placeholder=\"room, mis. umum\" maxlength=\"32\" aria-label=\"Room\">\n    <button id=\"join\">Masuk room</button>\n    <span id=\"tabs\"></span>\n    <span id=\"status\" data-s=\"off\" role=\"status\">terputus</span>\n  </header>\n  <main>\n    <ul id=\"log\" aria-live=\"polite\"><li><button id=\"older\" hidden>Muat pesan lebih lama</button></li></ul>\n    <aside><strong>Online</strong><ul id=\"members\"></ul></aside>\n  </main>\n  <div>\n    <div id=\"typing\"></div>\n    <form id=\"form\"><input id=\"text\" maxlength=\"1000\" autocomplete=\"off\" aria-label=\"Pesan\" style=\"flex:1\"><button>Kirim</button></form>\n  </div>\n<script type=\"module\">\nconst $ = (id) => document.getElementById(id);\nconst state = new Map();      // room -> { msgs: Map(id -> pesan), members: [], more: false }\nconst outbox = new Map();     // cid -> { room, text }: pesan yang belum di-ack server\nconst typers = new Map();     // \"room:user\" -> timeout\nlet ws, current, attempt = 0, lastTyping = 0;\n\nconst room = (r) => state.get(r) ?? state.set(r, { msgs: new Map(), members: [], more: false }).get(r);\nconst lastId = (r) => Math.max(0, ...room(r).msgs.keys());\nconst firstId = (r) => Math.min(...room(r).msgs.keys());\nconst sendEv = (ev) => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ v: 1, ...ev }));\n\nasync function connect() {\n  const res = await fetch(\"/token\", { method: \"POST\", body: JSON.stringify({ name: $(\"name\").value.trim() }) });\n  if (!res.ok) return alert((await res.json()).error);\n  const { token } = await res.json();\n  ws = new WebSocket(`${location.protocol === \"https:\" ? \"wss\" : \"ws\"}://${location.host}/ws?token=${encodeURIComponent(token)}`);\n  ws.onopen = () => {\n    attempt = 0;\n    setStatus(true);\n    // Masuk lagi ke semua room, minta hanya pesan setelah id terakhir yang kita punya.\n    for (const r of state.keys()) sendEv({ type: \"join\", room: r, after: room(r).msgs.size ? lastId(r) : undefined });\n    for (const [cid, m] of outbox) sendEv({ type: \"send\", room: m.room, cid, text: m.text });\n  };\n  ws.onmessage = (e) => handle(JSON.parse(e.data));\n  ws.onclose = () => {\n    setStatus(false);\n    // Exponential backoff + jitter: 0.5s, 1s, 2s, ... maks 30s, diacak supaya klien tidak serentak menyerbu.\n    const delay = Math.min(30_000, 500 * 2 ** attempt++) * (0.5 + Math.random() / 2);\n    setTimeout(() => connect().catch(() => ws.onclose()), delay);\n  };\n}\n\nfunction handle(ev) {\n  if (ev.v !== 1) return console.warn(\"versi protokol tidak dikenal\", ev);\n  const r = ev.room && room(ev.room);\n  switch (ev.type) {\n    case \"joined\":\n    case \"history\":\n      for (const m of ev.messages) r.msgs.set(m.id, m);\n      r.more = ev.type === \"history\" ? ev.more : r.more || ev.more;\n      break;\n    case \"message\": r.msgs.set(ev.id, ev); break;\n    case \"ack\": outbox.delete(ev.cid); break;\n    case \"presence\": r.members = ev.members; break;\n    case \"typing\": {\n      const k = `${ev.room}:${ev.user}`;\n      clearTimeout(typers.get(k));\n      typers.set(k, setTimeout(() => { typers.delete(k); render(); }, 3000));\n      break;\n    }\n    case \"error\":\n      if (ev.code === \"bad_text\") outbox.delete(ev.cid);\n      console.warn(\"server menolak:\", ev.code);\n      break;\n  }\n  render();\n}\n\nfunction render() {\n  $(\"tabs\").replaceChildren(...[...state.keys()].map((r) => {\n    const b = document.createElement(\"button\");\n    b.className = \"tab\"; b.textContent = `#${r}`; b.ariaCurrent = String(r === current);\n    b.onclick = () => { current = r; render(); };\n    return b;\n  }));\n  if (!current) return;\n  const r = room(current);\n  const items = [...r.msgs.values()].sort((a, b) => a.id - b.id).map((m) => li(`${m.user}: ${m.text}`));\n  for (const [, m] of outbox) if (m.room === current) items.push(li(`(mengirim) ${m.text}`, \"pending\"));\n  $(\"older\").hidden = !r.more;\n  $(\"log\").replaceChildren($(\"older\").parentElement, ...items);\n  $(\"members\").replaceChildren(...r.members.map((u) => li(u)));\n  const who = [...typers.keys()].filter((k) => k.startsWith(`${current}:`)).map((k) => k.slice(current.length + 1));\n  $(\"typing\").textContent = who.length ? `${who.join(\", \")} sedang mengetik...` : \"\";\n}\n\nfunction li(text, cls) {\n  const el = document.createElement(\"li\");\n  el.textContent = text;   // textContent, bukan innerHTML: isi pesan tidak pernah dijalankan sebagai HTML\n  if (cls) el.className = cls;\n  return el;\n}\n\nfunction setStatus(on) {\n  $(\"status\").dataset.s = on ? \"on\" : \"off\";\n  $(\"status\").textContent = on ? \"tersambung\" : \"terputus, mencoba lagi...\";\n}\n\n$(\"join\").onclick = async () => {\n  const r = $(\"room\").value.trim().toLowerCase();\n  if (!r) return;\n  current = r;\n  room(r);\n  if (!ws) await connect(); else sendEv({ type: \"join\", room: r });\n  render();\n};\n\n$(\"older\").onclick = () => sendEv({ type: \"history\", room: current, before: firstId(current) });\n\n$(\"form\").onsubmit = (e) => {\n  e.preventDefault();\n  const text = $(\"text\").value.trim();\n  if (!text || !current) return;\n  const cid = crypto.randomUUID();\n  outbox.set(cid, { room: current, text });\n  sendEv({ type: \"send\", room: current, cid, text });\n  $(\"text\").value = \"\";\n  render();\n};\n\n$(\"text\").oninput = () => {\n  if (Date.now() - lastTyping < 2000) return;   // cukup satu event typing per 2 detik\n  lastTyping = Date.now();\n  sendEv({ type: \"typing\", room: current });\n};\n</script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "m-chat-close-code",
+          "kind": "tautan",
+          "name": "MDN: kode penutupan WebSocket",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-klien-ngobrol",
+          "text": "Dua jendela browser bisa saling mengobrol di room yang sama."
+        },
+        {
+          "id": "chat-klien-reconnect",
+          "text": "Setelah server mati dan menyala lagi, klien tersambung sendiri."
+        },
+        {
+          "id": "chat-klien-outbox",
+          "text": "Pesan yang dikirim saat terputus terkirim sekali setelah tersambung lagi."
+        },
+        {
+          "id": "chat-klien-xss",
+          "text": "Pesan berisi tag HTML tampil sebagai teks biasa."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-dua-instance",
+      "title": "Uji dua instance lewat Redis",
+      "est_minutes": 120,
+      "body": "## Bukti bahwa skala horizontal bekerja\n\nSekarang jalankan semuanya seperti di produksi: dua instance aplikasi di belakang satu Redis dan satu Postgres. `compose.yaml` sudah menyiapkan `app1` di port 3001 dan `app2` di port 3002.\n\n## Langkah-langkah\n\n1. Hentikan `npm run dev`, lalu jalankan `docker compose up -d --build`.\n2. Cek keduanya: http://localhost:3001/health dan http://localhost:3002/health. Field `instance` harus berbeda.\n3. Buka satu jendela browser di port 3001 dan satu lagi di port 3002, masuk room yang sama, lalu mengobrol. Pesan menyeberang lewat Redis.\n4. Jalankan uji otomatis `scripts/smoke.js` dari bagian Bahan: `node scripts/smoke.js http://localhost:3001 http://localhost:3002`. Skrip ini menguji penolakan token palsu, pesan lintas instance, kirim ulang tanpa ganda, typing, mengejar pesan setelah reconnect ke instance lain, cursor riwayat, dan frame kebesaran.\n5. Uji kegagalan: `docker compose stop app2`. Klien di port 3002 terputus. Ubah alamatnya ke port 3001, pesan yang terlewat harus muncul. Nyalakan lagi dengan `docker compose start app2`.\n6. Lihat Redis bekerja: `docker compose exec redis redis-cli subscribe chat:events`, lalu kirim pesan dari browser.\n\n## Kalau gagal\n\n- Pesan tidak menyeberang: cek `docker compose logs app1 app2`, cari error `redis`.\n- `SEMUA LULUS` tidak muncul: pesan error assert menyebut langkah mana yang gagal. Ulangi langkah itu secara manual dari browser.\n",
+      "materials": [
+        {
+          "id": "m-chat-smoke",
+          "kind": "kode",
+          "name": "scripts/smoke.js",
+          "lang": "javascript",
+          "content": "// Uji dua instance: node scripts/smoke.js http://localhost:3001 http://localhost:3002\nimport assert from \"node:assert/strict\";\nimport WebSocket from \"ws\";\n\nconst [URL_A = \"http://localhost:3001\", URL_B = \"http://localhost:3002\"] = process.argv.slice(2);\nconst ROOM = `uji-${Date.now()}`;\n\nasync function token(base, name) {\n  const res = await fetch(`${base}/token`, { method: \"POST\", body: JSON.stringify({ name }) });\n  return (await res.json()).token;\n}\n\nasync function client(base, name) {\n  const ws = new WebSocket(`${base.replace(/^http/, \"ws\")}/ws?token=${await token(base, name)}`);\n  const inbox = [];\n  ws.on(\"message\", (d) => inbox.push(JSON.parse(d)));\n  // Tunggu event pertama yang cocok, lalu buang dari inbox.\n  const wait = (match, ms = 3000) => new Promise((resolve, reject) => {\n    const start = Date.now();\n    const timer = setInterval(() => {\n      const i = inbox.findIndex(match);\n      if (i >= 0) { clearInterval(timer); resolve(inbox.splice(i, 1)[0]); }\n      else if (Date.now() - start > ms) { clearInterval(timer); reject(new Error(`timeout: ${match}`)); }\n    }, 10);\n  });\n  const send = (ev) => ws.send(JSON.stringify({ v: 1, ...ev }));\n  await new Promise((resolve, reject) => { ws.once(\"open\", resolve); ws.once(\"error\", reject); });\n  await wait((e) => e.type === \"hello\");\n  return { ws, wait, send };\n}\n\n// 1. Tanpa token sah, upgrade ditolak.\nconst status = await new Promise((resolve) => {\n  const ws = new WebSocket(`${URL_A.replace(/^http/, \"ws\")}/ws?token=palsu.palsu`);\n  ws.on(\"unexpected-response\", (_req, res) => resolve(res.statusCode));\n  ws.on(\"error\", () => {});\n});\nassert.equal(status, 401);\n\n// 2. Pesan dari instance A sampai ke pengguna di instance B (lewat Redis).\nconst ani = await client(URL_A, \"ani\");\nconst budi = await client(URL_B, \"budi\");\nani.send({ type: \"join\", room: ROOM });\nawait ani.wait((e) => e.type === \"joined\");\nbudi.send({ type: \"join\", room: ROOM });\nawait budi.wait((e) => e.type === \"joined\");\nawait ani.wait((e) => e.type === \"presence\" && e.members.length === 2);\n\nani.send({ type: \"send\", room: ROOM, cid: \"smoke-0001\", text: \"halo dari A\" });\nconst ack = await ani.wait((e) => e.type === \"ack\");\nconst got = await budi.wait((e) => e.type === \"message\");\nassert.equal(got.text, \"halo dari A\");\nassert.equal(got.id, ack.id);\n\n// 3. Kirim ulang cid yang sama: id sama, tidak ada pesan ganda.\nani.send({ type: \"send\", room: ROOM, cid: \"smoke-0001\", text: \"halo dari A\" });\nassert.equal((await ani.wait((e) => e.type === \"ack\")).id, ack.id);\nawait assert.rejects(budi.wait((e) => e.type === \"message\", 500));\n\n// 4. Typing lintas instance.\nbudi.send({ type: \"typing\", room: ROOM });\nassert.equal((await ani.wait((e) => e.type === \"typing\")).user, \"budi\");\n\n// 5. Budi putus, dua pesan terlewat, reconnect ke instance A dan mengejar ketinggalan.\nbudi.ws.close();\nawait ani.wait((e) => e.type === \"presence\" && e.members.length === 1);\nfor (const n of [2, 3]) {\n  ani.send({ type: \"send\", room: ROOM, cid: `smoke-000${n}`, text: `pesan ${n}` });\n  await ani.wait((e) => e.type === \"ack\");\n}\nconst budi2 = await client(URL_A, \"budi\");\nbudi2.send({ type: \"join\", room: ROOM, after: got.id });\nconst joined = await budi2.wait((e) => e.type === \"joined\");\nassert.deepEqual(joined.messages.map((m) => m.text), [\"pesan 2\", \"pesan 3\"]);\n\n// 6. Riwayat lebih lama lewat cursor.\nbudi2.send({ type: \"history\", room: ROOM, before: joined.messages[0].id });\nassert.deepEqual((await budi2.wait((e) => e.type === \"history\")).messages.map((m) => m.text), [\"halo dari A\"]);\n\n// 7. Frame lebih dari 4 KB ditutup dengan kode 1009, server tetap hidup.\nconst big = await client(URL_B, \"cici\");\nconst code = await new Promise((resolve) => { big.ws.on(\"close\", resolve); big.ws.send(\"x\".repeat(5000)); });\nassert.equal(code, 1009);\nassert.equal((await fetch(`${URL_B}/health`)).status, 200);\n\nani.ws.close();\nbudi2.ws.close();\nconsole.log(\"SEMUA LULUS\");\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-uji-health",
+          "text": "Dua instance menjawab /health dengan nama instance berbeda."
+        },
+        {
+          "id": "chat-uji-lintas",
+          "text": "Pesan dari jendela di port 3001 sampai ke jendela di port 3002."
+        },
+        {
+          "id": "chat-uji-smoke",
+          "text": "node scripts/smoke.js mencetak SEMUA LULUS."
+        },
+        {
+          "id": "chat-uji-mati",
+          "text": "Saat satu instance dimatikan, klien bisa pindah dan mengejar pesan yang terlewat."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-beban-kecil",
+      "title": "Uji beban kecil dan baca angkanya",
+      "est_minutes": 120,
+      "body": "## Berapa yang sanggup ditangani?\n\nJangan menebak kapasitas. Ukur. Skrip `scripts/load.js` membuka banyak klien yang dibagi rata ke semua instance, memasukkan semuanya ke satu room, dan tiap klien mengirim dua pesan per detik. Latensi diukur dari saat kirim sampai pesan itu kembali ke pengirimnya, jadi sudah termasuk tulis ke Postgres dan putaran lewat Redis.\n\n## Langkah-langkah\n\n1. Pastikan dua instance dari langkah sebelumnya masih menyala.\n2. Mulai kecil: `node scripts/load.js 50 10`. Catat p50, p95, p99, dan jumlah pengiriman yang diterima.\n3. Naikkan bertahap: 100, 200, lalu 400 klien. Sambil berjalan, buka terminal lain dan amati `docker stats`.\n4. Cari titik patah: kapan p95 naik tajam, atau `pengiriman_diterima` kurang dari yang diharapkan?\n5. Tulis hasilnya di tabel seperti di bawah. Tabel ini masuk ke README.\n\n| Klien | Pesan terkirim | Diterima | p50 ms | p95 ms | CPU tertinggi |\n| --- | --- | --- | --- | --- | --- |\n| 50 | 500 | ___ | ___ | ___ | ___ |\n| 200 | ___ | ___ | ___ | ___ | ___ |\n\n## Membaca hasilnya\n\nSatu room berisi N orang berarti tiap pesan dikirim N kali. 200 klien yang masing-masing mengirim 2 pesan per detik menghasilkan 400 pesan per detik dan **80.000 pengiriman per detik**. Biasanya yang pertama kewalahan adalah fan-out ini dan jumlah koneksi Postgres, bukan WebSocket-nya. Sebelum menyimpulkan, ingat bahwa skrip beban dan server berjalan di laptop yang sama dan berebut CPU.\n\nKalau ingin alat yang lebih lengkap, k6 punya dukungan WebSocket dan laporan yang lebih rapi.\n",
+      "materials": [
+        {
+          "id": "m-chat-load",
+          "kind": "kode",
+          "name": "scripts/load.js",
+          "lang": "javascript",
+          "content": "// Uji beban kecil: node scripts/load.js <jumlah-klien> <pesan-per-klien> URL1 URL2 ...\n// Contoh: node scripts/load.js 200 20 http://localhost:3001 http://localhost:3002\nimport WebSocket from \"ws\";\n\nconst [clients = \"100\", perClient = \"20\", ...urls] = process.argv.slice(2);\nconst N = Number(clients), M = Number(perClient);\nconst bases = urls.length ? urls : [\"http://localhost:3001\", \"http://localhost:3002\"];\nconst ROOM = `beban-${Date.now()}`;\nconst sentAt = new Map();   // cid -> waktu kirim\nconst latencies = [];\nlet received = 0, errors = 0;\n\nasync function connect(i) {\n  const base = bases[i % bases.length];   // bagi rata ke semua instance\n  const res = await fetch(`${base}/token`, { method: \"POST\", body: JSON.stringify({ name: `bot${i}` }) });\n  const { token } = await res.json();\n  const ws = new WebSocket(`${base.replace(/^http/, \"ws\")}/ws?token=${token}`);\n  ws.on(\"message\", (raw) => {\n    const ev = JSON.parse(raw);\n    if (ev.type === \"message\") {\n      received++;\n      // Latensi diukur saat pesan kembali ke pengirimnya sendiri (sudah lewat Postgres dan Redis).\n      if (ev.user === `bot${i}` && sentAt.has(ev.cid)) latencies.push(performance.now() - sentAt.get(ev.cid));\n    }\n    if (ev.type === \"error\") errors++;\n  });\n  await new Promise((resolve, reject) => { ws.once(\"open\", resolve); ws.once(\"error\", reject); });\n  ws.send(JSON.stringify({ v: 1, type: \"join\", room: ROOM }));\n  return ws;\n}\n\nconst sockets = [];\nfor (let i = 0; i < N; i++) sockets.push(await connect(i));\nconsole.log(`${N} klien tersambung ke ${bases.length} instance`);\nawait new Promise((r) => setTimeout(r, 1000));\n\n// Tiap klien mengirim 2 pesan per detik, di bawah batas rate limit server (5 per detik).\nconst t0 = performance.now();\nawait Promise.all(sockets.map(async (ws, i) => {\n  for (let k = 0; k < M; k++) {\n    const cid = `bot${i}-${k}-${t0.toFixed(0)}`;\n    sentAt.set(cid, performance.now());\n    ws.send(JSON.stringify({ v: 1, type: \"send\", room: ROOM, cid, text: `pesan ${k}` }));\n    await new Promise((r) => setTimeout(r, 500));\n  }\n}));\nawait new Promise((r) => setTimeout(r, 3000));   // beri waktu pesan terakhir sampai\n\nconst sorted = latencies.sort((a, b) => a - b);\nconst pct = (p) => sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))]?.toFixed(1);\nconst expected = N * M * N;   // tiap pesan sampai ke semua N klien\nconsole.log({\n  durasi_detik: ((performance.now() - t0) / 1000).toFixed(1),\n  pesan_terkirim: N * M,\n  pengiriman_diterima: `${received} dari ${expected}`,\n  error: errors,\n  latensi_ms: { p50: pct(50), p95: pct(95), p99: pct(99) },\n});\nfor (const ws of sockets) ws.close();\n"
+        },
+        {
+          "id": "m-chat-k6",
+          "kind": "tautan",
+          "name": "Grafana k6: dokumentasi",
+          "url": "https://grafana.com/docs/k6/latest/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-beban-jalan",
+          "text": "Aku menjalankan load.js minimal dengan dua ukuran jumlah klien."
+        },
+        {
+          "id": "chat-beban-tabel",
+          "text": "Hasil p50, p95, dan jumlah pengiriman tercatat di tabel."
+        },
+        {
+          "id": "chat-beban-patah",
+          "text": "Aku menemukan atau memperkirakan titik di mana latensi mulai naik tajam."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-ke-render-dengan-tls",
+      "title": "Deploy ke Render dengan TLS",
+      "est_minutes": 120,
+      "body": "## Online, dengan wss://\n\nRender menyediakan HTTPS otomatis, jadi klienmu memakai `wss://` tanpa mengurus sertifikat. Klien di proyek ini memilih `wss` sendiri kalau halamannya dibuka lewat `https`. Tampilan dashboard Render bisa berubah, jadi kalau ada yang berbeda ikuti dokumentasi resminya.\n\n## Langkah-langkah\n\n1. Push repositorimu ke GitHub. Pastikan `.env` tidak ikut.\n2. Di Render, buat **PostgreSQL** baru. Dari laptop, jalankan skema memakai **External Database URL**: `psql \"URL_EXTERNAL\" -f schema.sql`.\n3. Buat **Key Value** baru (kompatibel Redis) di region yang sama.\n4. Buat **Web Service** dari repositorimu dengan runtime Docker (Render memakai `Dockerfile`-mu). Isi Environment:\n   - `DATABASE_URL`: **Internal** Database URL dari Postgres.\n   - `REDIS_URL`: Internal URL dari Key Value.\n   - `TOKEN_SECRET`: rahasia acak baru, **jangan** pakai yang lokal.\n   - `ALLOWED_ORIGINS`: alamat layananmu, misalnya `https://chat-kamu.onrender.com`.\n5. Setelah deploy selesai, buka alamatnya, cek `/health`, lalu mengobrol dari HP dan laptop.\n6. Untuk dua instance, naikkan jumlah instance di pengaturan Scaling. Fitur ini butuh tipe instance berbayar. Kalau kamu tetap di paket gratis, satu instance sudah cukup untuk dikirim. Bukti dua instance sudah kamu punya dari langkah Uji.\n\n## Yang perlu kamu tahu tentang paket gratis\n\nLayanan web gratis tertidur setelah lama tidak ada request, dan semua koneksi WebSocket ikut putus. Reconnect dengan backoff yang sudah kamu buat akan menyambung lagi begitu layanan bangun. Database gratis juga punya batas waktu. Cek halaman batasan paket gratis sebelum memakainya untuk hal serius.\n\nSaat deploy ulang, instance lama menerima `SIGTERM`. Server menutup socket dengan kode 1012, dan klien langsung tersambung ke instance baru lalu mengejar pesan yang terlewat.\n",
+      "materials": [
+        {
+          "id": "m-chat-render-ws",
+          "kind": "tautan",
+          "name": "Render: WebSocket",
+          "url": "https://render.com/docs/websocket"
+        },
+        {
+          "id": "m-chat-render-pg",
+          "kind": "tautan",
+          "name": "Render: membuat dan menghubungkan Postgres",
+          "url": "https://render.com/docs/postgresql-creating-connecting"
+        },
+        {
+          "id": "m-chat-render-kv",
+          "kind": "tautan",
+          "name": "Render: Key Value",
+          "url": "https://render.com/docs/key-value"
+        },
+        {
+          "id": "m-chat-render-scaling",
+          "kind": "tautan",
+          "name": "Render: scaling",
+          "url": "https://render.com/docs/scaling"
+        },
+        {
+          "id": "m-chat-render-free",
+          "kind": "tautan",
+          "name": "Render: batasan paket gratis",
+          "url": "https://render.com/docs/free"
+        },
+        {
+          "id": "m-chat-fly",
+          "kind": "tautan",
+          "name": "Alternatif: dokumentasi Fly.io",
+          "url": "https://fly.io/docs/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-dep-online",
+          "text": "Aplikasi terbuka lewat https:// dan /health menjawab ok."
+        },
+        {
+          "id": "chat-dep-wss",
+          "text": "Di DevTools, koneksi chat memakai wss://."
+        },
+        {
+          "id": "chat-dep-rahasia",
+          "text": "TOKEN_SECRET di produksi berbeda dari yang lokal, dan ALLOWED_ORIGINS sudah diisi."
+        },
+        {
+          "id": "chat-dep-hp",
+          "text": "Aku mengobrol antara HP (data seluler) dan laptop lewat alamat produksi."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-catatan-trade-off",
+      "title": "README dan catatan trade-off",
+      "est_minutes": 60,
+      "body": "## Bagian yang paling dibaca perekrut\n\nProyek tingkat lanjut dinilai dari **keputusan** yang kamu ambil, bukan dari jumlah fitur. README dengan bagian trade-off yang jujur menunjukkan kamu tahu batas sistemmu sendiri.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template README di bagian Bahan dan lengkapi semua `___`.\n2. Masukkan tabel hasil uji beban dari langkah Uji.\n3. Lengkapi bagian **Trade-off**. Template sudah berisi beberapa yang nyata di kode ini. Tambahkan minimal dua dari pengalamanmu sendiri.\n4. Tambahkan GIF atau tangkapan layar dua jendela yang mengobrol, satu di tiap instance.\n5. Commit, push, lalu kirim alamat aplikasimu yang sudah online dan tautan repositorinya di halaman ringkasan proyek ini.\n\n## Pertanyaan wawancara untuk latihan\n\n- Apa yang terjadi kalau Redis mati selama satu menit?\n- Kenapa pesan tidak hilang walau klien putus saat mengirim?\n- Kalau room berisi 10.000 orang, bagian mana yang pertama kamu ubah?\n\nJawab ketiganya dengan suara keras. Kalau bisa, kamu siap menceritakan proyek ini.\n",
+      "materials": [
+        {
+          "id": "m-chat-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Chat Realtime\n\nAplikasi chat multi-room: Node.js + ws, PostgreSQL, Redis pub/sub, dua instance.\n\n**Demo:** https://___\n**Protokol:** lihat [PROTOCOL.md](PROTOCOL.md)\n\n## Fitur\n\n- Room, presence (siapa online), indikator mengetik\n- Riwayat di PostgreSQL dengan cursor pagination\n- Token bertanda tangan HMAC diperiksa saat upgrade WebSocket\n- Reconnect dengan exponential backoff + jitter, kirim ulang tanpa pesan ganda (cid unik)\n- Rate limit 5 event/detik per koneksi, frame maksimal 4 KB\n- Skala horizontal: beberapa instance disambungkan Redis pub/sub\n\n## Menjalankan lokal\n\n```bash\ncp .env.example .env   # isi TOKEN_SECRET\ndocker compose up -d --build\nnode scripts/smoke.js http://localhost:3001 http://localhost:3002\n```\n\n## Hasil uji beban\n\n| Klien | Diterima | p50 ms | p95 ms |\n| --- | --- | --- | --- |\n| ___ | ___ | ___ | ___ |\n\n## Trade-off\n\n- **ws, bukan Socket.IO:** protokol dan reconnect ditulis sendiri. Lebih banyak kode, tapi tidak ada pustaka wajib di klien dan semua perilaku terlihat.\n- **Redis pub/sub satu channel:** tiap instance menerima event semua room. Sederhana; dipecah per room kalau traffic besar.\n- **Pub/sub tidak tahan putus:** event saat Redis putus hilang untuk instance itu. Klien tetap mendapatkannya dari Postgres saat reconnect berikutnya.\n- **Cursor id identity:** dua transaksi bersamaan bisa commit tidak berurutan, jadi pesan dengan id lebih kecil sesekali muncul belakangan dan bisa terlewat oleh `after`. ___ (tulis bagaimana kamu akan menutup celah ini)\n- **Rate limit per koneksi di memori:** bisa diakali dengan banyak tab. Pindahkan ke Redis untuk batas per pengguna.\n- **Token lewat query string:** bisa tercatat di log; umurnya dibuat 1 jam.\n- **Login demo:** `/token` hanya meminta nama. ___\n- ___\n\n## Yang kupelajari\n\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "chat-dok-readme",
+          "text": "README berisi demo, fitur, cara menjalankan, dan hasil uji beban."
+        },
+        {
+          "id": "chat-dok-tradeoff",
+          "text": "Bagian trade-off berisi minimal dua poin tambahan dari pengalamanku sendiri."
+        },
+        {
+          "id": "chat-dok-latihan",
+          "text": "Aku bisa menjawab tiga pertanyaan latihan wawancara dengan suara keras."
+        },
+        {
+          "id": "chat-dok-kirim",
+          "text": "Alamat aplikasi dan tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}

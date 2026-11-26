@@ -1,0 +1,722 @@
+{
+  "slug": "monitoring-layanan",
+  "title": "Monitoring dan Alerting Layanan",
+  "summary": "Pasang observabilitas utuh untuk layanan Node.js: metrik RED dengan prom-client, log JSON dengan pino, Prometheus, Loki dan Alloy, dasbor Grafana dari kode, SLO dengan alert burn-rate ke Alertmanager, lalu latihan gangguan lengkap dengan runbook dan postmortem.",
+  "level": "lanjut",
+  "est_hours": 20,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-layanan-dan-penggunanya",
+      "title": "Kenali layanan dan siapa yang dirugikan saat rusak",
+      "est_minutes": 30,
+      "body": "## Monitoring dimulai dari pengguna, bukan dari grafik\n\nBanyak tim memasang Grafana, membuat puluhan grafik CPU dan memori, lalu tetap tahu layanannya rusak dari keluhan pengguna. Masalahnya bukan alatnya, tapi pertanyaannya. Monitoring yang baik menjawab satu hal: **apakah pengguna sedang mendapat pengalaman yang buruk, dan seberapa buruk?**\n\nDi proyek ini kamu memantau **layanan-toko**, API kecil berisi katalog produk dan checkout. Kodenya sudah disediakan di langkah ngoding, jadi fokusmu adalah observabilitasnya: metrik, log, dasbor, SLO, alert, runbook, dan postmortem.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template brief di bagian Bahan ke catatanmu.\n2. Tulis siapa pemakai layanan ini. Misalnya aplikasi web toko kopi yang memanggil API ini.\n3. Pilih dua perjalanan pengguna yang paling penting. Untuk toko, biasanya **melihat produk** dan **checkout**. Kalau checkout gagal, toko kehilangan uang.\n4. Tulis kapan pengguna merasa layanan \"rusak\". Jawaban jujur biasanya dua: halaman gagal dimuat, atau terlalu lama.\n5. Tentukan siapa yang menerima alert dan lewat apa. Di proyek ini cukup kamu sendiri, lewat webhook lokal atau bot Telegram.\n6. Tulis apa yang tidak kamu kerjakan di versi pertama, misalnya tracing terdistribusi, monitoring database, atau on-call bergiliran.\n\n> Ukuran keberhasilan proyek ini konkret: saat gangguan dimulai, dalam 5 menit ada notifikasi yang menunjuk ke runbook yang menjelaskan apa yang harus dilakukan.\n\nSimpan brief ini. Nanti di langkah dokumentasi kamu akan mengecek apakah ukuran keberhasilan itu tercapai.\n",
+      "materials": [
+        {
+          "id": "mon-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief monitoring layanan-toko\n\nLayanan: layanan-toko (API katalog produk dan checkout)\nPemakai layanan: ___\nPerjalanan pengguna paling penting:\n1. ___ (contoh: melihat daftar produk)\n2. ___ (contoh: checkout)\nKapan pemakai merasa layanan \"rusak\": ___\nSiapa yang menerima alert dan lewat apa: ___\nUkuran keberhasilan proyek: dalam 5 menit sejak gangguan dimulai, ada notifikasi yang menunjuk ke runbook.\nTidak dikerjakan di versi pertama: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-brief-pengguna",
+          "text": "Aku sudah menulis siapa pemakai layanan-toko dan dua perjalanan pengguna terpenting."
+        },
+        {
+          "id": "mon-brief-rusak",
+          "text": "Aku sudah menulis kapan pengguna merasa layanan rusak."
+        },
+        {
+          "id": "mon-brief-penerima",
+          "text": "Aku sudah menentukan siapa yang menerima alert dan lewat saluran apa."
+        },
+        {
+          "id": "mon-brief-batas",
+          "text": "Aku sudah menulis apa yang tidak dikerjakan di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "tentukan-sli-dan-slo",
+      "title": "Tentukan SLI, SLO, dan anggaran error",
+      "est_minutes": 60,
+      "body": "## Tiga istilah yang sering tertukar\n\n| Istilah | Arti | Contoh |\n| --- | --- | --- |\n| **SLI** (indikator) | Angka yang diukur, biasanya rasio \"kejadian baik / semua kejadian\" | Request /api yang tidak 5xx dibagi semua request /api |\n| **SLO** (sasaran) | Target untuk SLI dalam jendela waktu | 99.5% dalam 30 hari |\n| **Anggaran error** | Sisa ruang gagal yang masih boleh: 100% - SLO | 0.5% request boleh gagal |\n\nSLO **bukan** 100%. Target 100% membuat tim takut merilis apa pun. Anggaran error justru memberi izin: selama anggaran masih ada, tim boleh merilis fitur. Kalau habis, fokus pindah ke stabilitas.\n\n## Hitung sendiri\n\nDengan SLO 99.5% dalam 30 hari:\n- 30 hari = 43.200 menit, 0.5%-nya = **216 menit** (sekitar 3,6 jam) gangguan total.\n- Kalau sehari ada 100.000 request, maka 500 request per hari boleh gagal.\n\nUntuk latensi, jangan pakai rata-rata. Rata-rata menyembunyikan pengguna yang menunggu lama. Pakai bentuk \"95% request selesai dalam 300 ms\". Bentuk ini mudah dihitung dari histogram dan sama artinya dengan \"p95 di bawah 300 ms\".\n\n## Yang perlu kamu kerjakan\n\n1. Salin template SLO di bagian Bahan dan sesuaikan angkanya kalau perlu.\n2. Putuskan kejadian mana yang **tidak** dihitung. Status 404 untuk produk yang tidak ada adalah kesalahan pemanggil, jadi tidak mengurangi ketersediaan. `/healthz` dan `/metrics` dipanggil mesin, bukan pengguna.\n3. Hitung anggaran error dalam menit dan dalam jumlah request untuk trafik perkiraanmu.\n4. Tulis satu kalimat: apa yang terjadi kalau anggaran habis?\n\nKalau ragu memilih angka, mulai longgar. SLO yang terlalu ketat membuat alert terus menyala, dan alert yang terus menyala akhirnya diabaikan.\n",
+      "materials": [
+        {
+          "id": "mon-m-slo",
+          "kind": "kode",
+          "name": "docs/slo.md",
+          "lang": "markdown",
+          "content": "# SLO layanan-toko (jendela 30 hari bergulir)\n\n| SLO | SLI (cara mengukur) | Target | Anggaran error |\n| --- | --- | --- | --- |\n| Ketersediaan | request /api yang TIDAK berstatus 5xx / semua request /api | 99.5% | 0.5% (~3 jam 36 menit gangguan total per 30 hari) |\n| Latensi | request /api yang selesai <= 300 ms / semua request /api | 95% | 5% request boleh lebih lambat |\n\nYang tidak dihitung:\n- 4xx (contoh 404 produk tidak ada): itu kesalahan pemanggil, bukan layanan.\n- /healthz dan /metrics: dipanggil mesin, bukan pengguna.\n\nKalau anggaran error habis: ___ (contoh: rilis fitur berhenti, fokus ke stabilitas)\n"
+        },
+        {
+          "id": "mon-m-sre-slo",
+          "kind": "tautan",
+          "name": "Google SRE Workbook: Implementing SLOs",
+          "url": "https://sre.google/workbook/implementing-slos/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-ide-sli",
+          "text": "Aku bisa menjelaskan beda SLI, SLO, dan anggaran error dengan kata-kataku sendiri."
+        },
+        {
+          "id": "mon-ide-target",
+          "text": "Aku sudah menulis SLO ketersediaan dan latensi lengkap dengan jendela waktunya."
+        },
+        {
+          "id": "mon-ide-hitung",
+          "text": "Aku sudah menghitung anggaran error dalam menit dan dalam jumlah request."
+        },
+        {
+          "id": "mon-ide-kecuali",
+          "text": "Aku sudah memutuskan kejadian yang tidak dihitung, misalnya 404 dan /healthz."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-tumpukan-observabilitas",
+      "title": "Pilih tumpukan observabilitas",
+      "est_minutes": 45,
+      "body": "## Satu alat untuk satu tugas\n\n| Tugas | Alat | Kenapa |\n| --- | --- | --- |\n| Mengekspos metrik dari Node.js | **prom-client** | Pustaka resmi komunitas Prometheus untuk Node.js |\n| Log terstruktur | **pino** | Log JSON yang cepat, satu baris satu kejadian |\n| Menyimpan dan menghitung metrik | **Prometheus** v3 | Mengambil (scrape) `/metrics` berkala, bahasa query PromQL, aturan alert |\n| Mengirim notifikasi | **Alertmanager** | Mengelompokkan, menyenyapkan, dan merutekan alert ke webhook, Telegram, email |\n| Mengumpulkan log | **Grafana Alloy** | Membaca log kontainer Docker dan mengirimnya ke Loki |\n| Menyimpan log | **Loki** | Mengindeks label saja, bukan seluruh isi log, sehingga hemat |\n| Dasbor | **Grafana** | Menggabungkan metrik dan log di satu layar |\n\n## Kenapa Alloy, bukan Promtail?\n\nBanyak tutorial lama memakai Promtail. Grafana sudah menghentikan pengembangan Promtail dan menyarankan pindah ke **Alloy**. Untuk proyek baru, pakai Alloy supaya yang kamu pelajari tidak langsung usang.\n\n## Versi yang dipakai\n\nKunci versi image secara persis, jangan `latest`. Dengan `latest`, `docker compose pull` bulan depan bisa mendatangkan versi baru yang mengubah format konfigurasi, dan stack-mu rusak tanpa kamu mengubah apa pun.\n\n- `prom/prometheus:v3.16.0`, `prom/alertmanager:v0.35.1`\n- `grafana/grafana:13.3.2`, `grafana/loki:3.7.10`, `grafana/alloy:v1.22.0`\n- `node:26-alpine`, express 5, prom-client 15, pino 10\n\n## Yang perlu kamu siapkan\n\n1. Docker Desktop atau Docker Engine dengan Compose v2. Cek dengan `docker compose version`.\n2. Node.js 22 atau lebih baru di komputermu, untuk menjalankan skrip beban.\n3. RAM kosong sekitar 2 GB. Tujuh kontainer kecil berjalan bersamaan.\n4. Tulis dua alasan memilih tumpukan ini, misalnya \"semua sumber terbuka dan bisa jalan di laptop\" dan \"PromQL dan Grafana dipakai luas di industri\".\n",
+      "materials": [
+        {
+          "id": "mon-m-kelas",
+          "kind": "tautan",
+          "name": "Kelas Monitoring dan Observabilitas di Ruang Materi",
+          "url": "/belajar/monitoring-dan-observabilitas"
+        },
+        {
+          "id": "mon-m-promclient",
+          "kind": "tautan",
+          "name": "prom-client di GitHub",
+          "url": "https://github.com/siimon/prom-client"
+        },
+        {
+          "id": "mon-m-pino",
+          "kind": "tautan",
+          "name": "Dokumentasi pino",
+          "url": "https://getpino.io/"
+        },
+        {
+          "id": "mon-m-alloy-migrasi",
+          "kind": "tautan",
+          "name": "Pindah dari Promtail ke Grafana Alloy",
+          "url": "https://grafana.com/docs/alloy/latest/set-up/migrate/from-promtail/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-tek-docker",
+          "text": "docker compose version berjalan di komputerku."
+        },
+        {
+          "id": "mon-tek-peran",
+          "text": "Aku bisa menyebut peran tiap alat: Prometheus, Alertmanager, Loki, Alloy, Grafana."
+        },
+        {
+          "id": "mon-tek-versi",
+          "text": "Aku paham kenapa versi image dikunci, bukan latest."
+        },
+        {
+          "id": "mon-tek-alasan",
+          "text": "Aku sudah menulis dua alasan memilih tumpukan ini."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-metrik-log-dan-alert",
+      "title": "Rancang metrik, log, dan alert sebelum menulis kode",
+      "est_minutes": 75,
+      "body": "## Metode RED\n\nUntuk layanan yang menjawab request, tiga sinyal sudah menjawab sebagian besar pertanyaan:\n- **Rate**: berapa request per detik.\n- **Errors**: berapa yang gagal.\n- **Duration**: berapa lama.\n\nDua metrik cukup: counter `http_requests_total` (rate dan errors) dan histogram `http_request_duration_seconds` (duration). Bucket histogram **wajib** memuat `0.3`, karena SLO latensi kita 300 ms dan Prometheus hanya bisa menghitung \"berapa yang di bawah 300 ms\" kalau batas itu ada.\n\n## Jebakan kardinalitas\n\nSetiap kombinasi label unik menjadi deret waktu sendiri. Kalau label `route` diisi URL asli (`/api/produk/1`, `/api/produk/2`, ...), jumlah deret bertambah terus sampai Prometheus kehabisan memori. Pakai **pola rute** (`/api/produk/:id`). URL yang tidak cocok dengan rute mana pun cukup diberi label `tidak-dikenal`. Hal yang sama berlaku untuk Loki: jadikan label hanya nilai yang sedikit (`service`, `level`). Field seperti `req_id` tetap di dalam isi JSON.\n\n## Alert berbasis burn rate\n\nAlert \"error di atas 5%\" punya dua masalah: terlalu sensitif untuk lonjakan sesaat, dan buta terhadap error kecil yang terus-menerus. **Burn rate** adalah kecepatan anggaran error terbakar. Burn rate 1 berarti anggaran pas habis di hari ke-30. Burn rate 14.4 berarti 2% anggaran 30 hari habis dalam 1 jam.\n\nSetiap alert memakai dua jendela: jendela panjang (1h) membuktikan masalahnya cukup besar, jendela pendek (5m) membuktikan masalahnya **masih** terjadi, sehingga alert cepat padam setelah pulih.\n\n## Yang perlu kamu kerjakan\n\n1. Salin rancangan di bagian Bahan ke `docs/arsitektur.md`.\n2. Hitung sendiri batas alert cepat: 14.4 x 0.5% = **7.2%** error. Untuk latensi: 14.4 x 5% = **72%** request lambat.\n3. Tulis field log yang wajib ada di setiap baris: waktu, level, req_id, method, route, status, duration_ms.\n4. Bedakan severity: `page` (bangunkan orang sekarang) dan `tiket` (kerjakan di jam kerja).\n",
+      "materials": [
+        {
+          "id": "mon-m-arsitektur",
+          "kind": "kode",
+          "name": "docs/arsitektur.md",
+          "lang": "text",
+          "content": "layanan-toko (Node.js)\n  |-- GET /metrics  <-- di-scrape tiap 15 dtk -- Prometheus --(aturan SLO)--> Alertmanager --> webhook / Telegram\n  |-- log JSON ke stdout --> Docker --> Alloy --> Loki\n                                                    \\\nGrafana <-- membaca Prometheus (metrik) dan Loki (log) --> dasbor RED dan SLO\n\nMetrik:\n  http_requests_total{method, route, status}            counter\n  http_request_duration_seconds{method, route}          histogram, bucket wajib 0.3\nLabel log Loki: service, level   (field lain tetap di isi JSON)\nAlert:\n  AnggaranErrorTerbakarCepat   burn 14.4x  jendela 1h dan 5m   severity=page\n  AnggaranErrorTerbakarLambat  burn 6x     jendela 6h dan 30m  severity=tiket\n  LatensiTerbakarCepat         burn 14.4x  jendela 1h dan 5m   severity=page\n  LayananTidakTerjangkau       up == 0 selama 1m               severity=page\n"
+        },
+        {
+          "id": "mon-m-sre-alert",
+          "kind": "tautan",
+          "name": "Google SRE Workbook: Alerting on SLOs",
+          "url": "https://sre.google/workbook/alerting-on-slos/"
+        },
+        {
+          "id": "mon-m-naming",
+          "kind": "tautan",
+          "name": "Prometheus: penamaan metrik dan label",
+          "url": "https://prometheus.io/docs/practices/naming/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-ran-red",
+          "text": "Aku bisa menjelaskan metrik mana yang menjawab Rate, Errors, dan Duration."
+        },
+        {
+          "id": "mon-ran-bucket",
+          "text": "Aku paham kenapa bucket 0.3 wajib ada di histogram."
+        },
+        {
+          "id": "mon-ran-kardinal",
+          "text": "Aku bisa menjelaskan kenapa label route memakai pola rute, bukan URL asli."
+        },
+        {
+          "id": "mon-ran-burn",
+          "text": "Aku sudah menghitung batas burn rate 7.2% dan 72% sendiri."
+        },
+        {
+          "id": "mon-ran-tulis",
+          "text": "Rancangan sudah tersimpan di docs/arsitektur.md."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-layanan-toko",
+      "title": "Siapkan layanan-toko dan jalankan di Docker",
+      "est_minutes": 90,
+      "body": "## Layanan yang akan dipantau\n\nLayanan ini sengaja kecil: tiga endpoint API, satu `/healthz`, dan satu fitur penting untuk latihan, yaitu **gangguan buatan**. Lewat `POST /admin/fault` kamu bisa membuat sebagian request gagal atau melambat, tanpa mengubah kode. Endpoint itu hanya aktif kalau `FAULT_ENABLED=1`, jadi tidak pernah terbuka tanpa sengaja.\n\nKerja tiap endpoint disimulasikan dengan jeda acak: daftar produk 20 sampai 40 ms, checkout 80 sampai 160 ms. Dalam keadaan normal, semua request jauh di bawah 300 ms.\n\n## Yang perlu kamu kerjakan\n\n1. Buat struktur folder dengan perintah di bagian Bahan.\n2. Salin `layanan/package.json`, `layanan/src/app.js`, `layanan/src/server.js`, dan `layanan/Dockerfile`.\n3. Jalankan `npm install` di folder `layanan`. Perintah ini juga membuat `package-lock.json` yang dibutuhkan `npm ci` di Dockerfile.\n4. Jalankan `node src/server.js` dan coba endpoint dengan `curl`. Coba juga `/api/produk/99`: harus 404.\n5. Salin `docker-compose.yml` versi awal dan `.gitignore`, lalu `docker compose up -d --build`. Buka http://localhost:3000/api/produk.\n6. Commit: `Tambah layanan-toko`.\n\n## Kenapa port terikat ke 127.0.0.1?\n\n`\"127.0.0.1:3000:3000\"` artinya port hanya bisa dibuka dari komputer itu sendiri. Tanpa awalan itu, Docker membuka port ke semua jaringan dan **melewati firewall** seperti ufw. Kebiasaan ini penting saat nanti stack-mu jalan di VPS.\n\nIngat: `app.js` versi ini belum punya metrik maupun log terstruktur. Itu tugas dua langkah berikutnya.\n",
+      "materials": [
+        {
+          "id": "mon-m-setup",
+          "kind": "kode",
+          "name": "perintah-awal.sh",
+          "lang": "bash",
+          "content": "mkdir monitoring-layanan && cd monitoring-layanan\ngit init\nmkdir -p layanan/src prometheus/rules prometheus/tests alertmanager alloy \\\n  grafana/provisioning/datasources grafana/provisioning/dashboards grafana/dashboards \\\n  penerima skrip docs\n\ncd layanan\n# salin package.json, lalu:\nnpm install\nnode src/server.js        # uji tanpa Docker dulu\n# di terminal lain:\ncurl -s localhost:3000/api/produk\ncurl -s -X POST localhost:3000/api/checkout\ncd ..\n\ndocker compose up -d --build\ndocker compose logs -f layanan\n"
+        },
+        {
+          "id": "mon-m-package",
+          "kind": "kode",
+          "name": "layanan/package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"layanan-toko\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"start\": \"node src/server.js\"\n  },\n  \"dependencies\": {\n    \"express\": \"^5.3.0\",\n    \"pino\": \"^10.4.0\",\n    \"prom-client\": \"^15.1.3\"\n  }\n}\n"
+        },
+        {
+          "id": "mon-m-app-v1",
+          "kind": "kode",
+          "name": "layanan/src/app.js (versi awal)",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { randomUUID } from \"node:crypto\";\n\nexport const app = express();\napp.use(express.json());\n\nconst produk = [\n  { id: 1, nama: \"Kopi Susu Gula Aren\", harga: 18000 },\n  { id: 2, nama: \"Roti Bakar Cokelat\", harga: 15000 },\n  { id: 3, nama: \"Teh Melati\", harga: 8000 },\n];\n\n// Gangguan buatan untuk latihan alert. Hanya bisa diubah kalau FAULT_ENABLED=1.\nconst fault = { errorRate: 0, extraLatencyMs: 0 };\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\nasync function kerja(baseMs) {\n  await sleep(baseMs + Math.random() * baseMs + fault.extraLatencyMs);\n  if (Math.random() < fault.errorRate) {\n    throw new Error(\"gangguan simulasi: database tidak menjawab\");\n  }\n}\n\napp.get(\"/healthz\", (req, res) => res.json({ status: \"ok\" }));\n\napp.get(\"/api/produk\", async (req, res) => {\n  await kerja(20);\n  res.json(produk);\n});\n\napp.get(\"/api/produk/:id\", async (req, res) => {\n  await kerja(15);\n  const item = produk.find((p) => p.id === Number(req.params.id));\n  if (!item) return res.status(404).json({ error: \"Produk tidak ditemukan\" });\n  res.json(item);\n});\n\napp.post(\"/api/checkout\", async (req, res) => {\n  await kerja(80);\n  res.status(201).json({ pesanan: randomUUID() });\n});\n\nif (process.env.FAULT_ENABLED === \"1\") {\n  app.post(\"/admin/fault\", (req, res) => {\n    const { errorRate = 0, extraLatencyMs = 0 } = req.body ?? {};\n    if (!(errorRate >= 0 && errorRate <= 1) || !(extraLatencyMs >= 0 && extraLatencyMs <= 5000)) {\n      return res.status(422).json({ error: \"errorRate 0..1, extraLatencyMs 0..5000\" });\n    }\n    Object.assign(fault, { errorRate, extraLatencyMs });\n    console.log(\"gangguan simulasi diubah\", fault);\n    res.json(fault);\n  });\n}\n\napp.use((req, res) => res.status(404).json({ error: \"Tidak ditemukan\" }));\n\napp.use((err, req, res, next) => {\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "mon-m-server-v1",
+          "kind": "kode",
+          "name": "layanan/src/server.js (versi awal)",
+          "lang": "javascript",
+          "content": "import { app } from \"./app.js\";\n\nconst port = Number(process.env.PORT ?? 3000);\nconst server = app.listen(port, () => console.log(`layanan-toko siap di :${port}`));\n\n// docker compose stop mengirim SIGTERM: selesaikan request yang sedang jalan dulu.\nprocess.on(\"SIGTERM\", () => server.close(() => process.exit(0)));\n"
+        },
+        {
+          "id": "mon-m-dockerfile",
+          "kind": "kode",
+          "name": "layanan/Dockerfile",
+          "lang": "dockerfile",
+          "content": "FROM node:26-alpine\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev\nCOPY src ./src\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"src/server.js\"]\n"
+        },
+        {
+          "id": "mon-m-compose-v1",
+          "kind": "kode",
+          "name": "docker-compose.yml (versi awal)",
+          "lang": "yaml",
+          "content": "services:\n  layanan:\n    build: ./layanan\n    environment:\n      FAULT_ENABLED: \"1\"\n    ports: [\"127.0.0.1:3000:3000\"]\n"
+        },
+        {
+          "id": "mon-m-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules/\n.env\nalertmanager/telegram_token\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-svc-lokal",
+          "text": "Layanan berjalan dengan node dan /api/produk/99 menjawab 404."
+        },
+        {
+          "id": "mon-svc-docker",
+          "text": "docker compose up -d --build berhasil dan http://localhost:3000/api/produk terbuka."
+        },
+        {
+          "id": "mon-svc-fault",
+          "text": "Aku paham kenapa /admin/fault hanya aktif dengan FAULT_ENABLED=1."
+        },
+        {
+          "id": "mon-svc-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "pasang-metrik-red-dan-prometheus",
+      "title": "Pasang metrik RED dan biarkan Prometheus mengambilnya",
+      "est_minutes": 135,
+      "body": "## Instrumentasi di satu tempat\n\nSemua metrik dicatat di satu middleware yang berjalan saat respons **selesai dikirim** (`res.on(\"finish\")`). Dengan begitu tidak ada endpoint yang terlewat, termasuk yang gagal di error handler. `req.route` baru terisi setelah Express menemukan rute yang cocok, karena itu label rute dibaca di dalam `finish`, bukan di awal middleware.\n\n`/metrics` sendiri tidak dicatat, supaya scrape Prometheus tiap 15 detik tidak mengotori angka rate.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `layanan/src/metrics.js` dari bagian Bahan.\n2. Ganti `layanan/src/app.js` dengan versi metrik. Bedanya dengan versi awal hanya tiga: import `metrics.js`, middleware metrik, dan rute `/metrics`.\n3. Jalankan ulang lalu buka http://localhost:3000/metrics. Cari `http_requests_total` dan `http_request_duration_seconds_bucket`. Ada juga metrik bawaan Node.js seperti `process_cpu_seconds_total` dan `nodejs_eventloop_lag_seconds`.\n4. Buat `prometheus/prometheus.yml`. Bagian `rule_files` dan `alerting` boleh sudah ada sekarang: Prometheus tetap jalan walau folder rules masih kosong dan Alertmanager belum ada.\n5. Tambahkan servis `prometheus` ke compose, lalu `docker compose up -d`.\n6. Buka http://localhost:9090/targets. Target `layanan-toko` dan `prometheus` harus **UP**.\n7. Kirim beberapa request, lalu coba query di bagian Bahan pada halaman Query Prometheus.\n8. Commit: `Tambah metrik RED dan Prometheus`.\n\n## Membaca histogram\n\nHistogram menyimpan hitungan **kumulatif**: bucket `le=\"0.3\"` berisi semua request yang selesai dalam 300 ms atau kurang, termasuk yang masuk `le=\"0.1\"`. `histogram_quantile` memperkirakan persentil dari bucket ini, jadi hasilnya perkiraan. Makin dekat bucket dengan angka yang kamu pedulikan, makin akurat.\n",
+      "materials": [
+        {
+          "id": "mon-m-metrics",
+          "kind": "kode",
+          "name": "layanan/src/metrics.js",
+          "lang": "javascript",
+          "content": "import client from \"prom-client\";\n\nexport const register = new client.Registry();\nclient.collectDefaultMetrics({ register });\n\nconst requests = new client.Counter({\n  name: \"http_requests_total\",\n  help: \"Jumlah request HTTP yang selesai\",\n  labelNames: [\"method\", \"route\", \"status\"],\n  registers: [register],\n});\n\nconst duration = new client.Histogram({\n  name: \"http_request_duration_seconds\",\n  help: \"Durasi request HTTP dalam detik\",\n  labelNames: [\"method\", \"route\"],\n  // 0.3 wajib ada: batas SLO latensi kita 300 ms\n  buckets: [0.05, 0.1, 0.2, 0.3, 0.5, 1, 2, 5],\n  registers: [register],\n});\n\nexport function record({ method, route, status, seconds }) {\n  requests.inc({ method, route, status: String(status) });\n  duration.observe({ method, route }, seconds);\n}\n"
+        },
+        {
+          "id": "mon-m-app-v2",
+          "kind": "kode",
+          "name": "layanan/src/app.js (dengan metrik)",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { randomUUID } from \"node:crypto\";\nimport { record, register } from \"./metrics.js\";\n\nexport const app = express();\napp.use(express.json());\n\n// Middleware metrik RED: dicatat saat respons selesai dikirim.\napp.use((req, res, next) => {\n  const start = process.hrtime.bigint();\n  res.on(\"finish\", () => {\n    // Pakai pola rute (/api/produk/:id), bukan URL asli, supaya label tidak meledak.\n    const route = req.route ? req.baseUrl + req.route.path : \"tidak-dikenal\";\n    if (route === \"/metrics\") return;\n    const seconds = Number(process.hrtime.bigint() - start) / 1e9;\n    record({ method: req.method, route, status: res.statusCode, seconds });\n  });\n  next();\n});\n\nconst produk = [\n  { id: 1, nama: \"Kopi Susu Gula Aren\", harga: 18000 },\n  { id: 2, nama: \"Roti Bakar Cokelat\", harga: 15000 },\n  { id: 3, nama: \"Teh Melati\", harga: 8000 },\n];\n\n// Gangguan buatan untuk latihan alert. Hanya bisa diubah kalau FAULT_ENABLED=1.\nconst fault = { errorRate: 0, extraLatencyMs: 0 };\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\nasync function kerja(baseMs) {\n  await sleep(baseMs + Math.random() * baseMs + fault.extraLatencyMs);\n  if (Math.random() < fault.errorRate) {\n    throw new Error(\"gangguan simulasi: database tidak menjawab\");\n  }\n}\n\napp.get(\"/healthz\", (req, res) => res.json({ status: \"ok\" }));\n\napp.get(\"/metrics\", async (req, res) => {\n  res.type(register.contentType).send(await register.metrics());\n});\n\napp.get(\"/api/produk\", async (req, res) => {\n  await kerja(20);\n  res.json(produk);\n});\n\napp.get(\"/api/produk/:id\", async (req, res) => {\n  await kerja(15);\n  const item = produk.find((p) => p.id === Number(req.params.id));\n  if (!item) return res.status(404).json({ error: \"Produk tidak ditemukan\" });\n  res.json(item);\n});\n\napp.post(\"/api/checkout\", async (req, res) => {\n  await kerja(80);\n  res.status(201).json({ pesanan: randomUUID() });\n});\n\nif (process.env.FAULT_ENABLED === \"1\") {\n  app.post(\"/admin/fault\", (req, res) => {\n    const { errorRate = 0, extraLatencyMs = 0 } = req.body ?? {};\n    if (!(errorRate >= 0 && errorRate <= 1) || !(extraLatencyMs >= 0 && extraLatencyMs <= 5000)) {\n      return res.status(422).json({ error: \"errorRate 0..1, extraLatencyMs 0..5000\" });\n    }\n    Object.assign(fault, { errorRate, extraLatencyMs });\n    console.log(\"gangguan simulasi diubah\", fault);\n    res.json(fault);\n  });\n}\n\napp.use((req, res) => res.status(404).json({ error: \"Tidak ditemukan\" }));\n\napp.use((err, req, res, next) => {\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "mon-m-promyml",
+          "kind": "kode",
+          "name": "prometheus/prometheus.yml",
+          "lang": "yaml",
+          "content": "global:\n  scrape_interval: 15s\n  evaluation_interval: 15s\n\nrule_files:\n  - /etc/prometheus/rules/*.yml\n\nalerting:\n  alertmanagers:\n    - static_configs:\n        - targets: [\"alertmanager:9093\"]\n\nscrape_configs:\n  - job_name: layanan-toko\n    static_configs:\n      - targets: [\"layanan:3000\"]\n  - job_name: prometheus\n    static_configs:\n      - targets: [\"localhost:9090\"]\n"
+        },
+        {
+          "id": "mon-m-compose-prom",
+          "kind": "kode",
+          "name": "docker-compose.yml: tambahan prometheus",
+          "lang": "yaml",
+          "content": "  prometheus:\n    image: prom/prometheus:v3.16.0\n    volumes:\n      - ./prometheus:/etc/prometheus:ro\n      - prom-data:/prometheus\n    ports: [\"127.0.0.1:9090:9090\"]\n\nvolumes:\n  prom-data:\n"
+        },
+        {
+          "id": "mon-m-promql",
+          "kind": "kode",
+          "name": "query-latihan.promql",
+          "lang": "promql",
+          "content": "# Rate: request per detik per rute\nsum by (route) (rate(http_requests_total{route=~\"/api/.*\"}[1m]))\n\n# Errors: rasio 5xx\nsum(rate(http_requests_total{route=~\"/api/.*\",status=~\"5..\"}[5m]))\n  / sum(rate(http_requests_total{route=~\"/api/.*\"}[5m]))\n\n# Duration: p95 dari histogram\nhistogram_quantile(0.95,\n  sum by (le) (rate(http_request_duration_seconds_bucket{route=~\"/api/.*\"}[5m])))\n\n# Apakah target hidup? 1 = ya\nup\n"
+        },
+        {
+          "id": "mon-m-histogram",
+          "kind": "tautan",
+          "name": "Prometheus: histogram dan summary",
+          "url": "https://prometheus.io/docs/practices/histograms/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-met-endpoint",
+          "text": "http://localhost:3000/metrics menampilkan http_requests_total dengan label route berupa pola rute."
+        },
+        {
+          "id": "mon-met-target",
+          "text": "Di halaman Targets Prometheus, layanan-toko berstatus UP."
+        },
+        {
+          "id": "mon-met-query",
+          "text": "Aku sudah mencoba query rate, rasio error, dan p95 di Prometheus."
+        },
+        {
+          "id": "mon-met-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "log-json-ke-loki",
+      "title": "Tulis log JSON dan kirim ke Loki lewat Alloy",
+      "est_minutes": 120,
+      "body": "## Log yang bisa dicari\n\n`console.log(\"checkout gagal\")` mudah dibaca manusia, tapi sulit dicari mesin. Dengan **pino**, setiap kejadian menjadi satu baris JSON dengan field tetap: `time`, `level`, `req_id`, `route`, `status`, `duration_ms`. Kamu bisa bertanya \"tampilkan semua request checkout yang lebih lambat dari 300 ms\" dan mendapat jawaban dalam satu detik.\n\nDua keputusan di `logger.js`:\n- `formatters.level` menulis `\"level\":\"error\"`, bukan angka `50`, supaya mudah difilter.\n- Setiap request mendapat `req_id`, juga dikirim balik di header `x-request-id`. Saat pengguna melapor, id ini menghubungkan laporan dengan baris log yang tepat.\n\n## Jalur log\n\nLayanan menulis ke stdout. Docker menyimpannya. **Alloy** membaca log kontainer lewat Docker socket, mengambil field `level` dari JSON menjadi label, lalu mengirim ke **Loki**. Layanan tidak perlu tahu Loki itu ada.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `layanan/src/logger.js`, lalu ganti `app.js` dan `server.js` dengan versi final dari bagian Bahan.\n2. Jalankan lokal dan lihat terminal: setiap request menghasilkan satu baris JSON. Kalau ingin versi berwarna untuk dibaca, pakai `node src/server.js | npx pino-pretty`.\n3. Buat `alloy/config.alloy` dan tambahkan servis `loki` dan `alloy` ke compose.\n4. `docker compose up -d --build`, lalu buka http://localhost:12345. Semua komponen Alloy harus berwarna sehat.\n5. Kirim request, lalu cek Loki: `curl -s 'http://localhost:3100/loki/api/v1/labels'`. Label `service` dan `level` harus muncul. Query LogQL di bagian Bahan akan kamu pakai di Grafana nanti.\n6. Commit: `Tambah log JSON dan Loki`.\n\n> Docker socket memberi akses penuh ke Docker. Karena itu dipasang `:ro` dan hanya untuk Alloy. Jangan pernah memasangnya ke kontainer aplikasimu.\n",
+      "materials": [
+        {
+          "id": "mon-m-logger",
+          "kind": "kode",
+          "name": "layanan/src/logger.js",
+          "lang": "javascript",
+          "content": "import pino from \"pino\";\n\nexport const logger = pino({\n  level: process.env.LOG_LEVEL ?? \"info\",\n  base: { service: \"layanan-toko\" },\n  // \"level\":\"error\" lebih mudah dibaca dan difilter daripada \"level\":50\n  formatters: { level: (label) => ({ level: label }) },\n  timestamp: pino.stdTimeFunctions.isoTime,\n});\n"
+        },
+        {
+          "id": "mon-m-app-final",
+          "kind": "kode",
+          "name": "layanan/src/app.js (final)",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { randomUUID } from \"node:crypto\";\nimport { logger } from \"./logger.js\";\nimport { record, register } from \"./metrics.js\";\n\nexport const app = express();\napp.use(express.json());\n\n// Satu middleware untuk metrik RED dan log akses.\napp.use((req, res, next) => {\n  const start = process.hrtime.bigint();\n  req.id = req.get(\"x-request-id\") ?? randomUUID();\n  res.set(\"x-request-id\", req.id);\n  res.on(\"finish\", () => {\n    // Pakai pola rute (/api/produk/:id), bukan URL asli, supaya label tidak meledak.\n    const route = req.route ? req.baseUrl + req.route.path : \"tidak-dikenal\";\n    if (route === \"/metrics\") return;\n    const seconds = Number(process.hrtime.bigint() - start) / 1e9;\n    record({ method: req.method, route, status: res.statusCode, seconds });\n    const level = res.statusCode >= 500 ? \"error\" : \"info\";\n    logger[level]({\n      req_id: req.id,\n      method: req.method,\n      route,\n      path: req.originalUrl,\n      status: res.statusCode,\n      duration_ms: Math.round(seconds * 1000),\n    }, \"request selesai\");\n  });\n  next();\n});\n\nconst produk = [\n  { id: 1, nama: \"Kopi Susu Gula Aren\", harga: 18000 },\n  { id: 2, nama: \"Roti Bakar Cokelat\", harga: 15000 },\n  { id: 3, nama: \"Teh Melati\", harga: 8000 },\n];\n\n// Gangguan buatan untuk latihan alert. Hanya bisa diubah kalau FAULT_ENABLED=1.\nconst fault = { errorRate: 0, extraLatencyMs: 0 };\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\nasync function kerja(baseMs) {\n  await sleep(baseMs + Math.random() * baseMs + fault.extraLatencyMs);\n  if (Math.random() < fault.errorRate) {\n    throw new Error(\"gangguan simulasi: database tidak menjawab\");\n  }\n}\n\napp.get(\"/healthz\", (req, res) => res.json({ status: \"ok\" }));\n\napp.get(\"/metrics\", async (req, res) => {\n  res.type(register.contentType).send(await register.metrics());\n});\n\napp.get(\"/api/produk\", async (req, res) => {\n  await kerja(20);\n  res.json(produk);\n});\n\napp.get(\"/api/produk/:id\", async (req, res) => {\n  await kerja(15);\n  const item = produk.find((p) => p.id === Number(req.params.id));\n  if (!item) return res.status(404).json({ error: \"Produk tidak ditemukan\" });\n  res.json(item);\n});\n\napp.post(\"/api/checkout\", async (req, res) => {\n  await kerja(80);\n  res.status(201).json({ pesanan: randomUUID() });\n});\n\nif (process.env.FAULT_ENABLED === \"1\") {\n  app.post(\"/admin/fault\", (req, res) => {\n    const { errorRate = 0, extraLatencyMs = 0 } = req.body ?? {};\n    if (!(errorRate >= 0 && errorRate <= 1) || !(extraLatencyMs >= 0 && extraLatencyMs <= 5000)) {\n      return res.status(422).json({ error: \"errorRate 0..1, extraLatencyMs 0..5000\" });\n    }\n    Object.assign(fault, { errorRate, extraLatencyMs });\n    logger.warn({ fault }, \"gangguan simulasi diubah\");\n    res.json(fault);\n  });\n}\n\napp.use((req, res) => res.status(404).json({ error: \"Tidak ditemukan\" }));\n\napp.use((err, req, res, next) => {\n  logger.error({ req_id: req.id, err }, \"error tak tertangani\");\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "mon-m-server-final",
+          "kind": "kode",
+          "name": "layanan/src/server.js (final)",
+          "lang": "javascript",
+          "content": "import { app } from \"./app.js\";\nimport { logger } from \"./logger.js\";\n\nconst port = Number(process.env.PORT ?? 3000);\nconst server = app.listen(port, () => logger.info({ port }, \"layanan-toko siap\"));\n\nprocess.on(\"SIGTERM\", () => {\n  logger.info(\"SIGTERM diterima, menutup server\");\n  server.close(() => process.exit(0));\n});\n"
+        },
+        {
+          "id": "mon-m-alloy",
+          "kind": "kode",
+          "name": "alloy/config.alloy",
+          "lang": "hcl",
+          "content": "// Cari kontainer lewat Docker API, hanya yang servis compose-nya \"layanan\".\ndiscovery.docker \"kontainer\" {\n  host = \"unix:///var/run/docker.sock\"\n\n  filter {\n    name   = \"label\"\n    values = [\"com.docker.compose.service=layanan\"]\n  }\n}\n\n// Ubah label metadata Docker menjadi label log yang rapi.\ndiscovery.relabel \"log\" {\n  targets = []\n\n  rule {\n    source_labels = [\"__meta_docker_container_label_com_docker_compose_service\"]\n    target_label  = \"service\"\n  }\n}\n\nloki.source.docker \"layanan\" {\n  host          = \"unix:///var/run/docker.sock\"\n  targets       = discovery.docker.kontainer.targets\n  relabel_rules = discovery.relabel.log.rules\n  forward_to    = [loki.process.json.receiver]\n}\n\n// Ambil field \"level\" dari log JSON pino dan jadikan label (nilainya sedikit: info/warn/error).\nloki.process \"json\" {\n  stage.json {\n    expressions = { level = \"level\" }\n  }\n\n  stage.labels {\n    values = { level = \"\" }\n  }\n\n  forward_to = [loki.write.lokal.receiver]\n}\n\nloki.write \"lokal\" {\n  endpoint {\n    url = \"http://loki:3100/loki/api/v1/push\"\n  }\n}\n"
+        },
+        {
+          "id": "mon-m-compose-log",
+          "kind": "kode",
+          "name": "docker-compose.yml: tambahan loki dan alloy",
+          "lang": "yaml",
+          "content": "  loki:\n    image: grafana/loki:3.7.10\n    command: [\"-config.file=/etc/loki/local-config.yaml\"]\n    volumes:\n      - loki-data:/loki\n    ports: [\"127.0.0.1:3100:3100\"]\n\n  alloy:\n    image: grafana/alloy:v1.22.0\n    command:\n      - run\n      - /etc/alloy/config.alloy\n      - --server.http.listen-addr=0.0.0.0:12345\n      - --storage.path=/var/lib/alloy/data\n    volumes:\n      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n    ports: [\"127.0.0.1:12345:12345\"]\n    depends_on: [loki]\n\n# tambahkan juga di bagian volumes paling bawah:\n#   loki-data:\n"
+        },
+        {
+          "id": "mon-m-logql",
+          "kind": "kode",
+          "name": "query-latihan.logql",
+          "lang": "text",
+          "content": "# Semua log layanan\n{service=\"layanan\"}\n\n# Hanya error, lalu urai JSON supaya field-nya bisa difilter\n{service=\"layanan\", level=\"error\"} | json\n\n# Request yang lebih lambat dari 300 ms\n{service=\"layanan\"} | json | duration_ms > 300\n\n# Ikuti satu request lewat req_id (salin dari header x-request-id)\n{service=\"layanan\"} | json | req_id=\"TEMPEL-ID-DI-SINI\"\n\n# Jumlah log error per menit (bisa jadi panel grafik)\nsum(count_over_time({service=\"layanan\", level=\"error\"}[1m]))\n"
+        },
+        {
+          "id": "mon-m-alloy-docker",
+          "kind": "tautan",
+          "name": "Alloy: komponen loki.source.docker",
+          "url": "https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.docker/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-log-json",
+          "text": "Setiap request menghasilkan satu baris JSON dengan req_id, route, status, dan duration_ms."
+        },
+        {
+          "id": "mon-log-alloy",
+          "text": "UI Alloy di http://localhost:12345 menunjukkan semua komponen sehat."
+        },
+        {
+          "id": "mon-log-label",
+          "text": "Label service dan level sudah muncul di Loki."
+        },
+        {
+          "id": "mon-log-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "dasbor-grafana-dari-kode",
+      "title": "Grafana dengan datasource dan dasbor dari kode",
+      "est_minutes": 120,
+      "body": "## Dasbor sebagai kode\n\nDasbor yang dibuat dengan klik-klik hilang saat volume Grafana terhapus, dan tidak bisa di-review di pull request. Grafana punya fitur **provisioning**: saat menyala, ia membaca berkas YAML untuk datasource dan berkas JSON untuk dasbor. Semuanya masuk Git.\n\n`uid` datasource ditulis tetap (`prometheus` dan `loki`) supaya dasbor JSON bisa merujuknya dengan pasti di komputer mana pun.\n\n## Isi dasbor\n\n| Baris | Panel |\n| --- | --- |\n| Atas | Sisa anggaran error 30 hari, ketersediaan 1 jam, p95, jumlah alert menyala |\n| Tengah | Rate per rute, rasio error 5m dan 1h dengan garis batas 7.2% |\n| Bawah | p50/p95/p99 dengan garis SLO 300 ms, rasio request lambat |\n| Paling bawah | Log error dari Loki |\n\nBeberapa panel memakai **recording rule** (`sli:error_ratio:rate5m` dan kawan-kawan) yang baru dibuat di langkah berikutnya. Sampai saat itu, panel tersebut menampilkan \"No data\". Itu wajar.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `.env` dari `.env.example` dan isi kata sandi Grafana yang panjang. `.env` sudah ada di `.gitignore`.\n2. Buat `grafana/provisioning/datasources/datasources.yml` dan `grafana/provisioning/dashboards/dashboards.yml`.\n3. Simpan dasbor ke `grafana/dashboards/layanan-toko.json`.\n4. Tambahkan servis `grafana` ke compose. Grafana memakai port 3001 di komputermu karena 3000 sudah dipakai layanan.\n5. `docker compose up -d`, buka http://localhost:3001, masuk sebagai `admin`. Folder **Layanan** berisi dasbor \"Layanan Toko - RED dan SLO\".\n6. Jalankan `node skrip/beban.mjs 300 20` (salin skripnya dari langkah uji kalau ingin mencoba sekarang) dan lihat panel rate terisi.\n7. Commit: `Tambah Grafana dan dasbor`.\n\nMau mengubah dasbor? Ubah di UI, lalu **Export > Export as JSON** dan timpa berkas di repo. Karena `allowUiUpdates: false`, perubahan di UI tidak bisa disimpan langsung, sehingga Git tetap menjadi satu-satunya sumber kebenaran.\n",
+      "materials": [
+        {
+          "id": "mon-m-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "text",
+          "content": "GRAFANA_PASSWORD=ganti-dengan-kata-sandi-panjang\n"
+        },
+        {
+          "id": "mon-m-ds",
+          "kind": "kode",
+          "name": "grafana/provisioning/datasources/datasources.yml",
+          "lang": "yaml",
+          "content": "apiVersion: 1\ndatasources:\n  - name: Prometheus\n    uid: prometheus\n    type: prometheus\n    access: proxy\n    url: http://prometheus:9090\n    isDefault: true\n  - name: Loki\n    uid: loki\n    type: loki\n    access: proxy\n    url: http://loki:3100\n"
+        },
+        {
+          "id": "mon-m-dbprov",
+          "kind": "kode",
+          "name": "grafana/provisioning/dashboards/dashboards.yml",
+          "lang": "yaml",
+          "content": "apiVersion: 1\nproviders:\n  - name: layanan\n    folder: Layanan\n    type: file\n    allowUiUpdates: false\n    options:\n      path: /etc/grafana/dashboards\n"
+        },
+        {
+          "id": "mon-m-dashboard",
+          "kind": "kode",
+          "name": "grafana/dashboards/layanan-toko.json",
+          "lang": "json",
+          "content": "{\n  \"uid\": \"layanan-toko-slo\",\n  \"title\": \"Layanan Toko - RED dan SLO\",\n  \"tags\": [\n    \"slo\",\n    \"layanan-toko\"\n  ],\n  \"timezone\": \"browser\",\n  \"schemaVersion\": 41,\n  \"version\": 1,\n  \"refresh\": \"30s\",\n  \"time\": {\n    \"from\": \"now-1h\",\n    \"to\": \"now\"\n  },\n  \"panels\": [\n    {\n      \"id\": 1,\n      \"type\": \"stat\",\n      \"title\": \"Sisa anggaran error (30 hari)\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 0,\n        \"w\": 6,\n        \"h\": 6\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"percentunit\",\n          \"decimals\": 1,\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"red\",\n                \"value\": null\n              },\n              {\n                \"color\": \"orange\",\n                \"value\": 0.25\n              },\n              {\n                \"color\": \"green\",\n                \"value\": 0.5\n              }\n            ]\n          }\n        },\n        \"overrides\": []\n      },\n      \"options\": {\n        \"reduceOptions\": {\n          \"calcs\": [\n            \"lastNotNull\"\n          ]\n        },\n        \"colorMode\": \"background\"\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"1 - ((sum(increase(http_requests_total{job=\\\"layanan-toko\\\",route=~\\\"/api/.*\\\",status=~\\\"5..\\\"}[30d])) or vector(0)) / sum(increase(http_requests_total{job=\\\"layanan-toko\\\",route=~\\\"/api/.*\\\"}[30d]))) / 0.005\",\n          \"legendFormat\": \"sisa\"\n        }\n      ]\n    },\n    {\n      \"id\": 2,\n      \"type\": \"stat\",\n      \"title\": \"Ketersediaan 1 jam\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 6,\n        \"y\": 0,\n        \"w\": 6,\n        \"h\": 6\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"percentunit\",\n          \"decimals\": 2,\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"red\",\n                \"value\": null\n              },\n              {\n                \"color\": \"green\",\n                \"value\": 0.995\n              }\n            ]\n          }\n        },\n        \"overrides\": []\n      },\n      \"options\": {\n        \"reduceOptions\": {\n          \"calcs\": [\n            \"lastNotNull\"\n          ]\n        },\n        \"colorMode\": \"background\"\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"1 - sli:error_ratio:rate1h\",\n          \"legendFormat\": \"ketersediaan\"\n        }\n      ]\n    },\n    {\n      \"id\": 3,\n      \"type\": \"stat\",\n      \"title\": \"Latensi p95 (5 menit)\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 0,\n        \"w\": 6,\n        \"h\": 6\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"s\",\n          \"decimals\": 3,\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 0.3\n              }\n            ]\n          }\n        },\n        \"overrides\": []\n      },\n      \"options\": {\n        \"reduceOptions\": {\n          \"calcs\": [\n            \"lastNotNull\"\n          ]\n        },\n        \"colorMode\": \"background\"\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:latency_p95:rate5m\",\n          \"legendFormat\": \"p95\"\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"type\": \"stat\",\n      \"title\": \"Alert yang menyala\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 18,\n        \"y\": 0,\n        \"w\": 6,\n        \"h\": 6\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"none\",\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 1\n              }\n            ]\n          }\n        },\n        \"overrides\": []\n      },\n      \"options\": {\n        \"reduceOptions\": {\n          \"calcs\": [\n            \"lastNotNull\"\n          ]\n        },\n        \"colorMode\": \"background\"\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"count(ALERTS{alertstate=\\\"firing\\\"}) or vector(0)\",\n          \"legendFormat\": \"alert\"\n        }\n      ]\n    },\n    {\n      \"id\": 5,\n      \"type\": \"timeseries\",\n      \"title\": \"Rate: request per detik per rute\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 6,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"reqps\"\n        },\n        \"overrides\": []\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sum by (route) (rate(http_requests_total{job=\\\"layanan-toko\\\",route=~\\\"/api/.*\\\"}[1m]))\",\n          \"legendFormat\": \"{{route}}\"\n        }\n      ]\n    },\n    {\n      \"id\": 6,\n      \"type\": \"timeseries\",\n      \"title\": \"Errors: rasio 5xx (garis merah = batas burn cepat 7.2%)\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 6,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"percentunit\",\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 0.072\n              }\n            ]\n          },\n          \"custom\": {\n            \"thresholdsStyle\": {\n              \"mode\": \"line\"\n            }\n          }\n        },\n        \"overrides\": []\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:error_ratio:rate5m\",\n          \"legendFormat\": \"5 menit\"\n        },\n        {\n          \"refId\": \"B\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:error_ratio:rate1h\",\n          \"legendFormat\": \"1 jam\"\n        }\n      ]\n    },\n    {\n      \"id\": 7,\n      \"type\": \"timeseries\",\n      \"title\": \"Duration: p50 / p95 / p99 (garis merah = SLO 300 ms)\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 14,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"s\",\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 0.3\n              }\n            ]\n          },\n          \"custom\": {\n            \"thresholdsStyle\": {\n              \"mode\": \"line\"\n            }\n          }\n        },\n        \"overrides\": []\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{job=\\\"layanan-toko\\\",route=~\\\"/api/.*\\\"}[5m])))\",\n          \"legendFormat\": \"p50\"\n        },\n        {\n          \"refId\": \"B\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:latency_p95:rate5m\",\n          \"legendFormat\": \"p95\"\n        },\n        {\n          \"refId\": \"C\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job=\\\"layanan-toko\\\",route=~\\\"/api/.*\\\"}[5m])))\",\n          \"legendFormat\": \"p99\"\n        }\n      ]\n    },\n    {\n      \"id\": 8,\n      \"type\": \"timeseries\",\n      \"title\": \"Rasio request lebih lambat dari 300 ms\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 14,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"percentunit\",\n          \"thresholds\": {\n            \"mode\": \"absolute\",\n            \"steps\": [\n              {\n                \"color\": \"green\",\n                \"value\": null\n              },\n              {\n                \"color\": \"red\",\n                \"value\": 0.05\n              }\n            ]\n          },\n          \"custom\": {\n            \"thresholdsStyle\": {\n              \"mode\": \"line\"\n            }\n          }\n        },\n        \"overrides\": []\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:slow_ratio:rate5m\",\n          \"legendFormat\": \"5 menit\"\n        },\n        {\n          \"refId\": \"B\",\n          \"datasource\": {\n            \"type\": \"prometheus\",\n            \"uid\": \"prometheus\"\n          },\n          \"expr\": \"sli:slow_ratio:rate1h\",\n          \"legendFormat\": \"1 jam\"\n        }\n      ]\n    },\n    {\n      \"id\": 9,\n      \"type\": \"logs\",\n      \"title\": \"Log error layanan\",\n      \"datasource\": {\n        \"type\": \"loki\",\n        \"uid\": \"loki\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 22,\n        \"w\": 24,\n        \"h\": 10\n      },\n      \"options\": {\n        \"showTime\": true,\n        \"wrapLogMessage\": true,\n        \"sortOrder\": \"Descending\"\n      },\n      \"targets\": [\n        {\n          \"refId\": \"A\",\n          \"datasource\": {\n            \"type\": \"loki\",\n            \"uid\": \"loki\"\n          },\n          \"expr\": \"{service=\\\"layanan\\\", level=\\\"error\\\"} | json\"\n        }\n      ]\n    }\n  ]\n}"
+        },
+        {
+          "id": "mon-m-compose-grafana",
+          "kind": "kode",
+          "name": "docker-compose.yml: tambahan grafana",
+          "lang": "yaml",
+          "content": "  grafana:\n    image: grafana/grafana:13.3.2\n    environment:\n      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?isi GRAFANA_PASSWORD di berkas .env}\n    volumes:\n      - ./grafana/provisioning:/etc/grafana/provisioning:ro\n      - ./grafana/dashboards:/etc/grafana/dashboards:ro\n      - grafana-data:/var/lib/grafana\n    ports: [\"127.0.0.1:3001:3000\"]\n    depends_on: [prometheus, loki]\n\n# tambahkan juga di bagian volumes paling bawah:\n#   grafana-data:\n"
+        },
+        {
+          "id": "mon-m-provisioning",
+          "kind": "tautan",
+          "name": "Grafana: provisioning",
+          "url": "https://grafana.com/docs/grafana/latest/administration/provisioning/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-graf-masuk",
+          "text": "Aku bisa masuk Grafana dengan kata sandi dari .env, dan .env tidak ikut di-commit."
+        },
+        {
+          "id": "mon-graf-ds",
+          "text": "Datasource Prometheus dan Loki muncul tanpa aku menambahkannya lewat UI."
+        },
+        {
+          "id": "mon-graf-dasbor",
+          "text": "Dasbor Layanan Toko muncul dan panel rate terisi saat ada beban."
+        },
+        {
+          "id": "mon-graf-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "aturan-slo-dan-alertmanager",
+      "title": "Tulis aturan SLO dan rute Alertmanager",
+      "est_minutes": 165,
+      "body": "## Recording rule dulu, alert kemudian\n\n`slo.yml` punya dua grup:\n- **slo-rekam**: recording rule yang menghitung rasio error dan rasio lambat untuk jendela 5m, 30m, 1h, dan 6h. Hasilnya disimpan sebagai metrik baru seperti `sli:error_ratio:rate1h`, sehingga alert dan dasbor tidak menghitung ulang query berat.\n- **slo-alert**: empat alert dari rancanganmu, masing-masing dengan `severity`, `slo`, dan `runbook_url`.\n\nPerhatikan `(sum(...) or vector(0))` di pembilang. Kalau belum pernah ada error 5xx sama sekali, deret 5xx belum ada dan hasil pembagian kosong. Dengan `or vector(0)`, rasio error menjadi 0, bukan \"No data\".\n\n## Alertmanager\n\nPrometheus hanya memutuskan **apakah** alert menyala. Alertmanager memutuskan **siapa** yang diberi tahu, **kapan**, dan **seberapa sering**:\n- `group_by` menggabungkan alert sejenis menjadi satu pesan.\n- Rute `severity=\"page\"` dikirim lebih cepat (`group_wait: 10s`).\n- `inhibit_rules`: kalau alert page sudah menyala untuk SLO yang sama, alert tiket disenyapkan. Satu masalah, satu notifikasi.\n\nPenerima lokal adalah skrip Node kecil yang mencetak alert ke log, jadi kamu bisa berlatih tanpa akun apa pun. Kalau ingin notifikasi ke HP, pakai konfigurasi Telegram: buat bot lewat @BotFather, simpan token di `alertmanager/telegram_token` (sudah di `.gitignore`), dan isi `chat_id`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `prometheus/rules/slo.yml`. Ganti `USERNAME` di `runbook_url` dengan nama GitHub-mu.\n2. Buat `alertmanager/alertmanager.yml` dan `penerima/server.mjs`.\n3. Ganti `docker-compose.yml` dengan versi lengkap dari bagian Bahan, lalu `docker compose up -d`.\n4. Buka http://localhost:9090/rules: dua grup terbaca tanpa error. http://localhost:9090/alerts: empat alert berstatus **Inactive**.\n5. Buka http://localhost:9093: Alertmanager menyala. Panel dasbor yang tadinya \"No data\" sekarang terisi.\n6. Commit: `Tambah aturan SLO dan Alertmanager`.\n",
+      "materials": [
+        {
+          "id": "mon-m-rules",
+          "kind": "kode",
+          "name": "prometheus/rules/slo.yml",
+          "lang": "yaml",
+          "content": "# SLO layanan-toko (jendela 30 hari)\n#   Ketersediaan: 99.5% request /api tidak berstatus 5xx  -> anggaran error 0.5%\n#   Latensi:      95% request /api selesai <= 300 ms       -> anggaran 5%\ngroups:\n  - name: slo-rekam\n    rules:\n      - record: sli:error_ratio:rate5m\n        expr: |\n          (sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\",status=~\"5..\"}[5m])) or vector(0))\n          /\n          sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\"}[5m]))\n      - record: sli:error_ratio:rate30m\n        expr: |\n          (sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\",status=~\"5..\"}[30m])) or vector(0))\n          /\n          sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\"}[30m]))\n      - record: sli:error_ratio:rate1h\n        expr: |\n          (sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\",status=~\"5..\"}[1h])) or vector(0))\n          /\n          sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\"}[1h]))\n      - record: sli:error_ratio:rate6h\n        expr: |\n          (sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\",status=~\"5..\"}[6h])) or vector(0))\n          /\n          sum(rate(http_requests_total{job=\"layanan-toko\",route=~\"/api/.*\"}[6h]))\n      - record: sli:slow_ratio:rate5m\n        expr: |\n          1 - (\n            sum(rate(http_request_duration_seconds_bucket{job=\"layanan-toko\",route=~\"/api/.*\",le=\"0.3\"}[5m]))\n            /\n            sum(rate(http_request_duration_seconds_count{job=\"layanan-toko\",route=~\"/api/.*\"}[5m]))\n          )\n      - record: sli:slow_ratio:rate30m\n        expr: |\n          1 - (\n            sum(rate(http_request_duration_seconds_bucket{job=\"layanan-toko\",route=~\"/api/.*\",le=\"0.3\"}[30m]))\n            /\n            sum(rate(http_request_duration_seconds_count{job=\"layanan-toko\",route=~\"/api/.*\"}[30m]))\n          )\n      - record: sli:slow_ratio:rate1h\n        expr: |\n          1 - (\n            sum(rate(http_request_duration_seconds_bucket{job=\"layanan-toko\",route=~\"/api/.*\",le=\"0.3\"}[1h]))\n            /\n            sum(rate(http_request_duration_seconds_count{job=\"layanan-toko\",route=~\"/api/.*\"}[1h]))\n          )\n      - record: sli:slow_ratio:rate6h\n        expr: |\n          1 - (\n            sum(rate(http_request_duration_seconds_bucket{job=\"layanan-toko\",route=~\"/api/.*\",le=\"0.3\"}[6h]))\n            /\n            sum(rate(http_request_duration_seconds_count{job=\"layanan-toko\",route=~\"/api/.*\"}[6h]))\n          )\n      - record: sli:latency_p95:rate5m\n        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"layanan-toko\",route=~\"/api/.*\"}[5m])))\n\n  - name: slo-alert\n    rules:\n      - alert: AnggaranErrorTerbakarCepat\n        expr: |\n          sli:error_ratio:rate1h > (14.4 * 0.005)\n          and\n          sli:error_ratio:rate5m > (14.4 * 0.005)\n        for: 2m\n        labels:\n          severity: page\n          slo: ketersediaan\n        annotations:\n          summary: \"Anggaran error ketersediaan terbakar 14.4x lebih cepat dari normal\"\n          description: \"Rasio buruk 1h terakhir {{ $value | humanizePercentage }}, batas 14.4x anggaran.\"\n          runbook_url: \"https://github.com/USERNAME/monitoring-layanan/blob/main/docs/runbook.md#anggaranerrorterbakarcepat\"\n      - alert: AnggaranErrorTerbakarLambat\n        expr: |\n          sli:error_ratio:rate6h > (6 * 0.005)\n          and\n          sli:error_ratio:rate30m > (6 * 0.005)\n        for: 15m\n        labels:\n          severity: tiket\n          slo: ketersediaan\n        annotations:\n          summary: \"Anggaran error ketersediaan terbakar 6x lebih cepat dari normal\"\n          description: \"Rasio buruk 6h terakhir {{ $value | humanizePercentage }}, batas 6x anggaran.\"\n          runbook_url: \"https://github.com/USERNAME/monitoring-layanan/blob/main/docs/runbook.md#anggaranerrorterbakarlambat\"\n      - alert: LatensiTerbakarCepat\n        expr: |\n          sli:slow_ratio:rate1h > (14.4 * 0.05)\n          and\n          sli:slow_ratio:rate5m > (14.4 * 0.05)\n        for: 2m\n        labels:\n          severity: page\n          slo: latensi\n        annotations:\n          summary: \"Terlalu banyak request /api lebih lambat dari 300 ms\"\n          description: \"Rasio buruk 1h terakhir {{ $value | humanizePercentage }}, batas 14.4x anggaran.\"\n          runbook_url: \"https://github.com/USERNAME/monitoring-layanan/blob/main/docs/runbook.md#latensiterbakarcepat\"\n      - alert: LayananTidakTerjangkau\n        expr: up{job=\"layanan-toko\"} == 0\n        for: 1m\n        labels:\n          severity: page\n          slo: ketersediaan\n        annotations:\n          summary: \"Prometheus tidak bisa mengambil /metrics dari layanan-toko\"\n          description: \"Target {{ $labels.instance }} mati atau tidak terjangkau.\"\n          runbook_url: \"https://github.com/USERNAME/monitoring-layanan/blob/main/docs/runbook.md#layanantidakterjangkau\"\n"
+        },
+        {
+          "id": "mon-m-am",
+          "kind": "kode",
+          "name": "alertmanager/alertmanager.yml",
+          "lang": "yaml",
+          "content": "route:\n  receiver: penerima-webhook\n  group_by: [alertname, slo]\n  group_wait: 30s\n  group_interval: 5m\n  repeat_interval: 4h\n  routes:\n    - matchers: ['severity=\"page\"']\n      receiver: penerima-webhook\n      group_wait: 10s\n      repeat_interval: 1h\n\nreceivers:\n  - name: penerima-webhook\n    webhook_configs:\n      - url: http://penerima:8080/alert\n        send_resolved: true\n\n# Kalau alert \"page\" sudah menyala, alert \"tiket\" untuk SLO yang sama disenyapkan.\ninhibit_rules:\n  - source_matchers: ['severity=\"page\"']\n    target_matchers: ['severity=\"tiket\"']\n    equal: [slo]\n"
+        },
+        {
+          "id": "mon-m-telegram",
+          "kind": "kode",
+          "name": "alertmanager/telegram.yml (pilihan)",
+          "lang": "yaml",
+          "content": "# Ganti blok receivers di alertmanager.yml dengan ini (dan ubah receiver di route).\n# Token bot disimpan di berkas terpisah, jangan di-commit.\nreceivers:\n  - name: telegram\n    telegram_configs:\n      - bot_token_file: /etc/alertmanager/telegram_token\n        chat_id: 123456789\n        send_resolved: true\n        parse_mode: HTML\n"
+        },
+        {
+          "id": "mon-m-penerima",
+          "kind": "kode",
+          "name": "penerima/server.mjs",
+          "lang": "javascript",
+          "content": "// Penerima webhook Alertmanager: cukup mencetak alert ke log.\nimport http from \"node:http\";\n\nhttp.createServer((req, res) => {\n  let body = \"\";\n  req.on(\"data\", (c) => (body += c));\n  req.on(\"end\", () => {\n    try {\n      const { alerts = [] } = JSON.parse(body);\n      for (const a of alerts) {\n        console.log(`[${a.status.toUpperCase()}] ${a.labels.alertname} severity=${a.labels.severity} - ${a.annotations.summary ?? \"\"}`);\n      }\n    } catch {\n      console.log(\"payload bukan JSON:\", body.slice(0, 200));\n    }\n    res.end(\"ok\");\n  });\n}).listen(8080, () => console.log(\"penerima alert siap di :8080\"));\n"
+        },
+        {
+          "id": "mon-m-compose-final",
+          "kind": "kode",
+          "name": "docker-compose.yml (lengkap)",
+          "lang": "yaml",
+          "content": "services:\n  layanan:\n    build: ./layanan\n    environment:\n      FAULT_ENABLED: \"1\"\n    ports: [\"127.0.0.1:3000:3000\"]\n\n  prometheus:\n    image: prom/prometheus:v3.16.0\n    volumes:\n      - ./prometheus:/etc/prometheus:ro\n      - prom-data:/prometheus\n    ports: [\"127.0.0.1:9090:9090\"]\n\n  alertmanager:\n    image: prom/alertmanager:v0.35.1\n    volumes:\n      - ./alertmanager:/etc/alertmanager:ro\n    ports: [\"127.0.0.1:9093:9093\"]\n\n  penerima:\n    image: node:26-alpine\n    volumes:\n      - ./penerima:/app:ro\n    command: [\"node\", \"/app/server.mjs\"]\n\n  loki:\n    image: grafana/loki:3.7.10\n    command: [\"-config.file=/etc/loki/local-config.yaml\"]\n    volumes:\n      - loki-data:/loki\n    ports: [\"127.0.0.1:3100:3100\"]\n\n  alloy:\n    image: grafana/alloy:v1.22.0\n    command:\n      - run\n      - /etc/alloy/config.alloy\n      - --server.http.listen-addr=0.0.0.0:12345\n      - --storage.path=/var/lib/alloy/data\n    volumes:\n      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n    ports: [\"127.0.0.1:12345:12345\"]\n    depends_on: [loki]\n\n  grafana:\n    image: grafana/grafana:13.3.2\n    environment:\n      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?isi GRAFANA_PASSWORD di berkas .env}\n    volumes:\n      - ./grafana/provisioning:/etc/grafana/provisioning:ro\n      - ./grafana/dashboards:/etc/grafana/dashboards:ro\n      - grafana-data:/var/lib/grafana\n    ports: [\"127.0.0.1:3001:3000\"]\n    depends_on: [prometheus, loki]\n\nvolumes:\n  prom-data:\n  loki-data:\n  grafana-data:\n"
+        },
+        {
+          "id": "mon-m-recording",
+          "kind": "tautan",
+          "name": "Prometheus: recording rules",
+          "url": "https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/"
+        },
+        {
+          "id": "mon-m-amconfig",
+          "kind": "tautan",
+          "name": "Alertmanager: konfigurasi",
+          "url": "https://prometheus.io/docs/alerting/latest/configuration/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-slo-rules",
+          "text": "Halaman Rules Prometheus menampilkan grup slo-rekam dan slo-alert tanpa error."
+        },
+        {
+          "id": "mon-slo-inactive",
+          "text": "Empat alert terlihat di halaman Alerts dengan status Inactive."
+        },
+        {
+          "id": "mon-slo-am",
+          "text": "Alertmanager menyala di http://localhost:9093."
+        },
+        {
+          "id": "mon-slo-paham",
+          "text": "Aku bisa menjelaskan kenapa alert memakai dua jendela dan apa gunanya inhibit_rules."
+        },
+        {
+          "id": "mon-slo-commit",
+          "text": "Perubahan sudah di-commit dan tidak ada token yang ikut."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-aturan-dan-latihan-gangguan",
+      "title": "Uji aturan, lalu picu gangguan sungguhan",
+      "est_minutes": 135,
+      "body": "## Dua lapis pengujian\n\n1. **Unit test aturan.** `promtool test rules` memberi Prometheus deret waktu buatan dan memeriksa apakah alert menyala pada waktu yang tepat. Tes di bagian Bahan berisi dua skenario: 10% error harus memicu alert cepat, sedangkan 1% error tidak boleh memicu page. Skenario kedua sama pentingnya: alert yang menyala untuk hal kecil membuat orang berhenti percaya pada alert.\n2. **Latihan gangguan.** Jalankan stack, beri beban, rusak layanannya dengan sengaja, dan ukur berapa lama sampai notifikasi masuk.\n\n`promtool` dan `amtool` sudah ada di dalam image Prometheus dan Alertmanager, jadi tidak perlu dipasang terpisah.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan tes ke `prometheus/tests/slo_test.yml`. Tes diletakkan di luar `rules/` karena Prometheus memuat semua `rules/*.yml`, dan berkas tes bukan berkas aturan.\n2. Jalankan perintah pemeriksaan nomor 1 dan 2 di bagian Bahan. Semua harus `SUCCESS`.\n3. Rusak tesnya dengan sengaja, misalnya ubah 14.4 menjadi 25 di `slo.yml`. Tes harus gagal. Kembalikan.\n4. Simpan `skrip/beban.mjs` dan `skrip/gangguan.sh`, lalu jalankan latihan sesuai urutan di bagian Bahan.\n5. Isi laporan latihan sambil berjalan. Catat jam setiap perubahan status alert.\n6. Ulangi dengan gangguan latensi (`./skrip/gangguan.sh 0 400`).\n\n## Yang perlu kamu perhatikan\n\n- Alert menyala dalam beberapa menit, bukan detik: perlu 1 sampai 2 menit agar jendela 5m terisi, lalu `for: 2m`, lalu `group_wait: 10s`.\n- Saat stack baru menyala, jendela 1h baru berisi beberapa menit data, jadi alert terasa lebih cepat daripada di produksi.\n- Setelah gangguan dimatikan, alert padam begitu rasio 5m turun, walau rasio 1h masih tinggi. Itu fungsi jendela pendek.\n- Lihat panel log di dasbor saat gangguan: pesan `gangguan simulasi: database tidak menjawab` muncul dengan req_id-nya.\n",
+      "materials": [
+        {
+          "id": "mon-m-test",
+          "kind": "kode",
+          "name": "prometheus/tests/slo_test.yml",
+          "lang": "yaml",
+          "content": "# Jalankan: promtool test rules prometheus/tests/slo_test.yml\nrule_files:\n  - ../rules/slo.yml\nevaluation_interval: 1m\n\ntests:\n  # 10% request gagal: jauh di atas batas 7.2%, alert cepat harus menyala.\n  - interval: 1m\n    input_series:\n      - series: 'http_requests_total{job=\"layanan-toko\",route=\"/api/produk\",method=\"GET\",status=\"200\"}'\n        values: \"0+90x60\"\n      - series: 'http_requests_total{job=\"layanan-toko\",route=\"/api/produk\",method=\"GET\",status=\"500\"}'\n        values: \"0+10x60\"\n    alert_rule_test:\n      - eval_time: 10m\n        alertname: AnggaranErrorTerbakarCepat\n        exp_alerts:\n          - exp_labels:\n              severity: page\n              slo: ketersediaan\n            exp_annotations:\n              summary: \"Anggaran error ketersediaan terbakar 14.4x lebih cepat dari normal\"\n              description: \"Rasio buruk 1h terakhir 10%, batas 14.4x anggaran.\"\n              runbook_url: \"https://github.com/USERNAME/monitoring-layanan/blob/main/docs/runbook.md#anggaranerrorterbakarcepat\"\n\n  # 1% request gagal: di atas SLO 0.5% tapi belum darurat. Tidak boleh ada page.\n  - interval: 1m\n    input_series:\n      - series: 'http_requests_total{job=\"layanan-toko\",route=\"/api/produk\",method=\"GET\",status=\"200\"}'\n        values: \"0+99x60\"\n      - series: 'http_requests_total{job=\"layanan-toko\",route=\"/api/produk\",method=\"GET\",status=\"500\"}'\n        values: \"0+1x60\"\n    alert_rule_test:\n      - eval_time: 30m\n        alertname: AnggaranErrorTerbakarCepat\n        exp_alerts: []\n    promql_expr_test:\n      - expr: sli:error_ratio:rate5m\n        eval_time: 30m\n        exp_samples:\n          - labels: \"sli:error_ratio:rate5m\"\n            value: 0.01\n"
+        },
+        {
+          "id": "mon-m-beban",
+          "kind": "kode",
+          "name": "skrip/beban.mjs",
+          "lang": "javascript",
+          "content": "// Pemakaian: node skrip/beban.mjs [detik=300] [request_per_detik=20]\nconst BASE = process.env.BASE_URL ?? \"http://localhost:3000\";\nconst detik = Number(process.argv[2] ?? 300);\nconst rps = Number(process.argv[3] ?? 20);\nconst jalur = [\n  [\"GET\", \"/api/produk\"],\n  [\"GET\", \"/api/produk/1\"],\n  [\"GET\", \"/api/produk/99\"], // 404 sengaja: bukan error server\n  [\"POST\", \"/api/checkout\"],\n];\nconst hitung = {};\nconst tambah = (k) => (hitung[k] = (hitung[k] ?? 0) + 1);\nconst akhir = Date.now() + detik * 1000;\n\nwhile (Date.now() < akhir) {\n  for (let i = 0; i < rps; i++) {\n    const [method, path] = jalur[Math.floor(Math.random() * jalur.length)];\n    fetch(BASE + path, { method }).then((r) => tambah(r.status), () => tambah(\"gagal\"));\n  }\n  await new Promise((r) => setTimeout(r, 1000));\n  console.log(new Date().toISOString().slice(11, 19), JSON.stringify(hitung));\n}\n"
+        },
+        {
+          "id": "mon-m-gangguan",
+          "kind": "kode",
+          "name": "skrip/gangguan.sh",
+          "lang": "bash",
+          "content": "#!/usr/bin/env sh\n# Pemakaian: ./skrip/gangguan.sh <errorRate 0..1> [extraLatencyMs]\n# Contoh:    ./skrip/gangguan.sh 0.3      -> 30% request /api gagal 500\n#            ./skrip/gangguan.sh 0 600    -> semua request lambat 600 ms\n#            ./skrip/gangguan.sh 0        -> pulihkan\ncurl -s -X POST \"${BASE_URL:-http://localhost:3000}/admin/fault\" \\\n  -H 'content-type: application/json' \\\n  -d \"{\\\"errorRate\\\": ${1:-0}, \\\"extraLatencyMs\\\": ${2:-0}}\"\necho\n"
+        },
+        {
+          "id": "mon-m-uji-cmd",
+          "kind": "kode",
+          "name": "urutan-latihan.sh",
+          "lang": "bash",
+          "content": "# 1. Periksa sintaks aturan dan jalankan unit test aturan (tanpa menjalankan Prometheus)\ndocker run --rm -v \"$PWD/prometheus:/p\" --entrypoint promtool prom/prometheus:v3.16.0 check rules /p/rules/slo.yml\ndocker run --rm -v \"$PWD/prometheus:/p\" --entrypoint promtool prom/prometheus:v3.16.0 test rules /p/tests/slo_test.yml\ndocker run --rm -v \"$PWD/prometheus:/p\" --entrypoint promtool prom/prometheus:v3.16.0 check config /p/prometheus.yml\n\n# 2. Periksa konfigurasi Alertmanager\ndocker run --rm -v \"$PWD/alertmanager:/a\" --entrypoint amtool prom/alertmanager:v0.35.1 check-config /a/alertmanager.yml\n\n# 3. Nyalakan semua, lalu beri beban normal di terminal lain\ndocker compose up -d --build\nnode skrip/beban.mjs 1800 20\n\n# 4. Setelah 5 menit beban normal, mulai gangguan: 30% request gagal\n./skrip/gangguan.sh 0.3\n\n# 5. Pantau: alert pending lalu firing, lalu pesan di penerima\n#    http://localhost:9090/alerts  dan  http://localhost:9093\ndocker compose logs -f penerima\n\n# 6. Pulihkan dan tunggu pesan RESOLVED\n./skrip/gangguan.sh 0\n\n# 7. Ulangi untuk latensi: semua request lambat 400 ms\n./skrip/gangguan.sh 0 400\n"
+        },
+        {
+          "id": "mon-m-laporan",
+          "kind": "kode",
+          "name": "docs/latihan-gangguan.md",
+          "lang": "markdown",
+          "content": "# Laporan latihan gangguan\n\n| Waktu (WIB) | Kejadian |\n| --- | --- |\n| ___ | Beban normal dimulai (20 req/dtk) |\n| ___ | Gangguan 30% error dinyalakan |\n| ___ | AnggaranErrorTerbakarCepat: pending |\n| ___ | AnggaranErrorTerbakarCepat: firing |\n| ___ | Pesan diterima penerima / Telegram |\n| ___ | Gangguan dimatikan |\n| ___ | Pesan RESOLVED diterima |\n\nWaktu dari gangguan sampai notifikasi: ___ menit (target <= 5 menit)\nAnggaran error yang terpakai selama latihan (panel dasbor): ___ %\nYang mengejutkan: ___\n"
+        },
+        {
+          "id": "mon-m-unittest",
+          "kind": "tautan",
+          "name": "Prometheus: unit testing untuk aturan",
+          "url": "https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-uji-promtool",
+          "text": "promtool check rules, promtool test rules, dan amtool check-config semuanya SUCCESS."
+        },
+        {
+          "id": "mon-uji-rusak",
+          "text": "Aku sudah merusak aturan dengan sengaja dan melihat tes gagal."
+        },
+        {
+          "id": "mon-uji-firing",
+          "text": "AnggaranErrorTerbakarCepat menyala dan pesannya diterima penerima atau Telegram."
+        },
+        {
+          "id": "mon-uji-resolved",
+          "text": "Setelah gangguan dimatikan, pesan RESOLVED diterima."
+        },
+        {
+          "id": "mon-uji-waktu",
+          "text": "Aku sudah mencatat berapa menit dari gangguan sampai notifikasi."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "demo-dan-serah-terima",
+      "title": "Jalankan di server dan presentasikan demonya",
+      "est_minutes": 105,
+      "body": "## Hasil yang bisa dilihat orang lain\n\nStack monitoring tidak punya halaman publik yang bisa dikunjungi perekrut, dan memang **tidak boleh** dibuka ke internet begitu saja. Grafana, Prometheus, dan Alertmanager berisi informasi internal. Karena itu bukti kerjamu adalah tiga hal: repositori yang bisa dijalankan siapa pun dengan satu perintah, video demo singkat, dan tangkapan layar.\n\n## Pilihan A: di laptop\n\nCukup kalau kamu belum punya server. Pastikan orang lain bisa menjalankannya: clone repo ke folder baru, `cp .env.example .env`, `docker compose up -d --build`, dan semuanya harus jalan tanpa langkah tambahan.\n\n## Pilihan B: di VPS\n\n1. Pasang Docker di VPS, clone repo, buat `.env`, lalu `docker compose up -d --build`.\n2. Jangan buka port 3001, 9090, dan 9093 di firewall. Semua port sudah terikat ke `127.0.0.1`.\n3. Akses dari laptop lewat **terowongan SSH** seperti di bagian Bahan. Kamu melihat Grafana seolah-olah berjalan lokal, tanpa membukanya ke internet.\n\n## Yang perlu kamu kerjakan\n\n1. Uji clone bersih di folder lain dan pastikan semuanya menyala.\n2. Ambil tangkapan layar dasbor saat gangguan berlangsung, simpan sebagai `docs/dasbor.png`.\n3. Rekam video demo 5 menit mengikuti naskah di bagian Bahan. Unggah sebagai video tidak terdaftar (unlisted) dan tempel tautannya di README.\n4. Push ke GitHub. Periksa sekali lagi bahwa `.env` dan token Telegram tidak ikut.\n5. Presentasikan ke satu teman. Minta mereka menebak apa arti \"sisa anggaran error 80%\" sebelum kamu menjelaskannya. Kalau tebakan mereka meleset, perbaiki judul panelnya.\n",
+      "materials": [
+        {
+          "id": "mon-m-demo",
+          "kind": "kode",
+          "name": "naskah-demo.md",
+          "lang": "markdown",
+          "content": "# Naskah demo 5 menit\n\n0:00  Masalah: \"Tanpa monitoring, kita tahu layanan rusak dari keluhan pengguna.\"\n0:30  Arsitektur: satu gambar, layanan -> Prometheus/Loki -> Grafana, Alertmanager -> notifikasi\n1:00  SLO: 99.5% ketersediaan, 95% request <= 300 ms, apa arti anggaran error\n1:30  Dasbor saat normal: rate, errors, duration, sisa anggaran\n2:00  Nyalakan gangguan 30% error (./skrip/gangguan.sh 0.3)\n2:30  Grafik error naik, log error muncul di panel Loki, klik satu req_id\n3:30  Alert firing, notifikasi masuk, buka runbook_url-nya\n4:30  Pulihkan, tunjukkan pesan RESOLVED dan anggaran error yang terpakai\n5:00  Satu hal yang kupelajari\n"
+        },
+        {
+          "id": "mon-m-tunnel",
+          "kind": "kode",
+          "name": "jalankan-di-vps.sh",
+          "lang": "bash",
+          "content": "# Di VPS: semua port terikat ke 127.0.0.1, jadi tidak terbuka ke internet.\ngit clone https://github.com/USERNAME/monitoring-layanan.git\ncd monitoring-layanan\ncp .env.example .env    # lalu ganti GRAFANA_PASSWORD\ndocker compose up -d --build\ndocker compose ps\n\n# Di laptopmu: buka terowongan SSH, lalu akses lewat browser lokal\nssh -N -L 3001:localhost:3001 -L 9090:localhost:9090 -L 9093:localhost:9093 user@IP-VPS\n# Grafana:      http://localhost:3001\n# Prometheus:   http://localhost:9090\n# Alertmanager: http://localhost:9093\n"
+        },
+        {
+          "id": "mon-m-compose-docs",
+          "kind": "tautan",
+          "name": "Dokumentasi Docker Compose",
+          "url": "https://docs.docker.com/compose/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-dep-clone",
+          "text": "Clone bersih di folder baru bisa dijalankan dengan cp .env.example .env lalu docker compose up."
+        },
+        {
+          "id": "mon-dep-aman",
+          "text": "Grafana, Prometheus, dan Alertmanager tidak terbuka ke internet."
+        },
+        {
+          "id": "mon-dep-video",
+          "text": "Video demo sudah direkam dan tautannya ada di README."
+        },
+        {
+          "id": "mon-dep-push",
+          "text": "Repositori sudah di-push tanpa .env atau token."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "runbook-postmortem-readme",
+      "title": "Tulis runbook, postmortem, dan README",
+      "est_minutes": 120,
+      "body": "## Alert tanpa runbook hanya memindahkan kepanikan\n\nSaat alert menyala jam 2 pagi, orang yang menerimanya mungkin bukan kamu, dan otak yang baru bangun tidak bisa berpikir jernih. **Runbook** menjawab tiga hal untuk setiap alert: apa artinya, apa dampaknya ke pengguna, dan langkah apa yang dilakukan, berurutan. Setiap alert di `slo.yml` sudah punya `runbook_url` yang menunjuk ke judul di `docs/runbook.md`. Judulnya harus sama persis dengan nama alert supaya tautannya tepat.\n\n**Postmortem** ditulis setelah gangguan selesai. Prinsipnya **tanpa menyalahkan**: yang dicari adalah celah di sistem, misalnya \"tidak ada tes untuk konfigurasi ini\", bukan \"si A lupa\". Postmortem yang baik selalu berakhir dengan tindakan lanjutan yang punya pemilik dan tenggat.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `docs/runbook.md` dan sesuaikan. Uji: klik `runbook_url` dari pesan alert. Harus membuka judul yang benar.\n2. Salin template postmortem ke `docs/postmortem-template.md`.\n3. Tulis postmortem pertamamu di `docs/postmortem-latihan.md` dari latihan gangguan di langkah uji. Pakai data laporan latihanmu. Minimal satu tindakan lanjutan yang nyata, misalnya \"panel log belum bisa difilter per rute\".\n4. Tulis `README.md` dari template: cara menjalankan, tabel SLO, cara menguji, keputusan desain, dan hasil latihan.\n5. Buka lagi brief dari langkah pertama. Apakah notifikasi masuk dalam 5 menit? Tulis jawabannya di README.\n6. Commit, push, lalu kirim tautan repositori GitHub-mu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membangun hal yang dikerjakan tim SRE dan platform setiap hari: mengubah \"layanan terasa lambat\" menjadi angka, menentukan seberapa buruk yang masih bisa diterima, membangunkan orang hanya saat perlu, dan belajar dari setiap gangguan. Langkah berikutnya yang wajar adalah tracing terdistribusi dengan OpenTelemetry.\n",
+      "materials": [
+        {
+          "id": "mon-m-runbook",
+          "kind": "kode",
+          "name": "docs/runbook.md",
+          "lang": "markdown",
+          "content": "# Runbook layanan-toko\n\nDasbor: http://localhost:3001/d/layanan-toko-slo\nLog: Grafana > Explore > Loki > `{service=\"layanan\", level=\"error\"} | json`\n\n## AnggaranErrorTerbakarCepat\n\n**Artinya:** dalam 1 jam terakhir lebih dari 7.2% request /api gagal 5xx. Kalau dibiarkan, anggaran error 30 hari habis dalam sekitar 2 hari.\n**Dampak ke pengguna:** sebagian pengguna gagal melihat produk atau checkout.\n\nLangkah:\n1. Akui alert (beri tahu tim kamu sedang menangani). Catat jam mulai.\n2. Buka dasbor. Panel \"Errors\": rute mana yang naik? Semua rute atau satu rute saja?\n3. Buka log error. Cari pesan yang paling sering muncul.\n4. Ada rilis atau perubahan konfigurasi dalam 1 jam terakhir? Kalau ya, rollback dulu, analisis belakangan.\n5. Ada gangguan simulasi aktif? Periksa log `gangguan simulasi diubah`, lalu `./skrip/gangguan.sh 0`.\n6. Masih gagal? Mulai ulang layanan: `docker compose restart layanan`, pantau 5 menit.\n7. Setelah pulih: tunggu pesan RESOLVED, catat jam selesai, buat postmortem.\n\nEskalasi: kalau 30 menit belum membaik, hubungi ___.\n\n## AnggaranErrorTerbakarLambat\n\n**Artinya:** error di atas normal selama 6 jam (6x laju aman). Tidak darurat, tapi anggaran akan habis sebelum 30 hari.\nLangkah: buat tiket, periksa rute dan pesan error terbanyak di jam kerja, rencanakan perbaikan.\n\n## LatensiTerbakarCepat\n\n**Artinya:** lebih dari 72% request /api dalam 1 jam terakhir lebih lambat dari 300 ms.\nLangkah:\n1. Panel \"Duration\": p50 ikut naik (semua lambat) atau hanya p99 (sebagian kecil)?\n2. Log: `{service=\"layanan\"} | json | duration_ms > 300`, rute mana yang dominan?\n3. Periksa CPU dan memori: `docker stats`. Periksa `extraLatencyMs` gangguan simulasi.\n4. Pulihkan, lalu lanjutkan seperti langkah 7 di atas.\n\n## LayananTidakTerjangkau\n\n**Artinya:** Prometheus gagal mengambil /metrics selama 1 menit. Layanan mati, atau jaringan antar kontainer bermasalah.\nLangkah:\n1. `docker compose ps layanan` dan `docker compose logs --tail 50 layanan`.\n2. `curl -s localhost:3000/healthz`.\n3. Kontainer berhenti? `docker compose up -d layanan`, lalu cari penyebab di log terakhir sebelum mati.\n"
+        },
+        {
+          "id": "mon-m-postmortem",
+          "kind": "kode",
+          "name": "docs/postmortem-template.md",
+          "lang": "markdown",
+          "content": "# Postmortem: ___ (judul singkat)\n\nTanggal: ___   Penulis: ___   Status: draf / final\nPrinsip: tanpa menyalahkan. Kita mencari celah sistem, bukan orang yang salah.\n\n## Ringkasan\nDua sampai tiga kalimat: apa yang terjadi, berapa lama, siapa yang terdampak.\n\n## Dampak\n- Durasi gangguan: ___ menit (dari ___ sampai ___)\n- Request gagal / lambat: ___\n- Anggaran error terpakai: ___ % dari anggaran 30 hari\n\n## Linimasa (WIB)\n| Waktu | Kejadian |\n| --- | --- |\n| ___ | Penyebab mulai (misalnya rilis, perubahan konfigurasi) |\n| ___ | Alert menyala |\n| ___ | Mulai ditangani |\n| ___ | Mitigasi dilakukan |\n| ___ | Pulih |\n\n## Penyebab utama\n___\n\n## Deteksi\nApakah alert yang tepat menyala? Berapa menit dari awal masalah sampai notifikasi? Apakah runbook membantu?\n\n## Yang berjalan baik\n- ___\n\n## Yang perlu diperbaiki\n- ___\n\n## Tindakan lanjutan\n| Tindakan | Pemilik | Tenggat | Status |\n| --- | --- | --- | --- |\n| ___ | ___ | ___ | belum |\n"
+        },
+        {
+          "id": "mon-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# monitoring-layanan\n\nTumpukan observabilitas untuk layanan Node.js kecil: metrik RED dengan prom-client, log JSON dengan pino, Prometheus, Loki + Alloy, Grafana yang terkonfigurasi dari kode, SLO dengan alert burn-rate, dan Alertmanager.\n\n![Dasbor](docs/dasbor.png)\n\n## Jalankan\n\n```bash\ncp .env.example .env          # isi GRAFANA_PASSWORD\ndocker compose up -d --build\nnode skrip/beban.mjs 600 20   # beban normal\n./skrip/gangguan.sh 0.3       # picu gangguan, lalu ./skrip/gangguan.sh 0\n```\n\n| Alat | Alamat |\n| --- | --- |\n| Layanan | http://localhost:3000 |\n| Grafana | http://localhost:3001 (admin / isi .env) |\n| Prometheus | http://localhost:9090 |\n| Alertmanager | http://localhost:9093 |\n\n## SLO\n\n| SLO | Target | Alert |\n| --- | --- | --- |\n| Ketersediaan | 99.5% request /api bukan 5xx (30 hari) | burn 14.4x (page), 6x (tiket) |\n| Latensi | 95% request /api <= 300 ms | burn 14.4x (page) |\n\nDetail: [docs/slo.md](docs/slo.md). Saat alert menyala: [docs/runbook.md](docs/runbook.md).\n\n## Uji\n\n```bash\npromtool check rules prometheus/rules/slo.yml\npromtool test rules prometheus/tests/slo_test.yml\n```\n\n## Keputusan desain\n- ___ (contoh: kenapa alert berbasis burn rate, bukan \"error > 5%\")\n- ___ (contoh: kenapa label route memakai pola rute, bukan URL)\n\n## Hasil latihan gangguan\nWaktu dari gangguan sampai notifikasi: ___ menit. Postmortem: [docs/postmortem-latihan.md](docs/postmortem-latihan.md)\n\n## Yang kupelajari\n- ___\n- ___\n- ___\n"
+        },
+        {
+          "id": "mon-m-pm-culture",
+          "kind": "tautan",
+          "name": "Google SRE Book: Postmortem Culture",
+          "url": "https://sre.google/sre-book/postmortem-culture/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mon-dok-runbook",
+          "text": "Setiap alert punya bagian di runbook dan runbook_url-nya membuka bagian yang benar."
+        },
+        {
+          "id": "mon-dok-postmortem",
+          "text": "Aku sudah menulis postmortem latihan dengan linimasa dan minimal satu tindakan lanjutan."
+        },
+        {
+          "id": "mon-dok-readme",
+          "text": "README berisi cara menjalankan, tabel SLO, cara menguji, dan hasil latihan."
+        },
+        {
+          "id": "mon-dok-kirim",
+          "text": "Tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}

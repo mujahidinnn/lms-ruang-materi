@@ -1,0 +1,619 @@
+{
+  "slug": "sistem-login-aman",
+  "title": "Sistem Login yang Aman",
+  "summary": "Tambahkan akun ke aplikasi Express 5 dan PostgreSQL: daftar, masuk, keluar dengan sesi di server, hash argon2, token CSRF, batas percobaan login, reset sandi sekali pakai, pagar role admin, dan header helmet. Uji dengan node:test, periksa dengan daftar ancaman ala OWASP ASVS, lalu online-kan di Render.",
+  "level": "menengah",
+  "est_hours": 16,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-ancaman-login",
+      "title": "Kenali ancaman pada halaman login",
+      "est_minutes": 20,
+      "body": "## Login adalah pintu depan\n\nHampir setiap aplikasi punya halaman login, dan hampir setiap penyerang mencobanya duluan. Mereka tidak perlu jenius: cukup daftar jutaan kata sandi bocor, skrip yang mencoba satu per satu, dan aplikasi yang lupa membatasi percobaan.\n\nDi proyek ini kamu menambahkan akun ke aplikasi Express kecil: daftar, masuk, keluar, lupa kata sandi, dan halaman khusus admin. Targetnya bukan \"bisa login\", tapi **bisa login dengan aman**, dan kamu bisa menjelaskan kenapa setiap keputusan diambil.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template `brief.md` dari bagian Bahan.\n2. Tulis siapa pemakainya. Contoh: \"anggota komunitas belajar yang menyimpan catatan pribadi\".\n3. Tulis apa yang dilindungi. Data apa yang rugi kalau akun dibobol?\n4. Tulis tiga penyerang yang masuk akal. Contoh: bot yang mencoba kata sandi bocor, orang yang memakai laptop bersama, situs jahat yang memancing pengguna mengirim form.\n5. Tulis batas versi pertama. Contoh: tanpa login Google, tanpa verifikasi dua langkah (2FA), tanpa verifikasi email.\n\n> Keamanan selalu soal *melawan siapa*. Tanpa daftar penyerang, kamu akan menambal hal yang tidak penting dan melewatkan yang penting.\n",
+      "materials": [
+        {
+          "id": "sla-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Sistem Login yang Aman\n\nPemakai: ___\nYang dilindungi: ___\nKalau akun dibobol, kerugiannya: ___\n\nTiga penyerang yang masuk akal:\n1. ___\n2. ___\n3. ___\n\nTidak dibuat di versi pertama: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-brief-pemakai",
+          "text": "Aku sudah menulis siapa pemakai aplikasinya dan data apa yang dilindungi."
+        },
+        {
+          "id": "sla-brief-penyerang",
+          "text": "Aku menulis tiga penyerang yang masuk akal untuk aplikasiku."
+        },
+        {
+          "id": "sla-brief-batas",
+          "text": "Aku menulis fitur yang sengaja tidak dibuat di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-alur-akun",
+      "title": "Petakan alur akun dan cara gagalnya",
+      "est_minutes": 40,
+      "body": "## Setiap alur punya jalan bahagia dan jalan gagal\n\nDi fitur login, jalan gagal justru yang paling penting. Penyerang hidup di jalan gagal: email yang tidak terdaftar, kata sandi salah berkali-kali, tautan reset lama, form yang dikirim dari situs lain.\n\n## Lima alur di proyek ini\n\n| Alur | Jalan bahagia | Jalan gagal yang harus kamu putuskan |\n| --- | --- | --- |\n| Daftar | Email dan sandi valid, akun dibuat, langsung masuk | Email sudah dipakai, sandi terlalu pendek |\n| Masuk | Sandi cocok, sesi dibuat | Email tidak ada, sandi salah, terlalu banyak percobaan |\n| Keluar | Sesi dihapus di server | Sesi sudah kedaluwarsa |\n| Lupa sandi | Tautan sekali pakai dikirim | Email tidak terdaftar, tautan dipakai dua kali, tautan kedaluwarsa |\n| Halaman admin | Admin melihat daftar pengguna | Tamu atau pengguna biasa mencoba membuka |\n\n## Yang perlu kamu kerjakan\n\n1. Untuk tiap alur, tulis apa yang dilihat pengguna saat gagal. Tulis kalimatnya persis.\n2. Bandingkan pesan gagal **masuk** untuk \"email tidak ada\" dan \"sandi salah\". Kalau berbeda, penyerang bisa memakai halaman loginmu untuk mengecek email mana yang terdaftar. Ini disebut *user enumeration*.\n3. Lakukan hal yang sama untuk lupa sandi: apa jawabanmu kalau emailnya tidak terdaftar?\n4. Tandai satu alur yang menurutmu paling berisiko dan tulis alasannya.\n\nJawaban yang kita pakai nanti: pesan gagal masuk selalu **\"Email atau kata sandi salah.\"**, dan lupa sandi selalu menjawab \"kalau email itu terdaftar, tautan sudah dikirim\".\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "sla-ide-gagal",
+          "text": "Aku menulis pesan gagal untuk kelima alur."
+        },
+        {
+          "id": "sla-ide-enumerasi",
+          "text": "Aku bisa menjelaskan apa itu user enumeration dan cara mencegahnya di login."
+        },
+        {
+          "id": "sla-ide-risiko",
+          "text": "Aku menandai alur paling berisiko beserta alasannya."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-pustaka-keamanan",
+      "title": "Pilih pustaka yang sudah teruji",
+      "est_minutes": 40,
+      "body": "## Jangan menulis kriptografi sendiri\n\nAturan pertama keamanan web: pakai pustaka yang sudah dipakai jutaan orang dan diaudit, lalu pahami cara memasangnya dengan benar. Kesalahan paling sering bukan di pustakanya, tapi di pengaturannya.\n\n## Stack proyek ini\n\n| Kebutuhan | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Server | Express 5 | Error di fungsi `async` otomatis sampai ke penangan error |\n| Database | PostgreSQL + `pg` | Query berparameter mencegah SQL injection |\n| Sesi | `express-session` + `connect-pg-simple` | Sesi disimpan di server (tabel Postgres), cookie hanya berisi id acak |\n| Hash sandi | `argon2` | Argon2id adalah pilihan utama di OWASP Password Storage Cheat Sheet |\n| Batas percobaan | `express-rate-limit` | Memperlambat bot penebak sandi |\n| Header keamanan | `helmet` | Satu baris untuk CSP, `nosniff`, dan kawan-kawannya |\n| Tes | `node:test` + `supertest` | Bawaan Node, tanpa framework tes tambahan |\n\n## Kenapa sesi di server, bukan JWT?\n\nUntuk aplikasi web biasa dengan form, sesi di server lebih sederhana dan lebih mudah dicabut: hapus barisnya, pengguna langsung keluar. JWT yang sudah dikeluarkan tetap berlaku sampai kedaluwarsa kecuali kamu membuat daftar blokir sendiri.\n\n## Kenapa CSRF ditulis sendiri?\n\nPaket `csurf` yang dulu populer sudah tidak dirawat. Pola *synchronizer token* hanya butuh sekitar 15 baris memakai modul `crypto` bawaan Node, dan menulisnya membuatmu paham cara kerjanya.\n\n## Yang perlu kamu kerjakan\n\n1. Baca bagian **Argon2id** di Password Storage Cheat Sheet (tautan di Bahan).\n2. Pastikan Node.js 22 atau lebih baru terpasang: `node -v`.\n3. Siapkan Postgres lokal lewat Docker, atau buat database pengembangan di layanan online.\n4. Tulis dua alasan memilih sesi di server, dengan kata-katamu sendiri.\n",
+      "materials": [
+        {
+          "id": "sla-tek-password",
+          "kind": "tautan",
+          "name": "OWASP: Password Storage Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+        },
+        {
+          "id": "sla-tek-session",
+          "kind": "tautan",
+          "name": "OWASP: Session Management Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html"
+        },
+        {
+          "id": "sla-tek-express-security",
+          "kind": "tautan",
+          "name": "Express: praktik keamanan untuk produksi",
+          "url": "https://expressjs.com/en/advanced/best-practice-security.html"
+        },
+        {
+          "id": "sla-tek-helmet",
+          "kind": "tautan",
+          "name": "Dokumentasi Helmet",
+          "url": "https://helmetjs.github.io/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-tek-node",
+          "text": "Node.js 22 atau lebih baru sudah terpasang."
+        },
+        {
+          "id": "sla-tek-db",
+          "text": "Aku punya Postgres untuk pengembangan (Docker atau online)."
+        },
+        {
+          "id": "sla-tek-argon",
+          "text": "Aku sudah membaca bagian Argon2id di Password Storage Cheat Sheet."
+        },
+        {
+          "id": "sla-tek-alasan",
+          "text": "Aku bisa menjelaskan kenapa memilih sesi di server, bukan JWT."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-tabel-dan-rute",
+      "title": "Rancang tabel dan rute",
+      "est_minutes": 75,
+      "body": "## Tiga tabel, sembilan rute\n\nRancang dulu di atas kertas. Setiap kolom dan setiap rute punya alasan keamanan.\n\n## Tabel\n\n- **`users`**: email disimpan huruf kecil (dijaga `CHECK`), `role` hanya boleh `user` atau `admin`. Kata sandi **tidak pernah** disimpan, hanya hash-nya.\n- **`password_resets`**: menyimpan **hash** token reset, bukan tokennya. Kalau database bocor, penyerang tidak bisa memakai tautan reset yang masih berlaku.\n- **`session`**: format yang dibutuhkan `connect-pg-simple`.\n\n## Rute\n\n| Metode | Rute | Siapa | Catatan |\n| --- | --- | --- | --- |\n| GET/POST | `/register` | tamu | POST: validasi, hash, langsung masuk |\n| GET/POST | `/login` | tamu | POST dibatasi `express-rate-limit` |\n| POST | `/logout` | pengguna | POST, bukan GET, supaya tidak bisa dipicu lewat tautan atau `<img>` |\n| GET | `/akun` | pengguna | Tamu dialihkan ke `/login` |\n| GET | `/admin` | admin | Pengguna biasa mendapat 403 |\n| GET/POST | `/lupa-sandi` | tamu | Jawaban selalu sama |\n| GET/POST | `/atur-ulang` | pemegang token | Token sekali pakai, berlaku 30 menit |\n| GET | `/health` | siapa saja | Untuk health check Render |\n\nSemua POST wajib membawa token CSRF.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `schema.sql` dari bagian Bahan di folder paling atas proyek (folder proyeknya dibuat di langkah berikutnya).\n2. Baca setiap `CHECK` dan `REFERENCES`. Tanyakan: apa yang terjadi kalau baris ini dihapus?\n3. Tulis `rute.md` dengan tabel rute di atas, lalu tambahkan satu kolom: **status HTTP saat gagal**.\n4. Kenapa `/logout` harus POST? Tulis jawabanmu di `rute.md`.\n",
+      "materials": [
+        {
+          "id": "sla-schema",
+          "kind": "kode",
+          "name": "schema.sql",
+          "lang": "sql",
+          "content": "CREATE TABLE IF NOT EXISTS users (\n  id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  email         text NOT NULL UNIQUE CHECK (email = lower(email)),\n  password_hash text NOT NULL,\n  role          text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),\n  created_at    timestamptz NOT NULL DEFAULT now()\n);\n\n-- Yang disimpan hanya hash token. Token aslinya hanya ada di tautan email.\nCREATE TABLE IF NOT EXISTS password_resets (\n  token_hash text PRIMARY KEY,\n  user_id    bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,\n  expires_at timestamptz NOT NULL\n);\nCREATE INDEX IF NOT EXISTS password_resets_user_id_idx ON password_resets (user_id);\n\n-- Tabel sesi untuk connect-pg-simple.\nCREATE TABLE IF NOT EXISTS \"session\" (\n  sid    varchar PRIMARY KEY,\n  sess   json NOT NULL,\n  expire timestamp(6) NOT NULL\n);\nCREATE INDEX IF NOT EXISTS session_expire_idx ON \"session\" (expire);\n"
+        },
+        {
+          "id": "sla-ran-pg-constraints",
+          "kind": "tautan",
+          "name": "PostgreSQL: constraints",
+          "url": "https://www.postgresql.org/docs/current/ddl-constraints.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-ran-schema",
+          "text": "schema.sql sudah kusimpan dan aku paham setiap CHECK di dalamnya."
+        },
+        {
+          "id": "sla-ran-hash",
+          "text": "Aku bisa menjelaskan kenapa token reset disimpan dalam bentuk hash."
+        },
+        {
+          "id": "sla-ran-rute",
+          "text": "rute.md berisi tabel rute beserta status HTTP saat gagal."
+        },
+        {
+          "id": "sla-ran-logout",
+          "text": "Aku bisa menjelaskan kenapa logout memakai POST."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-dan-sesi",
+      "title": "Siapkan proyek, sesi, dan CSRF",
+      "est_minutes": 100,
+      "body": "## Fondasi sebelum fitur akun\n\nTarget langkah ini: aplikasi menyala, header keamanan terpasang, setiap pengunjung mendapat cookie sesi yang aman, dan setiap POST tanpa token CSRF ditolak.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu.\n2. Samakan `package.json` dengan bagian Bahan, terutama `\"type\": \"module\"` dan `scripts`. Biarkan `dependencies` yang dibuat npm.\n3. Buat `.env.example` dan `.gitignore`. Salin `.env.example` menjadi `.env`, lalu isi `SESSION_SECRET` dengan hasil perintah ini:\n   `node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"`\n4. Pindahkan `schema.sql` ke folder proyek, buat `scripts/init-db.js`, lalu jalankan `npm run db:init`.\n5. Buat `src/db.js`, `src/views.js`, `src/csrf.js`, `src/app.js`, dan `src/server.js`.\n6. Jalankan `npm run dev`, buka http://localhost:3000, lalu buka DevTools > Application > Cookies. Cookie `sid` harus bertanda **HttpOnly** dan **SameSite Lax**.\n7. Commit dengan pesan `Siapkan sesi, helmet, dan CSRF`.\n\n## Pengaturan cookie, satu per satu\n\n- `httpOnly`: JavaScript di halaman tidak bisa membaca cookie, jadi celah XSS tidak langsung mencuri sesi.\n- `secure`: cookie hanya dikirim lewat HTTPS. Aktif saat `NODE_ENV=production`, karena localhost memakai HTTP.\n- `sameSite: \"lax\"`: cookie tidak ikut di POST dari situs lain. Ini lapis pertama melawan CSRF; token CSRF adalah lapis kedua.\n- `trust proxy`: di Render, HTTPS berhenti di proxy. Tanpa pengaturan ini Express mengira koneksinya HTTP dan menolak mengirim cookie `secure`.\n\n## Kenapa ada `esc()`?\n\nHTML dibuat dengan template string biasa. Semua teks dari pengguna **wajib** lewat `esc()`, kalau tidak, email seperti `<script>...` akan dijalankan browser. Ini XSS.\n",
+      "materials": [
+        {
+          "id": "sla-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "mkdir sistem-login-aman && cd sistem-login-aman\ngit init\nnpm init -y\nnpm install express pg express-session connect-pg-simple argon2 express-rate-limit helmet\nnpm install --save-dev supertest\nmkdir src scripts test\n\n# Postgres lokal lewat Docker (lewati kalau memakai database online)\ndocker run --name pg-login -e POSTGRES_PASSWORD=rahasia -e POSTGRES_DB=login -p 5432:5432 -d postgres:17\n"
+        },
+        {
+          "id": "sla-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"sistem-login-aman\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": {\n    \"node\": \">=22\"\n  },\n  \"scripts\": {\n    \"dev\": \"node --watch --env-file=.env src/server.js\",\n    \"start\": \"node scripts/init-db.js && node src/server.js\",\n    \"db:init\": \"node --env-file=.env scripts/init-db.js\",\n    \"make-admin\": \"node --env-file=.env scripts/make-admin.js\",\n    \"test\": \"node --env-file=.env --test\"\n  }\n}\n"
+        },
+        {
+          "id": "sla-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "PORT=3000\nDATABASE_URL=postgres://postgres:rahasia@localhost:5432/login\nSESSION_SECRET=ganti-dengan-64-karakter-acak\nAPP_URL=http://localhost:3000\n"
+        },
+        {
+          "id": "sla-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "",
+          "content": "node_modules/\n.env\n"
+        },
+        {
+          "id": "sla-initdb",
+          "kind": "kode",
+          "name": "scripts/init-db.js",
+          "lang": "javascript",
+          "content": "import { readFile } from \"node:fs/promises\";\nimport { pool } from \"../src/db.js\";\n\nconst sql = await readFile(new URL(\"../schema.sql\", import.meta.url), \"utf8\");\nawait pool.query(sql);\nawait pool.end();\nconsole.log(\"Tabel users, password_resets, dan session siap.\");\n"
+        },
+        {
+          "id": "sla-db",
+          "kind": "kode",
+          "name": "src/db.js",
+          "lang": "javascript",
+          "content": "import pg from \"pg\";\n\nexport const pool = new pg.Pool({\n  connectionString: process.env.DATABASE_URL,\n});\n"
+        },
+        {
+          "id": "sla-views",
+          "kind": "kode",
+          "name": "src/views.js",
+          "lang": "javascript",
+          "content": "// Semua teks dari luar (email, pesan) WAJIB lewat esc() sebelum masuk HTML.\nexport function esc(value) {\n  return String(value).replace(/[&<>\"']/g, (c) => ({\n    \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\",\n  })[c]);\n}\n\nexport function csrfField(res) {\n  return `<input type=\"hidden\" name=\"_csrf\" value=\"${esc(res.locals.csrf)}\">`;\n}\n\nexport function render(res, title, content, status = 200) {\n  const user = res.locals.user;\n  const nav = user\n    ? `<a href=\"/akun\">Akun</a> ${user.role === \"admin\" ? '<a href=\"/admin\">Admin</a>' : \"\"}\n       <form method=\"post\" action=\"/logout\">${csrfField(res)}<button>Keluar</button></form>`\n    : `<a href=\"/login\">Masuk</a> <a href=\"/register\">Daftar</a>`;\n  res.status(status).type(\"html\").send(`<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>${esc(title)}</title>\n</head>\n<body>\n  <nav><a href=\"/\">Beranda</a> ${nav}</nav>\n  <main>\n    <h1>${esc(title)}</h1>\n    ${content}\n  </main>\n</body>\n</html>`);\n}\n\nexport function errorBox(message) {\n  return message ? `<p role=\"alert\"><strong>${esc(message)}</strong></p>` : \"\";\n}\n"
+        },
+        {
+          "id": "sla-csrf",
+          "kind": "kode",
+          "name": "src/csrf.js",
+          "lang": "javascript",
+          "content": "import { randomBytes, timingSafeEqual } from \"node:crypto\";\n\nexport class HttpError extends Error {\n  constructor(status, message) {\n    super(message);\n    this.status = status;\n  }\n}\n\nconst SAFE = new Set([\"GET\", \"HEAD\", \"OPTIONS\"]);\n\n// Synchronizer token: satu token acak per sesi, ikut di setiap form,\n// lalu dicocokkan di setiap request yang mengubah data.\nexport function csrf(req, res, next) {\n  req.session.csrf ??= randomBytes(32).toString(\"base64url\");\n  res.locals.csrf = req.session.csrf;\n  if (SAFE.has(req.method)) return next();\n\n  const sent = Buffer.from(String(req.body?._csrf ?? \"\"));\n  const expected = Buffer.from(req.session.csrf);\n  if (sent.length !== expected.length || !timingSafeEqual(sent, expected)) {\n    throw new HttpError(403, \"Formulir kedaluwarsa. Muat ulang halaman lalu coba lagi.\");\n  }\n  next();\n}\n"
+        },
+        {
+          "id": "sla-app-v1",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport session from \"express-session\";\nimport connectPgSimple from \"connect-pg-simple\";\nimport helmet from \"helmet\";\nimport { pool } from \"./db.js\";\nimport { csrf } from \"./csrf.js\";\nimport { render, esc } from \"./views.js\";\n\nif (!process.env.SESSION_SECRET) throw new Error(\"SESSION_SECRET belum diisi\");\nconst production = process.env.NODE_ENV === \"production\";\nconst PgStore = connectPgSimple(session);\n\nexport const app = express();\n\napp.set(\"trust proxy\", 1); // Render ada di depan aplikasi sebagai proxy HTTPS\napp.use(helmet());\n\n// Sebelum session: health check Render tidak perlu membuat baris sesi.\napp.get(\"/health\", async (req, res) => {\n  await pool.query(\"SELECT 1\");\n  res.json({ status: \"ok\" });\n});\n\napp.use(express.urlencoded({ extended: false, limit: \"10kb\" }));\napp.use(session({\n  store: new PgStore({ pool, tableName: \"session\" }),\n  secret: process.env.SESSION_SECRET,\n  name: \"sid\",\n  resave: false,\n  saveUninitialized: false,\n  cookie: {\n    httpOnly: true,\n    secure: production,\n    sameSite: \"lax\",\n    maxAge: 2 * 60 * 60 * 1000, // 2 jam\n  },\n}));\napp.use(csrf);\n\napp.get(\"/\", (req, res) => {\n  render(res, \"Sistem Login\", res.locals.user\n    ? `<p>Halo, ${esc(res.locals.user.email)}.</p>`\n    : \"<p>Silakan masuk atau daftar.</p>\");\n});\n\napp.use((req, res) => render(res, \"Tidak ditemukan\", \"<p>Halaman tidak ada.</p>\", 404));\n\n// Error tak dikenal dicatat di log, pengguna hanya melihat pesan umum.\napp.use((err, req, res, next) => {\n  const status = err.status ?? 500;\n  if (status >= 500) console.error(err);\n  const message = status < 500 ? err.message : \"Terjadi kesalahan. Coba lagi nanti.\";\n  render(res, \"Ada masalah\", `<p>${esc(message)}</p>`, status);\n});\n"
+        },
+        {
+          "id": "sla-server",
+          "kind": "kode",
+          "name": "src/server.js",
+          "lang": "javascript",
+          "content": "import { app } from \"./app.js\";\n\nconst port = Number(process.env.PORT) || 3000;\n\napp.listen(port, () => {\n  console.log(`Aplikasi berjalan di http://localhost:${port}`);\n});\n"
+        },
+        {
+          "id": "sla-setup-session-docs",
+          "kind": "tautan",
+          "name": "express-session di npm",
+          "url": "https://www.npmjs.com/package/express-session"
+        },
+        {
+          "id": "sla-setup-pgstore-docs",
+          "kind": "tautan",
+          "name": "connect-pg-simple di npm",
+          "url": "https://www.npmjs.com/package/connect-pg-simple"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-setup-jalan",
+          "text": "npm run dev berjalan dan halaman beranda tampil."
+        },
+        {
+          "id": "sla-setup-cookie",
+          "text": "Cookie sid terlihat di DevTools dengan tanda HttpOnly dan SameSite Lax."
+        },
+        {
+          "id": "sla-setup-env",
+          "text": ".env berisi SESSION_SECRET acak dan sudah tercantum di .gitignore."
+        },
+        {
+          "id": "sla-setup-commit",
+          "text": "Aku sudah commit fondasi proyek."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "daftar-masuk-keluar",
+      "title": "Daftar, masuk, dan keluar",
+      "est_minutes": 150,
+      "body": "## Inti sistem akun\n\nLangkah ini menambahkan `src/validate.js` dan `src/auth.js`, lalu memasangnya di `app.js`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/validate.js` dan `src/auth.js` dari bagian Bahan.\n2. Di `src/app.js`, tambahkan impor dan dua baris pemasangan seperti di `app.js (tambahan)`. Urutannya penting: `loadUser` setelah `csrf`, dan `auth` sebelum penangan 404.\n3. Daftar lewat http://localhost:3000/register, keluar, lalu masuk lagi.\n4. Buka tabel `users` (misalnya `docker exec -it pg-login psql -U postgres login`, lalu `SELECT email, password_hash FROM users;`). Kolom sandi harus diawali `$argon2id$`.\n5. Coba masuk dengan sandi salah 11 kali. Percobaan terakhir harus mendapat halaman \"Terlalu banyak percobaan\".\n6. Commit dengan pesan `Tambah daftar, masuk, dan keluar`.\n\n## Baca kodenya dengan pertanyaan ini\n\n- **Kenapa ada `DUMMY_HASH`?** Kalau email tidak ditemukan dan kita langsung menjawab, responsnya lebih cepat daripada saat sandi salah (karena argon2 sengaja lambat). Selisih waktu itu bisa membocorkan email mana yang terdaftar.\n- **Kenapa `regenerate()` saat login?** Kalau penyerang berhasil menanam id sesi di browser korban sebelum login (*session fixation*), id itu tidak berguna lagi setelah login.\n- **Kenapa `loadUser` membaca database setiap request?** Kalau role diturunkan atau akun dihapus, efeknya langsung terasa, tidak menunggu sesi habis.\n- **Kenapa `skipSuccessfulRequests`?** Hanya percobaan gagal yang dihitung, jadi pengguna yang berhasil masuk tidak ikut terkunci.\n\n## Batasan yang disengaja\n\nPesan \"Pendaftaran gagal\" saat email sudah dipakai masih memberi petunjuk bahwa email itu terdaftar. Menutupnya butuh verifikasi email. Catat ini di daftar ancaman nanti, jangan disembunyikan.\n",
+      "materials": [
+        {
+          "id": "sla-validate",
+          "kind": "kode",
+          "name": "src/validate.js",
+          "lang": "javascript",
+          "content": "const EMAIL = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\n// Mengembalikan email yang sudah dirapikan, atau null kalau tidak valid.\nexport function parseEmail(value) {\n  if (typeof value !== \"string\") return null;\n  const email = value.trim().toLowerCase();\n  return email.length <= 254 && EMAIL.test(email) ? email : null;\n}\n\n// Panjang lebih penting daripada aturan \"wajib ada simbol\".\nexport function passwordProblem(value) {\n  if (typeof value !== \"string\") return \"Kata sandi wajib diisi.\";\n  if (value.length < 12) return \"Kata sandi minimal 12 karakter.\";\n  if (value.length > 128) return \"Kata sandi maksimal 128 karakter.\";\n  return null;\n}\n"
+        },
+        {
+          "id": "sla-auth",
+          "kind": "kode",
+          "name": "src/auth.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport argon2 from \"argon2\";\nimport { rateLimit } from \"express-rate-limit\";\nimport { pool } from \"./db.js\";\nimport { HttpError } from \"./csrf.js\";\nimport { parseEmail, passwordProblem } from \"./validate.js\";\nimport { render, csrfField, errorBox, esc } from \"./views.js\";\n\nexport const auth = Router();\n\nconst LOGIN_FAILED = \"Email atau kata sandi salah.\";\n// Hash palsu supaya login dengan email tak terdaftar butuh waktu yang mirip.\nconst DUMMY_HASH = await argon2.hash(\"bukan-kata-sandi-siapa-pun\");\n\n// Hanya percobaan GAGAL yang dihitung (skipSuccessfulRequests).\n// ponytail: penyimpanan di memori, satu instance saja; pakai store bersama (Redis/Postgres) kalau server lebih dari satu.\nexport const loginLimiter = rateLimit({\n  windowMs: 15 * 60 * 1000,\n  limit: 10,\n  skipSuccessfulRequests: true,\n  standardHeaders: \"draft-8\",\n  legacyHeaders: false,\n  handler: (req, res) => {\n    res.status(429);\n    render(res, \"Terlalu banyak percobaan\", \"<p>Tunggu 15 menit lalu coba lagi.</p>\", 429);\n  },\n});\n\n// Muat pengguna dari database di setiap request, jadi perubahan role\n// atau penghapusan akun langsung berlaku.\nexport async function loadUser(req, res, next) {\n  res.locals.user = null;\n  if (req.session.userId) {\n    const { rows } = await pool.query(\n      \"SELECT id, email, role FROM users WHERE id = $1\",\n      [req.session.userId],\n    );\n    res.locals.user = rows[0] ?? null;\n  }\n  next();\n}\n\nexport function requireLogin(req, res, next) {\n  if (!res.locals.user) return res.redirect(303, \"/login\");\n  next();\n}\n\n// Ganti id sesi saat login supaya id lama (session fixation) tidak berguna.\nfunction startSession(req, userId) {\n  return new Promise((resolve, reject) => {\n    req.session.regenerate((err) => {\n      if (err) return reject(err);\n      req.session.userId = userId;\n      req.session.save((err2) => (err2 ? reject(err2) : resolve()));\n    });\n  });\n}\n\nfunction authForm(res, action, button, message, email = \"\") {\n  return `${errorBox(message)}\n<form method=\"post\" action=\"${action}\">\n  ${csrfField(res)}\n  <label>Email <input type=\"email\" name=\"email\" value=\"${esc(email)}\" autocomplete=\"email\" required></label>\n  <label>Kata sandi <input type=\"password\" name=\"password\" minlength=\"12\" maxlength=\"128\"\n    autocomplete=\"${action === \"/register\" ? \"new-password\" : \"current-password\"}\" required></label>\n  <button>${button}</button>\n</form>`;\n}\n\nauth.get(\"/register\", (req, res) => {\n  render(res, \"Daftar\", authForm(res, \"/register\", \"Daftar\"));\n});\n\nauth.post(\"/register\", async (req, res) => {\n  const email = parseEmail(req.body.email);\n  const problem = email ? passwordProblem(req.body.password) : \"Email tidak valid.\";\n  if (problem) {\n    return render(res, \"Daftar\", authForm(res, \"/register\", \"Daftar\", problem, req.body.email ?? \"\"), 422);\n  }\n  const hash = await argon2.hash(req.body.password); // argon2id, parameter bawaan\n  const { rows } = await pool.query(\n    `INSERT INTO users (email, password_hash) VALUES ($1, $2)\n     ON CONFLICT (email) DO NOTHING RETURNING id`,\n    [email, hash],\n  );\n  if (!rows[0]) {\n    return render(res, \"Daftar\", authForm(res, \"/register\", \"Daftar\",\n      \"Pendaftaran gagal. Kalau sudah punya akun, silakan masuk.\"), 422);\n  }\n  await startSession(req, rows[0].id);\n  res.redirect(303, \"/akun\");\n});\n\nauth.get(\"/login\", (req, res) => {\n  render(res, \"Masuk\", authForm(res, \"/login\", \"Masuk\") +\n    '<p><a href=\"/lupa-sandi\">Lupa kata sandi?</a></p>');\n});\n\nauth.post(\"/login\", loginLimiter, async (req, res) => {\n  const email = parseEmail(req.body.email);\n  const password = typeof req.body.password === \"string\" ? req.body.password : \"\";\n  const { rows } = email\n    ? await pool.query(\"SELECT id, password_hash FROM users WHERE email = $1\", [email])\n    : { rows: [] };\n  const user = rows[0];\n  const ok = await argon2.verify(user?.password_hash ?? DUMMY_HASH, password);\n  if (!user || !ok) {\n    // Pesan sama untuk email salah dan sandi salah: penyerang tidak tahu mana yang terdaftar.\n    return render(res, \"Masuk\", authForm(res, \"/login\", \"Masuk\", LOGIN_FAILED), 401);\n  }\n  await startSession(req, user.id);\n  res.redirect(303, \"/akun\");\n});\n\nauth.post(\"/logout\", (req, res, next) => {\n  req.session.destroy((err) => {\n    if (err) return next(err);\n    res.clearCookie(\"sid\");\n    res.redirect(303, \"/\");\n  });\n});\n\nauth.get(\"/akun\", requireLogin, (req, res) => {\n  render(res, \"Akun\", `<p>Kamu masuk sebagai <strong>${esc(res.locals.user.email)}</strong>\n    (role: ${esc(res.locals.user.role)}).</p>`);\n});\n"
+        },
+        {
+          "id": "sla-app-v2",
+          "kind": "kode",
+          "name": "src/app.js (tambahan)",
+          "lang": "javascript",
+          "content": "// Di bagian impor:\nimport { auth, loadUser } from \"./auth.js\";\n\n// Tepat di bawah app.use(csrf):\napp.use(loadUser);\n\n// Setelah rute \"/\" dan sebelum penangan 404:\napp.use(auth);\n"
+        },
+        {
+          "id": "sla-auth-cheatsheet",
+          "kind": "tautan",
+          "name": "OWASP: Authentication Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"
+        },
+        {
+          "id": "sla-auth-ratelimit",
+          "kind": "tautan",
+          "name": "express-rate-limit di npm",
+          "url": "https://www.npmjs.com/package/express-rate-limit"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-auth-alur",
+          "text": "Aku bisa daftar, keluar, lalu masuk lagi lewat browser."
+        },
+        {
+          "id": "sla-auth-hash",
+          "text": "Kolom password_hash di database diawali $argon2id$."
+        },
+        {
+          "id": "sla-auth-limit",
+          "text": "Percobaan sandi salah yang ke-11 mendapat status 429."
+        },
+        {
+          "id": "sla-auth-paham",
+          "text": "Aku bisa menjelaskan fungsi DUMMY_HASH dan regenerate()."
+        },
+        {
+          "id": "sla-auth-commit",
+          "text": "Aku sudah commit fitur daftar, masuk, dan keluar."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "pagar-role-admin",
+      "title": "Pagar role untuk halaman admin",
+      "est_minutes": 60,
+      "body": "## Login bukan berarti boleh semuanya\n\n*Authentication* menjawab \"kamu siapa?\". *Authorization* menjawab \"kamu boleh apa?\". Banyak kebocoran data terjadi karena aplikasi hanya memeriksa yang pertama.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan `requireRole` dan rute `/admin` ke `src/auth.js` dari bagian Bahan.\n2. Buat `scripts/make-admin.js`.\n3. Buka http://localhost:3000/admin dalam tiga keadaan:\n   - belum masuk: dialihkan ke `/login`;\n   - masuk sebagai pengguna biasa: halaman 403;\n   - setelah `npm run make-admin -- emailmu@contoh.com`, muat ulang: daftar pengguna tampil, dan tautan **Admin** muncul di navigasi.\n4. Commit dengan pesan `Tambah pagar role admin`.\n\n## Aturan yang dipegang\n\n- **Tolak secara default.** Rute baru yang lupa diberi pagar seharusnya terasa salah saat code review. Biasakan menulis `requireRole(\"admin\")` di baris yang sama dengan rutenya.\n- **Pagar ada di server.** Menyembunyikan tautan Admin di navigasi hanya kenyamanan. Yang benar-benar menjaga adalah `requireRole` di server.\n- **Tidak ada jalan menjadi admin dari form.** Role hanya bisa diubah lewat skrip atau database, bukan lewat field tersembunyi yang bisa diedit di DevTools.\n",
+      "materials": [
+        {
+          "id": "sla-role",
+          "kind": "kode",
+          "name": "src/auth.js (tambahan)",
+          "lang": "javascript",
+          "content": "// Tambahkan di bawah requireLogin:\nexport function requireRole(role) {\n  return (req, res, next) => {\n    if (!res.locals.user) return res.redirect(303, \"/login\");\n    if (res.locals.user.role !== role) throw new HttpError(403, \"Kamu tidak punya akses ke halaman ini.\");\n    next();\n  };\n}\n\n// Tambahkan di bagian paling bawah berkas:\nauth.get(\"/admin\", requireRole(\"admin\"), async (req, res) => {\n  const { rows } = await pool.query(\n    \"SELECT email, role, created_at FROM users ORDER BY created_at DESC LIMIT 100\",\n  );\n  const items = rows.map((u) => `<li>${esc(u.email)} (${esc(u.role)})</li>`).join(\"\");\n  render(res, \"Admin\", `<p>${rows.length} pengguna terbaru:</p><ul>${items}</ul>`);\n});\n"
+        },
+        {
+          "id": "sla-make-admin",
+          "kind": "kode",
+          "name": "scripts/make-admin.js",
+          "lang": "javascript",
+          "content": "// Pakai: npm run make-admin -- email@contoh.com\nimport { pool } from \"../src/db.js\";\n\nconst email = String(process.argv[2] ?? \"\").trim().toLowerCase();\nconst { rowCount } = await pool.query(\n  \"UPDATE users SET role = 'admin' WHERE email = $1\",\n  [email],\n);\nawait pool.end();\nconsole.log(rowCount ? `${email} sekarang admin.` : \"Pengguna tidak ditemukan.\");\n"
+        },
+        {
+          "id": "sla-role-authz",
+          "kind": "tautan",
+          "name": "OWASP: Authorization Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-role-tamu",
+          "text": "Tamu yang membuka /admin dialihkan ke /login."
+        },
+        {
+          "id": "sla-role-user",
+          "text": "Pengguna biasa yang membuka /admin mendapat 403."
+        },
+        {
+          "id": "sla-role-admin",
+          "text": "Setelah make-admin, akunku bisa membuka /admin."
+        },
+        {
+          "id": "sla-role-commit",
+          "text": "Aku sudah commit pagar role admin."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "atur-ulang-kata-sandi",
+      "title": "Atur ulang kata sandi dengan token sekali pakai",
+      "est_minutes": 120,
+      "body": "## Fitur yang paling sering dibobol\n\nLupa sandi pada dasarnya adalah *login kedua* yang hanya bermodal akses ke email. Kalau tokennya mudah ditebak, tidak kedaluwarsa, atau bisa dipakai berkali-kali, penyerang punya pintu belakang.\n\n## Aturan token di proyek ini\n\n1. Acak 256 bit dari `crypto.randomBytes`, bukan `Math.random()`.\n2. Database hanya menyimpan **hash SHA-256** token. Untuk token acak sepanjang ini SHA-256 sudah cukup; argon2 dibutuhkan untuk kata sandi karena kata sandi buatan manusia mudah ditebak.\n3. Berlaku 30 menit.\n4. Sekali pakai: `DELETE ... RETURNING` menghapus token sekaligus mengambil pemiliknya, dalam satu query.\n5. Setelah sandi diganti, **semua sesi** pengguna itu dihapus. Kalau ada penyerang yang sedang masuk, dia ikut terlempar.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/reset.js` dari bagian Bahan.\n2. Perbarui `src/app.js` menjadi versi lengkap di bagian Bahan (menambah impor dan `app.use(reset)`).\n3. Buka `/lupa-sandi`, isi emailmu. Karena belum ada layanan email, tautannya dicetak di terminal tempat `npm run dev` berjalan. Buka tautan itu dan ganti sandimu.\n4. Buka tautan yang sama sekali lagi dan coba pakai. Harus ditolak.\n5. Isi `/lupa-sandi` dengan email yang **tidak** terdaftar. Jawabannya harus sama persis dengan email terdaftar.\n6. Commit dengan pesan `Tambah atur ulang kata sandi`.\n\n## Sebelum dipakai sungguhan\n\nFungsi `sendResetEmail` hanya mencetak ke log. Di aplikasi nyata, ganti isinya dengan pemanggilan layanan email transaksional, dan isi `APP_URL` dengan alamat produksi. Jangan pernah membangun tautan dari header `Host` request: penyerang bisa memalsukannya supaya tautan reset korban mengarah ke situsnya.\n",
+      "materials": [
+        {
+          "id": "sla-reset",
+          "kind": "kode",
+          "name": "src/reset.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport { createHash, randomBytes } from \"node:crypto\";\nimport argon2 from \"argon2\";\nimport { pool } from \"./db.js\";\nimport { rateLimit } from \"express-rate-limit\";\nimport { parseEmail, passwordProblem } from \"./validate.js\";\nimport { render, csrfField, errorBox, esc } from \"./views.js\";\n\nexport const reset = Router();\n\nconst TTL_MINUTES = 30;\nconst sha256 = (s) => createHash(\"sha256\").update(s).digest(\"hex\");\n\n// Token acak 256 bit dikirim ke pengguna; database hanya menyimpan hash-nya.\nexport async function createResetToken(userId) {\n  const token = randomBytes(32).toString(\"base64url\");\n  await pool.query(\"DELETE FROM password_resets WHERE user_id = $1\", [userId]);\n  await pool.query(\n    `INSERT INTO password_resets (token_hash, user_id, expires_at)\n     VALUES ($1, $2, now() + make_interval(mins => $3))`,\n    [sha256(token), userId, TTL_MINUTES],\n  );\n  return token;\n}\n\n// ponytail: tautan dicetak di log server; ganti dengan layanan email (Resend, Postmark, SES) sebelum dipakai sungguhan.\nfunction sendResetEmail(email, link) {\n  console.log(`[email ke ${email}] Atur ulang kata sandi: ${link}`);\n}\n\n// Jawaban /lupa-sandi selalu 200, jadi semua request dihitung.\nconst forgotLimiter = rateLimit({\n  windowMs: 15 * 60 * 1000,\n  limit: 5,\n  standardHeaders: \"draft-8\",\n  legacyHeaders: false,\n});\n\nconst SENT = \"Kalau email itu terdaftar, tautan atur ulang sudah dikirim. Tautan berlaku 30 menit.\";\n\nreset.get(\"/lupa-sandi\", (req, res) => {\n  render(res, \"Lupa kata sandi\", `<form method=\"post\" action=\"/lupa-sandi\">\n  ${csrfField(res)}\n  <label>Email <input type=\"email\" name=\"email\" autocomplete=\"email\" required></label>\n  <button>Kirim tautan</button>\n</form>`);\n});\n\nreset.post(\"/lupa-sandi\", forgotLimiter, async (req, res) => {\n  const email = parseEmail(req.body.email);\n  if (email) {\n    const { rows } = await pool.query(\"SELECT id FROM users WHERE email = $1\", [email]);\n    if (rows[0]) {\n      const token = await createResetToken(rows[0].id);\n      const base = process.env.APP_URL ?? `http://localhost:${process.env.PORT || 3000}`;\n      sendResetEmail(email, `${base}/atur-ulang?token=${token}`);\n    }\n  }\n  // Jawaban sama persis, terdaftar atau tidak.\n  render(res, \"Cek email kamu\", `<p>${SENT}</p>`);\n});\n\nfunction resetForm(res, token, message) {\n  return `${errorBox(message)}\n<form method=\"post\" action=\"/atur-ulang\">\n  ${csrfField(res)}\n  <input type=\"hidden\" name=\"token\" value=\"${esc(token)}\">\n  <label>Kata sandi baru <input type=\"password\" name=\"password\" minlength=\"12\" maxlength=\"128\"\n    autocomplete=\"new-password\" required></label>\n  <button>Simpan</button>\n</form>`;\n}\n\nreset.get(\"/atur-ulang\", (req, res) => {\n  render(res, \"Atur ulang kata sandi\", resetForm(res, String(req.query.token ?? \"\")));\n});\n\nreset.post(\"/atur-ulang\", async (req, res) => {\n  const token = String(req.body.token ?? \"\");\n  const problem = passwordProblem(req.body.password);\n  if (problem) return render(res, \"Atur ulang kata sandi\", resetForm(res, token, problem), 422);\n\n  // DELETE ... RETURNING: token langsung hangus begitu dipakai, sekali saja.\n  const { rows } = await pool.query(\n    `DELETE FROM password_resets\n     WHERE token_hash = $1 AND expires_at > now()\n     RETURNING user_id`,\n    [sha256(token)],\n  );\n  if (!rows[0]) {\n    return render(res, \"Atur ulang kata sandi\",\n      errorBox(\"Tautan tidak valid atau sudah kedaluwarsa. Minta tautan baru.\"), 400);\n  }\n  const userId = rows[0].user_id;\n  await pool.query(\"UPDATE users SET password_hash = $1 WHERE id = $2\",\n    [await argon2.hash(req.body.password), userId]);\n  // Keluarkan semua sesi lama pengguna ini, termasuk milik penyerang kalau ada.\n  await pool.query(`DELETE FROM \"session\" WHERE (sess->>'userId')::bigint = $1`, [userId]);\n  render(res, \"Kata sandi diganti\", '<p>Silakan <a href=\"/login\">masuk</a> dengan kata sandi baru.</p>');\n});\n"
+        },
+        {
+          "id": "sla-app-final",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport session from \"express-session\";\nimport connectPgSimple from \"connect-pg-simple\";\nimport helmet from \"helmet\";\nimport { pool } from \"./db.js\";\nimport { csrf } from \"./csrf.js\";\nimport { auth, loadUser } from \"./auth.js\";\nimport { reset } from \"./reset.js\";\nimport { render, esc } from \"./views.js\";\n\nif (!process.env.SESSION_SECRET) throw new Error(\"SESSION_SECRET belum diisi\");\nconst production = process.env.NODE_ENV === \"production\";\nconst PgStore = connectPgSimple(session);\n\nexport const app = express();\n\napp.set(\"trust proxy\", 1); // Render ada di depan aplikasi sebagai proxy HTTPS\napp.use(helmet());\n\n// Sebelum session: health check Render tidak perlu membuat baris sesi.\napp.get(\"/health\", async (req, res) => {\n  await pool.query(\"SELECT 1\");\n  res.json({ status: \"ok\" });\n});\n\napp.use(express.urlencoded({ extended: false, limit: \"10kb\" }));\napp.use(session({\n  store: new PgStore({ pool, tableName: \"session\" }),\n  secret: process.env.SESSION_SECRET,\n  name: \"sid\",\n  resave: false,\n  saveUninitialized: false,\n  cookie: {\n    httpOnly: true,\n    secure: production,\n    sameSite: \"lax\",\n    maxAge: 2 * 60 * 60 * 1000, // 2 jam\n  },\n}));\napp.use(csrf);\napp.use(loadUser);\n\napp.get(\"/\", (req, res) => {\n  render(res, \"Sistem Login\", res.locals.user\n    ? `<p>Halo, ${esc(res.locals.user.email)}.</p>`\n    : \"<p>Silakan masuk atau daftar.</p>\");\n});\n\napp.use(auth);\napp.use(reset);\n\napp.use((req, res) => render(res, \"Tidak ditemukan\", \"<p>Halaman tidak ada.</p>\", 404));\n\n// Error tak dikenal dicatat di log, pengguna hanya melihat pesan umum.\napp.use((err, req, res, next) => {\n  const status = err.status ?? 500;\n  if (status >= 500) console.error(err);\n  const message = status < 500 ? err.message : \"Terjadi kesalahan. Coba lagi nanti.\";\n  render(res, \"Ada masalah\", `<p>${esc(message)}</p>`, status);\n});\n"
+        },
+        {
+          "id": "sla-reset-cheatsheet",
+          "kind": "tautan",
+          "name": "OWASP: Forgot Password Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html"
+        },
+        {
+          "id": "sla-reset-crypto",
+          "kind": "tautan",
+          "name": "Node.js: crypto.randomBytes",
+          "url": "https://nodejs.org/api/crypto.html#cryptorandombytessize-callback"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-reset-alur",
+          "text": "Aku berhasil mengganti sandi lewat tautan dari log server."
+        },
+        {
+          "id": "sla-reset-sekali",
+          "text": "Tautan yang sudah dipakai ditolak saat dipakai lagi."
+        },
+        {
+          "id": "sla-reset-sama",
+          "text": "Jawaban /lupa-sandi sama untuk email terdaftar dan tidak terdaftar."
+        },
+        {
+          "id": "sla-reset-sesi",
+          "text": "Aku bisa menjelaskan kenapa semua sesi dihapus setelah sandi diganti."
+        },
+        {
+          "id": "sla-reset-commit",
+          "text": "Aku sudah commit fitur atur ulang kata sandi."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-otomatis-keamanan",
+      "title": "Tes otomatis untuk setiap janji keamanan",
+      "est_minutes": 150,
+      "body": "## Tes sebagai bukti\n\nSetiap keputusan keamanan yang kamu ambil adalah janji: \"sandi tidak disimpan mentah\", \"token tidak bisa dipakai dua kali\". Tes otomatis mengubah janji itu menjadi sesuatu yang diperiksa setiap kali kode berubah.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `test/auth.test.js` dari bagian Bahan.\n2. Pastikan `DATABASE_URL` di `.env` menunjuk database **lokal atau khusus pengembangan**. Tes ini menulis dan menghapus data.\n3. Jalankan `npm test`. Semua tes harus lulus.\n4. Uji tesnya. Lakukan satu per satu, jalankan `npm test`, lalu kembalikan:\n   - ganti `httpOnly: true` menjadi `httpOnly: false` di `app.js`;\n   - hapus baris `DELETE FROM \"session\" ...` di `reset.js`;\n   - ganti `requireRole(\"admin\")` dengan `requireLogin`.\n   Setiap perubahan harus membuat minimal satu tes gagal. Kalau tidak ada yang gagal, berarti tesnya belum menjaga hal itu.\n5. Tambahkan satu tes milikmu, misalnya: POST `/logout` tanpa token CSRF harus 403.\n6. Commit dengan pesan `Tambah tes keamanan`.\n\n## Cara tes ini bekerja\n\n- `request.agent(app)` menyimpan cookie seperti browser, jadi sesi terbawa dari satu request ke request berikutnya.\n- `csrfFrom()` membuka halaman lalu mengambil token dari form, persis seperti yang dikirim browser.\n- Setiap tes memakai email acak berakhiran `@contoh.test`, lalu `after()` menghapus semuanya.\n- Tes rate limit diletakkan paling akhir karena penghitung di memori ikut menghitung kegagalan dari tes lain.\n",
+      "materials": [
+        {
+          "id": "sla-test",
+          "kind": "kode",
+          "name": "test/auth.test.js",
+          "lang": "javascript",
+          "content": "import { test, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { randomUUID } from \"node:crypto\";\nimport request from \"supertest\";\nimport { app } from \"../src/app.js\";\nimport { pool } from \"../src/db.js\";\nimport { createResetToken } from \"../src/reset.js\";\n\nconst PASS = \"kuda-makan-nasi-goreng\";\nconst newEmail = () => `t-${randomUUID()}@contoh.test`;\n\nafter(async () => {\n  await pool.query(\"DELETE FROM users WHERE email LIKE '%@contoh.test'\");\n  await pool.end();\n});\n\n// Ambil token CSRF dari form di halaman, seperti yang dilakukan browser.\nasync function csrfFrom(agent, path) {\n  const res = await agent.get(path);\n  return res.text.match(/name=\"_csrf\" value=\"([^\"]+)\"/)[1];\n}\n\nasync function register(agent, email, password = PASS) {\n  const _csrf = await csrfFrom(agent, \"/register\");\n  return agent.post(\"/register\").type(\"form\").send({ _csrf, email, password });\n}\n\nasync function login(agent, email, password = PASS) {\n  const _csrf = await csrfFrom(agent, \"/login\");\n  return agent.post(\"/login\").type(\"form\").send({ _csrf, email, password });\n}\n\ntest(\"header keamanan dan cookie sesi yang aman\", async () => {\n  const res = await request(app).get(\"/login\");\n  assert.match(res.headers[\"content-security-policy\"], /default-src 'self'/);\n  assert.equal(res.headers[\"x-content-type-options\"], \"nosniff\");\n  const cookie = res.headers[\"set-cookie\"][0];\n  assert.match(cookie, /^sid=/);\n  assert.match(cookie, /HttpOnly/);\n  assert.match(cookie, /SameSite=Lax/);\n});\n\ntest(\"daftar, sandi tersimpan sebagai hash argon2id, lalu bisa buka akun\", async () => {\n  const agent = request.agent(app);\n  const email = newEmail();\n  const res = await register(agent, email);\n  assert.equal(res.status, 303);\n  assert.equal(res.headers.location, \"/akun\");\n\n  const { rows } = await pool.query(\"SELECT password_hash FROM users WHERE email = $1\", [email]);\n  assert.match(rows[0].password_hash, /^\\$argon2id\\$/);\n\n  const akun = await agent.get(\"/akun\");\n  assert.equal(akun.status, 200);\n  assert.match(akun.text, new RegExp(email));\n});\n\ntest(\"validasi: sandi pendek dan email rusak ditolak\", async () => {\n  const agent = request.agent(app);\n  assert.equal((await register(agent, newEmail(), \"pendek\")).status, 422);\n  assert.equal((await register(agent, \"bukan-email\")).status, 422);\n});\n\ntest(\"POST tanpa token CSRF ditolak 403\", async () => {\n  const agent = request.agent(app);\n  await agent.get(\"/login\");\n  const res = await agent.post(\"/login\").type(\"form\").send({ email: \"a@contoh.test\", password: PASS });\n  assert.equal(res.status, 403);\n});\n\ntest(\"pesan gagal login sama untuk email tak dikenal dan sandi salah\", async () => {\n  const agent = request.agent(app);\n  const email = newEmail();\n  await register(agent, email);\n  const salahSandi = await login(request.agent(app), email, \"sandi-yang-salah-sekali\");\n  const takDikenal = await login(request.agent(app), newEmail());\n  assert.equal(salahSandi.status, 401);\n  assert.equal(takDikenal.status, 401);\n  assert.match(salahSandi.text, /Email atau kata sandi salah/);\n  assert.match(takDikenal.text, /Email atau kata sandi salah/);\n});\n\ntest(\"login mengganti id sesi, logout menghapus sesi\", async () => {\n  const email = newEmail();\n  await register(request.agent(app), email);\n\n  const agent = request.agent(app);\n  const before = (await agent.get(\"/login\")).headers[\"set-cookie\"][0].split(\";\")[0];\n  const res = await login(agent, email);\n  assert.equal(res.status, 303);\n  const afterLogin = res.headers[\"set-cookie\"][0].split(\";\")[0];\n  assert.notEqual(before, afterLogin);\n\n  const _csrf = await csrfFrom(agent, \"/akun\");\n  assert.equal((await agent.post(\"/logout\").type(\"form\").send({ _csrf })).status, 303);\n  const akun = await agent.get(\"/akun\");\n  assert.equal(akun.status, 303);\n  assert.equal(akun.headers.location, \"/login\");\n});\n\ntest(\"route admin: tamu dialihkan, user 403, admin 200\", async () => {\n  assert.equal((await request(app).get(\"/admin\")).status, 303);\n\n  const agent = request.agent(app);\n  const email = newEmail();\n  await register(agent, email);\n  assert.equal((await agent.get(\"/admin\")).status, 403);\n\n  await pool.query(\"UPDATE users SET role = 'admin' WHERE email = $1\", [email]);\n  assert.equal((await agent.get(\"/admin\")).status, 200);\n});\n\ntest(\"atur ulang sandi: token sekali pakai, sesi lama hangus\", async () => {\n  const lama = request.agent(app);\n  const email = newEmail();\n  await register(lama, email);\n  const { rows } = await pool.query(\"SELECT id FROM users WHERE email = $1\", [email]);\n\n  const token = await createResetToken(rows[0].id);\n  const stored = await pool.query(\"SELECT token_hash FROM password_resets WHERE user_id = $1\", [rows[0].id]);\n  assert.notEqual(stored.rows[0].token_hash, token); // yang disimpan hanya hash\n\n  const agent = request.agent(app);\n  const _csrf = await csrfFrom(agent, `/atur-ulang?token=${token}`);\n  const baru = \"sandi-baru-yang-panjang\";\n  const ok = await agent.post(\"/atur-ulang\").type(\"form\").send({ _csrf, token, password: baru });\n  assert.equal(ok.status, 200);\n\n  const lagi = await agent.post(\"/atur-ulang\").type(\"form\").send({ _csrf, token, password: baru });\n  assert.equal(lagi.status, 400);\n\n  assert.equal((await lama.get(\"/akun\")).status, 303); // sesi lama sudah dihapus\n  assert.equal((await login(request.agent(app), email, baru)).status, 303);\n});\n\ntest(\"atur ulang sandi: token kedaluwarsa ditolak\", async () => {\n  const email = newEmail();\n  await register(request.agent(app), email);\n  const { rows } = await pool.query(\"SELECT id FROM users WHERE email = $1\", [email]);\n  const token = await createResetToken(rows[0].id);\n  await pool.query(\n    \"UPDATE password_resets SET expires_at = now() - interval '1 minute' WHERE user_id = $1\",\n    [rows[0].id],\n  );\n  const agent = request.agent(app);\n  const _csrf = await csrfFrom(agent, `/atur-ulang?token=${token}`);\n  const res = await agent.post(\"/atur-ulang\").type(\"form\").send({ _csrf, token, password: PASS });\n  assert.equal(res.status, 400);\n});\n\n// Taruh paling akhir: limiter di memori ikut menghitung kegagalan dari tes lain.\ntest(\"login dibatasi setelah terlalu banyak kegagalan\", async () => {\n  const statuses = [];\n  for (let i = 0; i < 11; i++) {\n    statuses.push((await login(request.agent(app), newEmail(), \"sandi-yang-salah-sekali\")).status);\n  }\n  assert.equal(statuses.at(-1), 429);\n});\n"
+        },
+        {
+          "id": "sla-tes-node",
+          "kind": "tautan",
+          "name": "Node.js: dokumentasi test runner",
+          "url": "https://nodejs.org/api/test.html"
+        },
+        {
+          "id": "sla-tes-supertest",
+          "kind": "tautan",
+          "name": "supertest di npm",
+          "url": "https://www.npmjs.com/package/supertest"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-tes-lulus",
+          "text": "npm test lulus semua di database pengembangan."
+        },
+        {
+          "id": "sla-tes-rusak",
+          "text": "Aku merusak tiga hal dengan sengaja dan setiap kali ada tes yang gagal."
+        },
+        {
+          "id": "sla-tes-sendiri",
+          "text": "Aku menambahkan minimal satu tes milikku sendiri."
+        },
+        {
+          "id": "sla-tes-commit",
+          "text": "Aku sudah commit tes keamanan."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "daftar-periksa-ancaman",
+      "title": "Daftar periksa ancaman ala OWASP ASVS",
+      "est_minutes": 75,
+      "body": "## Dari \"rasanya aman\" ke \"sudah diperiksa\"\n\nOWASP ASVS (Application Security Verification Standard) adalah daftar persyaratan keamanan yang bisa diperiksa satu per satu. Kamu tidak perlu memenuhi semuanya. Yang penting: tahu mana yang sudah, mana yang belum, dan kenapa.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `ANCAMAN.md` dari bagian Bahan ke repositori.\n2. Untuk setiap baris, isi kolom **Bukti** dengan nama tes, nama berkas, atau hasil pemeriksaan manual.\n3. Lakukan tiga pemeriksaan manual berikut dan catat hasilnya:\n   - **XSS**: di halaman daftar, buka DevTools dan ubah `type=\"email\"` pada input email menjadi `type=\"text\"` (validasi browser bukan pagar keamanan). Daftar dengan email `\"<b>x</b>\"@contoh.com`, yang lolos validasi server kita. Di halaman akun, teksnya harus tampil apa adanya, bukan tebal.\n   - **CSRF dari luar**: jalankan perintah `curl` di `uji-manual.sh`. Harus 403.\n   - **Header**: buka DevTools > Network, pilih request halaman, lihat Response Headers. Harus ada `Content-Security-Policy` dan `X-Content-Type-Options`.\n4. Baris yang statusnya **Belum** jangan dihapus. Tulis alasan dan kapan perlu dikerjakan. Daftar yang jujur lebih meyakinkan perekrut daripada daftar yang semuanya centang.\n5. Commit dengan pesan `Tambah daftar periksa ancaman`.\n",
+      "materials": [
+        {
+          "id": "sla-ancaman",
+          "kind": "kode",
+          "name": "ANCAMAN.md",
+          "lang": "markdown",
+          "content": "# Daftar periksa ancaman\n\nAcuan: OWASP ASVS dan OWASP Cheat Sheet Series.\n\n| Area | Persyaratan | Status | Bukti |\n| --- | --- | --- | --- |\n| Sandi | Disimpan dengan argon2id, tidak pernah mentah | Sudah | |\n| Sandi | Minimal 12 karakter, maksimal 128, tanpa aturan komposisi | Sudah | |\n| Sandi | Dicek terhadap daftar sandi bocor | Belum | |\n| Login | Pesan gagal sama untuk email salah dan sandi salah | Sudah | |\n| Login | Waktu respons mirip untuk email tidak terdaftar (DUMMY_HASH) | Sudah | |\n| Login | Percobaan gagal dibatasi per IP | Sudah | |\n| Login | Verifikasi dua langkah (2FA) | Belum | |\n| Daftar | Tidak membocorkan email yang sudah terdaftar | Belum (butuh verifikasi email) | |\n| Sesi | Id sesi acak, disimpan di server | Sudah | |\n| Sesi | Cookie HttpOnly, Secure (produksi), SameSite=Lax | Sudah | |\n| Sesi | Id sesi diganti saat login | Sudah | |\n| Sesi | Logout menghapus sesi di server | Sudah | |\n| Sesi | Sesi berakhir setelah 2 jam | Sudah | |\n| Reset | Token acak 256 bit, disimpan sebagai hash | Sudah | |\n| Reset | Token berlaku 30 menit dan sekali pakai | Sudah | |\n| Reset | Semua sesi dihapus setelah sandi diganti | Sudah | |\n| Reset | Tautan dibangun dari APP_URL, bukan header Host | Sudah | |\n| Akses | Rute admin diperiksa role-nya di server | Sudah | |\n| CSRF | Token di setiap form POST, dibandingkan dengan timingSafeEqual | Sudah | |\n| XSS | Semua teks dari pengguna lewat esc() | Sudah | |\n| Header | Helmet: CSP, nosniff, frameguard, dll. | Sudah | |\n| Data | Semua query memakai parameter ($1, $2) | Sudah | |\n| Log | Error 500 tidak membocorkan detail ke pengguna | Sudah | |\n| Log | Login gagal dicatat untuk dipantau | Belum | |\n"
+        },
+        {
+          "id": "sla-curl",
+          "kind": "kode",
+          "name": "uji-manual.sh",
+          "lang": "bash",
+          "content": "BASE=http://localhost:3000\n\n# POST tanpa cookie sesi dan tanpa token CSRF, seperti form dari situs lain.\n# Harus 403.\ncurl -s -o /dev/null -w \"%{http_code}\\n\" -X POST \"$BASE/logout\"\n\n# Header keamanan dari helmet.\ncurl -sI \"$BASE/login\" | grep -iE \"content-security-policy|x-content-type-options|x-frame-options\"\n"
+        },
+        {
+          "id": "sla-asvs",
+          "kind": "tautan",
+          "name": "OWASP ASVS",
+          "url": "https://owasp.org/www-project-application-security-verification-standard/"
+        },
+        {
+          "id": "sla-csrf-cheatsheet",
+          "kind": "tautan",
+          "name": "OWASP: CSRF Prevention Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+        },
+        {
+          "id": "sla-mdn-cookie",
+          "kind": "tautan",
+          "name": "MDN: header Set-Cookie",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-anc-bukti",
+          "text": "Setiap baris berstatus Sudah di ANCAMAN.md punya bukti."
+        },
+        {
+          "id": "sla-anc-manual",
+          "text": "Aku sudah menjalankan tiga pemeriksaan manual (XSS, CSRF, header)."
+        },
+        {
+          "id": "sla-anc-belum",
+          "text": "Baris berstatus Belum punya alasan tertulis."
+        },
+        {
+          "id": "sla-anc-commit",
+          "text": "Aku sudah commit ANCAMAN.md."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-render-postgres",
+      "title": "Deploy ke Render dengan Postgres terkelola",
+      "est_minutes": 90,
+      "body": "## Aman di laptop belum tentu aman di internet\n\nDi produksi, cookie `secure` aktif dan aplikasi berjalan di belakang proxy HTTPS milik Render. Di langkah ini banyak pengaturan yang baru benar-benar diuji. Tampilan dashboard bisa berubah, jadi kalau ada yang berbeda, ikuti dokumentasi resminya.\n\n## 1. Database Postgres di Render\n\n1. Di dashboard Render, buat **Postgres** baru. Pilih region yang sama dengan web service nanti, misalnya Singapore.\n2. Setelah statusnya Available, salin **Internal Database URL**. Alamat internal hanya bisa diakses dari layanan Render di region yang sama, jadi database tidak terbuka ke internet.\n\nPaket gratis Postgres di Render punya batas waktu. Baca halaman batasan paket gratis di Bahan dan catat tanggalnya.\n\n## 2. Web service\n\n1. Push semua commit ke GitHub.\n2. Buat **Web Service** baru dari repositori ini. Build Command `npm install`, Start Command `npm start`.\n3. Isi **Environment**:\n   - `DATABASE_URL`: Internal Database URL tadi.\n   - `SESSION_SECRET`: pakai tombol **Generate**. Jangan pakai nilai dari `.env` lokalmu.\n   - `NODE_ENV`: `production`. Tanpa ini cookie tidak bertanda `Secure`.\n   - `APP_URL`: `https://NAMA-LAYANAN.onrender.com`, tanpa garis miring di akhir.\n4. Isi **Health Check Path** dengan `/health`.\n5. `npm start` menjalankan `init-db.js` dulu. Karena semua perintah di `schema.sql` memakai `IF NOT EXISTS`, aman dijalankan setiap kali server menyala.\n\n## 3. Periksa di alamat publik\n\n1. Daftar akun baru di alamat Render-mu.\n2. Di DevTools, cookie `sid` harus bertanda **Secure**, **HttpOnly**, dan **SameSite Lax**.\n3. Jalankan `uji-manual.sh` dengan `BASE` diganti alamat Render.\n4. Jadikan akunmu admin: di halaman database Render, salin **External Database URL**, lalu jalankan `psql \"URL-EKSTERNAL\"` (atau lewat Docker: `docker run --rm -it postgres:17 psql \"URL-EKSTERNAL\"`) dan ketik `UPDATE users SET role = 'admin' WHERE email = 'emailmu@contoh.com';`.\n\n## Kalau gagal\n\n- **Login berhasil tapi langsung keluar lagi**: biasanya `trust proxy` hilang, sehingga cookie `Secure` tidak pernah dikirim.\n- **`SESSION_SECRET belum diisi`** di Logs: variabelnya belum ditambahkan.\n- **Tautan reset mengarah ke localhost**: `APP_URL` belum diisi.\n",
+      "materials": [
+        {
+          "id": "sla-dep-render-node",
+          "kind": "tautan",
+          "name": "Render: deploy aplikasi Express",
+          "url": "https://render.com/docs/deploy-node-express-app"
+        },
+        {
+          "id": "sla-dep-render-pg",
+          "kind": "tautan",
+          "name": "Render: membuat dan menghubungkan Postgres",
+          "url": "https://render.com/docs/postgresql-creating-connecting"
+        },
+        {
+          "id": "sla-dep-render-free",
+          "kind": "tautan",
+          "name": "Render: batasan paket gratis",
+          "url": "https://render.com/docs/free"
+        },
+        {
+          "id": "sla-dep-render-env",
+          "kind": "tautan",
+          "name": "Render: environment variables",
+          "url": "https://render.com/docs/configure-environment-variables"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-dep-live",
+          "text": "Aplikasiku live di Render dan /health menjawab ok."
+        },
+        {
+          "id": "sla-dep-cookie",
+          "text": "Di alamat publik, cookie sid bertanda Secure, HttpOnly, dan SameSite Lax."
+        },
+        {
+          "id": "sla-dep-rahasia",
+          "text": "SESSION_SECRET produksi berbeda dari yang ada di laptopku."
+        },
+        {
+          "id": "sla-dep-admin",
+          "text": "Akunku sudah menjadi admin di database produksi."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-keputusan",
+      "title": "README dan catatan keputusan keamanan",
+      "est_minutes": 45,
+      "body": "## Yang dicari pembaca repositori\n\nPerekrut yang membuka proyek keamanan ingin tahu dua hal: apakah kamu paham *kenapa*, dan apakah kamu jujur soal batasannya. README adalah tempat menunjukkan keduanya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin kerangka `README.md` dari bagian Bahan, lalu isi bagian yang kosong.\n2. Di bagian **Keputusan keamanan**, tulis minimal tiga keputusan dengan alasannya dalam satu kalimat. Contoh: \"Sesi di server, bukan JWT, supaya logout dan reset sandi bisa langsung mencabut akses.\"\n3. Tautkan `ANCAMAN.md` dan sebutkan dua hal yang belum dikerjakan.\n4. Pastikan perintah di bagian **Menjalankan di komputer sendiri** benar-benar berjalan dari repositori yang baru di-clone.\n5. Push, lalu kirim tautan aplikasi live dan tautan repositori di kolom pengumpulan pada halaman ringkasan proyek ini.\n\n> Jangan pernah menaruh nilai `SESSION_SECRET`, `DATABASE_URL` produksi, atau akun admin sungguhan di README.\n",
+      "materials": [
+        {
+          "id": "sla-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Sistem Login yang Aman\n\nAplikasi Express 5 + PostgreSQL dengan daftar, masuk, keluar, lupa kata sandi, dan halaman admin.\n\nDemo: https://NAMA-LAYANAN.onrender.com (request pertama bisa lambat karena paket gratis Render tidur saat sepi)\n\n## Fitur keamanan\n\n- Sandi di-hash dengan argon2id\n- Sesi di server (Postgres), cookie HttpOnly, Secure, SameSite=Lax\n- Token CSRF di setiap form\n- Batas percobaan login gagal\n- Reset sandi dengan token sekali pakai, berlaku 30 menit, disimpan sebagai hash\n- Pagar role admin di server\n- Header keamanan dengan helmet\n\n## Keputusan keamanan\n\n1. ___\n2. ___\n3. ___\n\nDaftar periksa lengkap ada di [ANCAMAN.md](ANCAMAN.md). Yang belum dikerjakan: ___\n\n## Menjalankan di komputer sendiri\n\n```bash\nnpm install\ncp .env.example .env   # isi SESSION_SECRET dengan string acak\nnpm run db:init\nnpm run dev\n```\n\nTes (pakai database pengembangan, bukan produksi):\n\n```bash\nnpm test\n```\n\nJadikan admin: `npm run make-admin -- email@contoh.com`\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sla-dok-keputusan",
+          "text": "README berisi minimal tiga keputusan keamanan beserta alasannya."
+        },
+        {
+          "id": "sla-dok-ancaman",
+          "text": "README menautkan ANCAMAN.md dan menyebut hal yang belum dikerjakan."
+        },
+        {
+          "id": "sla-dok-jalan",
+          "text": "Perintah di README berjalan dari repositori yang baru di-clone."
+        },
+        {
+          "id": "sla-dok-kirim",
+          "text": "Aku sudah mengirim tautan aplikasi live dan repositori di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}

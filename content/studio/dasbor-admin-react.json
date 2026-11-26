@@ -1,0 +1,615 @@
+{
+  "slug": "dasbor-admin-react",
+  "title": "Dasbor Admin dengan React",
+  "summary": "Bangun dasbor admin toko dengan Vite, React, dan TypeScript yang membaca API DummyJSON: rute dengan React Router, data lewat TanStack Query, tabel dengan pencarian, urutan, dan paginasi di server, filter tersimpan di URL, grafik Recharts, tes Vitest, lalu online-kan di Vercel atau Netlify.",
+  "level": "menengah",
+  "est_hours": 16,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-pemakai-dasbor",
+      "title": "Kenali pemakai dasbor",
+      "est_minutes": 15,
+      "body": "## Dasbor itu alat kerja, bukan pajangan\n\nAdmin toko membuka dasbor dengan pertanyaan tertentu: *produk apa yang stoknya menipis? siapa saja pelanggan kita? kategori mana yang paling banyak isinya?* Dasbor yang baik menjawab pertanyaan itu secepat mungkin. Grafik yang indah tapi tidak menjawab apa-apa hanya menambah waktu muat.\n\nDi proyek ini kamu membangun dasbor untuk toko online fiktif. Datanya diambil dari **DummyJSON**, API publik gratis berisi produk, pengguna, dan keranjang belanja. Karena datanya sudah tersedia, kamu bisa fokus pada hal yang dinilai perekrut frontend: mengambil data dengan benar, menampilkan status memuat dan error, tabel yang bisa dicari dan diurutkan, serta kode yang teruji.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat: **\"Dasbor ini dipakai oleh ___ untuk ___.\"** Contoh: \"dipakai oleh admin toko untuk memantau katalog produk dan data pelanggan\".\n2. Tulis **tiga pertanyaan** yang harus terjawab dalam 10 detik setelah dasbor dibuka.\n3. Tulis tujuan pribadimu. Proyek ini cocok untuk melamar posisi **frontend developer junior**, karena hampir semua aplikasi kantor berbentuk tabel, filter, dan grafik.\n4. Tulis batas versi pertama. Saran: **tanpa login** dan **tanpa menambah atau mengubah data**. DummyJSON hanya pura-pura menyimpan perubahan, jadi fitur tulis tidak akan terasa nyata.\n\n> Dasbor yang hanya membaca data tapi rapi, cepat, dan teruji jauh lebih meyakinkan daripada dasbor penuh tombol yang separuhnya tidak bekerja.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief dasbor admin\n\nDasbor ini dipakai oleh ___ untuk ___.\nTiga pertanyaan yang harus terjawab dalam 10 detik:\n1. ___\n2. ___\n3. ___\nTujuan pribadiku: ___\nTidak dibuat di versi pertama: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-brief-pemakai",
+          "text": "Aku sudah menulis kalimat \"Dasbor ini dipakai oleh ... untuk ...\"."
+        },
+        {
+          "id": "dasbor-brief-tanya",
+          "text": "Aku punya tiga pertanyaan yang harus terjawab dalam 10 detik."
+        },
+        {
+          "id": "dasbor-brief-batas",
+          "text": "Aku sudah menulis hal yang tidak dibuat di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "jelajahi-data-dummyjson",
+      "title": "Jelajahi data DummyJSON",
+      "est_minutes": 40,
+      "body": "## Kenali datanya sebelum merancang layar\n\nBanyak frontend developer langsung menggambar tabel, lalu kaget saat datanya ternyata tidak cocok. Lebih aman dibalik: lihat dulu bentuk respons API, baru tentukan apa yang bisa ditampilkan.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan perintah `curl` di bagian Bahan satu per satu. Kalau belum terbiasa dengan terminal, tempel alamatnya di browser.\n2. Catat bentuk respons daftar produk: ada `products`, `total`, `skip`, dan `limit`. Angka `total` adalah jumlah semua produk, bukan jumlah yang dikirim. Angka ini yang nanti dipakai untuk menghitung jumlah halaman.\n3. Perhatikan tiga parameter penting:\n   - `limit` dan `skip`: ambil sebagian data saja. Halaman 3 dengan 10 baris per halaman berarti `skip=20`.\n   - `sortBy` dan `order`: server yang mengurutkan, bukan browser.\n   - `select`: pilih kolom yang dibutuhkan saja, supaya respons kecil.\n4. Buka `/products/9999`. Catat status HTTP dan isi `message`-nya. Pesan inilah yang nanti ditampilkan saat error.\n5. Daftar ide halaman. Tandai mana yang **wajib** dan mana yang **nanti saja**. Contoh:\n   - Wajib: ringkasan angka, grafik produk per kategori, tabel produk, detail produk, tabel pengguna.\n   - Nanti: halaman keranjang, filter kategori, mode gelap, ekspor CSV.\n\n## Kenapa paginasi di server?\n\nDummyJSON punya 194 produk. Kalau semuanya diunduh lalu dipotong di browser, aplikasimu tidak akan bertahan saat datanya 100.000 baris. Dengan `limit` dan `skip`, server hanya mengirim 10 baris yang sedang dilihat. Cara ini yang dipakai hampir semua aplikasi sungguhan.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-curl",
+          "kind": "kode",
+          "name": "jelajah-api.sh",
+          "lang": "bash",
+          "content": "# 10 produk pertama, hanya kolom yang dibutuhkan tabel\ncurl \"https://dummyjson.com/products?limit=10&skip=0&select=title,category,price,stock,rating\"\n\n# halaman 2, urut harga termahal\ncurl \"https://dummyjson.com/products?limit=10&skip=10&sortBy=price&order=desc&select=title,price\"\n\n# pencarian juga menerima limit, skip, dan sortBy\ncurl \"https://dummyjson.com/products/search?q=phone&limit=10&skip=0&sortBy=price&order=asc\"\n\n# satu produk, dan produk yang tidak ada (perhatikan status 404 dan isi message)\ncurl \"https://dummyjson.com/products/1\"\ncurl -i \"https://dummyjson.com/products/9999\"\n\n# pengguna dan keranjang\ncurl \"https://dummyjson.com/users/search?q=emily&limit=10&skip=0&select=firstName,lastName,email,age,company\"\ncurl \"https://dummyjson.com/carts?limit=0&select=total\"\n"
+        },
+        {
+          "id": "m-dasbor-docs-produk",
+          "kind": "tautan",
+          "name": "DummyJSON: dokumentasi Products",
+          "url": "https://dummyjson.com/docs/products"
+        },
+        {
+          "id": "m-dasbor-docs-user",
+          "kind": "tautan",
+          "name": "DummyJSON: dokumentasi Users",
+          "url": "https://dummyjson.com/docs/users"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-ide-curl",
+          "text": "Aku sudah mencoba semua perintah curl dan melihat bentuk responsnya."
+        },
+        {
+          "id": "dasbor-ide-skip",
+          "text": "Aku bisa menghitung nilai skip untuk halaman ke-n."
+        },
+        {
+          "id": "dasbor-ide-404",
+          "text": "Aku tahu status dan isi respons saat produk tidak ditemukan."
+        },
+        {
+          "id": "dasbor-ide-wajib",
+          "text": "Aku punya daftar halaman wajib dan daftar \"nanti saja\"."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-stack-frontend",
+      "title": "Pilih stack frontend",
+      "est_minutes": 25,
+      "body": "## Satu alat untuk satu masalah\n\nAplikasi ini adalah **SPA** (single-page application): satu berkas HTML, sisanya diurus JavaScript di browser. Tidak ada server sendiri, karena datanya datang dari DummyJSON.\n\n| Masalah | Alat | Kenapa |\n| --- | --- | --- |\n| Build dan server pengembangan | **Vite** | Cepat, templat React + TypeScript siap pakai |\n| Tampilan | **React** + **TypeScript** | TypeScript menangkap salah ketik nama kolom sebelum aplikasi dijalankan |\n| Pindah halaman | **React Router** | Rute, parameter `:id`, dan query string di URL |\n| Mengambil data | **TanStack Query** | Cache, status memuat dan error, coba ulang, membatalkan request lama |\n| Grafik | **Recharts** | Komponen grafik berbasis React, cukup untuk grafik batang |\n| Tes | **Vitest** + **Testing Library** | Vitest memakai konfigurasi Vite yang sama; Testing Library menguji dari sudut pandang pengguna |\n| Hosting | **Vercel** atau **Netlify** | Gratis untuk situs statis, deploy otomatis dari GitHub |\n\n## Kenapa TanStack Query, bukan `useEffect` + `fetch`?\n\nDengan `useEffect` kamu harus menulis sendiri state `loading`, `error`, dan `data`, membatalkan request lama saat filter berubah, dan menyimpan cache. Itu banyak kode yang mudah salah. TanStack Query mengurus semuanya; kamu cukup memberi **query key** (identitas data) dan **query function** (cara mengambilnya).\n\n## Yang perlu kamu siapkan\n\n1. Node.js versi 20.19 atau 22.12 ke atas (Vite terbaru memintanya). Cek dengan `node -v`.\n2. Editor kode, Git, dan akun GitHub.\n3. Akun Vercel atau Netlify, boleh masuk memakai akun GitHub.\n4. Tulis dua alasan memilih TanStack Query. Pertanyaan \"kenapa tidak pakai useEffect saja?\" sering muncul di wawancara.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-vite",
+          "kind": "tautan",
+          "name": "Vite: panduan memulai",
+          "url": "https://vite.dev/guide/"
+        },
+        {
+          "id": "m-dasbor-tq",
+          "kind": "tautan",
+          "name": "TanStack Query: ikhtisar untuk React",
+          "url": "https://tanstack.com/query/latest/docs/framework/react/overview"
+        },
+        {
+          "id": "m-dasbor-rr",
+          "kind": "tautan",
+          "name": "React Router: dokumentasi",
+          "url": "https://reactrouter.com/home"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-tek-node",
+          "text": "Node.js di komputerku versi 20.19 atau 22.12 ke atas."
+        },
+        {
+          "id": "dasbor-tek-peran",
+          "text": "Aku bisa menjelaskan peran tiap alat dalam satu kalimat."
+        },
+        {
+          "id": "dasbor-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memilih TanStack Query daripada useEffect."
+        },
+        {
+          "id": "dasbor-tek-akun",
+          "text": "Aku punya akun GitHub dan akun Vercel atau Netlify."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-rute-dan-state-url",
+      "title": "Rancang rute dan state di URL",
+      "est_minutes": 45,
+      "body": "## URL adalah state yang paling murah\n\nBayangkan admin sedang melihat halaman 3 produk, dicari \"phone\", diurutkan dari harga termahal. Lalu ia mengklik satu produk dan menekan **Back**. Kalau filter disimpan di `useState`, semuanya hilang dan ia kembali ke halaman 1. Kalau filter disimpan di **query string** (`/produk?q=phone&sort=price&order=desc&page=3`), tombol Back, muat ulang, dan berbagi tautan langsung bekerja tanpa kode tambahan.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `rancangan.md` dari Bahan dan sesuaikan dengan daftar halaman wajibmu.\n2. Untuk tiap rute, tulis endpoint DummyJSON yang dipakai.\n3. Tulis aturan filter. Yang penting: **saat kata kunci atau urutan berubah, halaman kembali ke 1**. Kalau tidak, pencarian yang hanya punya 2 halaman bisa tetap menampilkan halaman 5 yang kosong.\n4. Tentukan **query key** untuk tiap data. Query key harus memuat semua hal yang mengubah hasilnya. Kalau `page` lupa dimasukkan, TanStack Query mengira halaman 1 dan 2 adalah data yang sama.\n5. Gambar sketsa kasar layout: sidebar di layar lebar, bilah atas di HP, tabel bisa digulir ke samping di layar sempit.\n\n## Tiga status di setiap halaman\n\nSetiap halaman yang mengambil data punya tiga keadaan. Rancang ketiganya sekarang, bukan setelah ada bug:\n\n- **Memuat**: teks \"Memuat data...\" dengan `role=\"status\"` supaya pembaca layar mengumumkannya.\n- **Error**: pesan dari server dan tombol **Coba lagi**.\n- **Kosong**: \"Tidak ada produk yang cocok\", bukan tabel kosong tanpa penjelasan.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan dasbor\n\n## Rute\n| URL | Halaman | Data |\n| --- | --- | --- |\n| /                | Ringkasan     | /products?limit=0&select=category, /users?limit=1, /carts?limit=0&select=total |\n| /produk          | Tabel produk  | /products atau /products/search + limit, skip, sortBy, order |\n| /produk/:id      | Detail produk | /products/:id |\n| /pengguna        | Tabel pengguna| /users atau /users/search + limit, skip |\n| *                | 404           | - |\n\n## State di URL (halaman produk)\n| Param | Contoh | Ke API |\n| --- | --- | --- |\n| q     | kopi  | /products/search?q=kopi |\n| sort  | price | sortBy=price |\n| order | desc  | order=desc |\n| page  | 3     | skip=(3-1)*10, limit=10 |\n\nAturan: ganti q atau sort -> page kembali ke 1. Nilai kosong dihapus dari URL.\n\n## Query key TanStack Query\n[\"products\", {q, sortBy, order, page}]\n[\"product\", id]\n[\"users\", {q, page}]\n[\"summary\"]\n"
+        },
+        {
+          "id": "m-dasbor-usp",
+          "kind": "tautan",
+          "name": "MDN: URLSearchParams",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-ran-rute",
+          "text": "Setiap rute di rancanganku punya endpoint DummyJSON-nya."
+        },
+        {
+          "id": "dasbor-ran-url",
+          "text": "Aku menulis parameter URL untuk pencarian, urutan, dan halaman."
+        },
+        {
+          "id": "dasbor-ran-reset",
+          "text": "Aturan \"ganti filter berarti kembali ke halaman 1\" sudah kutulis."
+        },
+        {
+          "id": "dasbor-ran-key",
+          "text": "Aku menentukan query key yang memuat semua filter."
+        },
+        {
+          "id": "dasbor-ran-status",
+          "text": "Aku tahu tampilan memuat, error, dan kosong untuk tiap halaman."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-vite-router-query",
+      "title": "Siapkan Vite, Router, dan TanStack Query",
+      "est_minutes": 75,
+      "body": "## Kerangka dulu, fitur belakangan\n\nDi langkah ini aplikasimu belum mengambil data apa pun. Tujuannya: tiga menu bisa diklik, URL berubah, dan tata letak sudah responsif. Fondasi yang rapi membuat langkah berikutnya tinggal mengisi halaman.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan `setup.sh` di Bahan. Perintah `npm create vite` membuat proyek React + TypeScript; sisanya memasang pustaka dan menghapus contoh bawaan.\n2. Ganti isi `vite.config.ts`. Bagian `test` dipakai Vitest nanti; baris `/// <reference ...>` membuat TypeScript mengenali bagian itu.\n3. Buka `package.json` dan tambahkan `\"test\": \"vitest\"` di bagian `scripts`.\n4. Ganti `src/main.tsx` dan `src/index.css`, lalu buat `src/Layout.tsx`, `src/router.tsx`, dan `src/api.ts` dari Bahan.\n5. Jalankan `npm run dev`, buka http://localhost:5173, dan klik ketiga menu. Judul halaman harus berganti dan menu aktif berwarna putih.\n6. Kecilkan jendela browser sampai di bawah 720px. Sidebar harus pindah menjadi bilah di atas.\n7. Jalankan `npm run build`. Perintah ini juga menjalankan pemeriksaan TypeScript, jadi pastikan tidak ada error.\n8. Commit dengan pesan `Kerangka rute, layout, dan klien API`.\n\n## Yang perlu kamu pahami\n\n- `QueryClientProvider` dipasang **sekali** di paling luar, supaya semua halaman berbagi cache yang sama.\n- `staleTime: 60_000` berarti data dianggap segar selama satu menit. Pindah menu bolak-balik tidak memicu request baru.\n- `NavLink` otomatis memberi kelas `active` pada tautan yang sedang dibuka. Prop `end` pada tautan `/` mencegahnya ikut aktif di `/produk`.\n- `getJson` melempar `Error` saat status bukan 2xx. TanStack Query menangkap error itu dan mengubahnya menjadi status `isError`. Tanpa `throw`, respons 404 akan dianggap sukses.\n\nKomponen `Segera` di `router.tsx` hanya pengganti sementara. Satu per satu akan diganti dengan halaman sungguhan.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "npm create vite@latest dasbor-admin -- --template react-ts\ncd dasbor-admin\nnpm install react-router @tanstack/react-query recharts\nnpm install -D vitest jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom @testing-library/user-event\n\n# hapus contoh bawaan Vite yang tidak dipakai\nrm src/App.tsx src/App.css\nrm -rf src/assets\nmkdir -p src/pages src/components src/test\n\ngit init\ngit add .\ngit commit -m \"Kerangka Vite React TypeScript\"\n"
+        },
+        {
+          "id": "m-dasbor-viteconfig",
+          "kind": "kode",
+          "name": "vite.config.ts",
+          "lang": "typescript",
+          "content": "/// <reference types=\"vitest/config\" />\nimport { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({\n  plugins: [react()],\n  test: {\n    environment: \"jsdom\",\n    setupFiles: \"./src/test/setup.ts\",\n  },\n});\n"
+        },
+        {
+          "id": "m-dasbor-main",
+          "kind": "kode",
+          "name": "src/main.tsx",
+          "lang": "tsx",
+          "content": "import { StrictMode } from \"react\";\nimport { createRoot } from \"react-dom/client\";\nimport { QueryClient, QueryClientProvider } from \"@tanstack/react-query\";\nimport { RouterProvider } from \"react-router\";\nimport { router } from \"./router\";\nimport \"./index.css\";\n\nconst queryClient = new QueryClient({\n  defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },\n});\n\ncreateRoot(document.getElementById(\"root\")!).render(\n  <StrictMode>\n    <QueryClientProvider client={queryClient}>\n      <RouterProvider router={router} />\n    </QueryClientProvider>\n  </StrictMode>,\n);\n"
+        },
+        {
+          "id": "m-dasbor-layout",
+          "kind": "kode",
+          "name": "src/Layout.tsx",
+          "lang": "tsx",
+          "content": "import { NavLink, Outlet } from \"react-router\";\n\nexport function Layout() {\n  return (\n    <div className=\"shell\">\n      <header className=\"sidebar\">\n        <strong className=\"brand\">Dasbor Toko</strong>\n        <nav aria-label=\"Navigasi utama\">\n          <NavLink to=\"/\" end>Ringkasan</NavLink>\n          <NavLink to=\"/produk\">Produk</NavLink>\n          <NavLink to=\"/pengguna\">Pengguna</NavLink>\n        </nav>\n      </header>\n      <main>\n        <Outlet />\n      </main>\n    </div>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-router-v1",
+          "kind": "kode",
+          "name": "src/router.tsx",
+          "lang": "tsx",
+          "content": "import { createBrowserRouter } from \"react-router\";\nimport { Layout } from \"./Layout\";\n\nfunction Segera({ judul }: { judul: string }) {\n  return <h1>{judul}</h1>;\n}\n\nexport const router = createBrowserRouter([\n  {\n    path: \"/\",\n    element: <Layout />,\n    children: [\n      { index: true, element: <Segera judul=\"Ringkasan\" /> },\n      { path: \"produk\", element: <Segera judul=\"Produk\" /> },\n      { path: \"pengguna\", element: <Segera judul=\"Pengguna\" /> },\n      { path: \"*\", element: <Segera judul=\"Halaman tidak ditemukan\" /> },\n    ],\n  },\n]);\n"
+        },
+        {
+          "id": "m-dasbor-api-v1",
+          "kind": "kode",
+          "name": "src/api.ts",
+          "lang": "typescript",
+          "content": "const BASE = \"https://dummyjson.com\";\n\nexport const PAGE_SIZE = 10;\n\nexport async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {\n  const res = await fetch(BASE + path, { signal });\n  if (!res.ok) {\n    // DummyJSON mengirim { message: \"...\" } saat gagal, misalnya 404\n    const body = await res.json().catch(() => null);\n    throw new Error(body?.message ?? `Permintaan gagal (${res.status})`);\n  }\n  return res.json() as Promise<T>;\n}\n\nexport const usd = new Intl.NumberFormat(\"en-US\", { style: \"currency\", currency: \"USD\" });\n"
+        },
+        {
+          "id": "m-dasbor-css",
+          "kind": "kode",
+          "name": "src/index.css",
+          "lang": "css",
+          "content": ":root {\n  font-family: system-ui, -apple-system, \"Segoe UI\", sans-serif;\n  color: #1c1c1c;\n  background: #f5f5f2;\n}\n* { box-sizing: border-box; }\nbody { margin: 0; }\na { color: #2f6b45; }\n\n.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }\n.sidebar {\n  background: #151515; color: #fff; padding: 1.25rem;\n  display: flex; flex-direction: column; gap: 1.5rem;\n}\n.sidebar nav { display: flex; flex-direction: column; gap: 0.25rem; }\n.sidebar a { color: #cfcfcf; text-decoration: none; padding: 0.5rem 0.75rem; border-radius: 6px; }\n.sidebar a.active { background: #fff; color: #151515; }\nmain { padding: 1.5rem; min-width: 0; }\n\n.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 1rem; }\n.card { background: #fff; border-radius: 10px; padding: 1rem; }\n.card strong { display: block; font-size: 1.6rem; margin-top: 0.25rem; }\n\n.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }\n.toolbar input { padding: 0.5rem 0.75rem; min-width: 0; flex: 1 1 200px; max-width: 320px; }\n\n.table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; }\ntable { width: 100%; border-collapse: collapse; }\nth, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #eee; white-space: nowrap; }\nth button { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; cursor: pointer; }\n\n.pager { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }\n.error { color: #b00020; }\n.detail { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 280px) 1fr; }\n.detail img { width: 100%; border-radius: 10px; background: #fff; }\n\n@media (max-width: 720px) {\n  .shell { grid-template-columns: 1fr; }\n  .sidebar { flex-direction: row; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; }\n  .sidebar nav { flex-direction: row; }\n  main { padding: 1rem; }\n  .detail { grid-template-columns: 1fr; }\n}\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-setup-menu",
+          "text": "Ketiga menu bisa diklik dan menu aktif terlihat berbeda."
+        },
+        {
+          "id": "dasbor-setup-hp",
+          "text": "Di bawah 720px, sidebar berubah menjadi bilah atas."
+        },
+        {
+          "id": "dasbor-setup-build",
+          "text": "npm run build berhasil tanpa error TypeScript."
+        },
+        {
+          "id": "dasbor-setup-commit",
+          "text": "Perubahanku sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "tabel-produk-server-side",
+      "title": "Tabel produk: cari, urutkan, paginasi",
+      "est_minutes": 150,
+      "body": "## Inti proyek ini\n\nHalaman produk adalah bagian tersulit sekaligus paling berharga. Semua filter dibaca dari URL, diubah menjadi parameter API, lalu hasilnya ditampilkan. Tidak ada `useState` untuk filter sama sekali.\n\n## Alurnya\n\n```text\nURL ?q=phone&sort=price&page=2\n  -> useUrlParams membaca params\n  -> query { q, sortBy, order, page }\n  -> useQuery([\"products\", query]) -> getProducts -> /products/search?q=phone&skip=10...\n  -> tabel + Pagination\nklik kolom / tombol halaman / Cari -> update() -> URL berubah -> ulangi dari atas\n```\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `api-produk.ts` di Bahan ke bagian bawah `src/api.ts`.\n2. Buat `src/useUrlParams.ts`, `src/components/Status.tsx`, `src/components/Pagination.tsx`, dan `src/pages/Produk.tsx`.\n3. Ganti `src/router.tsx` dengan versi yang memakai `Produk`.\n4. Coba di browser:\n   - Cari \"phone\". URL berubah menjadi `?q=phone`.\n   - Klik judul **Harga** dua kali. Urutan berganti naik lalu turun, dan panahnya ikut berubah.\n   - Pindah ke halaman 2, lalu tekan **Back** di browser. Kamu kembali ke halaman 1.\n   - Muat ulang halaman. Filter tetap ada.\n5. Buka DevTools, tab **Network**, filter `dummyjson`. Pastikan hanya 10 produk yang diunduh per halaman.\n6. Commit dengan pesan `Tabel produk dengan filter di URL`.\n\n## Detail yang sering terlewat\n\n- **`placeholderData: keepPreviousData`**: saat pindah halaman, tabel lama tetap tampil sampai data baru datang. Tanpanya, tabel berkedip menjadi \"Memuat data...\" di setiap klik. Teks kecil \"Memperbarui...\" memberi tanda bahwa data sedang diambil.\n- **`signal`**: TanStack Query memberi `AbortSignal`. Kalau kamu mengklik halaman 2 lalu cepat-cepat halaman 3, request halaman 2 dibatalkan.\n- **`key={query.q}` pada form**: input pencarian memakai `defaultValue`, jadi isinya tidak ikut berubah saat URL berubah karena tombol Back. Dengan `key`, React membuat form baru setiap `q` berganti.\n- **`aria-sort`** memberi tahu pembaca layar kolom mana yang sedang diurutkan. Judul kolom berupa `<button>` supaya bisa dipakai dengan keyboard.\n- **`pageFrom`** menjaga dari URL aneh seperti `?page=abc` atau `?page=-4`; hasilnya tetap halaman 1.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-api-produk",
+          "kind": "kode",
+          "name": "api-produk.ts",
+          "lang": "typescript",
+          "content": "// Tambahkan di bawah isi src/api.ts yang sudah ada\n\nexport type ProductRow = {\n  id: number;\n  title: string;\n  category: string;\n  price: number;\n  stock: number;\n  rating: number;\n};\n\nexport type ProductQuery = {\n  q: string;\n  sortBy: string;\n  order: \"asc\" | \"desc\";\n  page: number;\n};\n\nexport type ProductPage = { products: ProductRow[]; total: number; skip: number; limit: number };\n\nexport function productsPath({ q, sortBy, order, page }: ProductQuery) {\n  const p = new URLSearchParams({\n    limit: String(PAGE_SIZE),\n    skip: String((page - 1) * PAGE_SIZE),\n    select: \"title,category,price,stock,rating\",\n  });\n  if (q) p.set(\"q\", q);\n  if (sortBy) {\n    p.set(\"sortBy\", sortBy);\n    p.set(\"order\", order);\n  }\n  // pencarian punya endpoint sendiri, tapi limit/skip/sortBy tetap berlaku\n  return `/products${q ? \"/search\" : \"\"}?${p}`;\n}\n\nexport function getProducts(query: ProductQuery, signal?: AbortSignal) {\n  return getJson<ProductPage>(productsPath(query), signal);\n}\n"
+        },
+        {
+          "id": "m-dasbor-urlparams",
+          "kind": "kode",
+          "name": "src/useUrlParams.ts",
+          "lang": "typescript",
+          "content": "import { useSearchParams } from \"react-router\";\n\n// Membaca dan mengubah query string. Nilai kosong dihapus dari URL.\nexport function useUrlParams() {\n  const [params, setParams] = useSearchParams();\n\n  function update(changes: Record<string, string>) {\n    const next = new URLSearchParams(params);\n    for (const [key, value] of Object.entries(changes)) {\n      if (value) next.set(key, value);\n      else next.delete(key);\n    }\n    setParams(next);\n  }\n\n  return [params, update] as const;\n}\n\nexport function pageFrom(params: URLSearchParams) {\n  return Math.max(1, Math.floor(Number(params.get(\"page\"))) || 1);\n}\n"
+        },
+        {
+          "id": "m-dasbor-status",
+          "kind": "kode",
+          "name": "src/components/Status.tsx",
+          "lang": "tsx",
+          "content": "export function Loading() {\n  return <p role=\"status\">Memuat data...</p>;\n}\n\nexport function ErrorBox({ error, onRetry }: { error: Error; onRetry: () => void }) {\n  return (\n    <div role=\"alert\" className=\"error\">\n      <p>Gagal memuat: {error.message}</p>\n      <button type=\"button\" onClick={onRetry}>Coba lagi</button>\n    </div>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-pagination",
+          "kind": "kode",
+          "name": "src/components/Pagination.tsx",
+          "lang": "tsx",
+          "content": "type Props = {\n  page: number;\n  total: number;\n  pageSize: number;\n  onChange: (page: number) => void;\n};\n\nexport function Pagination({ page, total, pageSize, onChange }: Props) {\n  const last = Math.max(1, Math.ceil(total / pageSize));\n  return (\n    <nav className=\"pager\" aria-label=\"Halaman\">\n      <button type=\"button\" onClick={() => onChange(page - 1)} disabled={page <= 1}>\n        Sebelumnya\n      </button>\n      <span>Halaman {page} dari {last}</span>\n      <button type=\"button\" onClick={() => onChange(page + 1)} disabled={page >= last}>\n        Berikutnya\n      </button>\n    </nav>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-produk",
+          "kind": "kode",
+          "name": "src/pages/Produk.tsx",
+          "lang": "tsx",
+          "content": "import { Link } from \"react-router\";\nimport { keepPreviousData, useQuery } from \"@tanstack/react-query\";\nimport { getProducts, PAGE_SIZE, usd, type ProductQuery } from \"../api\";\nimport { pageFrom, useUrlParams } from \"../useUrlParams\";\nimport { ErrorBox, Loading } from \"../components/Status\";\nimport { Pagination } from \"../components/Pagination\";\n\nconst COLUMNS = [\n  [\"title\", \"Nama\"],\n  [\"category\", \"Kategori\"],\n  [\"price\", \"Harga\"],\n  [\"stock\", \"Stok\"],\n  [\"rating\", \"Rating\"],\n] as const;\n\nexport function Produk() {\n  const [params, update] = useUrlParams();\n  const query: ProductQuery = {\n    q: params.get(\"q\") ?? \"\",\n    sortBy: params.get(\"sort\") ?? \"\",\n    order: params.get(\"order\") === \"desc\" ? \"desc\" : \"asc\",\n    page: pageFrom(params),\n  };\n\n  const { data, isPending, isError, error, refetch, isFetching } = useQuery({\n    queryKey: [\"products\", query],\n    queryFn: ({ signal }) => getProducts(query, signal),\n    placeholderData: keepPreviousData,\n  });\n\n  function sortBy(column: string) {\n    const order = query.sortBy === column && query.order === \"asc\" ? \"desc\" : \"asc\";\n    update({ sort: column, order, page: \"\" });\n  }\n\n  return (\n    <section>\n      <h1>Produk</h1>\n\n      {/* key: form dibuat ulang saat q di URL berubah, misalnya karena tombol Back */}\n      <form\n        key={query.q}\n        className=\"toolbar\"\n        role=\"search\"\n        onSubmit={(e) => {\n          e.preventDefault();\n          const q = String(new FormData(e.currentTarget).get(\"q\") ?? \"\").trim();\n          update({ q, page: \"\" });\n        }}\n      >\n        <input name=\"q\" type=\"search\" aria-label=\"Cari produk\" placeholder=\"Cari produk...\" defaultValue={query.q} />\n        <button type=\"submit\">Cari</button>\n        {isFetching && !isPending && <span role=\"status\">Memperbarui...</span>}\n      </form>\n\n      {isPending ? (\n        <Loading />\n      ) : isError ? (\n        <ErrorBox error={error} onRetry={() => refetch()} />\n      ) : (\n        <>\n          <div className=\"table-wrap\">\n            <table>\n              <thead>\n                <tr>\n                  {COLUMNS.map(([key, label]) => {\n                    const active = query.sortBy === key;\n                    return (\n                      <th key={key} aria-sort={active ? (query.order === \"asc\" ? \"ascending\" : \"descending\") : \"none\"}>\n                        <button type=\"button\" onClick={() => sortBy(key)}>\n                          {label}\n                          {active && (query.order === \"asc\" ? \" ▲\" : \" ▼\")}\n                        </button>\n                      </th>\n                    );\n                  })}\n                </tr>\n              </thead>\n              <tbody>\n                {data.products.map((p) => (\n                  <tr key={p.id}>\n                    <td><Link to={`/produk/${p.id}`}>{p.title}</Link></td>\n                    <td>{p.category}</td>\n                    <td>{usd.format(p.price)}</td>\n                    <td>{p.stock}</td>\n                    <td>{p.rating.toFixed(1)}</td>\n                  </tr>\n                ))}\n              </tbody>\n            </table>\n          </div>\n          {data.products.length === 0 && <p>Tidak ada produk yang cocok dengan \"{query.q}\".</p>}\n          <Pagination\n            page={query.page}\n            total={data.total}\n            pageSize={PAGE_SIZE}\n            onChange={(page) => update({ page: String(page) })}\n          />\n        </>\n      )}\n    </section>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-router-v2",
+          "kind": "kode",
+          "name": "src/router.tsx",
+          "lang": "tsx",
+          "content": "import { createBrowserRouter } from \"react-router\";\nimport { Layout } from \"./Layout\";\nimport { Produk } from \"./pages/Produk\";\n\nfunction Segera({ judul }: { judul: string }) {\n  return <h1>{judul}</h1>;\n}\n\nexport const router = createBrowserRouter([\n  {\n    path: \"/\",\n    element: <Layout />,\n    children: [\n      { index: true, element: <Segera judul=\"Ringkasan\" /> },\n      { path: \"produk\", element: <Produk /> },\n      { path: \"pengguna\", element: <Segera judul=\"Pengguna\" /> },\n      { path: \"*\", element: <Segera judul=\"Halaman tidak ditemukan\" /> },\n    ],\n  },\n]);\n"
+        },
+        {
+          "id": "m-dasbor-tq-paginated",
+          "kind": "tautan",
+          "name": "TanStack Query: paginated queries",
+          "url": "https://tanstack.com/query/latest/docs/framework/react/guides/paginated-queries"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-tabel-cari",
+          "text": "Pencarian menulis q ke URL dan menampilkan hasil yang cocok."
+        },
+        {
+          "id": "dasbor-tabel-urut",
+          "text": "Klik judul kolom mengurutkan naik lalu turun lewat server."
+        },
+        {
+          "id": "dasbor-tabel-back",
+          "text": "Tombol Back dan muat ulang mempertahankan filter."
+        },
+        {
+          "id": "dasbor-tabel-network",
+          "text": "Di tab Network, satu halaman hanya mengunduh 10 produk."
+        },
+        {
+          "id": "dasbor-tabel-commit",
+          "text": "Perubahanku sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "detail-produk-dan-pengguna",
+      "title": "Detail produk dan tabel pengguna",
+      "est_minutes": 90,
+      "body": "## Pakai ulang yang sudah ada\n\nLangkah ini lebih ringan karena potongan pentingnya sudah ada: `getJson`, `useUrlParams`, `Status`, dan `Pagination`. Kamu tinggal merangkainya untuk dua halaman baru.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `api-detail-pengguna.ts` ke bagian bawah `src/api.ts`.\n2. Buat `src/pages/ProdukDetail.tsx` dan `src/pages/Pengguna.tsx`.\n3. Di `src/router.tsx`, impor keduanya, tambahkan rute `produk/:id`, lalu ganti `Segera` untuk Pengguna. (Versi lengkap `router.tsx` ada di langkah berikutnya, boleh langsung dipakai.)\n4. Dari tabel produk, klik satu nama produk. Halaman detail tampil dengan gambar, harga, dan ulasan.\n5. Buka http://localhost:5173/produk/9999. Harus muncul \"Gagal memuat: Product with id '9999' not found\" dan tombol **Coba lagi**, bukan layar putih.\n6. Di halaman Pengguna, cari \"emily\" dan pindah halaman. Perilakunya sama dengan tabel produk.\n7. Commit dengan pesan `Halaman detail produk dan pengguna`.\n\n## Yang perlu kamu pahami\n\n- **Narrowing TypeScript.** Setelah `if (isPending) return` dan `if (isError) return`, TypeScript tahu `data` pasti ada, jadi tidak perlu `data?.title` di mana-mana.\n- **Data tidak lengkap.** Produk kategori groceries tidak punya `brand`. Tipe `brand?: string` dan `data.brand ?? \"Tanpa merek\"` menanganinya. Selalu cek data sungguhan, jangan percaya contoh pertama.\n- **`encodeURIComponent(id)`**: `id` datang dari URL yang bisa diketik siapa pun. Jangan menempelkannya ke alamat API tanpa di-encode.\n- **Retry.** Kamu mengatur `retry: 1`, jadi produk 9999 dicoba dua kali sebelum error tampil. Untuk 404 sebenarnya percuma, tapi untuk gangguan jaringan sesaat ini berguna.\n\n## Tantangan opsional\n\nPencarian pengguna belum bisa diurutkan. Tambahkan urutan per kolom dengan pola yang sama seperti halaman produk. DummyJSON juga menerima `sortBy` dan `order` di `/users`.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-api-detail",
+          "kind": "kode",
+          "name": "api-detail-pengguna.ts",
+          "lang": "typescript",
+          "content": "// Tambahkan di bawah isi src/api.ts\n\nexport type Product = ProductRow & {\n  description: string;\n  brand?: string; // produk kategori groceries tidak punya brand\n  thumbnail: string;\n  reviews: { rating: number; comment: string; reviewerName: string }[];\n};\n\nexport function getProduct(id: string, signal?: AbortSignal) {\n  return getJson<Product>(`/products/${encodeURIComponent(id)}`, signal);\n}\n\nexport type User = {\n  id: number;\n  firstName: string;\n  lastName: string;\n  email: string;\n  age: number;\n  company: { title: string };\n};\n\nexport type UserPage = { users: User[]; total: number; skip: number; limit: number };\n\nexport function getUsers({ q, page }: { q: string; page: number }, signal?: AbortSignal) {\n  const p = new URLSearchParams({\n    limit: String(PAGE_SIZE),\n    skip: String((page - 1) * PAGE_SIZE),\n    select: \"firstName,lastName,email,age,company\",\n  });\n  if (q) p.set(\"q\", q);\n  return getJson<UserPage>(`/users${q ? \"/search\" : \"\"}?${p}`, signal);\n}\n"
+        },
+        {
+          "id": "m-dasbor-detail",
+          "kind": "kode",
+          "name": "src/pages/ProdukDetail.tsx",
+          "lang": "tsx",
+          "content": "import { Link, useParams } from \"react-router\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { getProduct, usd } from \"../api\";\nimport { ErrorBox, Loading } from \"../components/Status\";\n\nexport function ProdukDetail() {\n  const { id = \"\" } = useParams();\n  const { data, isPending, isError, error, refetch } = useQuery({\n    queryKey: [\"product\", id],\n    queryFn: ({ signal }) => getProduct(id, signal),\n  });\n\n  if (isPending) return <Loading />;\n  if (isError) return <ErrorBox error={error} onRetry={() => refetch()} />;\n\n  return (\n    <article>\n      <p><Link to=\"/produk\">&larr; Semua produk</Link></p>\n      <div className=\"detail\">\n        <img src={data.thumbnail} alt={data.title} />\n        <div>\n          <h1>{data.title}</h1>\n          <p>{data.brand ?? \"Tanpa merek\"} &middot; {data.category}</p>\n          <p><strong>{usd.format(data.price)}</strong> &middot; stok {data.stock} &middot; rating {data.rating.toFixed(1)}</p>\n          <p>{data.description}</p>\n          <h2>Ulasan ({data.reviews.length})</h2>\n          <ul>\n            {data.reviews.map((r, i) => (\n              <li key={i}>\n                <strong>{r.reviewerName}</strong> ({r.rating}/5): {r.comment}\n              </li>\n            ))}\n          </ul>\n        </div>\n      </div>\n    </article>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-pengguna",
+          "kind": "kode",
+          "name": "src/pages/Pengguna.tsx",
+          "lang": "tsx",
+          "content": "import { keepPreviousData, useQuery } from \"@tanstack/react-query\";\nimport { getUsers, PAGE_SIZE } from \"../api\";\nimport { pageFrom, useUrlParams } from \"../useUrlParams\";\nimport { ErrorBox, Loading } from \"../components/Status\";\nimport { Pagination } from \"../components/Pagination\";\n\nexport function Pengguna() {\n  const [params, update] = useUrlParams();\n  const query = { q: params.get(\"q\") ?? \"\", page: pageFrom(params) };\n\n  const { data, isPending, isError, error, refetch } = useQuery({\n    queryKey: [\"users\", query],\n    queryFn: ({ signal }) => getUsers(query, signal),\n    placeholderData: keepPreviousData,\n  });\n\n  return (\n    <section>\n      <h1>Pengguna</h1>\n      <form\n        key={query.q}\n        className=\"toolbar\"\n        role=\"search\"\n        onSubmit={(e) => {\n          e.preventDefault();\n          const q = String(new FormData(e.currentTarget).get(\"q\") ?? \"\").trim();\n          update({ q, page: \"\" });\n        }}\n      >\n        <input name=\"q\" type=\"search\" aria-label=\"Cari pengguna\" placeholder=\"Cari nama...\" defaultValue={query.q} />\n        <button type=\"submit\">Cari</button>\n      </form>\n\n      {isPending ? (\n        <Loading />\n      ) : isError ? (\n        <ErrorBox error={error} onRetry={() => refetch()} />\n      ) : (\n        <>\n          <div className=\"table-wrap\">\n            <table>\n              <thead>\n                <tr><th>Nama</th><th>Email</th><th>Umur</th><th>Jabatan</th></tr>\n              </thead>\n              <tbody>\n                {data.users.map((u) => (\n                  <tr key={u.id}>\n                    <td>{u.firstName} {u.lastName}</td>\n                    <td>{u.email}</td>\n                    <td>{u.age}</td>\n                    <td>{u.company.title}</td>\n                  </tr>\n                ))}\n              </tbody>\n            </table>\n          </div>\n          {data.users.length === 0 && <p>Tidak ada pengguna yang cocok.</p>}\n          <Pagination page={query.page} total={data.total} pageSize={PAGE_SIZE} onChange={(page) => update({ page: String(page) })} />\n        </>\n      )}\n    </section>\n  );\n}\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-detail-buka",
+          "text": "Klik nama produk membuka halaman detail produk itu."
+        },
+        {
+          "id": "dasbor-detail-404",
+          "text": "Produk yang tidak ada menampilkan pesan error dan tombol Coba lagi."
+        },
+        {
+          "id": "dasbor-detail-user",
+          "text": "Tabel pengguna bisa dicari dan dipindah halaman."
+        },
+        {
+          "id": "dasbor-detail-commit",
+          "text": "Perubahanku sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "ringkasan-dan-grafik",
+      "title": "Halaman ringkasan dan grafik",
+      "est_minutes": 75,
+      "body": "## Angka besar dulu, grafik kemudian\n\nHalaman ringkasan adalah yang pertama dilihat admin. Isinya empat kartu angka dan satu grafik batang jumlah produk per kategori.\n\n## Mengambil tiga sumber sekaligus\n\n`getSummary` memanggil tiga endpoint dengan `Promise.all`, jadi ketiganya berjalan bersamaan, bukan berurutan. Kalau salah satu gagal, seluruh ringkasan dianggap gagal dan tombol **Coba lagi** mengulang ketiganya. Untuk dasbor kecil, itu sederhana dan cukup.\n\nTrik ukurannya:\n\n- `/users?limit=1&select=id` hanya untuk membaca `total`. Satu baris sudah cukup.\n- `/products?limit=0&select=category` mengambil **semua** produk, tapi hanya kolom kategori. DummyJSON memperlakukan `limit=0` sebagai \"tanpa batas\". Ini wajar untuk 194 baris; untuk data besar, hitungan seperti ini seharusnya dikerjakan server.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `api-ringkasan.ts` ke bagian bawah `src/api.ts`.\n2. Buat `src/pages/Ringkasan.tsx`.\n3. Ganti `src/router.tsx` dengan versi final. Semua komponen `Segera` hilang dan ada halaman 404 sungguhan.\n4. Buka http://localhost:5173. Empat kartu dan grafik harus tampil. Arahkan kursor ke batang grafik untuk melihat tooltip.\n5. Kecilkan layar. Kartu turun menjadi dua kolom atau satu kolom, dan grafik ikut menyempit.\n6. Buka alamat ngawur seperti `/laporan`. Halaman 404 tampil di dalam layout.\n7. Commit dengan pesan `Ringkasan dengan grafik per kategori`.\n\n## Catatan Recharts\n\n- `ResponsiveContainer` mengikuti lebar induknya. Tingginya dihitung dari jumlah kategori, supaya 24 label tidak berdesakan.\n- `layout=\"vertical\"` membuat batang mendatar. Nama kategori yang panjang lebih mudah dibaca di sumbu kiri daripada miring di bawah.\n- Urutkan data dari terbesar ke terkecil. Grafik batang yang tidak diurutkan memaksa pembaca membandingkan sendiri.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-api-ringkasan",
+          "kind": "kode",
+          "name": "api-ringkasan.ts",
+          "lang": "typescript",
+          "content": "// Tambahkan di bawah isi src/api.ts\n\nexport async function getSummary(signal?: AbortSignal) {\n  // limit=0 berarti \"ambil semua\"; select membuat responsnya tetap kecil\n  const [products, users, carts] = await Promise.all([\n    getJson<{ products: { category: string }[]; total: number }>(\"/products?limit=0&select=category\", signal),\n    getJson<{ total: number }>(\"/users?limit=1&select=id\", signal),\n    getJson<{ carts: { total: number }[]; total: number }>(\"/carts?limit=0&select=total\", signal),\n  ]);\n\n  const counts = new Map<string, number>();\n  for (const p of products.products) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);\n\n  return {\n    products: products.total,\n    users: users.total,\n    carts: carts.total,\n    revenue: carts.carts.reduce((sum, c) => sum + c.total, 0),\n    categories: [...counts]\n      .map(([name, count]) => ({ name, count }))\n      .sort((a, b) => b.count - a.count),\n  };\n}\n"
+        },
+        {
+          "id": "m-dasbor-ringkasan",
+          "kind": "kode",
+          "name": "src/pages/Ringkasan.tsx",
+          "lang": "tsx",
+          "content": "import { useQuery } from \"@tanstack/react-query\";\nimport { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from \"recharts\";\nimport { getSummary, usd } from \"../api\";\nimport { ErrorBox, Loading } from \"../components/Status\";\n\nexport function Ringkasan() {\n  const { data, isPending, isError, error, refetch } = useQuery({\n    queryKey: [\"summary\"],\n    queryFn: ({ signal }) => getSummary(signal),\n  });\n\n  if (isPending) return <Loading />;\n  if (isError) return <ErrorBox error={error} onRetry={() => refetch()} />;\n\n  const stats = [\n    [\"Produk\", data.products.toLocaleString(\"id-ID\")],\n    [\"Pengguna\", data.users.toLocaleString(\"id-ID\")],\n    [\"Keranjang\", data.carts.toLocaleString(\"id-ID\")],\n    [\"Nilai keranjang\", usd.format(data.revenue)],\n  ];\n\n  return (\n    <section>\n      <h1>Ringkasan</h1>\n      <div className=\"cards\">\n        {stats.map(([label, value]) => (\n          <div className=\"card\" key={label}>\n            <span>{label}</span>\n            <strong>{value}</strong>\n          </div>\n        ))}\n      </div>\n\n      <div className=\"card\">\n        <h2>Jumlah produk per kategori</h2>\n        <ResponsiveContainer width=\"100%\" height={data.categories.length * 26 + 40}>\n          <BarChart data={data.categories} layout=\"vertical\" margin={{ left: 8, right: 16 }}>\n            <XAxis type=\"number\" allowDecimals={false} />\n            <YAxis type=\"category\" dataKey=\"name\" width={150} tick={{ fontSize: 12 }} />\n            <Tooltip />\n            <Bar dataKey=\"count\" name=\"Produk\" fill=\"#4a7c59\" />\n          </BarChart>\n        </ResponsiveContainer>\n      </div>\n    </section>\n  );\n}\n"
+        },
+        {
+          "id": "m-dasbor-router-final",
+          "kind": "kode",
+          "name": "src/router.tsx",
+          "lang": "tsx",
+          "content": "import { createBrowserRouter, Link } from \"react-router\";\nimport { Layout } from \"./Layout\";\nimport { Ringkasan } from \"./pages/Ringkasan\";\nimport { Produk } from \"./pages/Produk\";\nimport { ProdukDetail } from \"./pages/ProdukDetail\";\nimport { Pengguna } from \"./pages/Pengguna\";\n\nfunction TidakDitemukan() {\n  return (\n    <section>\n      <h1>Halaman tidak ditemukan</h1>\n      <Link to=\"/\">Kembali ke ringkasan</Link>\n    </section>\n  );\n}\n\nexport const router = createBrowserRouter([\n  {\n    path: \"/\",\n    element: <Layout />,\n    children: [\n      { index: true, element: <Ringkasan /> },\n      { path: \"produk\", element: <Produk /> },\n      { path: \"produk/:id\", element: <ProdukDetail /> },\n      { path: \"pengguna\", element: <Pengguna /> },\n      { path: \"*\", element: <TidakDitemukan /> },\n    ],\n  },\n]);\n"
+        },
+        {
+          "id": "m-dasbor-recharts",
+          "kind": "tautan",
+          "name": "Recharts: referensi API",
+          "url": "https://recharts.github.io/en-US/api/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-grafik-kartu",
+          "text": "Empat kartu angka tampil dengan nilai dari API."
+        },
+        {
+          "id": "dasbor-grafik-batang",
+          "text": "Grafik batang per kategori tampil, terurut, dan punya tooltip."
+        },
+        {
+          "id": "dasbor-grafik-404",
+          "text": "Alamat yang tidak dikenal menampilkan halaman 404 di dalam layout."
+        },
+        {
+          "id": "dasbor-grafik-commit",
+          "text": "Perubahanku sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-komponen-vitest",
+      "title": "Tes komponen dengan Vitest",
+      "est_minutes": 120,
+      "body": "## Uji yang dilihat pengguna, bukan isi komponen\n\nTesting Library mendorongmu mencari elemen seperti pengguna mencarinya: lewat peran (`button`, `searchbox`, `alert`) dan teks yang terlihat. Tes seperti ini tidak rusak saat kamu mengganti nama state atau memecah komponen, dan sekaligus memeriksa aksesibilitas dasar. Kalau tombol tidak bisa ditemukan dengan `getByRole(\"button\")`, pembaca layar juga kesulitan.\n\n## Yang diuji\n\n- **`Pagination`**: komponen murni, cukup diberi props.\n- **`Produk`**: dirender di dalam `createMemoryRouter` dan `QueryClient` baru, dengan `fetch` palsu. Tiga tes: filter dari URL diteruskan ke API, klik kolom menulis urutan ke URL, dan pesan error tampil.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/test/setup.ts`, `src/components/Pagination.test.tsx`, dan `src/pages/Produk.test.tsx` dari Bahan.\n2. Jalankan `npm test`. Vitest berjalan dalam mode pantau; tekan `q` untuk keluar. Semua tes harus lulus.\n3. **Buktikan tesnya berguna.** Di `productsPath`, ubah sementara `(page - 1) * PAGE_SIZE` menjadi `page * PAGE_SIZE`. Jalankan tes, pastikan gagal, lalu kembalikan.\n4. Tulis satu tes sendiri. Usul: halaman produk dengan respons `products: []` menampilkan \"Tidak ada produk yang cocok\".\n5. Jalankan `npm run build` sekali lagi. File tes ikut diperiksa TypeScript.\n6. Commit dengan pesan `Tes komponen tabel dan paginasi`.\n\n## Kenapa begini\n\n- **`QueryClient` baru di tiap tes dengan `retry: false`.** Cache tidak bocor antar tes, dan tes error tidak menunggu percobaan ulang.\n- **`Response.json(...)` dibuat di dalam fungsi.** Body sebuah `Response` hanya bisa dibaca sekali. Kalau satu objek dipakai ulang, request kedua gagal dengan pesan yang membingungkan.\n- **`vi.stubGlobal` dan `vi.unstubAllGlobals`.** `fetch` palsu hanya berlaku di tes itu, jadi tes tidak pernah memanggil internet dan hasilnya selalu sama.\n- **`findBy...` untuk hal yang muncul setelah data datang**, `getBy...` untuk yang sudah ada sejak awal.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-setup-test",
+          "kind": "kode",
+          "name": "src/test/setup.ts",
+          "lang": "typescript",
+          "content": "import \"@testing-library/jest-dom/vitest\";\nimport { afterEach } from \"vitest\";\nimport { cleanup } from \"@testing-library/react\";\n\nafterEach(() => cleanup());\n"
+        },
+        {
+          "id": "m-dasbor-test-pagination",
+          "kind": "kode",
+          "name": "src/components/Pagination.test.tsx",
+          "lang": "tsx",
+          "content": "import { render, screen } from \"@testing-library/react\";\nimport userEvent from \"@testing-library/user-event\";\nimport { expect, test, vi } from \"vitest\";\nimport { Pagination } from \"./Pagination\";\n\ntest(\"tombol Sebelumnya mati di halaman pertama\", async () => {\n  const onChange = vi.fn();\n  render(<Pagination page={1} total={25} pageSize={10} onChange={onChange} />);\n\n  expect(screen.getByText(\"Halaman 1 dari 3\")).toBeInTheDocument();\n  expect(screen.getByRole(\"button\", { name: \"Sebelumnya\" })).toBeDisabled();\n\n  await userEvent.click(screen.getByRole(\"button\", { name: \"Berikutnya\" }));\n  expect(onChange).toHaveBeenCalledWith(2);\n});\n\ntest(\"tombol Berikutnya mati di halaman terakhir\", () => {\n  render(<Pagination page={3} total={25} pageSize={10} onChange={() => {}} />);\n  expect(screen.getByRole(\"button\", { name: \"Berikutnya\" })).toBeDisabled();\n});\n"
+        },
+        {
+          "id": "m-dasbor-test-produk",
+          "kind": "kode",
+          "name": "src/pages/Produk.test.tsx",
+          "lang": "tsx",
+          "content": "import { render, screen, waitFor } from \"@testing-library/react\";\nimport userEvent from \"@testing-library/user-event\";\nimport { QueryClient, QueryClientProvider } from \"@tanstack/react-query\";\nimport { createMemoryRouter, RouterProvider } from \"react-router\";\nimport { afterEach, expect, test, vi } from \"vitest\";\nimport { Produk } from \"./Produk\";\n\nconst page = {\n  products: [{ id: 1, title: \"Kopi Susu\", category: \"groceries\", price: 2.5, stock: 10, rating: 4.5 }],\n  total: 25,\n  skip: 0,\n  limit: 10,\n};\n\nfunction renderAt(url: string) {\n  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });\n  const router = createMemoryRouter(\n    [\n      { path: \"/produk\", element: <Produk /> },\n      { path: \"/produk/:id\", element: <p>detail</p> },\n    ],\n    { initialEntries: [url] },\n  );\n  render(\n    <QueryClientProvider client={client}>\n      <RouterProvider router={router} />\n    </QueryClientProvider>,\n  );\n  return router;\n}\n\nafterEach(() => vi.unstubAllGlobals());\n\ntest(\"filter di URL diteruskan ke API\", async () => {\n  // Response dibuat baru di tiap panggilan, karena body hanya bisa dibaca sekali\n  const fetchMock = vi.fn(async (_url: string) => Response.json(page));\n  vi.stubGlobal(\"fetch\", fetchMock);\n\n  renderAt(\"/produk?q=kopi&sort=price&order=desc&page=2\");\n\n  expect(await screen.findByText(\"Kopi Susu\")).toBeInTheDocument();\n  expect(screen.getByRole(\"searchbox\")).toHaveValue(\"kopi\");\n\n  const url = new URL(fetchMock.mock.calls[0][0]);\n  expect(url.pathname).toBe(\"/products/search\");\n  expect(url.searchParams.get(\"q\")).toBe(\"kopi\");\n  expect(url.searchParams.get(\"skip\")).toBe(\"10\");\n  expect(url.searchParams.get(\"sortBy\")).toBe(\"price\");\n  expect(url.searchParams.get(\"order\")).toBe(\"desc\");\n});\n\ntest(\"klik judul kolom menulis urutan ke URL\", async () => {\n  vi.stubGlobal(\"fetch\", vi.fn(async (_url: string) => Response.json(page)));\n  const router = renderAt(\"/produk\");\n\n  await userEvent.click(await screen.findByRole(\"button\", { name: \"Harga\" }));\n  await waitFor(() => expect(router.state.location.search).toBe(\"?sort=price&order=asc\"));\n\n  await userEvent.click(await screen.findByRole(\"button\", { name: /Harga/ }));\n  await waitFor(() => expect(router.state.location.search).toBe(\"?sort=price&order=desc\"));\n});\n\ntest(\"pesan error dari server ditampilkan\", async () => {\n  vi.stubGlobal(\n    \"fetch\",\n    vi.fn(async (_url: string) => Response.json({ message: \"Server sedang sibuk\" }, { status: 500 })),\n  );\n  renderAt(\"/produk\");\n\n  expect(await screen.findByRole(\"alert\")).toHaveTextContent(\"Server sedang sibuk\");\n});\n"
+        },
+        {
+          "id": "m-dasbor-vitest",
+          "kind": "tautan",
+          "name": "Vitest: panduan memulai",
+          "url": "https://vitest.dev/guide/"
+        },
+        {
+          "id": "m-dasbor-rtl-queries",
+          "kind": "tautan",
+          "name": "Testing Library: urutan prioritas query",
+          "url": "https://testing-library.com/docs/queries/about/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-tes-lulus",
+          "text": "Semua tes lulus saat aku menjalankan npm test."
+        },
+        {
+          "id": "dasbor-tes-rusak",
+          "text": "Aku sengaja merusak perhitungan skip dan melihat tesnya gagal."
+        },
+        {
+          "id": "dasbor-tes-sendiri",
+          "text": "Aku menulis minimal satu tes tambahan sendiri."
+        },
+        {
+          "id": "dasbor-tes-commit",
+          "text": "Perubahanku sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-manual-dan-aksesibilitas",
+      "title": "Uji manual: jaringan lambat, HP, dan keyboard",
+      "est_minutes": 45,
+      "body": "## Hal yang tidak tertangkap tes otomatis\n\nTes komponen memeriksa logika. Yang belum terperiksa: bagaimana rasanya memakai dasbor di jaringan lambat, di layar HP, atau tanpa mouse.\n\n## Daftar uji\n\n1. **Jaringan lambat.** DevTools, tab **Network**, pilih *Slow 4G*. Pindah halaman tabel. Tabel lama harus tetap tampil dengan tulisan \"Memperbarui...\", bukan berkedip kosong.\n2. **Offline.** Pilih *Offline*, lalu buka produk yang belum pernah dibuka. Pesan error dan tombol **Coba lagi** harus muncul. Kembalikan ke *No throttling*, klik **Coba lagi**, dan data tampil.\n3. **Layar HP.** Aktifkan mode perangkat (ikon HP di DevTools), pilih lebar sekitar 375px. Tabel bisa digulir ke samping, halaman tidak ikut melebar, dan menu tetap bisa ditekan.\n4. **Keyboard saja.** Tekan `Tab` dari atas halaman produk. Kamu harus bisa mencapai menu, kolom pencarian, judul kolom, tautan produk, dan tombol halaman, dengan penanda fokus yang terlihat. Tekan `Enter` pada judul kolom untuk mengurutkan.\n5. **URL aneh.** Coba `/produk?page=abc`, `/produk?page=999`, dan `/produk?order=ngawur`. Aplikasi tidak boleh crash. Halaman 999 cukup menampilkan \"Tidak ada produk yang cocok\".\n6. **Lighthouse.** Jalankan audit Lighthouse kategori *Accessibility* di halaman produk. Catat skornya dan perbaiki temuan yang mudah, misalnya kontras warna.\n\nCatat temuanmu. Bug yang kamu temukan dan perbaiki sendiri adalah bahan cerita yang bagus untuk README dan wawancara.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-aria-sort",
+          "kind": "tautan",
+          "name": "MDN: atribut aria-sort",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-sort"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-manual-lambat",
+          "text": "Di jaringan lambat, tabel lama tetap tampil saat pindah halaman."
+        },
+        {
+          "id": "dasbor-manual-offline",
+          "text": "Saat offline muncul pesan error, dan Coba lagi berhasil setelah online."
+        },
+        {
+          "id": "dasbor-manual-hp",
+          "text": "Di lebar 375px tabel bisa digulir dan halaman tidak melebar."
+        },
+        {
+          "id": "dasbor-manual-keyboard",
+          "text": "Semua kontrol bisa dipakai dengan keyboard saja."
+        },
+        {
+          "id": "dasbor-manual-url",
+          "text": "URL dengan parameter aneh tidak membuat aplikasi crash."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-spa-vercel",
+      "title": "Online-kan di Vercel atau Netlify",
+      "est_minutes": 45,
+      "body": "## Masalah khas SPA: 404 saat dimuat ulang\n\nHasil `npm run build` hanyalah folder `dist` berisi satu `index.html` dan berkas JavaScript. Saat seseorang membuka `https://situsmu.app/produk/5` langsung, server mencari berkas `produk/5` yang tidak ada, lalu menjawab 404. Solusinya **SPA fallback**: semua alamat yang bukan berkas diarahkan ke `index.html`, lalu React Router yang menentukan halamannya.\n\n## Pilihan A: Vercel\n\n1. Buat `vercel.json` di akar proyek dari Bahan.\n2. Push ke GitHub.\n3. Di Vercel, pilih **Add New > Project**, impor repositori. Vercel mengenali Vite: Build Command `npm run build`, Output Directory `dist`.\n4. Klik **Deploy** dan tunggu sampai selesai.\n\n## Pilihan B: Netlify\n\n1. Buat `public/_redirects` dari Bahan. Vite menyalin isi folder `public` ke `dist` apa adanya.\n2. Push ke GitHub, lalu di Netlify pilih **Add new site > Import an existing project**.\n3. Build command `npm run build`, publish directory `dist`.\n\nPilih salah satu saja. Tampilan dashboard bisa berubah; kalau ada yang berbeda, ikuti dokumentasi resmi di Bahan.\n\n## Uji setelah online\n\n1. Buka alamat produksi, lalu langsung buka `/produk/5` di tab baru. Halaman detail harus tampil, bukan 404 dari server.\n2. Buka `/produk?q=phone&page=2`, lalu muat ulang. Filter tetap ada.\n3. Buka dari HP-mu sendiri lewat data seluler.\n4. Setiap push ke `main` sekarang otomatis men-deploy ulang. Coba ubah satu teks kecil dan lihat hasilnya muncul.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-vercel",
+          "kind": "kode",
+          "name": "vercel.json",
+          "lang": "json",
+          "content": "{\n  \"rewrites\": [{ \"source\": \"/(.*)\", \"destination\": \"/index.html\" }]\n}\n"
+        },
+        {
+          "id": "m-dasbor-netlify",
+          "kind": "kode",
+          "name": "public/_redirects",
+          "lang": "text",
+          "content": "/*    /index.html   200\n"
+        },
+        {
+          "id": "m-dasbor-vercel-vite",
+          "kind": "tautan",
+          "name": "Vercel: deploy proyek Vite",
+          "url": "https://vercel.com/docs/frameworks/frontend/vite"
+        },
+        {
+          "id": "m-dasbor-netlify-spa",
+          "kind": "tautan",
+          "name": "Netlify: redirect dan rewrite untuk SPA",
+          "url": "https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-dep-live",
+          "text": "Dasbor sudah bisa dibuka di alamat publik."
+        },
+        {
+          "id": "dasbor-dep-fallback",
+          "text": "Membuka /produk/5 langsung di tab baru tidak menghasilkan 404."
+        },
+        {
+          "id": "dasbor-dep-filter",
+          "text": "Filter di URL tetap ada setelah halaman produksi dimuat ulang."
+        },
+        {
+          "id": "dasbor-dep-auto",
+          "text": "Push ke main memicu deploy ulang otomatis."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "README dan kirim tautan",
+      "est_minutes": 45,
+      "body": "## README adalah halaman depan proyekmu\n\nPerekrut biasanya membuka repositori sebelum membuka demo. Dalam satu menit mereka harus tahu: apa ini, bisa dicoba di mana, dibangun dengan apa, dan keputusan apa yang kamu ambil.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `README.md` dari Bahan dan ganti bagian yang perlu: alamat demo, fitur yang benar-benar ada, dan tantangan opsional yang kamu kerjakan.\n2. Ambil tangkapan layar halaman produk (layar lebar) dan halaman ringkasan (layar HP). Simpan di folder `docs/`.\n3. Di bagian **Keputusan desain**, tulis dengan kata-katamu sendiri kenapa filter disimpan di URL dan kenapa paginasi di server. Bagian ini yang paling sering dibahas di wawancara.\n4. Tambahkan satu bug yang kamu temukan saat uji manual dan cara memperbaikinya.\n5. Commit, push, lalu isi deskripsi repositori GitHub dengan satu kalimat dan alamat demo.\n6. Kirim alamat demo dan tautan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Langkah berikutnya\n\nDasbor ini membaca API milik orang lain. Kalau sudah menyelesaikan proyek REST API, coba arahkan dasbor ini ke API buatanmu sendiri. Kamu cukup mengganti `BASE` dan bentuk responsnya di `src/api.ts`, karena semua halaman mengambil data lewat satu berkas itu.\n",
+      "materials": [
+        {
+          "id": "m-dasbor-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Dasbor Admin Toko\n\nDasbor admin satu halaman yang membaca data produk, pengguna, dan keranjang dari [DummyJSON](https://dummyjson.com).\n\n**Demo:** https://ALAMAT-KAMU.vercel.app\n\n![Tangkapan layar halaman produk](docs/produk.png)\n\n## Fitur\n- Ringkasan: jumlah produk, pengguna, keranjang, dan grafik produk per kategori (Recharts)\n- Tabel produk dengan pencarian, urutan per kolom, dan paginasi di sisi server (limit/skip)\n- Filter tersimpan di URL, jadi tautan bisa dibagikan dan tombol Back berfungsi\n- Halaman detail produk dan tabel pengguna\n- Status memuat dan error dengan tombol coba lagi\n- Tampilan menyesuaikan layar HP\n\n## Teknologi\nVite, React 19, TypeScript, React Router, TanStack Query, Recharts, Vitest, Testing Library.\n\n## Menjalankan di komputer sendiri\n```bash\nnpm install\nnpm run dev      # http://localhost:5173\nnpm test         # tes komponen\nnpm run build    # cek tipe + build produksi\n```\n\n## Keputusan desain\n- Paginasi di server, bukan di browser: hanya 10 baris yang diunduh per halaman.\n- State filter di URL, bukan di useState: bisa dibagikan dan bertahan saat dimuat ulang.\n- TanStack Query menyimpan cache per kombinasi filter; kembali ke halaman sebelumnya terasa instan.\n\n## Yang belum ada\n- Login admin\n- Menambah dan mengubah produk (DummyJSON hanya pura-pura menyimpan)\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dasbor-dok-demo",
+          "text": "README memuat alamat demo dan cara menjalankan proyek."
+        },
+        {
+          "id": "dasbor-dok-gambar",
+          "text": "README punya tangkapan layar layar lebar dan layar HP."
+        },
+        {
+          "id": "dasbor-dok-keputusan",
+          "text": "Aku menulis alasan filter di URL dan paginasi di server dengan kata-kataku sendiri."
+        },
+        {
+          "id": "dasbor-dok-kirim",
+          "text": "Aku sudah mengirim alamat demo dan repositori di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}

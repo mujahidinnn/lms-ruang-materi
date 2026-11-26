@@ -1,0 +1,633 @@
+{
+  "slug": "deploy-aplikasi-docker",
+  "title": "Deploy Aplikasi ke Server dengan Docker",
+  "summary": "Bawa aplikasi Express + PostgreSQL ke VPS Ubuntu milikmu sendiri: Dockerfile multi-stage tanpa root, Docker Compose dengan healthcheck dan volume, server yang diamankan, HTTPS otomatis lewat Caddy, rilis otomatis dari GitHub Actions ke GHCR, backup malam dengan pg_dump, dan rollback dengan tag image.",
+  "level": "lanjut",
+  "est_hours": 14,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenapa-harus-server-sendiri",
+      "title": "Kenapa harus server sendiri?",
+      "est_minutes": 15,
+      "body": "## Dari \"jalan di laptopku\" ke \"jalan untuk semua orang\"\n\nPlatform seperti Vercel atau Render menyembunyikan banyak hal: siapa yang menyalakan ulang aplikasi saat crash, di mana database disimpan, bagaimana HTTPS dipasang. Di proyek ini kamu mengurus semuanya sendiri di satu **VPS Ubuntu**. Hasilnya bukan cuma aplikasi yang online, tapi pemahaman yang dicari posisi **DevOps, backend, dan SRE junior**.\n\nAplikasinya sengaja kecil: server Express yang menghitung kunjungan dan menyimpannya di PostgreSQL. Semua orang mulai dari kode yang sama, jadi fokusmu sepenuhnya pada cara mengirimnya ke server.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat ini: **\"Setelah proyek ini, aku bisa menunjukkan bahwa aku mampu ___.\"** Contoh: \"membawa aplikasi dari repositori ke domain HTTPS dengan rilis otomatis dan backup\".\n2. Tulis definisi **selesai** versimu. Saran: domainmu terbuka lewat HTTPS, setiap push ke `main` otomatis tayang, database dibackup tiap malam, dan kamu bisa kembali ke versi lama dalam satu perintah.\n3. Tulis batasan versi pertama: **satu server, tanpa Kubernetes, tanpa load balancer**. Satu server yang dirawat dengan benar sudah cukup untuk banyak aplikasi sungguhan.\n4. Siapkan anggaran: VPS kecil (1 vCPU, 1 sampai 2 GB RAM) dan satu domain atau subdomain. Banyak penyedia memberi kredit gratis untuk akun baru.\n\n> Ukuran keberhasilan: orang lain bisa membaca README-mu lalu memulihkan server dari nol tanpa bertanya padamu.\n",
+      "materials": [
+        {
+          "id": "m-dkr-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief deploy\n\nSetelah proyek ini aku bisa menunjukkan bahwa aku mampu ___.\n\nSelesai berarti:\n- [ ] ___ terbuka lewat https://\n- [ ] push ke main otomatis tayang\n- [ ] backup database tiap malam\n- [ ] rollback dalam satu perintah\n\nTidak dikerjakan di versi pertama: ___\nAnggaran: VPS ___ per bulan, domain ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-brief-kalimat",
+          "text": "Aku sudah menulis kalimat \"Setelah proyek ini, aku bisa menunjukkan bahwa aku mampu ...\"."
+        },
+        {
+          "id": "dkr-brief-selesai",
+          "text": "Aku punya definisi selesai yang bisa diperiksa satu per satu."
+        },
+        {
+          "id": "dkr-brief-batas",
+          "text": "Aku menulis batasan versi pertama (satu server, tanpa Kubernetes)."
+        },
+        {
+          "id": "dkr-brief-anggaran",
+          "text": "Aku tahu VPS dan domain mana yang akan kupakai, beserta biayanya."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-jalur-rilis",
+      "title": "Petakan jalur rilis dan titik rawannya",
+      "est_minutes": 30,
+      "body": "## Ikuti perjalanan satu baris kode\n\nSebelum menulis konfigurasi apa pun, gambarkan perjalanan sebuah perubahan dari laptopmu sampai ke browser pengunjung. Setiap panah di gambar itu adalah tempat sesuatu bisa rusak.\n\n```text\nlaptop --git push--> GitHub --Actions--> build image --push--> GHCR\n                                                          |\npengunjung --HTTPS--> Caddy (server) --> app --> PostgreSQL (volume)\n                                  ^                  |\n                       deploy.sh tarik image     backup malam\n```\n\n## Yang perlu kamu kerjakan\n\n1. Salin diagram di atas ke catatanmu, lalu tulis di samping setiap panah: **apa yang terjadi kalau langkah ini gagal?** Contoh: \"build gagal: tidak ada yang berubah di server, aman\".\n2. Daftar semua **rahasia** yang dibutuhkan: password database, kunci SSH untuk deploy, token untuk menarik image. Tulis di mana masing-masing disimpan. Aturannya: rahasia tidak pernah masuk Git.\n3. Daftar semua yang **harus bertahan** saat container dibuang dan dibuat ulang: isi database dan sertifikat HTTPS. Keduanya akan disimpan di *named volume*.\n4. Tulis tiga skenario buruk dan rencanamu untuk masing-masing: versi baru error setelah rilis, disk server rusak, password server bocor.\n\nDaftar ini akan menjadi bagian \"Pemulihan\" di README-mu nanti.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "dkr-ide-diagram",
+          "text": "Aku menggambar jalur rilis dan menulis akibat gagal di setiap panah."
+        },
+        {
+          "id": "dkr-ide-rahasia",
+          "text": "Aku punya daftar rahasia beserta tempat penyimpanannya, dan tidak ada yang di Git."
+        },
+        {
+          "id": "dkr-ide-bertahan",
+          "text": "Aku tahu data apa saja yang harus bertahan saat container dibuat ulang."
+        },
+        {
+          "id": "dkr-ide-skenario",
+          "text": "Aku menulis tiga skenario buruk beserta rencana pemulihannya."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-server-dan-alat",
+      "title": "Pilih server dan alat",
+      "est_minutes": 30,
+      "body": "## Alat yang dipakai dan alasannya\n\n| Kebutuhan | Pilihan | Kenapa |\n| --- | --- | --- |\n| Server | VPS dengan **Ubuntu LTS** (24.04 atau 26.04) | Dukungan keamanan lima tahun, dokumentasi melimpah |\n| Kemasan aplikasi | **Docker** + **Docker Compose** | Lingkungan di laptop, CI, dan server sama persis |\n| Database | **PostgreSQL** di container, data di named volume | Satu perintah untuk naik, mudah dibackup dengan `pg_dump` |\n| Reverse proxy | **Caddy** | HTTPS otomatis dari Let's Encrypt tanpa skrip tambahan |\n| Registry image | **GitHub Container Registry (GHCR)** | Gratis, terhubung langsung ke repositori dan Actions |\n| Otomasi rilis | **GitHub Actions** | Build, push, lalu deploy lewat SSH setiap push ke `main` |\n\n## Yang perlu kamu siapkan\n\n1. Docker Desktop (Windows/macOS) atau Docker Engine (Linux) di laptopmu. Cek dengan `docker version` dan `docker compose version`.\n2. Akun GitHub dan repositori baru, misalnya `pengunjung`.\n3. Sebuah VPS Ubuntu LTS dengan alamat IP publik. Simpan IP dan password root yang dikirim penyedia.\n4. Domain atau subdomain yang DNS-nya bisa kamu atur.\n5. Pasangan kunci SSH di laptop. Kalau belum ada: `ssh-keygen -t ed25519 -C \"laptop\"`.\n\n## Latihan menjelaskan\n\nTulis dua alasan kenapa kamu memakai Caddy, bukan Nginx + Certbot. Jawaban jujur seperti \"konfigurasinya tiga baris dan sertifikat diperpanjang sendiri\" sudah bagus.\n",
+      "materials": [
+        {
+          "id": "m-dkr-docker-docs",
+          "kind": "tautan",
+          "name": "Dokumentasi resmi Docker",
+          "url": "https://docs.docker.com/"
+        },
+        {
+          "id": "m-dkr-caddy-docs",
+          "kind": "tautan",
+          "name": "Dokumentasi resmi Caddy",
+          "url": "https://caddyserver.com/docs/"
+        },
+        {
+          "id": "m-dkr-ghcr-docs",
+          "kind": "tautan",
+          "name": "GitHub Container Registry",
+          "url": "https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-tek-docker",
+          "text": "docker version dan docker compose version berjalan di laptopku."
+        },
+        {
+          "id": "dkr-tek-vps",
+          "text": "Aku punya VPS Ubuntu LTS dengan IP publik."
+        },
+        {
+          "id": "dkr-tek-domain",
+          "text": "Aku punya domain atau subdomain yang DNS-nya bisa kuatur."
+        },
+        {
+          "id": "dkr-tek-ssh",
+          "text": "Kunci SSH ed25519 sudah ada di laptopku."
+        },
+        {
+          "id": "dkr-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memilih Caddy."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-arsitektur-server",
+      "title": "Rancang arsitektur server",
+      "est_minutes": 45,
+      "body": "## Satu server, tiga container, dua pintu\n\nSemua berjalan di satu VPS, dikelola satu berkas `compose.yaml`. Yang terbuka ke internet hanya **SSH (22)**, **HTTP (80)**, dan **HTTPS (443)**.\n\n```text\nInternet\n  |  22 (SSH, hanya kunci)        80/443\n  v                                 v\n[ufw] ----------------------> [caddy]  --jaringan internal-->  [app:3000] --> [db:5432]\n                               volume: caddy_data                      volume: pgdata\n```\n\n## Keputusan desain yang perlu kamu pahami\n\n- **App dan database tidak dibuka ke internet.** Port 3000 hanya dipasang ke `127.0.0.1` supaya bisa kamu `curl` dari server sendiri. Port database tidak dipasang sama sekali.\n- **Konfigurasi lewat `.env`.** Berkas yang sama dipakai di laptop dan server, hanya isi `.env` yang berbeda: nama image, tag, password, domain.\n- **Image diberi tag `sha-<7 huruf commit>`.** Setiap rilis punya nama unik dan bisa dipanggil lagi kapan saja. Tag `latest` hanya penunjuk, **tidak** dipakai untuk deploy, karena kamu tidak bisa rollback ke \"latest yang kemarin\".\n- **Restart otomatis** (`restart: unless-stopped`) dan **healthcheck** untuk app dan database, supaya Docker tahu kapan container benar-benar siap.\n- **Log dibatasi** 3 berkas x 10 MB per container agar disk tidak penuh diam-diam.\n\n## Yang perlu kamu kerjakan\n\n1. Gambar ulang diagram di atas dan tulis port, volume, dan variabel `.env` di dalamnya.\n2. Isi tabel rancangan di bagian Bahan.\n3. Tentukan struktur folder di server. Saran: semua berkas ada di `/home/deploy/app`.\n",
+      "materials": [
+        {
+          "id": "m-dkr-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan server\n\n| Komponen | Image | Port ke luar | Volume |\n| --- | --- | --- | --- |\n| caddy | caddy:2-alpine | 80, 443 | caddy_data, caddy_config |\n| app | ghcr.io/USERNAME/pengunjung:sha-xxxxxxx | 127.0.0.1:3000 saja | - |\n| db | postgres:18-alpine | tidak ada | pgdata |\n\nVariabel .env: APP_IMAGE, APP_TAG, POSTGRES_PASSWORD, DOMAIN\nFolder di server: /home/deploy/app\nBackup: /home/deploy/app/backups, tiap malam 02.15, simpan 7 hari\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-ran-diagram",
+          "text": "Aku menggambar arsitektur dengan port, volume, dan variabel .env."
+        },
+        {
+          "id": "dkr-ran-port",
+          "text": "Aku bisa menjelaskan kenapa port app dan database tidak dibuka ke internet."
+        },
+        {
+          "id": "dkr-ran-tag",
+          "text": "Aku paham kenapa deploy memakai tag sha-..., bukan latest."
+        },
+        {
+          "id": "dkr-ran-folder",
+          "text": "Aku sudah menentukan folder aplikasi di server."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-aplikasi-express",
+      "title": "Siapkan aplikasi Express bahan",
+      "est_minutes": 45,
+      "body": "## Titik awal yang sama untuk semua\n\nAplikasi ini sengaja kecil: halaman `/` mencatat satu kunjungan ke PostgreSQL lalu menampilkan jumlahnya, dan `/health` memeriksa koneksi database. Dua hal kecil di dalamnya penting untuk deploy:\n\n- **`/health`** menjawab 503 kalau database tidak terjangkau. Healthcheck Docker dan skrip deploy akan memakainya.\n- **Menangani `SIGTERM`.** Saat Docker menghentikan container, ia mengirim `SIGTERM`. Aplikasi menyelesaikan request yang sedang berjalan, menutup koneksi database, lalu keluar dengan rapi.\n\n## Yang perlu kamu kerjakan\n\n1. Buat folder `pengunjung`, lalu buat `package.json`, `src/server.js`, `.gitignore`, dan `.env.example` dari bagian Bahan.\n2. Jalankan `npm install`. Perintah ini membuat `package-lock.json`, yang **wajib** ikut di-commit karena Dockerfile memakai `npm ci`.\n3. Salin `.env.example` menjadi `.env`, lalu isi `POSTGRES_PASSWORD` dengan hasil `openssl rand -hex 24`. Password heksadesimal aman dipakai di dalam URL koneksi.\n4. Buat repositori di GitHub, lalu commit dan push dengan pesan `Aplikasi pengunjung awal`.\n\nBelum perlu menjalankan aplikasinya. Di langkah berikutnya aplikasi dan database dijalankan bersama lewat Docker, jadi kamu tidak perlu memasang PostgreSQL di laptop.\n\n## Kenapa `CREATE TABLE IF NOT EXISTS` saat start?\n\nUntuk satu tabel, ini cara paling sederhana. Kalau skemamu bertambah, pindahlah ke alat migrasi. Jangan buat itu sekarang.\n",
+      "materials": [
+        {
+          "id": "m-dkr-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"pengunjung\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"start\": \"node src/server.js\"\n  },\n  \"engines\": {\n    \"node\": \">=22\"\n  },\n  \"dependencies\": {\n    \"express\": \"^5.1.0\",\n    \"pg\": \"^8.16.0\"\n  }\n}\n"
+        },
+        {
+          "id": "m-dkr-server",
+          "kind": "kode",
+          "name": "src/server.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport pg from \"pg\";\n\nconst pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });\nconst version = process.env.APP_VERSION ?? \"dev\";\nconst app = express();\n\nawait pool.query(\n  \"CREATE TABLE IF NOT EXISTS kunjungan (id serial PRIMARY KEY, waktu timestamptz NOT NULL DEFAULT now())\"\n);\n\napp.get(\"/\", async (req, res) => {\n  await pool.query(\"INSERT INTO kunjungan DEFAULT VALUES\");\n  const { rows } = await pool.query(\"SELECT count(*)::int AS n FROM kunjungan\");\n  res.type(\"text\").send(`Halo dari server! Versi ${version}. Halaman ini sudah dibuka ${rows[0].n} kali.\\n`);\n});\n\napp.get(\"/health\", async (req, res) => {\n  try {\n    await pool.query(\"SELECT 1\");\n    res.json({ status: \"ok\", version });\n  } catch {\n    res.status(503).json({ status: \"db-tidak-terjangkau\", version });\n  }\n});\n\nconst port = Number(process.env.PORT ?? 3000);\nconst server = app.listen(port, () => console.log(`Server jalan di port ${port}, versi ${version}`));\n\nfor (const signal of [\"SIGTERM\", \"SIGINT\"]) {\n  process.on(signal, () => {\n    console.log(`${signal} diterima, menutup server dengan rapi...`);\n    server.close(() => pool.end().then(() => process.exit(0)));\n  });\n}\n"
+        },
+        {
+          "id": "m-dkr-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules\n.env\nbackups\n"
+        },
+        {
+          "id": "m-dkr-env-example",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "# Salin menjadi .env lalu isi. Jangan pernah commit .env.\nAPP_IMAGE=pengunjung\nAPP_TAG=dev\n# Buat dengan: openssl rand -hex 24\nPOSTGRES_PASSWORD=ganti-dengan-hasil-openssl\n# Dipakai Caddy di server, misalnya app.namamu.my.id\nDOMAIN=localhost\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-app-berkas",
+          "text": "package.json, src/server.js, .gitignore, dan .env.example sudah ada."
+        },
+        {
+          "id": "dkr-app-lock",
+          "text": "package-lock.json sudah terbentuk dan ikut di-commit."
+        },
+        {
+          "id": "dkr-app-env",
+          "text": ".env berisi password acak dan tidak ikut ter-commit."
+        },
+        {
+          "id": "dkr-app-push",
+          "text": "Repositori sudah ada di GitHub dengan commit pertama."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "dockerfile-multi-stage",
+      "title": "Tulis Dockerfile multi-stage",
+      "est_minutes": 90,
+      "body": "## Image kecil, tanpa root, tanpa rahasia\n\nDockerfile ini punya dua tahap. Tahap `deps` memasang dependensi dengan `npm ci --omit=dev`. Tahap akhir hanya menyalin `node_modules` dan kode, jadi cache npm dan berkas sisa instalasi tidak ikut terkirim ke server.\n\nTiga hal yang membuatnya layak produksi:\n\n- **`USER node`.** Proses berjalan sebagai user biasa (uid 1000), bukan root. Kode disalin sebagai milik root, jadi aplikasi bisa membacanya tapi tidak bisa mengubahnya.\n- **`.dockerignore`.** Tanpa berkas ini, `.env` dan `node_modules` dari laptopmu bisa ikut masuk image. Image yang berisi password adalah kebocoran.\n- **`ARG APP_VERSION`.** Nomor versi ditanam saat build, sehingga `/health` memberi tahu versi mana yang sedang berjalan. Ini sangat berguna saat rollback.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `Dockerfile` dan `.dockerignore` dari bagian Bahan.\n2. Build image: `docker build -t pengunjung:dev .`\n3. Periksa ukurannya dengan `docker image ls pengunjung`. Image berbasis Alpine untuk aplikasi ini sekitar 150 sampai 200 MB.\n4. Pastikan prosesnya bukan root: `docker run --rm pengunjung:dev id`. Hasilnya harus `uid=1000(node)`.\n5. Pastikan `.env` tidak ikut: `docker run --rm pengunjung:dev ls -a`. Tidak boleh ada `.env` atau `.git`.\n6. Commit dengan pesan `Tambah Dockerfile`.\n\n## Kenapa urutan COPY penting\n\n`package.json` dan `package-lock.json` disalin **sebelum** kode. Selama dependensi tidak berubah, Docker memakai ulang lapisan `npm ci` dari cache, jadi build ulang setelah mengubah `server.js` hanya butuh beberapa detik.\n",
+      "materials": [
+        {
+          "id": "m-dkr-dockerfile",
+          "kind": "kode",
+          "name": "Dockerfile",
+          "lang": "dockerfile",
+          "content": "# syntax=docker/dockerfile:1\n\n# Tahap 1: pasang dependensi produksi saja\nFROM node:24-alpine AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev\n\n# Tahap 2: image akhir yang kecil, tanpa npm cache dan berkas sisa build\nFROM node:24-alpine\nENV NODE_ENV=production\nWORKDIR /app\nCOPY --from=deps /app/node_modules ./node_modules\nCOPY package.json ./\nCOPY src ./src\n\nARG APP_VERSION=dev\nENV APP_VERSION=$APP_VERSION\n\n# User \"node\" (uid 1000) sudah tersedia di image resmi Node\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"src/server.js\"]\n"
+        },
+        {
+          "id": "m-dkr-dockerignore",
+          "kind": "kode",
+          "name": ".dockerignore",
+          "lang": "text",
+          "content": "node_modules\nnpm-debug.log\n.git\n.github\n.env\n.env.*\nbackups\nDockerfile\ncompose.yaml\nCaddyfile\n*.md\n"
+        },
+        {
+          "id": "m-dkr-multistage",
+          "kind": "tautan",
+          "name": "Docker: multi-stage builds",
+          "url": "https://docs.docker.com/build/building/multi-stage/"
+        },
+        {
+          "id": "m-dkr-dockerfile-ref",
+          "kind": "tautan",
+          "name": "Referensi Dockerfile",
+          "url": "https://docs.docker.com/reference/dockerfile/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-img-build",
+          "text": "docker build berhasil tanpa error."
+        },
+        {
+          "id": "dkr-img-nonroot",
+          "text": "docker run --rm pengunjung:dev id menunjukkan uid=1000(node)."
+        },
+        {
+          "id": "dkr-img-bersih",
+          "text": "Image tidak berisi .env, .git, atau node_modules dari laptopku."
+        },
+        {
+          "id": "dkr-img-cache",
+          "text": "Aku paham kenapa package.json disalin sebelum kode."
+        },
+        {
+          "id": "dkr-img-commit",
+          "text": "Dockerfile dan .dockerignore sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "compose-app-postgres-backup",
+      "title": "Compose: app, PostgreSQL, volume, dan backup",
+      "est_minutes": 90,
+      "body": "## Satu berkas untuk seluruh tumpukan\n\n`compose.yaml` menjalankan app dan database bersama. Perhatikan bagian-bagiannya:\n\n- **`depends_on` dengan `condition: service_healthy`**: app baru dinyalakan setelah `pg_isready` di database berhasil.\n- **Named volume `pgdata`**: data tetap ada walau container database dihapus dan dibuat ulang. Image `postgres:18` menyimpan data di bawah `/var/lib/postgresql`, jadi volume dipasang di sana (bukan `.../data` seperti versi 17 ke bawah).\n- **`${POSTGRES_PASSWORD:?...}`**: Compose menolak jalan kalau variabel belum diisi, jadi tidak ada database yang tidak sengaja berjalan tanpa password.\n- **`logging`**: anchor `&log` dipakai ulang di service lain dengan `*log`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `compose.yaml` dan `backup.sh` dari bagian Bahan, lalu `chmod +x backup.sh`.\n2. Jalankan: `docker compose up -d`, lalu `docker compose ps`. Tunggu sampai kedua service berstatus `healthy`.\n3. Buka http://localhost:3000 beberapa kali. Angka kunjungan harus naik.\n4. Lihat log: `docker compose logs -f app`. Tekan Ctrl+C untuk keluar.\n5. Jalankan `./backup.sh`, lalu periksa isinya: `gunzip -c backups/app-*.sql.gz | head -30`.\n6. Commit `compose.yaml` dan `backup.sh` dengan pesan `Tambah compose dan skrip backup`.\n\n## Cara kerja backup\n\n`pg_dump` dijalankan **di dalam** container database lewat `docker compose exec -T`, hasilnya dikompres di host. Berkas ditulis ke `.tmp` dulu lalu diganti nama, jadi backup yang gagal di tengah jalan tidak akan terlihat seperti backup yang sah. Backup lebih dari 7 hari dihapus otomatis.\n\nMemulihkan dari backup:\n\n```bash\ngunzip -c backups/app-20260101-021500.sql.gz | docker compose exec -T db psql -U app -d app -v ON_ERROR_STOP=1\n```\n",
+      "materials": [
+        {
+          "id": "m-dkr-compose",
+          "kind": "kode",
+          "name": "compose.yaml",
+          "lang": "yaml",
+          "content": "services:\n  app:\n    image: ${APP_IMAGE:?isi APP_IMAGE di .env}:${APP_TAG:?isi APP_TAG di .env}\n    restart: unless-stopped\n    environment:\n      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD}@db:5432/app\n      PORT: \"3000\"\n    ports:\n      # Hanya bisa diakses dari mesin itu sendiri, bukan dari internet\n      - \"127.0.0.1:3000:3000\"\n    depends_on:\n      db:\n        condition: service_healthy\n    healthcheck:\n      test: [\"CMD\", \"node\", \"-e\", \"fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"]\n      interval: 15s\n      timeout: 5s\n      retries: 3\n      start_period: 10s\n    logging: &log\n      driver: json-file\n      options:\n        max-size: \"10m\"\n        max-file: \"3\"\n\n  db:\n    image: postgres:18-alpine\n    restart: unless-stopped\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di .env}\n      POSTGRES_DB: app\n    volumes:\n      - pgdata:/var/lib/postgresql\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d app\"]\n      interval: 5s\n      timeout: 3s\n      retries: 10\n    logging: *log\n\nvolumes:\n  pgdata:\n"
+        },
+        {
+          "id": "m-dkr-backup",
+          "kind": "kode",
+          "name": "backup.sh",
+          "lang": "bash",
+          "content": "#!/usr/bin/env bash\n# Backup database ke backups/, simpan 7 hari terakhir.\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\nmkdir -p backups\nfile=\"backups/app-$(date +%Y%m%d-%H%M%S).sql.gz\"\ndocker compose exec -T db pg_dump -U app -d app --clean --if-exists | gzip > \"$file.tmp\"\nmv \"$file.tmp\" \"$file\"\nfind backups -name 'app-*.sql.gz' -mtime +7 -delete\necho \"Backup tersimpan: $file ($(du -h \"$file\" | cut -f1))\"\n"
+        },
+        {
+          "id": "m-dkr-compose-ref",
+          "kind": "tautan",
+          "name": "Referensi Compose: services (healthcheck, depends_on, restart)",
+          "url": "https://docs.docker.com/reference/compose-file/services/"
+        },
+        {
+          "id": "m-dkr-postgres-image",
+          "kind": "tautan",
+          "name": "Image resmi PostgreSQL di Docker Hub",
+          "url": "https://hub.docker.com/_/postgres"
+        },
+        {
+          "id": "m-dkr-pgdump",
+          "kind": "tautan",
+          "name": "Dokumentasi pg_dump",
+          "url": "https://www.postgresql.org/docs/current/app-pgdump.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-cmp-healthy",
+          "text": "docker compose ps menunjukkan app dan db berstatus healthy."
+        },
+        {
+          "id": "dkr-cmp-hitung",
+          "text": "Angka kunjungan naik setiap halaman dibuka."
+        },
+        {
+          "id": "dkr-cmp-backup",
+          "text": "./backup.sh menghasilkan berkas .sql.gz yang isinya bisa kubaca."
+        },
+        {
+          "id": "dkr-cmp-commit",
+          "text": "compose.yaml dan backup.sh sudah di-commit, .env dan backups/ tidak."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "workflow-dan-skrip-deploy",
+      "title": "Workflow GitHub Actions dan skrip deploy",
+      "est_minutes": 90,
+      "body": "## Rilis otomatis dalam dua bagian\n\n**`deploy.sh`** tinggal di server. Ia menerima satu tag, menulisnya ke `.env`, menarik image, lalu menyalakan ulang app dengan `docker compose up -d --wait`. Opsi `--wait` menunggu sampai healthcheck lolos. Kalau versi baru tidak sehat dalam 90 detik, skrip mengembalikan tag lama dan keluar dengan error, sehingga GitHub Actions ikut menandai rilis gagal. Setiap rilis yang berhasil dicatat di `rilis.log`.\n\n**`.github/workflows/rilis.yml`** berjalan setiap push ke `main`:\n\n1. Job `build` membuat image dengan tag `sha-<7 huruf commit>` dan `latest`, lalu mendorongnya ke `ghcr.io/USERNAME/REPO`. Nama repositori diubah ke huruf kecil karena GHCR menolak huruf besar.\n2. Job `deploy` memasang kunci SSH dari Secrets, lalu menjalankan `app/deploy.sh <tag>` di server.\n\nHal yang perlu kamu perhatikan:\n\n- `GITHUB_TOKEN` sudah cukup untuk push ke GHCR karena ada `permissions: packages: write`. Tidak perlu token pribadi.\n- Rahasia dimasukkan lewat `env:`, bukan ditulis langsung di perintah `run`, supaya isinya tidak pernah ditafsirkan sebagai perintah shell.\n- `concurrency` mencegah dua deploy berjalan bersamaan kalau kamu push dua kali berturut-turut.\n- `SSH_KNOWN_HOSTS` memastikan runner benar-benar terhubung ke servermu, bukan ke server palsu.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `deploy.sh` (lalu `chmod +x deploy.sh`) dan `.github/workflows/rilis.yml` dari bagian Bahan.\n2. Baca `deploy.sh` baris demi baris. Pastikan kamu bisa menjelaskan apa yang terjadi kalau image baru gagal healthcheck.\n3. **Jangan push dulu.** Secrets dan server belum siap, jadi job `deploy` pasti gagal. Commit saja secara lokal dengan pesan `Tambah workflow rilis`.\n",
+      "materials": [
+        {
+          "id": "m-dkr-deploy-sh",
+          "kind": "kode",
+          "name": "deploy.sh",
+          "lang": "bash",
+          "content": "#!/usr/bin/env bash\n# Pakai: ./deploy.sh <tag>   contoh: ./deploy.sh sha-1a2b3c4\n# Rollback = jalankan lagi dengan tag lama (lihat rilis.log).\nset -euo pipefail\ncd \"$(dirname \"$0\")\"\ntag=\"${1:?pakai: ./deploy.sh <tag>}\"\n[[ \"$tag\" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo \"Tag tidak valid: $tag\"; exit 1; }\n\nsebelumnya=\"$(grep '^APP_TAG=' .env | cut -d= -f2)\"\nsed -i \"s/^APP_TAG=.*/APP_TAG=$tag/\" .env\n# Gagal tarik (misalnya tag salah) tetap tertangkap: \"up\" di bawah akan gagal lalu kembali ke tag lama\ndocker compose pull --ignore-pull-failures app\nif ! docker compose up -d --wait --wait-timeout 90 app; then\n  echo \"Versi $tag tidak sehat, kembali ke $sebelumnya\"\n  sed -i \"s/^APP_TAG=.*/APP_TAG=$sebelumnya/\" .env\n  docker compose up -d --wait app\n  exit 1\nfi\necho \"$(date -Is) $sebelumnya -> $tag\" >> rilis.log\ndocker image prune -f\necho \"Rilis $tag selesai\"\n"
+        },
+        {
+          "id": "m-dkr-workflow",
+          "kind": "kode",
+          "name": ".github/workflows/rilis.yml",
+          "lang": "yaml",
+          "content": "name: Rilis\n\non:\n  push:\n    branches: [main]\n  workflow_dispatch:\n\npermissions:\n  contents: read\n  packages: write\n\n# Jangan pernah ada dua deploy yang berjalan bersamaan\nconcurrency:\n  group: rilis-produksi\n  cancel-in-progress: false\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    outputs:\n      tag: ${{ steps.meta.outputs.tag }}\n    steps:\n      - uses: actions/checkout@v5\n\n      - name: Tentukan nama image dan tag\n        id: meta\n        run: |\n          echo \"image=ghcr.io/${GITHUB_REPOSITORY,,}\" >> \"$GITHUB_OUTPUT\"\n          echo \"tag=sha-${GITHUB_SHA::7}\" >> \"$GITHUB_OUTPUT\"\n\n      - uses: docker/login-action@v3\n        with:\n          registry: ghcr.io\n          username: ${{ github.actor }}\n          password: ${{ secrets.GITHUB_TOKEN }}\n\n      - uses: docker/build-push-action@v6\n        with:\n          context: .\n          push: true\n          build-args: APP_VERSION=${{ steps.meta.outputs.tag }}\n          tags: |\n            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}\n            ${{ steps.meta.outputs.image }}:latest\n\n  deploy:\n    needs: build\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - name: Siapkan kunci SSH\n        env:\n          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}\n          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}\n        run: |\n          install -m 700 -d ~/.ssh\n          printf '%s\\n' \"$SSH_PRIVATE_KEY\" > ~/.ssh/id_ed25519\n          chmod 600 ~/.ssh/id_ed25519\n          printf '%s\\n' \"$SSH_KNOWN_HOSTS\" > ~/.ssh/known_hosts\n\n      - name: Jalankan deploy.sh di server\n        env:\n          SSH_TARGET: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}\n          TAG: ${{ needs.build.outputs.tag }}\n        run: |\n          # shellcheck disable=SC2029  # $TAG memang sengaja diisi di sisi runner\n          ssh \"$SSH_TARGET\" app/deploy.sh \"$TAG\"\n"
+        },
+        {
+          "id": "m-dkr-actions-docs",
+          "kind": "tautan",
+          "name": "Dokumentasi GitHub Actions",
+          "url": "https://docs.github.com/en/actions"
+        },
+        {
+          "id": "m-dkr-build-push",
+          "kind": "tautan",
+          "name": "docker/build-push-action",
+          "url": "https://github.com/docker/build-push-action"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-wf-deploysh",
+          "text": "deploy.sh sudah ada dan bisa dieksekusi."
+        },
+        {
+          "id": "dkr-wf-gagal",
+          "text": "Aku bisa menjelaskan apa yang dilakukan deploy.sh kalau versi baru tidak sehat."
+        },
+        {
+          "id": "dkr-wf-yaml",
+          "text": "rilis.yml sudah ada di .github/workflows/."
+        },
+        {
+          "id": "dkr-wf-rahasia",
+          "text": "Aku paham kenapa rahasia dimasukkan lewat env:, bukan langsung di perintah run."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-tumpukan-di-laptop",
+      "title": "Uji tumpukan di laptop sebelum ke server",
+      "est_minutes": 75,
+      "body": "## Rusak dengan sengaja, di tempat yang aman\n\nJauh lebih murah menemukan masalah di laptop daripada di server jam dua pagi. Jalankan setiap uji di bawah dan catat hasilnya.\n\n## Daftar uji\n\n1. **Data bertahan.** Buka http://localhost:3000 dan catat angkanya. Jalankan `docker compose down` (tanpa `-v`), lalu `docker compose up -d`. Angkanya harus melanjutkan, bukan mulai dari 1.\n2. **Restart otomatis.** Kirim sinyal berhenti ke proses aplikasi dari dalam container:\n   `docker compose exec app node -e \"process.kill(1, 'SIGTERM')\"`\n   Di `docker compose logs app` harus terlihat pesan \"menutup server dengan rapi\", lalu aplikasi menyala lagi sendiri.\n3. **Healthcheck jujur.** Jalankan `docker compose stop db`, tunggu sekitar 45 detik, lalu `docker compose ps`. App harus berstatus `unhealthy` dan `curl -i localhost:3000/health` menjawab 503. Nyalakan lagi dengan `docker compose start db`.\n4. **Restore backup.** Jalankan `./backup.sh`, buka halaman beberapa kali lagi, lalu pulihkan backup tadi dengan perintah restore dari langkah Compose. Angkanya harus kembali ke saat backup dibuat.\n5. **Simulasi deploy dan rollback.** Build dua tag: `docker build -t pengunjung:v1 --build-arg APP_VERSION=v1 .` dan sama untuk `v2`. Jalankan `./deploy.sh v1` lalu `./deploy.sh v2`. Skrip akan gagal menarik image `pengunjung` dari registry dan hanya memberi peringatan, itu wajar di laptop karena image-nya sudah ada secara lokal. Cek versi di `/health`, lalu kembali dengan `./deploy.sh v1`.\n6. **Ukur sisa.** `docker system df` menunjukkan berapa ruang yang dipakai image dan volume.\n\n## Catat hasilnya\n\nTulis tabel kecil: nama uji, hasil, dan apa yang kamu perbaiki. Tabel ini masuk README sebagai bukti bahwa sistemmu sudah diuji, bukan sekadar ditulis.\n",
+      "materials": [
+        {
+          "id": "m-dkr-uji-cmd",
+          "kind": "kode",
+          "name": "uji-lokal.sh",
+          "lang": "bash",
+          "content": "# 1. Data bertahan\ncurl -s localhost:3000\ndocker compose down && docker compose up -d --wait\ncurl -s localhost:3000\n\n# 2. Restart otomatis\ndocker compose exec app node -e \"process.kill(1, 'SIGTERM')\"\ndocker compose logs --tail 5 app\n\n# 3. Healthcheck\ndocker compose stop db\nsleep 45; docker compose ps; curl -i localhost:3000/health\ndocker compose start db\n\n# 5. Deploy dan rollback dengan tag\ndocker build -t pengunjung:v1 --build-arg APP_VERSION=v1 .\ndocker build -t pengunjung:v2 --build-arg APP_VERSION=v2 .\n./deploy.sh v1 && ./deploy.sh v2 && curl -s localhost:3000/health\n./deploy.sh v1 && curl -s localhost:3000/health\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-uji-volume",
+          "text": "Angka kunjungan tetap ada setelah docker compose down lalu up."
+        },
+        {
+          "id": "dkr-uji-restart",
+          "text": "Aplikasi menyala lagi sendiri setelah menerima SIGTERM."
+        },
+        {
+          "id": "dkr-uji-health",
+          "text": "Saat database mati, app berstatus unhealthy dan /health menjawab 503."
+        },
+        {
+          "id": "dkr-uji-restore",
+          "text": "Aku berhasil memulihkan database dari berkas backup."
+        },
+        {
+          "id": "dkr-uji-rollback",
+          "text": "Aku berhasil pindah dari v2 kembali ke v1 dengan deploy.sh."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "amankan-vps-ubuntu",
+      "title": "Amankan VPS Ubuntu dan pasang Docker",
+      "est_minutes": 100,
+      "body": "## Server baru adalah target\n\nBeberapa menit setelah VPS menyala, bot sudah mencoba menebak password root lewat SSH. Lakukan langkah ini **sebelum** memasang aplikasi apa pun.\n\n## Langkah-langkah\n\n1. Dari laptop, kirim kunci publikmu ke server: `ssh-copy-id root@IP_SERVER`, lalu masuk dengan `ssh root@IP_SERVER`.\n2. Perbarui sistem: `apt update && apt full-upgrade -y`.\n3. Buat user `deploy` dengan akses sudo dan salin kunci SSH-mu (lihat bagian Bahan).\n4. **Buka terminal baru** dan pastikan `ssh deploy@IP_SERVER` lalu `sudo whoami` berhasil. Jangan tutup sesi root sebelum ini berhasil.\n5. Matikan login root dan login dengan password lewat berkas `/etc/ssh/sshd_config.d/10-keamanan.conf`. Di Ubuntu, berkas dengan awalan nomor kecil dibaca lebih dulu dan menang atas `50-cloud-init.conf` yang sering mengaktifkan password. Periksa dengan `sudo sshd -t`, lalu `sudo systemctl reload ssh`.\n6. Nyalakan firewall `ufw`: izinkan OpenSSH, 80, dan 443 saja.\n7. Pasang Docker Engine dari repositori resmi Docker (bukan paket `docker.io` bawaan Ubuntu), lalu masukkan `deploy` ke grup `docker` dan login ulang.\n\n## Peringatan tentang Docker dan ufw\n\nPort yang dipublikasikan Docker **melewati aturan ufw**. Karena itu app di `compose.yaml` dipasang ke `127.0.0.1:3000` dan database tidak dipublikasikan sama sekali. Jangan pernah menulis `\"5432:5432\"` di server.\n\nIngat juga: anggota grup `docker` praktis setara root. Lindungi kunci SSH user `deploy` seperti kunci root.\n",
+      "materials": [
+        {
+          "id": "m-dkr-user",
+          "kind": "kode",
+          "name": "1-user-deploy.sh",
+          "lang": "bash",
+          "content": "# Jalankan sebagai root di server\nadduser deploy\nusermod -aG sudo deploy\nrsync --archive --chown=deploy:deploy ~/.ssh /home/deploy\n"
+        },
+        {
+          "id": "m-dkr-sshd",
+          "kind": "kode",
+          "name": "/etc/ssh/sshd_config.d/10-keamanan.conf",
+          "lang": "text",
+          "content": "PermitRootLogin no\nPasswordAuthentication no\nKbdInteractiveAuthentication no\n"
+        },
+        {
+          "id": "m-dkr-ufw",
+          "kind": "kode",
+          "name": "2-firewall.sh",
+          "lang": "bash",
+          "content": "sudo sshd -t && sudo systemctl reload ssh\n\nsudo ufw allow OpenSSH\nsudo ufw allow 80/tcp\nsudo ufw allow 443\nsudo ufw enable\nsudo ufw status verbose\n"
+        },
+        {
+          "id": "m-dkr-install-docker",
+          "kind": "kode",
+          "name": "3-pasang-docker.sh",
+          "lang": "bash",
+          "content": "# Sesuai panduan resmi docs.docker.com/engine/install/ubuntu\nsudo apt-get update\nsudo apt-get install -y ca-certificates curl\nsudo install -m 0755 -d /etc/apt/keyrings\nsudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc\nsudo chmod a+r /etc/apt/keyrings/docker.asc\n\nsudo tee /etc/apt/sources.list.d/docker.sources <<EOF\nTypes: deb\nURIs: https://download.docker.com/linux/ubuntu\nSuites: $(. /etc/os-release && echo \"${UBUNTU_CODENAME:-$VERSION_CODENAME}\")\nComponents: stable\nSigned-By: /etc/apt/keyrings/docker.asc\nEOF\n\nsudo apt-get update\nsudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin\nsudo usermod -aG docker deploy\n# Keluar lalu masuk lagi, kemudian cek:\ndocker run --rm hello-world\n"
+        },
+        {
+          "id": "m-dkr-install-docs",
+          "kind": "tautan",
+          "name": "Docker: pasang Docker Engine di Ubuntu",
+          "url": "https://docs.docker.com/engine/install/ubuntu/"
+        },
+        {
+          "id": "m-dkr-ufw-docker",
+          "kind": "tautan",
+          "name": "Docker: packet filtering dan firewall",
+          "url": "https://docs.docker.com/engine/network/packet-filtering-firewalls/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-vps-user",
+          "text": "Aku bisa masuk sebagai deploy dengan kunci SSH dan menjalankan sudo."
+        },
+        {
+          "id": "dkr-vps-root",
+          "text": "ssh root@IP_SERVER ditolak, begitu juga login dengan password."
+        },
+        {
+          "id": "dkr-vps-ufw",
+          "text": "sudo ufw status hanya mengizinkan OpenSSH, 80, dan 443."
+        },
+        {
+          "id": "dkr-vps-docker",
+          "text": "docker run --rm hello-world berhasil sebagai user deploy tanpa sudo."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "caddy-dan-https",
+      "title": "Caddy, domain, dan HTTPS otomatis",
+      "est_minutes": 60,
+      "body": "## Tiga baris untuk HTTPS\n\nCaddy meminta sertifikat dari Let's Encrypt saat pertama kali menyala, lalu memperpanjangnya sendiri. Syaratnya hanya dua: domain sudah mengarah ke IP server, dan port 80 serta 443 terbuka.\n\n## Langkah-langkah\n\n1. Di pengelola DNS domainmu, buat **record A** dari subdomain (misalnya `app.namamu.my.id`) ke IP server. Cek dari laptop dengan `nslookup app.namamu.my.id` sampai IP-nya benar.\n2. Tambahkan `Caddyfile` ke repositori, lalu ganti `compose.yaml` dengan versi akhir di bagian Bahan: ada service `caddy` dan dua volume baru. `caddy_data` **wajib** volume, karena di sanalah sertifikat disimpan. Tanpa volume, setiap restart meminta sertifikat baru dan kamu bisa terkena batas permintaan Let's Encrypt.\n3. Di server, buat folder `~/app` dan salin berkas yang dibutuhkan dari laptop:\n   `scp compose.yaml Caddyfile deploy.sh backup.sh .env.example deploy@IP_SERVER:app/`\n4. Di server: `cd ~/app && cp .env.example .env`, lalu isi `.env`: `APP_IMAGE=ghcr.io/username/pengunjung` (huruf kecil), `APP_TAG=latest` untuk sementara, password baru dari `openssl rand -hex 24`, dan `DOMAIN` dengan subdomainmu. Kunci dengan `chmod 600 .env`.\n5. Commit perubahan dan **sekarang push**. Job `build` di Actions akan berhasil dan image muncul di tab Packages profil GitHub-mu. Job `deploy` masih gagal, dan itu memang diharapkan.\n6. Image di GHCR bersifat privat. Pilih salah satu: ubah visibilitas package menjadi **Public** di pengaturan package, atau di server jalankan `docker login ghcr.io` dengan personal access token yang hanya punya izin `read:packages`.\n7. Di server: `docker compose pull && docker compose up -d`, lalu `docker compose logs caddy`. Cari pesan bahwa sertifikat berhasil didapat, lalu buka `https://` domainmu.\n",
+      "materials": [
+        {
+          "id": "m-dkr-caddyfile",
+          "kind": "kode",
+          "name": "Caddyfile",
+          "lang": "text",
+          "content": "{$DOMAIN} {\n\tencode zstd gzip\n\treverse_proxy app:3000\n}\n"
+        },
+        {
+          "id": "m-dkr-compose-final",
+          "kind": "kode",
+          "name": "compose.yaml (versi akhir)",
+          "lang": "yaml",
+          "content": "services:\n  app:\n    image: ${APP_IMAGE:?isi APP_IMAGE di .env}:${APP_TAG:?isi APP_TAG di .env}\n    restart: unless-stopped\n    environment:\n      DATABASE_URL: postgres://app:${POSTGRES_PASSWORD}@db:5432/app\n      PORT: \"3000\"\n    ports:\n      # Hanya bisa diakses dari mesin itu sendiri, bukan dari internet\n      - \"127.0.0.1:3000:3000\"\n    depends_on:\n      db:\n        condition: service_healthy\n    healthcheck:\n      test: [\"CMD\", \"node\", \"-e\", \"fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"]\n      interval: 15s\n      timeout: 5s\n      retries: 3\n      start_period: 10s\n    logging: &log\n      driver: json-file\n      options:\n        max-size: \"10m\"\n        max-file: \"3\"\n\n  db:\n    image: postgres:18-alpine\n    restart: unless-stopped\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di .env}\n      POSTGRES_DB: app\n    volumes:\n      - pgdata:/var/lib/postgresql\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d app\"]\n      interval: 5s\n      timeout: 3s\n      retries: 10\n    logging: *log\n\n  caddy:\n    image: caddy:2-alpine\n    restart: unless-stopped\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n      - \"443:443/udp\"\n    environment:\n      DOMAIN: ${DOMAIN:?isi DOMAIN di .env}\n    volumes:\n      - ./Caddyfile:/etc/caddy/Caddyfile:ro\n      - caddy_data:/data\n      - caddy_config:/config\n    depends_on:\n      app:\n        condition: service_healthy\n    logging: *log\n\nvolumes:\n  pgdata:\n  caddy_data:\n  caddy_config:\n"
+        },
+        {
+          "id": "m-dkr-caddy-https",
+          "kind": "tautan",
+          "name": "Caddy: Automatic HTTPS",
+          "url": "https://caddyserver.com/docs/automatic-https"
+        },
+        {
+          "id": "m-dkr-caddy-rp",
+          "kind": "tautan",
+          "name": "Caddy: direktif reverse_proxy",
+          "url": "https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-cad-dns",
+          "text": "Subdomainku mengarah ke IP server."
+        },
+        {
+          "id": "dkr-cad-env",
+          "text": ".env di server terisi lengkap dan berizin 600."
+        },
+        {
+          "id": "dkr-cad-ghcr",
+          "text": "Image ada di GHCR dan server bisa menariknya."
+        },
+        {
+          "id": "dkr-cad-https",
+          "text": "Domainku terbuka lewat https:// dengan gembok valid di browser."
+        },
+        {
+          "id": "dkr-cad-http",
+          "text": "Membuka http:// domainku otomatis dialihkan ke https://."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "rilis-otomatis-backup-rollback",
+      "title": "Rilis otomatis, backup malam, dan latihan rollback",
+      "est_minutes": 120,
+      "body": "## Menyambungkan semuanya\n\nSekarang GitHub Actions perlu izin masuk ke server. Buat **kunci SSH khusus deploy**, terpisah dari kunci laptopmu, supaya bisa dicabut kapan saja tanpa mengganggu aksesmu sendiri.\n\n## Langkah-langkah\n\n1. Di laptop: `ssh-keygen -t ed25519 -f kunci-deploy -N \"\" -C \"github-actions\"`. Tambahkan isi `kunci-deploy.pub` ke `~/.ssh/authorized_keys` milik user `deploy` di server.\n2. Ambil sidik jari server: `ssh-keyscan -t ed25519 IP_SERVER`.\n3. Di repositori GitHub, buka **Settings > Environments**, buat environment `production`, lalu tambahkan secrets: `SSH_PRIVATE_KEY` (isi `kunci-deploy`), `SSH_KNOWN_HOSTS` (hasil langkah 2), `SSH_HOST`, dan `SSH_USER` (`deploy`). Setelah itu **hapus** berkas `kunci-deploy` dari laptop.\n4. Ubah teks sapaan di `server.js`, commit, lalu push. Ikuti jalannya workflow di tab Actions. Setelah hijau, buka domainmu: teksnya berubah, dan `/health` menampilkan tag `sha-...` yang baru.\n5. Pasang backup malam di server dengan `crontab -e` (lihat bagian Bahan). Jalankan `./backup.sh` sekali secara manual untuk memastikan berhasil.\n6. **Latihan rollback.** Lihat `cat ~/app/rilis.log`, pilih tag sebelumnya, lalu jalankan `~/app/deploy.sh sha-xxxxxxx`. Periksa `/health`. Kembalikan ke versi terbaru dengan cara yang sama.\n7. **Latihan rilis rusak.** Buat commit yang sengaja merusak `/health`, misalnya query ke tabel yang tidak ada. Push, lalu amati: job `deploy` gagal, dan situsmu tetap melayani versi lama. Setelah itu perbaiki dan push lagi.\n\n## Backup yang hanya ada di satu server belum benar-benar backup\n\nKalau disk VPS rusak, backup di dalamnya ikut hilang. Minimal, salin backup ke laptop secara berkala: `scp deploy@IP_SERVER:app/backups/*.sql.gz ./`. Mengirim otomatis ke object storage bisa jadi pengembangan berikutnya.\n",
+      "materials": [
+        {
+          "id": "m-dkr-crontab",
+          "kind": "kode",
+          "name": "crontab",
+          "lang": "text",
+          "content": "# Backup database setiap hari pukul 02.15 waktu server\n15 2 * * * /home/deploy/app/backup.sh >> /home/deploy/app/backups/backup.log 2>&1\n"
+        },
+        {
+          "id": "m-dkr-rollback",
+          "kind": "kode",
+          "name": "rollback.sh",
+          "lang": "bash",
+          "content": "cd ~/app\ncat rilis.log                     # riwayat: waktu, tag lama -> tag baru\n./deploy.sh sha-1a2b3c4           # kembali ke tag yang dipilih\ncurl -s localhost:3000/health     # pastikan versinya benar\ndocker compose logs --tail 50 app # lihat log kalau ada masalah\n"
+        },
+        {
+          "id": "m-dkr-gh-env",
+          "kind": "tautan",
+          "name": "GitHub: environments untuk deployment",
+          "url": "https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments"
+        },
+        {
+          "id": "m-dkr-restart",
+          "kind": "tautan",
+          "name": "Docker: restart policy",
+          "url": "https://docs.docker.com/engine/containers/start-containers-automatically/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-rel-secrets",
+          "text": "Secrets SSH tersimpan di environment production, dan berkas kunci deploy sudah kuhapus dari laptop."
+        },
+        {
+          "id": "dkr-rel-hijau",
+          "text": "Push ke main membuat workflow hijau dan perubahan tampil di domainku."
+        },
+        {
+          "id": "dkr-rel-cron",
+          "text": "Cron backup terpasang dan ./backup.sh manual berhasil di server."
+        },
+        {
+          "id": "dkr-rel-rollback",
+          "text": "Aku berhasil rollback ke tag sebelumnya lalu kembali ke versi terbaru."
+        },
+        {
+          "id": "dkr-rel-rusak",
+          "text": "Rilis yang sengaja rusak gagal di Actions tanpa membuat situsku mati."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-runbook",
+      "title": "README dan runbook pemulihan",
+      "est_minutes": 45,
+      "body": "## Dokumentasi untuk dirimu jam dua pagi\n\nREADME proyek deploy punya dua pembaca: perekrut yang ingin melihat apa yang kamu bangun, dan dirimu sendiri saat server bermasalah. Bagian kedua disebut **runbook**: langkah pasti yang bisa diikuti tanpa berpikir panjang.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template README di bagian Bahan, lalu lengkapi semua bagian.\n2. Masukkan diagram arsitektur dari langkah Merancang dan tabel hasil uji dari langkah Uji.\n3. Uji runbook-mu: minta teman (atau dirimu sendiri dengan VPS sementara) mengikuti bagian **Memulihkan server dari nol** hanya dengan membaca README. Catat bagian yang membingungkan, lalu perbaiki.\n4. Pastikan README **tidak** berisi IP server, password, atau isi `.env` apa pun.\n5. Tambahkan badge status workflow di bagian atas README.\n6. Kirim tautan domain dan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja menjalankan siklus yang dikerjakan tim operasional setiap hari: mengemas aplikasi, mengamankan server, memasang HTTPS, merilis otomatis, membackup data, dan kembali ke versi lama saat ada masalah. Di wawancara, ceritakan latihan rilis rusak tadi. Itu bukti bahwa kamu memikirkan kegagalan, bukan hanya jalur mulus.\n",
+      "materials": [
+        {
+          "id": "m-dkr-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Pengunjung\n\n![Rilis](https://github.com/USERNAME/pengunjung/actions/workflows/rilis.yml/badge.svg)\n\nAplikasi Express + PostgreSQL yang di-deploy ke VPS Ubuntu dengan Docker Compose, Caddy (HTTPS otomatis), dan GitHub Actions.\n\n**Demo:** https://___\n\n## Arsitektur\n\n(diagram dan penjelasan singkat)\n\n## Menjalankan di laptop\n\n```bash\ncp .env.example .env   # isi POSTGRES_PASSWORD\ndocker build -t pengunjung:dev .\ndocker compose up -d\n```\n\n## Rilis\n\nSetiap push ke `main` membangun image `ghcr.io/USERNAME/pengunjung:sha-xxxxxxx` lalu menjalankan `deploy.sh` di server lewat SSH.\n\n## Runbook\n\n### Rollback\n\n```bash\ncat ~/app/rilis.log\n~/app/deploy.sh sha-xxxxxxx\n```\n\n### Memulihkan database dari backup\n\n```bash\ngunzip -c backups/app-YYYYMMDD-HHMMSS.sql.gz | docker compose exec -T db psql -U app -d app -v ON_ERROR_STOP=1\n```\n\n### Memulihkan server dari nol\n\n1. ___\n2. ___\n\n## Hasil uji\n\n| Uji | Hasil | Perbaikan |\n| --- | --- | --- |\n| Data bertahan setelah down/up | ___ | ___ |\n\n## Yang kupelajari\n\n- ___\n- ___\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "dkr-dok-readme",
+          "text": "README berisi arsitektur, cara menjalankan, alur rilis, dan hasil uji."
+        },
+        {
+          "id": "dkr-dok-runbook",
+          "text": "Runbook berisi rollback, restore database, dan pemulihan server dari nol."
+        },
+        {
+          "id": "dkr-dok-diuji",
+          "text": "Seseorang sudah mencoba mengikuti runbook hanya dengan membaca README."
+        },
+        {
+          "id": "dkr-dok-rahasia",
+          "text": "README tidak berisi IP server, password, atau isi .env."
+        },
+        {
+          "id": "dkr-dok-kirim",
+          "text": "Aku sudah mengirim tautan domain dan repositori di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
