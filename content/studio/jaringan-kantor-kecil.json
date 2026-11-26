@@ -1,0 +1,509 @@
+{
+  "slug": "jaringan-kantor-kecil",
+  "title": "Jaringan Kantor Kecil dengan MikroTik",
+  "summary": "Rancang dan bangun jaringan kantor 15 orang dengan router MikroTik RouterOS v7: survei kebutuhan, rencana IP per VLAN untuk staf, tamu, dan printer, konfigurasi DHCP, DNS, NAT, firewall, isolasi dan batas bandwidth tamu, uji di lab, lalu serahkan lengkap dengan dokumentasi dan jadwal cadangan.",
+  "level": "menengah",
+  "est_hours": 12,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "survei-kebutuhan-kantor",
+      "title": "Survei kebutuhan kantor",
+      "est_minutes": 30,
+      "body": "## Jaringan dimulai dari obrolan, bukan dari router\n\nKlienmu kantor kecil: sekitar 15 orang, satu printer bersama, dan tamu yang sering minta Wi-Fi. Sebelum memilih perangkat, kamu perlu tahu **apa yang sebenarnya mereka butuhkan**. Jaringan yang dirancang tanpa survei biasanya berakhir dengan satu Wi-Fi untuk semua orang, dan tamu bisa membuka folder bersama milik bagian keuangan.\n\n## Yang perlu kamu tanyakan\n\n1. **Siapa saja pemakainya?** Berapa staf, berapa laptop dan HP per orang, berapa tamu dalam sehari.\n2. **Perangkat apa yang tetap di tempat?** Printer, NAS, mesin absensi, CCTV. Catat mana yang kabel dan mana yang Wi-Fi.\n3. **Internetnya seperti apa?** Nama ISP, kecepatan, apakah modem ISP memberi alamat lewat DHCP atau PPPoE.\n4. **Siapa yang boleh bicara dengan siapa?** Contoh: tamu cukup internet saja, staf boleh mencetak.\n5. **Siapa yang mengurus jaringan setelah kamu pergi?** Ini menentukan seberapa rinci dokumentasimu nanti.\n\nKalau kamu belum punya klien sungguhan, pakai kantor fiktif di template Bahan, atau wawancarai kantor keluarga atau temanmu.\n\n## Hasil langkah ini\n\nSatu halaman catatan survei. Simpan di folder proyek, misalnya `jaringan-kantor/survei.md`. Semua langkah berikutnya merujuk ke catatan ini.\n\n> Tulis juga apa yang **tidak** masuk lingkup, misalnya VPN untuk kerja dari rumah atau CCTV. Batas yang jelas membuat proyek selesai tepat waktu.\n",
+      "materials": [
+        {
+          "id": "jk-m-survei",
+          "kind": "kode",
+          "name": "survei.md",
+          "lang": "markdown",
+          "content": "# Survei jaringan kantor\n\nNama kantor: CV Contoh Sejahtera (fiktif)\nTanggal survei: ___\nNarasumber: ___ (jabatan)\n\n## Pemakai\n- Staf: 15 orang, masing-masing 1 laptop + 1 HP\n- Tamu per hari: sekitar 5-10 perangkat\n\n## Perangkat tetap\n| Perangkat | Jumlah | Kabel/Wi-Fi | Catatan |\n| --- | --- | --- | --- |\n| Printer | 1 | Kabel | dipakai semua staf |\n| PC meja | 2 | Kabel | bagian keuangan |\n\n## Internet\n- ISP: ___  Kecepatan: ___ Mbps\n- Modem ISP memberi alamat lewat: DHCP / PPPoE\n\n## Aturan akses (versi klien)\n- Tamu: ___\n- Staf: ___\n\n## Pengurus setelah serah terima\n- Nama: ___  Kemampuan teknis: rendah / sedang / tinggi\n\n## Di luar lingkup\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-brief-pemakai",
+          "text": "Aku sudah mencatat jumlah staf, tamu, dan perangkat tetap."
+        },
+        {
+          "id": "jk-brief-isp",
+          "text": "Aku tahu kecepatan internet dan cara modem ISP memberi alamat."
+        },
+        {
+          "id": "jk-brief-akses",
+          "text": "Aku sudah menulis aturan akses versi klien dengan kalimat sendiri."
+        },
+        {
+          "id": "jk-brief-batas",
+          "text": "Aku sudah menulis hal yang di luar lingkup proyek."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "kelompokkan-zona-dan-akses",
+      "title": "Kelompokkan perangkat ke zona",
+      "est_minutes": 30,
+      "body": "## Satu kantor, tiga zona\n\nDari survei, kelompokkan perangkat berdasarkan **seberapa besar kamu memercayainya**:\n\n| Zona | Isinya | Kepercayaan |\n| --- | --- | --- |\n| STAF | Laptop, HP, dan PC staf | Tinggi |\n| TAMU | Perangkat pengunjung | Rendah, tidak dikenal |\n| PRINTER | Printer, nanti bisa ditambah perangkat sejenis | Sedang, jarang diperbarui |\n\nPrinter dipisah karena firmware printer jarang diperbarui dan sering jadi celah. Ia cukup *menerima* pekerjaan cetak, tidak perlu mengakses apa pun.\n\n## Matriks akses\n\nMatriks akses adalah tabel kecil yang menjawab \"dari zona ini ke zona itu, boleh atau tidak?\". Matriks ini nanti diterjemahkan hampir satu-satu menjadi aturan firewall, jadi pikirkan baik-baik sekarang.\n\n## Yang perlu kamu kerjakan\n\n1. Salin matriks di Bahan, lalu sesuaikan dengan hasil survei.\n2. Untuk setiap sel **boleh**, tulis alasannya dalam satu kalimat.\n3. Tentukan siapa yang boleh **mengelola router** (masuk lewat Winbox atau SSH). Jawaban yang aman: hanya dari zona STAF.\n4. Pikirkan satu skenario buruk, misalnya laptop tamu terkena malware. Apa yang bisa ia jangkau? Jawabannya harus: hanya internet.\n\nPrinsip yang kita pakai: **tolak semua, lalu buka yang perlu saja.** Lebih mudah menambah izin nanti daripada menutup celah yang sudah terlanjur dipakai.\n",
+      "materials": [
+        {
+          "id": "jk-m-matriks",
+          "kind": "kode",
+          "name": "matriks-akses.md",
+          "lang": "markdown",
+          "content": "# Matriks akses (baris = dari, kolom = ke)\n\n| Dari \\ Ke | Internet | STAF | TAMU | PRINTER | Router (kelola) |\n| --- | --- | --- | --- | --- | --- |\n| STAF | boleh | boleh | tidak | boleh | boleh |\n| TAMU | boleh (dibatasi) | tidak | tidak | tidak | tidak |\n| PRINTER | tidak | tidak | tidak | - | tidak |\n\nCatatan:\n- Semua zona boleh memakai DNS, DHCP, dan NTP dari router.\n- \"Dibatasi\" = bandwidth tamu dibatasi supaya tidak menghabiskan kuota kerja.\n- Printer tanpa internet; pembaruan firmware dilakukan manual.\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-ide-zona",
+          "text": "Aku membagi perangkat ke zona STAF, TAMU, dan PRINTER (atau zona lain yang sesuai)."
+        },
+        {
+          "id": "jk-ide-matriks",
+          "text": "Matriks aksesku sudah lengkap untuk setiap pasangan zona."
+        },
+        {
+          "id": "jk-ide-kelola",
+          "text": "Aku sudah menentukan dari zona mana router boleh dikelola."
+        },
+        {
+          "id": "jk-ide-skenario",
+          "text": "Aku bisa menjelaskan apa yang dijangkau laptop tamu yang terkena malware."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-router-dan-lab",
+      "title": "Pilih router dan siapkan lab",
+      "est_minutes": 45,
+      "body": "## Kenapa MikroTik\n\nRouter MikroTik murah, banyak dipakai di Indonesia, dan RouterOS memberi kendali penuh: VLAN, firewall, DHCP, antrean bandwidth, semuanya di satu kotak. Kita memakai **RouterOS v7**. Banyak tutorial di internet masih memakai v6, dan sebagian perintahnya berbeda (misalnya NTP dan Wi-Fi), jadi selalu cek versi tutorial yang kamu baca.\n\n## Perangkat untuk kantor ini\n\nUntuk 15 pemakai, router kelas **hAP ax lite** atau **hAP ax²** sudah cukup: empat sampai lima port kabel dan Wi-Fi bawaan. Rancangan kita memakai port ini:\n\n| Port | Fungsi |\n| --- | --- |\n| ether1 | WAN, ke modem ISP |\n| ether2 | Trunk ke access point (membawa VLAN 10, 20, 30) |\n| ether3 | PC staf (VLAN 10) |\n| ether4 | Printer (VLAN 30) |\n\n## Lab sebelum lapangan\n\nJangan pertama kali mencoba konfigurasi di kantor klien. Pilih salah satu:\n\n- **CHR di GNS3 atau EVE-NG.** CHR (Cloud Hosted Router) adalah RouterOS untuk mesin virtual, gratis dengan batas kecepatan 1 Mbps, cukup untuk lab. Tambahkan empat interface ke CHR dan beberapa VPCS atau VM Linux sebagai klien.\n- **hAP sungguhan di meja.** Paling realistis. Hubungkan laptopmu ke ether3.\n\nCHR tidak punya Wi-Fi, jadi di lab, Wi-Fi tamu diwakili oleh klien yang terhubung ke ether2 dengan tag VLAN 20.\n\n## Alat\n\n- **Winbox** (aplikasi resmi MikroTik) atau SSH untuk masuk ke router.\n- Editor teks untuk menulis berkas `.rsc` (skrip konfigurasi RouterOS).\n- Git, supaya setiap perubahan konfigurasi tercatat.\n\nTulis dua alasan pilihan perangkat dan lab-mu di catatan proyek.\n",
+      "materials": [
+        {
+          "id": "jk-m-chr",
+          "kind": "tautan",
+          "name": "MikroTik: Cloud Hosted Router (CHR)",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/18350234/Cloud+Hosted+Router+CHR"
+        },
+        {
+          "id": "jk-m-unduh",
+          "kind": "tautan",
+          "name": "MikroTik: unduh RouterOS, CHR, dan Winbox",
+          "url": "https://mikrotik.com/download"
+        },
+        {
+          "id": "jk-m-first",
+          "kind": "tautan",
+          "name": "MikroTik: konfigurasi pertama kali",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328151/First+Time+Configuration"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-tek-perangkat",
+          "text": "Aku sudah memilih router untuk kantor ini dan tahu fungsi tiap port."
+        },
+        {
+          "id": "jk-tek-lab",
+          "text": "Lab-ku siap: CHR di GNS3/EVE-NG atau hAP di meja."
+        },
+        {
+          "id": "jk-tek-versi",
+          "text": "Router lab-ku menjalankan RouterOS v7."
+        },
+        {
+          "id": "jk-tek-akses",
+          "text": "Aku bisa masuk ke router lewat Winbox atau SSH."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rencana-ip-dan-topologi",
+      "title": "Rencana IP dan topologi",
+      "est_minutes": 60,
+      "body": "## Satu bridge, tiga VLAN\n\nKita memisahkan zona dengan **VLAN** di satu bridge, bukan dengan tiga bridge terpisah. Alasannya: satu kabel trunk ke access point bisa membawa SSID staf dan SSID tamu sekaligus, dan di RouterOS v7 bridge dengan `vlan-filtering` adalah cara yang dianjurkan.\n\n## Rencana alamat\n\n| Zona | VLAN | Subnet | Gateway | DHCP | Masa sewa |\n| --- | --- | --- | --- | --- | --- |\n| STAF | 10 | 192.168.10.0/24 | 192.168.10.1 | .100-.199 | 8 jam |\n| TAMU | 20 | 192.168.20.0/24 | 192.168.20.1 | .100-.250 | 1 jam |\n| PRINTER | 30 | 192.168.30.0/24 | 192.168.30.1 | .100-.120 | 1 hari |\n\n- Alamat `.2` sampai `.99` disisakan untuk alamat tetap, misalnya printer di `192.168.30.10`.\n- Masa sewa tamu pendek supaya alamat cepat kembali ke pool.\n- Hindari `192.168.1.0/24` dan `192.168.0.0/24`. Modem ISP sering memakainya, dan subnet yang bentrok membuat routing kacau.\n\n## Topologi\n\nGambar topologi tidak perlu aplikasi khusus. Diagram teks di Bahan sudah cukup untuk dokumentasi dan mudah dilacak di Git.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `rencana-ip.md` dan `topologi.txt`, sesuaikan dengan survei.\n2. Cek kembali: apakah setiap sel **boleh** di matriks aksesmu punya jalur di topologi?\n3. Hitung: apakah pool tamu cukup untuk tamu terbanyak dalam sehari? Satu orang bisa membawa dua perangkat.\n4. Commit kedua berkas ke repositori proyekmu.\n",
+      "materials": [
+        {
+          "id": "jk-m-rencana",
+          "kind": "kode",
+          "name": "rencana-ip.md",
+          "lang": "markdown",
+          "content": "# Rencana IP - RTR-KANTOR\n\n| Zona | VLAN | Interface | Subnet | Gateway | Pool DHCP |\n| --- | --- | --- | --- | --- | --- |\n| STAF | 10 | vlan10-staf | 192.168.10.0/24 | 192.168.10.1 | 192.168.10.100-199 |\n| TAMU | 20 | vlan20-tamu | 192.168.20.0/24 | 192.168.20.1 | 192.168.20.100-250 |\n| PRINTER | 30 | vlan30-printer | 192.168.30.0/24 | 192.168.30.1 | 192.168.30.100-120 |\n\n## Alamat tetap\n| Perangkat | Alamat | Cara |\n| --- | --- | --- |\n| Router | .1 di tiap VLAN | statis |\n| Printer | 192.168.30.10 | DHCP static lease (MAC) |\n\n## Nama DNS lokal\n- router.kantor.lan -> 192.168.10.1\n- printer.kantor.lan -> 192.168.30.10\n"
+        },
+        {
+          "id": "jk-m-topologi",
+          "kind": "kode",
+          "name": "topologi.txt",
+          "lang": "text",
+          "content": "             Internet\n                 |\n          [Modem ISP]\n                 | ether1 (WAN, DHCP dari ISP)\n        +-----------------+\n        |   RTR-KANTOR    |  RouterOS v7\n        |  bridge br-lan  |  vlan-filtering=yes\n        +-----------------+\n   ether2 |      ether3 |       ether4 |\n  trunk   |    VLAN 10  |      VLAN 30 |\n 10,20,30 |  (untagged) |   (untagged) |\n          |             |              |\n   [Access Point]    [PC staf]     [Printer]\n    SSID Kantor-Staf  -> VLAN 10    192.168.30.10\n    SSID Kantor-Tamu  -> VLAN 20\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-ran-tabel",
+          "text": "Tabel rencana IP-ku punya VLAN, subnet, gateway, dan pool untuk tiap zona."
+        },
+        {
+          "id": "jk-ran-bentrok",
+          "text": "Subnet yang kupilih tidak bentrok dengan subnet modem ISP."
+        },
+        {
+          "id": "jk-ran-topologi",
+          "text": "Aku punya diagram topologi dengan nama port yang jelas."
+        },
+        {
+          "id": "jk-ran-commit",
+          "text": "Rencana IP dan topologi sudah di-commit ke repositori."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "konfigurasi-dasar-router",
+      "title": "Konfigurasi dasar router",
+      "est_minutes": 45,
+      "body": "## Mulai dari kosong\n\nKonfigurasi bawaan pabrik nyaman untuk rumah, tapi kita ingin tahu persis setiap baris yang ada di router. Jadi kita mulai dari nol:\n\n```text\n/system reset-configuration no-defaults=yes skip-backup=yes\n```\n\nSetelah router menyala ulang, ia **tidak punya alamat IP sama sekali**. Masuklah lewat konsol (di GNS3/EVE-NG) atau lewat Winbox dengan alamat MAC (di hAP). Login `admin`. RouterOS akan memintamu membuat sandi baru, isi dengan sandi sementara.\n\n## Cara menjalankan berkas .rsc\n\nAda dua cara, pilih yang nyaman:\n\n1. **Tempel** isi berkas ke Terminal (Winbox, menu New Terminal).\n2. **Unggah** berkas ke menu Files, lalu jalankan `/import file-name=01-dasar.rsc`. Import berhenti di baris pertama yang error, dan pesannya memberi tahu baris mana.\n\n## Isi langkah ini\n\nBerkas `01-dasar.rsc` mengatur nama router, zona waktu, akun admin baru, mematikan layanan yang tidak dipakai (telnet, ftp, www, api), dan meminta alamat WAN dari modem ISP lewat DHCP. Kalau ISP-mu memakai PPPoE, ganti baris terakhir dengan `/interface pppoe-client`, lihat dokumentasi First Time Configuration.\n\n## Akun admin\n\n1. Ganti `GANTI-SANDI-PANJANG-1` dengan sandi panjang buatan password manager. **Jangan** commit sandi asli ke Git. Di repositori, biarkan tulisan placeholder.\n2. Setelah import, keluar lalu masuk lagi sebagai `netadmin`.\n3. Kalau berhasil, matikan akun bawaan: `/user disable admin`. Penyerang selalu mencoba nama `admin` lebih dulu.\n\n## Periksa\n\n```text\n/system identity print\n/ip dhcp-client print\n/ip service print\n```\n\n`dhcp-client` harus berstatus `bound` dengan alamat dari modem (di lab, dari jaringan NAT GNS3).\n",
+      "materials": [
+        {
+          "id": "jk-m-rsc-dasar",
+          "kind": "kode",
+          "name": "01-dasar.rsc",
+          "lang": "routeros",
+          "content": "# 01-dasar.rsc - identitas, akun admin baru, layanan, jam, WAN\n# Jalankan di router yang sudah di-reset tanpa konfigurasi bawaan.\n/system identity set name=RTR-KANTOR\n/system clock set time-zone-name=Asia/Jakarta\n/user add name=netadmin group=full password=\"GANTI-SANDI-PANJANG-1\" comment=\"Admin jaringan kantor\"\n/ip service disable telnet,ftp,www,api,api-ssl\n/ip dhcp-client add interface=ether1 comment=\"WAN dari modem ISP\"\n"
+        },
+        {
+          "id": "jk-m-confmgmt",
+          "kind": "tautan",
+          "name": "MikroTik: Configuration Management (import, export, reset)",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328155/Configuration+Management"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-dasar-identitas",
+          "text": "Router-ku bernama RTR-KANTOR dan zona waktunya Asia/Jakarta."
+        },
+        {
+          "id": "jk-dasar-admin",
+          "text": "Aku masuk sebagai netadmin dan akun admin sudah dimatikan."
+        },
+        {
+          "id": "jk-dasar-layanan",
+          "text": "Telnet, ftp, www, api, dan api-ssl sudah mati."
+        },
+        {
+          "id": "jk-dasar-wan",
+          "text": "DHCP client di ether1 berstatus bound."
+        },
+        {
+          "id": "jk-dasar-sandi",
+          "text": "Sandi asli tidak ada di berkas yang kucommit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "bridge-dan-vlan",
+      "title": "Bridge, VLAN, dan alamat gateway",
+      "est_minutes": 75,
+      "body": "## Cara kerja bridge VLAN di RouterOS v7\n\n- **Bridge port** menentukan port mana yang masuk bridge. `pvid` adalah VLAN untuk frame tanpa tag yang masuk lewat port itu.\n- **Bridge VLAN table** menentukan VLAN mana yang boleh lewat port mana, bertag (`tagged`) atau tanpa tag (`untagged`). `br-lan` harus ada di `tagged` supaya router sendiri bisa ikut bicara di VLAN itu.\n- **Interface VLAN** (`vlan10-staf` dan seterusnya) adalah tempat alamat gateway dipasang.\n\n## Hati-hati dengan urutan\n\nBaris paling akhir menyalakan `vlan-filtering=yes`. Kalau kamu menyalakannya lebih dulu sebelum tabel VLAN lengkap, kamu bisa terkunci dari router. Kalau mengerjakan lewat Winbox, aktifkan **Safe Mode** (tombol di kiri atas, atau Ctrl+X di terminal): jika koneksi putus, router membatalkan perubahan.\n\nSetelah langkah ini, masuklah ke router dari **ether3** (VLAN staf), bukan lagi dari ether1.\n\n## Daftar interface\n\nKita membuat tiga daftar: `WAN`, `LAN`, dan `MGMT`. Aturan firewall nanti merujuk ke daftar, bukan ke nama port satu per satu, sehingga lebih mudah dibaca dan diubah.\n\n## Wi-Fi di hAP ax (opsional)\n\nKalau router-mu hAP ax dengan paket `wifi`, SSID bisa langsung dipetakan ke VLAN tanpa access point terpisah. Potongan di Bahan belum bisa diuji di CHR, jadi bandingkan dulu dengan dokumentasi WiFi untuk versi RouterOS-mu. `datapath.client-isolation=yes` membuat sesama tamu tidak bisa saling melihat.\n\n## Periksa\n\n```text\n/interface bridge vlan print\n/ip address print\n```\n\nColok laptop ke ether3. Laptop belum mendapat alamat (DHCP baru di langkah berikutnya), jadi beri alamat manual `192.168.10.50/24` lalu ping `192.168.10.1`.\n",
+      "materials": [
+        {
+          "id": "jk-m-rsc-vlan",
+          "kind": "kode",
+          "name": "02-vlan.rsc",
+          "lang": "routeros",
+          "content": "# 02-vlan.rsc - satu bridge, tiga VLAN, alamat gateway, daftar interface\n/interface bridge add name=br-lan vlan-filtering=no comment=\"Bridge LAN\"\n/interface bridge port\nadd bridge=br-lan interface=ether2 frame-types=admit-only-vlan-tagged comment=\"Trunk ke access point\"\nadd bridge=br-lan interface=ether3 pvid=10 frame-types=admit-only-untagged-and-priority-tagged comment=\"Port PC staf\"\nadd bridge=br-lan interface=ether4 pvid=30 frame-types=admit-only-untagged-and-priority-tagged comment=\"Port printer\"\n/interface bridge vlan\nadd bridge=br-lan vlan-ids=10 tagged=br-lan,ether2 untagged=ether3 comment=\"STAF\"\nadd bridge=br-lan vlan-ids=20 tagged=br-lan,ether2 comment=\"TAMU\"\nadd bridge=br-lan vlan-ids=30 tagged=br-lan,ether2 untagged=ether4 comment=\"PRINTER\"\n/interface vlan\nadd name=vlan10-staf interface=br-lan vlan-id=10\nadd name=vlan20-tamu interface=br-lan vlan-id=20\nadd name=vlan30-printer interface=br-lan vlan-id=30\n/ip address\nadd address=192.168.10.1/24 interface=vlan10-staf comment=\"Gateway STAF\"\nadd address=192.168.20.1/24 interface=vlan20-tamu comment=\"Gateway TAMU\"\nadd address=192.168.30.1/24 interface=vlan30-printer comment=\"Gateway PRINTER\"\n/interface list\nadd name=WAN\nadd name=LAN\nadd name=MGMT\n/interface list member\nadd list=WAN interface=ether1\nadd list=LAN interface=vlan10-staf\nadd list=LAN interface=vlan20-tamu\nadd list=LAN interface=vlan30-printer\nadd list=MGMT interface=vlan10-staf\n# Paling akhir: nyalakan penyaringan VLAN\n/interface bridge set [find name=br-lan] vlan-filtering=yes\n"
+        },
+        {
+          "id": "jk-m-rsc-wifi",
+          "kind": "kode",
+          "name": "02b-wifi-hap-ax.rsc",
+          "lang": "routeros",
+          "content": "# Hanya untuk hAP ax dengan paket wifi. Tidak berlaku di CHR.\n/interface wifi\nset [find default-name=wifi1] configuration.mode=ap configuration.ssid=Kantor-Staf security.authentication-types=wpa2-psk,wpa3-psk security.passphrase=\"GANTI-SANDI-WIFI-STAF\" disabled=no\nadd name=wifi1-tamu master-interface=wifi1 configuration.ssid=Kantor-Tamu security.authentication-types=wpa2-psk security.passphrase=\"GANTI-SANDI-WIFI-TAMU\" datapath.client-isolation=yes disabled=no\n/interface bridge port\nadd bridge=br-lan interface=wifi1 pvid=10\nadd bridge=br-lan interface=wifi1-tamu pvid=20\n/interface bridge vlan\nset [find vlan-ids=10] untagged=ether3,wifi1\nset [find vlan-ids=20] untagged=wifi1-tamu\n"
+        },
+        {
+          "id": "jk-m-bridgevlan",
+          "kind": "tautan",
+          "name": "MikroTik: Bridge VLAN Table",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/28606465/Bridge+VLAN+Table"
+        },
+        {
+          "id": "jk-m-bridging",
+          "kind": "tautan",
+          "name": "MikroTik: Bridging and Switching",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328068/Bridging+and+Switching"
+        },
+        {
+          "id": "jk-m-wifi",
+          "kind": "tautan",
+          "name": "MikroTik: WiFi (paket wifi RouterOS v7)",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/224559120/WiFi"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-vlan-tabel",
+          "text": "Tabel bridge VLAN-ku berisi VLAN 10, 20, dan 30 dengan port yang benar."
+        },
+        {
+          "id": "jk-vlan-filter",
+          "text": "vlan-filtering sudah menyala dan aku tidak terkunci."
+        },
+        {
+          "id": "jk-vlan-ping",
+          "text": "Dari laptop di ether3 aku bisa ping 192.168.10.1."
+        },
+        {
+          "id": "jk-vlan-list",
+          "text": "Daftar interface WAN, LAN, dan MGMT sudah terisi."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "dhcp-dns-ntp-nat",
+      "title": "DHCP, DNS, NTP, dan NAT",
+      "est_minutes": 60,
+      "body": "## Layanan yang membuat jaringan \"langsung jalan\"\n\nSekarang setiap zona perlu empat hal: alamat otomatis (**DHCP**), penerjemah nama (**DNS**), jam yang akurat (**NTP**), dan jalan keluar ke internet (**NAT masquerade**).\n\n## Yang dikerjakan 03-layanan.rsc\n\n1. **Pool dan DHCP server** per VLAN, sesuai rencana IP. Masa sewa tamu 1 jam, staf 8 jam.\n2. **Static lease** untuk printer: printer selalu mendapat `192.168.30.10` berdasarkan alamat MAC-nya. Ganti MAC contoh dengan MAC printer sungguhan. Ini lebih rapi daripada mengatur IP manual di printer, karena semua alamat tercatat di satu tempat.\n3. **DNS**: router meneruskan pertanyaan ke 1.1.1.1 dan 8.8.8.8, dan menjawab nama lokal `router.kantor.lan` serta `printer.kantor.lan`. `allow-remote-requests=yes` membuat router mau melayani klien. Ini aman **hanya** jika firewall menutup port 53 dari WAN, yang kita kerjakan di langkah berikutnya. Jangan biarkan router terlalu lama dalam keadaan ini kalau terhubung ke internet sungguhan.\n4. **NTP**: router mengambil waktu dari `id.pool.ntp.org`, lalu menjadi server NTP untuk klien. Jam yang benar penting untuk log dan nama berkas cadangan.\n5. **NAT masquerade** untuk semua lalu lintas yang keluar lewat daftar `WAN`.\n\n## Periksa\n\n```text\n/ip dhcp-server lease print\n/ip dns cache print\n/system ntp client print\n/ip firewall nat print\n```\n\nDari laptop di ether3 (sekarang pakai DHCP lagi): pastikan laptop mendapat alamat `192.168.10.1xx`, lalu jalankan `ping 1.1.1.1` dan `nslookup printer.kantor.lan 192.168.10.1`.\n\nNTP client berstatus `synchronized` setelah beberapa menit. Kalau tetap tidak, cek apakah DNS router sudah bisa menjawab nama `id.pool.ntp.org`.\n",
+      "materials": [
+        {
+          "id": "jk-m-rsc-layanan",
+          "kind": "kode",
+          "name": "03-layanan.rsc",
+          "lang": "routeros",
+          "content": "# 03-layanan.rsc - DHCP, DNS, NTP, NAT\n/ip pool\nadd name=pool-staf ranges=192.168.10.100-192.168.10.199\nadd name=pool-tamu ranges=192.168.20.100-192.168.20.250\nadd name=pool-printer ranges=192.168.30.100-192.168.30.120\n/ip dhcp-server\nadd name=dhcp-staf interface=vlan10-staf address-pool=pool-staf lease-time=8h\nadd name=dhcp-tamu interface=vlan20-tamu address-pool=pool-tamu lease-time=1h\nadd name=dhcp-printer interface=vlan30-printer address-pool=pool-printer lease-time=1d\n/ip dhcp-server network\nadd address=192.168.10.0/24 gateway=192.168.10.1 dns-server=192.168.10.1 ntp-server=192.168.10.1 domain=kantor.lan\nadd address=192.168.20.0/24 gateway=192.168.20.1 dns-server=192.168.20.1\nadd address=192.168.30.0/24 gateway=192.168.30.1 dns-server=192.168.30.1 ntp-server=192.168.30.1\n# Alamat tetap printer. Ganti MAC dengan MAC printermu (lihat stiker atau halaman status printer).\n/ip dhcp-server lease\nadd server=dhcp-printer mac-address=02:00:00:00:00:30 address=192.168.30.10 comment=\"Printer lantai 1\"\n/ip dns\nset servers=1.1.1.1,8.8.8.8 allow-remote-requests=yes\n/ip dns static\nadd name=router.kantor.lan address=192.168.10.1\nadd name=printer.kantor.lan address=192.168.30.10\n/system ntp client\nset enabled=yes\n/system ntp client servers\nadd address=id.pool.ntp.org\n/system ntp server\nset enabled=yes\n/ip firewall nat\nadd chain=srcnat out-interface-list=WAN action=masquerade comment=\"NAT ke internet\"\n"
+        },
+        {
+          "id": "jk-m-dhcp",
+          "kind": "tautan",
+          "name": "MikroTik: DHCP",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/24805500/DHCP"
+        },
+        {
+          "id": "jk-m-dns",
+          "kind": "tautan",
+          "name": "MikroTik: DNS",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/24805490/DNS"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-lay-dhcp",
+          "text": "Laptop di VLAN staf mendapat alamat dari pool staf."
+        },
+        {
+          "id": "jk-lay-dns",
+          "text": "nslookup printer.kantor.lan menjawab 192.168.30.10."
+        },
+        {
+          "id": "jk-lay-ntp",
+          "text": "NTP client router berstatus synchronized."
+        },
+        {
+          "id": "jk-lay-internet",
+          "text": "Dari laptop staf aku bisa membuka situs di internet."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "firewall-dan-isolasi-tamu",
+      "title": "Firewall dan isolasi tamu",
+      "est_minutes": 90,
+      "body": "## Dua rantai, dua pertanyaan\n\n- **input**: paket yang ditujukan ke *router itu sendiri*. Pertanyaannya: siapa boleh bicara dengan router?\n- **forward**: paket yang *melewati* router, dari satu zona ke zona lain. Pertanyaannya: siapa boleh bicara dengan siapa? Ini terjemahan langsung matriks aksesmu.\n\nAturan dibaca dari atas ke bawah. Aturan pertama yang cocok yang menang. Karena itu, setiap rantai **diakhiri dengan drop**: yang tidak diizinkan secara tegas, ditolak.\n\n## Membaca 04-firewall.rsc\n\n1. `established,related` diterima paling awal. Balasan dari koneksi yang sudah diizinkan tidak perlu diperiksa ulang, dan ini menghemat CPU.\n2. `invalid` dibuang.\n3. Di input, LAN hanya boleh DNS, DHCP, dan NTP. Hanya daftar `MGMT` (VLAN staf) yang boleh masuk Winbox dan SSH.\n4. Di forward, aturan **tamu hanya boleh ke internet** sengaja ditulis eksplisit walau drop terakhir sudah menutupnya. Aturan ini dokumentasi yang bisa dijalankan, dan tetap melindungi kalau suatu hari ada yang menambah aturan accept di bawahnya.\n5. Printer tidak punya aturan keluar sama sekali. Ia tetap bisa *membalas* pekerjaan cetak dari staf berkat aturan `established,related`.\n\nKita **tidak** memakai fasttrack. Fasttrack mempercepat koneksi dengan melewati sebagian besar pemrosesan, termasuk simple queue yang akan kita pasang untuk tamu. Untuk 15 pemakai, router hAP tidak butuh fasttrack.\n\nBagian akhir berkas mengunci layanan pengelolaan ke subnet staf dan mematikan IPv6 karena belum dipakai. Kalau nanti ISP memberi IPv6, buat firewall IPv6-nya dulu sebelum menyalakannya lagi.\n\n## Jangan terkunci\n\nKerjakan dari laptop di VLAN staf, aktifkan **Safe Mode**, lalu import. Kalau ternyata kamu tidak bisa masuk lagi, tunggu sesi terputus dan Safe Mode akan membatalkan perubahan.\n\n## Periksa\n\n```text\n/ip firewall filter print stats\n```\n\nKolom hitungan menunjukkan aturan mana yang benar-benar terkena paket. Aturan dengan hitungan nol setelah pengujian patut dipertanyakan.\n",
+      "materials": [
+        {
+          "id": "jk-m-rsc-firewall",
+          "kind": "kode",
+          "name": "04-firewall.rsc",
+          "lang": "routeros",
+          "content": "# 04-firewall.rsc - lindungi router (input) dan atur lalu lintas antar-VLAN (forward)\n/ip firewall filter\nadd chain=input action=accept connection-state=established,related,untracked comment=\"IN: koneksi yang sudah ada\"\nadd chain=input action=drop connection-state=invalid comment=\"IN: buang paket rusak\"\nadd chain=input action=accept protocol=icmp comment=\"IN: izinkan ping\"\nadd chain=input action=accept in-interface-list=MGMT comment=\"IN: staf boleh mengelola router\"\nadd chain=input action=accept in-interface-list=LAN protocol=udp dst-port=53,67,123 comment=\"IN: DNS, DHCP, NTP dari LAN\"\nadd chain=input action=accept in-interface-list=LAN protocol=tcp dst-port=53 comment=\"IN: DNS lewat TCP\"\nadd chain=input action=drop comment=\"IN: selain itu buang\"\nadd chain=forward action=accept connection-state=established,related,untracked comment=\"FWD: koneksi yang sudah ada\"\nadd chain=forward action=drop connection-state=invalid comment=\"FWD: buang paket rusak\"\nadd chain=forward action=drop in-interface=vlan20-tamu out-interface-list=!WAN comment=\"FWD: tamu hanya boleh ke internet\"\nadd chain=forward action=accept in-interface=vlan10-staf out-interface-list=WAN comment=\"FWD: staf ke internet\"\nadd chain=forward action=accept in-interface=vlan20-tamu out-interface-list=WAN comment=\"FWD: tamu ke internet\"\nadd chain=forward action=accept in-interface=vlan10-staf out-interface=vlan30-printer comment=\"FWD: staf boleh mencetak\"\nadd chain=forward action=drop comment=\"FWD: selain itu buang\"\n# Pengelolaan router hanya dari VLAN staf\n/ip service\nset ssh address=192.168.10.0/24\nset winbox address=192.168.10.0/24\n/tool mac-server\nset allowed-interface-list=MGMT\n/tool mac-server mac-winbox\nset allowed-interface-list=MGMT\n/ip neighbor discovery-settings\nset discover-interface-list=MGMT\n# Kantor ini belum memakai IPv6. Matikan supaya tidak ada pintu yang tidak dijaga.\n/ipv6 settings\nset disable-ipv6=yes\n"
+        },
+        {
+          "id": "jk-m-firewall",
+          "kind": "tautan",
+          "name": "MikroTik: Building Your First Firewall",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328513/Building+Your+First+Firewall"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-fw-urutan",
+          "text": "Aku bisa menjelaskan kenapa aturan established,related ada di paling atas."
+        },
+        {
+          "id": "jk-fw-drop",
+          "text": "Rantai input dan forward sama-sama diakhiri aturan drop."
+        },
+        {
+          "id": "jk-fw-kelola",
+          "text": "Winbox dan SSH hanya bisa dibuka dari VLAN staf."
+        },
+        {
+          "id": "jk-fw-fasttrack",
+          "text": "Aku tahu kenapa fasttrack tidak dipakai di rancangan ini."
+        },
+        {
+          "id": "jk-fw-safe",
+          "text": "Aku menerapkan firewall dengan Safe Mode menyala."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "batas-tamu-dan-cadangan",
+      "title": "Batas bandwidth tamu dan cadangan otomatis",
+      "est_minutes": 60,
+      "body": "## Tamu tidak boleh menghabiskan internet kantor\n\nSatu tamu yang mengunduh pembaruan game bisa membuat rapat video staf patah-patah. Kita pakai **simple queue** dengan tipe antrean **PCQ**:\n\n- `max-limit=10M/20M` adalah batas **total** semua tamu: 10 Mbps naik, 20 Mbps turun. Sesuaikan dengan kecepatan ISP, misalnya sepertiga dari total.\n- PCQ membagi batas itu per perangkat: setiap tamu maksimal 2 Mbps naik dan 5 Mbps turun, dan ketika ramai, jatah dibagi rata.\n- Di simple queue, angka pertama selalu **upload** dari sisi target (tamu), angka kedua **download**.\n\n## Cadangan otomatis\n\nAda dua jenis cadangan dan kita butuh keduanya:\n\n| Jenis | Perintah | Kegunaan |\n| --- | --- | --- |\n| Backup biner | `/system backup save` | Memulihkan router yang **sama** secara utuh. Terenkripsi dengan sandi. |\n| Export teks | `/export` | Bisa dibaca manusia, dipindah ke router lain, dan dibandingkan di Git. |\n\nSkrip `cadangan` menyimpan keduanya dengan tanggal di nama berkas, dan scheduler menjalankannya tiap minggu jam 02.00. Ganti `GANTI-SANDI-CADANGAN` dan simpan sandi itu di password manager. Tanpa sandinya, backup tidak bisa dipulihkan.\n\n**Penting**: export dengan `show-sensitive` berisi sandi Wi-Fi dan sandi lain dalam teks biasa. Jangan commit berkas ini ke Git. Untuk Git, pakai `/export` biasa (tanpa `show-sensitive`).\n\nBerkas yang tersimpan di router ikut hilang kalau router rusak. Unduh berkas cadangan ke tempat lain (laptop pengurus atau penyimpanan kantor) secara berkala. Ini jadwal yang nanti kamu tulis di dokumentasi.\n\n## Periksa\n\n```text\n/queue simple print stats\n/system script run cadangan\n/file print\n/system scheduler print\n```\n\nSetelah menjalankan skrip, harus ada berkas `cadangan-TANGGAL.backup` dan `konfigurasi-TANGGAL.rsc` di daftar berkas.\n",
+      "materials": [
+        {
+          "id": "jk-m-rsc-antrean",
+          "kind": "kode",
+          "name": "05-antrean-cadangan.rsc",
+          "lang": "routeros",
+          "content": "# 05-antrean-cadangan.rsc - batas bandwidth tamu dan cadangan otomatis\n/queue type\nadd name=pcq-tamu-up kind=pcq pcq-classifier=src-address pcq-rate=2M\nadd name=pcq-tamu-down kind=pcq pcq-classifier=dst-address pcq-rate=5M\n/queue simple\nadd name=tamu target=192.168.20.0/24 max-limit=10M/20M queue=pcq-tamu-up/pcq-tamu-down comment=\"Wi-Fi tamu: total 10M naik / 20M turun\"\n/system script\nadd name=cadangan policy=ftp,read,write,policy,test,sensitive source={\n:local tgl [/system clock get date]\n/system backup save name=(\"cadangan-\" . $tgl) password=\"GANTI-SANDI-CADANGAN\"\n/export show-sensitive file=(\"konfigurasi-\" . $tgl)\n:log info (\"Cadangan selesai: \" . $tgl)\n}\n/system scheduler\nadd name=cadangan-mingguan interval=7d start-time=02:00:00 on-event=cadangan comment=\"Cadangan tiap minggu jam 02.00\"\n"
+        },
+        {
+          "id": "jk-m-queue",
+          "kind": "tautan",
+          "name": "MikroTik: Simple Queue",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328088/Simple+Queue"
+        },
+        {
+          "id": "jk-m-backup",
+          "kind": "tautan",
+          "name": "MikroTik: Backup",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/40992794/Backup"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-cad-queue",
+          "text": "Simple queue tamu memakai PCQ dan batasnya sesuai kecepatan ISP kantor."
+        },
+        {
+          "id": "jk-cad-jalan",
+          "text": "Skrip cadangan berhasil membuat berkas .backup dan .rsc."
+        },
+        {
+          "id": "jk-cad-jadwal",
+          "text": "Scheduler cadangan-mingguan sudah terpasang."
+        },
+        {
+          "id": "jk-cad-sensitif",
+          "text": "Aku tidak meng-commit export yang memakai show-sensitive."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-konektivitas-dan-isolasi",
+      "title": "Uji konektivitas dan isolasi",
+      "est_minutes": 75,
+      "body": "## Uji seperti orang yang ingin membobolnya\n\nKonfigurasi yang belum diuji hanya tebakan. Siapkan tiga klien di lab: satu di VLAN staf, satu di VLAN tamu (klien di ether2 dengan tag VLAN 20, atau SSID tamu di hAP), dan satu sebagai printer di ether4. Klien boleh VPCS, VM Linux, atau laptop.\n\n## Daftar uji\n\nJalankan setiap baris di tabel Bahan dan tulis hasilnya: **lulus** atau **gagal**. Hasil yang diharapkan untuk uji isolasi adalah *gagal tersambung*: itu tandanya firewall bekerja.\n\n## Alat dari sisi router\n\n- `/ping 192.168.20.100 count=3` dan `/tool traceroute 1.1.1.1` untuk memastikan router sendiri bisa menjangkau klien dan internet.\n- `/tool torch interface=vlan20-tamu` menampilkan lalu lintas yang sedang lewat, per alamat. Saat tamu mengunduh sesuatu, kamu akan melihat alamatnya dan kecepatannya, dan kecepatannya tidak melewati batas PCQ. Tekan `q` untuk keluar.\n- `/ip firewall filter print stats` setelah uji isolasi: hitungan aturan **\"FWD: tamu hanya boleh ke internet\"** harus bertambah.\n\n## Kalau ada yang gagal\n\n- Klien tidak mendapat alamat: cek bridge VLAN table dan `pvid` port.\n- Dapat alamat tapi tidak bisa internet: cek NAT dan aturan forward ke WAN.\n- Tamu ternyata **bisa** ping staf: cek urutan aturan forward, pasti ada accept di atas aturan drop tamu.\n\nPerbaiki di berkas `.rsc`-mu dulu, baru terapkan ulang ke router. Dengan begitu berkas di Git selalu sama dengan isi router.\n",
+      "materials": [
+        {
+          "id": "jk-m-uji",
+          "kind": "kode",
+          "name": "uji.md",
+          "lang": "markdown",
+          "content": "# Daftar uji jaringan kantor\n\n| No | Dari | Uji | Harapan | Hasil |\n| --- | --- | --- | --- | --- |\n| 1 | Staf | dapat alamat 192.168.10.1xx | ya | |\n| 2 | Staf | ping 1.1.1.1 | balas | |\n| 3 | Staf | nslookup printer.kantor.lan | 192.168.30.10 | |\n| 4 | Staf | ping 192.168.30.10 (printer) | balas | |\n| 5 | Staf | buka Winbox/SSH ke 192.168.10.1 | bisa | |\n| 6 | Tamu | dapat alamat 192.168.20.1xx | ya | |\n| 7 | Tamu | buka situs di internet | bisa | |\n| 8 | Tamu | ping 192.168.10.1xx (laptop staf) | timeout | |\n| 9 | Tamu | ping 192.168.30.10 (printer) | timeout | |\n| 10 | Tamu | SSH/Winbox ke 192.168.20.1 | ditolak | |\n| 11 | Tamu | unduh file besar, lihat di torch | <= 5 Mbps | |\n| 12 | Printer | ping 1.1.1.1 | timeout | |\n| 13 | Router | /tool traceroute 1.1.1.1 | sampai tujuan | |\n| 14 | Router | /system ntp client print | synchronized | |\n"
+        },
+        {
+          "id": "jk-m-torch",
+          "kind": "tautan",
+          "name": "MikroTik: Torch",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/8978525/Torch"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-uji-semua",
+          "text": "Aku menjalankan semua baris di daftar uji dan menulis hasilnya."
+        },
+        {
+          "id": "jk-uji-isolasi",
+          "text": "Tamu tidak bisa ping laptop staf maupun printer."
+        },
+        {
+          "id": "jk-uji-torch",
+          "text": "Aku melihat lalu lintas tamu dengan torch dan kecepatannya tidak melewati batas."
+        },
+        {
+          "id": "jk-uji-stats",
+          "text": "Hitungan aturan drop tamu bertambah setelah uji isolasi."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "pasang-dan-serah-terima",
+      "title": "Pasang di kantor dan serah terima",
+      "est_minutes": 60,
+      "body": "## Dari lab ke lapangan\n\nKalau lab-mu CHR, nama interface di hAP sungguhan mungkin berbeda. Buka `/interface print` di router baru, lalu sesuaikan nama port di berkas `.rsc` sebelum import. Urutan pemasangan:\n\n1. Reset router dengan `no-defaults=yes`, lalu import `01` sampai `05` berurutan, dengan Safe Mode.\n2. Ganti semua placeholder sandi dengan sandi asli dari password manager.\n3. Pasang router di lokasi, sambungkan modem ISP ke ether1, lalu jalankan ulang daftar uji, kali ini dengan perangkat staf sungguhan.\n4. Jalankan `/system script run cadangan` sekali, lalu unduh kedua berkasnya. Inilah cadangan \"kondisi serah terima\".\n\nJadwalkan pemasangan di luar jam kerja, dan bawa rencana mundur: kalau gagal, modem ISP lama dipasang kembali.\n\n## Menyerahkan kredensial dengan benar\n\n- Sandi **tidak** dikirim lewat chat atau email biasa, dan tidak ditempel di router.\n- Simpan di password manager milik kantor (misalnya Bitwarden atau 1Password) dan bagikan ke pengurus lewat fitur berbagi password manager itu.\n- Setelah serah terima, minta pengurus mengganti sandi `netadmin` dan sandi cadangan, lalu catat **tanggal** penggantiannya (bukan sandinya) di dokumentasi.\n- Kalau kamu tetap membantu, buat akun sendiri untukmu, jangan memakai akun pengurus. Dengan begitu akses bisa dicabut tanpa mengganggu orang lain.\n\n## Demo singkat ke klien\n\nTunjukkan tiga hal dalam 10 menit: tamu terhubung ke Wi-Fi tamu tapi tidak bisa melihat printer, staf bisa mencetak, dan cara menjalankan cadangan secara manual.\n\nKalau proyekmu di lab saja, rekam layar uji isolasi (tamu ping staf timeout) sebagai pengganti demo.\n",
+      "materials": [
+        {
+          "id": "jk-m-safemode",
+          "kind": "tautan",
+          "name": "MikroTik: konfigurasi pertama kali (termasuk akses pertama)",
+          "url": "https://help.mikrotik.com/docs/spaces/ROS/pages/328151/First+Time+Configuration"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-dep-import",
+          "text": "Konfigurasi sudah diterapkan di router tujuan (hAP di kantor atau lab final)."
+        },
+        {
+          "id": "jk-dep-uji",
+          "text": "Daftar uji sudah kujalankan ulang setelah pemasangan."
+        },
+        {
+          "id": "jk-dep-cadangan",
+          "text": "Aku menyimpan cadangan kondisi serah terima di luar router."
+        },
+        {
+          "id": "jk-dep-sandi",
+          "text": "Kredensial diserahkan lewat password manager, bukan chat atau email."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "dokumen-jaringan",
+      "title": "Dokumen jaringan dan jadwal cadangan",
+      "est_minutes": 60,
+      "body": "## Dokumen untuk orang yang datang setelahmu\n\nEnam bulan lagi, Wi-Fi tamu bermasalah dan kamu tidak ada di sana. Dokumen jaringan adalah satu-satunya hal yang bisa menolong pengurus kantor. Tulis untuk orang itu, bukan untuk dirimu.\n\n## Isi minimal\n\n1. **Ringkasan**: satu paragraf tentang jaringan ini dan zonanya.\n2. **Topologi dan rencana IP**: salin dari langkah merancang, perbarui kalau ada yang berubah saat pemasangan.\n3. **Aturan akses**: matriks akses dalam bahasa sehari-hari.\n4. **Kredensial**: *daftar* akun dan di mana sandinya disimpan, **tanpa** sandi itu sendiri.\n5. **Jadwal cadangan**: kapan otomatis, kapan diunduh manual, dan cara memulihkan.\n6. **Tugas rutin**: cara menambah alamat tetap, mengganti sandi Wi-Fi tamu, dan memperbarui RouterOS.\n7. **Riwayat perubahan**: tanggal, siapa, apa.\n\n## Repositori proyek\n\nSusun repositorimu seperti ini, lalu push ke GitHub:\n\n```text\njaringan-kantor/\n  README.md          <- dokumen jaringan (template di Bahan)\n  survei.md\n  matriks-akses.md\n  rencana-ip.md\n  topologi.txt\n  uji.md             <- dengan kolom Hasil terisi\n  rsc/01-dasar.rsc ... rsc/05-antrean-cadangan.rsc\n```\n\nSebelum push, cari kata `password` dan `passphrase` di seluruh repositori. Yang boleh ada hanya placeholder `GANTI-...`.\n\n## Kirim hasilmu\n\nTempel tautan repositori GitHub-mu di kolom pengumpulan di halaman ringkasan proyek ini. Kalau kamu punya rekaman uji isolasi, sertakan tautannya di README.\n",
+      "materials": [
+        {
+          "id": "jk-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Jaringan CV Contoh Sejahtera\n\nRouter RTR-KANTOR (MikroTik, RouterOS v7) membagi jaringan menjadi tiga zona:\nSTAF (VLAN 10), TAMU (VLAN 20, hanya internet, dibatasi), dan PRINTER (VLAN 30).\n\n## Topologi dan alamat\nLihat topologi.txt dan rencana-ip.md.\n\n## Aturan akses\n- Staf: internet, printer, dan mengelola router.\n- Tamu: hanya internet, maksimal 5 Mbps per perangkat.\n- Printer: hanya menerima pekerjaan cetak dari staf.\n\n## Kredensial (sandi TIDAK ditulis di sini)\n| Akun | Dipakai untuk | Disimpan di | Terakhir diganti |\n| --- | --- | --- | --- |\n| netadmin | Winbox/SSH router | Password manager kantor, folder Jaringan | ____ |\n| Sandi cadangan | Membuka berkas .backup | idem | ____ |\n| Wi-Fi Kantor-Staf | SSID staf | idem | ____ |\n| Wi-Fi Kantor-Tamu | SSID tamu | idem, diganti tiap bulan | ____ |\n\n## Cadangan\n- Otomatis: tiap minggu jam 02.00 (scheduler cadangan-mingguan), berkas di menu Files.\n- Manual: tiap awal bulan, unduh berkas cadangan terbaru ke penyimpanan kantor.\n- Sebelum perubahan apa pun: jalankan /system script run cadangan.\n- Memulihkan: unggah .backup ke router yang sama, lalu /system backup load name=... password=...\n\n## Tugas rutin\n- Tambah alamat tetap: /ip dhcp-server lease add server=... mac-address=... address=...\n- Perbarui RouterOS: /system package update check-for-updates, lalu install (cadangan dulu).\n\n## Riwayat perubahan\n| Tanggal | Oleh | Perubahan |\n| --- | --- | --- |\n| ____ | ____ | Pemasangan awal |\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "jk-dok-readme",
+          "text": "README-ku berisi topologi, rencana IP, aturan akses, kredensial, cadangan, dan tugas rutin."
+        },
+        {
+          "id": "jk-dok-sandi",
+          "text": "Aku sudah memastikan tidak ada sandi asli di repositori."
+        },
+        {
+          "id": "jk-dok-uji",
+          "text": "Hasil uji ikut di repositori."
+        },
+        {
+          "id": "jk-dok-kirim",
+          "text": "Tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
