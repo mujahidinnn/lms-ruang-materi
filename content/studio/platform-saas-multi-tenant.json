@@ -1,0 +1,738 @@
+{
+  "slug": "platform-saas-multi-tenant",
+  "title": "Platform SaaS Multi-Tenant",
+  "summary": "Bangun SaaS booking untuk klinik atau salon setara produksi: isolasi tenant dengan RLS PostgreSQL yang dibuktikan tes, organisasi dengan undangan dan role, Better Auth, langganan Midtrans dengan webhook idempoten, worker pengingat dengan retry, rate limit per tenant, feature flag, log terstruktur, CI dengan preview deploy, migrasi expand/contract, drill restore, review ASVS L2, dan ADR.",
+  "level": "pro",
+  "est_hours": 40,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tetapkan-pelanggan-dan-target",
+      "title": "Tetapkan pelanggan, lingkup, dan target layanan",
+      "est_minutes": 30,
+      "body": "## Produk sungguhan, bukan demo CRUD\n\nDi proyek ini kamu membangun SaaS B2B: satu aplikasi yang dipakai banyak bisnis sekaligus, dan setiap bisnis (tenant) **tidak boleh pernah** melihat data bisnis lain. Contoh yang dipakai di sepanjang langkah: aplikasi booking untuk klinik kecil atau salon. Boleh ganti domain (studio foto, bengkel, les privat) asalkan tetap ada organisasi, staf, jadwal, dan pelanggan akhir.\n\nLevel Pro berarti arahan berikut berisi **batasan dan kriteria lulus**, bukan resep baris demi baris. Kode kunci (RLS, webhook, worker) tetap disediakan dan sudah diuji, tapi merangkainya jadi produk adalah tugasmu.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template brief di Bahan ke `docs/brief.md`.\n2. Wawancarai satu pemilik usaha sungguhan (15 menit cukup) atau tulis persona yang jujur. Catat bagaimana mereka mengatur jadwal hari ini dan apa yang paling merugikan.\n3. Tetapkan lingkup v1 dan daftar **di luar v1**. Fitur yang tidak masuk brief tidak dibangun.\n4. Isi tabel target non-fungsional. Angka boleh kamu ubah, tapi setiap angka harus bisa diukur nanti: ada tes, log, atau drill yang membuktikannya.\n\n## Kriteria lulus\n\n- Brief muat di satu layar dan bisa dibaca orang non-teknis.\n- Setiap target non-fungsional punya cara pembuktian yang kamu tulis di sebelahnya.\n",
+      "materials": [
+        {
+          "id": "mt-brief-template",
+          "kind": "kode",
+          "name": "docs/brief.md",
+          "lang": "markdown",
+          "content": "# Brief: <nama produk>\n\nPelanggan: <klinik gigi / salon / studio> dengan 2-20 staf yang ___.\nMasalah utama: ___ (contoh: jadwal di buku tulis, pasien lupa datang).\nPengguna:\n- Owner: ___\n- Admin (resepsionis): ___\n- Member (terapis/dokter): ___\n- Klien akhir (tanpa akun): ___\n\n## Lingkup v1\n- Organisasi + undangan + role owner/admin/member\n- Booking + email pengingat H-1\n- Paket Gratis vs Pro, bayar lewat Midtrans\n\n## Di luar v1\n- ___\n\n## Target non-fungsional\n| Hal | Target |\n| --- | --- |\n| Isolasi tenant | 0 kebocoran lintas tenant, dibuktikan tes otomatis |\n| Ketersediaan | 99,5% per bulan |\n| Latensi p95 API | < 400 ms |\n| RPO / RTO | <= 24 jam / <= 2 jam, dibuktikan drill |\n| Pengingat | terkirim >= 99% tanpa duplikat |\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-brief-pelanggan",
+          "text": "Aku sudah menulis siapa pelanggannya dan masalah utama mereka."
+        },
+        {
+          "id": "mt-brief-lingkup",
+          "text": "Lingkup v1 dan daftar di luar v1 sudah tertulis."
+        },
+        {
+          "id": "mt-brief-target",
+          "text": "Setiap target non-fungsional punya cara pembuktian."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-tenant-dan-ancaman",
+      "title": "Petakan tenant, alur, dan ancaman",
+      "est_minutes": 90,
+      "body": "## Gambar batas tenant sebelum gambar layar\n\nKesalahan paling mahal di SaaS multi-tenant adalah data bocor antartenant. Kebocoran biasanya bukan serangan canggih, tapi satu query yang lupa `where org_id = ...`. Karena itu batas tenant dipikirkan sekarang, sebelum ada kode.\n\n## Yang perlu kamu kerjakan\n\n1. **Daftar entitas** dan tandai: milik tenant (punya `org_id`) atau global. Contoh: `orgs`, `memberships`, `invites`, `bookings`, `audit_log` milik tenant; `plans` global; tabel akun dari pustaka auth terpisah.\n2. **Alur utama** sebagai daftar langkah: daftar akun, buat organisasi, undang staf, terima undangan, buat booking, pengingat terkirim, upgrade paket, bayar, paket aktif.\n3. **Pintu tanpa user**: siapa yang menyentuh data tanpa sesi login? Webhook pembayaran, worker email, halaman booking publik untuk pelanggan akhir. Untuk tiap pintu, tulis role database mana yang dipakai dan data apa yang boleh disentuhnya.\n4. **Ancaman ala STRIDE** minimal satu per huruf, fokus ke batas tenant. Contoh: member mengubah `orgId` di URL; webhook palsu menaikkan paket; notifikasi ganda memperpanjang langganan dua kali; satu tenant membanjiri API sehingga tenant lain lambat.\n5. Untuk tiap ancaman tulis **pengaman** dan **di lapisan mana** (DB, server, infrastruktur).\n\n## Batasan\n\n- Pengaman isolasi tenant harus ada di database, bukan hanya di kode aplikasi.\n- Setiap pintu tanpa user harus punya pengaman yang tidak bergantung pada isi request.\n",
+      "materials": [
+        {
+          "id": "mt-stride",
+          "kind": "tautan",
+          "name": "Microsoft: STRIDE threat modeling",
+          "url": "https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-ide-entitas",
+          "text": "Setiap entitas sudah kutandai milik tenant atau global."
+        },
+        {
+          "id": "mt-ide-pintu",
+          "text": "Aku menulis daftar pintu tanpa user dan role DB untuk masing-masing."
+        },
+        {
+          "id": "mt-ide-ancaman",
+          "text": "Ada minimal enam ancaman beserta pengaman dan lapisannya."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-stack-dan-tulis-adr",
+      "title": "Pilih stack dan tulis ADR untuk tiap keputusan",
+      "est_minutes": 120,
+      "body": "## Setiap pilihan besar punya alasan tertulis\n\nArchitecture Decision Record (ADR) adalah catatan pendek: konteks, pilihan, keputusan, konsekuensi. Di tim, ADR menjawab pertanyaan \"kenapa dulu pakai ini?\" setahun kemudian. Di portofolio, ADR menunjukkan cara berpikirmu.\n\n## Stack acuan (boleh kamu tolak dengan ADR)\n\n| Kebutuhan | Acuan | Alasan singkat |\n| --- | --- | --- |\n| Bahasa + framework | TypeScript, Next.js App Router | satu bahasa dari UI sampai SQL, preview deploy gratis di Vercel |\n| Database | PostgreSQL di Neon | RLS bawaan Postgres; branch per pull request; restore titik waktu |\n| Akses DB | `postgres` (postgres.js), SQL mentah | RLS, trigger, dan policy ditulis di SQL; ORM cenderung menyembunyikannya |\n| Auth | Better Auth (self-hosted) | data user di DB sendiri, tanpa biaya per MAU; alternatif Clerk lebih cepat dipasang tapi data dan biaya ada di vendor |\n| Pembayaran | Midtrans | metode lokal (VA, QRIS, e-wallet); webhook bertanda tangan SHA512 |\n| Job | antrean di Postgres (`FOR UPDATE SKIP LOCKED`) | tanpa Redis; job masuk di transaksi yang sama dengan datanya. Alternatif: pg-boss, graphile-worker |\n| Email | Resend | API sederhana, mendukung idempotency key |\n| Migrasi | dbmate, berkas SQL | migrasi = SQL apa adanya, mendukung `transaction:false` untuk `CREATE INDEX CONCURRENTLY` |\n| Log + error | pino (JSON) + Sentry | log terstruktur dengan `org_id`; error dikelompokkan per tenant |\n| Worker | Render Background Worker | proses panjang yang tidak cocok di serverless |\n\nButuh Node 22.18+ atau 24: tes dan worker dijalankan langsung dengan `node berkas.ts` (type stripping bawaan Node).\n\n## Yang perlu kamu kerjakan\n\n1. Buat `docs/adr/` dan tulis minimal lima ADR dari template: isolasi tenant (satu DB + RLS vs skema per tenant vs DB per tenant), auth, pembayaran, antrean job, strategi migrasi.\n2. Di tiap ADR, tulis minimal dua pilihan yang ditolak dan **kapan keputusan perlu ditinjau ulang** (misalnya: \"pindah ke DB per tenant kalau ada klien enterprise yang mensyaratkan data terpisah\").\n3. Buat repositori, pasang Next.js, lalu `npm i postgres pino better-auth pg @sentry/nextjs`.\n",
+      "materials": [
+        {
+          "id": "mt-adr-template",
+          "kind": "kode",
+          "name": "docs/adr/template.md",
+          "lang": "markdown",
+          "content": "# ADR-000X: <judul keputusan>\n\n- Status: diusulkan | diterima | digantikan oleh ADR-00YY\n- Tanggal: YYYY-MM-DD\n\n## Konteks\nMasalah apa yang memaksa keputusan ini? Batasan apa yang berlaku (biaya, tim, regulasi, waktu)?\n\n## Pilihan yang dipertimbangkan\n1. <pilihan A>: kelebihan, kekurangan\n2. <pilihan B>: kelebihan, kekurangan\n3. <pilihan C>: kelebihan, kekurangan\n\n## Keputusan\nKami memilih <pilihan> karena ___.\n\n## Konsekuensi\n- Yang jadi lebih mudah: ___\n- Yang jadi lebih sulit / utang yang diterima: ___\n- Kapan keputusan ini perlu ditinjau ulang: ___\n"
+        },
+        {
+          "id": "mt-adr-situs",
+          "kind": "tautan",
+          "name": "ADR: panduan dan contoh",
+          "url": "https://adr.github.io/"
+        },
+        {
+          "id": "mt-better-auth",
+          "kind": "tautan",
+          "name": "Dokumentasi Better Auth",
+          "url": "https://www.better-auth.com/docs/introduction"
+        },
+        {
+          "id": "mt-neon-branch",
+          "kind": "tautan",
+          "name": "Neon: branching database",
+          "url": "https://neon.com/docs/introduction/branching"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-tek-adr",
+          "text": "Aku menulis minimal lima ADR dengan pilihan yang ditolak."
+        },
+        {
+          "id": "mt-tek-tinjau",
+          "text": "Setiap ADR menyebut kapan keputusannya perlu ditinjau ulang."
+        },
+        {
+          "id": "mt-tek-repo",
+          "text": "Repositori dengan Next.js dan dependensi inti sudah siap."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-skema-dan-rls",
+      "title": "Rancang skema, role database, dan policy RLS",
+      "est_minutes": 180,
+      "body": "## Database yang menolak, bukan aplikasi yang ingat\n\nInti proyek ini: aplikasi web terhubung sebagai role `app_user` yang **bukan pemilik tabel** dan tunduk pada Row Level Security. Setiap transaksi memasang `app.org_id`; policy hanya meloloskan baris dengan `org_id` yang sama. Lupa `where` di satu query? Database tetap hanya mengembalikan baris tenant aktif.\n\n## Tiga role, tiga tanggung jawab\n\n- **pemilik** (koneksi `DATABASE_URL`): menjalankan migrasi. Pemilik tabel melewati RLS, jadi jangan pernah dipakai aplikasi.\n- **app_user**: request web. Policy `tenant` + hak minimum (misalnya `audit_log` hanya `select, insert`).\n- **app_system**: webhook dan worker yang memang lintas tenant. Diberi policy eksplisit `using (true)`, bukan atribut `BYPASSRLS`, supaya portabel ke layanan Postgres terkelola dan terlihat jelas di skema.\n- **app_auth**: hanya tabel milik Better Auth.\n\n## Keputusan yang sudah diambil di Bahan (pelajari alasannya)\n\n- `current_setting('app.org_id', true)` dibungkus `nullif(..., '')`: tanpa konteks, hasilnya null dan **nol baris**, bukan error atau semua baris.\n- Batas paket ditegakkan oleh trigger yang mengunci baris `orgs` (`for update`), sehingga dua request paralel tidak bisa sama-sama lolos di booking ke-100.\n- Membuat organisasi dan menerima undangan terjadi sebelum ada tenant aktif, jadi lewat fungsi `security definer` yang sempit, bukan dengan melonggarkan policy.\n- Token undangan hanya disimpan hash-nya.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `db/roles.sql` dan migrasi awal dari Bahan. Tambahkan tabel domainmu (layanan, staf, jam buka) dengan pola yang sama: `org_id not null`, indeks yang diawali `org_id`, masuk ke daftar tabel ber-RLS.\n2. Gambar ERD dari skema akhirmu di `docs/erd.png`.\n3. Jalankan di Postgres lokal (atau branch Neon): roles, lalu `dbmate up`, `dbmate rollback`, `dbmate up`.\n4. Tulis di ADR isolasi tenant: apa yang terjadi kalau suatu hari ada yang memakai `DATABASE_URL` pemilik di kode aplikasi, dan bagaimana kamu mencegahnya.\n",
+      "materials": [
+        {
+          "id": "mt-sql-roles",
+          "kind": "kode",
+          "name": "db/roles.sql",
+          "lang": "sql",
+          "content": "-- Jalankan SEKALI per lingkungan, sebagai pemilik database (bukan lewat migrasi).\n-- psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -v user_pw=... -v system_pw=... -v auth_pw=... -f db/roles.sql\ncreate role app_user login password :'user_pw';     -- request web: tunduk RLS\ncreate role app_system login password :'system_pw'; -- webhook + worker: punya policy sendiri\ncreate role app_auth login password :'auth_pw';     -- Better Auth: hanya tabel auth\ngrant usage on schema public to app_user, app_system, app_auth;\n"
+        },
+        {
+          "id": "mt-sql-init",
+          "kind": "kode",
+          "name": "db/migrations/20260101000000_init.sql",
+          "lang": "sql",
+          "content": "-- migrate:up\nset lock_timeout = '5s';\ncreate schema app;\ngrant usage on schema app to app_user, app_system;\n\n-- Konteks tenant dibaca dari setting transaksi. Kosong -> null -> nol baris.\ncreate function app.current_org() returns uuid language sql stable as\n$$ select nullif(current_setting('app.org_id', true), '')::uuid $$;\ncreate function app.current_user_id() returns text language sql stable as\n$$ select nullif(current_setting('app.user_id', true), '') $$;\n\ncreate table plans (\n  id text primary key,\n  max_staff int not null,\n  max_bookings_per_month int not null,\n  price_idr int not null\n);\ninsert into plans values ('gratis', 2, 100, 0), ('pro', 20, 5000, 299000);\n\ncreate table orgs (\n  id uuid primary key default gen_random_uuid(),\n  name text not null check (length(name) between 2 and 80),\n  plan_id text not null default 'gratis' references plans,\n  paid_until timestamptz,\n  created_at timestamptz not null default now()\n);\n\ncreate table memberships (\n  org_id uuid not null references orgs on delete cascade,\n  user_id text not null, -- id user dari Better Auth\n  role text not null check (role in ('owner', 'admin', 'member')),\n  created_at timestamptz not null default now(),\n  primary key (org_id, user_id)\n);\ncreate index on memberships (user_id);\n\ncreate table invites (\n  id uuid primary key default gen_random_uuid(),\n  org_id uuid not null references orgs on delete cascade,\n  email text not null,\n  role text not null check (role in ('admin', 'member')),\n  token_hash bytea not null unique, -- sha256 token; token mentah tidak pernah disimpan\n  expires_at timestamptz not null,\n  accepted_at timestamptz,\n  created_by text not null\n);\ncreate index on invites (org_id);\n\ncreate table bookings (\n  id uuid primary key default gen_random_uuid(),\n  org_id uuid not null references orgs on delete cascade,\n  client_name text not null,\n  client_email text not null,\n  starts_at timestamptz not null,\n  status text not null default 'confirmed' check (status in ('confirmed', 'cancelled')),\n  created_at timestamptz not null default now()\n);\ncreate index on bookings (org_id, starts_at);\n\ncreate table audit_log (\n  id bigint generated always as identity primary key,\n  org_id uuid not null references orgs on delete cascade,\n  actor_id text not null,\n  action text not null,\n  target text,\n  meta jsonb not null default '{}',\n  at timestamptz not null default now()\n);\ncreate index on audit_log (org_id, at desc);\n\ncreate table feature_flags (\n  key text not null,\n  org_id uuid references orgs on delete cascade, -- null = nilai bawaan semua tenant\n  enabled boolean not null,\n  unique nulls not distinct (key, org_id)\n);\n\ncreate table rate_limits (\n  org_id uuid not null references orgs on delete cascade,\n  bucket text not null,\n  window_start timestamptz not null,\n  hits int not null,\n  primary key (org_id, bucket, window_start)\n);\n\ncreate table billing_orders (\n  order_id text primary key,\n  org_id uuid not null references orgs on delete cascade,\n  plan_id text not null references plans,\n  gross_amount numeric(12, 2) not null,\n  status text not null default 'pending' check (status in ('pending', 'paid', 'failed')),\n  paid_at timestamptz\n);\ncreate index on billing_orders (org_id);\n\ncreate table webhook_events (\n  provider text not null,\n  event_key text not null,\n  payload jsonb not null,\n  received_at timestamptz not null default now(),\n  primary key (provider, event_key)\n);\n\ncreate table jobs (\n  id bigint generated always as identity primary key,\n  org_id uuid references orgs on delete cascade,\n  kind text not null,\n  payload jsonb not null,\n  dedupe_key text unique,\n  run_at timestamptz not null default now(),\n  attempts int not null default 0,\n  max_attempts int not null default 5,\n  locked_until timestamptz,\n  last_error text,\n  done_at timestamptz\n);\ncreate index jobs_ready on jobs (run_at) where done_at is null;\ncreate index on jobs (org_id);\n\n-- RLS: app_user hanya melihat baris tenant aktif; app_system punya policy eksplisit.\ndo $$\ndeclare t text;\nbegin\n  foreach t in array array['memberships', 'invites', 'bookings', 'audit_log',\n                           'rate_limits', 'billing_orders', 'jobs'] loop\n    execute format('alter table %I enable row level security', t);\n    execute format('create policy tenant on %I to app_user\n                      using (org_id = app.current_org())\n                      with check (org_id = app.current_org())', t);\n    execute format('create policy system on %I to app_system using (true) with check (true)', t);\n  end loop;\nend $$;\n\n-- Daftar organisasi milik user (untuk pemilih organisasi), sebelum tenant dipilih.\ncreate policy own_rows on memberships for select to app_user\n  using (user_id = app.current_user_id());\n\nalter table orgs enable row level security;\ncreate policy tenant on orgs for select to app_user using (\n  id = app.current_org()\n  or exists (select 1 from memberships m where m.org_id = orgs.id and m.user_id = app.current_user_id()));\ncreate policy tenant_update on orgs for update to app_user\n  using (id = app.current_org()) with check (id = app.current_org());\ncreate policy system on orgs to app_system using (true) with check (true);\n\nalter table feature_flags enable row level security;\ncreate policy tenant on feature_flags for select to app_user\n  using (org_id is null or org_id = app.current_org());\ncreate policy system on feature_flags to app_system using (true) with check (true);\n\n-- Hak minimum. audit_log append-only bagi aplikasi: tanpa update/delete.\ngrant select on plans to app_user, app_system;\ngrant select, update (name) on orgs to app_user;\ngrant select, insert, update, delete on memberships, invites, bookings to app_user;\ngrant select, insert on audit_log to app_user;\ngrant select, insert, update on rate_limits to app_user;\ngrant select on billing_orders, feature_flags to app_user;\ngrant insert, select (dedupe_key) on jobs to app_user; -- select kolom untuk ON CONFLICT\ngrant select, insert, update, delete on all tables in schema public to app_system;\n\n-- Batas paket ditegakkan di database: kunci baris org agar dua insert paralel tidak lolos bersamaan.\ncreate function app.enforce_booking_limit() returns trigger\nlanguage plpgsql security definer set search_path = public, app as $$\ndeclare lim int; used int;\nbegin\n  select p.max_bookings_per_month into lim\n    from orgs o join plans p on p.id = o.plan_id\n   where o.id = new.org_id for update of o;\n  select count(*) into used from bookings\n   where org_id = new.org_id and created_at >= date_trunc('month', now());\n  if used >= lim then\n    raise exception 'plan_limit:bookings' using errcode = 'P0001';\n  end if;\n  return new;\nend $$;\ncreate trigger booking_limit before insert on bookings\n  for each row execute function app.enforce_booking_limit();\n\n-- Dua pintu sempit tanpa konteks tenant: buat org baru dan terima undangan.\ncreate function app.create_org(p_name text, p_user text) returns uuid\nlanguage plpgsql security definer set search_path = public, app as $$\ndeclare new_id uuid;\nbegin\n  insert into orgs (name) values (p_name) returning id into new_id;\n  insert into memberships (org_id, user_id, role) values (new_id, p_user, 'owner');\n  insert into audit_log (org_id, actor_id, action) values (new_id, p_user, 'org.created');\n  return new_id;\nend $$;\n\ncreate function app.accept_invite(p_hash bytea, p_user text, p_email text) returns uuid\nlanguage plpgsql security definer set search_path = public, app as $$\ndeclare inv invites;\nbegin\n  update invites set accepted_at = now()\n   where token_hash = p_hash and accepted_at is null and expires_at > now()\n     and lower(email) = lower(p_email)\n  returning * into inv;\n  if not found then\n    raise exception 'invite_invalid' using errcode = 'P0001';\n  end if;\n  insert into memberships (org_id, user_id, role) values (inv.org_id, p_user, inv.role)\n    on conflict (org_id, user_id) do nothing;\n  insert into audit_log (org_id, actor_id, action, target)\n    values (inv.org_id, p_user, 'invite.accepted', inv.email);\n  return inv.org_id;\nend $$;\n\nrevoke execute on all functions in schema app from public;\ngrant execute on function app.current_org(), app.current_user_id() to app_user, app_system;\ngrant execute on function app.create_org(text, text), app.accept_invite(bytea, text, text) to app_user;\n\n-- migrate:down\ndrop schema app cascade;\ndrop table jobs, webhook_events, billing_orders, rate_limits, feature_flags,\n  audit_log, bookings, invites, memberships, orgs, plans;\n"
+        },
+        {
+          "id": "mt-pg-rls",
+          "kind": "tautan",
+          "name": "PostgreSQL: Row Security Policies",
+          "url": "https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
+        },
+        {
+          "id": "mt-dbmate",
+          "kind": "tautan",
+          "name": "dbmate di GitHub",
+          "url": "https://github.com/amacneil/dbmate"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-ran-role",
+          "text": "Aplikasi web terhubung sebagai role yang bukan pemilik tabel."
+        },
+        {
+          "id": "mt-ran-tabel",
+          "text": "Semua tabel milik tenant punya org_id, indeks org_id, dan RLS aktif."
+        },
+        {
+          "id": "mt-ran-migrasi",
+          "text": "Migrasi bisa naik, turun, dan naik lagi tanpa error."
+        },
+        {
+          "id": "mt-ran-erd",
+          "text": "ERD skema akhir tersimpan di repositori."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "fondasi-tenant-dan-tes-isolasi",
+      "title": "Fondasi tenant dan tes yang membuktikan isolasi",
+      "est_minutes": 240,
+      "body": "## Satu pintu masuk ke data tenant\n\n`withTenant(userId, orgId, fn)` membuka transaksi, memasang `app.user_id`, memastikan user memang anggota org itu, lalu memasang `app.org_id`. Semua kode request web yang menyentuh data tenant **wajib** lewat fungsi ini. `set_config(..., true)` berlaku sampai transaksi selesai saja, sehingga aman dengan pooler mode transaksi (PgBouncer, pooler Neon): koneksi yang dipakai request berikutnya tidak membawa tenant lama.\n\n## Tes adalah bukti, bukan formalitas\n\nTes di Bahan menjalankan skenario serangan nyata terhadap Postgres sungguhan, tanpa mock:\n\n- filter manual `where org_id = <tenant lain>` dari dalam tenant A tetap nol baris;\n- insert ke tenant lain ditolak `row-level security`;\n- update dan delete lintas tenant tidak mengenai baris;\n- tanpa konteks, `app_user` tidak melihat apa pun;\n- aplikasi tidak bisa menghapus `audit_log`.\n\n## Yang perlu kamu kerjakan\n\n1. Gabungkan potongan `package.json` (subpath import `#lib/*`, skrip tes) dan tambahkan `\"allowImportingTsExtensions\": true` di `tsconfig.json`.\n2. Salin `.env.example`, `lib/db.ts`, dan `test/rls.test.ts`.\n3. Jalankan `npm test` terhadap database lokal. Semua harus lulus.\n4. **Buktikan tesnya bisa gagal**: hapus sementara `enable row level security` untuk `bookings` di migrasi, migrasi ulang, jalankan tes. Catat tes mana yang merah, lalu kembalikan.\n5. Tambahkan tes yang sama untuk setiap tabel tenant yang kamu buat sendiri.\n\n## Kriteria lulus\n\n- Tidak ada import `sqlSystem` di kode route web. Tambahkan pemeriksaan sederhana (misalnya `grep` di CI) yang gagal kalau ada.\n- Langkah 4 benar-benar membuat tes merah.\n",
+      "materials": [
+        {
+          "id": "mt-pkg",
+          "kind": "kode",
+          "name": "package.json (potongan)",
+          "lang": "json",
+          "content": "{\n  \"type\": \"module\",\n  \"imports\": { \"#lib/*\": \"./lib/*\" },\n  \"scripts\": {\n    \"dev\": \"next dev\",\n    \"build\": \"next build\",\n    \"worker\": \"node worker/index.ts\",\n    \"test\": \"node --test test/*.test.ts\",\n    \"db:migrate\": \"dbmate --no-dump-schema up\"\n  }\n}\n"
+        },
+        {
+          "id": "mt-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "# Pemilik tabel, hanya untuk migrasi (dbmate) dan drill restore\nDATABASE_URL=postgres://owner:RAHASIA@host/db?sslmode=require\n# Request web, tunduk RLS\nDATABASE_URL_APP=postgres://app_user:RAHASIA@host/db?sslmode=require\n# Webhook + worker\nDATABASE_URL_SYSTEM=postgres://app_system:RAHASIA@host/db?sslmode=require\n# Better Auth\nDATABASE_URL_AUTH=postgres://app_auth:RAHASIA@host/db?sslmode=require\nBETTER_AUTH_SECRET=\nBETTER_AUTH_URL=http://localhost:3000\nMIDTRANS_SERVER_KEY=SB-Mid-server-xxxx\nMIDTRANS_API_BASE=https://api.sandbox.midtrans.com\nRESEND_API_KEY=\nMAIL_FROM=\"Klinikku <noreply@domainmu.id>\"\nSENTRY_DSN=\nLOG_LEVEL=info\n"
+        },
+        {
+          "id": "mt-lib-db",
+          "kind": "kode",
+          "name": "lib/db.ts",
+          "lang": "typescript",
+          "content": "import postgres from \"postgres\";\n\n// Dua koneksi, dua role. Kode request web HANYA boleh memakai sqlUser.\nexport const sqlUser = postgres(process.env.DATABASE_URL_APP!, { max: 10 });\nexport const sqlSystem = postgres(process.env.DATABASE_URL_SYSTEM!, { max: 3 });\n\nexport type Role = \"owner\" | \"admin\" | \"member\";\nexport type Tx = postgres.TransactionSql;\n\nexport class Forbidden extends Error {\n  status = 403;\n}\n\n// Satu transaksi = satu tenant. set_config(..., true) hanya berlaku sampai\n// transaksi selesai, jadi aman dipakai lewat pooler mode transaksi.\nexport async function withTenant<T>(\n  userId: string,\n  orgId: string,\n  fn: (tx: Tx, role: Role) => Promise<T>,\n): Promise<T> {\n  return sqlUser.begin(async (tx) => {\n    await tx`select set_config('app.user_id', ${userId}, true)`;\n    const [m] = await tx<{ role: Role }[]>`\n      select role from memberships where org_id = ${orgId} and user_id = ${userId}`;\n    if (!m) throw new Forbidden(\"Kamu bukan anggota organisasi ini.\");\n    await tx`select set_config('app.org_id', ${orgId}, true)`;\n    return fn(tx, m.role);\n  }) as Promise<T>;\n}\n\nexport async function audit(tx: Tx, actorId: string, action: string, target?: string, meta: Record<string, unknown> = {}) {\n  await tx`\n    insert into audit_log (org_id, actor_id, action, target, meta)\n    values (app.current_org(), ${actorId}, ${action}, ${target ?? null}, ${tx.json(meta as postgres.JSONValue)})`;\n}\n"
+        },
+        {
+          "id": "mt-tes-rls",
+          "kind": "kode",
+          "name": "test/rls.test.ts",
+          "lang": "typescript",
+          "content": "import { test, before, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { randomUUID } from \"node:crypto\";\nimport { sqlUser, sqlSystem, withTenant, Forbidden } from \"#lib/db.ts\";\n\nconst A = randomUUID();\nconst B = randomUUID();\n\nbefore(async () => {\n  await sqlSystem`insert into orgs (id, name) values (${A}, 'Klinik A'), (${B}, 'Salon B')`;\n  await sqlSystem`insert into memberships (org_id, user_id, role)\n    values (${A}, 'alice', 'owner'), (${B}, 'bob', 'owner')`;\n  await sqlSystem`insert into bookings (org_id, client_name, client_email, starts_at) values\n    (${A}, 'Pasien A', 'a@contoh.id', now() + interval '1 day'),\n    (${B}, 'Pelanggan B', 'b@contoh.id', now() + interval '1 day')`;\n});\n\nafter(async () => {\n  await sqlSystem`delete from orgs where id in (${A}, ${B})`;\n  await Promise.all([sqlUser.end(), sqlSystem.end()]);\n});\n\ntest(\"anggota A hanya melihat booking A\", async () => {\n  const rows = await withTenant(\"alice\", A, (tx) => tx`select org_id from bookings`);\n  assert.ok(rows.length > 0);\n  assert.ok(rows.every((r) => r.org_id === A));\n});\n\ntest(\"filter org_id B dari dalam tenant A tetap nol baris\", async () => {\n  const rows = await withTenant(\"alice\", A, (tx) => tx`select * from bookings where org_id = ${B}`);\n  assert.equal(rows.length, 0);\n});\n\ntest(\"bukan anggota tidak bisa masuk tenant B\", async () => {\n  await assert.rejects(withTenant(\"alice\", B, async () => 1), Forbidden);\n});\n\ntest(\"menulis baris untuk tenant lain ditolak RLS\", async () => {\n  await assert.rejects(\n    withTenant(\"alice\", A, (tx) => tx`\n      insert into bookings (org_id, client_name, client_email, starts_at)\n      values (${B}, 'Penyusup', 'x@contoh.id', now())`),\n    /row-level security/,\n  );\n});\n\ntest(\"update dan delete lintas tenant tidak mengenai baris apa pun\", async () => {\n  const n = await withTenant(\"alice\", A, async (tx) => {\n    const u = await tx`update bookings set status = 'cancelled' where org_id = ${B}`;\n    const d = await tx`delete from bookings where org_id = ${B}`;\n    return u.count + d.count;\n  });\n  assert.equal(n, 0);\n});\n\ntest(\"tanpa konteks tenant, app_user tidak melihat apa pun\", async () => {\n  const [r] = await sqlUser`select count(*)::int as n from bookings`;\n  assert.equal(r.n, 0);\n});\n\ntest(\"setelah transaksi tenant selesai, konteksnya kosong lagi\", async () => {\n  await withTenant(\"alice\", A, async () => 1);\n  const [r] = await sqlUser`select app.current_org() as org`;\n  assert.equal(r.org, null);\n});\n\ntest(\"audit log tidak bisa diubah oleh aplikasi\", async () => {\n  await assert.rejects(\n    withTenant(\"alice\", A, (tx) => tx`delete from audit_log`),\n    /permission denied/,\n  );\n});\n"
+        },
+        {
+          "id": "mt-pg-setconfig",
+          "kind": "tautan",
+          "name": "PostgreSQL: set_config dan current_setting",
+          "url": "https://www.postgresql.org/docs/current/functions-admin.html"
+        },
+        {
+          "id": "mt-node-test",
+          "kind": "tautan",
+          "name": "Node.js: test runner",
+          "url": "https://nodejs.org/api/test.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-fon-lulus",
+          "text": "Semua tes isolasi lulus terhadap Postgres sungguhan."
+        },
+        {
+          "id": "mt-fon-merah",
+          "text": "Aku sudah membuktikan tes menjadi merah saat RLS dimatikan."
+        },
+        {
+          "id": "mt-fon-tabel",
+          "text": "Setiap tabel tenant buatanku punya tes isolasi sendiri."
+        },
+        {
+          "id": "mt-fon-grep",
+          "text": "Ada pemeriksaan yang gagal kalau kode web memakai koneksi app_system."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "organisasi-undangan-dan-auth",
+      "title": "Auth, organisasi, undangan, dan role",
+      "est_minutes": 240,
+      "body": "## Identitas dari pustaka, keanggotaan milikmu\n\nBetter Auth mengurus akun, sesi, dan verifikasi email. Organisasi, keanggotaan, dan undangan tetap di tabelmu sendiri, karena di situlah batas tenant dan audit dijaga. (Better Auth punya plugin organisasi; kalau kamu memakainya, tulis ADR baru dan buktikan tabelnya tetap ber-RLS.)\n\n## Aturan role\n\n| Aksi | owner | admin | member |\n| --- | --- | --- | --- |\n| Undang admin | ya | tidak | tidak |\n| Undang member | ya | ya | tidak |\n| Ubah/keluarkan role di bawahnya | ya | hanya member | tidak |\n| Kelola langganan | ya | tidak | tidak |\n| Kelola booking | ya | ya | ya |\n\n## Yang perlu kamu kerjakan\n\n1. Pasang `lib/auth.ts` dan route `app/api/auth/[...all]/route.ts` berisi `export const { GET, POST } = toNextJsHandler(auth);` (dari `better-auth/next-js`).\n2. Hasilkan SQL tabel Better Auth dengan CLI-nya (`generate`), simpan sebagai migrasi dbmate baru, dan beri `app_auth` hak atas tabel itu saja.\n3. Salin `lib/mail.ts`, `lib/org.ts`, dan `test/org.test.ts`. Bangun halaman: buat organisasi, daftar anggota, kirim undangan (email berisi tautan dengan token), terima undangan, ubah role.\n4. Email untuk `acceptInvite` **wajib** diambil dari sesi yang emailnya sudah terverifikasi, bukan dari form.\n\n## Batasan yang harus kamu tegakkan sendiri\n\n- Organisasi tidak boleh kehilangan owner terakhir (tolak di DB lewat trigger, lalu tes).\n- Token mentah tidak boleh tersimpan di tabel mana pun, termasuk `jobs`.\n- Setiap undangan, penerimaan, perubahan role, dan pengeluaran anggota tercatat di `audit_log`.\n",
+      "materials": [
+        {
+          "id": "mt-lib-auth",
+          "kind": "kode",
+          "name": "lib/auth.ts",
+          "lang": "typescript",
+          "content": "import { betterAuth } from \"better-auth\";\nimport { Pool } from \"pg\";\nimport { sendMail } from \"./mail.ts\";\n\n// Better Auth memakai role DB-nya sendiri (app_auth) dan tabelnya sendiri (user, session, account, verification).\n// Role app_user TIDAK diberi akses ke tabel-tabel itu.\nexport const auth = betterAuth({\n  database: new Pool({ connectionString: process.env.DATABASE_URL_AUTH }),\n  emailAndPassword: { enabled: true, requireEmailVerification: true, minPasswordLength: 12 },\n  emailVerification: {\n    sendOnSignUp: true,\n    sendVerificationEmail: async ({ user, url }) => {\n      await sendMail(user.email, \"Verifikasi email akunmu\", `Buka tautan ini untuk verifikasi: ${url}`);\n    },\n  },\n  rateLimit: { enabled: true },\n});\n"
+        },
+        {
+          "id": "mt-lib-mail",
+          "kind": "kode",
+          "name": "lib/mail.ts",
+          "lang": "typescript",
+          "content": "// Kirim email lewat API Resend. idempotencyKey membuat percobaan ulang tidak menghasilkan email dobel.\nexport async function sendMail(to: string, subject: string, text: string, idempotencyKey?: string) {\n  const res = await fetch(\"https://api.resend.com/emails\", {\n    method: \"POST\",\n    headers: {\n      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,\n      \"Content-Type\": \"application/json\",\n      ...(idempotencyKey ? { \"Idempotency-Key\": idempotencyKey } : {}),\n    },\n    body: JSON.stringify({ from: process.env.MAIL_FROM, to, subject, text }),\n  });\n  if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);\n}\n"
+        },
+        {
+          "id": "mt-lib-org",
+          "kind": "kode",
+          "name": "lib/org.ts",
+          "lang": "typescript",
+          "content": "import { createHash, randomBytes } from \"node:crypto\";\nimport { sqlUser, audit, Forbidden, type Role, type Tx } from \"./db.ts\";\n\nconst rank: Record<Role, number> = { member: 0, admin: 1, owner: 2 };\n\n// owner boleh mengundang/mengubah admin dan member; admin hanya member; member tidak apa pun.\nexport function canManage(actor: Role, target: Role): boolean {\n  return actor !== \"member\" && rank[actor] > rank[target];\n}\n\nexport const hashToken = (token: string) => createHash(\"sha256\").update(token).digest();\n\nexport async function createOrg(userId: string, name: string): Promise<string> {\n  const [r] = await sqlUser`select app.create_org(${name}, ${userId}) as id`;\n  return r.id;\n}\n\n// Mengembalikan token mentah SATU KALI untuk dikirim lewat email. Di DB hanya hash-nya.\nexport async function createInvite(tx: Tx, actor: { id: string; role: Role }, email: string, role: \"admin\" | \"member\") {\n  if (!canManage(actor.role, role)) throw new Forbidden(`Role ${actor.role} tidak boleh mengundang ${role}.`);\n  const token = randomBytes(32).toString(\"base64url\");\n  await tx`\n    insert into invites (org_id, email, role, token_hash, expires_at, created_by)\n    values (app.current_org(), ${email.trim().toLowerCase()}, ${role}, ${hashToken(token)},\n            now() + interval '7 days', ${actor.id})`;\n  await audit(tx, actor.id, \"invite.created\", email, { role });\n  return token;\n}\n\n// Email harus email yang SUDAH terverifikasi di sesi auth, bukan dari form.\nexport async function acceptInvite(userId: string, verifiedEmail: string, token: string): Promise<string> {\n  const [r] = await sqlUser`select app.accept_invite(${hashToken(token)}, ${userId}, ${verifiedEmail}) as org_id`;\n  return r.org_id;\n}\n"
+        },
+        {
+          "id": "mt-tes-org",
+          "kind": "kode",
+          "name": "test/org.test.ts",
+          "lang": "typescript",
+          "content": "import { test, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { sqlUser, sqlSystem, withTenant, Forbidden } from \"#lib/db.ts\";\nimport { canManage, createOrg, createInvite, acceptInvite } from \"#lib/org.ts\";\n\nconst made: string[] = [];\nafter(async () => {\n  await sqlSystem`delete from orgs where id = any(${made})`;\n  await Promise.all([sqlUser.end(), sqlSystem.end()]);\n});\n\ntest(\"matriks role\", () => {\n  assert.equal(canManage(\"owner\", \"admin\"), true);\n  assert.equal(canManage(\"admin\", \"member\"), true);\n  assert.equal(canManage(\"admin\", \"admin\"), false);\n  assert.equal(canManage(\"member\", \"member\"), false);\n});\n\ntest(\"undangan: sekali pakai, terikat email\", async () => {\n  const org = await createOrg(\"owner-1\", \"Klinik Sehat\");\n  made.push(org);\n  const token = await withTenant(\"owner-1\", org, (tx, role) =>\n    createInvite(tx, { id: \"owner-1\", role }, \"Staf@Contoh.id\", \"member\"));\n\n  await assert.rejects(acceptInvite(\"orang-lain\", \"lain@contoh.id\", token), /invite_invalid/);\n  assert.equal(await acceptInvite(\"staf-1\", \"staf@contoh.id\", token), org);\n  await assert.rejects(acceptInvite(\"staf-1\", \"staf@contoh.id\", token), /invite_invalid/);\n\n  const role = await withTenant(\"staf-1\", org, async (_tx, r) => r);\n  assert.equal(role, \"member\");\n  await assert.rejects(\n    withTenant(\"staf-1\", org, (tx, r) => createInvite(tx, { id: \"staf-1\", role: r }, \"x@contoh.id\", \"member\")),\n    Forbidden,\n  );\n});\n\ntest(\"batas paket gratis menolak booking ke-101 bulan ini\", async () => {\n  const org = await createOrg(\"owner-2\", \"Salon Kecil\");\n  made.push(org);\n  await sqlSystem`insert into bookings (org_id, client_name, client_email, starts_at)\n    select ${org}, 'P' || g, 'p@contoh.id', now() from generate_series(1, 100) g`;\n  await assert.rejects(\n    withTenant(\"owner-2\", org, (tx) => tx`\n      insert into bookings (org_id, client_name, client_email, starts_at)\n      values (${org}, 'Ke-101', 'p@contoh.id', now())`),\n    /plan_limit:bookings/,\n  );\n});\n"
+        },
+        {
+          "id": "mt-ba-cli",
+          "kind": "tautan",
+          "name": "Better Auth: CLI (generate)",
+          "url": "https://www.better-auth.com/docs/concepts/cli"
+        },
+        {
+          "id": "mt-ba-email",
+          "kind": "tautan",
+          "name": "Better Auth: email dan kata sandi",
+          "url": "https://www.better-auth.com/docs/authentication/email-password"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-org-auth",
+          "text": "Daftar, verifikasi email, masuk, dan keluar berjalan."
+        },
+        {
+          "id": "mt-org-undang",
+          "text": "Undangan sekali pakai, kedaluwarsa 7 hari, dan terikat email terverifikasi."
+        },
+        {
+          "id": "mt-org-role",
+          "text": "Matriks role ditegakkan dan dites, termasuk owner terakhir tidak bisa hilang."
+        },
+        {
+          "id": "mt-org-audit",
+          "text": "Semua aksi keanggotaan tercatat di audit_log."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "langganan-midtrans-dan-webhook",
+      "title": "Langganan, batas paket, dan webhook Midtrans",
+      "est_minutes": 300,
+      "body": "## Uang harus dihitung tepat sekali\n\nMidtrans mengirim notifikasi HTTP saat status transaksi berubah, dan bisa mengirim notifikasi yang sama lebih dari sekali, atau dengan urutan acak (misalnya `expire` datang setelah `settlement`). Handler-mu harus aman terhadap ketiganya.\n\n## Desain di Bahan\n\n1. **Verifikasi tanda tangan**: `SHA512(order_id + status_code + gross_amount + ServerKey)`, dibandingkan dengan `timingSafeEqual`.\n2. **Jangan percaya isi notifikasi**: status final diambil ulang dari API status Midtrans.\n3. **Idempoten**: `(order_id, status)` dicatat di `webhook_events` dengan `on conflict do nothing`; order hanya berpindah `pending -> paid` sekali dan nominal harus cocok.\n4. **Gagal = 500**: Midtrans akan mengirim ulang, dan itu aman karena poin 3.\n\n## Model langganan\n\nTagihan bulanan: setiap periode dibuat `billing_orders` (misalnya `order_id = sub-<org>-<yyyymm>`), lalu transaksi Snap. Pembayaran sukses memperpanjang `paid_until` satu bulan dan mengubah `plan_id`. Batas paket (`max_bookings_per_month`) sudah ditegakkan trigger; tugasmu menampilkan pesan yang ramah saat API mengembalikan 402.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `lib/midtrans.ts`, route webhook, dan tesnya. Jalankan tes: tanda tangan salah 401, tiga notifikasi sama hanya memperpanjang sekali, `expire` yang terlambat tidak membatalkan order yang sudah dibayar.\n2. Buat alur upgrade: owner memilih paket Pro, server membuat order + token Snap, browser membuka Snap.\n3. Tentukan dan tulis di ADR: apa yang terjadi saat `paid_until` lewat (masa tenggang berapa hari, fitur apa yang dikunci), lalu implementasikan lewat job harian.\n4. Uji end-to-end dengan akun **sandbox** dan simulator pembayaran Midtrans; pasang URL notifikasi ke preview deploy atau tunnel.\n",
+      "materials": [
+        {
+          "id": "mt-lib-midtrans",
+          "kind": "kode",
+          "name": "lib/midtrans.ts",
+          "lang": "typescript",
+          "content": "import { createHash, timingSafeEqual } from \"node:crypto\";\nimport { sqlSystem } from \"./db.ts\";\n\nconst API = process.env.MIDTRANS_API_BASE ?? \"https://api.sandbox.midtrans.com\";\nconst serverKey = () => process.env.MIDTRANS_SERVER_KEY!;\n\nexport type Notification = {\n  order_id: string;\n  status_code: string;\n  gross_amount: string;\n  signature_key: string;\n  transaction_status: string;\n  fraud_status?: string;\n};\n\n// signature_key = SHA512(order_id + status_code + gross_amount + ServerKey)\nexport function validSignature(n: Partial<Notification>, key = serverKey()): boolean {\n  if (!n.order_id || !n.status_code || !n.gross_amount || !n.signature_key) return false;\n  const expected = createHash(\"sha512\")\n    .update(n.order_id + n.status_code + n.gross_amount + key)\n    .digest(\"hex\");\n  const got = Buffer.from(n.signature_key);\n  return got.length === expected.length && timingSafeEqual(got, Buffer.from(expected));\n}\n\n// Isi notifikasi hanya pemicu. Status yang dipercaya diambil ulang dari API Midtrans.\nexport async function fetchStatus(orderId: string): Promise<Notification> {\n  const res = await fetch(`${API}/v2/${encodeURIComponent(orderId)}/status`, {\n    headers: {\n      Accept: \"application/json\",\n      Authorization: \"Basic \" + Buffer.from(serverKey() + \":\").toString(\"base64\"),\n    },\n  });\n  if (!res.ok) throw new Error(`midtrans status ${res.status}`);\n  return res.json() as Promise<Notification>;\n}\n\nconst FAILED = new Set([\"deny\", \"cancel\", \"expire\", \"failure\"]);\n\n// Idempoten: (order_id, status) dicatat sekali; order hanya pindah pending -> paid/failed sekali.\nexport async function applyPayment(s: Notification, raw: unknown): Promise<\"duplikat\" | \"dibayar\" | \"gagal\" | \"diabaikan\"> {\n  const paid = s.transaction_status === \"settlement\" ||\n    (s.transaction_status === \"capture\" && s.fraud_status === \"accept\");\n\n  return sqlSystem.begin(async (tx) => {\n    const fresh = await tx`\n      insert into webhook_events (provider, event_key, payload)\n      values ('midtrans', ${`${s.order_id}:${s.transaction_status}`}, ${tx.json(raw as never)})\n      on conflict do nothing returning 1`;\n    if (fresh.length === 0) return \"duplikat\";\n\n    if (FAILED.has(s.transaction_status)) {\n      await tx`update billing_orders set status = 'failed'\n               where order_id = ${s.order_id} and status = 'pending'`;\n      return \"gagal\";\n    }\n    if (!paid) return \"diabaikan\"; // pending, refund, dsb: tangani sesuai kebijakanmu\n\n    const [o] = await tx`\n      update billing_orders set status = 'paid', paid_at = now()\n      where order_id = ${s.order_id} and status <> 'paid' and gross_amount = ${s.gross_amount}\n      returning org_id, plan_id`;\n    if (!o) return \"diabaikan\"; // sudah dibayar, order tak dikenal, atau nominal tidak cocok\n\n    await tx`\n      update orgs set plan_id = ${o.plan_id},\n        paid_until = greatest(coalesce(paid_until, now()), now()) + interval '1 month'\n      where id = ${o.org_id}`;\n    await tx`\n      insert into audit_log (org_id, actor_id, action, target, meta)\n      values (${o.org_id}, 'system:midtrans', 'billing.paid', ${s.order_id}, ${tx.json({ plan: o.plan_id })})`;\n    return \"dibayar\";\n  }) as Promise<\"duplikat\" | \"dibayar\" | \"gagal\" | \"diabaikan\">;\n}\n"
+        },
+        {
+          "id": "mt-route-webhook",
+          "kind": "kode",
+          "name": "app/api/webhooks/midtrans/route.ts",
+          "lang": "typescript",
+          "content": "import { validSignature, fetchStatus, applyPayment, type Notification } from \"#lib/midtrans.ts\";\nimport { log } from \"#lib/log.ts\";\n\nexport async function POST(req: Request) {\n  let n: Partial<Notification>;\n  try {\n    n = await req.json();\n  } catch {\n    return new Response(\"bad json\", { status: 400 });\n  }\n  if (!validSignature(n)) {\n    log.warn({ order_id: n.order_id }, \"midtrans: tanda tangan salah\");\n    return new Response(\"bad signature\", { status: 401 });\n  }\n  try {\n    const status = await fetchStatus(n.order_id!);\n    const result = await applyPayment(status, n);\n    log.info({ order_id: n.order_id, status: status.transaction_status, result }, \"midtrans: diproses\");\n    return new Response(\"ok\");\n  } catch (err) {\n    // Non-2xx membuat Midtrans mengirim ulang nanti; aman karena applyPayment idempoten.\n    log.error({ err, order_id: n.order_id }, \"midtrans: gagal diproses\");\n    return new Response(\"retry\", { status: 500 });\n  }\n}\n"
+        },
+        {
+          "id": "mt-tes-midtrans",
+          "kind": "kode",
+          "name": "test/midtrans.test.ts",
+          "lang": "typescript",
+          "content": "import { test, before, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { createHash, randomUUID } from \"node:crypto\";\nimport { sqlSystem } from \"#lib/db.ts\";\nimport { POST } from \"../app/api/webhooks/midtrans/route.ts\";\n\nprocess.env.MIDTRANS_SERVER_KEY = \"SB-Mid-server-uji\";\nconst org = randomUUID();\nconst orderId = `sub-${org.slice(0, 8)}-202611`;\n\nfunction notif(status: string, gross = \"299000.00\") {\n  const sig = createHash(\"sha512\").update(orderId + \"200\" + gross + process.env.MIDTRANS_SERVER_KEY).digest(\"hex\");\n  return { order_id: orderId, status_code: \"200\", gross_amount: gross, signature_key: sig, transaction_status: status };\n}\nconst call = (body: unknown) =>\n  POST(new Request(\"http://x/api/webhooks/midtrans\", { method: \"POST\", body: JSON.stringify(body) }));\n\nlet apiStatus = \"settlement\";\nbefore(async () => {\n  globalThis.fetch = (async () => Response.json(notif(apiStatus))) as typeof fetch;\n  await sqlSystem`insert into orgs (id, name) values (${org}, 'Klinik Bayar')`;\n  await sqlSystem`insert into billing_orders (order_id, org_id, plan_id, gross_amount)\n                  values (${orderId}, ${org}, 'pro', 299000)`;\n});\nafter(async () => {\n  await sqlSystem`delete from webhook_events where event_key like ${orderId + \"%\"}`;\n  await sqlSystem`delete from orgs where id = ${org}`;\n  await sqlSystem.end();\n});\n\ntest(\"tanda tangan salah ditolak 401\", async () => {\n  const res = await call({ ...notif(\"settlement\"), signature_key: \"a\".repeat(128) });\n  assert.equal(res.status, 401);\n});\n\ntest(\"notifikasi ganda hanya memperpanjang langganan sekali\", async () => {\n  for (let i = 0; i < 3; i++) assert.equal((await call(notif(\"settlement\"))).status, 200);\n  const [o] = await sqlSystem`select plan_id, paid_until from orgs where id = ${org}`;\n  assert.equal(o.plan_id, \"pro\");\n  const days = (o.paid_until.getTime() - Date.now()) / 86_400_000;\n  assert.ok(days > 27 && days < 32, `paid_until ${days} hari`);\n  const [a] = await sqlSystem`select count(*)::int n from audit_log where org_id = ${org} and action = 'billing.paid'`;\n  assert.equal(a.n, 1);\n});\n\ntest(\"notifikasi expire yang datang terlambat tidak membatalkan order yang sudah dibayar\", async () => {\n  apiStatus = \"expire\";\n  assert.equal((await call(notif(\"expire\"))).status, 200);\n  const [o] = await sqlSystem`select status from billing_orders where order_id = ${orderId}`;\n  assert.equal(o.status, \"paid\");\n});\n"
+        },
+        {
+          "id": "mt-mid-notif",
+          "kind": "tautan",
+          "name": "Midtrans: HTTP(S) notification / webhooks",
+          "url": "https://docs.midtrans.com/docs/https-notification-webhooks"
+        },
+        {
+          "id": "mt-mid-status",
+          "kind": "tautan",
+          "name": "Midtrans: Get Transaction Status",
+          "url": "https://docs.midtrans.com/reference/get-transaction-status"
+        },
+        {
+          "id": "mt-mid-snap",
+          "kind": "tautan",
+          "name": "Midtrans: panduan integrasi Snap",
+          "url": "https://docs.midtrans.com/docs/snap-snap-integration-guide"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-bil-sig",
+          "text": "Notifikasi dengan tanda tangan salah ditolak."
+        },
+        {
+          "id": "mt-bil-idem",
+          "text": "Notifikasi ganda dan urutan acak tidak mengubah hasil, dibuktikan tes."
+        },
+        {
+          "id": "mt-bil-sandbox",
+          "text": "Satu pembayaran sandbox end-to-end mengubah paket org."
+        },
+        {
+          "id": "mt-bil-tenggang",
+          "text": "Kebijakan masa tenggang tertulis di ADR dan berjalan lewat job."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "job-pengingat-dengan-retry",
+      "title": "Worker pengingat email dengan retry",
+      "est_minutes": 210,
+      "body": "## Antrean di database yang sudah kamu punya\n\nBooking dibuat, lalu di **transaksi yang sama** job `booking.reminder` dimasukkan dengan `run_at = H-1`. Kalau transaksi batal, job ikut batal. Tidak ada email untuk booking yang tidak pernah ada.\n\n## Cara kerja worker di Bahan\n\n- Ambil satu job siap jalan dengan `FOR UPDATE SKIP LOCKED`: beberapa worker paralel tidak saling menunggu dan tidak mengambil job yang sama.\n- `locked_until` 5 menit: kalau worker mati di tengah jalan, job diambil lagi setelahnya.\n- Gagal: `run_at` dimundurkan secara eksponensial (1, 2, 4 ... menit, maks 1 jam); setelah `max_attempts`, job berhenti dan dicatat sebagai error untuk ditangani manual.\n- Handler mengirim email dengan `Idempotency-Key`, sehingga percobaan ulang setelah email sebenarnya terkirim tidak menghasilkan email dobel.\n- `dedupe_key` mencegah satu booking punya dua job pengingat.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `lib/jobs.ts`, `worker/queue.ts`, `worker/handlers.ts`, `worker/index.ts`. Jalankan `npm run worker` di terminal kedua.\n2. Pakai `enqueue` di route pembuatan booking (contoh route ada di langkah berikutnya).\n3. Putuskan perilaku saat booking **dijadwal ulang**: job lama harus tidak mengirim jam yang salah. Implementasikan dan tes.\n4. Tambahkan satu jenis job lagi yang kamu butuhkan, misalnya pembersihan `rate_limits` lama atau pengecekan `paid_until` harian.\n5. Matikan worker dengan Ctrl+C saat sedang memproses: pastikan berhenti rapi dan job tidak hilang.\n",
+      "materials": [
+        {
+          "id": "mt-lib-jobs",
+          "kind": "kode",
+          "name": "lib/jobs.ts",
+          "lang": "typescript",
+          "content": "import type { Tx } from \"./db.ts\";\n\n// Dipanggil di dalam withTenant, di transaksi yang sama dengan perubahan datanya:\n// kalau transaksi batal, job-nya ikut batal (tidak ada email untuk booking yang gagal dibuat).\nexport async function enqueue(\n  tx: Tx,\n  kind: string,\n  payload: Record<string, unknown>,\n  opts: { runAt?: Date; dedupeKey?: string } = {},\n) {\n  await tx`\n    insert into jobs (org_id, kind, payload, run_at, dedupe_key)\n    values (app.current_org(), ${kind}, ${tx.json(payload as never)},\n            ${opts.runAt ?? new Date()}, ${opts.dedupeKey ?? null})\n    on conflict (dedupe_key) do nothing`;\n}\n"
+        },
+        {
+          "id": "mt-worker-queue",
+          "kind": "kode",
+          "name": "worker/queue.ts",
+          "lang": "typescript",
+          "content": "import { sqlSystem as sql } from \"#lib/db.ts\";\nimport { log } from \"#lib/log.ts\";\n\nexport type Job = { id: number; org_id: string | null; kind: string; payload: any; attempts: number; max_attempts: number };\nexport type Handler = (payload: any, job: Job) => Promise<void>;\n\n// Ambil satu job siap jalan. SKIP LOCKED: beberapa worker paralel tidak saling menunggu\n// dan tidak mengambil job yang sama. locked_until menyelamatkan job jika worker mati di tengah.\nexport async function runOnce(handlers: Record<string, Handler>): Promise<boolean> {\n  const [job] = await sql<Job[]>`\n    update jobs set attempts = attempts + 1, locked_until = now() + interval '5 minutes'\n    where id = (\n      select id from jobs\n      where done_at is null and run_at <= now() and attempts < max_attempts\n        and (locked_until is null or locked_until < now())\n      order by run_at\n      limit 1\n      for update skip locked)\n    returning id, org_id, kind, payload, attempts, max_attempts`;\n  if (!job) return false;\n\n  const jlog = log.child({ job_id: job.id, kind: job.kind, org_id: job.org_id, attempt: job.attempts });\n  try {\n    const handler = handlers[job.kind];\n    if (!handler) throw new Error(`tidak ada handler untuk ${job.kind}`);\n    await handler(job.payload, job);\n    await sql`update jobs set done_at = now(), locked_until = null, last_error = null where id = ${job.id}`;\n    jlog.info(\"job selesai\");\n  } catch (err) {\n    // Backoff eksponensial: 1, 2, 4, 8 ... menit, maksimal 1 jam.\n    const delaySec = Math.min(30 * 2 ** job.attempts, 3600);\n    await sql`\n      update jobs set locked_until = null, last_error = ${String(err)},\n        run_at = now() + make_interval(secs => ${delaySec})\n      where id = ${job.id}`;\n    const dead = job.attempts >= job.max_attempts;\n    jlog[dead ? \"error\" : \"warn\"]({ err }, dead ? \"job menyerah, perlu dicek manual\" : \"job gagal, akan dicoba lagi\");\n  }\n  return true;\n}\n"
+        },
+        {
+          "id": "mt-worker-handlers",
+          "kind": "kode",
+          "name": "worker/handlers.ts",
+          "lang": "typescript",
+          "content": "import { sqlSystem as sql } from \"#lib/db.ts\";\nimport { sendMail } from \"#lib/mail.ts\";\nimport type { Handler } from \"./queue.ts\";\n\nexport const handlers: Record<string, Handler> = {\n  async \"booking.reminder\"(p: { booking_id: string }) {\n    const [b] = await sql`\n      select b.client_name, b.client_email, b.starts_at, b.status, o.name as org_name\n      from bookings b join orgs o on o.id = b.org_id\n      where b.id = ${p.booking_id}`;\n    if (!b || b.status !== \"confirmed\") return; // dibatalkan atau dihapus: selesai tanpa kirim\n\n    const when = b.starts_at.toLocaleString(\"id-ID\", {\n      timeZone: \"Asia/Jakarta\", dateStyle: \"full\", timeStyle: \"short\",\n    });\n    await sendMail(\n      b.client_email,\n      `Pengingat jadwal di ${b.org_name}`,\n      `Halo ${b.client_name}, jadwalmu di ${b.org_name}: ${when} WIB. Sampai jumpa!`,\n      `reminder-${p.booking_id}`,\n    );\n  },\n};\n"
+        },
+        {
+          "id": "mt-worker-index",
+          "kind": "kode",
+          "name": "worker/index.ts",
+          "lang": "typescript",
+          "content": "import { sqlSystem } from \"#lib/db.ts\";\nimport { log } from \"#lib/log.ts\";\nimport { runOnce } from \"./queue.ts\";\nimport { handlers } from \"./handlers.ts\";\n\nlet stopping = false;\nfor (const sig of [\"SIGTERM\", \"SIGINT\"]) process.on(sig, () => { stopping = true; });\n\nlog.info(\"worker mulai\");\nwhile (!stopping) {\n  const worked = await runOnce(handlers).catch((err) => {\n    log.error({ err }, \"worker: gagal mengambil job\");\n    return false;\n  });\n  if (!worked) await new Promise((r) => setTimeout(r, 2000));\n}\nawait sqlSystem.end({ timeout: 5 });\nlog.info(\"worker berhenti\");\n"
+        },
+        {
+          "id": "mt-tes-handlers",
+          "kind": "kode",
+          "name": "test/handlers.test.ts",
+          "lang": "typescript",
+          "content": "import { test, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { randomUUID } from \"node:crypto\";\nimport { sqlSystem } from \"#lib/db.ts\";\nimport { handlers } from \"../worker/handlers.ts\";\n\nconst org = randomUUID();\nafter(async () => { await sqlSystem`delete from orgs where id = ${org}`; await sqlSystem.end(); });\n\ntest(\"pengingat: kirim sekali dengan idempotency key, lewati yang dibatalkan\", async () => {\n  const sent: { key: string | null; body: any }[] = [];\n  globalThis.fetch = (async (_u: string, init: RequestInit) => {\n    sent.push({ key: new Headers(init.headers).get(\"idempotency-key\"), body: JSON.parse(String(init.body)) });\n    return new Response(\"{}\", { status: 200 });\n  }) as typeof fetch;\n  await sqlSystem`insert into orgs (id, name) values (${org}, 'Salon Ayu')`;\n  const [a] = await sqlSystem`insert into bookings (org_id, client_name, client_email, starts_at)\n    values (${org}, 'Rina', 'rina@contoh.id', '2026-12-01T02:00:00Z') returning id`;\n  const [c] = await sqlSystem`insert into bookings (org_id, client_name, client_email, starts_at, status)\n    values (${org}, 'Doni', 'doni@contoh.id', now(), 'cancelled') returning id`;\n  const job = {} as never;\n  await handlers[\"booking.reminder\"]({ booking_id: a.id }, job);\n  await handlers[\"booking.reminder\"]({ booking_id: c.id }, job);\n  assert.equal(sent.length, 1);\n  assert.equal(sent[0].key, `reminder-${a.id}`);\n  assert.match(sent[0].body.text, /09\\.00 WIB/);\n});\n"
+        },
+        {
+          "id": "mt-pg-skiplocked",
+          "kind": "tautan",
+          "name": "PostgreSQL: SELECT ... FOR UPDATE SKIP LOCKED",
+          "url": "https://www.postgresql.org/docs/current/sql-select.html"
+        },
+        {
+          "id": "mt-resend-idem",
+          "kind": "tautan",
+          "name": "Resend: idempotency keys",
+          "url": "https://resend.com/docs/dashboard/emails/idempotency-keys"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-job-tx",
+          "text": "Job pengingat dibuat di transaksi yang sama dengan booking."
+        },
+        {
+          "id": "mt-job-retry",
+          "text": "Job gagal dicoba ulang dengan backoff dan berhenti setelah batas percobaan."
+        },
+        {
+          "id": "mt-job-ulang",
+          "text": "Booking yang dijadwal ulang atau dibatalkan tidak menerima pengingat yang salah."
+        },
+        {
+          "id": "mt-job-stop",
+          "text": "Worker berhenti rapi saat menerima SIGTERM."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "rate-limit-flag-dan-observability",
+      "title": "Rate limit, feature flag, dan observability per tenant",
+      "est_minutes": 240,
+      "body": "## Satu tenant tidak boleh merusak yang lain\n\nPada SaaS, tetangga yang berisik adalah masalah nyata: satu tenant dengan skrip impor yang rusak bisa membuat semua tenant lambat. Rate limit dihitung **per tenant**, di transaksi tersendiri (supaya request yang gagal tetap terhitung).\n\n## Bahan langkah ini\n\n- `lib/guard.ts`: `rateLimit` jendela tetap di Postgres, dan `flag` dengan nilai per tenant yang menimpa nilai bawaan.\n- `lib/log.ts`: pino dengan `AsyncLocalStorage`, sehingga setiap baris log membawa `req_id`, `org_id`, `user_id` tanpa diteruskan manual.\n- `lib/tenant-action.ts`: satu pintu untuk semua route tenant: sesi, konteks log, tag Sentry, rate limit, RLS, dan pemetaan error (403, 402 batas paket, 429, 500 tanpa detail).\n- Contoh route booking yang memakai semuanya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin berkas-berkas di Bahan dan jalankan `test/jobs-guard.test.ts`.\n2. Pasang Sentry untuk Next.js mengikuti wizard resminya. Pastikan satu error buatan muncul di Sentry dengan tag `org_id`.\n3. Lindungi **halaman booking publik** (pelanggan akhir tanpa akun): batasi per org dan per IP, dan tulis di ADR role mana yang dipakai serta data apa yang boleh dibacanya.\n4. Pakai satu feature flag sungguhan, misalnya `pembayaran-qris`, aktif hanya untuk satu tenant uji.\n5. Buat satu dashboard sederhana (Sentry atau penyedia log-mu): jumlah error per tenant dan p95 latensi.\n\n## Kriteria lulus\n\n- Tidak ada data pribadi pelanggan (email, nama, nomor HP) di log. Periksa dengan `grep` pada log lokal.\n- Request ke-301 dalam satu menit dari tenant yang sama mendapat 429, tenant lain tidak terpengaruh.\n",
+      "materials": [
+        {
+          "id": "mt-lib-guard",
+          "kind": "kode",
+          "name": "lib/guard.ts",
+          "lang": "typescript",
+          "content": "import type { Tx } from \"./db.ts\";\n\nexport class TooManyRequests extends Error {\n  status = 429;\n}\n\n// Jendela tetap per tenant per bucket. Panggil di transaksi TERSENDIRI sebelum\n// transaksi utama, supaya hitungan tidak ikut batal saat request gagal.\n// ponytail: fixed window di Postgres; pindah ke Redis/Upstash kalau tabel ini jadi panas.\nexport async function rateLimit(tx: Tx, bucket: string, limit: number, windowSec = 60) {\n  const [r] = await tx<{ hits: number }[]>`\n    insert into rate_limits (org_id, bucket, window_start, hits)\n    values (app.current_org(), ${bucket},\n            to_timestamp(floor(extract(epoch from now()) / ${windowSec}) * ${windowSec}), 1)\n    on conflict (org_id, bucket, window_start)\n      do update set hits = rate_limits.hits + 1\n    returning hits`;\n  if (r.hits > limit) throw new TooManyRequests(`Batas ${limit} request per ${windowSec} detik tercapai.`);\n}\n\n// Nilai khusus tenant menang atas nilai bawaan (org_id null). Tidak ada baris = mati.\nexport async function flag(tx: Tx, key: string): Promise<boolean> {\n  const [r] = await tx<{ enabled: boolean }[]>`\n    select enabled from feature_flags\n    where key = ${key} and (org_id = app.current_org() or org_id is null)\n    order by org_id nulls last\n    limit 1`;\n  return r?.enabled ?? false;\n}\n"
+        },
+        {
+          "id": "mt-lib-log",
+          "kind": "kode",
+          "name": "lib/log.ts",
+          "lang": "typescript",
+          "content": "import pino from \"pino\";\nimport { AsyncLocalStorage } from \"node:async_hooks\";\n\ntype Ctx = { req_id?: string; org_id?: string; user_id?: string };\nexport const ctx = new AsyncLocalStorage<Ctx>();\n\n// Setiap baris log otomatis membawa req_id, org_id, user_id dari konteks request.\nexport const log = pino({\n  level: process.env.LOG_LEVEL ?? \"info\",\n  base: { service: process.env.SERVICE_NAME ?? \"web\" },\n  mixin: () => ctx.getStore() ?? {},\n  redact: [\"*.authorization\", \"*.password\", \"*.token\", \"*.signature_key\"],\n});\n"
+        },
+        {
+          "id": "mt-lib-action",
+          "kind": "kode",
+          "name": "lib/tenant-action.ts",
+          "lang": "typescript",
+          "content": "import { headers } from \"next/headers\";\nimport * as Sentry from \"@sentry/nextjs\";\nimport { randomUUID } from \"node:crypto\";\nimport { auth } from \"./auth.ts\";\nimport { withTenant, type Role, type Tx } from \"./db.ts\";\nimport { rateLimit } from \"./guard.ts\";\nimport { ctx, log } from \"./log.ts\";\n\ntype Me = { id: string; email: string; role: Role };\nconst UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\n\n// Satu pintu untuk semua route tenant: sesi -> konteks log -> rate limit -> RLS -> peta error.\nexport async function tenantAction<T>(orgId: string, fn: (tx: Tx, me: Me) => Promise<T>): Promise<Response> {\n  if (!UUID.test(orgId)) return Response.json({ error: \"Tidak ditemukan.\" }, { status: 404 });\n  const session = await auth.api.getSession({ headers: await headers() });\n  if (!session) return Response.json({ error: \"Belum masuk.\" }, { status: 401 });\n  const { id, email } = session.user;\n\n  return ctx.run({ req_id: randomUUID(), org_id: orgId, user_id: id }, async () => {\n    Sentry.setTag(\"org_id\", orgId);\n    try {\n      await withTenant(id, orgId, (tx) => rateLimit(tx, \"api\", 300)); // transaksi terpisah\n      const data = await withTenant(id, orgId, (tx, role) => fn(tx, { id, email, role }));\n      return Response.json(data);\n    } catch (err: any) {\n      if (err?.status === 403 || err?.status === 429) {\n        return Response.json({ error: err.message }, { status: err.status });\n      }\n      if (err?.code === \"P0001\" && String(err.message).startsWith(\"plan_limit:\")) {\n        return Response.json({ error: \"Batas paketmu tercapai. Naikkan paket untuk lanjut.\", code: err.message }, { status: 402 });\n      }\n      log.error({ err }, \"request gagal\");\n      Sentry.captureException(err);\n      return Response.json({ error: \"Terjadi kesalahan. Coba lagi sebentar.\" }, { status: 500 });\n    }\n  });\n}\n"
+        },
+        {
+          "id": "mt-route-booking",
+          "kind": "kode",
+          "name": "app/api/orgs/[orgId]/bookings/route.ts",
+          "lang": "typescript",
+          "content": "import { tenantAction } from \"#lib/tenant-action.ts\";\nimport { audit } from \"#lib/db.ts\";\nimport { enqueue } from \"#lib/jobs.ts\";\n\ntype Ctx = { params: Promise<{ orgId: string }> };\n\nexport async function GET(_req: Request, { params }: Ctx) {\n  const { orgId } = await params;\n  // Tidak ada \"where org_id = ...\" di sini: RLS yang menyaring. Filter manual boleh, tapi bukan pengaman.\n  return tenantAction(orgId, (tx) => tx`\n    select id, client_name, starts_at, status from bookings\n    where starts_at >= now() order by starts_at limit 100`);\n}\n\nexport async function POST(req: Request, { params }: Ctx) {\n  const { orgId } = await params;\n  const body = await req.json().catch(() => null);\n  return tenantAction(orgId, async (tx, me) => {\n    const startsAt = new Date(body?.starts_at);\n    if (!body?.client_name || !/^\\S+@\\S+\\.\\S+$/.test(body?.client_email ?? \"\") || isNaN(+startsAt)) {\n      throw Object.assign(new Error(\"Data booking tidak lengkap.\"), { status: 400 });\n    }\n    const [b] = await tx`\n      insert into bookings (org_id, client_name, client_email, starts_at)\n      values (app.current_org(), ${body.client_name}, ${body.client_email}, ${startsAt})\n      returning id, starts_at`;\n    await enqueue(tx, \"booking.reminder\", { booking_id: b.id }, {\n      runAt: new Date(startsAt.getTime() - 24 * 3600 * 1000),\n      dedupeKey: `reminder:${b.id}`,\n    });\n    await audit(tx, me.id, \"booking.created\", b.id);\n    return b;\n  });\n}\n"
+        },
+        {
+          "id": "mt-tes-guard",
+          "kind": "kode",
+          "name": "test/jobs-guard.test.ts",
+          "lang": "typescript",
+          "content": "import { test, before, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { randomUUID } from \"node:crypto\";\nimport { sqlUser, sqlSystem, withTenant } from \"#lib/db.ts\";\nimport { rateLimit, flag, TooManyRequests } from \"#lib/guard.ts\";\nimport { enqueue } from \"#lib/jobs.ts\";\nimport { runOnce } from \"../worker/queue.ts\";\n\nconst org = randomUUID();\nbefore(async () => {\n  await sqlSystem`insert into orgs (id, name) values (${org}, 'Klinik Job')`;\n  await sqlSystem`insert into memberships values (${org}, 'u1', 'owner')`;\n});\nafter(async () => {\n  await sqlSystem`delete from feature_flags where key = 'uji-flag'`;\n  await sqlSystem`delete from orgs where id = ${org}`;\n  await Promise.all([sqlUser.end(), sqlSystem.end()]);\n});\n\ntest(\"job yang gagal dicoba ulang dengan backoff, lalu berhasil\", async () => {\n  for (let i = 0; i < 2; i++) // dedupe: dua kali enqueue, satu job\n    await withTenant(\"u1\", org, (tx) => enqueue(tx, \"uji\", {}, { dedupeKey: `uji:${org}` }));\n  let calls = 0;\n  const handlers = { async uji() { calls++; if (calls === 1) throw new Error(\"smtp down\"); } };\n\n  assert.equal(await runOnce(handlers), true);\n  const [j1] = await sqlSystem`select attempts, run_at > now() as later, last_error from jobs where org_id = ${org}`;\n  assert.deepEqual([j1.attempts, j1.later, j1.last_error], [1, true, \"Error: smtp down\"]);\n\n  await sqlSystem`update jobs set run_at = now() where org_id = ${org}`; // majukan waktu\n  assert.equal(await runOnce(handlers), true);\n  const [j2] = await sqlSystem`select attempts, done_at is not null as done from jobs where org_id = ${org}`;\n  assert.deepEqual([j2.attempts, j2.done], [2, true]);\n  assert.equal(await runOnce(handlers), false);\n});\n\ntest(\"dua worker paralel tidak mengambil job yang sama\", async () => {\n  await sqlSystem`insert into jobs (org_id, kind, payload) select ${org}, 'hitung', '{}' from generate_series(1, 20)`;\n  const seen: number[] = [];\n  const handlers = { async hitung(_: unknown, job: { id: number }) { seen.push(job.id); await new Promise((r) => setTimeout(r, 5)); } };\n  const drain = async () => { while (await runOnce(handlers)); };\n  await Promise.all([drain(), drain(), drain()]);\n  assert.equal(seen.length, 20);\n  assert.equal(new Set(seen).size, 20);\n});\n\ntest(\"rate limit per tenant\", async () => {\n  for (let i = 0; i < 3; i++) await withTenant(\"u1\", org, (tx) => rateLimit(tx, \"uji\", 3));\n  await assert.rejects(withTenant(\"u1\", org, (tx) => rateLimit(tx, \"uji\", 3)), TooManyRequests);\n});\n\ntest(\"feature flag: nilai tenant menimpa bawaan\", async () => {\n  await sqlSystem`insert into feature_flags (key, org_id, enabled) values ('uji-flag', null, false), ('uji-flag', ${org}, true)`;\n  assert.equal(await withTenant(\"u1\", org, (tx) => flag(tx, \"uji-flag\")), true);\n  assert.equal(await withTenant(\"u1\", org, (tx) => flag(tx, \"tidak-ada\")), false);\n});\n"
+        },
+        {
+          "id": "mt-pino",
+          "kind": "tautan",
+          "name": "pino: logger JSON untuk Node.js",
+          "url": "https://getpino.io/"
+        },
+        {
+          "id": "mt-sentry",
+          "kind": "tautan",
+          "name": "Sentry untuk Next.js",
+          "url": "https://docs.sentry.io/platforms/javascript/guides/nextjs/"
+        },
+        {
+          "id": "mt-als",
+          "kind": "tautan",
+          "name": "Node.js: AsyncLocalStorage",
+          "url": "https://nodejs.org/api/async_context.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-obs-429",
+          "text": "Rate limit per tenant terbukti: tenant lain tidak ikut terkena 429."
+        },
+        {
+          "id": "mt-obs-log",
+          "text": "Setiap baris log request membawa req_id dan org_id, tanpa data pribadi."
+        },
+        {
+          "id": "mt-obs-sentry",
+          "text": "Error muncul di Sentry dengan tag org_id."
+        },
+        {
+          "id": "mt-obs-flag",
+          "text": "Satu feature flag aktif hanya untuk tenant uji."
+        },
+        {
+          "id": "mt-obs-publik",
+          "text": "Halaman booking publik punya batas per org dan per IP."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "review-keamanan-asvs-l2",
+      "title": "Review keamanan terhadap OWASP ASVS Level 2",
+      "est_minutes": 240,
+      "body": "## Periksa dirimu seperti auditor memeriksa\n\nASVS (Application Security Verification Standard) adalah daftar requirement keamanan yang bisa diverifikasi. Level 2 adalah target yang wajar untuk aplikasi yang menyimpan data pribadi dan pembayaran. Kamu tidak perlu menghafal semuanya: ambil bab yang relevan, verifikasi satu per satu, dan tulis buktinya.\n\n## Yang perlu kamu kerjakan\n\n1. Unduh ASVS versi terbaru dari repositori resmi OWASP. Untuk tiap baris di template, isi ID requirement yang paling cocok.\n2. Verifikasi dengan bukti nyata: nama tes, potongan konfigurasi, atau tangkapan `curl`. \"Sudah aman\" tanpa bukti dihitung GAGAL.\n3. Lakukan uji manual lintas tenant dengan dua akun di dua browser: ganti `orgId` di URL dan di body request, ulangi webhook lama, kirim token undangan milik orang lain, kirim 400 request per menit.\n4. Jalankan `npm audit --omit=dev` dan periksa header respons (CSP, HSTS, `X-Content-Type-Options`, cookie `Secure`/`HttpOnly`/`SameSite`).\n5. Catat setiap temuan di tabel Temuan, perbaiki yang berisiko tinggi sekarang, dan buat issue untuk sisanya.\n\n## Kriteria lulus\n\n- Semua baris bab Authorization dan API LULUS.\n- Setiap temuan punya status dan, kalau belum diperbaiki, alasan dan tenggat.\n",
+      "materials": [
+        {
+          "id": "mt-asvs",
+          "kind": "kode",
+          "name": "docs/security/asvs-l2.md",
+          "lang": "markdown",
+          "content": "# Review keamanan: OWASP ASVS Level 2\n\nVersi ASVS: 5.0. Isi kolom ID dengan nomor requirement dari dokumen resmi.\nStatus: LULUS / GAGAL / TIDAK BERLAKU. Setiap GAGAL wajib punya issue + tenggat.\n\n| Bab ASVS | ID | Yang diperiksa di aplikasi ini | Bukti (tes, berkas, tangkapan) | Status |\n| --- | --- | --- | --- | --- |\n| Authorization | | Akses data tenant lain ditolak di lapisan DB (RLS) | test/rls.test.ts | |\n| Authorization | | Role member tidak bisa mengundang / mengubah role | test/org.test.ts | |\n| Authentication | | Panjang sandi minimum, verifikasi email, batas percobaan login | lib/auth.ts | |\n| Session Management | | Cookie sesi HttpOnly, Secure, SameSite; logout mencabut sesi di server | DevTools + curl | |\n| Validation and Business Logic | | Input booking divalidasi; batas paket ditegakkan DB | route.ts, trigger | |\n| API and Web Service | | Webhook memverifikasi tanda tangan dan idempoten | test/midtrans.test.ts | |\n| Cryptography | | Token undangan acak 256 bit, disimpan sebagai hash | lib/org.ts | |\n| Data Protection | | Data pribadi klien tidak muncul di log; redaksi pino | lib/log.ts | |\n| Configuration | | Rahasia hanya di env, header keamanan aktif, dependensi diaudit | npm audit, header | |\n| Security Logging and Error Handling | | Aksi sensitif tercatat di audit_log; error 500 tanpa detail | audit_log, tenantAction | |\n| Secure Coding and Architecture | | Rate limit per tenant; job dan webhook tanpa konteks user memakai role terpisah | lib/guard.ts, roles.sql | |\n\n## Temuan\n| # | Temuan | Risiko | Perbaikan | Status |\n| --- | --- | --- | --- | --- |\n| 1 | | | | |\n"
+        },
+        {
+          "id": "mt-asvs-situs",
+          "kind": "tautan",
+          "name": "OWASP ASVS (situs proyek)",
+          "url": "https://owasp.org/www-project-application-security-verification-standard/"
+        },
+        {
+          "id": "mt-asvs-repo",
+          "kind": "tautan",
+          "name": "OWASP ASVS di GitHub (dokumen terbaru)",
+          "url": "https://github.com/OWASP/ASVS"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-uji-asvs",
+          "text": "Template ASVS terisi dengan ID requirement dan bukti."
+        },
+        {
+          "id": "mt-uji-manual",
+          "text": "Uji manual lintas tenant dengan dua akun sudah kulakukan dan kucatat."
+        },
+        {
+          "id": "mt-uji-header",
+          "text": "Header keamanan dan atribut cookie sudah kuperiksa."
+        },
+        {
+          "id": "mt-uji-temuan",
+          "text": "Temuan berisiko tinggi sudah diperbaiki; sisanya punya issue dan tenggat."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "ci-preview-dan-migrasi-aman",
+      "title": "CI, preview deploy, dan migrasi tanpa downtime",
+      "est_minutes": 240,
+      "body": "## Setiap pull request membuktikan dirinya\n\nCI di Bahan menyalakan Postgres 16, membuat role, menjalankan migrasi naik-turun-naik, typecheck, lalu seluruh tes termasuk tes isolasi. Pull request yang membuat RLS bocor otomatis merah.\n\n## Preview deploy\n\n- Hubungkan repositori ke Vercel: setiap pull request otomatis mendapat URL preview.\n- Pasang integrasi Neon untuk Vercel: setiap preview mendapat branch database sendiri, jadi uji coba di preview tidak menyentuh data produksi.\n- Jalankan `dbmate up` sebelum build preview, dan buat role di branch kalau belum ada.\n\n## Expand/contract: mengubah skema tanpa mematikan aplikasi\n\nSaat deploy, versi lama dan baru aplikasi sempat berjalan bersamaan. Jadi setiap migrasi harus cocok dengan **dua versi kode**. Contoh di Bahan mengganti nama `client_email` menjadi `contact_email`:\n\n1. **Expand** (rilis N): tambah kolom, trigger sinkron dua arah, backfill per 5.000 baris dengan commit tiap batch, `CHECK ... NOT VALID` lalu `VALIDATE`, indeks `CONCURRENTLY`. Semua dengan `lock_timeout`.\n2. **Pindah** (rilis N+1): kode membaca dan menulis `contact_email`.\n3. **Contract** (rilis N+2): baru setelah tidak ada kode yang menyentuh kolom lama: `SET NOT NULL` (memakai CHECK yang sudah valid, tanpa scan ulang), hapus trigger dan kolom lama.\n\n## Yang perlu kamu kerjakan\n\n1. Pasang workflow CI. Pastikan merah saat satu tes isolasi sengaja dirusak.\n2. Aktifkan preview Vercel + branch Neon. Buka satu pull request dan uji di URL preview.\n3. Lakukan satu perubahan skema nyata di domainmu dengan pola expand/contract dalam tiga pull request terpisah, dan tulis ADR strategi migrasi.\n4. Lindungi branch `main`: merge hanya kalau CI hijau.\n",
+      "materials": [
+        {
+          "id": "mt-ci",
+          "kind": "kode",
+          "name": ".github/workflows/ci.yml",
+          "lang": "yaml",
+          "content": "name: ci\non:\n  pull_request:\n  push:\n    branches: [main]\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:16\n        env:\n          POSTGRES_PASSWORD: postgres\n        ports: [\"5432:5432\"]\n        options: >-\n          --health-cmd pg_isready --health-interval 5s\n          --health-timeout 5s --health-retries 10\n    env:\n      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable\n      DATABASE_URL_APP: postgres://app_user:ci_user@localhost:5432/postgres\n      DATABASE_URL_SYSTEM: postgres://app_system:ci_system@localhost:5432/postgres\n      LOG_LEVEL: silent\n    steps:\n      - uses: actions/checkout@v5\n      - uses: actions/setup-node@v5\n        with:\n          node-version: 24\n          cache: npm\n      - run: npm ci\n      - name: Pasang dbmate\n        run: |\n          sudo curl -fsSL -o /usr/local/bin/dbmate \\\n            https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-amd64\n          sudo chmod +x /usr/local/bin/dbmate\n      - name: Role database\n        run: psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -v user_pw=ci_user -v system_pw=ci_system -v auth_pw=ci_auth -f db/roles.sql\n      - name: Migrasi naik, turun, naik lagi\n        run: |\n          dbmate --no-dump-schema up\n          dbmate --no-dump-schema rollback\n          dbmate --no-dump-schema up\n      - run: npx tsc --noEmit\n      - run: npm test\n"
+        },
+        {
+          "id": "mt-mig-expand",
+          "kind": "kode",
+          "name": "db/migrations/20260301000000_expand_contact_email.sql",
+          "lang": "sql",
+          "content": "-- migrate:up transaction:false\n-- EXPAND (rilis N): kolom baru nullable, isi bertahap, constraint tanpa mengunci tabel lama.\nset lock_timeout = '5s';\nalter table bookings add column if not exists contact_email text;\n\n-- Selama transisi, kode lama (client_email) dan kode baru (contact_email) sama-sama benar.\ncreate or replace function app.sync_contact_email() returns trigger language plpgsql as $$\nbegin\n  if tg_op = 'INSERT' then\n    new.contact_email := coalesce(new.contact_email, new.client_email);\n    new.client_email := coalesce(new.client_email, new.contact_email);\n  elsif new.client_email is distinct from old.client_email then\n    new.contact_email := new.client_email;\n  elsif new.contact_email is distinct from old.contact_email then\n    new.client_email := new.contact_email;\n  end if;\n  return new;\nend $$;\ncreate or replace trigger sync_contact_email before insert or update on bookings\n  for each row execute function app.sync_contact_email();\n\n-- Backfill per 5.000 baris, commit tiap batch: tidak ada transaksi raksasa, tidak ada lock panjang.\ndo $$\ndeclare n int;\nbegin\n  loop\n    update bookings set contact_email = client_email\n     where id in (select id from bookings where contact_email is null limit 5000);\n    get diagnostics n = row_count;\n    exit when n = 0;\n    commit;\n  end loop;\nend $$;\n\nalter table bookings add constraint bookings_contact_email_nn\n  check (contact_email is not null) not valid;\nalter table bookings validate constraint bookings_contact_email_nn;\ncreate index concurrently if not exists bookings_contact_email_idx on bookings (org_id, contact_email);\n\n-- migrate:down transaction:false\ndrop index concurrently if exists bookings_contact_email_idx;\nalter table bookings drop constraint if exists bookings_contact_email_nn;\ndrop trigger if exists sync_contact_email on bookings;\ndrop function if exists app.sync_contact_email();\nalter table bookings drop column if exists contact_email;\n"
+        },
+        {
+          "id": "mt-mig-contract",
+          "kind": "kode",
+          "name": "db/migrations/20260315000000_contract_client_email.sql",
+          "lang": "sql",
+          "content": "-- migrate:up\n-- CONTRACT (rilis N+2): baru dijalankan setelah TIDAK ADA kode yang membaca/menulis client_email.\nset lock_timeout = '5s';\nalter table bookings alter column contact_email set not null; -- memakai CHECK yang sudah valid, tanpa scan ulang\nalter table bookings drop constraint bookings_contact_email_nn;\ndrop trigger sync_contact_email on bookings;\ndrop function app.sync_contact_email();\nalter table bookings drop column client_email;\n\n-- migrate:down\nalter table bookings add column client_email text;\nupdate bookings set client_email = contact_email;\nalter table bookings alter column client_email set not null;\n-- Trigger sinkron dibuat ulang dengan menjalankan ulang bagian trigger di migrasi expand.\n"
+        },
+        {
+          "id": "mt-gh-pg",
+          "kind": "tautan",
+          "name": "GitHub Actions: service container PostgreSQL",
+          "url": "https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers"
+        },
+        {
+          "id": "mt-vercel-preview",
+          "kind": "tautan",
+          "name": "Vercel: preview deployments",
+          "url": "https://vercel.com/docs/deployments/preview-deployments"
+        },
+        {
+          "id": "mt-neon-vercel",
+          "kind": "tautan",
+          "name": "Neon: integrasi dengan Vercel",
+          "url": "https://neon.com/docs/guides/vercel-overview"
+        },
+        {
+          "id": "mt-pg-alter",
+          "kind": "tautan",
+          "name": "PostgreSQL: ALTER TABLE (NOT VALID, VALIDATE)",
+          "url": "https://www.postgresql.org/docs/current/sql-altertable.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-ci-merah",
+          "text": "CI merah saat tes isolasi sengaja dirusak, hijau setelah diperbaiki."
+        },
+        {
+          "id": "mt-ci-preview",
+          "text": "Pull request mendapat URL preview dengan branch database sendiri."
+        },
+        {
+          "id": "mt-ci-expand",
+          "text": "Satu perubahan skema nyata sudah lewat expand, pindah, dan contract."
+        },
+        {
+          "id": "mt-ci-protect",
+          "text": "Branch main hanya bisa di-merge kalau CI hijau."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "produksi-dan-drill-restore",
+      "title": "Rilis produksi dan drill backup-restore",
+      "est_minutes": 180,
+      "body": "## Backup yang belum pernah dipulihkan belum tentu ada\n\nNeon menyimpan riwayat untuk restore titik waktu, tapi kamu tetap harus membuktikan dua hal: kamu **bisa** memulihkan, dan kamu tahu **berapa lama**. Itulah drill.\n\n## Rilis produksi\n\n1. Neon: database produksi, jalankan `db/roles.sql` dengan sandi kuat, lalu `dbmate up` dengan koneksi pemilik.\n2. Vercel: isi env produksi (empat URL database, kunci Midtrans **produksi**, Resend, Sentry). Pakai domain sendiri dengan HTTPS.\n3. Render: Background Worker dengan perintah `npm run worker` dan env yang sama (kecuali yang hanya untuk web).\n4. Midtrans: pasang URL notifikasi produksi. Lakukan satu transaksi nominal kecil sungguhan, lalu refund lewat dashboard.\n\n## Drill restore\n\n1. Buat branch Neon dari produksi (salinan statis) sebagai `SOURCE_URL`, dan database kosong sebagai `SCRATCH_URL`. Jalankan `db/roles.sql` di target dulu, karena policy merujuk role `app_user` dan `app_system`.\n2. Jalankan `scripts/restore-drill.sh`. Skrip membandingkan jumlah baris tabel penting dan memastikan policy RLS ikut terpulihkan.\n3. Coba juga restore titik waktu Neon ke 10 menit lalu, dan catat langkahnya.\n4. Tulis hasil di `docs/restore-drill.md`: tanggal, durasi, ukuran, masalah, dan bandingkan dengan target RPO/RTO di brief.\n5. Lengkapi `docs/runbook.md` untuk tiga insiden paling mungkin.\n",
+      "materials": [
+        {
+          "id": "mt-drill",
+          "kind": "kode",
+          "name": "scripts/restore-drill.sh",
+          "lang": "bash",
+          "content": "#!/usr/bin/env bash\n# Drill backup/restore: dump SOURCE_URL, pulihkan ke SCRATCH_URL (database KOSONG yang boleh ditimpa),\n# bandingkan jumlah baris, catat lamanya. SOURCE_URL sebaiknya branch/snapshot statis, bukan produksi yang sedang ramai.\nset -euo pipefail\n: \"${SOURCE_URL:?isi SOURCE_URL}\" \"${SCRATCH_URL:?isi SCRATCH_URL}\"\ntables=\"orgs memberships bookings audit_log billing_orders\"\nfile=\"backup-$(date +%Y%m%d-%H%M%S).dump\"\nstart=$(date +%s)\n\npg_dump --format=custom --no-owner --no-acl --file=\"$file\" \"$SOURCE_URL\"\npg_restore --no-owner --no-acl --exit-on-error --dbname=\"$SCRATCH_URL\" \"$file\"\n\nstatus=0\nfor t in $tables; do\n  a=$(psql \"$SOURCE_URL\" -Atc \"select count(*) from $t\")\n  b=$(psql \"$SCRATCH_URL\" -Atc \"select count(*) from $t\")\n  printf '%-16s sumber=%-8s pulih=%s\\n' \"$t\" \"$a\" \"$b\"\n  [ \"$a\" = \"$b\" ] || status=1\ndone\npolicies=$(psql \"$SCRATCH_URL\" -Atc \"select count(*) from pg_policies where schemaname = 'public'\")\necho \"policy RLS terpulihkan: $policies\"\n[ \"$policies\" -gt 0 ] || status=1\necho \"ukuran dump: $(du -h \"$file\" | cut -f1), durasi: $(( $(date +%s) - start )) detik\"\n[ $status -eq 0 ] && echo \"DRILL LULUS\" || { echo \"DRILL GAGAL\"; exit 1; }\n"
+        },
+        {
+          "id": "mt-runbook",
+          "kind": "kode",
+          "name": "docs/runbook.md",
+          "lang": "markdown",
+          "content": "# Runbook\n\n## Webhook Midtrans gagal terus\n1. Cari di log: `msg=\"midtrans: gagal diproses\"`, catat order_id.\n2. Cek status di dashboard Midtrans. Kalau sudah settlement, kirim ulang notifikasi dari dashboard.\n3. Aman diulang: event dicatat di webhook_events, order hanya pindah ke paid sekali.\n\n## Job menumpuk / menyerah\n- Antrean: `select kind, count(*) from jobs where done_at is null group by kind;`\n- Menyerah: `select id, kind, last_error from jobs where done_at is null and attempts >= max_attempts;`\n- Coba lagi setelah penyebab diperbaiki: `update jobs set attempts = 0, run_at = now() where id = ...;`\n\n## Tenant mengeluh \"data hilang\"\n1. Jangan langsung query sebagai owner. Cek dulu audit_log tenant itu.\n2. Kalau benar terhapus: restore ke branch/DB sementara, salin baris tenant itu saja.\n\n## Restore penuh\n- Lihat docs/restore-drill.md: perintah, durasi terakhir, siapa yang menjalankan.\n"
+        },
+        {
+          "id": "mt-render-worker",
+          "kind": "tautan",
+          "name": "Render: background workers",
+          "url": "https://render.com/docs/background-workers"
+        },
+        {
+          "id": "mt-neon-restore",
+          "kind": "tautan",
+          "name": "Neon: restore branch",
+          "url": "https://neon.com/docs/introduction/branch-restore"
+        },
+        {
+          "id": "mt-pgdump",
+          "kind": "tautan",
+          "name": "PostgreSQL: pg_dump",
+          "url": "https://www.postgresql.org/docs/current/app-pgdump.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-dep-live",
+          "text": "Aplikasi dan worker berjalan di produksi dengan domain HTTPS."
+        },
+        {
+          "id": "mt-dep-bayar",
+          "text": "Satu transaksi produksi kecil berhasil memperbarui paket, lalu di-refund."
+        },
+        {
+          "id": "mt-dep-drill",
+          "text": "Drill restore LULUS dan durasinya tercatat dibanding target RTO."
+        },
+        {
+          "id": "mt-dep-runbook",
+          "text": "Runbook berisi langkah untuk tiga insiden paling mungkin."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "adr-runbook-dan-studi-kasus",
+      "title": "README, ADR, dan studi kasus untuk portofolio",
+      "est_minutes": 120,
+      "body": "## Ceritakan keputusannya, bukan hanya fiturnya\n\nPerekrut untuk posisi senior jarang membaca semua kode. Mereka mencari bukti penilaian: kenapa RLS, kenapa antrean di Postgres, apa yang kamu korbankan, dan bagaimana kamu tahu sistemmu bekerja. README dan ADR-mu adalah tempatnya.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi README dari template: diagram arsitektur, tabel ADR, cara menjalankan lokal, dan bagian **Bukti kualitas** dengan angka nyata (jumlah tes isolasi, hasil drill, temuan ASVS).\n2. Rapikan `docs/adr/`: semua ADR berstatus jelas, termasuk yang digantikan.\n3. Siapkan akun demo dengan dua tenant berisi data contoh (bukan data asli), supaya pembaca bisa mencoba perpindahan tenant.\n4. Tulis studi kasus singkat (blog atau README bagian akhir): satu masalah tersulit, satu keputusan yang ternyata salah dan cara kamu memperbaikinya, dan apa yang akan kamu ubah untuk 1.000 tenant.\n5. Kirim tautan aplikasi live dan repositori di halaman ringkasan proyek ini.\n\n## Kriteria lulus\n\n- Orang lain bisa menjalankan proyek lokal hanya dari README.\n- Setiap klaim di README punya bukti yang bisa diklik.\n",
+      "materials": [
+        {
+          "id": "mt-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# <Nama produk>\n\nSaaS booking untuk <klinik/salon>. Multi-tenant dengan isolasi Row Level Security PostgreSQL.\n\n**Demo:** https://___  (akun demo: ___)\n\n## Arsitektur\n<diagram: browser -> Next.js (Vercel) -> Postgres (Neon) <- worker (Render); Midtrans -> webhook; Resend>\n\n## Keputusan penting\n| ADR | Keputusan |\n| --- | --- |\n| 0001 | Isolasi tenant: satu database, RLS berdasarkan org_id |\n| 0002 | Auth: Better Auth |\n| 0003 | Pembayaran: Midtrans |\n| 0004 | Antrean job di Postgres |\n| 0005 | Migrasi SQL dengan dbmate, pola expand/contract |\n\n## Menjalankan lokal\n1. `cp .env.example .env` lalu isi.\n2. `psql \"$DATABASE_URL\" -f db/roles.sql ...` lalu `npm run db:migrate`.\n3. `npm run dev` dan `npm run worker`.\n4. `npm test`.\n\n## Bukti kualitas\n- Tes isolasi tenant: ___ tes, semua lulus di CI.\n- Drill restore terakhir: <tanggal>, <durasi>.\n- Review ASVS L2: <jumlah> temuan, <jumlah> sudah ditutup.\n\n## Yang akan kuperbaiki berikutnya\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mt-dok-readme",
+          "text": "README memuat arsitektur, ADR, cara menjalankan, dan bukti kualitas."
+        },
+        {
+          "id": "mt-dok-demo",
+          "text": "Akun demo dengan dua tenant berisi data contoh sudah siap."
+        },
+        {
+          "id": "mt-dok-studi",
+          "text": "Studi kasus berisi satu keputusan yang salah dan perbaikannya."
+        },
+        {
+          "id": "mt-dok-kirim",
+          "text": "Tautan live dan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
