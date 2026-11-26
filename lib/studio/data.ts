@@ -1,7 +1,7 @@
 import type { Check, Material } from "./schema";
 import { createClient } from "@/lib/supabase/server";
 
-export type Def = { id: string; slug: string; title: string; summary: string; level: "pemula" | "menengah" | "lanjut"; est_hours: number | null; status: "draft" | "published" };
+export type Def = { id: string; slug: string; title: string; summary: string; level: "pemula" | "menengah" | "lanjut" | "pro"; est_hours: number | null; status: "draft" | "published" };
 export type Step = { id: string; def_id: string; stage: string; position: number; slug: string; title: string; body: string; est_minutes: number | null; materials: Material[]; checks: Check[] };
 
 const DEF = "id, slug, title, summary, level, est_hours, status";

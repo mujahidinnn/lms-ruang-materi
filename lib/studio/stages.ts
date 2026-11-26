@@ -15,4 +15,4 @@ export const stageTitle = (id: string) => STAGES.find((s) => s.id === id)?.title
 export const stageIndex = (id: string) => STAGES.findIndex((s) => s.id === id);
 
 export const STUDIO_FEATURE = "studio-proyek";
-export const LEVELS = { pemula: "Pemula", menengah: "Menengah", lanjut: "Lanjut" } as const;
+export const LEVELS = { pemula: "Pemula", menengah: "Menengah", lanjut: "Lanjut", pro: "Pro" } as const;

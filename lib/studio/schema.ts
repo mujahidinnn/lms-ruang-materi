@@ -28,6 +28,6 @@ export const defInput = z.object({
   slug: z.string().regex(/^[a-z-]{3,40}$/, "Slug: 3 sampai 40 huruf kecil atau tanda hubung, tanpa angka."),
   title: z.string().trim().min(3, "Judul minimal 3 huruf.").max(80),
   summary: z.string().trim().max(400, "Ringkasan paling panjang 400 karakter."),
-  level: z.enum(["pemula", "menengah", "lanjut"]),
+  level: z.enum(["pemula", "menengah", "lanjut", "pro"]),
   est_hours: z.coerce.number().int().min(1).max(200).nullable().default(null),
 });
