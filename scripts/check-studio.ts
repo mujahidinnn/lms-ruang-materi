@@ -9,7 +9,6 @@ for (const slug of process.argv.slice(2)) {
   const errs: string[] = [];
   const d = defInput.safeParse({ ...p, slug });
   if (!d.success) errs.push(`def: ${d.error.message}`);
-  if (!/^[a-z-]{3,40}$/.test(slug)) errs.push("slug: studio_checks.project allows only a-z and -");
   const seen = new Set<string>(), steps = new Set<string>();
   p.steps.forEach((s: unknown, i: number) => {
     const r = stepInput.safeParse(s);

@@ -25,7 +25,7 @@ export type Material = z.infer<typeof material>;
 export type Check = z.infer<typeof check>;
 
 export const defInput = z.object({
-  slug: z.string().regex(/^[a-z0-9-]{3,40}$/, "Slug: 3 sampai 40 huruf kecil, angka, atau tanda hubung."),
+  slug: z.string().regex(/^[a-z-]{3,40}$/, "Slug: 3 sampai 40 huruf kecil atau tanda hubung, tanpa angka."),
   title: z.string().trim().min(3, "Judul minimal 3 huruf.").max(80),
   summary: z.string().trim().max(400, "Ringkasan paling panjang 400 karakter."),
   level: z.enum(["pemula", "menengah", "lanjut"]),
