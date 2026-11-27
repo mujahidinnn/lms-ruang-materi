@@ -1,0 +1,786 @@
+{
+  "slug": "toko-online-laravel",
+  "title": "Toko Online dengan Laravel",
+  "summary": "Bangun toko online kecil dengan Laravel 13 dan MySQL: katalog dengan pencarian, filter, dan halaman, keranjang di session, checkout yang mengunci stok dalam satu transaksi, login Breeze, area admin dengan Form Request dan unggah gambar, tes fitur PHPUnit, lalu online di Laravel Cloud.",
+  "level": "menengah",
+  "est_hours": 18,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-pembeli-toko",
+      "title": "Kenali toko dan pembelinya",
+      "est_minutes": 15,
+      "body": "## Toko kecil, pembeli nyata\n\nBayangkan sebuah kedai kopi di dekat kampus yang selama ini menerima pesanan lewat chat. Pemiliknya kewalahan: harus menjawab \"masih ada?\" berkali-kali, mencatat alamat satu per satu, dan sering salah hitung stok. Toko online kecil menyelesaikan masalah itu. Pembeli bisa melihat katalog, memilih sendiri, dan pesanan tercatat rapi.\n\nDi proyek ini kita memakai contoh **Toko Sore** yang menjual kopi, teh, dan camilan. Kamu boleh mengganti isinya dengan toko milik keluarga, teman, atau ide usahamu sendiri. Kodenya tetap sama.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat **\"Toko ini menjual ___ untuk ___.\"** Contoh: \"menjual kopi botolan dan camilan untuk mahasiswa yang pesan antar ke kos\".\n2. Tulis siapa pembeli utamanya dan dari perangkat apa mereka belanja. Hampir pasti jawabannya HP, jadi tampilan harus enak di layar kecil.\n3. Tulis tiga hal yang **pasti** bisa dilakukan di versi pertama.\n4. Tulis batasnya. Saran kuat: **tanpa pembayaran online** dan tanpa ongkos kirim otomatis. Pembayaran dikonfirmasi manual oleh penjual. Payment gateway adalah proyek tersendiri dengan urusan keamanan dan legal yang tidak sedikit.\n\n> Ukuran keberhasilan proyek ini: orang yang belum pernah melihat tokomu bisa memesan sampai selesai tanpa bertanya, dan stok di database tidak pernah minus.\n\nProyek ini bagus untuk melamar posisi **backend PHP** atau **full-stack Laravel junior**. Banyak perusahaan di Indonesia memakai Laravel, dan toko online menunjukkan hal yang sering ditanyakan: relasi database, transaksi, otorisasi, dan pengujian.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "tol-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief Toko Online\n\nToko ini menjual ___ untuk ___.\n\nPembeli utama: ___\nMereka paling sering belanja dari: HP / laptop\nYang membuat mereka percaya untuk memesan: ___\n\nTiga hal yang pasti bisa dilakukan di versi pertama:\n1. ___\n2. ___\n3. ___\n\nTujuan pribadi: ___\nTidak dibuat di versi pertama: pembayaran online, ongkos kirim otomatis, ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-brief-kalimat",
+          "text": "Aku sudah menulis kalimat \"Toko ini menjual ... untuk ...\"."
+        },
+        {
+          "id": "tol-brief-pembeli",
+          "text": "Aku tahu siapa pembeli utamanya dan dari perangkat apa mereka belanja."
+        },
+        {
+          "id": "tol-brief-batas",
+          "text": "Batas versi pertama sudah tertulis, termasuk tanpa pembayaran online."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-alur-belanja",
+      "title": "Petakan alur belanja dan peran pengguna",
+      "est_minutes": 40,
+      "body": "## Mulai dari langkah pembeli\n\nSebelum memikirkan tabel atau kode, tulis apa yang dilakukan pembeli dari awal sampai akhir. Alur ini nanti berubah menjadi rute, halaman, dan tes.\n\n![Alur belanja dari katalog sampai pesanan. Perhatikan titik di mana pembeli harus login, dan bagian checkout yang berjalan dalam satu transaksi](/studio/toko-online-laravel/alur-belanja.svg)\n\n## Tiga peran pengguna\n\n| Peran | Boleh melakukan |\n| --- | --- |\n| Tamu | Melihat katalog, mencari, melihat detail, mengisi keranjang |\n| Pembeli (sudah login) | Semua milik tamu, ditambah checkout dan melihat pesanan **miliknya sendiri** |\n| Admin | Menambah, mengubah, dan menghapus produk |\n\nKeranjang sengaja boleh diisi tanpa login. Memaksa orang mendaftar sebelum melihat-lihat membuat banyak calon pembeli pergi. Login baru diminta saat checkout, karena saat itulah kita perlu tahu siapa pemesannya.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis alur pembeli langkah demi langkah dengan bahasamu sendiri, dari membuka toko sampai melihat halaman \"pesanan berhasil\".\n2. Tulis alur admin: masuk, menambah produk dengan foto, mengubah stok.\n3. Tandai setiap fitur **wajib** atau **nanti**. Contoh fitur \"nanti\": ulasan produk, kupon diskon, status pengiriman, notifikasi email.\n4. Tulis minimal tiga hal yang bisa salah saat checkout. Pikirkan baik-baik, karena daftar ini menjadi bahan tes:\n   - stok habis saat barang sudah di keranjang,\n   - dua orang membeli stok terakhir di detik yang sama,\n   - harga diubah admin setelah pembeli memasukkan barang ke keranjang,\n   - pembeli mengubah harga lewat DevTools sebelum mengirim form.\n\n> Kasus terakhir penting: **jangan pernah percaya harga yang dikirim dari browser.** Server selalu membaca harga dari database.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "tol-ide-alur",
+          "text": "Alur pembeli dari katalog sampai pesanan sudah kutulis langkah demi langkah."
+        },
+        {
+          "id": "tol-ide-peran",
+          "text": "Aku tahu apa yang boleh dilakukan tamu, pembeli yang login, dan admin."
+        },
+        {
+          "id": "tol-ide-gagal",
+          "text": "Aku menulis minimal tiga hal yang bisa salah saat checkout."
+        },
+        {
+          "id": "tol-ide-prioritas",
+          "text": "Fitur sudah kutandai wajib atau nanti."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-laravel-dan-mysql",
+      "title": "Pilih alat: Laravel 13, MySQL, dan Breeze",
+      "est_minutes": 40,
+      "body": "## Alat yang dipakai\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Bahasa | PHP 8.3 atau lebih baru (disarankan 8.5) | Syarat minimum Laravel 13 |\n| Framework | Laravel 13 | Migrasi, Eloquent, validasi, otorisasi, dan tes sudah tersedia dalam satu paket |\n| Database | MySQL 8.4 | Paling banyak dipakai di hosting Indonesia, dan tersedia sebagai Laravel MySQL di Laravel Cloud |\n| Login | Laravel Breeze (Blade) | Halaman daftar, masuk, lupa password, dan profil siap pakai dalam satu perintah |\n| Tampilan | Blade + Tailwind CSS | HTML biasa dengan sedikit sintaks Blade, tanpa framework JavaScript |\n| Tes | PHPUnit | Bawaan `laravel/laravel`, dan Breeze ikut membuat tes login dalam PHPUnit |\n\n## Kenapa Breeze, padahal ada starter kit baru?\n\nSejak Laravel 12, starter kit resmi berbasis React, Vue, Svelte, atau Livewire. README Breeze sendiri menyebut paket itu untuk Laravel 11 ke bawah. Namun Breeze versi 2.4 masih menyatakan dukungan untuk Laravel 13 dan masih bisa dipasang. Kita tetap memilihnya karena satu alasan: **Breeze Blade hanya berisi controller dan view biasa**. Kamu bisa membaca seluruh kodenya, dan fokus belajar tetap di backend. Kalau nanti ingin tampilan yang lebih interaktif, starter kit Livewire adalah langkah lanjutan yang wajar.\n\n## Yang perlu kamu siapkan\n\n1. **PHP, Composer, dan Laravel installer.** Cara termudah adalah perintah satu baris dari [php.new](https://php.new) yang tertulis di dokumentasi instalasi Laravel. Pengguna Mac dan Windows juga bisa memakai **Laravel Herd**. Cek dengan `php -v` dan `composer -V`.\n2. Pastikan ekstensi `pdo_mysql` dan `gd` aktif. Cek dengan `php -m`. Ekstensi `gd` dipakai tes untuk membuat gambar palsu.\n3. **Node.js 22 LTS atau lebih baru** dan npm (Vite 8 butuh Node 20.19+ atau 22.12+), untuk membangun CSS Tailwind.\n4. **MySQL.** Pilih salah satu: Docker (perintahnya ada di langkah berikutnya), DBngin, Herd Pro, atau XAMPP.\n5. Tulis dua alasan memilih Laravel dengan Blade untuk toko ini dengan kata-katamu sendiri.\n\n> Kenapa tidak SQLite saja? SQLite memang bawaan Laravel 13 dan cocok untuk tes. Tapi di produksi kita butuh database yang bisa dipakai banyak permintaan sekaligus dan mendukung penguncian baris. Tes kita tetap memakai SQLite di memori karena cepat.\n",
+      "materials": [
+        {
+          "id": "tol-link-install",
+          "kind": "tautan",
+          "name": "Laravel 13: instalasi (termasuk php.new)",
+          "url": "https://laravel.com/docs/13.x/installation"
+        },
+        {
+          "id": "tol-link-breeze",
+          "kind": "tautan",
+          "name": "Repositori Laravel Breeze",
+          "url": "https://github.com/laravel/breeze"
+        },
+        {
+          "id": "tol-link-starter",
+          "kind": "tautan",
+          "name": "Laravel 13: starter kit resmi",
+          "url": "https://laravel.com/docs/13.x/starter-kits"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-tek-php",
+          "text": "php -v menampilkan PHP 8.3 atau lebih baru, dan composer -V berjalan."
+        },
+        {
+          "id": "tol-tek-node",
+          "text": "Node.js dan npm terpasang untuk membangun CSS dan JavaScript."
+        },
+        {
+          "id": "tol-tek-mysql",
+          "text": "Aku punya MySQL yang bisa dipakai (Docker, Herd, DBngin, atau XAMPP)."
+        },
+        {
+          "id": "tol-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memilih Laravel dengan Blade untuk toko ini."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-tabel-dan-rute",
+      "title": "Rancang tabel, relasi, dan rute",
+      "est_minutes": 60,
+      "body": "## Tabel dulu, halaman belakangan\n\nToko online terlihat seperti kumpulan halaman, tapi hatinya ada di database. Kalau tabelnya benar, halaman tinggal menampilkan. Kalau tabelnya salah, setiap halaman jadi penuh tambalan.\n\n![Empat tabel toko dan relasinya. Perhatikan order_items yang menyimpan salinan nama dan harga, bukan hanya product_id](/studio/toko-online-laravel/erd-toko.svg)\n\n## Keputusan penting\n\n- **Harga dalam integer rupiah.** `22000`, bukan `22000.00`. Bilangan desimal (float) bisa menghasilkan `0.1 + 0.2 = 0.30000000000000004`. Rupiah tidak punya sen, jadi integer paling aman.\n- **Salin nama dan harga ke `order_items`.** Kalau admin menaikkan harga kopi bulan depan, pesanan lama harus tetap menunjukkan harga saat dibeli.\n- **Slug untuk URL.** `/produk/kopi-susu-gula-aren` lebih mudah dibaca dan dibagikan daripada `/produk/7`.\n- **`is_admin` di tabel users.** Cukup untuk satu jenis admin. Kalau nanti butuh banyak peran, baru pakai tabel roles.\n- **Foreign key dengan aturan hapus.** Kategori yang masih punya produk tidak bisa dihapus (`restrictOnDelete`). Item pesanan ikut terhapus kalau pesanannya dihapus (`cascadeOnDelete`).\n\n![Simulasi ini memakai tabel kelas dan siswa, tapi aturannya sama dengan kategori dan produk. Pilih RESTRICT lalu CASCADE, hapus satu kelas, dan bandingkan nasib baris siswanya](sim:fk-relation)\n\n## Yang perlu kamu kerjakan\n\n1. Baca `rancangan.md` di bagian Bahan. Cocokkan setiap tabel dengan alur dari langkah Brainstorming.\n2. Untuk tiap relasi, tulis kalimatnya: \"satu kategori punya banyak produk\", \"satu produk milik satu kategori\".\n3. Lihat tabel rute. Tandai rute mana yang butuh login dan mana yang hanya untuk admin.\n4. Simpan `rancangan.md`. Berkas ini masuk repositori dan berguna saat menulis README.\n",
+      "materials": [
+        {
+          "id": "tol-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan Toko Online\n\n## Tabel\n\nusers        (bawaan Laravel) + is_admin BOOLEAN default false\ncategories   id, name, slug (unik)\nproducts     id, category_id -> categories, name, slug (unik), description,\n             price (rupiah, integer), stock (integer), image (path, boleh kosong)\norders       id, user_id -> users, status (default 'baru'), total,\n             shipping_name, shipping_phone, shipping_address\norder_items  id, order_id -> orders, product_id -> products,\n             product_name, price, quantity   (disalin saat checkout)\n\n## Relasi Eloquent\n\nCategory hasMany Product        Product belongsTo Category\nUser hasMany Order              Order belongsTo User\nOrder hasMany OrderItem         OrderItem belongsTo Order dan Product\n\n## Rute\n\n| Metode | Path | Siapa | Keterangan |\n| --- | --- | --- | --- |\n| GET | / | semua | Katalog: ?q= cari, ?kategori= filter, ?urut= termurah/termahal, ?page= |\n| GET | /produk/{slug} | semua | Detail produk |\n| GET | /keranjang | semua | Isi keranjang (session) |\n| POST | /keranjang/{slug} | semua | Tambah ke keranjang |\n| PATCH | /keranjang/{slug} | semua | Ubah jumlah (0 = hapus) |\n| DELETE | /keranjang/{slug} | semua | Hapus dari keranjang |\n| GET | /checkout | login | Form alamat dan ringkasan |\n| POST | /checkout | login | Buat pesanan dalam transaksi |\n| GET | /dashboard | login | Riwayat pesanan saya |\n| GET | /pesanan/{id} | pemilik | Detail pesanan |\n| GET, POST, PUT, DELETE | /admin/products... | admin | CRUD produk |\n\n## Aturan penting\n\n- Harga selalu dibaca dari database saat checkout, tidak pernah dari form atau session.\n- Stok dicek dan dikurangi di dalam transaksi yang mengunci baris produk.\n- Produk yang pernah dipesan tidak boleh dihapus (cukup stok 0).\n"
+        },
+        {
+          "id": "tol-link-relasi",
+          "kind": "tautan",
+          "name": "Laravel 13: relasi Eloquent",
+          "url": "https://laravel.com/docs/13.x/eloquent-relationships"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-ran-tabel",
+          "text": "Aku punya daftar empat tabel toko beserta kolomnya."
+        },
+        {
+          "id": "tol-ran-relasi",
+          "text": "Aku bisa menyebut relasi tiap tabel: hasMany atau belongsTo."
+        },
+        {
+          "id": "tol-ran-salin",
+          "text": "Aku paham kenapa nama dan harga produk disalin ke order_items."
+        },
+        {
+          "id": "tol-ran-rute",
+          "text": "Aku punya tabel rute yang memisahkan tamu, pembeli, dan admin."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-laravel-dan-breeze",
+      "title": "Siapkan Laravel, MySQL, dan login Breeze",
+      "est_minutes": 75,
+      "body": "## Kerangka yang bisa menyala\n\nTarget langkah ini: Laravel menyala, tersambung ke MySQL, dan kamu bisa mendaftar lalu masuk lewat halaman Breeze.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu, sampai sebelum `php artisan migrate`. Baris Docker boleh dilewati kalau kamu sudah punya MySQL.\n2. Saat `breeze:install blade` bertanya, jawab dark mode **no** dan testing framework **PHPUnit**. Breeze akan mencoba menjalankan `npm install` dan `npm run build` sendiri. Kalau gagal, tidak apa-apa, karena kita menjalankannya lagi di langkah 5.\n3. Buka `.env` dan ubah bagian yang ada di Bahan. Laravel 13 memakai SQLite secara bawaan, jadi baris `DB_CONNECTION=sqlite` harus diganti `mysql`, dan baris `DB_HOST` sampai `DB_PASSWORD` perlu dibuka tanda pagarnya. Sesuaikan password dengan MySQL-mu.\n4. Jalankan `php artisan migrate`. Tabel `users`, `sessions`, `cache`, dan `jobs` dibuat di MySQL.\n5. Jalankan `npm install`, `npm run build`, lalu `php artisan serve`. Buka http://localhost:8000.\n6. Klik **Register** di pojok kanan atas, buat akun, lalu coba keluar dan masuk lagi.\n7. Commit dengan pesan `Siapkan Laravel, MySQL, dan Breeze`.\n\n## Kenapa APP_URL penting?\n\nLaravel membuat alamat gambar dari `APP_URL`. Kalau nilainya `http://localhost` tetapi server berjalan di port 8000, gambar produk nanti tidak muncul. Laravel 13 sudah mengisi `http://localhost:8000`, tapi tetap periksa.\n\n## Kalau gagal\n\n- `SQLSTATE[HY000] [2002] Connection refused`: MySQL belum jalan atau `DB_PORT` salah. Cek dengan `docker ps`.\n- `Access denied for user 'root'`: `DB_PASSWORD` tidak cocok dengan password MySQL-mu.\n- `could not find driver`: ekstensi `pdo_mysql` belum aktif. Cek `php -m`.\n- Halaman tampil tanpa gaya (huruf polos): `npm run build` belum dijalankan, atau gagal. Baca pesan error-nya.\n\n> Berkas `.env` berisi password. Laravel sudah memasukkannya ke `.gitignore`, jadi jangan dihapus dari sana.\n",
+      "materials": [
+        {
+          "id": "tol-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "# 1. Buat proyek Laravel baru, lalu masuk ke foldernya\ncomposer create-project laravel/laravel toko-online\ncd toko-online\ngit init\n\n# 2. MySQL lokal lewat Docker (lewati kalau sudah punya MySQL dari Herd, DBngin, atau XAMPP)\ndocker run --name mysql-toko -e MYSQL_ROOT_PASSWORD=rahasia -e MYSQL_DATABASE=toko_online -p 3306:3306 -d mysql:8.4\n\n# 3. Pasang Breeze dengan tampilan Blade.\n#    Saat ditanya: dark mode \"no\", testing framework \"PHPUnit\".\ncomposer require laravel/breeze --dev\nphp artisan breeze:install blade\n\n# 4. Ubah .env sesuai bagian Bahan, lalu buat tabel di MySQL\nphp artisan migrate\n\n# 5. Bangun CSS dan JavaScript, lalu nyalakan server\nnpm install\nnpm run build\nphp artisan serve\n"
+        },
+        {
+          "id": "tol-env",
+          "kind": "kode",
+          "name": ".env (bagian yang diubah)",
+          "lang": "ini",
+          "content": "APP_NAME=\"Toko Sore\"\nAPP_URL=http://localhost:8000\n\nDB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=toko_online\nDB_USERNAME=root\nDB_PASSWORD=rahasia\n\n# Unggahan disimpan di storage/app/public dan dibuka lewat /storage/...\nFILESYSTEM_DISK=public\n"
+        },
+        {
+          "id": "tol-link-db",
+          "kind": "tautan",
+          "name": "Laravel 13: konfigurasi database",
+          "url": "https://laravel.com/docs/13.x/database"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-setup-jalan",
+          "text": "php artisan serve menyala dan halaman awal terbuka di http://localhost:8000."
+        },
+        {
+          "id": "tol-setup-mysql",
+          "text": "php artisan migrate berhasil terhadap database MySQL toko_online."
+        },
+        {
+          "id": "tol-setup-breeze",
+          "text": "Aku bisa mendaftar, masuk, dan keluar lewat halaman Breeze."
+        },
+        {
+          "id": "tol-setup-commit",
+          "text": "Kerangka proyek sudah di-commit tanpa berkas .env."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "migrasi-model-dan-seeder",
+      "title": "Tulis migrasi, model, relasi, dan seeder",
+      "est_minutes": 120,
+      "body": "## Dari rancangan menjadi tabel\n\nMigrasi adalah resep perubahan database dalam bentuk kode. Setiap orang yang meng-clone repositorimu cukup menjalankan `php artisan migrate` untuk mendapatkan tabel yang sama persis.\n\nKita membuat **satu migrasi untuk empat tabel toko**, bukan empat migrasi. Alasannya praktis: Laravel menjalankan migrasi berdasarkan urutan nama berkas. Kalau dua berkas dibuat di detik yang sama, `create_orders_table` bisa berjalan sebelum `create_products_table`, dan foreign key-nya gagal. Satu berkas menjamin urutannya.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan perintah `make` di `perintah-make.sh`. Laravel membuat berkas kosong dengan nama berawalan tanggal.\n2. Isi kedua migrasi dari Bahan. Nama berkasmu akan berbeda di bagian tanggal, itu wajar.\n3. Isi keempat model, lalu ganti `app/Models/User.php` dengan versi di Bahan. Model di Laravel 13 memakai atribut PHP seperti `#[Fillable([...])]` di atas nama kelas.\n4. Isi kedua factory dan kedua seeder.\n5. Jalankan `php artisan migrate:fresh --seed`, lalu `php artisan storage:link`.\n6. Jalankan perintah tinker di baris terakhir. Hasilnya harus `{\"Kopi\":4,\"Teh\":3,\"Camilan\":4}`.\n7. Buka http://localhost:8000/storage/products/kopi-hitam-gayo.svg. Gambar contoh harus tampil.\n8. Commit dengan pesan `Tambah tabel toko, model, dan seeder`.\n\n## Hal yang perlu dipahami\n\n- **Relasi adalah method.** `$category->products` mengambil semua produk kategori itu. `$product->category->name` mengambil nama kategori sebuah produk. Laravel menebak nama kolomnya (`category_id`) dari nama method.\n- **`is_admin` tidak masuk Fillable.** Breeze membuat user dengan `User::create($request->...)`. Kalau `is_admin` fillable dan suatu hari ada yang menulis `User::create($request->all())`, siapa pun bisa mendaftar sambil mengirim `is_admin=1`. Di seeder kita mengisinya dengan `forceFill`, yang memang sengaja melewati Fillable.\n- **Gambar contoh berupa SVG.** Seeder menulis berkas SVG sederhana lewat `Storage::put`, jadi kamu tidak perlu mengunduh foto. `Storage` memakai disk dari `FILESYSTEM_DISK`. Di komputermu disk itu `public`, dan saat online nanti disk itu bucket. Kodenya tidak perlu diubah.\n- **`storage:link`** membuat jalan pintas `public/storage` menuju `storage/app/public`, supaya berkas di sana bisa dibuka dari browser.\n\n## Kalau gagal\n\n- `Foreign key constraint is incorrectly formed`: urutan `Schema::create` di migrasi tertukar. `categories` harus dibuat sebelum `products`.\n- `Add [is_admin] to fillable property`: kamu memakai `create(['is_admin' => true])`. Pakai `forceFill` seperti di seeder.\n- Gambar 404: `storage:link` belum dijalankan, atau `FILESYSTEM_DISK` masih `local`.\n",
+      "materials": [
+        {
+          "id": "tol-perintah-make",
+          "kind": "kode",
+          "name": "perintah-make.sh",
+          "lang": "bash",
+          "content": "# Dua migrasi: satu menambah kolom ke users, satu berisi empat tabel toko\nphp artisan make:migration add_is_admin_to_users_table\nphp artisan make:migration create_toko_tables\n\n# Model (dengan -f untuk factory yang dipakai tes)\nphp artisan make:model Category -f\nphp artisan make:model Product -f\nphp artisan make:model Order\nphp artisan make:model OrderItem\nphp artisan make:seeder ProductSeeder\n\n# Setelah semua berkas diisi:\nphp artisan migrate:fresh --seed\nphp artisan storage:link\n\n# Periksa relasi lewat tinker\nphp artisan tinker --execute 'echo App\\Models\\Category::withCount(\"products\")->get()->pluck(\"products_count\", \"name\");'\n"
+        },
+        {
+          "id": "tol-mig-admin",
+          "kind": "kode",
+          "name": "database/migrations/..._add_is_admin_to_users_table.php",
+          "lang": "php",
+          "content": "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nreturn new class extends Migration\n{\n    public function up(): void\n    {\n        Schema::table('users', function (Blueprint $table) {\n            $table->boolean('is_admin')->default(false)->after('password');\n        });\n    }\n\n    public function down(): void\n    {\n        Schema::table('users', function (Blueprint $table) {\n            $table->dropColumn('is_admin');\n        });\n    }\n};\n"
+        },
+        {
+          "id": "tol-mig-toko",
+          "kind": "kode",
+          "name": "database/migrations/..._create_toko_tables.php",
+          "lang": "php",
+          "content": "<?php\n\nuse Illuminate\\Database\\Migrations\\Migration;\nuse Illuminate\\Database\\Schema\\Blueprint;\nuse Illuminate\\Support\\Facades\\Schema;\n\nreturn new class extends Migration\n{\n    public function up(): void\n    {\n        Schema::create('categories', function (Blueprint $table) {\n            $table->id();\n            $table->string('name');\n            $table->string('slug')->unique();\n            $table->timestamps();\n        });\n\n        Schema::create('products', function (Blueprint $table) {\n            $table->id();\n            // Kategori yang masih punya produk tidak boleh dihapus.\n            $table->foreignId('category_id')->constrained()->restrictOnDelete();\n            $table->string('name');\n            $table->string('slug')->unique();\n            $table->text('description');\n            // Harga dalam rupiah utuh. Integer, bukan float, supaya tidak ada pembulatan aneh.\n            $table->unsignedInteger('price');\n            $table->unsignedInteger('stock')->default(0);\n            $table->string('image')->nullable();\n            $table->timestamps();\n        });\n\n        Schema::create('orders', function (Blueprint $table) {\n            $table->id();\n            $table->foreignId('user_id')->constrained()->cascadeOnDelete();\n            $table->string('status')->default('baru');\n            $table->unsignedInteger('total');\n            $table->string('shipping_name');\n            $table->string('shipping_phone', 20);\n            $table->text('shipping_address');\n            $table->timestamps();\n        });\n\n        Schema::create('order_items', function (Blueprint $table) {\n            $table->id();\n            $table->foreignId('order_id')->constrained()->cascadeOnDelete();\n            // Produk yang pernah dipesan tidak boleh hilang dari riwayat.\n            $table->foreignId('product_id')->constrained()->restrictOnDelete();\n            // Nama dan harga disalin saat checkout, supaya riwayat tidak ikut\n            // berubah ketika admin mengganti harga produk.\n            $table->string('product_name');\n            $table->unsignedInteger('price');\n            $table->unsignedSmallInteger('quantity');\n            $table->timestamps();\n        });\n    }\n\n    public function down(): void\n    {\n        Schema::dropIfExists('order_items');\n        Schema::dropIfExists('orders');\n        Schema::dropIfExists('products');\n        Schema::dropIfExists('categories');\n    }\n};\n"
+        },
+        {
+          "id": "tol-model-category",
+          "kind": "kode",
+          "name": "app/Models/Category.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Attributes\\Fillable;\nuse Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\Relations\\HasMany;\n\n#[Fillable(['name', 'slug'])]\nclass Category extends Model\n{\n    /** @use HasFactory<\\Database\\Factories\\CategoryFactory> */\n    use HasFactory;\n\n    public function products(): HasMany\n    {\n        return $this->hasMany(Product::class);\n    }\n}\n"
+        },
+        {
+          "id": "tol-model-product",
+          "kind": "kode",
+          "name": "app/Models/Product.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Attributes\\Fillable;\nuse Illuminate\\Database\\Eloquent\\Casts\\Attribute;\nuse Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\Relations\\BelongsTo;\nuse Illuminate\\Database\\Eloquent\\Relations\\HasMany;\nuse Illuminate\\Support\\Facades\\Storage;\n\n#[Fillable(['category_id', 'name', 'slug', 'description', 'price', 'stock', 'image'])]\nclass Product extends Model\n{\n    /** @use HasFactory<\\Database\\Factories\\ProductFactory> */\n    use HasFactory;\n\n    // URL produk memakai slug: /produk/kopi-susu-gula-aren, bukan /produk/7.\n    public function getRouteKeyName(): string\n    {\n        return 'slug';\n    }\n\n    public function category(): BelongsTo\n    {\n        return $this->belongsTo(Category::class);\n    }\n\n    public function orderItems(): HasMany\n    {\n        return $this->hasMany(OrderItem::class);\n    }\n\n    // $product->image_url: alamat gambar dari disk bawaan (lokal: public, online: bucket).\n    protected function imageUrl(): Attribute\n    {\n        return Attribute::get(fn () => $this->image ? Storage::url($this->image) : null);\n    }\n}\n"
+        },
+        {
+          "id": "tol-model-order",
+          "kind": "kode",
+          "name": "app/Models/Order.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Attributes\\Fillable;\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\Relations\\BelongsTo;\nuse Illuminate\\Database\\Eloquent\\Relations\\HasMany;\n\n#[Fillable(['status', 'total', 'shipping_name', 'shipping_phone', 'shipping_address'])]\nclass Order extends Model\n{\n    public function user(): BelongsTo\n    {\n        return $this->belongsTo(User::class);\n    }\n\n    public function items(): HasMany\n    {\n        return $this->hasMany(OrderItem::class);\n    }\n}\n"
+        },
+        {
+          "id": "tol-model-orderitem",
+          "kind": "kode",
+          "name": "app/Models/OrderItem.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Attributes\\Fillable;\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\Relations\\BelongsTo;\n\n#[Fillable(['product_id', 'product_name', 'price', 'quantity'])]\nclass OrderItem extends Model\n{\n    public function order(): BelongsTo\n    {\n        return $this->belongsTo(Order::class);\n    }\n\n    public function product(): BelongsTo\n    {\n        return $this->belongsTo(Product::class);\n    }\n}\n"
+        },
+        {
+          "id": "tol-model-user",
+          "kind": "kode",
+          "name": "app/Models/User.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Models;\n\n// use Illuminate\\Contracts\\Auth\\MustVerifyEmail;\nuse Database\\Factories\\UserFactory;\nuse Illuminate\\Database\\Eloquent\\Attributes\\Fillable;\nuse Illuminate\\Database\\Eloquent\\Attributes\\Hidden;\nuse Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse Illuminate\\Database\\Eloquent\\Relations\\HasMany;\nuse Illuminate\\Foundation\\Auth\\User as Authenticatable;\nuse Illuminate\\Notifications\\Notifiable;\n\n// is_admin sengaja TIDAK masuk Fillable: kalau masuk, orang bisa\n// mendaftar sambil mengirim is_admin=1 dan langsung jadi admin.\n#[Fillable(['name', 'email', 'password'])]\n#[Hidden(['password', 'remember_token'])]\nclass User extends Authenticatable\n{\n    /** @use HasFactory<UserFactory> */\n    use HasFactory, Notifiable;\n\n    protected function casts(): array\n    {\n        return [\n            'email_verified_at' => 'datetime',\n            'password' => 'hashed',\n            'is_admin' => 'boolean',\n        ];\n    }\n\n    public function orders(): HasMany\n    {\n        return $this->hasMany(Order::class);\n    }\n}\n"
+        },
+        {
+          "id": "tol-factory-category",
+          "kind": "kode",
+          "name": "database/factories/CategoryFactory.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Database\\Factories;\n\nuse App\\Models\\Category;\nuse Illuminate\\Database\\Eloquent\\Factories\\Factory;\nuse Illuminate\\Support\\Str;\n\n/**\n * @extends Factory<Category>\n */\nclass CategoryFactory extends Factory\n{\n    public function definition(): array\n    {\n        $name = fake()->unique()->words(2, true);\n\n        return ['name' => Str::title($name), 'slug' => Str::slug($name)];\n    }\n}\n"
+        },
+        {
+          "id": "tol-factory-product",
+          "kind": "kode",
+          "name": "database/factories/ProductFactory.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Database\\Factories;\n\nuse App\\Models\\Category;\nuse App\\Models\\Product;\nuse Illuminate\\Database\\Eloquent\\Factories\\Factory;\nuse Illuminate\\Support\\Str;\n\n/**\n * @extends Factory<Product>\n */\nclass ProductFactory extends Factory\n{\n    public function definition(): array\n    {\n        $name = fake()->unique()->words(3, true);\n\n        return [\n            'category_id' => Category::factory(),\n            'name' => Str::title($name),\n            'slug' => Str::slug($name),\n            'description' => fake()->sentence(12),\n            'price' => fake()->numberBetween(5, 200) * 1000,\n            'stock' => 10,\n        ];\n    }\n}\n"
+        },
+        {
+          "id": "tol-seeder-product",
+          "kind": "kode",
+          "name": "database/seeders/ProductSeeder.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Database\\Seeders;\n\nuse App\\Models\\Category;\nuse Illuminate\\Database\\Seeder;\nuse Illuminate\\Support\\Facades\\Storage;\nuse Illuminate\\Support\\Str;\n\nclass ProductSeeder extends Seeder\n{\n    public function run(): void\n    {\n        $catalog = [\n            'Kopi' => ['#d9c2a7', [\n                ['Kopi Susu Gula Aren', 'Espresso, susu segar, dan gula aren cair. Botol 250 ml.', 22000, 30],\n                ['Kopi Hitam Gayo', 'Biji arabika Gayo sangrai sedang, digiling kasar. Kemasan 200 gram.', 85000, 12],\n                ['Cold Brew Original', 'Diseduh dingin 18 jam, rasa lembut tanpa pahit. Botol 500 ml.', 38000, 8],\n                ['Kopi Tubruk Robusta', 'Robusta Temanggung giling halus untuk tubruk. Kemasan 250 gram.', 45000, 20],\n            ]],\n            'Teh' => ['#c8d9a7', [\n                ['Teh Melati Tubruk', 'Teh hijau dengan bunga melati asli. Kemasan 100 gram.', 25000, 25],\n                ['Teh Tarik Botol', 'Teh hitam pekat dengan susu kental manis. Botol 250 ml.', 18000, 15],\n                ['Matcha Latte Bubuk', 'Bubuk matcha dan susu, tinggal seduh. Isi 10 sachet.', 55000, 10],\n            ]],\n            'Camilan' => ['#e6cfa1', [\n                ['Pisang Goreng Madu', 'Pisang kepok goreng dengan siraman madu. Isi 5 potong.', 20000, 18],\n                ['Roti Bakar Cokelat Keju', 'Roti tebal, selai cokelat, dan parutan keju. Satu porsi.', 24000, 14],\n                ['Keripik Singkong Balado', 'Keripik singkong renyah bumbu balado. Kemasan 200 gram.', 15000, 40],\n                ['Kue Lumpur Pandan', 'Kue lumpur lembut rasa pandan. Isi 6 buah.', 30000, 0],\n            ]],\n        ];\n\n        foreach ($catalog as $categoryName => [$color, $products]) {\n            $category = Category::create(['name' => $categoryName, 'slug' => Str::slug($categoryName)]);\n\n            foreach ($products as [$name, $description, $price, $stock]) {\n                $slug = Str::slug($name);\n                // Gambar contoh dibuat sebagai SVG sederhana, jadi tidak perlu\n                // mengunduh foto. Disimpan lewat disk bawaan (FILESYSTEM_DISK).\n                Storage::put(\"products/{$slug}.svg\", $this->placeholder($name, $color));\n\n                $category->products()->create([\n                    'name' => $name,\n                    'slug' => $slug,\n                    'description' => $description,\n                    'price' => $price,\n                    'stock' => $stock,\n                    'image' => \"products/{$slug}.svg\",\n                ]);\n            }\n        }\n    }\n\n    private function placeholder(string $name, string $color): string\n    {\n        $label = e($name);\n\n        return <<<SVG\n        <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"600\" height=\"600\" viewBox=\"0 0 600 600\">\n          <rect width=\"600\" height=\"600\" fill=\"{$color}\"/>\n          <circle cx=\"300\" cy=\"250\" r=\"110\" fill=\"#ffffff\" fill-opacity=\"0.55\"/>\n          <text x=\"300\" y=\"450\" font-family=\"sans-serif\" font-size=\"36\" font-weight=\"700\" text-anchor=\"middle\" fill=\"#1f2937\">{$label}</text>\n        </svg>\n        SVG;\n    }\n}\n"
+        },
+        {
+          "id": "tol-seeder-db",
+          "kind": "kode",
+          "name": "database/seeders/DatabaseSeeder.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Database\\Seeders;\n\nuse App\\Models\\User;\nuse Illuminate\\Database\\Console\\Seeds\\WithoutModelEvents;\nuse Illuminate\\Database\\Seeder;\n\nclass DatabaseSeeder extends Seeder\n{\n    use WithoutModelEvents;\n\n    public function run(): void\n    {\n        // is_admin tidak fillable, jadi diisi lewat forceFill.\n        User::factory()->create([\n            'name' => 'Admin Toko',\n            'email' => 'admin@toko.test',\n        ])->forceFill(['is_admin' => true])->save();\n\n        User::factory()->create([\n            'name' => 'Pembeli Contoh',\n            'email' => 'pembeli@toko.test',\n        ]);\n\n        $this->call(ProductSeeder::class);\n    }\n}\n"
+        },
+        {
+          "id": "tol-link-migrasi",
+          "kind": "tautan",
+          "name": "Laravel 13: migrasi",
+          "url": "https://laravel.com/docs/13.x/migrations"
+        },
+        {
+          "id": "tol-link-seeding",
+          "kind": "tautan",
+          "name": "Laravel 13: seeder",
+          "url": "https://laravel.com/docs/13.x/seeding"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-mig-fresh",
+          "text": "php artisan migrate:fresh --seed berhasil tanpa error."
+        },
+        {
+          "id": "tol-mig-relasi",
+          "text": "Di tinker, Category::withCount('products') menampilkan 4, 3, dan 4 produk."
+        },
+        {
+          "id": "tol-mig-gambar",
+          "text": "Berkas SVG produk ada di storage/app/public/products dan bisa dibuka lewat /storage/products/..."
+        },
+        {
+          "id": "tol-mig-fillable",
+          "text": "Aku bisa menjelaskan kenapa is_admin tidak masuk Fillable."
+        },
+        {
+          "id": "tol-mig-commit",
+          "text": "Migrasi, model, dan seeder sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "katalog-dan-detail-produk",
+      "title": "Bangun katalog dengan pencarian, filter, dan halaman produk",
+      "est_minutes": 120,
+      "body": "## Etalase toko\n\nKatalog adalah halaman yang paling sering dibuka. Di langkah ini kamu membuat katalog dengan pencarian, filter kategori, urutan harga, dan pembagian halaman, lalu halaman detail produk.\n\n![Hasil akhir langkah ini dengan data dari seeder: kotak cari, filter kategori, dan urutan di atas, kartu produk di tengah, tautan halaman di bawah](/studio/toko-online-laravel/hasil-katalog.webp)\n\n## Yang perlu kamu kerjakan\n\n1. Ganti `app/Providers/AppServiceProvider.php` dengan versi di Bahan. Isinya dua hal: **Gate** bernama `admin` (dipakai di langkah Admin) dan perintah Blade `@rupiah(...)` untuk menampilkan harga.\n2. Ganti `routes/web.php` dengan versi di Bahan. Berkas ini sudah berisi **semua** rute proyek. Rute keranjang, checkout, dan admin baru bisa dibuka setelah controller-nya dibuat di langkah berikutnya.\n3. Buat `app/Services/Cart.php`. Layout memakainya untuk menampilkan jumlah barang di menu. Cara kerjanya dibahas di langkah berikutnya.\n4. Buat layout `resources/views/components/shop-layout.blade.php`. Karena ada di folder `components`, layout ini bisa dipakai sebagai `<x-shop-layout>`.\n5. Buat `ProductController` dan kedua view produk.\n6. Jalankan `npm run build` lagi. Tailwind hanya menyertakan kelas yang benar-benar dipakai di view, jadi setiap view baru perlu build ulang. Supaya otomatis, jalankan `npm run dev` di terminal kedua selama ngoding.\n7. Coba di browser: `/`, `/?q=kopi`, `/?kategori=teh`, `/?urut=termurah&page=2`, `/produk/kopi-hitam-gayo`, dan `/produk/tidak-ada`.\n8. Commit dengan pesan `Tambah katalog dan halaman produk`.\n\n## Cara query katalog bekerja\n\n- `when($search, ...)` hanya menambahkan `WHERE` kalau ada nilai. Tanpa `when`, kamu harus menulis banyak `if`.\n- `whereRelation('category', 'slug', $category)` memfilter produk berdasarkan kolom di tabel kategori, tanpa menulis `JOIN` sendiri.\n- `with('category')` memuat kategori semua produk dalam **satu** query tambahan. Tanpa itu, sembilan kartu produk berarti sembilan query terpisah. Masalah ini disebut **N+1** dan sering ditanyakan saat wawancara.\n- `paginate(9)->withQueryString()` membagi hasil per sembilan produk dan menjaga `?q=` serta `?kategori=` tetap ada di tautan halaman berikutnya.\n- Nilai pencarian masuk lewat `where('name', 'like', ...)`. Laravel mengirimnya sebagai parameter terpisah, jadi aman dari SQL injection.\n\n## Perhatikan\n\n- Route model binding memakai slug karena `getRouteKeyName()` di model Product. Slug yang tidak ada otomatis dijawab 404.\n- `{{ $product->name }}` di Blade otomatis di-escape, jadi nama produk berisi `<script>` tidak akan dijalankan.\n",
+      "materials": [
+        {
+          "id": "tol-provider",
+          "kind": "kode",
+          "name": "app/Providers/AppServiceProvider.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Providers;\n\nuse App\\Models\\User;\nuse Illuminate\\Support\\Facades\\Blade;\nuse Illuminate\\Support\\Facades\\Gate;\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function register(): void\n    {\n        //\n    }\n\n    public function boot(): void\n    {\n        // Satu gerbang untuk semua halaman admin: dipakai di rute (can:admin),\n        // Form Request, dan Blade (@can('admin')).\n        Gate::define('admin', fn (User $user) => $user->is_admin);\n\n        // @rupiah($angka) menampilkan \"Rp 22.000\".\n        Blade::directive('rupiah', fn (string $expression) => \"<?php echo 'Rp '.number_format({$expression}, 0, ',', '.'); ?>\");\n    }\n}\n"
+        },
+        {
+          "id": "tol-routes",
+          "kind": "kode",
+          "name": "routes/web.php",
+          "lang": "php",
+          "content": "<?php\n\nuse App\\Http\\Controllers\\Admin\\ProductController as AdminProductController;\nuse App\\Http\\Controllers\\CartController;\nuse App\\Http\\Controllers\\CheckoutController;\nuse App\\Http\\Controllers\\OrderController;\nuse App\\Http\\Controllers\\ProductController;\nuse App\\Http\\Controllers\\ProfileController;\nuse Illuminate\\Support\\Facades\\Route;\n\n// Katalog dan keranjang boleh dibuka tanpa login.\nRoute::get('/', [ProductController::class, 'index'])->name('products.index');\nRoute::get('/produk/{product}', [ProductController::class, 'show'])->name('products.show');\n\nRoute::get('/keranjang', [CartController::class, 'index'])->name('cart.index');\nRoute::post('/keranjang/{product}', [CartController::class, 'store'])->name('cart.store');\nRoute::patch('/keranjang/{product}', [CartController::class, 'update'])->name('cart.update');\nRoute::delete('/keranjang/{product}', [CartController::class, 'destroy'])->name('cart.destroy');\n\nRoute::middleware('auth')->group(function () {\n    // Breeze mengarahkan ke 'dashboard' setelah login: di toko ini isinya riwayat pesanan.\n    Route::get('/dashboard', [OrderController::class, 'index'])->name('dashboard');\n    Route::get('/pesanan/{order}', [OrderController::class, 'show'])->name('orders.show');\n\n    Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');\n    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');\n\n    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');\n    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');\n    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');\n});\n\nRoute::middleware(['auth', 'can:admin'])->prefix('admin')->name('admin.')->group(function () {\n    Route::resource('products', AdminProductController::class)->except('show');\n});\n\nrequire __DIR__.'/auth.php';\n"
+        },
+        {
+          "id": "tol-cart-service",
+          "kind": "kode",
+          "name": "app/Services/Cart.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Services;\n\nuse App\\Models\\Product;\nuse Illuminate\\Support\\Collection;\n\n// Keranjang disimpan di session sebagai [id_produk => jumlah].\n// Harga TIDAK disimpan di session: selalu dibaca ulang dari database.\nclass Cart\n{\n    public function all(): array\n    {\n        return session('cart', []);\n    }\n\n    public function quantity(Product $product): int\n    {\n        return $this->all()[$product->id] ?? 0;\n    }\n\n    public function put(Product $product, int $quantity): void\n    {\n        $cart = $this->all();\n\n        if ($quantity < 1) {\n            unset($cart[$product->id]);\n        } else {\n            $cart[$product->id] = $quantity;\n        }\n\n        session(['cart' => $cart]);\n    }\n\n    public function count(): int\n    {\n        return array_sum($this->all());\n    }\n\n    public function clear(): void\n    {\n        session()->forget('cart');\n    }\n\n    /** Baris keranjang lengkap dengan produk dan subtotal. */\n    public function lines(): Collection\n    {\n        $cart = $this->all();\n\n        return Product::whereIn('id', array_keys($cart))->get()\n            ->map(fn (Product $product) => (object) [\n                'product' => $product,\n                'quantity' => $cart[$product->id],\n                'subtotal' => $product->price * $cart[$product->id],\n            ]);\n    }\n}\n"
+        },
+        {
+          "id": "tol-layout",
+          "kind": "kode",
+          "name": "resources/views/components/shop-layout.blade.php",
+          "lang": "html",
+          "content": "@props(['title' => null])\n<!DOCTYPE html>\n<html lang=\"id\">\n<head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>{{ $title ? $title.' · ' : '' }}{{ config('app.name') }}</title>\n    @vite(['resources/css/app.css', 'resources/js/app.js'])\n</head>\n<body class=\"min-h-screen bg-stone-50 font-sans text-stone-900 antialiased\">\n    <header class=\"border-b border-stone-200 bg-white\">\n        <nav class=\"mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4\">\n            <a href=\"{{ route('products.index') }}\" class=\"text-xl font-bold\">{{ config('app.name') }}</a>\n            <div class=\"ms-auto flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium\">\n                <a href=\"{{ route('cart.index') }}\" class=\"hover:underline\">\n                    Keranjang ({{ app(\\App\\Services\\Cart::class)->count() }})\n                </a>\n                @auth\n                    @can('admin')\n                        <a href=\"{{ route('admin.products.index') }}\" class=\"hover:underline\">Kelola produk</a>\n                    @endcan\n                    <a href=\"{{ route('dashboard') }}\" class=\"hover:underline\">Pesanan saya</a>\n                    <form method=\"POST\" action=\"{{ route('logout') }}\">\n                        @csrf\n                        <button class=\"hover:underline\">Keluar</button>\n                    </form>\n                @else\n                    <a href=\"{{ route('login') }}\" class=\"hover:underline\">Masuk</a>\n                    <a href=\"{{ route('register') }}\" class=\"rounded-md bg-stone-900 px-3 py-1.5 text-white\">Daftar</a>\n                @endauth\n            </div>\n        </nav>\n    </header>\n\n    <main class=\"mx-auto max-w-6xl px-4 py-8\">\n        @if (session('status'))\n            <p class=\"mb-6 rounded-md bg-emerald-50 px-4 py-3 text-emerald-800\">{{ session('status') }}</p>\n        @endif\n        @if ($errors->any())\n            <div class=\"mb-6 rounded-md bg-red-50 px-4 py-3 text-red-800\">\n                @foreach ($errors->all() as $error)\n                    <p>{{ $error }}</p>\n                @endforeach\n            </div>\n        @endif\n\n        {{ $slot }}\n    </main>\n</body>\n</html>\n"
+        },
+        {
+          "id": "tol-product-controller",
+          "kind": "kode",
+          "name": "app/Http/Controllers/ProductController.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Controllers;\n\nuse App\\Models\\Category;\nuse App\\Models\\Product;\nuse Illuminate\\Http\\Request;\n\nclass ProductController extends Controller\n{\n    public function index(Request $request)\n    {\n        $search = $request->string('q')->trim()->value();\n        $category = $request->string('kategori')->value();\n        $sort = $request->string('urut')->value();\n\n        $products = Product::query()\n            ->with('category')\n            ->when($search, fn ($query) => $query->where('name', 'like', \"%{$search}%\"))\n            ->when($category, fn ($query) => $query->whereRelation('category', 'slug', $category))\n            ->when($sort === 'termurah', fn ($query) => $query->orderBy('price'))\n            ->when($sort === 'termahal', fn ($query) => $query->orderByDesc('price'))\n            ->latest('id')\n            ->paginate(9)\n            ->withQueryString();\n\n        return view('products.index', [\n            'products' => $products,\n            'categories' => Category::orderBy('name')->get(),\n        ]);\n    }\n\n    public function show(Product $product)\n    {\n        return view('products.show', ['product' => $product->load('category')]);\n    }\n}\n"
+        },
+        {
+          "id": "tol-view-katalog",
+          "kind": "kode",
+          "name": "resources/views/products/index.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout title=\"Katalog\">\n    <form method=\"GET\" class=\"mb-6 flex flex-wrap gap-3\">\n        <input type=\"search\" name=\"q\" value=\"{{ request('q') }}\" placeholder=\"Cari produk...\"\n               class=\"min-w-0 flex-1 rounded-md border-stone-300\">\n        <select name=\"kategori\" class=\"rounded-md border-stone-300\">\n            <option value=\"\">Semua kategori</option>\n            @foreach ($categories as $category)\n                <option value=\"{{ $category->slug }}\" @selected(request('kategori') === $category->slug)>{{ $category->name }}</option>\n            @endforeach\n        </select>\n        <select name=\"urut\" class=\"rounded-md border-stone-300\">\n            <option value=\"\">Terbaru</option>\n            <option value=\"termurah\" @selected(request('urut') === 'termurah')>Termurah</option>\n            <option value=\"termahal\" @selected(request('urut') === 'termahal')>Termahal</option>\n        </select>\n        <button class=\"rounded-md bg-stone-900 px-4 py-2 text-white\">Terapkan</button>\n    </form>\n\n    @if ($products->isEmpty())\n        <p class=\"py-16 text-center text-stone-500\">Produk tidak ditemukan. Coba kata kunci lain.</p>\n    @else\n        <div class=\"grid grid-cols-2 gap-4 md:grid-cols-3\">\n            @foreach ($products as $product)\n                <a href=\"{{ route('products.show', $product) }}\" class=\"overflow-hidden rounded-lg border border-stone-200 bg-white hover:shadow\">\n                    <img src=\"{{ $product->image_url }}\" alt=\"{{ $product->name }}\" class=\"aspect-square w-full bg-stone-100 object-cover\">\n                    <div class=\"p-3\">\n                        <p class=\"text-xs text-stone-500\">{{ $product->category->name }}</p>\n                        <h2 class=\"font-semibold\">{{ $product->name }}</h2>\n                        <p class=\"mt-1\">@rupiah($product->price)</p>\n                        @if ($product->stock === 0)\n                            <p class=\"mt-1 text-sm text-red-600\">Stok habis</p>\n                        @endif\n                    </div>\n                </a>\n            @endforeach\n        </div>\n\n        <div class=\"mt-8\">{{ $products->links() }}</div>\n    @endif\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-view-detail",
+          "kind": "kode",
+          "name": "resources/views/products/show.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout :title=\"$product->name\">\n    <a href=\"{{ route('products.index') }}\" class=\"text-sm hover:underline\">&larr; Kembali ke katalog</a>\n\n    <div class=\"mt-4 grid gap-8 md:grid-cols-2\">\n        <img src=\"{{ $product->image_url }}\" alt=\"{{ $product->name }}\" class=\"aspect-square w-full rounded-lg bg-stone-100 object-cover\">\n\n        <div>\n            <p class=\"text-sm text-stone-500\">{{ $product->category->name }}</p>\n            <h1 class=\"text-3xl font-bold\">{{ $product->name }}</h1>\n            <p class=\"mt-2 text-2xl\">@rupiah($product->price)</p>\n            <p class=\"mt-4 text-stone-700\">{{ $product->description }}</p>\n            <p class=\"mt-4 text-sm\">Stok: {{ $product->stock }}</p>\n\n            @if ($product->stock > 0)\n                <form method=\"POST\" action=\"{{ route('cart.store', $product) }}\" class=\"mt-6 flex gap-3\">\n                    @csrf\n                    <input type=\"number\" name=\"quantity\" value=\"1\" min=\"1\" max=\"{{ $product->stock }}\"\n                           class=\"w-24 rounded-md border-stone-300\" aria-label=\"Jumlah\">\n                    <button class=\"rounded-md bg-stone-900 px-5 py-2 text-white\">Tambah ke keranjang</button>\n                </form>\n            @else\n                <p class=\"mt-6 font-semibold text-red-600\">Stok habis</p>\n            @endif\n        </div>\n    </div>\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-link-paginasi",
+          "kind": "tautan",
+          "name": "Laravel 13: pagination",
+          "url": "https://laravel.com/docs/13.x/pagination"
+        },
+        {
+          "id": "tol-link-query",
+          "kind": "tautan",
+          "name": "Laravel 13: query builder (when, whereRelation)",
+          "url": "https://laravel.com/docs/13.x/queries"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-kat-cari",
+          "text": "Pencarian ?q=kopi hanya menampilkan produk yang namanya mengandung kopi."
+        },
+        {
+          "id": "tol-kat-filter",
+          "text": "Filter kategori dan urutan harga berfungsi, dan tetap terbawa saat pindah halaman."
+        },
+        {
+          "id": "tol-kat-halaman",
+          "text": "Katalog tampil 9 produk per halaman dengan tautan halaman berikutnya."
+        },
+        {
+          "id": "tol-kat-detail",
+          "text": "Halaman /produk/{slug} tampil, dan slug yang tidak ada menjawab 404."
+        },
+        {
+          "id": "tol-kat-commit",
+          "text": "Katalog dan halaman produk sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "keranjang-dan-checkout",
+      "title": "Keranjang di session dan checkout dalam transaksi",
+      "est_minutes": 150,
+      "body": "## Bagian paling sensitif\n\nKeranjang dan checkout menyentuh uang dan stok. Kesalahan kecil di sini bisa membuat stok minus atau pesanan setengah jadi. Karena itu ada tiga aturan yang dijaga ketat.\n\n1. **Keranjang hanya menyimpan id dan jumlah.** Session berisi `[id_produk => jumlah]`. Harga selalu dibaca ulang dari database.\n2. **Checkout dalam satu transaksi.** Membuat pesanan, mengurangi stok, dan membuat item pesanan harus berhasil semua atau batal semua.\n3. **Baris produk dikunci.** `lockForUpdate()` membuat pembeli kedua menunggu sampai transaksi pembeli pertama selesai, sehingga stok terakhir tidak terjual dua kali.\n\n![Urutan kerja checkout. Kalau satu produk kurang stok, semua perubahan sebelumnya di dalam transaksi dibatalkan](/studio/toko-online-laravel/checkout-transaksi.svg)\n\n![Jalankan UPDATE pada baris yang sama dari dua sesi. Sesi kedua harus menunggu sampai sesi pertama COMMIT atau ROLLBACK. lockForUpdate memasang kunci yang sama, hanya lebih awal, yaitu saat SELECT](sim:mvcc-isolation)\n\n## Yang perlu kamu kerjakan\n\n1. Buat `CartController`, `CheckoutController`, dan `OrderController` dari bagian Bahan.\n2. Buat view keranjang, checkout, dan detail pesanan, lalu ganti `resources/views/dashboard.blade.php`. Setelah login, Breeze mengarahkan ke `dashboard`, yang di toko ini berisi riwayat pesanan.\n3. Jalankan `npm run build` (atau biarkan `npm run dev` menyala).\n4. Sebagai tamu, tambahkan dua produk ke keranjang, ubah jumlahnya, lalu klik Checkout. Kamu diarahkan ke halaman Masuk.\n5. Masuk dengan `pembeli@toko.test` dan password `password`. Laravel membawamu kembali ke checkout, dan keranjang masih utuh.\n6. Isi alamat, buat pesanan, lalu cek tabel `orders`, `order_items`, dan stok di `products` lewat tinker atau aplikasi database.\n7. Commit dengan pesan `Tambah keranjang dan checkout`.\n\n## Hal yang sering terlewat\n\n- **Exception di dalam `DB::transaction` memicu rollback.** Kita melempar `ValidationException` saat stok kurang. Transaksi dibatalkan, lalu Laravel mengembalikan pembeli ke halaman sebelumnya dengan pesan error.\n- **Cek stok dua kali.** Saat menambah ke keranjang, untuk kenyamanan. Saat checkout, untuk kebenaran, karena stok bisa berubah selama barang menunggu di keranjang.\n- **Pesanan orang lain dijawab 404.** `OrderController@show` memeriksa pemiliknya. Tanpa pemeriksaan ini, siapa pun bisa mengganti angka di `/pesanan/1` dan membaca alamat orang lain. Celah seperti ini disebut **IDOR**.\n- **`lockForUpdate` butuh transaksi.** Di luar transaksi, kuncinya langsung lepas dan tidak ada gunanya.\n",
+      "materials": [
+        {
+          "id": "tol-cart-controller",
+          "kind": "kode",
+          "name": "app/Http/Controllers/CartController.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Controllers;\n\nuse App\\Models\\Product;\nuse App\\Services\\Cart;\nuse Illuminate\\Http\\Request;\n\nclass CartController extends Controller\n{\n    public function index(Cart $cart)\n    {\n        $lines = $cart->lines();\n\n        return view('cart.index', ['lines' => $lines, 'total' => $lines->sum('subtotal')]);\n    }\n\n    public function store(Request $request, Product $product, Cart $cart)\n    {\n        $data = $request->validate(['quantity' => ['required', 'integer', 'min:1', 'max:99']]);\n        $quantity = $cart->quantity($product) + $data['quantity'];\n\n        if ($quantity > $product->stock) {\n            return back()->withErrors(['quantity' => \"Stok {$product->name} tinggal {$product->stock}.\"]);\n        }\n\n        $cart->put($product, $quantity);\n\n        return redirect()->route('cart.index')->with('status', \"{$product->name} masuk keranjang.\");\n    }\n\n    public function update(Request $request, Product $product, Cart $cart)\n    {\n        $data = $request->validate(['quantity' => ['required', 'integer', 'min:0', 'max:'.$product->stock]]);\n        $cart->put($product, $data['quantity']);\n\n        return redirect()->route('cart.index');\n    }\n\n    public function destroy(Product $product, Cart $cart)\n    {\n        $cart->put($product, 0);\n\n        return redirect()->route('cart.index');\n    }\n}\n"
+        },
+        {
+          "id": "tol-checkout-controller",
+          "kind": "kode",
+          "name": "app/Http/Controllers/CheckoutController.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Controllers;\n\nuse App\\Models\\Product;\nuse App\\Services\\Cart;\nuse Illuminate\\Http\\Request;\nuse Illuminate\\Support\\Facades\\DB;\nuse Illuminate\\Validation\\ValidationException;\n\nclass CheckoutController extends Controller\n{\n    public function create(Cart $cart)\n    {\n        $lines = $cart->lines();\n\n        if ($lines->isEmpty()) {\n            return redirect()->route('cart.index');\n        }\n\n        return view('checkout.create', ['lines' => $lines, 'total' => $lines->sum('subtotal')]);\n    }\n\n    public function store(Request $request, Cart $cart)\n    {\n        $data = $request->validate([\n            'shipping_name' => ['required', 'string', 'max:100'],\n            'shipping_phone' => ['required', 'string', 'max:20'],\n            'shipping_address' => ['required', 'string', 'max:500'],\n        ]);\n\n        $items = $cart->all();\n\n        if (empty($items)) {\n            return redirect()->route('cart.index');\n        }\n\n        // Semua query di dalam closure ini satu transaksi: berhasil semua\n        // atau dibatalkan semua. Exception apa pun memicu rollback.\n        $order = DB::transaction(function () use ($request, $data, $items) {\n            // lockForUpdate mengunci baris produk sampai transaksi selesai,\n            // jadi dua pembeli tidak bisa membeli stok terakhir yang sama.\n            $products = Product::whereIn('id', array_keys($items))\n                ->lockForUpdate()\n                ->get()\n                ->keyBy('id');\n\n            $order = $request->user()->orders()->create($data + ['total' => 0]);\n            $total = 0;\n\n            foreach ($items as $productId => $quantity) {\n                $product = $products->get($productId);\n\n                if (! $product || $product->stock < $quantity) {\n                    throw ValidationException::withMessages([\n                        'cart' => 'Stok '.($product->name ?? 'sebuah produk').' tidak cukup. Ubah jumlahnya di keranjang.',\n                    ]);\n                }\n\n                $product->decrement('stock', $quantity);\n\n                $order->items()->create([\n                    'product_id' => $product->id,\n                    'product_name' => $product->name,\n                    'price' => $product->price,\n                    'quantity' => $quantity,\n                ]);\n\n                $total += $product->price * $quantity;\n            }\n\n            $order->update(['total' => $total]);\n\n            return $order;\n        });\n\n        $cart->clear();\n\n        return redirect()->route('orders.show', $order)->with('status', 'Pesanan berhasil dibuat. Terima kasih!');\n    }\n}\n"
+        },
+        {
+          "id": "tol-order-controller",
+          "kind": "kode",
+          "name": "app/Http/Controllers/OrderController.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Controllers;\n\nuse App\\Models\\Order;\nuse Illuminate\\Http\\Request;\n\nclass OrderController extends Controller\n{\n    public function index(Request $request)\n    {\n        return view('dashboard', [\n            'orders' => $request->user()->orders()->withCount('items')->latest()->get(),\n        ]);\n    }\n\n    public function show(Request $request, Order $order)\n    {\n        // Pesanan orang lain dijawab 404, bukan 403, supaya tidak\n        // membocorkan bahwa nomor pesanan itu ada.\n        abort_unless($order->user_id === $request->user()->id, 404);\n\n        return view('orders.show', ['order' => $order->load('items')]);\n    }\n}\n"
+        },
+        {
+          "id": "tol-view-keranjang",
+          "kind": "kode",
+          "name": "resources/views/cart/index.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout title=\"Keranjang\">\n    <h1 class=\"mb-6 text-2xl font-bold\">Keranjang</h1>\n\n    @if ($lines->isEmpty())\n        <p class=\"text-stone-500\">Keranjang masih kosong. <a href=\"{{ route('products.index') }}\" class=\"underline\">Lihat katalog</a>.</p>\n    @else\n        <div class=\"divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white\">\n            @foreach ($lines as $line)\n                <div class=\"flex flex-wrap items-center gap-4 p-4\">\n                    <img src=\"{{ $line->product->image_url }}\" alt=\"\" class=\"size-16 rounded bg-stone-100 object-cover\">\n                    <div class=\"min-w-40 flex-1\">\n                        <a href=\"{{ route('products.show', $line->product) }}\" class=\"font-semibold hover:underline\">{{ $line->product->name }}</a>\n                        <p class=\"text-sm text-stone-500\">@rupiah($line->product->price)</p>\n                    </div>\n                    <form method=\"POST\" action=\"{{ route('cart.update', $line->product) }}\" class=\"flex gap-2\">\n                        @csrf\n                        @method('PATCH')\n                        <input type=\"number\" name=\"quantity\" value=\"{{ $line->quantity }}\" min=\"0\" max=\"{{ $line->product->stock }}\"\n                               class=\"w-20 rounded-md border-stone-300\" aria-label=\"Jumlah\">\n                        <button class=\"rounded-md border border-stone-300 px-3 text-sm\">Ubah</button>\n                    </form>\n                    <p class=\"w-28 text-right font-semibold\">@rupiah($line->subtotal)</p>\n                    <form method=\"POST\" action=\"{{ route('cart.destroy', $line->product) }}\">\n                        @csrf\n                        @method('DELETE')\n                        <button class=\"text-sm text-red-600 hover:underline\">Hapus</button>\n                    </form>\n                </div>\n            @endforeach\n        </div>\n\n        <div class=\"mt-6 flex items-center justify-end gap-6\">\n            <p class=\"text-xl\">Total: <strong>@rupiah($total)</strong></p>\n            <a href=\"{{ route('checkout.create') }}\" class=\"rounded-md bg-stone-900 px-5 py-2 text-white\">Checkout</a>\n        </div>\n    @endif\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-view-checkout",
+          "kind": "kode",
+          "name": "resources/views/checkout/create.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout title=\"Checkout\">\n    <h1 class=\"mb-6 text-2xl font-bold\">Checkout</h1>\n\n    <div class=\"grid gap-8 md:grid-cols-2\">\n        <form method=\"POST\" action=\"{{ route('checkout.store') }}\" class=\"space-y-4\">\n            @csrf\n            <div>\n                <label for=\"shipping_name\" class=\"block text-sm font-medium\">Nama penerima</label>\n                <input id=\"shipping_name\" name=\"shipping_name\" value=\"{{ old('shipping_name', auth()->user()->name) }}\" required\n                       class=\"mt-1 w-full rounded-md border-stone-300\">\n            </div>\n            <div>\n                <label for=\"shipping_phone\" class=\"block text-sm font-medium\">Nomor HP</label>\n                <input id=\"shipping_phone\" name=\"shipping_phone\" value=\"{{ old('shipping_phone') }}\" required\n                       class=\"mt-1 w-full rounded-md border-stone-300\">\n            </div>\n            <div>\n                <label for=\"shipping_address\" class=\"block text-sm font-medium\">Alamat lengkap</label>\n                <textarea id=\"shipping_address\" name=\"shipping_address\" rows=\"4\" required\n                          class=\"mt-1 w-full rounded-md border-stone-300\">{{ old('shipping_address') }}</textarea>\n            </div>\n            <button class=\"rounded-md bg-stone-900 px-5 py-2 text-white\">Buat pesanan</button>\n        </form>\n\n        <div class=\"rounded-lg border border-stone-200 bg-white p-4\">\n            <h2 class=\"mb-3 font-semibold\">Ringkasan</h2>\n            @foreach ($lines as $line)\n                <p class=\"flex justify-between py-1 text-sm\">\n                    <span>{{ $line->quantity }} &times; {{ $line->product->name }}</span>\n                    <span>@rupiah($line->subtotal)</span>\n                </p>\n            @endforeach\n            <p class=\"mt-3 flex justify-between border-t border-stone-200 pt-3 font-semibold\">\n                <span>Total</span><span>@rupiah($total)</span>\n            </p>\n            <p class=\"mt-3 text-xs text-stone-500\">Pembayaran dikonfirmasi manual oleh penjual lewat WhatsApp.</p>\n        </div>\n    </div>\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-view-pesanan",
+          "kind": "kode",
+          "name": "resources/views/orders/show.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout :title=\"'Pesanan #'.$order->id\">\n    <h1 class=\"text-2xl font-bold\">Pesanan #{{ $order->id }}</h1>\n    <p class=\"mt-1 text-stone-500\">{{ $order->created_at->format('d-m-Y H:i') }} · Status: {{ $order->status }}</p>\n\n    <div class=\"mt-6 rounded-lg border border-stone-200 bg-white p-4\">\n        @foreach ($order->items as $item)\n            <p class=\"flex justify-between py-1\">\n                <span>{{ $item->quantity }} &times; {{ $item->product_name }} (@rupiah($item->price))</span>\n                <span>@rupiah($item->price * $item->quantity)</span>\n            </p>\n        @endforeach\n        <p class=\"mt-3 flex justify-between border-t border-stone-200 pt-3 text-lg font-semibold\">\n            <span>Total</span><span>@rupiah($order->total)</span>\n        </p>\n    </div>\n\n    <div class=\"mt-6 text-sm\">\n        <p class=\"font-semibold\">Dikirim ke</p>\n        <p>{{ $order->shipping_name }} ({{ $order->shipping_phone }})</p>\n        <p class=\"whitespace-pre-line\">{{ $order->shipping_address }}</p>\n    </div>\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-view-dashboard",
+          "kind": "kode",
+          "name": "resources/views/dashboard.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout title=\"Pesanan saya\">\n    <h1 class=\"mb-6 text-2xl font-bold\">Pesanan saya</h1>\n\n    @forelse ($orders as $order)\n        <a href=\"{{ route('orders.show', $order) }}\" class=\"mb-3 flex justify-between rounded-lg border border-stone-200 bg-white p-4 hover:shadow\">\n            <span>#{{ $order->id }} · {{ $order->created_at->format('d-m-Y') }} · {{ $order->items_count }} produk</span>\n            <span class=\"font-semibold\">@rupiah($order->total)</span>\n        </a>\n    @empty\n        <p class=\"text-stone-500\">Belum ada pesanan. <a href=\"{{ route('products.index') }}\" class=\"underline\">Mulai belanja</a>.</p>\n    @endforelse\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-link-transaksi",
+          "kind": "tautan",
+          "name": "Laravel 13: transaksi database",
+          "url": "https://laravel.com/docs/13.x/database#database-transactions"
+        },
+        {
+          "id": "tol-link-lock",
+          "kind": "tautan",
+          "name": "Laravel 13: pessimistic locking",
+          "url": "https://laravel.com/docs/13.x/queries#pessimistic-locking"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-co-keranjang",
+          "text": "Produk bisa ditambah, diubah jumlahnya, dan dihapus dari keranjang."
+        },
+        {
+          "id": "tol-co-stok",
+          "text": "Menambah melebihi stok ditolak dengan pesan yang jelas."
+        },
+        {
+          "id": "tol-co-login",
+          "text": "Tamu yang membuka /checkout diarahkan ke login, dan keranjangnya tetap ada setelah login."
+        },
+        {
+          "id": "tol-co-pesanan",
+          "text": "Checkout membuat satu baris orders, baris order_items, dan mengurangi stok."
+        },
+        {
+          "id": "tol-co-commit",
+          "text": "Keranjang dan checkout sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "admin-crud-produk",
+      "title": "Area admin: CRUD produk dengan Form Request dan unggah gambar",
+      "est_minutes": 150,
+      "body": "## Ruang kerja penjual\n\nAdmin perlu menambah produk baru, mengganti harga, dan memperbarui stok tanpa membuka database. Di langkah ini kamu membuat area admin yang hanya bisa dibuka akun dengan `is_admin = true`.\n\n## Tiga lapis penjaga\n\n1. **Rute**: grup admin memakai middleware `can:admin`. Tamu diarahkan ke login, pembeli biasa mendapat **403**.\n2. **Form Request**: `ProductRequest::authorize()` memeriksa gate yang sama. Kalau suatu hari ada rute admin yang lupa diberi middleware, request ini tetap menolak.\n3. **Tampilan**: `@can('admin')` di layout hanya menampilkan menu Kelola produk untuk admin. Ini kenyamanan, **bukan** keamanan. Keamanan selalu di server.\n\n## Validasi dengan Form Request\n\nAturan validasi pindah dari controller ke kelas `ProductRequest`. Controller jadi pendek, dan aturan yang sama dipakai untuk tambah maupun ubah.\n\n- `prepareForValidation()` membuat `slug` dari nama **sebelum** validasi, supaya aturan `unique` bisa memeriksa slug kembar.\n- `Rule::unique(...)->ignore($product)` mengecualikan produk yang sedang diubah, jadi menyimpan ulang tanpa mengganti nama tidak dianggap kembar.\n- Aturan `image` dan `mimes:jpg,jpeg,png,webp` memeriksa **isi** berkas, bukan hanya namanya. Berkas PDF yang diganti namanya menjadi `.jpg` tetap ditolak.\n- `attributes()` mengganti nama field di pesan error, misalnya \"The harga field must be at least 1000.\" Pesan bawaan Laravel berbahasa Inggris. Untuk bahasa Indonesia penuh, jalankan `php artisan lang:publish` lalu terjemahkan berkas `lang/en/validation.php` ke folder `lang/id`, dan ubah `APP_LOCALE=id`.\n\n## Unggah gambar\n\n`$request->file('image')->store('products')` menyimpan berkas ke disk bawaan dengan nama acak. Nama acak mencegah berkas saling menimpa dan mencegah nama berkas aneh dari pengguna. Saat gambar diganti, berkas lama dihapus supaya storage tidak penuh sampah.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan perintah di `perintah-admin.sh`.\n2. Isi `ProductRequest`, `Admin/ProductController`, dan kedua view admin dari Bahan. Satu view `form.blade.php` dipakai untuk tambah dan ubah, dibedakan oleh `$product->exists`.\n3. Jalankan `npm run build`.\n4. Masuk sebagai pembeli, buka `/admin/products`. Hasilnya harus 403.\n5. Keluar, masuk sebagai `admin@toko.test`. Tambah produk dengan foto JPG, lalu lihat di katalog.\n6. Coba simpan dengan harga `-5`, nama produk yang sudah ada, dan berkas PDF.\n7. Coba hapus Kopi Hitam Gayo setelah pernah dipesan. Penghapusan ditolak dan kamu diminta mengubah stok menjadi 0.\n8. Commit dengan pesan `Tambah area admin produk`.\n\n> Lupa `enctype=\"multipart/form-data\"` di form adalah kesalahan paling umum saat membuat unggahan. Tanpa atribut itu, browser tidak mengirim isi berkas, dan `hasFile('image')` selalu `false`.\n",
+      "materials": [
+        {
+          "id": "tol-admin-make",
+          "kind": "kode",
+          "name": "perintah-admin.sh",
+          "lang": "bash",
+          "content": "php artisan make:request ProductRequest\nmkdir -p app/Http/Controllers/Admin resources/views/admin/products\n\n# Siapkan foto contoh (JPG atau PNG, di bawah 2 MB) untuk dicoba unggah.\n# Akun admin dari seeder: admin@toko.test, password: password\n"
+        },
+        {
+          "id": "tol-request",
+          "kind": "kode",
+          "name": "app/Http/Requests/ProductRequest.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Requests;\n\nuse Illuminate\\Foundation\\Http\\FormRequest;\nuse Illuminate\\Support\\Str;\nuse Illuminate\\Validation\\Rule;\n\nclass ProductRequest extends FormRequest\n{\n    public function authorize(): bool\n    {\n        return $this->user()->can('admin');\n    }\n\n    // Slug dibuat dari nama sebelum divalidasi, supaya aturan unique bisa memeriksanya.\n    protected function prepareForValidation(): void\n    {\n        $this->merge(['slug' => Str::slug((string) $this->input('name'))]);\n    }\n\n    public function rules(): array\n    {\n        // Saat edit, produk yang sedang diubah dikecualikan dari cek unique.\n        $product = $this->route('product');\n\n        return [\n            'category_id' => ['required', 'integer', 'exists:categories,id'],\n            'name' => ['required', 'string', 'max:120'],\n            'slug' => ['required', Rule::unique('products', 'slug')->ignore($product)],\n            'description' => ['required', 'string', 'max:2000'],\n            'price' => ['required', 'integer', 'min:1000', 'max:100000000'],\n            'stock' => ['required', 'integer', 'min:0', 'max:100000'],\n            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],\n        ];\n    }\n\n    public function attributes(): array\n    {\n        return [\n            'category_id' => 'kategori',\n            'name' => 'nama produk',\n            'slug' => 'nama produk',\n            'description' => 'deskripsi',\n            'price' => 'harga',\n            'stock' => 'stok',\n            'image' => 'gambar',\n        ];\n    }\n}\n"
+        },
+        {
+          "id": "tol-admin-controller",
+          "kind": "kode",
+          "name": "app/Http/Controllers/Admin/ProductController.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace App\\Http\\Controllers\\Admin;\n\nuse App\\Http\\Controllers\\Controller;\nuse App\\Http\\Requests\\ProductRequest;\nuse App\\Models\\Category;\nuse App\\Models\\Product;\nuse Illuminate\\Support\\Facades\\Storage;\n\nclass ProductController extends Controller\n{\n    public function index()\n    {\n        return view('admin.products.index', [\n            'products' => Product::with('category')->latest('id')->paginate(15),\n        ]);\n    }\n\n    public function create()\n    {\n        return view('admin.products.form', [\n            'product' => new Product,\n            'categories' => Category::orderBy('name')->get(),\n        ]);\n    }\n\n    public function store(ProductRequest $request)\n    {\n        $data = $request->validated();\n\n        if ($request->hasFile('image')) {\n            // store() memakai disk bawaan (FILESYSTEM_DISK) dan memberi nama acak.\n            $data['image'] = $request->file('image')->store('products');\n        }\n\n        Product::create($data);\n\n        return redirect()->route('admin.products.index')->with('status', 'Produk ditambahkan.');\n    }\n\n    public function edit(Product $product)\n    {\n        return view('admin.products.form', [\n            'product' => $product,\n            'categories' => Category::orderBy('name')->get(),\n        ]);\n    }\n\n    public function update(ProductRequest $request, Product $product)\n    {\n        $data = $request->validated();\n\n        if ($request->hasFile('image')) {\n            $old = $product->image;\n            $data['image'] = $request->file('image')->store('products');\n            if ($old) {\n                Storage::delete($old);\n            }\n        } else {\n            unset($data['image']);\n        }\n\n        $product->update($data);\n\n        return redirect()->route('admin.products.index')->with('status', 'Produk diperbarui.');\n    }\n\n    public function destroy(Product $product)\n    {\n        if ($product->orderItems()->exists()) {\n            return back()->withErrors(['product' => \"{$product->name} sudah pernah dipesan. Ubah stoknya menjadi 0 saja.\"]);\n        }\n\n        if ($product->image) {\n            Storage::delete($product->image);\n        }\n\n        $product->delete();\n\n        return redirect()->route('admin.products.index')->with('status', 'Produk dihapus.');\n    }\n}\n"
+        },
+        {
+          "id": "tol-view-admin-daftar",
+          "kind": "kode",
+          "name": "resources/views/admin/products/index.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout title=\"Kelola produk\">\n    <div class=\"mb-6 flex items-center justify-between\">\n        <h1 class=\"text-2xl font-bold\">Kelola produk</h1>\n        <a href=\"{{ route('admin.products.create') }}\" class=\"rounded-md bg-stone-900 px-4 py-2 text-white\">Tambah produk</a>\n    </div>\n\n    <div class=\"overflow-x-auto rounded-lg border border-stone-200 bg-white\">\n        <table class=\"w-full text-left text-sm\">\n            <thead class=\"bg-stone-100\">\n                <tr><th class=\"p-3\">Produk</th><th class=\"p-3\">Kategori</th><th class=\"p-3\">Harga</th><th class=\"p-3\">Stok</th><th class=\"p-3\"></th></tr>\n            </thead>\n            <tbody class=\"divide-y divide-stone-200\">\n                @foreach ($products as $product)\n                    <tr>\n                        <td class=\"p-3 font-medium\">{{ $product->name }}</td>\n                        <td class=\"p-3\">{{ $product->category->name }}</td>\n                        <td class=\"p-3\">@rupiah($product->price)</td>\n                        <td class=\"p-3\">{{ $product->stock }}</td>\n                        <td class=\"flex justify-end gap-3 p-3\">\n                            <a href=\"{{ route('admin.products.edit', $product) }}\" class=\"hover:underline\">Ubah</a>\n                            <form method=\"POST\" action=\"{{ route('admin.products.destroy', $product) }}\"\n                                  onsubmit=\"return confirm('Hapus {{ $product->name }}?')\">\n                                @csrf\n                                @method('DELETE')\n                                <button class=\"text-red-600 hover:underline\">Hapus</button>\n                            </form>\n                        </td>\n                    </tr>\n                @endforeach\n            </tbody>\n        </table>\n    </div>\n\n    <div class=\"mt-6\">{{ $products->links() }}</div>\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-view-admin-form",
+          "kind": "kode",
+          "name": "resources/views/admin/products/form.blade.php",
+          "lang": "html",
+          "content": "<x-shop-layout :title=\"$product->exists ? 'Ubah produk' : 'Tambah produk'\">\n    <h1 class=\"mb-6 text-2xl font-bold\">{{ $product->exists ? 'Ubah '.$product->name : 'Tambah produk' }}</h1>\n\n    {{-- enctype wajib ada, tanpa itu file gambar tidak ikut terkirim --}}\n    <form method=\"POST\" enctype=\"multipart/form-data\"\n          action=\"{{ $product->exists ? route('admin.products.update', $product) : route('admin.products.store') }}\"\n          class=\"max-w-xl space-y-4\">\n        @csrf\n        @if ($product->exists)\n            @method('PUT')\n        @endif\n\n        <div>\n            <label for=\"name\" class=\"block text-sm font-medium\">Nama produk</label>\n            <input id=\"name\" name=\"name\" value=\"{{ old('name', $product->name) }}\" required class=\"mt-1 w-full rounded-md border-stone-300\">\n        </div>\n        <div>\n            <label for=\"category_id\" class=\"block text-sm font-medium\">Kategori</label>\n            <select id=\"category_id\" name=\"category_id\" class=\"mt-1 w-full rounded-md border-stone-300\">\n                @foreach ($categories as $category)\n                    <option value=\"{{ $category->id }}\" @selected(old('category_id', $product->category_id) == $category->id)>{{ $category->name }}</option>\n                @endforeach\n            </select>\n        </div>\n        <div class=\"grid grid-cols-2 gap-4\">\n            <div>\n                <label for=\"price\" class=\"block text-sm font-medium\">Harga (rupiah)</label>\n                <input id=\"price\" name=\"price\" type=\"number\" min=\"1000\" value=\"{{ old('price', $product->price) }}\" required class=\"mt-1 w-full rounded-md border-stone-300\">\n            </div>\n            <div>\n                <label for=\"stock\" class=\"block text-sm font-medium\">Stok</label>\n                <input id=\"stock\" name=\"stock\" type=\"number\" min=\"0\" value=\"{{ old('stock', $product->stock ?? 0) }}\" required class=\"mt-1 w-full rounded-md border-stone-300\">\n            </div>\n        </div>\n        <div>\n            <label for=\"description\" class=\"block text-sm font-medium\">Deskripsi</label>\n            <textarea id=\"description\" name=\"description\" rows=\"4\" required class=\"mt-1 w-full rounded-md border-stone-300\">{{ old('description', $product->description) }}</textarea>\n        </div>\n        <div>\n            <label for=\"image\" class=\"block text-sm font-medium\">Gambar (JPG, PNG, atau WebP, maks. 2 MB)</label>\n            @if ($product->image_url)\n                <img src=\"{{ $product->image_url }}\" alt=\"\" class=\"my-2 size-24 rounded object-cover\">\n            @endif\n            <input id=\"image\" name=\"image\" type=\"file\" accept=\"image/jpeg,image/png,image/webp\" class=\"mt-1 block w-full text-sm\">\n        </div>\n\n        <div class=\"flex gap-3\">\n            <button class=\"rounded-md bg-stone-900 px-5 py-2 text-white\">Simpan</button>\n            <a href=\"{{ route('admin.products.index') }}\" class=\"px-5 py-2\">Batal</a>\n        </div>\n    </form>\n</x-shop-layout>\n"
+        },
+        {
+          "id": "tol-link-gate",
+          "kind": "tautan",
+          "name": "Laravel 13: authorization (Gate)",
+          "url": "https://laravel.com/docs/13.x/authorization"
+        },
+        {
+          "id": "tol-link-formrequest",
+          "kind": "tautan",
+          "name": "Laravel 13: Form Request",
+          "url": "https://laravel.com/docs/13.x/validation#form-request-validation"
+        },
+        {
+          "id": "tol-link-storage",
+          "kind": "tautan",
+          "name": "Laravel 13: file storage dan unggahan",
+          "url": "https://laravel.com/docs/13.x/filesystem"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-adm-403",
+          "text": "Pembeli biasa yang membuka /admin/products mendapat 403."
+        },
+        {
+          "id": "tol-adm-tambah",
+          "text": "Admin bisa menambah produk dengan gambar JPG, dan gambarnya tampil di katalog."
+        },
+        {
+          "id": "tol-adm-validasi",
+          "text": "Data salah (harga minus, nama kembar, file PDF) ditolak dengan pesan per field."
+        },
+        {
+          "id": "tol-adm-hapus",
+          "text": "Produk yang pernah dipesan tidak bisa dihapus, produk baru bisa."
+        },
+        {
+          "id": "tol-adm-commit",
+          "text": "Area admin sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-fitur-phpunit",
+      "title": "Tulis tes fitur dengan PHPUnit",
+      "est_minutes": 120,
+      "body": "## Tes yang menjaga uang dan stok\n\nKamu sudah mencoba semuanya dengan tangan. Tes otomatis memastikan hal yang sama tetap benar setelah kamu mengubah kode bulan depan. Untuk toko online, yang paling penting dijaga adalah checkout, stok, dan hak akses admin.\n\n![Tes fitur ada di lapisan tengah piramida: lebih lambat dari unit test, tetapi menguji rute, validasi, dan database sekaligus](sim:piramida-tes)\n\n## Database tes\n\nLaravel 13 sudah menyiapkan `phpunit.xml` dengan `DB_CONNECTION=sqlite` dan `DB_DATABASE=:memory:`. Setiap tes memakai database baru di memori lewat trait `RefreshDatabase`, jadi data MySQL-mu aman dan tesnya cepat.\n\nTes bawaan `tests/Feature/ExampleTest.php` membuka halaman `/`. Sekarang halaman itu membaca tabel produk, jadi tes itu perlu `RefreshDatabase` juga. Ganti isinya dengan versi di Bahan.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti `ExampleTest.php`, lalu buat tiga berkas tes dari Bahan.\n2. Jalankan `php artisan test`. Semua tes harus lulus, termasuk tes login bawaan Breeze. Totalnya sekitar 39 tes.\n3. **Rusak kode dengan sengaja.** Di `CheckoutController`, ganti `DB::transaction(function () use` menjadi `call_user_func(function () use`, lalu jalankan `php artisan test --filter=membatalkan`. Tesnya harus gagal dengan pesan bahwa tabel `orders` berisi 1 baris. Itu bukti tanpa transaksi, pesanan setengah jadi tertinggal di database. Kembalikan seperti semula.\n4. Tambahkan minimal satu tes buatanmu sendiri. Ide: keranjang kosong yang membuka `/checkout` diarahkan ke `/keranjang`, atau admin yang mengganti gambar membuat berkas lama terhapus.\n5. Commit dengan pesan `Tambah tes fitur`.\n\n## Cara membaca tesnya\n\n- `actingAs($user)` menjalankan request sebagai user itu tanpa mengisi form login.\n- `withSession(['cart' => [...]])` mengisi keranjang langsung, jadi tes checkout tidak bergantung pada tes keranjang.\n- `Storage::fake()` mengganti disk dengan folder sementara, dan `UploadedFile::fake()->image()` membuat gambar sungguhan (butuh ekstensi `gd`).\n- `assertSessionHasErrors('cart')` memeriksa bahwa server menolak dengan pesan pada key `cart`, bukan error 500.\n- Tes `stok_kurang_membatalkan_seluruh_pesanan` sengaja menaruh produk yang cukup stoknya di urutan pertama. Stok produk itu sempat berkurang sebelum produk kedua gagal, jadi tes ini benar-benar membuktikan rollback.\n\n> Mau yakin kodenya juga benar di MySQL? Buat database `toko_test`, lalu jalankan `DB_CONNECTION=mysql DB_DATABASE=toko_test php artisan test` (di Windows PowerShell, atur variabelnya dengan `$env:DB_CONNECTION=\"mysql\"` dulu). Variabel dari terminal menang atas nilai di `phpunit.xml`.\n",
+      "materials": [
+        {
+          "id": "tol-tes-example",
+          "kind": "kode",
+          "name": "tests/Feature/ExampleTest.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Tests\\Feature;\n\nuse Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Tests\\TestCase;\n\nclass ExampleTest extends TestCase\n{\n    use RefreshDatabase;\n\n    /**\n     * A basic test example.\n     */\n    public function test_the_application_returns_a_successful_response(): void\n    {\n        $response = $this->get('/');\n\n        $response->assertStatus(200);\n    }\n}\n"
+        },
+        {
+          "id": "tol-tes-katalog",
+          "kind": "kode",
+          "name": "tests/Feature/CatalogTest.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Tests\\Feature;\n\nuse App\\Models\\Category;\nuse App\\Models\\Product;\nuse Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Tests\\TestCase;\n\nclass CatalogTest extends TestCase\n{\n    use RefreshDatabase;\n\n    public function test_katalog_bisa_dicari_berdasarkan_nama(): void\n    {\n        Product::factory()->create(['name' => 'Kopi Susu', 'slug' => 'kopi-susu']);\n        Product::factory()->create(['name' => 'Teh Melati', 'slug' => 'teh-melati']);\n\n        $this->get('/?q=kopi')\n            ->assertOk()\n            ->assertSee('Kopi Susu')\n            ->assertDontSee('Teh Melati');\n    }\n\n    public function test_katalog_bisa_difilter_berdasarkan_kategori(): void\n    {\n        $teh = Category::factory()->create(['name' => 'Teh', 'slug' => 'teh']);\n        Product::factory()->for($teh)->create(['name' => 'Teh Melati']);\n        Product::factory()->create(['name' => 'Kopi Susu']);\n\n        $this->get('/?kategori=teh')\n            ->assertOk()\n            ->assertSee('Teh Melati')\n            ->assertDontSee('Kopi Susu');\n    }\n\n    public function test_katalog_dibagi_per_halaman(): void\n    {\n        Product::factory()->count(12)->create();\n\n        $this->get('/')->assertViewHas('products', fn ($products) => $products->count() === 9);\n        $this->get('/?page=2')->assertViewHas('products', fn ($products) => $products->count() === 3);\n    }\n\n    public function test_detail_produk_memakai_slug(): void\n    {\n        $product = Product::factory()->create(['slug' => 'kopi-gayo', 'price' => 85000]);\n\n        $this->get('/produk/kopi-gayo')->assertOk()->assertSee($product->name)->assertSee('Rp 85.000');\n        $this->get('/produk/tidak-ada')->assertNotFound();\n    }\n}\n"
+        },
+        {
+          "id": "tol-tes-checkout",
+          "kind": "kode",
+          "name": "tests/Feature/CheckoutTest.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Tests\\Feature;\n\nuse App\\Models\\Product;\nuse App\\Models\\User;\nuse Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Tests\\TestCase;\n\nclass CheckoutTest extends TestCase\n{\n    use RefreshDatabase;\n\n    private array $shipping = [\n        'shipping_name' => 'Sari',\n        'shipping_phone' => '081234567890',\n        'shipping_address' => 'Jl. Melati No. 5, Bandung',\n    ];\n\n    public function test_tamu_harus_login_sebelum_checkout(): void\n    {\n        $this->get('/checkout')->assertRedirect('/login');\n    }\n\n    public function test_tidak_bisa_menambah_melebihi_stok(): void\n    {\n        $product = Product::factory()->create(['stock' => 2]);\n\n        $this->post(\"/keranjang/{$product->slug}\", ['quantity' => 3])->assertSessionHasErrors('quantity');\n        $this->post(\"/keranjang/{$product->slug}\", ['quantity' => 2])->assertSessionHas('cart', [$product->id => 2]);\n    }\n\n    public function test_checkout_membuat_pesanan_dan_mengurangi_stok(): void\n    {\n        $user = User::factory()->create();\n        $kopi = Product::factory()->create(['price' => 20000, 'stock' => 5]);\n        $teh = Product::factory()->create(['price' => 15000, 'stock' => 3]);\n\n        $response = $this->actingAs($user)\n            ->withSession(['cart' => [$kopi->id => 2, $teh->id => 1]])\n            ->post('/checkout', $this->shipping);\n\n        $order = $user->orders()->first();\n        $response->assertRedirect(\"/pesanan/{$order->id}\")->assertSessionMissing('cart');\n\n        $this->assertSame(55000, $order->total);\n        $this->assertCount(2, $order->items);\n        $this->assertSame(3, $kopi->fresh()->stock);\n        $this->assertSame(2, $teh->fresh()->stock);\n    }\n\n    public function test_stok_kurang_membatalkan_seluruh_pesanan(): void\n    {\n        $user = User::factory()->create();\n        $kopi = Product::factory()->create(['stock' => 5]);\n        $teh = Product::factory()->create(['stock' => 1]);\n\n        // Kopi diproses dulu dan stoknya sempat berkurang, lalu teh gagal.\n        // Transaksi harus mengembalikan stok kopi seperti semula.\n        $this->actingAs($user)\n            ->withSession(['cart' => [$kopi->id => 2, $teh->id => 3]])\n            ->post('/checkout', $this->shipping)\n            ->assertSessionHasErrors('cart');\n\n        $this->assertDatabaseCount('orders', 0);\n        $this->assertDatabaseCount('order_items', 0);\n        $this->assertSame(5, $kopi->fresh()->stock);\n        $this->assertSame(1, $teh->fresh()->stock);\n    }\n\n    public function test_pesanan_orang_lain_tidak_bisa_dibuka(): void\n    {\n        $owner = User::factory()->create();\n        $product = Product::factory()->create();\n        $this->actingAs($owner)->withSession(['cart' => [$product->id => 1]])->post('/checkout', $this->shipping);\n        $order = $owner->orders()->first();\n\n        $this->actingAs(User::factory()->create())->get(\"/pesanan/{$order->id}\")->assertNotFound();\n        $this->actingAs($owner)->get(\"/pesanan/{$order->id}\")->assertOk();\n    }\n}\n"
+        },
+        {
+          "id": "tol-tes-admin",
+          "kind": "kode",
+          "name": "tests/Feature/AdminProductTest.php",
+          "lang": "php",
+          "content": "<?php\n\nnamespace Tests\\Feature;\n\nuse App\\Models\\Category;\nuse App\\Models\\Product;\nuse App\\Models\\User;\nuse Illuminate\\Foundation\\Testing\\RefreshDatabase;\nuse Illuminate\\Http\\UploadedFile;\nuse Illuminate\\Support\\Facades\\Storage;\nuse Tests\\TestCase;\n\nclass AdminProductTest extends TestCase\n{\n    use RefreshDatabase;\n\n    private function admin(): User\n    {\n        $user = User::factory()->create();\n        $user->forceFill(['is_admin' => true])->save();\n\n        return $user;\n    }\n\n    public function test_pembeli_biasa_ditolak_dari_halaman_admin(): void\n    {\n        $this->get('/admin/products')->assertRedirect('/login');\n        $this->actingAs(User::factory()->create())->get('/admin/products')->assertForbidden();\n    }\n\n    public function test_is_admin_tidak_bisa_diisi_saat_mendaftar(): void\n    {\n        $this->post('/register', [\n            'name' => 'Penyusup',\n            'email' => 'penyusup@example.com',\n            'password' => 'password-kuat-123',\n            'password_confirmation' => 'password-kuat-123',\n            'is_admin' => 1,\n        ]);\n\n        $this->assertFalse(User::where('email', 'penyusup@example.com')->first()->is_admin);\n    }\n\n    public function test_admin_bisa_menambah_produk_dengan_gambar(): void\n    {\n        Storage::fake();\n        $category = Category::factory()->create();\n\n        $this->actingAs($this->admin())->post('/admin/products', [\n            'category_id' => $category->id,\n            'name' => 'Kopi Susu Gula Aren',\n            'description' => 'Botol 250 ml.',\n            'price' => 22000,\n            'stock' => 10,\n            'image' => UploadedFile::fake()->image('kopi.jpg', 600, 600),\n        ])->assertRedirect('/admin/products');\n\n        $product = Product::where('slug', 'kopi-susu-gula-aren')->firstOrFail();\n        Storage::assertExists($product->image);\n    }\n\n    public function test_validasi_menolak_data_yang_salah(): void\n    {\n        Storage::fake();\n        Product::factory()->create(['name' => 'Kopi Hitam', 'slug' => 'kopi-hitam']);\n\n        $this->actingAs($this->admin())->post('/admin/products', [\n            'category_id' => 999,\n            'name' => 'Kopi Hitam',\n            'description' => '',\n            'price' => -5,\n            'stock' => 'banyak',\n            'image' => UploadedFile::fake()->create('virus.pdf', 100, 'application/pdf'),\n        ])->assertSessionHasErrors(['category_id', 'slug', 'description', 'price', 'stock', 'image']);\n\n        $this->assertDatabaseCount('products', 1);\n    }\n\n    public function test_produk_yang_pernah_dipesan_tidak_bisa_dihapus(): void\n    {\n        $product = Product::factory()->create();\n        $buyer = User::factory()->create();\n        $this->actingAs($buyer)->withSession(['cart' => [$product->id => 1]])->post('/checkout', [\n            'shipping_name' => 'Sari', 'shipping_phone' => '0812', 'shipping_address' => 'Bandung',\n        ]);\n\n        $this->actingAs($this->admin())->delete(\"/admin/products/{$product->slug}\")->assertSessionHasErrors('product');\n        $this->assertModelExists($product);\n    }\n}\n"
+        },
+        {
+          "id": "tol-link-httptest",
+          "kind": "tautan",
+          "name": "Laravel 13: HTTP tests",
+          "url": "https://laravel.com/docs/13.x/http-tests"
+        },
+        {
+          "id": "tol-link-testing",
+          "kind": "tautan",
+          "name": "Laravel 13: testing",
+          "url": "https://laravel.com/docs/13.x/testing"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-tes-lulus",
+          "text": "php artisan test lulus semua, termasuk tes bawaan Breeze."
+        },
+        {
+          "id": "tol-tes-rusak",
+          "text": "Aku sudah mengganti DB::transaction dengan sengaja dan melihat tes rollback gagal."
+        },
+        {
+          "id": "tol-tes-sendiri",
+          "text": "Aku menambah minimal satu tes buatanku sendiri."
+        },
+        {
+          "id": "tol-tes-sqlite",
+          "text": "Aku tahu tes berjalan di SQLite memori, jadi database MySQL-ku tidak tersentuh."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-seperti-pembeli",
+      "title": "Uji manual seperti pembeli dan admin",
+      "est_minutes": 60,
+      "body": "## Jadi pembeli di tokomu sendiri\n\nTes otomatis memeriksa logika. Uji manual menemukan hal yang tidak terpikir saat menulis tes: tombol yang terlalu kecil di HP, pesan error yang membingungkan, atau alur yang terasa janggal.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan `php artisan migrate:fresh --seed` supaya datanya bersih.\n2. Ikuti `uji-manual.md` dari atas ke bawah. Centang yang berhasil, catat yang tidak.\n3. Untuk skenario **rebutan stok terakhir**, pakai dua jendela browser: satu biasa, satu mode penyamaran. Session-nya terpisah, jadi kamu bisa masuk sebagai dua pembeli berbeda.\n4. Buka DevTools, aktifkan mode perangkat, dan pilih lebar 375 px. Pastikan katalog, keranjang, dan form checkout nyaman dipakai.\n5. Perbaiki bug yang kamu temukan. Bug yang belum sempat diperbaiki dicatat di README bagian rencana.\n\n## Kasus nakal yang layak dicoba\n\n- Ubah `value` jumlah menjadi `9999` lewat DevTools, lalu kirim. Server harus menolak.\n- Buka `/keranjang/kopi-hitam-gayo` dengan metode POST tanpa token CSRF, misalnya lewat `curl -X POST`. Laravel menjawab **419**, bukan memasukkan barang.\n- Cari `' OR 1=1 --`. Hasilnya hanya \"Produk tidak ditemukan\", bukan error database.\n\nSatu cerita debugging yang jujur, misalnya \"stok bisa minus karena aku lupa mengecek ulang saat checkout\", sangat bernilai saat wawancara.\n",
+      "materials": [
+        {
+          "id": "tol-uji-manual",
+          "kind": "kode",
+          "name": "uji-manual.md",
+          "lang": "markdown",
+          "content": "# Uji manual Toko Sore\n\nJalankan `php artisan migrate:fresh --seed` dulu supaya datanya bersih.\nAkun contoh: admin@toko.test dan pembeli@toko.test, password keduanya `password`.\n\n## Sebagai tamu\n- [ ] Cari \"kopi\", lalu filter kategori Teh. Hasil berubah dan kotak pencarian tetap terisi.\n- [ ] Urutkan Termurah, lalu buka halaman 2. Urutan tetap terbawa di URL.\n- [ ] Cari \"zzz\". Muncul pesan \"Produk tidak ditemukan\", bukan halaman kosong.\n- [ ] Buka Kue Lumpur Pandan (stok 0). Tombol beli tidak ada.\n- [ ] Tambah 2 Kopi Hitam Gayo ke keranjang, ubah jadi 3, lalu hapus.\n- [ ] Ketik jumlah lebih dari stok lewat DevTools (hapus atribut max). Server tetap menolak.\n- [ ] Klik Checkout. Diarahkan ke halaman Masuk.\n\n## Sebagai pembeli\n- [ ] Masuk. Keranjang masih berisi barang yang tadi dipilih.\n- [ ] Checkout dengan alamat lengkap. Muncul halaman Pesanan #... dengan total yang benar.\n- [ ] Stok produk di halaman detail berkurang sesuai jumlah yang dibeli.\n- [ ] Buka /pesanan/1 dari akun lain. Hasilnya 404.\n- [ ] Buka /admin/products. Hasilnya 403.\n\n## Rebutan stok terakhir\n- [ ] Admin mengubah stok satu produk menjadi 1.\n- [ ] Pembeli A (browser biasa) dan pembeli B (jendela penyamaran) sama-sama memasukkan produk itu ke keranjang.\n- [ ] A checkout lebih dulu dan berhasil. B checkout dan mendapat pesan stok tidak cukup. Tidak ada pesanan B di database.\n\n## Sebagai admin\n- [ ] Tambah produk dengan foto JPG. Foto tampil di katalog.\n- [ ] Coba simpan dengan harga -5, nama yang sudah ada, dan file PDF. Ketiganya ditolak.\n- [ ] Ganti foto produk. Berkas foto lama hilang dari storage/app/public/products.\n- [ ] Hapus produk yang pernah dipesan. Ditolak dengan pesan yang jelas.\n\n## Di layar HP\n- [ ] Buka DevTools, mode perangkat 375 px. Katalog dua kolom, menu tidak terpotong, tabel admin bisa digeser.\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-man-skenario",
+          "text": "Semua skenario di uji-manual.md sudah kucoba dan hasilnya kucatat."
+        },
+        {
+          "id": "tol-man-hp",
+          "text": "Katalog, keranjang, dan checkout nyaman dipakai di lebar layar HP."
+        },
+        {
+          "id": "tol-man-dua-tab",
+          "text": "Aku sudah mencoba membeli stok terakhir dari dua akun dan hanya satu yang berhasil."
+        },
+        {
+          "id": "tol-man-bug",
+          "text": "Bug yang kutemukan sudah kuperbaiki atau kucatat di README."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-laravel-cloud",
+      "title": "Online-kan di Laravel Cloud dengan MySQL dan object storage",
+      "est_minutes": 120,
+      "body": "## Pilih tempat online\n\n| Pilihan | Kelebihan | Kekurangan |\n| --- | --- | --- |\n| **Laravel Cloud** (dipilih) | Buatan tim Laravel, deploy dari GitHub, MySQL dan bucket tinggal diklik, HTTPS otomatis | Paket Starter USD 5 per bulan (sudah termasuk kredit pemakaian USD 5, bulan pertama gratis), wajib kartu pembayaran |\n| VPS (mulai puluhan ribu rupiah per bulan) | Kendali penuh, satu server untuk banyak proyek | Kamu sendiri yang memasang Nginx, PHP-FPM, MySQL, HTTPS, backup, dan pembaruan keamanan |\n| Shared hosting cPanel | Murah dan banyak di Indonesia | Sering tidak ada akses terminal, versi PHP tertinggal, deploy lewat unggah berkas |\n\nKita memilih **Laravel Cloud** karena fokus proyek ini adalah aplikasinya, bukan mengurus server. Laravel MySQL dan aplikasi di paket Flex bisa **tidur saat sepi** (scale to zero), jadi toko portofolio yang jarang dikunjungi biasanya cukup ditutup kredit bulanan. Selalu cek halaman harga resmi sebelum mendaftar, karena harga bisa berubah.\n\n![Bagian-bagian di Laravel Cloud: GitHub memicu build, aplikasi tersambung ke Laravel MySQL dan bucket, pembeli datang lewat HTTPS](/studio/toko-online-laravel/deploy-laravel-cloud.svg)\n\n## Satu hal yang berbeda dari komputermu\n\n**Disk aplikasi di Laravel Cloud tidak permanen.** Setiap deploy mengosongkannya, dan tiap replika punya disk sendiri. Foto produk yang diunggah admin akan hilang kalau disimpan di sana. Solusinya **bucket** (Laravel Object Storage). Karena kode kita selalu memakai disk bawaan (`store('products')`, `Storage::url()`), cukup jadikan bucket sebagai disk bawaan dan tidak ada kode yang perlu diubah.\n\n## 1. Siapkan repositori\n\nJalankan `siapkan-deploy.sh`. Paket `league/flysystem-aws-s3-v3` wajib ada karena bucket memakai API yang kompatibel dengan S3. Simpan hasil `key:generate --show`.\n\n## 2. Buat aplikasi\n\n1. Daftar di Laravel Cloud, pilih paket **Starter**, lalu klik **New application**.\n2. Hubungkan GitHub, pilih repositori `toko-online`, beri nama, dan pilih region **Singapore** (`ap-southeast-1`) supaya dekat dengan pembeli di Indonesia.\n3. Di **Settings** environment, bagian **General**, pastikan runtime **PHP 8.5** (atau versi yang sama dengan komputermu).\n4. Di bagian **Deployments**, isi **Build commands** dan **Deploy commands** dari `perintah-laravel-cloud.txt`. Jangan menaruh `storage:link` di sana. Dokumentasi Laravel Cloud menyebut perintah itu tidak berguna karena disk-nya tidak permanen.\n5. Isi **Environment variables**: `APP_KEY` dari langkah 1 dan `APP_NAME`.\n\n## 3. Pasang database dan bucket\n\n1. Di kanvas environment, klik **Add database**, pilih **Laravel MySQL** ukuran Flex di region yang sama. Laravel Cloud mengisi `DB_HOST`, `DB_USERNAME`, dan kawan-kawan secara otomatis.\n2. Klik **Add bucket**, pilih **Laravel Object Storage**, visibility **Public** (foto produk memang untuk dilihat semua orang), beri nama disk misalnya `toko`, dan jadikan **default disk**. Laravel Cloud lalu mengisi `FILESYSTEM_DISK` sendiri.\n3. Klik **Deploy** dan tunggu sampai selesai.\n\n## 4. Isi data dan buat admin\n\nBuka tab **Commands**, klik **Open console**, lalu jalankan perintah di bagian \"Sekali saja\". Kita hanya menjalankan `ProductSeeder`. `DatabaseSeeder` membuat akun dengan password `password`, yang tidak boleh ada di toko sungguhan. Selain itu, factory butuh paket Faker yang tidak ikut terpasang karena build memakai `--no-dev`.\n\nDaftarkan akunmu lewat halaman `/register`, lalu jadikan admin dengan perintah tinker.\n\n## 5. Uji di alamat publik\n\nUlangi bagian penting `uji-manual.md` di alamat `https://NAMA.laravel.cloud`: katalog, daftar, keranjang, checkout, dan unggah foto produk dari area admin. Setelah itu klik **Deploy** sekali lagi, lalu pastikan foto yang tadi diunggah masih tampil.\n\n## Kalau gagal\n\n- Build gagal di `npm ci`: `package-lock.json` belum ikut di-commit.\n- Halaman error 500 setelah deploy: buka tab **Logs**. Penyebab paling umum adalah `APP_KEY` kosong, atau database belum terpasang saat deploy pertama sehingga migrasi gagal. Pasang database lalu deploy ulang.\n- Foto hilang setelah deploy: bucket belum dijadikan default disk, sehingga foto masih tersimpan di disk aplikasi.\n- Request pertama terasa sedikit lambat: aplikasi dan database sedang bangun dari tidur. Ini wajar di paket Flex.\n",
+      "materials": [
+        {
+          "id": "tol-deploy-siap",
+          "kind": "kode",
+          "name": "siapkan-deploy.sh",
+          "lang": "bash",
+          "content": "# 1. Driver S3 untuk bucket Laravel Cloud (bucket memakai API yang kompatibel S3)\ncomposer require league/flysystem-aws-s3-v3 \"^3.0\" --with-all-dependencies\n\n# 2. Pastikan tes masih lulus, lalu kirim ke GitHub\nphp artisan test\ngit add .\ngit commit -m \"Siapkan deploy ke Laravel Cloud\"\ngit branch -M main\ngit remote add origin https://github.com/NAMAMU/toko-online.git\ngit push -u origin main\n\n# 3. Buat APP_KEY untuk produksi. Salin hasilnya ke Environment variables di Laravel Cloud.\nphp artisan key:generate --show\n"
+        },
+        {
+          "id": "tol-deploy-perintah",
+          "kind": "kode",
+          "name": "perintah-laravel-cloud.txt",
+          "lang": "text",
+          "content": "== Build commands (Settings > Deployments) ==\ncomposer install --no-dev\nnpm ci --audit false\nnpm run build\nphp artisan optimize\n\n== Deploy commands ==\nphp artisan migrate --force\n\n== Environment variables ==\nAPP_NAME=\"Toko Sore\"\nAPP_KEY=base64:...hasil key:generate --show...\nCACHE_STORE=database\nSESSION_DRIVER=database\n\n== Sekali saja, lewat Commands > Open console ==\n# Isi katalog contoh (tanpa akun contoh berpassword \"password\")\nphp artisan db:seed --class=ProductSeeder --force\n\n# Daftar dulu lewat halaman /register dengan emailmu, lalu jadikan admin:\nphp artisan tinker\n>>> App\\Models\\User::where('email', 'emailmu@contoh.com')->first()->forceFill(['is_admin' => true])->save();\n"
+        },
+        {
+          "id": "tol-link-cloud-guide",
+          "kind": "tautan",
+          "name": "Laravel Cloud: panduan deploy Laravel",
+          "url": "https://cloud.laravel.com/docs/deploy-guides/laravel"
+        },
+        {
+          "id": "tol-link-cloud-harga",
+          "kind": "tautan",
+          "name": "Laravel Cloud: paket dan harga",
+          "url": "https://cloud.laravel.com/docs/pricing"
+        },
+        {
+          "id": "tol-link-cloud-bucket",
+          "kind": "tautan",
+          "name": "Laravel Cloud: object storage",
+          "url": "https://cloud.laravel.com/docs/resources/object-storage"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-dep-live",
+          "text": "Toko terbuka di alamat *.laravel.cloud dan katalog menampilkan produk."
+        },
+        {
+          "id": "tol-dep-gambar",
+          "text": "Gambar produk tersimpan di bucket dan tetap ada setelah deploy ulang."
+        },
+        {
+          "id": "tol-dep-admin",
+          "text": "Akun admin produksi dibuat lewat console, bukan dengan password contoh."
+        },
+        {
+          "id": "tol-dep-alur",
+          "text": "Alur daftar, keranjang, dan checkout berhasil di alamat publik."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "Tulis README dan kirim tautan proyek",
+      "est_minutes": 45,
+      "body": "## README adalah etalase repositorimu\n\nPerekrut biasanya membuka repositori, membaca README sekitar satu menit, lalu memutuskan apakah akan mencoba tokomu. README yang baik menjawab tiga pertanyaan dengan cepat: ini apa, bisa dicoba di mana, dan bagaimana menjalankannya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template di Bahan ke `README.md` (ganti README bawaan Laravel) dan isi semua `___`.\n2. Ambil dua tangkapan layar: katalog dan halaman pesanan berhasil. Simpan di folder `docs/` dan tampilkan di README. Pakai data contoh, jangan alamat asli siapa pun.\n3. Isi **Keputusan desain** dengan dua keputusan nyata dari proyek ini, misalnya kenapa checkout memakai `lockForUpdate`, kenapa harga disalin ke `order_items`, atau kenapa keranjang boleh diisi tanpa login.\n4. Isi **Yang kupelajari** dengan tiga hal, dan satu rencana berikutnya.\n5. Pastikan perintah di bagian \"Menjalankan di komputer sendiri\" benar-benar berjalan. Cara paling jujur: clone repositorimu ke folder baru dan ikuti README-mu sendiri.\n6. Commit, push, lalu isi deskripsi repositori GitHub dengan satu kalimat dan alamat Laravel Cloud-mu.\n7. Kirim alamat toko dan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membangun aplikasi web utuh dengan Laravel: merancang tabel dan relasi, menjaga stok dengan transaksi dan penguncian baris, membatasi akses dengan gate, memvalidasi masukan dengan Form Request, menguji alur penting secara otomatis, dan merilisnya ke internet. Langkah berikutnya yang menarik adalah menghubungkan payment gateway, atau menambah halaman admin untuk mengubah status pesanan.\n",
+      "materials": [
+        {
+          "id": "tol-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Toko Sore\n\nToko online kecil untuk kopi, teh, dan camilan. Dibangun dengan Laravel 13, MySQL, dan Blade.\n\n**Coba langsung:** https://___.laravel.cloud\n\n![Katalog](docs/katalog.png)\n\n## Fitur\n\n- Katalog dengan pencarian, filter kategori, urutan harga, dan halaman\n- Keranjang di session, bisa diisi tanpa login\n- Checkout dalam satu transaksi database yang mengunci stok\n- Riwayat pesanan untuk pembeli\n- Area admin: tambah, ubah, hapus produk dengan unggah gambar\n\n## Menjalankan di komputer sendiri\n\nButuh PHP 8.3+, Composer, Node.js, dan MySQL.\n\n```bash\ngit clone https://github.com/___/toko-online.git\ncd toko-online\ncomposer install\nnpm install && npm run build\ncp .env.example .env\nphp artisan key:generate\n# isi DB_* di .env, ubah FILESYSTEM_DISK=public\nphp artisan migrate --seed\nphp artisan storage:link\nphp artisan serve\n```\n\nAkun contoh: `admin@toko.test` dan `pembeli@toko.test`, password `password`.\n\n## Tes\n\n```bash\nphp artisan test\n```\n\nTes memakai SQLite di memori, jadi tidak menyentuh database MySQL-mu.\n\n## Keputusan desain\n\n- ___ (contoh: harga disimpan sebagai integer rupiah, bukan float)\n- ___ (contoh: nama dan harga disalin ke order_items supaya riwayat tidak berubah)\n\n## Yang kupelajari\n\n1. ___\n2. ___\n3. ___\n\nRencana berikutnya: ___ (contoh: pembayaran lewat payment gateway, ongkos kirim, status pesanan untuk admin)\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "tol-dok-jalankan",
+          "text": "README menjelaskan cara menjalankan proyek dan tesnya di komputer lain."
+        },
+        {
+          "id": "tol-dok-gambar",
+          "text": "README memuat tangkapan layar katalog dan halaman pesanan."
+        },
+        {
+          "id": "tol-dok-keputusan",
+          "text": "Aku menulis dua keputusan desain beserta alasannya."
+        },
+        {
+          "id": "tol-dok-tautan",
+          "text": "Alamat toko dan repositori sudah kukirim di halaman ringkasan proyek ini."
+        }
+      ]
+    }
+  ]
+}
