@@ -30,7 +30,10 @@ const STATUS = {
   drafting: { label: "Menyusun draf", Icon: LoaderCircle, tone: "text-zinc-300" },
   done: { label: "Draf siap", Icon: CheckCircle2, tone: "text-accent" },
   failed: { label: "Gagal", Icon: XCircle, tone: "text-red-500" },
+  terbit: { label: "Sudah terbit", Icon: CheckCircle2, tone: "text-zinc-400" },
+  diulang: { label: "Gagal, sudah diulang", Icon: RotateCcw, tone: "text-zinc-500" },
 };
+type View = keyof typeof STATUS;
 
 const PROGRESS = { queued: [3, "Langkah 1 dari 3: menunggu giliran"], rendering: [6, "Langkah 2 dari 3: merender slide"], drafting: [10, "Langkah 3 dari 3: menyusun draf (paling lama)"] } as const;
 const pct = (j: Job) => (j.status === "drafting" ? Math.max(j.progress, 10) : PROGRESS[j.status as keyof typeof PROGRESS][0]);
@@ -38,16 +41,27 @@ const RECENT = 6;
 const active = (j: Job) => j.status === "queued" || j.status === "rendering" || j.status === "drafting";
 const when = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+// What a job means now: a done job whose class is published is history, and a
+// failed job with a later success for the same slug needs no retry.
+function viewOf(jobs: Job[], published: Set<string>) {
+  return (j: Job): View => {
+    if (j.status === "done" && published.has(j.slug)) return "terbit";
+    if (j.status === "failed" && jobs.some((o) => o.slug === j.slug && o.status === "done" && o.created_at > j.created_at)) return "diulang";
+    return j.status;
+  };
+}
+
 const FILTERS = [
   ["semua", "Semua", () => true],
-  ["jalan", "Berjalan", (j: Job) => active(j)],
-  ["siap", "Draf siap", (j: Job) => j.status === "done"],
-  ["gagal", "Gagal", (j: Job) => j.status === "failed"],
+  ["jalan", "Berjalan", (v: View) => v === "queued" || v === "rendering" || v === "drafting"],
+  ["siap", "Draf siap", (v: View) => v === "done"],
+  ["terbit", "Sudah terbit", (v: View) => v === "terbit"],
+  ["gagal", "Gagal", (v: View) => v === "failed"],
 ] as const;
 
-const TILE = { queued: "bg-zinc-800", rendering: "bg-tile-butter", drafting: "bg-tile-butter", done: "bg-tile-mint", failed: "bg-tile-pink" };
+const TILE: Record<View, string> = { queued: "bg-zinc-800", rendering: "bg-tile-butter", drafting: "bg-tile-butter", done: "bg-tile-mint", failed: "bg-tile-pink", terbit: "bg-zinc-800", diulang: "bg-zinc-800" };
 
-export default function JobList({ initial, models }: { initial: Job[]; models: string[] }) {
+export default function JobList({ initial, models, published }: { initial: Job[]; models: string[]; published: string[] }) {
   const [jobs, setJobs] = useState(initial);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("semua");
@@ -73,8 +87,9 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
     });
   }
 
+  const view = viewOf(jobs, new Set(published));
   const test = FILTERS.find((f) => f[0] === filter)![2];
-  const shown = jobs.filter(test);
+  const shown = jobs.filter((j) => test(view(j)));
 
   return (
     <section aria-labelledby="riwayat" className="flex flex-col gap-4">
@@ -89,7 +104,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
               onClick={() => setFilter(key)}
               className={`${chip} min-h-10 shrink-0 cursor-pointer ${filter === key ? "bg-primary font-semibold text-on-primary!" : "bg-zinc-800 hover:bg-zinc-700"}`}
             >
-              {label}<span className="tabular-nums opacity-70">{jobs.filter(t).length}</span>
+              {label}<span className="tabular-nums opacity-70">{jobs.filter((j) => t(view(j))).length}</span>
             </button>
           ))}
         </div>
@@ -103,7 +118,7 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
       ) : (
         <>
           <ul className="grid gap-3">
-            {shown.slice(0, RECENT).map((j) => <JobCard key={j.id} j={j} models={models} disabled={pending || running} onRetry={(m) => ulang(j, m)} />)}
+            {shown.slice(0, RECENT).map((j) => <JobCard key={j.id} j={j} v={view(j)} models={models} disabled={pending || running} onRetry={(m) => ulang(j, m)} />)}
           </ul>
           {shown.length > RECENT && (
             <details className="rounded-[18px] bg-zinc-900 px-5 py-3 shadow-soft">
@@ -116,8 +131,8 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
                     <span className="min-w-0 truncate">{j.original_name || j.slug}</span>
                     <span className="flex items-center gap-3 text-xs text-zinc-500">
                       <time dateTime={j.created_at}>{when.format(new Date(j.created_at))}</time>
-                      <span className={STATUS[j.status].tone}>{STATUS[j.status].label}</span>
-                      {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className="text-accent hover:underline">Tinjau</a>}
+                      <span className={STATUS[view(j)].tone}>{STATUS[view(j)].label}</span>
+                      {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className="text-accent hover:underline">{view(j) === "terbit" ? "Lihat kelas" : "Tinjau"}</a>}
                     </span>
                   </li>
                 ))}
@@ -130,11 +145,11 @@ export default function JobList({ initial, models }: { initial: Job[]; models: s
   );
 }
 
-function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; disabled: boolean; onRetry: (m: string) => void }) {
-  const { label, Icon, tone } = STATUS[j.status];
+function JobCard({ j, v, models, disabled, onRetry }: { j: Job; v: View; models: string[]; disabled: boolean; onRetry: (m: string) => void }) {
+  const { label, Icon, tone } = STATUS[v];
   return (
     <li className="flex flex-wrap items-start gap-x-4 gap-y-3 rounded-[18px] bg-zinc-900 p-4 shadow-soft sm:p-5">
-      <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-xl ${TILE[j.status]}`}>
+      <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-xl ${TILE[v]}`}>
         <Icon className={`size-5 ${tone} ${active(j) && j.status !== "queued" ? "animate-spin motion-reduce:animate-none" : ""}`} />
       </span>
       <div className={`min-w-0 flex-1 ${j.status === "done" ? "basis-32" : "basis-56"}`}>
@@ -152,7 +167,7 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
             <p className="mt-1 text-xs tabular-nums text-zinc-500">{PROGRESS[j.status as keyof typeof PROGRESS][1]}{j.status === "drafting" ? `, ${pct(j)}%` : ""}</p>
           </div>
         )}
-        {j.status === "failed" && (
+        {v === "failed" && (
           <div className="mt-2 text-sm text-zinc-300">
             {importErrorText(j.error)}
             <details className="mt-1 text-xs text-zinc-500">
@@ -163,8 +178,8 @@ function JobCard({ j, models, disabled, onRetry }: { j: Job; models: string[]; d
         )}
       </div>
       <div className={`flex flex-wrap items-center gap-2 sm:w-auto ${j.status === "done" ? "ml-auto" : "w-full"}`}>
-        {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>Tinjau draf</a>}
-        {j.status === "failed" && <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={disabled} onRetry={onRetry} />}
+        {j.status === "done" && <a href={`/admin/topik/${j.slug}`} className={smallButton}>{v === "terbit" ? "Lihat kelas" : "Tinjau draf"}</a>}
+        {v === "failed" && <Ulang models={models} current={`${j.provider}:${j.model}`} disabled={disabled} onRetry={onRetry} />}
       </div>
     </li>
   );
