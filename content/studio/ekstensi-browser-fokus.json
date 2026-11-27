@@ -1,0 +1,589 @@
+{
+  "slug": "ekstensi-browser-fokus",
+  "title": "Ekstensi Browser untuk Fokus",
+  "summary": "Buat ekstensi Chrome Manifest V3 dengan JavaScript biasa: timer pomodoro 25/5 di service worker dengan chrome.alarms, badge dan notifikasi, situs pengganggu dialihkan dengan declarativeNetRequest hanya saat fokus, izin seminimal mungkin, uji otomatis dengan Playwright, lalu terbitkan di Chrome Web Store.",
+  "level": "pemula",
+  "est_hours": 10,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "kenali-masalah-fokusmu",
+      "title": "Kenali masalah fokusmu",
+      "est_minutes": 15,
+      "body": "## Ekstensi kecil untuk masalah yang kamu alami sendiri\n\nProyek ini berbeda dari situs biasa: hasilnya hidup **di dalam browser**, menempel di toolbar Chrome, dan kamu pakai sendiri setiap hari. Kita akan membuat **Fokus Dulu**: timer pomodoro (25 menit fokus, 5 menit istirahat) yang menutup situs pengganggu selama sesi fokus dan mengalihkannya ke halaman ramah \"Tetap fokus, ya\".\n\nProyek terbaik untuk portofolio pemula adalah yang memecahkan masalahmu sendiri. Kamu jadi tahu persis kapan hasilnya sudah \"cukup baik\", dan kamu punya cerita jujur saat ditanya \"kenapa membuat ini?\".\n\n## Yang perlu kamu kerjakan\n\n1. Salin template brief di bagian Bahan ke catatanmu.\n2. Selama satu hari, catat situs apa yang kamu buka saat seharusnya belajar atau bekerja. Tulis tiga yang paling sering.\n3. Lengkapi kalimat **\"Ekstensi ini untuk ___ yang ingin ___.\"** Contoh: \"untuk mahasiswa yang ingin belajar 2 jam tanpa membuka YouTube\".\n4. Tulis tiga hal yang **wajib** bisa dilakukan versi pertama, dan satu hal yang **tidak** akan dibuat dulu (misalnya statistik harian atau versi Firefox).\n\n> Ekstensi yang kecil dan selesai jauh lebih berguna daripada ekstensi besar yang tidak pernah kamu pasang.\n",
+      "materials": [
+        {
+          "id": "fk-brief-template",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: ekstensi fokus\n\nEkstensi ini untuk ___ yang ingin ___.\n\nMasalahku sekarang:\n- Situs yang paling sering mencuri waktuku: ___, ___, ___\n- Biasanya aku tergoda membukanya saat ___\n\nVersi pertama WAJIB bisa:\n1. ___\n2. ___\n3. ___\n\nVersi pertama TIDAK akan:\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-brief-kalimat",
+          "text": "Aku sudah menulis kalimat \"Ekstensi ini untuk ... yang ingin ...\"."
+        },
+        {
+          "id": "fk-brief-situs",
+          "text": "Aku punya daftar tiga situs yang paling sering mengganggu fokusku."
+        },
+        {
+          "id": "fk-brief-batas",
+          "text": "Aku menulis tiga hal wajib dan satu hal yang tidak dibuat di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-fitur-ekstensi",
+      "title": "Petakan fitur dan tempatnya di browser",
+      "est_minutes": 25,
+      "body": "## Ekstensi punya beberapa \"tempat\"\n\nSebelum memilih fitur, kenali dulu tempat-tempat yang bisa dipakai sebuah ekstensi Chrome. Setiap fitur nanti harus punya rumah yang jelas.\n\n| Tempat | Apa itu | Dipakai untuk |\n| --- | --- | --- |\n| **Popup** | Jendela kecil saat ikon ekstensi diklik | Tombol mulai/berhenti dan sisa waktu |\n| **Badge** | Teks pendek di atas ikon | Menit tersisa, terlihat tanpa membuka popup |\n| **Notifikasi** | Pemberitahuan sistem | Kabar saat sesi selesai |\n| **Halaman pengaturan** | Halaman penuh milik ekstensi | Mengubah daftar situs |\n| **Halaman ekstensi lain** | Halaman HTML milik ekstensi | Halaman \"Tetap fokus\" pengganti situs yang ditutup |\n| **Pintasan keyboard** | Kombinasi tombol | Mulai atau berhenti tanpa mouse |\n| **Service worker** | Skrip latar tanpa tampilan | Otak: timer, aturan blokir, notifikasi |\n\n## Yang perlu kamu kerjakan\n\n1. Tulis daftar fitur dari brief-mu, lalu pasangkan setiap fitur dengan satu tempat dari tabel.\n2. Tandai fitur **wajib** dan **nanti**. Untuk proyek ini, yang wajib: timer 25/5, badge, notifikasi, blokir situs saat fokus, halaman pengaturan, pintasan keyboard.\n3. Tulis tiga hal yang bisa salah. Contoh: popup ditutup saat timer berjalan, browser ditutup di tengah sesi, situs tetap terbuka saat istirahat selesai.\n\nJawaban untuk tiga hal itu akan menentukan rancangan di langkah berikutnya. Contohnya, karena popup langsung \"mati\" begitu ditutup, timer **tidak boleh** hidup di popup.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "fk-ide-tempat",
+          "text": "Setiap fitur sudah kupasangkan dengan tempatnya (popup, badge, pengaturan, dan seterusnya)."
+        },
+        {
+          "id": "fk-ide-prioritas",
+          "text": "Fitur sudah kutandai wajib atau nanti."
+        },
+        {
+          "id": "fk-ide-gagal",
+          "text": "Aku menulis minimal tiga hal yang bisa salah."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "kenali-manifest-v3",
+      "title": "Kenali Manifest V3 dan izin seperlunya",
+      "est_minutes": 30,
+      "body": "## Cukup HTML, CSS, dan JavaScript biasa\n\nEkstensi Chrome hanyalah folder berisi berkas web ditambah satu berkas `manifest.json` yang menjelaskan isinya ke Chrome. Kita **tidak** memakai framework atau bundler: Chrome langsung membaca berkasmu, jadi tidak ada langkah build yang bisa rusak.\n\nVersi format yang dipakai sekarang adalah **Manifest V3**. Bedanya yang paling terasa dibanding tutorial lama (V2):\n\n- Skrip latar adalah **service worker**. Chrome mematikannya setelah sekitar 30 detik menganggur, lalu menyalakannya lagi saat ada kejadian. Variabel di memori hilang, jadi keadaan harus disimpan di `chrome.storage` dan waktu ditunggu dengan `chrome.alarms`, bukan `setTimeout`.\n- Memblokir situs memakai **`declarativeNetRequest`**: kamu menyerahkan aturan ke Chrome, Chrome yang menjalankannya. Ekstensi tidak perlu (dan tidak bisa) mengintip setiap request.\n- Semua kode harus ada di dalam paket. Memuat skrip dari internet dilarang.\n\n![Bagian-bagian Fokus Dulu: halaman ekstensi hanya bicara lewat pesan dan storage, sementara service worker yang memegang alarm, aturan blokir, badge, dan notifikasi](/studio/ekstensi-browser-fokus/bagian-ekstensi.svg)\n\n## Izin seperlunya, dengan alasan\n\nSetiap izin di manifest menambah peringatan saat orang memasang, dan di Chrome Web Store kamu **wajib** menulis alasan untuk tiap izin. Biasakan dari sekarang:\n\n| Izin | Kenapa dibutuhkan |\n| --- | --- |\n| `alarms` | Menunggu akhir sesi walau service worker sedang tidur |\n| `storage` | Menyimpan sesi (`local`) dan daftar situs (`sync`, ikut ke Chrome lain milikmu) |\n| `notifications` | Memberi tahu saat sesi selesai |\n| `declarativeNetRequest` | Mengalihkan situs di daftar, hanya selama fokus |\n| izin situs **opsional** | Chrome mewajibkan izin situs untuk aturan **redirect**. Kita memintanya per situs saat daftar disimpan, bukan izin \"semua situs\" sejak dipasang |\n\nYang sengaja **tidak** dipakai: `tabs`, `history`, `webRequest`, dan `host_permissions` untuk semua situs. Tanpa izin itu, ekstensimu tidak bisa membaca riwayat atau isi halaman, dan pemakai bisa memercayainya.\n\n## Alat\n\n- Google Chrome versi terbaru (atau Chromium, Edge, Brave; semuanya memakai mesin yang sama).\n- Editor kode, Git, dan akun GitHub.\n- Node.js 22 atau lebih baru, hanya untuk uji otomatis di langkah Uji. Ekstensinya sendiri tidak butuh Node.\n",
+      "materials": [
+        {
+          "id": "fk-tek-mv3",
+          "kind": "tautan",
+          "name": "Chrome: pengantar ekstensi Manifest V3",
+          "url": "https://developer.chrome.com/docs/extensions/get-started"
+        },
+        {
+          "id": "fk-tek-sw-doc",
+          "kind": "tautan",
+          "name": "Chrome: siklus hidup service worker ekstensi",
+          "url": "https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle"
+        },
+        {
+          "id": "fk-tek-izin-doc",
+          "kind": "tautan",
+          "name": "Chrome: menyatakan izin dan peringatannya",
+          "url": "https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-tek-chrome",
+          "text": "Chrome versi terbaru, editor kode, dan Git sudah siap."
+        },
+        {
+          "id": "fk-tek-sw",
+          "text": "Aku bisa menjelaskan kenapa timer tidak boleh memakai setTimeout di service worker."
+        },
+        {
+          "id": "fk-tek-izin",
+          "text": "Aku bisa menyebut alasan untuk setiap izin di tabel."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-alur-sesi",
+      "title": "Rancang alur sesi dan penyimpanan",
+      "est_minutes": 40,
+      "body": "## Timer adalah mesin keadaan kecil\n\nFokus Dulu selalu berada di salah satu dari tiga keadaan: **diam**, **fokus**, atau **istirahat**. Yang memindahkan keadaan hanya dua hal: tombol (mulai/berhenti) dan alarm yang berbunyi saat waktu habis.\n\n![Tiga keadaan Fokus Dulu: Mulai membawa ke fokus dan memasang aturan blokir, alarm sesi memindahkan fokus ke istirahat lalu ke diam, Berhenti dari mana saja kembali ke diam](/studio/ekstensi-browser-fokus/alur-sesi.svg)\n\n## Kenapa menyimpan waktu selesai, bukan sisa waktu\n\nKalau yang disimpan \"sisa 1.500 detik\" lalu dikurangi tiap detik, angkanya berhenti berkurang begitu service worker tidur. Simpan saja **waktu selesai** (`akhir = Date.now() + durasi`). Siapa pun yang butuh sisa waktu, entah popup, badge, atau halaman \"Tetap fokus\", cukup menghitung `akhir - Date.now()`. Hasilnya selalu benar, kapan pun dihitung.\n\n## Dua tempat simpan\n\n- `chrome.storage.local`: keadaan sesi (`mode`, `akhir`). Hanya untuk browser ini.\n- `chrome.storage.sync`: daftar situs. Ikut tersinkron ke Chrome lain yang login dengan akun yang sama, jadi daftar cukup ditulis sekali.\n\n## Yang perlu kamu kerjakan\n\n1. Baca rancangan di bagian Bahan. Simpan sebagai `RANCANGAN.md` di folder proyekmu nanti.\n2. Gambar ulang diagram keadaan di kertas dengan tanganmu sendiri. Untuk setiap panah, tulis apa yang terjadi pada aturan blokir dan badge.\n3. Jawab: apa yang harus terjadi kalau browser ditutup saat fokus, lalu dibuka lagi **setelah** waktu selesai? Dan kalau dibuka lagi **sebelum** waktu selesai? Jawabannya nanti menjadi fungsi `pulihkan()` di service worker.\n4. Sketsa popup selebar sekitar 300 piksel: judul, satu kalimat status, angka sisa waktu yang besar, tombol utama, tombol pengaturan.\n",
+      "materials": [
+        {
+          "id": "fk-ran-rancangan",
+          "kind": "kode",
+          "name": "RANCANGAN.md",
+          "lang": "markdown",
+          "content": "# Rancangan Fokus Dulu\n\n## Keadaan (disimpan di chrome.storage.local)\n- mode: \"fokus\" | \"istirahat\" | (tidak ada = diam)\n- akhir: waktu selesai sesi, milidetik sejak epoch (Date.now() + durasi)\n- debugDetik: (khusus uji) kalau ada, tiap sesi hanya sekian detik\n\n## Pengaturan (disimpan di chrome.storage.sync)\n- situs: [\"youtube.com\", \"instagram.com\", ...]\n\n## Alarm\n- \"sesi\": sekali, pada waktu `akhir`\n- \"badge\": tiap 1 menit, memperbarui angka di ikon\n\n## Pesan dari popup ke service worker\n- { aksi: \"mulai\" }    -> mulai(\"fokus\")\n- { aksi: \"berhenti\" } -> berhenti()\n\n## Perpindahan\n- diam      --mulai-->           fokus (pasang aturan blokir)\n- fokus     --alarm \"sesi\"-->    istirahat (cabut aturan, notifikasi)\n- istirahat --alarm \"sesi\"-->    diam (notifikasi)\n- apa pun   --berhenti-->        diam (cabut aturan, hapus badge)\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-ran-keadaan",
+          "text": "Aku menggambar ulang tiga keadaan dan semua panahnya."
+        },
+        {
+          "id": "fk-ran-akhir",
+          "text": "Aku bisa menjelaskan kenapa yang disimpan adalah waktu selesai, bukan sisa waktu."
+        },
+        {
+          "id": "fk-ran-restart",
+          "text": "Aku tahu apa yang harus terjadi saat browser dibuka lagi sebelum dan sesudah sesi habis."
+        },
+        {
+          "id": "fk-ran-sketsa",
+          "text": "Sketsa popup sudah kubuat."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-manifest-dan-ikon",
+      "title": "Siapkan manifest, ikon, dan pasang ekstensinya",
+      "est_minutes": 45,
+      "body": "## Kerangka yang langsung bisa dipasang\n\nKita mulai dengan manifest lengkap dan berkas-berkas kosong. Chrome sudah bisa memasang ekstensinya, walau belum melakukan apa-apa. Setelah itu, setiap langkah tinggal mengisi satu bagian.\n\nSusunan folder yang kita tuju:\n\n```text\nfokus-dulu/\n├── ekstensi/          <- folder ini yang dipasang di Chrome dan nanti di-zip\n│   ├── manifest.json\n│   ├── background.js\n│   ├── popup.html, popup.js, gaya.css\n│   ├── options.html, options.js\n│   ├── blocked.html, blocked.js\n│   └── icons/icon128.png\n├── alat/buat-ikon.html\n├── uji/uji-ekstensi.mjs\n├── package.json\n└── README.md\n```\n\nFolder `ekstensi` dipisah dari alat dan tes supaya `node_modules` dan berkas uji tidak ikut terkirim ke Chrome Web Store.\n\n## Langkah-langkah\n\n1. Jalankan perintah `siapkan.sh` di bagian Bahan. Pengguna Windows bisa membuat folder dan berkas kosongnya lewat editor.\n2. Isi `ekstensi/manifest.json` dari bagian Bahan. Perhatikan `optional_host_permissions`: izin situs hanya **boleh diminta**, belum diberikan.\n3. **Ikon.** Chrome Web Store mewajibkan ikon PNG 128x128. Kalau belum punya, simpan `alat/buat-ikon.html`, buka di Chrome, klik **Unduh icon128.png**, lalu pindahkan berkasnya ke `ekstensi/icons/`. Gambar di tengah berukuran 96x96 dengan tepi transparan, sesuai aturan toko.\n4. Buka `chrome://extensions`, nyalakan **Developer mode** di kanan atas, klik **Load unpacked**, lalu pilih folder **`ekstensi`** (bukan `fokus-dulu`).\n5. Kartu **Fokus Dulu** muncul tanpa pesan error merah. Klik ikon puzzle di toolbar, lalu sematkan (pin) Fokus Dulu.\n6. Commit: `git add . && git commit -m \"Kerangka ekstensi\"`.\n\n## Kalau gagal\n\n- *Manifest file is missing or unreadable*: kamu memilih folder yang salah. Pilih folder yang langsung berisi `manifest.json`.\n- *Could not load icon*: nama atau lokasi `icons/icon128.png` tidak cocok. Huruf besar kecil berpengaruh.\n- Setiap kali mengubah `manifest.json` atau `background.js`, klik ikon **muat ulang** (panah melingkar) di kartu ekstensi. Popup dan halaman lain cukup dibuka ulang.\n",
+      "materials": [
+        {
+          "id": "fk-man-siapkan",
+          "kind": "kode",
+          "name": "siapkan.sh",
+          "lang": "bash",
+          "content": "mkdir -p fokus-dulu/ekstensi/icons fokus-dulu/alat fokus-dulu/uji\ncd fokus-dulu\ntouch ekstensi/background.js ekstensi/popup.html ekstensi/popup.js ekstensi/gaya.css \\\n      ekstensi/options.html ekstensi/options.js ekstensi/blocked.html ekstensi/blocked.js\ngit init\n"
+        },
+        {
+          "id": "fk-man-manifest",
+          "kind": "kode",
+          "name": "ekstensi/manifest.json",
+          "lang": "json",
+          "content": "{\n  \"manifest_version\": 3,\n  \"name\": \"Fokus Dulu\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Pomodoro 25/5 yang menutup situs pengganggu selama sesi fokus.\",\n  \"icons\": { \"128\": \"icons/icon128.png\" },\n  \"action\": {\n    \"default_popup\": \"popup.html\",\n    \"default_title\": \"Fokus Dulu\"\n  },\n  \"background\": { \"service_worker\": \"background.js\" },\n  \"options_page\": \"options.html\",\n  \"permissions\": [\"alarms\", \"storage\", \"notifications\", \"declarativeNetRequest\"],\n  \"optional_host_permissions\": [\"*://*/*\"],\n  \"web_accessible_resources\": [\n    { \"resources\": [\"blocked.html\"], \"matches\": [\"<all_urls>\"] }\n  ],\n  \"commands\": {\n    \"mulai-berhenti\": {\n      \"suggested_key\": { \"default\": \"Alt+Shift+F\" },\n      \"description\": \"Mulai atau hentikan sesi fokus\"\n    }\n  }\n}\n"
+        },
+        {
+          "id": "fk-man-ikon",
+          "kind": "kode",
+          "name": "alat/buat-ikon.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head><meta charset=\"utf-8\"><title>Buat ikon 128x128</title></head>\n<body>\n  <canvas id=\"c\" width=\"128\" height=\"128\"></canvas>\n  <p><a id=\"unduh\" download=\"icon128.png\">Unduh icon128.png</a></p>\n  <script>\n    const ctx = document.getElementById(\"c\").getContext(\"2d\");\n    // Gambar 96x96 di tengah, sisanya transparan (aturan ikon Chrome Web Store).\n    ctx.fillStyle = \"#3f6212\";\n    ctx.beginPath();\n    ctx.arc(64, 64, 48, 0, Math.PI * 2);\n    ctx.fill();\n    ctx.fillStyle = \"#ffffff\";\n    ctx.font = \"bold 56px system-ui, sans-serif\";\n    ctx.textAlign = \"center\";\n    ctx.textBaseline = \"middle\";\n    ctx.fillText(\"F\", 64, 68);\n    document.getElementById(\"unduh\").href = ctx.canvas.toDataURL(\"image/png\");\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "fk-man-ref",
+          "kind": "tautan",
+          "name": "Chrome: referensi manifest.json",
+          "url": "https://developer.chrome.com/docs/extensions/reference/manifest"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-man-folder",
+          "text": "Folder ekstensi berisi manifest.json, berkas-berkas kosong, dan icons/icon128.png."
+        },
+        {
+          "id": "fk-man-pasang",
+          "text": "Fokus Dulu terpasang lewat Load unpacked tanpa error dan sudah kusematkan di toolbar."
+        },
+        {
+          "id": "fk-man-commit",
+          "text": "Kerangka proyek sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "timer-di-service-worker",
+      "title": "Tulis timer di service worker",
+      "est_minutes": 75,
+      "body": "## Otak ekstensi\n\nSemua logika sesi ada di `background.js`. Popup, halaman pengaturan, dan pintasan keyboard hanya **meminta** sesuatu, lalu service worker yang mengerjakannya. Dengan begitu tidak ada dua tempat yang menghitung waktu dengan cara berbeda.\n\n## Bagian-bagiannya\n\n- **`mulai(mode)`** menghitung `akhir`, menyimpannya, lalu membuat dua alarm: `sesi` yang berbunyi sekali di waktu `akhir`, dan `badge` yang berbunyi tiap menit untuk memperbarui angka di ikon.\n- **`berhenti()`** menghapus keadaan, semua alarm, dan badge.\n- **`onAlarm`** adalah jantungnya. Saat alarm `sesi` berbunyi di mode fokus, ia memberi notifikasi lalu memulai istirahat. Di mode istirahat, ia memberi notifikasi lalu berhenti.\n- **`onMessage`** menerima `{ aksi: \"mulai\" }` atau `{ aksi: \"berhenti\" }` dari popup. `return true` memberi tahu Chrome bahwa jawabannya dikirim nanti, setelah pekerjaan async selesai.\n- **`onCommand`** menjalankan pintasan `Alt+Shift+F` dari manifest.\n- **`pulihkan()`** dipanggil saat browser dibuka lagi (`onStartup`) dan saat ekstensi dipasang atau dimuat ulang (`onInstalled`). Alarm tidak dijamin bertahan di dua kejadian itu, jadi alarmnya dibuat ulang dari `akhir` yang tersimpan. Sesi yang sudah lewat langsung diakhiri.\n- **`aturBlokir`** sengaja masih kosong. Kita isi dua langkah lagi.\n\nSemua listener didaftarkan di tingkat paling atas berkas, bukan di dalam fungsi lain. Saat Chrome menyalakan service worker untuk mengantar sebuah alarm, ia menjalankan berkas dari atas. Listener yang baru didaftarkan belakangan akan ketinggalan kejadiannya.\n\n## Mode uji: debugDetik\n\nMenunggu 25 menit untuk melihat satu notifikasi itu menyiksa. `durasiMs` membaca `debugDetik` dari storage: kalau ada, setiap sesi hanya sekian detik. Nilainya hanya bisa diisi dari console, jadi pemakai biasa tidak akan pernah melihatnya.\n\n## Yang perlu kamu kerjakan\n\n1. Isi `ekstensi/background.js` dari bagian Bahan, lalu muat ulang ekstensi di `chrome://extensions`.\n2. Di kartu Fokus Dulu, klik tautan **service worker** untuk membuka DevTools-nya, lalu buka tab **Console**.\n3. Jalankan perintah di `console-uji.js` bagian 1, lalu ketik `mulai(\"fokus\")`. Fungsi di tingkat atas berkas bisa dipanggil langsung dari console.\n4. Lihat badge di ikon berubah menjadi `1`. Setelah 10 detik muncul notifikasi **Sesi fokus selesai** dan badge berganti warna (istirahat). 10 detik kemudian muncul **Istirahat selesai** dan badge hilang.\n5. Coba juga pintasan **Alt+Shift+F**. Kalau bentrok dengan pintasan lain, ubah di `chrome://extensions/shortcuts`.\n6. Commit dengan pesan `Timer di service worker`.\n\nNotifikasi tidak muncul? Periksa pengaturan notifikasi sistem operasimu (mode Fokus atau Jangan Ganggu di Windows/macOS sering menyembunyikannya) dan izin notifikasi untuk Chrome.\n",
+      "materials": [
+        {
+          "id": "fk-sw-background",
+          "kind": "kode",
+          "name": "ekstensi/background.js",
+          "lang": "javascript",
+          "content": "// Service worker: satu-satunya pemegang logika sesi.\n// Chrome bisa mematikannya kapan saja saat menganggur, jadi semua keadaan\n// disimpan di chrome.storage dan waktu ditunggu oleh chrome.alarms, bukan setTimeout.\nconst MENIT = { fokus: 25, istirahat: 5 };\n\nasync function durasiMs(mode) {\n  // Khusus uji: chrome.storage.local.set({ debugDetik: 10 }) membuat tiap sesi 10 detik.\n  const { debugDetik } = await chrome.storage.local.get(\"debugDetik\");\n  return debugDetik ? debugDetik * 1000 : MENIT[mode] * 60_000;\n}\n\nasync function mulai(mode) {\n  const akhir = Date.now() + (await durasiMs(mode));\n  await chrome.storage.local.set({ mode, akhir });\n  await chrome.alarms.create(\"sesi\", { when: akhir });\n  await chrome.alarms.create(\"badge\", { periodInMinutes: 1 });\n  await aturBlokir(mode === \"fokus\");\n  await perbaruiBadge();\n}\n\nasync function berhenti() {\n  await chrome.storage.local.remove([\"mode\", \"akhir\"]);\n  await chrome.alarms.clearAll();\n  await aturBlokir(false);\n  await chrome.action.setBadgeText({ text: \"\" });\n}\n\nasync function aturBlokir(aktif) {\n  // Diisi di langkah \"Tutup situs pengganggu selama fokus\".\n}\n\nasync function perbaruiBadge() {\n  const { mode, akhir } = await chrome.storage.local.get([\"mode\", \"akhir\"]);\n  if (!mode) return;\n  const menit = Math.max(0, Math.ceil((akhir - Date.now()) / 60_000));\n  await chrome.action.setBadgeBackgroundColor({ color: mode === \"fokus\" ? \"#3f6212\" : \"#57534e\" });\n  await chrome.action.setBadgeText({ text: String(menit) });\n}\n\nfunction beriTahu(judul, pesan) {\n  chrome.notifications.create({ type: \"basic\", iconUrl: \"icons/icon128.png\", title: judul, message: pesan });\n}\n\nchrome.alarms.onAlarm.addListener(async (alarm) => {\n  if (alarm.name === \"badge\") return perbaruiBadge();\n  if (alarm.name !== \"sesi\") return;\n  const { mode } = await chrome.storage.local.get(\"mode\");\n  if (mode === \"fokus\") {\n    beriTahu(\"Sesi fokus selesai\", \"Istirahat 5 menit dulu. Semua situs sudah terbuka lagi.\");\n    await mulai(\"istirahat\");\n  } else {\n    beriTahu(\"Istirahat selesai\", \"Siap untuk sesi fokus berikutnya?\");\n    await berhenti();\n  }\n});\n\nchrome.runtime.onMessage.addListener((pesan, pengirim, balas) => {\n  const kerja = pesan.aksi === \"mulai\" ? mulai(\"fokus\") : berhenti();\n  kerja.then(() => balas({ ok: true }));\n  return true; // jawaban dikirim nanti, setelah kerja selesai\n});\n\nchrome.commands.onCommand.addListener(async (perintah) => {\n  if (perintah !== \"mulai-berhenti\") return;\n  const { mode } = await chrome.storage.local.get(\"mode\");\n  await (mode ? berhenti() : mulai(\"fokus\"));\n});\n\n// Browser dibuka lagi, atau ekstensi dimuat ulang: alarm bisa saja hilang,\n// jadi pulihkan dari storage. Sesi yang sudah lewat langsung diakhiri.\nasync function pulihkan() {\n  const { mode, akhir } = await chrome.storage.local.get([\"mode\", \"akhir\"]);\n  if (!mode || akhir <= Date.now()) return berhenti();\n  await chrome.alarms.create(\"sesi\", { when: akhir });\n  await chrome.alarms.create(\"badge\", { periodInMinutes: 1 });\n  await perbaruiBadge();\n}\nchrome.runtime.onStartup.addListener(pulihkan);\nchrome.runtime.onInstalled.addListener(pulihkan);\n"
+        },
+        {
+          "id": "fk-sw-konsol",
+          "kind": "kode",
+          "name": "console-uji.js",
+          "lang": "javascript",
+          "content": "// Tempel di console service worker (chrome://extensions > Fokus Dulu > \"service worker\").\n// 1. Percepat: tiap sesi jadi 10 detik.\nchrome.storage.local.set({ debugDetik: 10 });\n\n// 2. Lihat keadaan sekarang.\nchrome.storage.local.get(null).then(console.log);\nchrome.alarms.getAll().then(console.log);\nchrome.declarativeNetRequest.getDynamicRules().then(console.log);\n\n// 3. Selesai menguji: kembali ke 25/5 menit.\nchrome.storage.local.remove(\"debugDetik\");\n"
+        },
+        {
+          "id": "fk-sw-alarms",
+          "kind": "tautan",
+          "name": "Chrome: chrome.alarms",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/alarms"
+        },
+        {
+          "id": "fk-sw-notif-doc",
+          "kind": "tautan",
+          "name": "Chrome: chrome.notifications",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/notifications"
+        },
+        {
+          "id": "fk-sw-commands",
+          "kind": "tautan",
+          "name": "Chrome: chrome.commands (pintasan keyboard)",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/commands"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-sw-notif",
+          "text": "Dengan debugDetik, mulai(\"fokus\") menghasilkan dua notifikasi dan badge yang berubah."
+        },
+        {
+          "id": "fk-sw-pintasan",
+          "text": "Pintasan Alt+Shift+F memulai dan menghentikan sesi."
+        },
+        {
+          "id": "fk-sw-paham",
+          "text": "Aku bisa menjelaskan kenapa listener harus didaftarkan di tingkat paling atas."
+        },
+        {
+          "id": "fk-sw-commit",
+          "text": "Timer sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "popup-yang-aksesibel",
+      "title": "Buat popup yang aksesibel",
+      "est_minutes": 60,
+      "body": "## Popup hanya penampil\n\nPopup hidup sangat singkat: dibuat saat ikon diklik, dihancurkan saat kamu mengklik di luar. Karena itu popup **tidak** menyimpan timer. Ia membaca `mode` dan `akhir` dari storage, menghitung sisa waktu tiap detik, dan mengirim pesan ke service worker saat tombol ditekan. Saat storage berubah, popup ikut menggambar ulang lewat `chrome.storage.onChanged`.\n\n![Popup saat sesi fokus berjalan: status, angka sisa waktu besar, tombol Berhenti, dan tombol pengaturan](/studio/ekstensi-browser-fokus/popup-fokus.webp)\n\n## Aksesibilitas yang sering terlewat di popup\n\n- `<html lang=\"id\">` supaya pembaca layar memakai lafal bahasa Indonesia.\n- Tombol memakai elemen `<button>`, bukan `<div>` yang diberi klik. Tombol asli bisa dijangkau dengan Tab dan ditekan dengan Enter atau Spasi.\n- Angka waktu diberi `role=\"timer\"`. Pembaca layar tidak membacakannya tiap detik (itu akan sangat mengganggu), tapi pemakai bisa membacanya kapan saja.\n- Kalimat status diberi `aria-live=\"polite\"`, jadi perubahan seperti \"Istirahat. Semua situs terbuka.\" dibacakan sekali saat terjadi.\n- `:focus-visible` memberi garis fokus yang jelas, dan warna tombol cukup kontras.\n- Ukuran memakai `rem`. Popup Chrome maksimal 800x600 piksel; lebar `18rem` cukup.\n\n![Coba warna tombolmu: teks putih di atas hijau tua harus mencapai rasio kontras minimal 4.5:1](sim:kontras-warna)\n\n## Yang perlu kamu kerjakan\n\n1. Isi `popup.html`, `popup.js`, dan `gaya.css` dari bagian Bahan. `gaya.css` dipakai bersama oleh popup, pengaturan, dan halaman \"Tetap fokus\".\n2. Klik ikon Fokus Dulu, lalu klik **Mulai fokus 25 menit**. Angka mulai berkurang dan badge menunjukkan `25`.\n3. Tutup popup, tunggu sebentar, buka lagi. Angkanya tetap benar, karena dihitung dari `akhir`.\n4. Uji dengan keyboard saja: buka popup dengan pintasan, tekan Tab untuk berpindah antartombol, Enter untuk menekan. Garis fokus harus terlihat.\n5. Untuk memeriksa popup dengan DevTools, klik kanan di dalam popup lalu pilih **Inspect**. Cara lain: buka `chrome-extension://ID-EKSTENSI/popup.html` di tab biasa. ID ada di kartu ekstensi.\n6. Commit dengan pesan `Popup timer`.\n\nTombol **Atur daftar situs** masih membuka halaman kosong. Itu langkah berikutnya.\n",
+      "materials": [
+        {
+          "id": "fk-pop-html",
+          "kind": "kode",
+          "name": "ekstensi/popup.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Fokus Dulu</title>\n  <link rel=\"stylesheet\" href=\"gaya.css\">\n</head>\n<body class=\"popup\" data-mode=\"diam\">\n  <main>\n    <h1>Fokus Dulu</h1>\n    <p id=\"status\" aria-live=\"polite\">Belum ada sesi.</p>\n    <p id=\"sisa\" class=\"sisa\" role=\"timer\" aria-label=\"Sisa waktu\">25:00</p>\n    <button id=\"tombol\" type=\"button\">Mulai fokus 25 menit</button>\n    <button id=\"atur\" type=\"button\" class=\"sekunder\">Atur daftar situs</button>\n    <p class=\"kecil\">Pintasan: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></p>\n  </main>\n  <script src=\"popup.js\"></script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "fk-pop-js",
+          "kind": "kode",
+          "name": "ekstensi/popup.js",
+          "lang": "javascript",
+          "content": "const status = document.getElementById(\"status\");\nconst sisa = document.getElementById(\"sisa\");\nconst tombol = document.getElementById(\"tombol\");\nconst TEKS = {\n  fokus: \"Sedang fokus. Situs pengganggu ditutup.\",\n  istirahat: \"Istirahat. Semua situs terbuka.\",\n};\nlet akhir = null;\n\nfunction format(ms) {\n  const detik = Math.max(0, Math.ceil(ms / 1000));\n  const mm = String(Math.floor(detik / 60)).padStart(2, \"0\");\n  const ss = String(detik % 60).padStart(2, \"0\");\n  return `${mm}:${ss}`;\n}\n\nfunction detak() {\n  sisa.textContent = akhir ? format(akhir - Date.now()) : \"25:00\";\n}\n\nasync function tampilkan() {\n  const { mode, akhir: a } = await chrome.storage.local.get([\"mode\", \"akhir\"]);\n  akhir = a ?? null;\n  status.textContent = TEKS[mode] ?? \"Belum ada sesi.\";\n  tombol.textContent = mode ? \"Berhenti\" : \"Mulai fokus 25 menit\";\n  document.body.dataset.mode = mode ?? \"diam\";\n  detak();\n}\n\ntombol.addEventListener(\"click\", () => {\n  chrome.runtime.sendMessage({ aksi: akhir ? \"berhenti\" : \"mulai\" });\n});\ndocument.getElementById(\"atur\").addEventListener(\"click\", () => chrome.runtime.openOptionsPage());\n\n// Service worker yang mengubah storage; popup cukup ikut menampilkan.\nchrome.storage.onChanged.addListener((ubah, area) => {\n  if (area === \"local\") tampilkan();\n});\nsetInterval(detak, 1000);\ntampilkan();\n"
+        },
+        {
+          "id": "fk-pop-css",
+          "kind": "kode",
+          "name": "ekstensi/gaya.css",
+          "lang": "css",
+          "content": ":root {\n  --tinta: #1c1917;\n  --latar: #fafaf9;\n  --hijau: #3f6212;\n  --hijau-muda: #ecfccb;\n  --abu: #57534e;\n  font-family: system-ui, \"Segoe UI\", Roboto, sans-serif;\n  color: var(--tinta);\n  background: var(--latar);\n}\nbody { margin: 0; }\nmain { padding: 1rem 1.25rem; }\nh1 { font-size: 1.1rem; margin: 0 0 .5rem; }\n.popup { width: 18rem; }\n.popup[data-mode=\"fokus\"] { background: var(--hijau-muda); }\n.sisa {\n  font-size: 3rem;\n  font-weight: 800;\n  font-variant-numeric: tabular-nums;\n  margin: .25rem 0 .75rem;\n}\nbutton {\n  display: block;\n  width: 100%;\n  font: inherit;\n  font-weight: 700;\n  padding: .6rem;\n  margin-bottom: .5rem;\n  border: 2px solid var(--tinta);\n  border-radius: .5rem;\n  background: var(--hijau);\n  color: #fff;\n  cursor: pointer;\n}\nbutton.sekunder { background: #fff; color: var(--tinta); }\nbutton:focus-visible, textarea:focus-visible, a:focus-visible {\n  outline: 3px solid #2563eb;\n  outline-offset: 2px;\n}\n.kecil { font-size: .85rem; color: var(--abu); }\nkbd { border: 1px solid var(--abu); border-radius: .25rem; padding: 0 .3rem; }\n.halaman { max-width: 36rem; margin: 3rem auto; padding: 0 1rem; }\ntextarea { width: 100%; box-sizing: border-box; font: inherit; padding: .5rem; }\n.halaman button { width: auto; padding: .6rem 1.2rem; }\n"
+        },
+        {
+          "id": "fk-pop-a11y",
+          "kind": "tautan",
+          "name": "Chrome: membuat ekstensi yang aksesibel",
+          "url": "https://developer.chrome.com/docs/extensions/how-to/ui/a11y"
+        },
+        {
+          "id": "fk-pop-timer",
+          "kind": "tautan",
+          "name": "MDN: ARIA role timer",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/timer_role"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-pop-mulai",
+          "text": "Tombol di popup memulai dan menghentikan sesi, dan angkanya berkurang tiap detik."
+        },
+        {
+          "id": "fk-pop-tutup",
+          "text": "Setelah popup ditutup dan dibuka lagi, sisa waktu tetap benar."
+        },
+        {
+          "id": "fk-pop-keyboard",
+          "text": "Seluruh popup bisa dipakai dengan keyboard dan garis fokusnya terlihat."
+        },
+        {
+          "id": "fk-pop-commit",
+          "text": "Popup sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "halaman-pengaturan-situs",
+      "title": "Halaman pengaturan daftar situs",
+      "est_minutes": 45,
+      "body": "## Daftar milik pemakai, izin juga milik pemakai\n\nHalaman pengaturan menyimpan daftar situs ke `chrome.storage.sync`. Sebelum menyimpan, ia meminta **izin untuk situs-situs itu saja** lewat `chrome.permissions.request`. Chrome menampilkan dialog seperti *\"Fokus Dulu ingin membaca dan mengubah datamu di youtube.com dan instagram.com\"*. Pemakai tahu persis apa yang diizinkan, dan ekstensi tidak memegang izin untuk situs lain.\n\nKenapa izin ini perlu? Aturan `declarativeNetRequest` jenis **block** bisa jalan tanpa izin situs, tapi jenis **redirect** (mengalihkan ke halaman kita) mewajibkannya. Tanpa izin, aturannya terpasang tapi diam-diam tidak berlaku. Ini mudah terlewat, jadi ingat-ingat.\n\n## Detail kecil yang penting\n\n- `chrome.permissions.request` hanya boleh dipanggil **langsung** sebagai tanggapan klik. Kalau sebelumnya ada `await` lain, Chrome menolak dengan pesan *This function must be called during a user gesture*. Karena itu permintaan izin ditaruh paling awal di dalam handler `submit`.\n- `bersihkan()` mengubah tempelan seperti `https://www.youtube.com/watch?v=1` menjadi `youtube.com`, dan membuang baris yang bukan domain. `requestDomains` di aturan nanti juga mencocokkan semua subdomain, jadi `youtube.com` ikut menutup `m.youtube.com`.\n- Kalau belum ada daftar tersimpan, kotak diisi saran. Saran itu belum tersimpan sampai tombol Simpan ditekan.\n\n## Yang perlu kamu kerjakan\n\n1. Isi `options.html` dan `options.js` dari bagian Bahan.\n2. Di popup, klik **Atur daftar situs**. Ubah daftarnya sesuai brief-mu, lalu klik **Simpan**.\n3. Terima dialog izin. Pesan *Tersimpan: N situs.* muncul.\n4. Coba tempel alamat lengkap dan satu baris asal-asalan. Alamat lengkap harus berubah jadi domain, baris asal-asalan dilewati.\n5. Coba tolak dialog izinnya sekali. Daftar **tidak** tersimpan dan pesannya menjelaskan kenapa.\n6. Commit dengan pesan `Halaman pengaturan`.\n",
+      "materials": [
+        {
+          "id": "fk-opt-html",
+          "kind": "kode",
+          "name": "ekstensi/options.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Pengaturan Fokus Dulu</title>\n  <link rel=\"stylesheet\" href=\"gaya.css\">\n</head>\n<body>\n  <main class=\"halaman\">\n    <h1>Situs yang ditutup saat fokus</h1>\n    <form id=\"form\">\n      <label for=\"situs\">Satu domain per baris, misalnya <code>youtube.com</code>. Subdomain ikut tertutup.</label>\n      <textarea id=\"situs\" rows=\"8\" spellcheck=\"false\"></textarea>\n      <button type=\"submit\">Simpan</button>\n    </form>\n    <p id=\"pesan\" role=\"status\"></p>\n  </main>\n  <script src=\"options.js\"></script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "fk-opt-js",
+          "kind": "kode",
+          "name": "ekstensi/options.js",
+          "lang": "javascript",
+          "content": "const kotak = document.getElementById(\"situs\");\nconst pesan = document.getElementById(\"pesan\");\nconst SARAN = [\"youtube.com\", \"instagram.com\", \"tiktok.com\", \"x.com\"];\n\n// \"https://www.youtube.com/watch?v=1\" -> \"youtube.com\"; baris yang bukan domain -> \"\"\nfunction bersihkan(baris) {\n  const domain = baris.trim().toLowerCase()\n    .replace(/^[a-z]+:\\/\\//, \"\")\n    .split(/[/?#:]/)[0]\n    .replace(/^www\\./, \"\");\n  return /^[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}$/.test(domain) ? domain : \"\";\n}\n\nchrome.storage.sync.get(\"situs\").then(({ situs }) => {\n  kotak.value = (situs ?? SARAN).join(\"\\n\");\n});\n\ndocument.getElementById(\"form\").addEventListener(\"submit\", async (e) => {\n  e.preventDefault();\n  const baris = kotak.value.split(\"\\n\").filter((b) => b.trim());\n  const situs = [...new Set(baris.map(bersihkan).filter(Boolean))];\n  // Izin per situs. Harus diminta langsung saat tombol diklik, sebelum await lain.\n  if (situs.length > 0) {\n    const diizinkan = await chrome.permissions.request({ origins: situs.map((d) => `*://*.${d}/*`) });\n    if (!diizinkan) {\n      pesan.textContent = \"Belum tersimpan: tanpa izin, situs itu tidak bisa dialihkan ke halaman fokus.\";\n      return;\n    }\n  }\n  await chrome.storage.sync.set({ situs });\n  kotak.value = situs.join(\"\\n\");\n  const dibuang = baris.length - situs.length;\n  pesan.textContent = `Tersimpan: ${situs.length} situs.` +\n    (dibuang > 0 ? ` ${dibuang} baris dilewati karena bukan domain atau dobel.` : \"\");\n});\n"
+        },
+        {
+          "id": "fk-opt-perm",
+          "kind": "tautan",
+          "name": "Chrome: chrome.permissions (izin opsional)",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/permissions"
+        },
+        {
+          "id": "fk-opt-storage",
+          "kind": "tautan",
+          "name": "Chrome: chrome.storage",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/storage"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-opt-simpan",
+          "text": "Daftar situs tersimpan setelah dialog izin diterima."
+        },
+        {
+          "id": "fk-opt-bersih",
+          "text": "Alamat lengkap berubah menjadi domain dan baris yang bukan domain dilewati."
+        },
+        {
+          "id": "fk-opt-tolak",
+          "text": "Saat izin ditolak, daftar tidak tersimpan dan ada pesan yang jelas."
+        },
+        {
+          "id": "fk-opt-commit",
+          "text": "Halaman pengaturan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "tutup-situs-saat-fokus",
+      "title": "Tutup situs pengganggu selama fokus",
+      "est_minutes": 60,
+      "body": "## Aturan yang dipasang dan dicabut\n\nSekarang bagian yang membuat ekstensi ini benar-benar berguna. Saat fokus dimulai, service worker memasang satu **aturan dinamis** `declarativeNetRequest`: setiap navigasi halaman utama (`main_frame`) ke domain di daftar dialihkan ke `/blocked.html`. Saat fokus selesai atau dihentikan, aturan itu dicabut.\n\nAturan dinamis **tetap tersimpan** walau browser ditutup. Itu sebabnya `berhenti()` selalu memanggil `aturBlokir(false)`, dan `onStartup` memanggil `berhenti()` kalau sesi sudah lewat. Tanpa itu, situs bisa tertutup selamanya.\n\n`blocked.html` dimasukkan ke `web_accessible_resources` di manifest. Tanpa itu, alamat yang diketik langsung di bar alamat memang masih teralihkan, tapi tautan yang diklik dari situs lain berakhir di halaman error, karena Chrome tidak mengizinkan halaman web publik berpindah ke halaman ekstensi yang tidak dinyatakan boleh diakses.\n\n![Halaman \"Tetap fokus\" yang muncul saat membuka situs di daftar selama sesi fokus](/studio/ekstensi-browser-fokus/tetap-fokus.webp)\n\n## Yang perlu kamu kerjakan\n\n1. Di `ekstensi/background.js`, **ganti** fungsi `aturBlokir` yang masih kosong dengan seluruh isi `background-tambahan.js` dari bagian Bahan. Isinya: konstanta id aturan, `aturBlokir` yang sesungguhnya, listener `onInstalled` yang membuka pengaturan saat ekstensi baru dipasang, dan listener yang langsung menerapkan daftar baru kalau kamu mengubahnya di tengah sesi fokus.\n2. Isi `blocked.html` dan `blocked.js`.\n3. Muat ulang ekstensi. Di console service worker, aktifkan `debugDetik` 30 detik: `chrome.storage.local.set({ debugDetik: 30 })`.\n4. Mulai fokus dari popup, lalu buka salah satu situs di daftarmu. Kamu harus sampai di halaman **Tetap fokus, ya.**\n5. Tunggu notifikasi **Sesi fokus selesai**, lalu buka situs yang sama. Sekarang terbuka normal.\n6. Periksa aturan yang aktif kapan saja dengan `chrome.declarativeNetRequest.getDynamicRules().then(console.log)`. Saat fokus harus ada satu aturan, saat istirahat atau diam kosong.\n7. Hapus `debugDetik`, lalu commit dengan pesan `Blokir situs saat fokus`.\n\n## Kalau situsnya tidak teralihkan\n\n- Aturan ada tapi situs tetap terbuka: izin situsnya belum diberikan. Simpan ulang daftar di halaman pengaturan dan terima dialognya. Cek juga di `chrome://extensions` > Fokus Dulu > **Details** > **Site access**.\n- Diketik di bar alamat berhasil, tapi lewat tautan dari situs lain muncul halaman error `ERR_BLOCKED_BY_CLIENT`: `blocked.html` belum ada di `web_accessible_resources`, atau namanya salah ketik.\n- Tab yang **sudah** terbuka sebelum fokus dimulai tidak ikut tertutup. Aturan hanya berlaku untuk navigasi baru. Itu disengaja: pekerjaan yang belum disimpan di tab itu tidak hilang.\n",
+      "materials": [
+        {
+          "id": "fk-blk-tambahan",
+          "kind": "kode",
+          "name": "background-tambahan.js",
+          "lang": "javascript",
+          "content": "const ATURAN_BLOKIR = 1;\n\nasync function aturBlokir(aktif) {\n  const { situs = [] } = await chrome.storage.sync.get(\"situs\");\n  await chrome.declarativeNetRequest.updateDynamicRules({\n    removeRuleIds: [ATURAN_BLOKIR],\n    addRules: aktif && situs.length > 0 ? [{\n      id: ATURAN_BLOKIR,\n      priority: 1,\n      action: { type: \"redirect\", redirect: { extensionPath: \"/blocked.html\" } },\n      condition: { requestDomains: situs, resourceTypes: [\"main_frame\"] },\n    }] : [],\n  });\n}\n\n// Baru dipasang: buka pengaturan supaya pemakai memilih situs dan memberi izin.\nchrome.runtime.onInstalled.addListener(({ reason }) => {\n  if (reason === \"install\") chrome.runtime.openOptionsPage();\n});\n\n// Daftar diubah di halaman pengaturan saat sesi fokus berjalan: terapkan langsung.\nchrome.storage.onChanged.addListener(async (ubah, area) => {\n  if (area !== \"sync\" || !ubah.situs) return;\n  const { mode } = await chrome.storage.local.get(\"mode\");\n  if (mode === \"fokus\") await aturBlokir(true);\n});\n"
+        },
+        {
+          "id": "fk-blk-html",
+          "kind": "kode",
+          "name": "ekstensi/blocked.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Tetap fokus</title>\n  <link rel=\"stylesheet\" href=\"gaya.css\">\n</head>\n<body>\n  <main class=\"halaman\">\n    <h1>Tetap fokus, ya.</h1>\n    <p>Situs ini sedang ditutup sampai sesi fokusmu selesai.</p>\n    <p class=\"sisa\" id=\"sisa\" role=\"timer\" aria-label=\"Sisa waktu fokus\"></p>\n    <p>Tarik napas, minum air, lalu kembali ke pekerjaanmu. Situsnya tetap ada nanti.</p>\n  </main>\n  <script src=\"blocked.js\"></script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "fk-blk-js",
+          "kind": "kode",
+          "name": "ekstensi/blocked.js",
+          "lang": "javascript",
+          "content": "const sisa = document.getElementById(\"sisa\");\n\nasync function detak() {\n  const { akhir } = await chrome.storage.local.get(\"akhir\");\n  const menit = akhir ? Math.max(0, Math.ceil((akhir - Date.now()) / 60_000)) : 0;\n  sisa.textContent = `${menit} menit lagi`;\n}\nsetInterval(detak, 5000);\ndetak();\n"
+        },
+        {
+          "id": "fk-blk-dnr",
+          "kind": "tautan",
+          "name": "Chrome: chrome.declarativeNetRequest",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest"
+        },
+        {
+          "id": "fk-blk-war",
+          "kind": "tautan",
+          "name": "Chrome: web_accessible_resources",
+          "url": "https://developer.chrome.com/docs/extensions/reference/manifest/web-accessible-resources"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-blk-alih",
+          "text": "Selama fokus, situs di daftar dialihkan ke halaman \"Tetap fokus\"."
+        },
+        {
+          "id": "fk-blk-buka",
+          "text": "Setelah fokus selesai atau dihentikan, situs yang sama terbuka normal."
+        },
+        {
+          "id": "fk-blk-aturan",
+          "text": "getDynamicRules menunjukkan satu aturan saat fokus dan kosong di luar fokus."
+        },
+        {
+          "id": "fk-blk-commit",
+          "text": "Pemblokiran sudah di-commit dan debugDetik sudah dihapus."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-manual-dan-otomatis",
+      "title": "Uji manual dan uji otomatis dengan Playwright",
+      "est_minutes": 75,
+      "body": "## Uji seperti pemakai, lalu biarkan mesin mengulanginya\n\nEkstensi sulit diuji karena hidup di dalam browser. Kita lakukan dua lapis: daftar uji manual yang kamu jalani sendiri, dan satu skrip Playwright yang memasang ekstensi di Chromium lalu menjalani seluruh alur dalam sekitar setengah menit.\n\n## Daftar uji manual\n\nAktifkan `debugDetik` 20 detik di console service worker, lalu periksa:\n\n1. **Satu putaran penuh.** Mulai fokus, situs di daftar teralihkan, notifikasi fokus selesai, situs terbuka saat istirahat, notifikasi istirahat selesai, badge hilang.\n2. **Service worker tidur.** Mulai fokus, buka `chrome://serviceworker-internals`, cari Fokus Dulu, klik **Stop**. Alarm tetap harus membangunkannya dan memindahkan sesi tepat waktu.\n3. **Browser ditutup.** Mulai fokus dengan `debugDetik` 60, tutup seluruh Chrome, buka lagi setelah 2 menit. Situs di daftar harus sudah terbuka, karena sesi fokusnya sudah lewat. Ulangi, tapi buka lagi setelah 20 detik: situsnya masih harus teralihkan.\n4. **Berhenti di tengah.** Tombol Berhenti dan pintasan keyboard mencabut aturan seketika.\n5. **Keyboard dan pembaca layar.** Popup bisa dipakai tanpa mouse. Kalau ada, coba dengan NVDA (Windows) atau VoiceOver (macOS).\n\nHapus `debugDetik` setelah selesai.\n\n## Uji otomatis\n\nSkrip di bagian Bahan memakai Playwright. Beberapa hal yang perlu kamu tahu, karena banyak tutorial lama sudah tidak berlaku:\n\n- **Chrome dan Edge bermerek sudah membuang opsi `--load-extension`**. Ekstensi tidak termuat sama sekali kalau kamu menjalankan Google Chrome biasa. Pakai Chromium bawaan Playwright dengan `channel: \"chromium\"`, yang juga bisa berjalan tanpa jendela (headless).\n- Ekstensi hanya jalan di **persistent context** (`launchPersistentContext`).\n- ID ekstensi diambil dari alamat service worker-nya, lalu popup dibuka langsung sebagai tab: `chrome-extension://ID/popup.html`.\n- Dialog izin situs tidak bisa diklik oleh Playwright. Karena itu skrip menyalin folder `ekstensi` ke folder sementara dan menambahkan `host_permissions` untuk `example.com` **khusus di salinan itu**. Kode aslimu tidak berubah.\n- Untuk meniru service worker yang ditidurkan Chrome, skrip menekan tombol **Stop** di `chrome://serviceworker-internals`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `package.json`, `.gitignore`, dan `uji/uji-ekstensi.mjs` di folder `fokus-dulu` (bukan di dalam `ekstensi`).\n2. Jalankan:\n\n```bash\nnpm install\nnpx playwright install chromium\nnpm test\n```\n\n3. Semua baris harus diawali `ok` dan diakhiri `SEMUA LULUS`. Tes butuh koneksi internet karena membuka `example.com` dan `example.org`.\n4. Rusak kodemu dengan sengaja: di `web_accessible_resources` pada manifest, ganti `\"blocked.html\"` menjadi `\"bukan.html\"`, lalu jalankan `npm test` lagi. Tes harus gagal di langkah pengalihan lewat tautan. Kembalikan seperti semula.\n5. Commit dengan pesan `Tambah uji otomatis`.\n",
+      "materials": [
+        {
+          "id": "fk-uji-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"fokus-dulu\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"test\": \"node uji/uji-ekstensi.mjs\"\n  },\n  \"devDependencies\": {\n    \"playwright\": \"^1.64.0\"\n  }\n}\n"
+        },
+        {
+          "id": "fk-uji-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules/\n*.zip\n"
+        },
+        {
+          "id": "fk-uji-skrip",
+          "kind": "kode",
+          "name": "uji/uji-ekstensi.mjs",
+          "lang": "javascript",
+          "content": "// Uji ujung ke ujung: muat ekstensi di Chromium, jalankan satu putaran\n// fokus -> istirahat dengan durasi 8 detik, dan periksa pemblokirannya.\n//   npm test\nimport { chromium } from \"playwright\";\nimport assert from \"node:assert/strict\";\nimport { cp, mkdtemp, readFile, writeFile } from \"node:fs/promises\";\nimport { tmpdir } from \"node:os\";\nimport path from \"node:path\";\n\nconst profil = await mkdtemp(path.join(tmpdir(), \"fokus-uji-\"));\n\n// Dialog izin situs tidak bisa diklik oleh Playwright. Karena itu uji memakai\n// salinan ekstensi yang sudah memegang izin example.com sejak dipasang.\nconst ekstensi = await mkdtemp(path.join(tmpdir(), \"fokus-ekstensi-\"));\nawait cp(path.resolve(\"ekstensi\"), ekstensi, { recursive: true });\nconst manifest = JSON.parse(await readFile(path.join(ekstensi, \"manifest.json\"), \"utf8\"));\nmanifest.host_permissions = [\"*://*.example.com/*\"];\nawait writeFile(path.join(ekstensi, \"manifest.json\"), JSON.stringify(manifest));\nconst SITUS = \"https://example.com/\";\n\n// Chrome dan Edge bermerek tidak lagi menerima --load-extension.\n// channel \"chromium\" memakai Chromium bawaan Playwright, bisa tanpa jendela (headless).\nconst buka = () => chromium.launchPersistentContext(profil, {\n  channel: \"chromium\",\n  args: [`--disable-extensions-except=${ekstensi}`, `--load-extension=${ekstensi}`],\n});\n\nlet ctx = await buka();\nlet [sw] = ctx.serviceWorkers();\nsw ??= await ctx.waitForEvent(\"serviceworker\");\nconst id = new URL(sw.url()).host;\nconsole.log(\"ekstensi termuat:\", id);\n\n// 1. Halaman pengaturan: simpan daftar, baris sampah dilewati.\nconst opsi = await ctx.newPage();\nawait opsi.goto(`chrome-extension://${id}/options.html`);\nawait opsi.fill(\"#situs\", \"https://www.example.com/halaman\\nbukan situs\");\nawait opsi.click(\"button[type=submit]\");\nawait opsi.getByText(\"Tersimpan: 1 situs.\").waitFor();\nassert.equal(await opsi.inputValue(\"#situs\"), \"example.com\");\nconsole.log(\"ok  pengaturan menyimpan example.com\");\n\n// 2. Popup dibuka sebagai tab biasa. Durasi dipercepat lewat debugDetik.\nconst popup = await ctx.newPage();\nawait popup.goto(`chrome-extension://${id}/popup.html`);\nawait popup.evaluate(() => chrome.storage.local.set({ debugDetik: 8 }));\nawait popup.getByRole(\"button\", { name: \"Mulai fokus 25 menit\" }).click();\nawait popup.getByText(\"Sedang fokus.\").waitFor();\nconsole.log(\"ok  sesi fokus dimulai dari popup\");\n\n// 3. Selama fokus, example.com dialihkan ke halaman \"tetap fokus\",\n//    baik diketik di bar alamat maupun dibuka dari tautan di situs lain.\nconst BLOKIR = `chrome-extension://${id}/blocked.html`;\nconst tab = await ctx.newPage();\nawait tab.goto(SITUS);\nassert.equal(tab.url(), BLOKIR);\nawait tab.goto(\"https://example.org/\");\nawait tab.evaluate((url) => { location.href = url; }, SITUS);\nawait tab.waitForURL(BLOKIR, { timeout: 10_000 });\nconsole.log(\"ok  example.com dialihkan ke blocked.html\");\n\n// 4. Matikan service worker, seperti yang Chrome lakukan saat ia menganggur.\n//    Alarm harus tetap membangunkannya saat sesi habis.\nconst si = await ctx.newPage();\nawait si.goto(\"chrome://serviceworker-internals/\");\nawait si.getByRole(\"button\", { name: \"Stop\" }).click();\nawait si.getByText(\"Running Status: STOPPED\").waitFor();\nawait si.close();\nconsole.log(\"..  service worker dihentikan, menunggu alarm\");\n\nawait popup.getByText(\"Istirahat.\").waitFor({ timeout: 20_000 });\nconst notif = await popup.evaluate(() => chrome.notifications.getAll());\nassert.ok(Object.keys(notif).length >= 1, \"notifikasi akhir sesi harus muncul\");\nconsole.log(\"ok  alarm berbunyi, notifikasi dibuat, mode istirahat\");\n\n// 5. Saat istirahat, example.com terbuka lagi.\nawait tab.goto(SITUS);\nassert.equal(new URL(tab.url()).host, \"example.com\");\nconsole.log(\"ok  example.com terbuka saat istirahat\");\n\nawait popup.getByText(\"Belum ada sesi.\").waitFor({ timeout: 20_000 });\nconsole.log(\"ok  istirahat selesai, sesi berhenti\");\n\n// 6. Tutup browser, buka lagi dengan profil yang sama: daftar situs masih ada.\nawait ctx.close();\nctx = await buka();\n[sw] = ctx.serviceWorkers();\nsw ??= await ctx.waitForEvent(\"serviceworker\");\nconst halaman = await ctx.newPage();\nawait halaman.goto(`chrome-extension://${id}/options.html`);\nawait halaman.waitForFunction(() => document.querySelector(\"#situs\").value !== \"\");\nassert.equal(await halaman.inputValue(\"#situs\"), \"example.com\");\nconsole.log(\"ok  daftar situs tetap ada setelah browser dibuka ulang\");\n\nawait ctx.close();\nconsole.log(\"SEMUA LULUS\");\n"
+        },
+        {
+          "id": "fk-uji-pw",
+          "kind": "tautan",
+          "name": "Playwright: menguji ekstensi Chrome",
+          "url": "https://playwright.dev/docs/chrome-extensions"
+        },
+        {
+          "id": "fk-uji-chrome",
+          "kind": "tautan",
+          "name": "Chrome: uji end-to-end untuk ekstensi",
+          "url": "https://developer.chrome.com/docs/extensions/how-to/test/end-to-end-testing"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-uji-manual",
+          "text": "Kelima uji manual sudah kujalani dan lulus."
+        },
+        {
+          "id": "fk-uji-otomatis",
+          "text": "npm test menampilkan SEMUA LULUS."
+        },
+        {
+          "id": "fk-uji-rusak",
+          "text": "Aku sudah merusak manifest dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "fk-uji-commit",
+          "text": "Uji otomatis sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "terbitkan-di-chrome-web-store",
+      "title": "Terbitkan di Chrome Web Store",
+      "est_minutes": 75,
+      "body": "## Dari folder lokal ke toko\n\nEkstensi yang hanya terpasang lewat *Load unpacked* sudah bisa kamu pakai sendiri. Supaya orang lain bisa memasangnya dengan satu klik, terbitkan di Chrome Web Store. Tampilan dashboard bisa berubah, jadi kalau ada yang berbeda, ikuti dokumentasi resminya.\n\n## 1. Siapkan paket\n\n1. Pastikan `debugDetik` tidak dipakai di mana pun selain `durasiMs`, dan versi di `manifest.json` sudah benar (`1.0.0`). Setiap unggahan baru wajib menaikkan versi.\n2. Buat zip dari **isi** folder `ekstensi` dengan perintah di bagian Bahan. `manifest.json` harus berada di akar zip.\n3. Siapkan minimal satu tangkapan layar **1280x800** atau **640x400** piksel, misalnya popup di samping halaman \"Tetap fokus\". Ikon 128x128 sudah ada di dalam paket. Promo tile kecil 440x280 tidak wajib, tapi ekstensi tanpa itu ditampilkan lebih belakang.\n\n## 2. Daftar sebagai developer\n\n1. Buka Chrome Web Store Developer Dashboard dengan akun Google, setujui perjanjian developer, lalu bayar **biaya pendaftaran sekali bayar**. Selama ini besarnya US$5; cek angka terbaru di dashboard sebelum membayar.\n2. Isi email developer. Email ini tampil di halaman ekstensimu.\n\n## 3. Isi tab-tab di dashboard\n\n- **Package**: unggah zip.\n- **Store listing**: nama, deskripsi (jelaskan satu fungsi utamanya dengan jujur), kategori, bahasa, tangkapan layar.\n- **Privacy practices**:\n  - *Single purpose*: \"Timer pomodoro yang mengalihkan situs pilihan pemakai ke halaman pengingat selama sesi fokus.\"\n  - *Permission justification*: tulis satu kalimat untuk tiap izin, sama seperti tabel di langkah Teknologi.\n  - *Remote code*: pilih **No, I am not using remote code**.\n  - *Data usage*: Fokus Dulu tidak mengumpulkan data pemakai. Centang pernyataan kepatuhannya.\n  - *Privacy policy*: tempel tautan ke kebijakan privasimu. `PRIVASI.md` di bagian Bahan bisa kamu unggah ke repositori, lalu pakai tautan GitHub-nya.\n- **Distribution**: pilih **Unlisted** kalau hanya ingin dibagikan lewat tautan (cocok untuk portofolio), atau **Public** agar bisa dicari.\n\n## 4. Kirim untuk ditinjau\n\nKlik **Submit for review**. Kebanyakan ekstensi selesai ditinjau dalam beberapa hari, tapi bisa sampai beberapa minggu, terutama untuk developer baru. Izin luas seperti akses ke semua situs membuat tinjauan lebih lama; itu salah satu alasan kita memakai izin situs opsional. Kamu bisa menghapus centang *publish automatically* lalu menerbitkan sendiri setelah lolos (dalam 30 hari).\n\n## Kalau ditolak\n\nEmail penolakan menyebut kebijakan yang dilanggar. Yang paling sering untuk pemula: deskripsi tidak menjelaskan fungsi, izin tidak dipakai atau alasannya kosong, dan kebijakan privasi tidak ada. Perbaiki, naikkan versi, unggah lagi.\n",
+      "materials": [
+        {
+          "id": "fk-dep-zip-cmd",
+          "kind": "kode",
+          "name": "buat-zip.sh",
+          "lang": "bash",
+          "content": "# macOS / Linux: dari folder fokus-dulu\ncd ekstensi\nzip -r ../fokus-dulu-1.0.0.zip . -x \".*\"\ncd ..\nunzip -l fokus-dulu-1.0.0.zip   # harus tertulis manifest.json, bukan ekstensi/manifest.json\n\n# Windows (PowerShell): dari folder fokus-dulu\n# Compress-Archive -Path ekstensi\\* -DestinationPath fokus-dulu-1.0.0.zip\n"
+        },
+        {
+          "id": "fk-dep-privasi-md",
+          "kind": "kode",
+          "name": "PRIVASI.md",
+          "lang": "markdown",
+          "content": "# Kebijakan Privasi Fokus Dulu\n\nTerakhir diperbarui: 27 November 2026\n\nFokus Dulu tidak mengumpulkan, mengirim, atau menjual data apa pun.\n\n- **Daftar situs** yang kamu tulis di halaman pengaturan disimpan dengan `chrome.storage.sync`. Kalau sinkronisasi Chrome aktif, Google ikut menyinkronkannya ke Chrome lain milikmu. Pengembang tidak bisa melihatnya.\n- **Waktu sesi** (mode dan jam selesai) disimpan dengan `chrome.storage.local` di komputermu saja.\n- Ekstensi tidak membaca isi halaman, riwayat penjelajahan, atau formulir. Aturan pengalihan dijalankan oleh Chrome sendiri lewat `declarativeNetRequest`, tanpa ekstensi melihat alamat yang kamu buka.\n- Tidak ada server, analitik, atau kode dari luar.\n\nPertanyaan: buka issue di https://github.com/USERNAME/fokus-dulu/issues\n"
+        },
+        {
+          "id": "fk-dep-daftar",
+          "kind": "tautan",
+          "name": "Chrome Web Store: daftar akun developer",
+          "url": "https://developer.chrome.com/docs/webstore/register"
+        },
+        {
+          "id": "fk-dep-terbit",
+          "kind": "tautan",
+          "name": "Chrome Web Store: menerbitkan ekstensi",
+          "url": "https://developer.chrome.com/docs/webstore/publish"
+        },
+        {
+          "id": "fk-dep-privasi-doc",
+          "kind": "tautan",
+          "name": "Chrome Web Store: mengisi Privacy practices",
+          "url": "https://developer.chrome.com/docs/webstore/cws-dashboard-privacy"
+        },
+        {
+          "id": "fk-dep-gambar",
+          "kind": "tautan",
+          "name": "Chrome Web Store: ukuran ikon dan tangkapan layar",
+          "url": "https://developer.chrome.com/docs/webstore/images"
+        },
+        {
+          "id": "fk-dep-review",
+          "kind": "tautan",
+          "name": "Chrome Web Store: proses peninjauan",
+          "url": "https://developer.chrome.com/docs/webstore/review-process"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-dep-zip",
+          "text": "Zip berisi manifest.json di akar, tanpa node_modules atau berkas uji."
+        },
+        {
+          "id": "fk-dep-alasan",
+          "text": "Setiap izin punya alasan tertulis di Privacy practices."
+        },
+        {
+          "id": "fk-dep-privasi",
+          "text": "Kebijakan privasi sudah online dan tautannya terpasang."
+        },
+        {
+          "id": "fk-dep-kirim",
+          "text": "Ekstensi sudah dikirim untuk ditinjau (atau sudah terbit)."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-tautan",
+      "title": "Tulis README dan kirim tautannya",
+      "est_minutes": 40,
+      "body": "## Biarkan orang mencobanya dalam dua menit\n\nPerekrut jarang memasang ekstensi dari orang yang tidak dikenal. README yang jelas, dengan tangkapan layar dan cara memasang manual, membuat mereka bisa menilai pekerjaanmu tanpa harus memasangnya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template README di bagian Bahan ke `README.md`, lalu lengkapi. Ganti `ID-EKSTENSI` dengan tautan Chrome Web Store-mu, atau tulis bahwa ekstensinya masih ditinjau.\n2. Simpan tangkapan layar popup dan halaman \"Tetap fokus\" di folder `gambar/`, lalu tampilkan di README.\n3. Pertahankan tabel izin dan alasannya. Bagian ini menunjukkan bahwa kamu memikirkan privasi pemakai.\n4. Tulis bagian **Yang kupelajari**: tiga hal, misalnya siklus hidup service worker, kenapa redirect butuh izin situs, atau cara menguji ekstensi dengan Playwright.\n5. Push ke GitHub dan isi deskripsi repositori dengan satu kalimat plus tautan toko.\n6. Kirim tautan Chrome Web Store (atau tautan repositorimu kalau belum terbit) di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Tantangan lanjutan\n\n- Terjemahkan ekstensi dengan `chrome.i18n` dan folder `_locales`, lalu tambahkan bahasa Inggris.\n- Cabut izin situs yang dihapus dari daftar dengan `chrome.permissions.remove`.\n- Hitung jumlah sesi fokus per hari dan tampilkan di popup.\n",
+      "materials": [
+        {
+          "id": "fk-dok-readme-md",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Fokus Dulu\n\nEkstensi Chrome (Manifest V3) untuk belajar dengan teknik pomodoro: 25 menit fokus, 5 menit istirahat. Selama fokus, situs pengganggu pilihanmu dialihkan ke halaman \"Tetap fokus\".\n\n![Popup saat sesi fokus](gambar/popup.png)\n\n**Chrome Web Store:** https://chromewebstore.google.com/detail/ID-EKSTENSI (atau: belum terbit, pasang manual di bawah)\n\n## Fitur\n\n- Timer 25/5 di popup, tetap jalan walau popup ditutup.\n- Angka menit tersisa di ikon (badge) dan notifikasi saat sesi selesai.\n- Daftar situs yang ditutup bisa diubah di halaman pengaturan dan ikut tersinkron.\n- Pintasan keyboard `Alt+Shift+F` untuk mulai atau berhenti.\n\n## Pasang manual (load unpacked)\n\n1. Unduh atau clone repositori ini.\n2. Buka `chrome://extensions`, nyalakan **Developer mode**.\n3. Klik **Load unpacked**, pilih folder `ekstensi`.\n\n## Izin dan alasannya\n\n| Izin | Untuk apa |\n| --- | --- |\n| `alarms` | Menunggu akhir sesi walau service worker sedang tidur |\n| `storage` | Menyimpan sesi (lokal) dan daftar situs (sinkron) |\n| `notifications` | Memberi tahu saat sesi fokus atau istirahat selesai |\n| `declarativeNetRequest` | Mengalihkan situs di daftar ke halaman fokus, hanya selama sesi fokus |\n| izin situs (opsional) | Diminta per situs saat kamu menyimpan daftar; Chrome mewajibkannya untuk pengalihan |\n\n## Cara kerja singkat\n\n- `background.js` (service worker) memegang semua logika. Keadaan disimpan di `chrome.storage.local`, waktu ditunggu dengan `chrome.alarms`.\n- Aturan `declarativeNetRequest` dinamis dipasang saat fokus dimulai dan dicabut saat fokus selesai.\n\n## Uji\n\n```bash\nnpm install\nnpx playwright install chromium\nnpm test\n```\n\nUntuk mencoba manual dengan cepat, jalankan `chrome.storage.local.set({ debugDetik: 10 })` di console service worker. Hapus lagi dengan `chrome.storage.local.remove(\"debugDetik\")`.\n\n## Yang kupelajari\n\n- ...\n\n## Rencana berikutnya\n\n- Terjemahan dengan `chrome.i18n`.\n- Statistik jumlah sesi per hari.\n"
+        },
+        {
+          "id": "fk-dok-i18n",
+          "kind": "tautan",
+          "name": "Chrome: chrome.i18n untuk terjemahan",
+          "url": "https://developer.chrome.com/docs/extensions/reference/api/i18n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "fk-dok-readme",
+          "text": "README berisi fitur, cara memasang manual, tabel izin, dan cara menguji."
+        },
+        {
+          "id": "fk-dok-gambar",
+          "text": "README menampilkan tangkapan layar popup dan halaman Tetap fokus."
+        },
+        {
+          "id": "fk-dok-belajar",
+          "text": "Aku menulis tiga hal yang kupelajari."
+        },
+        {
+          "id": "fk-dok-kirim",
+          "text": "Tautan toko atau repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
