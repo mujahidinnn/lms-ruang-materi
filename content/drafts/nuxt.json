@@ -1,0 +1,2039 @@
+{
+  "title": "Nuxt",
+  "description": "Belajar Nuxt 4 setelah Vue: routing berbasis file, layout, composable, mengambil data, server route Nitro, middleware dan login, SEO, konfigurasi, sampai deploy. Ditutup proyek Mini Nuxt Router.",
+  "summary": "Nuxt adalah meta-framework untuk Vue yang menyatukan routing, render di server, dan server API dalam satu proyek. Kelas ini memakai Nuxt 4: kode aplikasi di folder app/, sedangkan server/ dan public/ di akar proyek. Kamu mulai dari cara halaman dirender (SPA, universal, prerender), membuat proyek dengan npm create nuxt@latest, dan memahami auto-import.\n\nBagian inti membahas routing berbasis file dengan route dinamis dan layout, komponen dan composable yang di-import otomatis, state aman SSR dengan useState, mengambil data dengan useFetch, useAsyncData, dan $fetch, lalu membuat endpoint di server/api dengan defineEventHandler, readBody, getQuery, dan createError.\n\nBagian akhir menjaga halaman dengan route middleware dan cookie sesi, mengisi meta SEO dan mengatur render per route dengan routeRules, mengelola runtimeConfig dan modul, lalu build dan deploy dengan preset Nitro. Proyek Mini Nuxt Router merangkum cara Nuxt mencocokkan halaman, layout, dan middleware.",
+  "tips": [
+    "Taruh kode aplikasi di app/, tetapi server/ dan public/ tetap di akar proyek; salah folder adalah sumber bug yang paling sering di Nuxt 4.",
+    "Pakai useFetch untuk data awal halaman dan $fetch untuk aksi pengguna, supaya data tidak diambil dua kali.",
+    "Jangan buat ref di tingkat modul untuk data pengguna; pakai useState agar setiap request punya state sendiri.",
+    "Jaga halaman dengan route middleware dan jaga API dengan pemeriksaan sesi di server route; keduanya wajib.",
+    "Simpan rahasia di runtimeConfig tanpa public dan isi lewat environment variable NUXT_ di platform deploy."
+  ],
+  "flashcards": [
+    {
+      "front": "Apa itu Nuxt?",
+      "back": "Meta-framework untuk Vue yang menambah routing berbasis file, render di server, dan server API Nitro."
+    },
+    {
+      "front": "Universal rendering",
+      "back": "Halaman dirender di server tiap request, lalu dihidrasi di browser. Cara render bawaan Nuxt."
+    },
+    {
+      "front": "Hidrasi",
+      "back": "Vue di browser menghidupkan HTML yang dikirim server."
+    },
+    {
+      "front": "Struktur Nuxt 4",
+      "back": "Kode aplikasi di app/ (pages, components, composables, layouts, middleware, app.vue); server/, public/, dan nuxt.config.ts di akar."
+    },
+    {
+      "front": "Auto-import",
+      "back": "Komponen, composable, utils, API Vue, dan fungsi Nuxt bisa dipakai tanpa import."
+    },
+    {
+      "front": "app/pages",
+      "back": "Setiap file .vue menjadi route; index.vue adalah halaman utama foldernya."
+    },
+    {
+      "front": "[id].vue vs [...slug].vue",
+      "back": "[id] menangkap satu segmen; [...slug] menangkap sisa segmen sebagai array."
+    },
+    {
+      "front": "<NuxtLink> dan <NuxtPage>",
+      "back": "NuxtLink berpindah halaman tanpa muat ulang; NuxtPage menampilkan halaman aktif."
+    },
+    {
+      "front": "Layout",
+      "back": "File di app/layouts dengan <slot />; default.vue otomatis, lainnya dipilih lewat definePageMeta({ layout })."
+    },
+    {
+      "front": "Nama komponen otomatis",
+      "back": "Folder menjadi awalan: components/base/Tombol.vue menjadi <BaseTombol />."
+    },
+    {
+      "front": "Composable",
+      "back": "Fungsi useXxx di app/composables yang membungkus logika reaktif."
+    },
+    {
+      "front": "useState(key, init)",
+      "back": "State bersama yang aman untuk SSR; key yang sama berarti state yang sama."
+    },
+    {
+      "front": "useFetch",
+      "back": "Mengambil data di server, mengirimnya lewat payload, tidak mengambil ulang saat hidrasi."
+    },
+    {
+      "front": "useAsyncData vs $fetch",
+      "back": "useAsyncData(key, fn) untuk logika ambil data bebas; $fetch untuk event handler seperti klik tombol."
+    },
+    {
+      "front": "Hasil useFetch",
+      "back": "data, status, pending, error, dan refresh()."
+    },
+    {
+      "front": "lazy dan transform",
+      "back": "lazy: true tidak menahan halaman; transform mengolah hasil sebelum disimpan."
+    },
+    {
+      "front": "Server route",
+      "back": "File di server/api berisi export default defineEventHandler(...), menjadi endpoint /api/..."
+    },
+    {
+      "front": "Helper server",
+      "back": "getQuery(event), await readBody(event), getRouterParam(event, 'id')."
+    },
+    {
+      "front": "createError",
+      "back": "throw createError({ status: 404, statusText: '...' }) mengirim error dengan kode status jelas."
+    },
+    {
+      "front": "Route middleware",
+      "back": "defineNuxtRouteMiddleware((to, from) => ...) di app/middleware; belokkan dengan return navigateTo(...)."
+    },
+    {
+      "front": "Middleware global",
+      "back": "Berakhiran .global.ts, jalan di setiap perpindahan, urut nama file."
+    },
+    {
+      "front": "useCookie",
+      "back": "Membaca dan menulis cookie di server maupun browser; token sesi sebaiknya httpOnly dari server."
+    },
+    {
+      "front": "useHead dan useSeoMeta",
+      "back": "useHead mengatur <head>; useSeoMeta menulis meta SEO dan Open Graph bertipe."
+    },
+    {
+      "front": "routeRules",
+      "back": "Aturan render per pola route: prerender, swr, ssr: false, redirect."
+    },
+    {
+      "front": "runtimeConfig",
+      "back": "Kunci atas hanya di server; public ikut ke browser; ditimpa env NUXT_... dan NUXT_PUBLIC_..."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu Nuxt?",
+      "code": "",
+      "options": [
+        "Meta-framework Vue dengan routing dan render di server",
+        "Pustaka CSS untuk mempercantik komponen Vue",
+        "Pengganti Vue yang memakai sintaks JSX seperti React dan Svelte",
+        "Database bawaan untuk menyimpan data aplikasi Vue"
+      ],
+      "answer": 0,
+      "explanation": "Nuxt dibangun di atas Vue dan menambah routing berbasis file, render di server, dan server API Nitro."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara render bawaan sebuah halaman Nuxt adalah",
+      "code": "",
+      "options": [
+        "SPA yang hanya dirender di browser",
+        "Universal (SSR)",
+        "Prerender sekali saat build",
+        "Render oleh database"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa pengaturan tambahan, Nuxt merender halaman di server lalu menghidrasinya di browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File mana yang menangkap /berita/2024/juli sebagai array segmen?",
+      "code": "",
+      "options": [
+        "app/pages/berita/[id].vue",
+        "app/pages/berita/[id]/index.vue",
+        "app/pages/berita/[...slug].vue",
+        "server/api/berita.get.ts"
+      ],
+      "answer": 2,
+      "explanation": "[...slug].vue adalah catch-all yang menangkap sisa segmen URL sebagai array."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen app/components/base/Tombol.vue dipakai di template dengan nama",
+      "code": "",
+      "options": [
+        "<Tombol />",
+        "<base-tombol.vue />",
+        "<ComponentsBaseTombol />",
+        "<BaseTombol />"
+      ],
+      "answer": 3,
+      "explanation": "Nama folder di dalam app/components menjadi awalan nama komponen."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa useState lebih aman daripada ref di tingkat modul saat SSR?",
+      "code": "",
+      "options": [
+        "State dibuat terpisah untuk tiap request",
+        "useState menyimpan data langsung ke database server",
+        "ref tidak bisa dipakai di Nuxt",
+        "useState otomatis menulis ke localStorage"
+      ],
+      "answer": 0,
+      "explanation": "ref di tingkat modul dibagi semua request di server, sedangkan useState dibuat per request."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa dari hasil useFetch yang dipanggil untuk mengambil ulang data?",
+      "code": "",
+      "options": [
+        "pending",
+        "refresh",
+        "transform",
+        "status"
+      ],
+      "answer": 1,
+      "explanation": "refresh() mengambil ulang data dengan key yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi useFetch apa yang mengolah hasil dengan sebuah fungsi sebelum disimpan?",
+      "code": "",
+      "options": [
+        "lazy",
+        "refresh",
+        "transform",
+        "server"
+      ],
+      "answer": 2,
+      "explanation": "transform menerima hasil mentah dan mengembalikan versi yang lebih kecil atau sudah diolah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File server/api/menu.get.ts melayani request apa?",
+      "code": "",
+      "options": [
+        "POST /api/menu",
+        "GET /menu tanpa awalan api",
+        "Semua method HTTP ke /api/menu",
+        "GET /api/menu"
+      ],
+      "answer": 3,
+      "explanation": "Akhiran .get.ts membatasi handler hanya untuk method GET, dan file di server/api menjadi /api/..."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Helper apa yang membaca body request POST di server route?",
+      "code": "",
+      "options": [
+        "await readBody(event)",
+        "getQuery(event)",
+        "useFetch(event)",
+        "useRoute().params.body"
+      ],
+      "answer": 0,
+      "explanation": "readBody membaca body request dan perlu di-await."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama file mana yang membuat route middleware jalan di setiap perpindahan halaman?",
+      "code": "",
+      "options": [
+        "app/middleware/auth.everywhere.ts",
+        "app/middleware/auth.global.ts",
+        "app/middleware/global/auth.ts",
+        "server/middleware/auth.ts"
+      ],
+      "answer": 1,
+      "explanation": "Akhiran .global.ts membuat middleware jalan otomatis di setiap perpindahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Aturan routeRules apa yang membuat sebuah route hanya dirender di browser?",
+      "code": "",
+      "options": [
+        "prerender: true",
+        "swr: 60",
+        "ssr: false",
+        "redirect: '/'"
+      ],
+      "answer": 2,
+      "explanation": "ssr: false membuat route berjalan seperti SPA biasa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai di runtimeConfig.public bisa dibaca dari mana?",
+      "code": "",
+      "options": [
+        "Hanya dari server route",
+        "Hanya saat proses build berjalan",
+        "Tidak bisa dibaca, hanya ditulis",
+        "Server dan browser"
+      ],
+      "answer": 3,
+      "explanation": "Kunci public ikut dikirim ke browser, jadi anggap siapa pun bisa membacanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa untuk mencoba hasil build di laptop sebelum diunggah?",
+      "code": "",
+      "options": [
+        "npx nuxt preview",
+        "npx nuxt dev",
+        "npx nuxt generate",
+        "npx nuxt module add"
+      ],
+      "answer": 0,
+      "explanation": "nuxt preview menjalankan hasil nuxt build secara lokal."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di Nuxt 4, komponen di app/components harus di-import manual sebelum dipakai di template.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Komponen di app/components di-import otomatis."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Server route tetap perlu memeriksa sesi sendiri walaupun halamannya sudah dijaga route middleware.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Route middleware hanya menjaga perpindahan halaman, bukan request langsung ke /api."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Masalah SPA Vue biasa apa yang diatasi universal rendering?",
+      "code": "",
+      "options": [
+        "Isi halaman sudah ada di HTML sejak awal",
+        "Aplikasi tidak lagi butuh JavaScript sama sekali di browser",
+        "Data tidak perlu diambil dari server lagi",
+        "Komponen tidak perlu ditulis dalam file .vue"
+      ],
+      "answer": 0,
+      "explanation": "Universal rendering mengirim HTML yang sudah berisi konten, baik untuk tampilan pertama dan SEO."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang membuat proyek Nuxt baru?",
+      "code": "",
+      "options": [
+        "npm install vue-nuxt",
+        "npm create nuxt@latest",
+        "npx nuxt new proyek-baru",
+        "vue create nuxt"
+      ],
+      "answer": 1,
+      "explanation": "Proyek baru dibuat dengan npm create nuxt@latest."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Nuxt 4, folder mana yang tetap berada di akar proyek, bukan di dalam app/?",
+      "code": "",
+      "options": [
+        "pages/",
+        "components/",
+        "server/",
+        "layouts/"
+      ],
+      "answer": 2,
+      "explanation": "Kode aplikasi ada di app/, sedangkan server/, public/, dan nuxt.config.ts di akar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dimaksud hidrasi di Nuxt?",
+      "code": "",
+      "options": [
+        "Server mengompres HTML dan CSS sebelum dikirim ke browser",
+        "Browser menyimpan halaman ke cache",
+        "File .vue diubah menjadi HTML statis",
+        "Vue di browser menghidupkan HTML dari server"
+      ],
+      "answer": 3,
+      "explanation": "Hidrasi memasang reaktivitas dan event pada HTML yang sudah dirender server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Panel admin yang hanya dibuka petugas setelah login paling cocok memakai cara render apa?",
+      "code": "",
+      "options": [
+        "SPA, dirender di browser",
+        "Prerender saat build",
+        "Universal dengan cache publik",
+        "Generate menjadi file statis"
+      ],
+      "answer": 0,
+      "explanation": "Halaman pribadi yang tidak perlu SEO cukup dirender di browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah npm run dev, alamat apa yang biasanya dibuka di browser?",
+      "code": "",
+      "options": [
+        "http://localhost:8080/app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:80"
+      ],
+      "answer": 1,
+      "explanation": "Dev server Nuxt berjalan di port 3000 secara bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File app/pages/tentang.vue menghasilkan halaman di URL",
+      "code": "",
+      "options": [
+        "/pages/tentang",
+        "/app/tentang",
+        "/tentang",
+        "/tentang.vue"
+      ],
+      "answer": 2,
+      "explanation": "Nama file di app/pages menjadi segmen URL."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Halaman app/pages/menu/[id].vue dibuka di /menu/7. Apa keluaran kode ini?",
+      "code": "const route = useRoute()\nconsole.log(route.params.id, typeof route.params.id)",
+      "options": [
+        "7 number",
+        "undefined undefined",
+        "[ '7' ] object",
+        "7 string"
+      ],
+      "answer": 3,
+      "explanation": "Parameter route selalu berupa string."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ada menu/promo.vue, menu/[id].vue, dan menu/[...slug].vue di app/pages. URL /menu/a/b membuka file mana?",
+      "code": "",
+      "options": [
+        "menu/[...slug].vue",
+        "menu/[id].vue",
+        "menu/promo.vue",
+        "Halaman 404 karena tidak ada yang cocok"
+      ],
+      "answer": 0,
+      "explanation": "[id] hanya menangkap satu segmen, jadi dua segmen jatuh ke catch-all."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen apa yang wajib ada di app.vue agar halaman dari app/pages tampil?",
+      "code": "",
+      "options": [
+        "<NuxtLink />",
+        "<NuxtPage />",
+        "<ClientOnly />",
+        "<NuxtImg />"
+      ],
+      "answer": 1,
+      "explanation": "<NuxtPage /> menampilkan halaman yang cocok dengan URL aktif."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Layout mana yang dipakai halaman dengan kode ini?",
+      "code": "<script setup lang=\"ts\">\ndefinePageMeta({ layout: 'admin' })\n</script>",
+      "options": [
+        "app/layouts/default.vue",
+        "app/pages/admin.vue",
+        "app/layouts/admin.vue",
+        "Tidak ada layout sama sekali"
+      ],
+      "answer": 2,
+      "explanation": "definePageMeta({ layout }) memilih file layout dengan nama yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana halaman error buatan sendiri ditulis?",
+      "code": "",
+      "options": [
+        "app/pages/error.vue",
+        "server/error.ts",
+        "app/layouts/error.vue",
+        "app/error.vue"
+      ],
+      "answer": 3,
+      "explanation": "app/error.vue dipakai Nuxt untuk menampilkan error, misalnya 404."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen app/components/menu/MenuKartu.vue dipakai dengan nama",
+      "code": "",
+      "options": [
+        "<MenuKartu />",
+        "<MenuMenuKartu />",
+        "<Kartu />",
+        "<ComponentsMenuKartu />"
+      ],
+      "answer": 0,
+      "explanation": "Awalan yang sudah ada di nama file tidak diulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Awalan apa yang menunda pemuatan sebuah komponen sampai dibutuhkan?",
+      "code": "",
+      "options": [
+        "Async",
+        "Lazy",
+        "Client",
+        "Defer"
+      ],
+      "answer": 1,
+      "explanation": "<LazyDialogPesan /> baru dimuat saat benar-benar ditampilkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana composable seperti useKeranjang ditulis agar di-import otomatis?",
+      "code": "",
+      "options": [
+        "server/utils",
+        "app/pages",
+        "app/composables",
+        "public/composables"
+      ],
+      "answer": 2,
+      "explanation": "Fungsi di app/composables di-import otomatis."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa masalah composable ini saat aplikasi dirender di server?",
+      "code": "// app/composables/usePengguna.ts\nconst pengguna = ref(null)\nexport const usePengguna = () => pengguna",
+      "options": [
+        "ref tidak boleh diekspor dari file composable",
+        "Kode error karena ref wajib di-import manual di setiap composable",
+        "Nilai pengguna otomatis tersimpan ke cookie",
+        "Semua request berbagi satu ref, data bisa bocor"
+      ],
+      "answer": 3,
+      "explanation": "ref di tingkat modul hidup selama server berjalan dan dibagi semua pengunjung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi biasa tanpa ref seperti formatRupiah paling pas disimpan di folder",
+      "code": "",
+      "options": [
+        "app/utils",
+        "app/components",
+        "app/layouts",
+        "app/middleware"
+      ],
+      "answer": 0,
+      "explanation": "Utils untuk fungsi biasa, composable untuk logika reaktif."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pinia dipasang di Nuxt lewat modul",
+      "code": "",
+      "options": [
+        "@nuxt/pinia-store",
+        "@pinia/nuxt",
+        "vue-pinia-ssr",
+        "@nuxt/state"
+      ],
+      "answer": 1,
+      "explanation": "Modul @pinia/nuxt menyiapkan Pinia agar aman untuk SSR."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kekurangan mengambil data halaman di onMounted?",
+      "code": "",
+      "options": [
+        "Data diambil dua kali di server",
+        "onMounted tidak berjalan di Nuxt",
+        "Data tidak ikut di HTML dari server",
+        "Data dibuang setelah tampil di layar"
+      ],
+      "answer": 2,
+      "explanation": "onMounted hanya jalan di browser, jadi HTML dari server belum berisi data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan $fetch lebih tepat daripada useFetch?",
+      "code": "",
+      "options": [
+        "Di tingkat atas <script setup> untuk data awal",
+        "Di dalam template untuk menampilkan data",
+        "Di nuxt.config.ts saat build",
+        "Di event handler, misalnya saat tombol diklik"
+      ],
+      "answer": 3,
+      "explanation": "useFetch untuk data awal halaman, $fetch untuk aksi pengguna."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa nilai status saat data pada kode ini masih diambil?",
+      "code": "const { data, status } = await useFetch('/api/menu', {\n  lazy: true,\n})",
+      "options": [
+        "'pending'",
+        "'idle'",
+        "'success'",
+        "'fetching'"
+      ],
+      "answer": 0,
+      "explanation": "status bernilai 'idle', 'pending', 'success', atau 'error'."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna key pada useAsyncData?",
+      "code": "",
+      "options": [
+        "Mengenkripsi data sebelum dikirim ke browser",
+        "Payload, berbagi hasil, dan dedupe",
+        "Menentukan method HTTP yang dipakai",
+        "Menamai file server route"
+      ],
+      "answer": 1,
+      "explanation": "Key dipakai untuk menyimpan hasil di payload, berbagi hasil, dan mencegah request ganda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi apa yang mengambil beberapa field saja dari objek hasil?",
+      "code": "",
+      "options": [
+        "lazy",
+        "key",
+        "pick",
+        "watch"
+      ],
+      "answer": 2,
+      "explanation": "pick: ['nama', 'harga'] hanya menyimpan field yang disebut."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "/api/menu mengembalikan menu seharga 8000, 12000, dan 5000. Berapa item yang tersimpan di data?",
+      "code": "const { data } = await useAsyncData('menu-murah', () => $fetch('/api/menu'), {\n  transform: (menu) => menu.filter((m) => m.harga < 10000),\n})",
+      "options": [
+        "3",
+        "1",
+        "0",
+        "2"
+      ],
+      "answer": 3,
+      "explanation": "transform menyaring menu di bawah 10000, jadi tersisa 8000 dan 5000."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File server/api/siswa/[id].get.ts melayani URL",
+      "code": "",
+      "options": [
+        "GET /api/siswa/12",
+        "GET /siswa/12",
+        "POST /api/siswa",
+        "GET /api/siswa?id=12"
+      ],
+      "answer": 0,
+      "explanation": "[id] di nama file menjadi parameter dan .get membatasi method."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa jawaban handler ini untuk GET /api/cari?kata=nasi&hal=2?",
+      "code": "// server/api/cari.get.ts\nexport default defineEventHandler((event) => {\n  return getQuery(event)\n})",
+      "options": [
+        "{ kata: 'nasi', hal: 2 }",
+        "{ kata: 'nasi', hal: '2' }",
+        "'?kata=nasi&hal=2' sebagai teks",
+        "[ 'nasi', '2' ]"
+      ],
+      "answer": 1,
+      "explanation": "getQuery mengembalikan objek dan nilainya tetap string."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara membaca parameter id di server/api/menu/[id].ts adalah",
+      "code": "",
+      "options": [
+        "useRoute().params.id",
+        "(await readBody(event)).params.id",
+        "getRouterParam(event, 'id')",
+        "getQuery(event).id"
+      ],
+      "answer": 2,
+      "explanation": "getRouterParam membaca parameter dari nama file."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kode status apa yang tepat bila harga yang dikirim klien berupa teks?",
+      "code": "",
+      "options": [
+        "401 Unauthorized",
+        "404 Not Found",
+        "500 Internal Server Error",
+        "400 Bad Request"
+      ],
+      "answer": 3,
+      "explanation": "400 Bad Request berarti input dari klien salah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang diterima klien dari handler ini?",
+      "code": "export default defineEventHandler(() => {\n  throw createError({ status: 403, statusText: 'Bukan admin' })\n})",
+      "options": [
+        "Respons error berkode 403",
+        "Respons 200 berisi teks 'Bukan admin'",
+        "Server berhenti total",
+        "Redirect otomatis ke /masuk"
+      ],
+      "answer": 0,
+      "explanation": "createError membuat respons error dengan status yang ditentukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Error yang tidak ditangkap di server route berakhir sebagai respons",
+      "code": "",
+      "options": [
+        "200 dengan body kosong",
+        "500",
+        "404 karena route dianggap hilang",
+        "302 redirect ke halaman utama"
+      ],
+      "answer": 1,
+      "explanation": "Error yang lolos otomatis menjadi 500 Internal Server Error."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa kesalahan route middleware ini?",
+      "code": "export default defineNuxtRouteMiddleware(() => {\n  const sesi = useCookie('sesi')\n  if (!sesi.value) navigateTo('/masuk')\n})",
+      "options": [
+        "useCookie tidak bisa dipakai di middleware",
+        "Parameter to wajib dipakai di dalam fungsi",
+        "navigateTo tidak di-return",
+        "Middleware harus ditulis sebagai fungsi async"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa return, navigateTo tidak membelokkan dan perpindahan tetap lanjut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana memasang middleware bernama auth ke satu halaman?",
+      "code": "",
+      "options": [
+        "useHead({ middleware: 'auth' })",
+        "auth: true di nuxt.config.ts bagian halaman",
+        "<NuxtPage middleware=\"auth\" />",
+        "definePageMeta({ middleware: 'auth' })"
+      ],
+      "answer": 3,
+      "explanation": "Middleware bernama dipasang per halaman lewat definePageMeta."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Middleware global yang membelokkan tamu ke /masuk wajib",
+      "code": "",
+      "options": [
+        "Mengecualikan /masuk",
+        "Diberi nama index.ts",
+        "Dipasang lewat definePageMeta di setiap halaman",
+        "Ditulis di server/middleware"
+      ],
+      "answer": 0,
+      "explanation": "Tanpa pengecualian, /masuk ikut dibelokkan ke /masuk dan berputar terus."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang membatalkan perpindahan halaman di route middleware?",
+      "code": "",
+      "options": [
+        "navigateTo()",
+        "abortNavigation()",
+        "clearError()",
+        "refresh()"
+      ],
+      "answer": 1,
+      "explanation": "return abortNavigation() membatalkan perpindahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Atribut cookie apa yang membuat token sesi tidak bisa dibaca JavaScript di browser?",
+      "code": "",
+      "options": [
+        "maxAge",
+        "path",
+        "httpOnly",
+        "default"
+      ],
+      "answer": 2,
+      "explanation": "Cookie httpOnly hanya dikirim ke server dan tidak bisa dibaca skrip."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila ada beberapa middleware global, urutan jalannya mengikuti",
+      "code": "",
+      "options": [
+        "Waktu file dibuat",
+        "Urutan acak",
+        "Ukuran file",
+        "Nama file"
+      ],
+      "answer": 3,
+      "explanation": "Middleware global dijalankan urut nama file, misalnya 01.log.global.ts lebih dulu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi useHead apa yang memberi akhiran nama situs pada setiap judul?",
+      "code": "",
+      "options": [
+        "titleTemplate",
+        "titleSuffix",
+        "metaTitle",
+        "headTitle"
+      ],
+      "answer": 0,
+      "explanation": "titleTemplate menyusun judul akhir dari judul tiap halaman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "useSeoMeta paling cocok dipakai untuk",
+      "code": "",
+      "options": [
+        "Mengatur cache server",
+        "Meta SEO dan Open Graph",
+        "Membaca cookie sesi",
+        "Membuat sitemap otomatis"
+      ],
+      "answer": 1,
+      "explanation": "useSeoMeta menulis meta tag SEO dan Open Graph sebagai properti bertipe."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Bagaimana /menu/soto dirender dengan aturan ini?",
+      "code": "routeRules: {\n  '/': { prerender: true },\n  '/menu/**': { swr: 600 },\n  '/admin/**': { ssr: false },\n}",
+      "options": [
+        "Sekali saat build",
+        "Hanya di browser, seperti SPA biasa",
+        "Di server, lalu di-cache 600 detik",
+        "Dibelokkan ke halaman utama"
+      ],
+      "answer": 2,
+      "explanation": "swr menyimpan hasil render di cache server sesuai detik yang ditentukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang aman di template tanpa memicu hydration mismatch?",
+      "code": "",
+      "options": [
+        "Date.now()",
+        "Math.random()",
+        "window.innerWidth",
+        "Teks dari props"
+      ],
+      "answer": 3,
+      "explanation": "Nilai yang sama di server dan browser tidak menimbulkan mismatch."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen grafik yang langsung membaca window sebaiknya dibungkus dengan",
+      "code": "",
+      "options": [
+        "<ClientOnly>",
+        "<NuxtErrorBoundary>",
+        "<NuxtLayout>",
+        "<KeepAlive>"
+      ],
+      "answer": 0,
+      "explanation": "<ClientOnly> hanya merender isinya di browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Akhiran nama file komponen apa yang membuatnya hanya dirender di browser?",
+      "code": "",
+      "options": [
+        ".browser.vue",
+        ".client.vue",
+        ".spa.vue",
+        ".only.vue"
+      ],
+      "answer": 1,
+      "explanation": "Komponen .client.vue dilewati saat render di server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kunci di level atas runtimeConfig, di luar public, tersedia di",
+      "code": "",
+      "options": [
+        "Browser saja",
+        "Server dan browser",
+        "Server saja",
+        "Hanya saat build"
+      ],
+      "answer": 2,
+      "explanation": "Kunci rahasia tidak pernah dikirim ke browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Environment variable apa yang menimpa runtimeConfig.tokenWa?",
+      "code": "",
+      "options": [
+        "NUXT_PUBLIC_TOKEN_WA",
+        "TOKEN_WA",
+        "NITRO_TOKEN_WA",
+        "NUXT_TOKEN_WA"
+      ],
+      "answer": 3,
+      "explanation": "Polanya NUXT_ lalu nama kunci dalam huruf besar dengan garis bawah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di dalam server route, cara membaca runtimeConfig adalah",
+      "code": "",
+      "options": [
+        "useRuntimeConfig(event)",
+        "process.env.config",
+        "useState('config')",
+        "import config from 'nuxt.config'"
+      ],
+      "answer": 0,
+      "explanation": "Di server route, event diberikan ke useRuntimeConfig."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tanda ~ pada css: ['~/assets/main.css'] menunjuk ke folder",
+      "code": "",
+      "options": [
+        "server",
+        "app",
+        "public",
+        "node_modules"
+      ],
+      "answer": 1,
+      "explanation": "Di Nuxt 4, ~ menunjuk ke folder app."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Modul resmi mana yang menyusun halaman dari file Markdown di folder content/?",
+      "code": "",
+      "options": [
+        "@nuxt/ui",
+        "@nuxt/image",
+        "@nuxt/content",
+        "@nuxt/fonts"
+      ],
+      "answer": 2,
+      "explanation": "Nuxt Content membaca file Markdown di folder content/."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa menulis process.env.KUNCI_PEMBAYARAN di runtimeConfig punya jebakan?",
+      "code": "",
+      "options": [
+        "process.env tidak ada di Node",
+        "Nilai otomatis dikirim ke browser",
+        "Kunci menjadi huruf kecil",
+        "Nilainya dibaca saat build"
+      ],
+      "answer": 3,
+      "explanation": "nuxt.config.ts dieksekusi saat build, jadi env di mesin build yang terpakai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Folder apa yang dihasilkan npx nuxt build?",
+      "code": "",
+      "options": [
+        ".output",
+        ".nuxt-dist",
+        "dist-server",
+        "build"
+      ],
+      "answer": 0,
+      "explanation": "Hasil build ada di .output dan bisa dijalankan dengan Node."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dilakukan baris kedua?",
+      "code": "npx nuxt build\nnode .output/server/index.mjs",
+      "options": [
+        "Menjalankan dev server",
+        "Menjalankan server hasil build",
+        "Membuat situs statis",
+        "Mengunggah folder .output ke Vercel"
+      ],
+      "answer": 1,
+      "explanation": "node .output/server/index.mjs menjalankan server produksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa keterbatasan situs hasil npx nuxt generate?",
+      "code": "",
+      "options": [
+        "Halaman tidak bisa memakai komponen",
+        "CSS tidak ikut dimuat",
+        "Server route tidak bisa dipanggil",
+        "Tidak bisa dibuka di HP"
+      ],
+      "answer": 2,
+      "explanation": "Tidak ada server saat situs statis berjalan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Halaman dinamis yang tidak ditautkan dari mana pun saat generate perlu",
+      "code": "",
+      "options": [
+        "Diberi ssr: false",
+        "Dipindah ke folder public",
+        "Diganti nama menjadi index.vue di folder induknya",
+        "Didaftarkan di nitro.prerender.routes"
+      ],
+      "answer": 3,
+      "explanation": "Crawler prerender hanya menemukan halaman yang ditautkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu preset Nitro?",
+      "code": "",
+      "options": [
+        "Penyesuai hasil build ke tempat deploy",
+        "Template komponen siap pakai dari Nuxt UI",
+        "Tema warna Nuxt UI",
+        "Daftar middleware bawaan"
+      ],
+      "answer": 0,
+      "explanation": "Preset seperti node-server, vercel, atau netlify menyesuaikan keluaran build."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa halaman profil siswa tidak boleh diberi swr atau prerender?",
+      "code": "",
+      "options": [
+        "Halaman menjadi tidak bisa dibuka setelah build ulang",
+        "Isi satu siswa bisa tersaji ke orang lain",
+        "swr hanya bekerja di Netlify",
+        "prerender menghapus cookie sesi"
+      ],
+      "answer": 1,
+      "explanation": "Cache dan prerender membagikan hasil render yang sama ke semua pengunjung."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi kedua pada useState dijalankan setiap kali useState dipanggil dengan key yang sama.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Fungsi itu hanya dijalankan bila state dengan key tersebut belum ada."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Handler server route boleh berupa fungsi async.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Handler async berguna untuk menunggu query database."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Middleware app/middleware/log.global.ts jalan di setiap perpindahan halaman tanpa didaftarkan di definePageMeta.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Akhiran .global membuat middleware jalan otomatis."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dengan ssr: false, server mengirim HTML yang sudah berisi data halaman.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Server mengirim HTML kosong plus JavaScript, halaman dirender di browser."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "runtimeConfig.public aman untuk menyimpan kunci API rahasia.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Isi public ikut terkirim ke browser dan bisa dibaca lewat DevTools."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di produksi, halaman error Nuxt menampilkan stack trace lengkap kepada pengunjung.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Detail teknis disembunyikan di produksi; baca log untuk menelusuri error."
+    }
+  ],
+  "prerequisites": [
+    "vuejs"
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Mini Nuxt Router",
+    "brief": "Bangun **Mini Nuxt Router**: versi kecil dari cara Nuxt mengubah isi folder `app/pages`, `app/layouts`, dan `app/middleware` menjadi route. Nuxt tidak bisa dijalankan di sini, jadi kamu menulis logikanya sebagai fungsi JavaScript murni. Setelah proyek ini, routing berbasis file dari bab 2 dan middleware dari bab 6 tidak akan terasa ajaib lagi.\n\n## Masukan\n\n`buatAplikasi(files, meta)` menerima daftar path file proyek:\n\n```js\n[\n  \"app/pages/index.vue\",\n  \"app/pages/produk/[id].vue\",\n  \"app/pages/blog/[...slug].vue\",\n  \"app/layouts/default.vue\",\n  \"app/middleware/auth.ts\",\n  \"app/middleware/01.analitik.global.ts\",\n  \"app/components/Tombol.vue\",\n]\n```\n\n- File `.vue` di `app/pages/` adalah halaman. `index.vue` mewakili folder tempatnya berada.\n- File `.vue` di `app/layouts/` adalah layout; namanya adalah nama file tanpa `.vue`.\n- File berakhiran `.global.ts` di `app/middleware/` adalah middleware global; namanya adalah nama file tanpa `.global.ts`, misalnya `01.analitik`.\n- File lain, termasuk komponen, diabaikan.\n\n`meta` memetakan path file halaman ke isi `definePageMeta`-nya, misalnya `{ layout: \"dasbor\", middleware: \"auth\" }`. Halaman yang tidak ada di `meta` dianggap tidak menulis `definePageMeta`.\n\n## Fitur wajib\n\n| Fitur | Aturan |\n| --- | --- |\n| `resolve(url)` | Mengembalikan `{ halaman, layout, params, middleware }`. Query string (`?...`) dan garis miring di akhir diabaikan. |\n| Segmen statis | `app/pages/tentang.vue` cocok dengan `/tentang`; `app/pages/index.vue` cocok dengan `/`; `app/pages/produk/index.vue` cocok dengan `/produk`. |\n| `[id]` | Cocok dengan tepat satu segmen. `params.id` berupa string. Satu halaman boleh punya beberapa parameter. |\n| `[...slug]` | Cocok dengan **nol** segmen atau lebih, seperti di Nuxt. `params.slug` berupa array string (bisa kosong). |\n| Prioritas | Bila beberapa halaman cocok, segmen statis menang dari `[id]`, dan `[id]` menang dari `[...slug]`, dibandingkan dari segmen paling kiri. |\n| `layout` | Dari `meta.layout`; bila tidak ditulis, pakai `\"default\"`. `layout: false` atau nama layout yang tidak ada filenya menghasilkan `null`. |\n| `middleware` | Semua middleware global, urut berdasarkan nama file, lalu middleware dari `meta.middleware` (string atau array) sesuai urutannya. |\n| Tidak ditemukan | `{ halaman: null, layout: null, params: {}, middleware: [], statusCode: 404 }`. |\n\n## Contoh hasil\n\n```js\nconst app = buatAplikasi(FILES, META);\n\napp.resolve(\"/produk/12\");\n// { halaman: \"app/pages/produk/[id].vue\", layout: \"default\",\n//   params: { id: \"12\" }, middleware: [\"01.analitik\", \"02.log\"] }\n\napp.resolve(\"/produk/baru\").halaman;\n// \"app/pages/produk/baru.vue\"   (statis menang dari [id])\n\napp.resolve(\"/blog/2026/11/rilis\").params;\n// { slug: [\"2026\", \"11\", \"rilis\"] }\n\napp.resolve(\"/dasbor\");\n// { halaman: \"app/pages/dasbor/index.vue\", layout: \"dasbor\",\n//   params: {}, middleware: [\"01.analitik\", \"02.log\", \"auth\"] }\n\napp.resolve(\"/tidak-ada\");\n// { halaman: null, layout: null, params: {}, middleware: [], statusCode: 404 }\n```\n\n## Hubungan dengan Nuxt asli\n\nNuxt melakukan hal serupa saat build: memindai `app/pages`, membuat daftar route untuk Vue Router, lalu saat pengguna pindah halaman, menjalankan middleware global dan middleware halaman sebelum merender halaman di dalam layout-nya. Nuxt asli juga menangani route bersarang, parameter opsional `[[id]]`, dan halaman `error.vue`. Versi kecilmu cukup fokus pada inti di atas.\n\nPemeriksa sudah menyiapkan `FILES` (proyek toko koperasi sekolah), `META`, `contohApp()` yang memanggil `buatAplikasi(FILES, META)`, dan `sama(a, b)` untuk membandingkan objek lewat JSON.",
+    "prompt": "Tulis `buatAplikasi(files, meta)` yang mengembalikan objek dengan method `resolve(url)`. Baca brief untuk aturan lengkap: halaman dari `app/pages`, prioritas statis lalu `[id]` lalu `[...slug]`, layout dari `definePageMeta`, middleware global yang urut nama file, dan hasil 404.",
+    "starter": {
+      "code": "// Lengkapi buatAplikasi supaya resolve(url) bekerja seperti router Nuxt.\n// Petunjuk: pisahkan dulu file menjadi halaman, layout, dan middleware global.\n\nfunction buatAplikasi(files, meta = {}) {\n  // TODO: ubah setiap file app/pages/... menjadi daftar segmen.\n  //       index.vue berarti folder itu sendiri.\n  // TODO: catat nama layout di app/layouts dan middleware *.global.ts.\n\n  function resolve(url) {\n    // TODO: buang query string dan garis miring di akhir, pecah jadi segmen.\n    // TODO: cocokkan dengan setiap halaman; prioritas statis, [param], [...param].\n    // TODO: layout dari meta (bawaan \"default\", false berarti tanpa layout).\n    // TODO: middleware global (urut nama file) lalu middleware dari meta.\n    return { halaman: null, layout: null, params: {}, middleware: [], statusCode: 404 };\n  }\n\n  return { resolve };\n}\n"
+    },
+    "solution": {
+      "code": "function buatAplikasi(files, meta = {}) {\n  const halaman = [];\n  const layouts = new Set();\n  const globalFiles = [];\n\n  for (const f of files) {\n    if (f.startsWith(\"app/pages/\") && f.endsWith(\".vue\")) {\n      const segs = f.slice(\"app/pages/\".length, -\".vue\".length).split(\"/\");\n      if (segs[segs.length - 1] === \"index\") segs.pop();\n      halaman.push({ file: f, segs });\n    } else if (f.startsWith(\"app/layouts/\") && f.endsWith(\".vue\")) {\n      layouts.add(f.slice(\"app/layouts/\".length, -\".vue\".length));\n    } else if (f.startsWith(\"app/middleware/\") && f.endsWith(\".global.ts\")) {\n      globalFiles.push(f.slice(\"app/middleware/\".length));\n    }\n  }\n  const global = globalFiles.sort().map((f) => f.slice(0, -\".global.ts\".length));\n\n  // 0 = statis, 1 = [param], 2 = [...param]\n  function jenis(seg) {\n    if (/^\\[\\.\\.\\..+\\]$/.test(seg)) return 2;\n    if (/^\\[.+\\]$/.test(seg)) return 1;\n    return 0;\n  }\n\n  function cocok(segs, bagian) {\n    const params = {};\n    for (let i = 0; i < segs.length; i++) {\n      const s = segs[i];\n      const j = jenis(s);\n      if (j === 2) {\n        params[s.slice(4, -1)] = bagian.slice(i);\n        return params;\n      }\n      if (i >= bagian.length) return null;\n      if (j === 1) params[s.slice(1, -1)] = bagian[i];\n      else if (s !== bagian[i]) return null;\n    }\n    return segs.length === bagian.length ? params : null;\n  }\n\n  // true bila a lebih spesifik daripada b, dibandingkan dari segmen paling kiri\n  function lebihSpesifik(a, b) {\n    const n = Math.max(a.length, b.length);\n    for (let i = 0; i < n; i++) {\n      const x = i < a.length ? jenis(a[i]) : 0;\n      const y = i < b.length ? jenis(b[i]) : 0;\n      if (x !== y) return x < y;\n    }\n    return false;\n  }\n\n  function resolve(url) {\n    const bagian = url.split(\"?\")[0].split(\"/\").filter(Boolean);\n    let terbaik = null;\n    for (const h of halaman) {\n      const params = cocok(h.segs, bagian);\n      if (params && (!terbaik || lebihSpesifik(h.segs, terbaik.segs))) {\n        terbaik = { file: h.file, segs: h.segs, params };\n      }\n    }\n    if (!terbaik) {\n      return { halaman: null, layout: null, params: {}, middleware: [], statusCode: 404 };\n    }\n    const m = meta[terbaik.file] || {};\n    const nama = m.layout === undefined ? \"default\" : m.layout;\n    const dariMeta = m.middleware === undefined ? [] : [].concat(m.middleware);\n    return {\n      halaman: terbaik.file,\n      layout: nama && layouts.has(nama) ? nama : null,\n      params: terbaik.params,\n      middleware: global.concat(dariMeta),\n    };\n  }\n\n  return { resolve };\n}\n"
+    },
+    "setup": "// Isi proyek toko koperasi sekolah (hasil ls -R yang sudah dirapikan)\nconst FILES = [\n  \"app/pages/index.vue\",\n  \"app/pages/tentang.vue\",\n  \"app/pages/masuk.vue\",\n  \"app/pages/produk/index.vue\",\n  \"app/pages/produk/[id].vue\",\n  \"app/pages/produk/baru.vue\",\n  \"app/pages/kelas/[kelas]/siswa/[nis].vue\",\n  \"app/pages/blog/[...slug].vue\",\n  \"app/pages/dasbor/index.vue\",\n  \"app/layouts/default.vue\",\n  \"app/layouts/dasbor.vue\",\n  \"app/middleware/auth.ts\",\n  \"app/middleware/02.log.global.ts\",\n  \"app/middleware/01.analitik.global.ts\",\n  \"app/components/Tombol.vue\",\n];\n\n// Isi definePageMeta setiap halaman (halaman lain tidak menulis definePageMeta)\nconst META = {\n  \"app/pages/dasbor/index.vue\": { layout: \"dasbor\", middleware: \"auth\" },\n  \"app/pages/masuk.vue\": { layout: false },\n  \"app/pages/kelas/[kelas]/siswa/[nis].vue\": { middleware: [\"auth\"] },\n};\n\nfunction contohApp() {\n  return buatAplikasi(FILES, META);\n}\n\nfunction sama(a, b) {\n  return JSON.stringify(a) === JSON.stringify(b);\n}\n",
+    "tests": [
+      {
+        "name": "Halaman depan memakai layout default dan middleware global",
+        "check": "sama(contohApp().resolve(\"/\"), { halaman: \"app/pages/index.vue\", layout: \"default\", params: {}, middleware: [\"01.analitik\", \"02.log\"] })"
+      },
+      {
+        "name": "Segmen statis, garis miring akhir, dan query string",
+        "check": "contohApp().resolve(\"/tentang/?ref=wa\").halaman === \"app/pages/tentang.vue\""
+      },
+      {
+        "name": "index.vue di dalam folder",
+        "check": "contohApp().resolve(\"/produk\").halaman === \"app/pages/produk/index.vue\""
+      },
+      {
+        "name": "Route dinamis [id]",
+        "check": "(() => { const r = contohApp().resolve(\"/produk/12\"); return r.halaman === \"app/pages/produk/[id].vue\" && sama(r.params, { id: \"12\" }); })()"
+      },
+      {
+        "name": "Segmen statis menang dari [id]",
+        "check": "(() => { const r = contohApp().resolve(\"/produk/baru\"); return r.halaman === \"app/pages/produk/baru.vue\" && sama(r.params, {}); })()"
+      },
+      {
+        "name": "Dua parameter dan middleware dari meta",
+        "check": "sama(contohApp().resolve(\"/kelas/XI-RPL/siswa/0042\"), { halaman: \"app/pages/kelas/[kelas]/siswa/[nis].vue\", layout: \"default\", params: { kelas: \"XI-RPL\", nis: \"0042\" }, middleware: [\"01.analitik\", \"02.log\", \"auth\"] })"
+      },
+      {
+        "name": "Catch-all menangkap banyak segmen",
+        "check": "sama(contohApp().resolve(\"/blog/2026/11/rilis\").params, { slug: [\"2026\", \"11\", \"rilis\"] })"
+      },
+      {
+        "name": "Catch-all juga cocok dengan nol segmen",
+        "check": "(() => { const r = contohApp().resolve(\"/blog\"); return r.halaman === \"app/pages/blog/[...slug].vue\" && sama(r.params, { slug: [] }); })()"
+      },
+      {
+        "name": "Layout dan middleware string dari definePageMeta",
+        "check": "(() => { const r = contohApp().resolve(\"/dasbor\"); return r.layout === \"dasbor\" && sama(r.middleware, [\"01.analitik\", \"02.log\", \"auth\"]); })()"
+      },
+      {
+        "name": "layout: false dan layout tanpa file menjadi null",
+        "check": "(() => { const a = buatAplikasi(FILES, { \"app/pages/tentang.vue\": { layout: \"hilang\" }, \"app/pages/masuk.vue\": { layout: false } }); return a.resolve(\"/masuk\").layout === null && a.resolve(\"/tentang\").layout === null && a.resolve(\"/\").layout === \"default\"; })()"
+      },
+      {
+        "name": "Path yang tidak cocok menghasilkan 404",
+        "check": "sama(contohApp().resolve(\"/tidak-ada\"), { halaman: null, layout: null, params: {}, middleware: [], statusCode: 404 }) && contohApp().resolve(\"/produk/12/ulasan\").statusCode === 404"
+      },
+      {
+        "name": "Komponen dan middleware bernama tidak menjadi route",
+        "check": "contohApp().resolve(\"/components/Tombol\").statusCode === 404 && contohApp().resolve(\"/auth\").statusCode === 404"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "pengenalan-nuxt",
+      "title": "Pengenalan Nuxt",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu Nuxt dan apa bedanya dengan aplikasi Vue biasa.\n- Membedakan tiga cara merender halaman: SPA, universal (SSR), dan prerender (SSG).\n- Membuat proyek Nuxt 4 baru lalu menjalankan dev server.\n- Mengenali struktur folder Nuxt 4 dan cara kerja auto-import.\n\n## Dari Vue ke Nuxt\n\nDi kelas Vue kamu sudah membuat komponen `.vue`, mengirim props, menyimpan state dengan `ref`, menghitung nilai turunan dengan `computed`, dan mungkin memakai Vue Router untuk berpindah halaman. Aplikasi seperti itu biasanya berjalan sepenuhnya di **browser**. Server hanya mengirim file HTML yang hampir kosong berisi satu `<div id=\"app\">`, lalu JavaScript membangun seluruh tampilan di perangkat pengguna.\n\nUntuk aplikasi kecil cara itu sudah cukup. Tapi saat aplikasinya tumbuh, beberapa masalah mulai terasa:\n\n- **Tampilan pertama lambat.** Pengguna menunggu JavaScript selesai diunduh dan dijalankan sebelum melihat isi apa pun. Di HP dengan sinyal pas-pasan, layar putih bisa bertahan beberapa detik.\n- **SEO kurang kuat.** Mesin pencari lebih mudah membaca halaman yang isinya sudah ada di HTML sejak awal.\n- **Backend terpisah.** Untuk menyimpan data ke database kamu tetap perlu membuat server sendiri, misalnya dengan Express atau Laravel.\n- **Banyak keputusan teknis.** Struktur folder, daftar route, cara build, dan cara deploy harus kamu rangkai sendiri.\n\n**Nuxt** adalah **meta-framework** untuk Vue. Disebut \"meta\" karena Nuxt tidak menggantikan Vue, melainkan membungkusnya dengan aturan dan alat tambahan. Kalau kamu pernah mendengar Next.js untuk React, Nuxt adalah kembarannya di dunia Vue. Satu proyek Nuxt berisi bagian tampilan (komponen Vue) sekaligus bagian server: merender halaman di server, membuat endpoint API, dan menyiapkan hasil build untuk berbagai tempat hosting. Bagian server itu dijalankan oleh **Nitro**, mesin server bawaan Nuxt.\n\nKelas ini memakai **Nuxt 4**. Kabar baiknya, semua yang kamu pelajari di kelas Vue tetap terpakai: `<script setup>`, `ref`, `computed`, `v-for`, `v-if`, props, dan emit. Yang bertambah adalah aturan di sekitarnya: di folder mana file ditaruh, kode mana yang berjalan di server, dan bagaimana data diambil sebelum halaman sampai ke browser.\n\n## Tiga cara merender halaman\n\n\"Merender\" artinya mengubah komponen menjadi HTML yang bisa ditampilkan. Pertanyaan pentingnya: **di mana dan kapan** HTML itu dibuat?\n\n![Perbandingan SPA, universal, dan prerender](slide:3)\n\n| Cara | Di mana HTML dibuat | Kapan | Cocok untuk |\n| --- | --- | --- | --- |\n| **SPA** (client-side) | Browser | Setelah JavaScript jalan | Dashboard admin, halaman di balik login |\n| **Universal** (SSR) | Server | Setiap ada request | Data yang sering berubah atau beda per pengguna |\n| **Prerender** (SSG) | Saat build | Sekali, lalu dipakai ulang | Halaman profil sekolah, artikel, dokumentasi |\n\nBawaan Nuxt adalah **universal rendering**. Saat ada request, server menjalankan komponen Vue dan mengirim HTML yang sudah berisi data. Pengguna langsung melihat isi halaman. Setelah itu JavaScript tetap dikirim, lalu Vue di browser \"menghidupkan\" HTML tersebut supaya tombol, form, dan `v-model` bisa dipakai. Proses menghidupkan ini disebut **hidrasi** (hydration). Setelah hidrasi selesai, perpindahan halaman berikutnya terasa seperti SPA biasa karena tidak perlu memuat ulang seluruh halaman.\n\nContoh di aplikasi kantin sekolah:\n\n- Halaman **profil kantin** dan jam buka jarang berubah, isinya sama untuk semua orang. Cocok di-**prerender** saat build.\n- Halaman **stok menu hari ini** berubah setiap jam. Cocok dengan **universal rendering** supaya selalu segar.\n- Halaman **panel admin** untuk mengubah harga hanya dibuka petugas setelah login dan tidak perlu muncul di Google. Mode **SPA** sudah cukup.\n\nYang menarik, Nuxt bisa mencampur ketiganya dalam satu aplikasi. Kamu akan mengaturnya per route lewat `routeRules` di bab SEO dan Rendering. Untuk sekarang, cukup ingat bahwa tanpa pengaturan apa pun, halaman Nuxt dirender universal.\n\n## Membuat proyek Nuxt 4\n\nPastikan Node.js versi LTS terbaru sudah terpasang. Buka terminal, lalu jalankan:\n\n```bash\nnpm create nuxt@latest kantin-sekolah\ncd kantin-sekolah\nnpm run dev\n```\n\nPerintah pertama mengunduh template proyek dan menanyakan beberapa pilihan, misalnya package manager yang dipakai. Setelah selesai, `npm run dev` menyalakan dev server. Buka `http://localhost:3000` di browser dan kamu akan melihat halaman sambutan Nuxt. Setiap kali kamu menyimpan file, halaman di browser ikut diperbarui tanpa perlu refresh manual.\n\n## Struktur folder Nuxt 4\n\nNuxt 4 memisahkan kode aplikasi dan kode server dengan jelas. Kode tampilan berada di folder `app/`, sedangkan `server/` dan `public/` tetap di akar proyek:\n\n```text\nkantin-sekolah/\n  app/\n    app.vue           komponen paling luar\n    pages/            setiap file menjadi halaman\n    layouts/          kerangka halaman (header, sidebar)\n    components/       komponen yang dipakai ulang\n    composables/      fungsi useXxx yang dipakai ulang\n    middleware/       pemeriksaan sebelum pindah halaman\n  server/\n    api/              endpoint API yang dijalankan Nitro\n  public/             file statis: favicon, gambar\n  nuxt.config.ts      konfigurasi proyek\n  package.json\n```\n\nSebagian folder ini belum ada di proyek baru. Kamu cukup membuatnya saat butuh, dan Nuxt langsung mengenalinya. File `.nuxt/` dan `.output/` yang muncul nanti adalah hasil olahan Nuxt, jangan diedit dengan tangan.\n\nIsi `app/app.vue` di proyek baru kira-kira seperti ini:\n\n```vue\n<template>\n  <div>\n    <NuxtRouteAnnouncer />\n    <NuxtWelcome />\n  </div>\n</template>\n```\n\n`<NuxtWelcome />` adalah halaman sambutan tadi. Saat kamu mulai membuat folder `app/pages`, kamu akan menggantinya dengan `<NuxtPage />`, yang dibahas di bab berikutnya.\n\n## Auto-import\n\nPerhatikan bahwa kode di atas tidak punya satu baris `import` pun. Ini salah satu ciri khas Nuxt: **auto-import**. Nuxt memindai folder tertentu lalu membuat semuanya tersedia tanpa perlu ditulis import-nya:\n\n- Komponen di `app/components` bisa langsung dipakai di template.\n- Fungsi di `app/composables` dan `app/utils` bisa langsung dipanggil.\n- API Vue seperti `ref`, `computed`, dan `watch` juga otomatis tersedia.\n- Fungsi bawaan Nuxt seperti `useFetch`, `useRoute`, dan `navigateTo` siap dipakai.\n\nJadi di sebuah halaman kamu bisa langsung menulis:\n\n```vue\n<script setup lang=\"ts\">\nconst jumlahPesanan = ref(0)\nconst totalHarga = computed(() => jumlahPesanan.value * 12000)\n</script>\n```\n\nNuxt tetap hanya menyertakan kode yang benar-benar dipakai ke hasil build, jadi auto-import tidak membuat aplikasi membengkak. Editor seperti VS Code juga tetap memberi saran dan pengecekan tipe karena Nuxt membuat file deklarasi tipe di folder `.nuxt/`.\n\n## Alur kerja sehari-hari\n\nSupaya terbayang, begini alur kerja yang akan kamu ulangi sepanjang kelas ini:\n\n1. Jalankan `npm run dev` sekali, lalu biarkan terminalnya terbuka.\n2. Buat atau ubah file di `app/` untuk tampilan, atau di `server/` untuk API.\n3. Simpan file. Nuxt mendeteksi perubahan dan memperbarui browser otomatis.\n4. Bila ada error, baca pesan di terminal dan di browser. Nuxt biasanya menyebut nama file dan baris yang bermasalah.\n\nNuxt juga menyediakan **Nuxt DevTools**, panel di bagian bawah halaman saat mode dev. Dari sana kamu bisa melihat daftar halaman, komponen, dan composable yang dikenali Nuxt. Panel ini sangat membantu saat kamu ragu apakah sebuah file sudah terbaca dengan benar.\n\n## Rangkuman\n\n- Nuxt adalah meta-framework untuk Vue yang menambah routing, render di server, dan server API (Nitro) dalam satu proyek.\n- Ada tiga cara render: SPA di browser, universal (SSR) di server tiap request, dan prerender (SSG) sekali saat build. Bawaan Nuxt adalah universal.\n- Hidrasi adalah proses Vue di browser menghidupkan HTML yang dikirim server.\n- Proyek baru dibuat dengan `npm create nuxt@latest`, lalu dijalankan dengan `npm run dev` di `http://localhost:3000`.\n- Di Nuxt 4 kode aplikasi ada di `app/`, sedangkan `server/`, `public/`, dan `nuxt.config.ts` ada di akar proyek.\n- Komponen, composable, API Vue, dan fungsi Nuxt di-import otomatis.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Halaman jadwal buka kantin yang isinya sama untuk semua pengunjung dan jarang berubah paling cocok dirender dengan cara apa?",
+          "code": "",
+          "options": [
+            "Universal (SSR), supaya server membuat HTML baru di setiap request",
+            "Prerender, karena HTML cukup dibuat sekali saat build",
+            "SPA, karena browser selalu paling cepat merakit HTML halaman",
+            "Tidak bisa dibuat di Nuxt, halaman statis butuh hosting terpisah"
+          ],
+          "answer": 1,
+          "explanation": "Isi yang sama untuk semua orang dan jarang berubah cukup dibuat sekali saat build lalu dipakai ulang, itulah prerender."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di Nuxt 4, folder server/ berada di dalam folder app/ bersama pages dan components.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Kode aplikasi ada di app/, tetapi server/ dan public/ tetap di akar proyek."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kode di app/pages/index.vue ini tidak punya baris import. Apa yang terjadi saat halaman dibuka?",
+          "code": "<script setup lang=\"ts\">\nconst stok = ref(20)\nconst habis = computed(() => stok.value === 0)\n</script>\n\n<template>\n  <p>Stok: {{ stok }}, habis: {{ habis }}</p>\n</template>",
+          "options": [
+            "Error karena ref dan computed harus di-import dari paket vue terlebih dulu",
+            "Error karena computed tidak boleh dipakai di dalam folder app/pages",
+            "Tampil \"Stok: 20, habis: false\" karena ref dan computed di-import otomatis",
+            "Tampil kosong karena halaman dengan script setup hanya dirender di server"
+          ],
+          "answer": 2,
+          "explanation": "Nuxt mengimpor API Vue seperti ref dan computed secara otomatis, jadi kode berjalan normal."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang dimaksud dengan hidrasi pada universal rendering?",
+          "code": "",
+          "options": [
+            "Server mengirim ulang HTML setiap kali pengguna menekan tombol di halaman",
+            "Vue di browser menghidupkan HTML dari server agar bisa diklik dan diisi",
+            "Nuxt menghapus semua JavaScript supaya halaman lebih ringan untuk dibuka",
+            "Proses build yang mengubah file .vue menjadi file HTML di folder public"
+          ],
+          "answer": 1,
+          "explanation": "Setelah HTML dari server tampil, Vue di browser memasang event dan state pada HTML itu. Proses ini disebut hidrasi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memilih mode render halaman",
+          "prompt": "Saat merancang aplikasi Nuxt, kamu menentukan mode render tiap halaman. Buat fungsi `modeRender(halaman)` yang menerima objek `{ nama, perluSeo, berubahTiapRequest }` dan mengembalikan `\"spa\"`, `\"universal\"`, atau `\"prerender\"`:\n\n1. Bila `perluSeo` bernilai `false`, kembalikan `\"spa\"` (misalnya panel admin).\n2. Bila perlu SEO dan `berubahTiapRequest` bernilai `true`, kembalikan `\"universal\"`.\n3. Selain itu kembalikan `\"prerender\"`.\n\nLalu buat `keRouteRule(mode)` yang mengubah mode menjadi aturan ala `routeRules` Nuxt: `\"spa\"` menjadi `{ ssr: false }`, `\"prerender\"` menjadi `{ prerender: true }`, dan `\"universal\"` menjadi `{}` (karena universal sudah bawaan).\n\nDi Nuxt asli, aturan seperti ini kamu tulis di `routeRules` pada `nuxt.config.ts`. Latihan ini melatih cara berpikir yang sama.",
+          "starter": {
+            "code": "function modeRender(halaman) {\n  // TODO: terapkan tiga aturan sesuai urutan\n  return \"universal\";\n}\n\nfunction keRouteRule(mode) {\n  // TODO: ubah mode menjadi objek aturan\n  return {};\n}\n"
+          },
+          "solution": {
+            "code": "function modeRender(halaman) {\n  if (!halaman.perluSeo) return \"spa\";\n  if (halaman.berubahTiapRequest) return \"universal\";\n  return \"prerender\";\n}\n\nfunction keRouteRule(mode) {\n  if (mode === \"spa\") return { ssr: false };\n  if (mode === \"prerender\") return { prerender: true };\n  return {};\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Halaman tanpa SEO memakai spa",
+              "check": "modeRender({ nama: \"admin\", perluSeo: false, berubahTiapRequest: true }) === \"spa\""
+            },
+            {
+              "name": "Data berubah tiap request memakai universal",
+              "check": "modeRender({ nama: \"stok\", perluSeo: true, berubahTiapRequest: true }) === \"universal\""
+            },
+            {
+              "name": "Halaman tetap memakai prerender",
+              "check": "modeRender({ nama: \"profil\", perluSeo: true, berubahTiapRequest: false }) === \"prerender\""
+            },
+            {
+              "name": "keRouteRule untuk spa dan prerender",
+              "check": "JSON.stringify(keRouteRule(\"spa\")) === JSON.stringify({ ssr: false }) && keRouteRule(\"prerender\").prerender === true"
+            },
+            {
+              "name": "keRouteRule untuk universal berupa objek kosong",
+              "check": "JSON.stringify(keRouteRule(\"universal\")) === \"{}\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "routing-dan-layout",
+      "title": "Routing dan Layout",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Membuat halaman dengan routing berbasis file di folder `app/pages`.\n- Membuat route dinamis dengan `[id].vue` dan `[...slug].vue`, lalu membaca parameternya.\n- Berpindah halaman dengan `<NuxtLink>` dan menampilkan halaman dengan `<NuxtPage>`.\n- Memakai layout dari `app/layouts` dan membuat halaman error.\n\n## File adalah route\n\nDi kelas Vue, kamu mendaftarkan route satu per satu di Vue Router: path, nama, dan komponennya. Di Nuxt, langkah itu hilang. Setiap file `.vue` di folder `app/pages` otomatis menjadi satu halaman, dan lokasi file menentukan URL-nya:\n\n```text\napp/pages/index.vue          ->  /\napp/pages/tentang.vue        ->  /tentang\napp/pages/menu/index.vue     ->  /menu\napp/pages/menu/promo.vue     ->  /menu/promo\n```\n\nAturannya sederhana:\n\n- Nama file menjadi segmen URL, `tentang.vue` menjadi `/tentang`.\n- `index.vue` berarti halaman utama folder tempat ia berada.\n- Folder di dalam `pages` menjadi segmen URL bertingkat.\n\nSupaya halaman tampil, `app/app.vue` perlu memasang komponen `<NuxtPage />`. Komponen ini adalah \"slot\" tempat halaman aktif ditampilkan, mirip `<RouterView />` di Vue Router. Faktanya, Nuxt memang memakai Vue Router di belakang layar. Bedanya, daftar route dibuat otomatis dari folder `pages`.\n\n```vue\n<!-- app/app.vue -->\n<template>\n  <NuxtLayout>\n    <NuxtPage />\n  </NuxtLayout>\n</template>\n```\n\n`<NuxtLayout>` membungkus halaman dengan layout, yang akan kita bahas sebentar lagi.\n\n## Route dinamis\n\nKantin sekolah punya puluhan menu. Membuat satu file per menu tentu tidak masuk akal. Untuk itu ada **route dinamis**: nama file yang ditulis di dalam kurung siku.\n\n![Route dinamis dengan kurung siku](slide:6)\n\n| File | Contoh URL | Parameter |\n| --- | --- | --- |\n| `menu/[id].vue` | `/menu/12` | `id` = `\"12\"` |\n| `kelas/[kelas]/absen.vue` | `/kelas/xi-rpl/absen` | `kelas` = `\"xi-rpl\"` |\n| `[...slug].vue` | `/info/jadwal/ujian` | `slug` = `[\"info\", \"jadwal\", \"ujian\"]` |\n\n`[id].vue` menangkap tepat **satu** segmen. `[...slug].vue` disebut **catch-all**: ia menangkap sisa segmen sekaligus dan menyimpannya sebagai array. Catch-all sering dipakai untuk halaman \"tidak ditemukan\" buatan sendiri atau halaman dokumentasi yang kedalamannya bebas.\n\nParameter dibaca lewat `useRoute()`:\n\n```vue\n<!-- app/pages/menu/[id].vue -->\n<script setup lang=\"ts\">\nconst route = useRoute()\nconst id = route.params.id\n</script>\n\n<template>\n  <h1>Detail menu nomor {{ id }}</h1>\n</template>\n```\n\nIngat, nilai parameter dari URL selalu berupa **string**. Kalau kamu butuh angka, ubah dulu dengan `Number(route.params.id)`.\n\nBagaimana kalau ada `menu/promo.vue` dan `menu/[id].vue` sekaligus? URL `/menu/promo` akan membuka `promo.vue`, karena **route statis menang atas route dinamis**. Catch-all berada di urutan paling akhir: ia hanya dipakai bila tidak ada route lain yang cocok. Urutan prioritas ini penting supaya halaman khusus tidak tertutup oleh halaman umum.\n\n## Berpindah halaman dengan NuxtLink\n\nUntuk link antarhalaman di dalam aplikasi, pakai `<NuxtLink>`:\n\n```vue\n<template>\n  <nav>\n    <NuxtLink to=\"/\">Beranda</NuxtLink>\n    <NuxtLink to=\"/menu\">Menu</NuxtLink>\n    <NuxtLink :to=\"`/menu/${menuFavorit.id}`\">Menu favorit</NuxtLink>\n  </nav>\n</template>\n```\n\nKenapa tidak `<a href>` biasa? Tag `<a>` membuat browser memuat ulang seluruh halaman: state hilang dan semua file diunduh lagi. `<NuxtLink>` berpindah halaman di sisi klien, jadi terasa instan. Ia juga memuat lebih awal kode halaman tujuan saat link terlihat di layar, sehingga perpindahan terasa cepat. Untuk link ke situs luar, `<NuxtLink>` tetap boleh dipakai dan akan berperilaku seperti link biasa.\n\nKalau perlu pindah halaman dari kode, misalnya setelah form pesanan berhasil dikirim, pakai `navigateTo`:\n\n```ts\nasync function kirimPesanan() {\n  // ... simpan pesanan\n  await navigateTo('/pesanan/berhasil')\n}\n```\n\n## Layout\n\nHampir semua halaman kantin punya header dan footer yang sama. Daripada menulisnya berulang, taruh di **layout**. Layout disimpan di `app/layouts`, dan isi halaman masuk lewat `<slot />`:\n\n```vue\n<!-- app/layouts/default.vue -->\n<template>\n  <div>\n    <header>Kantin SMK Nusantara</header>\n    <main>\n      <slot />\n    </main>\n    <footer>Buka 07.00 sampai 14.00</footer>\n  </div>\n</template>\n```\n\nLayout bernama `default.vue` dipakai otomatis oleh semua halaman. Untuk halaman yang butuh kerangka berbeda, misalnya panel admin dengan sidebar, buat layout baru lalu pilih dari halaman dengan `definePageMeta`:\n\n```vue\n<!-- app/pages/admin/index.vue -->\n<script setup lang=\"ts\">\ndefinePageMeta({\n  layout: 'admin',\n})\n</script>\n\n<template>\n  <h1>Kelola menu</h1>\n</template>\n```\n\nNilai `'admin'` merujuk ke file `app/layouts/admin.vue`. `definePageMeta` adalah fungsi khusus halaman; ia dibaca Nuxt saat build, jadi isinya sebaiknya nilai tetap, bukan hasil perhitungan dari variabel di komponen. Kita akan memakai `definePageMeta` lagi untuk memasang middleware di bab autentikasi.\n\n## Halaman error\n\nApa yang tampil bila seseorang membuka `/menu/999` dan menu itu tidak ada, atau URL yang sama sekali tidak dikenal? Nuxt punya halaman error bawaan, tapi kamu bisa membuat sendiri dengan file `app/error.vue`. File ini berada di samping `app.vue`, bukan di dalam `pages`, dan menerima prop `error`:\n\n```vue\n<!-- app/error.vue -->\n<script setup lang=\"ts\">\nconst props = defineProps<{ error: { status: number } }>()\n</script>\n\n<template>\n  <h1 v-if=\"props.error.status === 404\">Halaman tidak ditemukan</h1>\n  <h1 v-else>Terjadi kesalahan</h1>\n  <button @click=\"clearError({ redirect: '/' })\">Kembali ke beranda</button>\n</template>\n```\n\n`clearError` menghapus status error dan mengarahkan pengguna ke halaman lain. Di dalam halaman, kamu bisa memicu error sendiri, misalnya saat data menu tidak ditemukan, dengan melempar error yang dibuat `createError({ status: 404 })`.\n\n## Membaca query string di halaman\n\nSelain parameter di path, URL sering membawa **query string**, misalnya `/menu?kategori=minuman&urut=harga`. Query tidak memengaruhi file mana yang dipilih; ia hanya informasi tambahan. Bacanya juga lewat `useRoute()`:\n\n```vue\n<script setup lang=\"ts\">\nconst route = useRoute()\nconst kategori = computed(() => route.query.kategori ?? 'semua')\n</script>\n\n<template>\n  <h1>Menu kategori: {{ kategori }}</h1>\n  <NuxtLink :to=\"{ path: '/menu', query: { kategori: 'makanan' } }\">Makanan</NuxtLink>\n</template>\n```\n\nPakai `computed` supaya nilai ikut berubah saat pengguna berpindah dari satu kategori ke kategori lain di halaman yang sama. Perhatikan juga bahwa `to` pada `<NuxtLink>` bisa berupa objek berisi `path` dan `query`, sehingga kamu tidak perlu merangkai string URL sendiri.\n\n## Contoh struktur aplikasi kantin\n\nGabungkan semua aturan tadi, dan struktur halaman aplikasi kantin bisa terlihat seperti ini:\n\n```text\napp/\n  app.vue\n  error.vue\n  layouts/\n    default.vue\n    admin.vue\n  pages/\n    index.vue                ->  /\n    menu/\n      index.vue              ->  /menu\n      promo.vue              ->  /menu/promo\n      [id].vue               ->  /menu/12\n    admin/\n      index.vue              ->  /admin (layout admin)\n    [...slug].vue            ->  URL lain yang tidak dikenal\n```\n\nCukup dengan melihat folder ini, siapa pun di tim bisa menebak URL apa saja yang ada di aplikasi. Inilah keuntungan routing berbasis file: struktur folder sekaligus menjadi dokumentasi.\n\nBeberapa kesalahan yang sering dialami pemula:\n\n- Lupa memasang `<NuxtPage />` di `app.vue`, sehingga halaman tidak pernah tampil.\n- Menaruh komponen biasa di `app/pages`, sehingga komponen itu ikut menjadi halaman yang bisa dibuka lewat URL.\n- Menulis nama layout di `definePageMeta` yang tidak sama dengan nama file di `app/layouts`.\n- Lupa bahwa `route.params.id` berupa string, lalu membandingkannya dengan angka memakai `===`.\n\n## Rangkuman\n\n- Setiap file `.vue` di `app/pages` menjadi route; `index.vue` adalah halaman utama foldernya.\n- `[id].vue` menangkap satu segmen, `[...slug].vue` menangkap sisa segmen sebagai array. Baca dengan `useRoute().params`.\n- Prioritas pencocokan: statis lebih dulu, lalu dinamis, lalu catch-all.\n- `<NuxtLink>` berpindah halaman tanpa muat ulang, `<NuxtPage />` menampilkan halaman aktif, `navigateTo()` pindah halaman dari kode.\n- Layout di `app/layouts` memakai `<slot />`; `default.vue` dipakai otomatis, layout lain dipilih dengan `definePageMeta({ layout })`.\n- `app/error.vue` menampilkan halaman error buatan sendiri.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "File mana yang menghasilkan halaman untuk URL /perpustakaan/buku?",
+          "code": "",
+          "options": [
+            "app/pages/perpustakaan-buku.vue",
+            "app/pages/perpustakaan/buku.vue",
+            "app/layouts/perpustakaan/buku.vue",
+            "app/components/perpustakaan/buku.vue"
+          ],
+          "answer": 1,
+          "explanation": "Folder di dalam app/pages menjadi segmen URL, jadi perpustakaan/buku.vue menjadi /perpustakaan/buku."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Di proyek ada app/pages/menu/promo.vue dan app/pages/menu/[id].vue. Pengguna membuka /menu/promo. Apa yang tampil?",
+          "code": "<!-- app/pages/menu/[id].vue -->\n<script setup lang=\"ts\">\nconst route = useRoute()\n</script>\n\n<template>\n  <h1>Menu {{ route.params.id }}</h1>\n</template>",
+          "options": [
+            "Halaman [id].vue dengan judul \"Menu promo\" karena dinamis selalu dipakai",
+            "Isi promo.vue, karena route statis menang atas route dinamis",
+            "Error karena dua file di folder menu menangkap URL yang sama",
+            "Halaman 404 karena Nuxt tidak tahu harus memilih file yang mana"
+          ],
+          "answer": 1,
+          "explanation": "Nuxt mendahulukan route statis, jadi /menu/promo membuka promo.vue."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Halaman yang tidak memanggil definePageMeta dengan layout akan memakai app/layouts/default.vue bila file itu ada.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Layout default.vue dipakai otomatis oleh semua halaman yang tidak memilih layout lain."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa link antarhalaman di aplikasi Nuxt sebaiknya memakai <NuxtLink> daripada <a href>?",
+          "code": "",
+          "options": [
+            "Karena tag <a> tidak boleh dipakai sama sekali di dalam template komponen Nuxt",
+            "Karena <a href> hanya bekerja untuk halaman yang dirender dengan mode prerender",
+            "NuxtLink pindah halaman di klien tanpa memuat ulang semuanya",
+            "Karena <NuxtLink> otomatis menambahkan halaman baru ke dalam folder app/pages"
+          ],
+          "answer": 2,
+          "explanation": "NuxtLink berpindah halaman di sisi klien sehingga state tetap ada dan perpindahan terasa cepat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Mencocokkan URL dengan file halaman",
+          "prompt": "Nuxt membuat route dari daftar file di `app/pages`. Buat fungsi `cocokkanHalaman(files, path)` yang meniru proses itu.\n\n- `files` adalah array path relatif terhadap `app/pages`, misalnya `[\"index.vue\", \"menu/index.vue\", \"menu/promo.vue\", \"menu/[id].vue\", \"[...slug].vue\"]`.\n- `path` adalah URL seperti `\"/menu/12\"`.\n\nAturan:\n\n1. Buang akhiran `.vue`. Segmen terakhir `index` tidak dihitung, jadi `menu/index.vue` cocok dengan `/menu` dan `index.vue` cocok dengan `/`.\n2. Segmen `[nama]` cocok dengan tepat satu segmen URL dan menyimpan `params.nama` berupa string.\n3. Segmen `[...nama]` cocok dengan sisa segmen (boleh banyak) dan menyimpan `params.nama` berupa array.\n4. Prioritas: file tanpa kurung siku dulu, lalu file dengan `[nama]`, terakhir file dengan `[...nama]`.\n\nKembalikan `{ file, params }` untuk file yang menang, atau `null` bila tidak ada yang cocok.",
+          "starter": {
+            "code": "function keSegmen(file) {\n  const s = file.replace(/\\.vue$/, \"\").split(\"/\");\n  if (s[s.length - 1] === \"index\") s.pop();\n  return s;\n}\n\nfunction cocokkanHalaman(files, path) {\n  const url = path.split(\"/\").filter(Boolean);\n  for (const file of files) {\n    const seg = keSegmen(file);\n    // TODO: dukung [nama] dan [...nama], lalu atur prioritas\n    if (seg.join(\"/\") === url.join(\"/\")) return { file, params: {} };\n  }\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function keSegmen(file) {\n  const s = file.replace(/\\.vue$/, \"\").split(\"/\");\n  if (s[s.length - 1] === \"index\") s.pop();\n  return s;\n}\n\nfunction cocok(seg, url) {\n  const params = {};\n  for (let i = 0; i < seg.length; i++) {\n    const s = seg[i];\n    if (s.startsWith(\"[...\")) {\n      params[s.slice(4, -1)] = url.slice(i);\n      return params;\n    }\n    if (i >= url.length) return null;\n    if (s.startsWith(\"[\")) params[s.slice(1, -1)] = url[i];\n    else if (s !== url[i]) return null;\n  }\n  return seg.length === url.length ? params : null;\n}\n\nfunction peringkat(file) {\n  if (file.includes(\"[...\")) return 2;\n  if (file.includes(\"[\")) return 1;\n  return 0;\n}\n\nfunction cocokkanHalaman(files, path) {\n  const url = path.split(\"/\").filter(Boolean);\n  const urut = [...files].sort((a, b) => peringkat(a) - peringkat(b));\n  for (const file of urut) {\n    const params = cocok(keSegmen(file), url);\n    if (params) return { file, params };\n  }\n  return null;\n}\n"
+          },
+          "setup": "const FILES = [\"[...slug].vue\", \"menu/[id].vue\", \"index.vue\", \"menu/index.vue\", \"menu/promo.vue\"];",
+          "tests": [
+            {
+              "name": "Beranda dan index folder cocok",
+              "check": "cocokkanHalaman(FILES, \"/\").file === \"index.vue\" && cocokkanHalaman(FILES, \"/menu\").file === \"menu/index.vue\""
+            },
+            {
+              "name": "Route dinamis mengisi params.id",
+              "check": "JSON.stringify(cocokkanHalaman(FILES, \"/menu/12\")) === JSON.stringify({ file: \"menu/[id].vue\", params: { id: \"12\" } })"
+            },
+            {
+              "name": "Route statis menang atas dinamis",
+              "check": "cocokkanHalaman(FILES, \"/menu/promo\").file === \"menu/promo.vue\""
+            },
+            {
+              "name": "Catch-all menangkap sisa segmen sebagai array",
+              "check": "JSON.stringify(cocokkanHalaman(FILES, \"/info/jadwal/ujian\").params.slug) === JSON.stringify([\"info\", \"jadwal\", \"ujian\"])"
+            },
+            {
+              "name": "Tanpa catch-all, URL asing menghasilkan null",
+              "check": "cocokkanHalaman([\"index.vue\", \"menu/[id].vue\"], \"/menu/1/ulasan\") === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "komponen-dan-composable",
+      "title": "Komponen dan Composable",
+      "est_minutes": 30,
+      "slide_from": 9,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Memakai komponen dari `app/components` tanpa import dan memahami aturan penamaannya.\n- Membuat composable sendiri di `app/composables` untuk logika yang dipakai ulang.\n- Menjelaskan kenapa `ref` di luar komponen berbahaya saat SSR dan memakai `useState` sebagai gantinya.\n- Mengenal Pinia sebagai pilihan untuk state yang lebih besar.\n\n## Komponen yang di-import otomatis\n\nDi kelas Vue, setiap kali memakai komponen kamu menulis `import KartuMenu from './KartuMenu.vue'`. Di Nuxt, cukup taruh file di `app/components`, lalu langsung pakai di template mana pun:\n\n```vue\n<!-- app/pages/menu/index.vue -->\n<template>\n  <KartuMenu nama=\"Nasi goreng\" :harga=\"12000\" />\n</template>\n```\n\nNuxt memindai folder itu dan mendaftarkan setiap komponen. Yang perlu kamu pahami adalah **aturan nama**: nama folder ikut menjadi awalan nama komponen.\n\n![Nama komponen dari path file](slide:9)\n\n| File | Nama komponen |\n| --- | --- |\n| `app/components/KartuMenu.vue` | `<KartuMenu />` |\n| `app/components/base/Tombol.vue` | `<BaseTombol />` |\n| `app/components/form/InputTeks.vue` | `<FormInputTeks />` |\n| `app/components/base/BaseKartu.vue` | `<BaseKartu />` |\n\nBaris terakhir menunjukkan satu kebiasaan Nuxt: bila nama file sudah diawali nama foldernya, awalan itu tidak diulang. Jadi kamu tidak akan mendapat `BaseBaseKartu`. Banyak tim memanfaatkan aturan ini untuk mengelompokkan komponen, misalnya semua komponen form di `form/` dan semua komponen dasar di `base/`.\n\nNama file yang ditulis dengan huruf kecil dan tanda hubung, seperti `kartu-menu.vue`, juga dikenali dan bisa dipakai sebagai `<KartuMenu />`. Tetap pilih satu gaya penamaan dan konsisten.\n\n### Komponen lazy\n\nKadang ada komponen besar yang tidak langsung dibutuhkan, misalnya dialog konfirmasi pesanan. Tambahkan awalan `Lazy` saat memakainya:\n\n```vue\n<template>\n  <button @click=\"tampil = true\">Pesan</button>\n  <LazyDialogKonfirmasi v-if=\"tampil\" />\n</template>\n```\n\nKode komponen itu baru diunduh saat `v-if` bernilai `true`. Halaman awal jadi lebih ringan tanpa kamu menulis konfigurasi apa pun.\n\n## Composable\n\n**Composable** adalah fungsi yang membungkus logika reaktif supaya bisa dipakai ulang di banyak komponen. Konvensinya, namanya diawali `use`. Di Nuxt, file di `app/composables` di-import otomatis, sama seperti komponen.\n\nMisalnya kantin punya fitur keranjang yang dipakai di halaman menu dan halaman checkout:\n\n```ts\n// app/composables/useKeranjang.ts\nexport function useKeranjang() {\n  const isi = ref<{ nama: string; harga: number }[]>([])\n\n  function tambah(nama: string, harga: number) {\n    isi.value.push({ nama, harga })\n  }\n\n  const total = computed(() =>\n    isi.value.reduce((jumlah, item) => jumlah + item.harga, 0),\n  )\n\n  return { isi, tambah, total }\n}\n```\n\nDi halaman mana pun, cukup panggil `const { isi, tambah, total } = useKeranjang()`. Fungsi bantu biasa yang tidak reaktif, misalnya `formatRupiah(angka)`, lebih cocok ditaruh di `app/utils`, yang juga di-import otomatis.\n\nAda satu masalah pada `useKeranjang` di atas: setiap kali dipanggil, ia membuat `ref` baru. Halaman menu dan halaman checkout akan punya keranjang masing-masing, padahal kita ingin keranjang yang sama. Di Vue biasa, jalan pintasnya adalah memindahkan `ref` ke luar fungsi supaya dibagi bersama. Di Nuxt, cara itu berbahaya.\n\n## Kenapa ref di luar komponen berbahaya\n\nIngat bahwa Nuxt merender halaman di **server**. Satu proses server melayani banyak pengguna sekaligus. Kode di tingkat modul, yaitu di luar fungsi, hanya dijalankan sekali saat server menyala, lalu dipakai bersama oleh semua request:\n\n```ts\n// JANGAN: state ini dibagi oleh semua pengunjung di server\nconst pengguna = ref({ nama: '' })\n\nexport function usePengguna() {\n  return pengguna\n}\n```\n\nBayangkan Andi login dan namanya disimpan di `pengguna`. Sedetik kemudian Budi membuka halaman. Server memakai `ref` yang sama, sehingga HTML untuk Budi bisa berisi nama Andi. Masalah ini disebut **kebocoran state antar-request** (cross-request state pollution).\n\n## useState: state bersama yang aman\n\nNuxt menyediakan `useState` untuk state yang perlu dibagi antar-komponen dan aman dipakai saat SSR:\n\n```ts\n// app/composables/usePengguna.ts\nexport const usePengguna = () =>\n  useState('pengguna', () => ({ nama: '', kelas: 'XI RPL 1' }))\n```\n\nCara kerjanya:\n\n- Argumen pertama adalah **key**. Semua pemanggilan dengan key yang sama mendapat state yang sama.\n- Argumen kedua adalah fungsi yang membuat nilai awal. Fungsi ini hanya dijalankan bila state dengan key itu belum ada.\n- State dibuat terpisah untuk setiap request di server, jadi Andi dan Budi tidak berbagi data.\n- Nilai yang terisi di server ikut dikirim ke browser bersama HTML, sehingga browser tidak perlu menghitung ulang.\n\nKarena nilainya dikirim ke browser, isi `useState` harus data yang bisa diubah ke JSON: angka, string, array, dan objek biasa. Jangan simpan fungsi atau instance class di dalamnya.\n\nSekarang keranjang bisa diperbaiki:\n\n```ts\nexport function useKeranjang() {\n  const isi = useState<{ nama: string; harga: number }[]>('keranjang', () => [])\n  const tambah = (nama: string, harga: number) => isi.value.push({ nama, harga })\n  const total = computed(() => isi.value.reduce((j, i) => j + i.harga, 0))\n  return { isi, tambah, total }\n}\n```\n\nHalaman menu dan checkout kini membaca keranjang yang sama, karena key-nya sama: `'keranjang'`.\n\n## Pinia untuk state yang lebih besar\n\n`useState` cocok untuk state kecil seperti pengguna yang login atau tema gelap dan terang. Saat state bertambah banyak, lengkap dengan aksi dan nilai turunan, banyak tim memilih **Pinia**, pustaka state resmi untuk Vue. Di Nuxt, Pinia dipasang lewat modul `@pinia/nuxt`, lalu store ditulis dengan `defineStore`:\n\n```ts\n// app/stores/keranjang.ts\nexport const useKeranjangStore = defineStore('keranjang', {\n  state: () => ({ isi: [] as { nama: string; harga: number }[] }),\n  getters: {\n    total: (state) => state.isi.reduce((j, i) => j + i.harga, 0),\n  },\n  actions: {\n    tambah(nama: string, harga: number) {\n      this.isi.push({ nama, harga })\n    },\n  },\n})\n```\n\nModul Pinia untuk Nuxt sudah menangani pembuatan store per request di server, jadi masalah kebocoran state tadi juga terhindar. Untuk kelas ini, `useState` sudah cukup. Pinia akan terasa manfaatnya ketika aplikasimu tumbuh besar.\n\n## Kapan memakai komponen, composable, atau utils\n\nTiga folder ini sering membingungkan di awal. Pegangan sederhananya:\n\n- **Komponen** (`app/components`) untuk potongan tampilan yang punya template, misalnya kartu menu atau tombol.\n- **Composable** (`app/composables`) untuk logika reaktif tanpa tampilan, misalnya keranjang, pengguna yang login, atau hitung mundur jam istirahat.\n- **Utils** (`app/utils`) untuk fungsi biasa yang tidak memakai `ref` sama sekali, misalnya `formatRupiah` atau `hitungRataRata(nilai)`.\n\nBila sebuah komponen mulai berisi banyak logika yang juga dibutuhkan komponen lain, itu tanda logika tersebut layak dipindah ke composable.\n\n## Rangkuman\n\n- Komponen di `app/components` di-import otomatis; nama folder menjadi awalan, misalnya `base/Tombol.vue` menjadi `<BaseTombol />`.\n- Awalan yang sudah ada di nama file tidak diulang, dan awalan `Lazy` menunda pemuatan komponen.\n- Composable adalah fungsi `useXxx` di `app/composables` yang membungkus logika reaktif dan di-import otomatis.\n- `ref` di tingkat modul dibagi oleh semua request di server dan bisa membocorkan data antar pengguna.\n- `useState(key, init)` membuat state bersama yang aman untuk SSR; key yang sama berarti state yang sama.\n- Pinia, lewat modul `@pinia/nuxt`, cocok untuk state aplikasi yang besar.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Komponen disimpan di app/components/form/Pilihan.vue. Bagaimana cara memakainya di template?",
+          "code": "",
+          "options": [
+            "<Pilihan /> karena nama folder tidak ikut dipakai",
+            "<FormPilihan />",
+            "<form-pilihan-vue /> sesuai nama file lengkap dengan ekstensinya",
+            "Harus di-import manual dulu karena berada di dalam subfolder form"
+          ],
+          "answer": 1,
+          "explanation": "Nama folder menjadi awalan, jadi form/Pilihan.vue dipakai sebagai <FormPilihan />."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Composable ini dipakai di halaman profil. Apa masalahnya saat aplikasi dirender di server?",
+          "code": "// app/composables/usePengguna.ts\nconst pengguna = ref({ nama: '' })\n\nexport function usePengguna() {\n  return pengguna\n}",
+          "options": [
+            "Tidak ada masalah, pola ini memang cara yang dianjurkan Nuxt untuk SSR",
+            "Error karena ref tidak boleh dipanggil di dalam folder app/composables",
+            "Nama fungsi tanpa awalan Lazy membuatnya tidak ikut di-import otomatis",
+            "ref dibagi semua request, data pengguna bisa bocor"
+          ],
+          "answer": 3,
+          "explanation": "Kode di tingkat modul dijalankan sekali di server dan dipakai bersama semua request, jadi state satu pengguna bisa terlihat pengguna lain."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dua komponen yang memanggil useState('tema', () => 'terang') akan membaca state yang sama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "useState memakai key sebagai identitas, jadi key yang sama berarti state yang sama."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kapan fungsi kedua pada useState('keranjang', () => []) dijalankan?",
+          "code": "",
+          "options": [
+            "Hanya saat state dengan key itu belum ada",
+            "Setiap kali komponen yang memanggilnya dirender ulang di browser",
+            "Setiap kali nilai state berubah, supaya nilainya kembali ke awal",
+            "Hanya saat build, lalu hasilnya disimpan permanen di folder public"
+          ],
+          "answer": 0,
+          "explanation": "Fungsi kedua adalah pembuat nilai awal dan hanya dipanggil bila state dengan key itu belum dibuat."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Nama komponen dari path file",
+          "prompt": "Nuxt memberi nama komponen dari lokasi filenya. Buat fungsi `namaKomponen(path)` yang meniru aturan itu.\n\n1. Ambil bagian setelah `components/`. Path bisa diawali `app/components/` atau langsung `components/`.\n2. Buang akhiran `.vue`, lalu pecah per `/`.\n3. Ubah setiap bagian ke PascalCase: `kartu-menu` menjadi `KartuMenu`, `base` menjadi `Base`, `Tombol` tetap `Tombol`.\n4. Gabungkan nama folder sebagai awalan. Bila nama file (sudah PascalCase) sudah diawali awalan itu, jangan diulang.\n\nContoh: `components/base/Tombol.vue` menjadi `BaseTombol`, `app/components/form/input-teks.vue` menjadi `FormInputTeks`, `components/base/BaseKartu.vue` menjadi `BaseKartu`.\n\nAturan Nuxt asli sedikit lebih rinci, tetapi inti cara berpikirnya sama.",
+          "starter": {
+            "code": "function pascal(teks) {\n  // TODO: ubah \"kartu-menu\" menjadi \"KartuMenu\"\n  return teks;\n}\n\nfunction namaKomponen(path) {\n  const sisa = path.split(\"components/\")[1].replace(/\\.vue$/, \"\");\n  const bagian = sisa.split(\"/\");\n  // TODO: gabungkan awalan folder dan nama file\n  return bagian[bagian.length - 1];\n}\n"
+          },
+          "solution": {
+            "code": "function pascal(teks) {\n  return teks\n    .split(\"-\")\n    .map((k) => k.charAt(0).toUpperCase() + k.slice(1))\n    .join(\"\");\n}\n\nfunction namaKomponen(path) {\n  const sisa = path.split(\"components/\")[1].replace(/\\.vue$/, \"\");\n  const bagian = sisa.split(\"/\").map(pascal);\n  const nama = bagian.pop();\n  const awalan = bagian.join(\"\");\n  return nama.startsWith(awalan) ? nama : awalan + nama;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "File di akar components tetap namanya",
+              "check": "namaKomponen(\"app/components/KartuMenu.vue\") === \"KartuMenu\""
+            },
+            {
+              "name": "Nama folder menjadi awalan",
+              "check": "namaKomponen(\"components/base/Tombol.vue\") === \"BaseTombol\""
+            },
+            {
+              "name": "kebab-case diubah ke PascalCase",
+              "check": "namaKomponen(\"app/components/form/input-teks.vue\") === \"FormInputTeks\""
+            },
+            {
+              "name": "Awalan yang sudah ada tidak diulang",
+              "check": "namaKomponen(\"components/base/BaseKartu.vue\") === \"BaseKartu\""
+            },
+            {
+              "name": "Folder bertingkat ikut digabung",
+              "check": "namaKomponen(\"app/components/admin/menu/Tabel.vue\") === \"AdminMenuTabel\""
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "useState mini dengan key",
+          "prompt": "`useState` di Nuxt berbagi state berdasarkan key, dan state dibuat terpisah untuk setiap request di server. Tiru perilaku itu.\n\nBuat `buatRequest()` yang mengembalikan objek berisi fungsi `useState(key, init)`:\n\n- Bila key belum ada, panggil `init()` dan simpan hasilnya sebagai `{ value: hasil }`.\n- Bila key sudah ada, kembalikan objek yang sama persis tanpa memanggil `init` lagi.\n- Setiap pemanggilan `buatRequest()` punya penyimpanan sendiri, jadi dua request tidak saling melihat state.\n\nContoh: `const r = buatRequest(); r.useState(\"tema\", () => \"terang\").value` bernilai `\"terang\"`.",
+          "starter": {
+            "code": "const simpanan = {};\n\nfunction buatRequest() {\n  function useState(key, init) {\n    // TODO: jangan panggil init bila key sudah ada\n    simpanan[key] = { value: init() };\n    return simpanan[key];\n  }\n  return { useState };\n}\n"
+          },
+          "solution": {
+            "code": "function buatRequest() {\n  const simpanan = {};\n  function useState(key, init) {\n    if (!(key in simpanan)) simpanan[key] = { value: init() };\n    return simpanan[key];\n  }\n  return { useState };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Nilai awal diambil dari init",
+              "check": "buatRequest().useState(\"tema\", () => \"terang\").value === \"terang\""
+            },
+            {
+              "name": "Key sama mengembalikan objek yang sama",
+              "check": "(() => { const r = buatRequest(); const a = r.useState(\"keranjang\", () => []); a.value.push(\"es teh\"); const b = r.useState(\"keranjang\", () => []); return a === b && b.value.length === 1; })()"
+            },
+            {
+              "name": "init tidak dipanggil ulang untuk key yang ada",
+              "check": "(() => { const r = buatRequest(); let n = 0; r.useState(\"x\", () => ++n); r.useState(\"x\", () => ++n); return n === 1; })()"
+            },
+            {
+              "name": "Dua request tidak berbagi state",
+              "check": "(() => { const andi = buatRequest(); const budi = buatRequest(); andi.useState(\"nama\", () => \"Andi\"); return budi.useState(\"nama\", () => \"\").value === \"\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "mengambil-data",
+      "title": "Mengambil Data",
+      "est_minutes": 35,
+      "slide_from": 12,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Mengambil data di halaman dengan `useFetch` dan memahami kenapa data tidak diambil dua kali.\n- Membedakan `useFetch`, `useAsyncData`, dan `$fetch` beserta kapan memakai masing-masing.\n- Menampilkan keadaan memuat, gagal, dan muat ulang dengan `status`, `error`, dan `refresh`.\n- Memakai opsi `lazy`, `transform`, dan key untuk mengatur cara data diambil dan disimpan.\n\n## Masalah mengambil data saat SSR\n\nDi kelas Vue, kamu mungkin mengambil data seperti ini: buat `ref` kosong, lalu di `onMounted` panggil `fetch` dan isi `ref` itu. Di Nuxt, cara itu kurang pas. `onMounted` hanya jalan di browser, jadi HTML dari server tidak berisi data, dan manfaat SSR hilang.\n\nKalau kamu memanggil `fetch` langsung di `<script setup>`, masalah lain muncul. Kode setup jalan dua kali: sekali di server saat membuat HTML, dan sekali lagi di browser saat hidrasi. Akibatnya data diambil **dua kali**, dan tampilan bisa berkedip karena data di browser sempat kosong.\n\nNuxt menyelesaikan masalah ini dengan composable khusus. Data diambil di server, hasilnya ikut dikirim bersama HTML sebagai **payload**, lalu browser memakai payload itu saat hidrasi tanpa mengambil ulang.\n\n## useFetch\n\n`useFetch` adalah cara paling ringkas untuk mengambil data di halaman atau komponen:\n\n![Mengambil data dengan useFetch](slide:12)\n\n```vue\n<!-- app/pages/menu/index.vue -->\n<script setup lang=\"ts\">\nconst { data: menu, status, error } = await useFetch('/api/menu')\n</script>\n\n<template>\n  <p v-if=\"status === 'pending'\">Memuat menu...</p>\n  <p v-else-if=\"error\">Menu gagal dimuat.</p>\n  <ul v-else>\n    <li v-for=\"m in menu\" :key=\"m.id\">{{ m.nama }}: Rp{{ m.harga }}</li>\n  </ul>\n</template>\n```\n\nBeberapa hal penting:\n\n- `useFetch` dipanggil dengan `await` di `<script setup>`. Nuxt menunggu data selesai sebelum mengirim HTML.\n- `data` adalah ref. Di template kamu langsung memakai `menu`, di script kamu memakai `menu.value`.\n- URL yang diawali `/api/` mengarah ke server route di proyek sendiri, yang akan kamu buat di bab berikutnya. Saat dijalankan di server, Nuxt bahkan bisa memanggil handler itu langsung tanpa lewat jaringan.\n- Bila endpoint kamu ditulis dengan TypeScript, tipe data hasilnya ikut terbaca otomatis.\n\nKamu juga bisa mengirim query dengan opsi `query`, misalnya `useFetch('/api/menu', { query: { kategori: 'minuman' } })`. Bila nilai di opsi itu berupa ref, `useFetch` mengambil ulang data setiap kali nilainya berubah. Ini praktis untuk fitur filter.\n\n## useAsyncData dan $fetch\n\nNuxt punya dua alat lain yang sering membuat bingung pemula. Kita urai satu per satu.\n\n**`$fetch`** adalah fungsi untuk melakukan request HTTP, mirip `fetch` bawaan browser tapi lebih nyaman: hasil JSON langsung di-parse dan status error dilempar sebagai exception. `$fetch` sendiri **tidak** mencegah pengambilan ganda saat SSR. Karena itu `$fetch` cocok dipakai di event handler, misalnya saat tombol \"Simpan nilai\" diklik:\n\n```ts\nasync function simpanNilai() {\n  await $fetch('/api/nilai', {\n    method: 'POST',\n    body: { nis: '2024001', mapel: 'Matematika', nilai: 88 },\n  })\n}\n```\n\n**`useAsyncData`** adalah pembungkus yang memberi fitur SSR (payload, status, refresh) pada fungsi async apa pun. Kamu memberi sebuah **key** dan sebuah fungsi:\n\n```ts\nconst { data: rapor } = await useAsyncData('rapor-2024001', async () => {\n  const [nilai, absensi] = await Promise.all([\n    $fetch('/api/nilai?nis=2024001'),\n    $fetch('/api/absensi?nis=2024001'),\n  ])\n  return { nilai, absensi }\n})\n```\n\nContoh di atas menggabungkan dua request menjadi satu data. Hal seperti ini tidak bisa dilakukan `useFetch` yang hanya menerima satu URL.\n\nHubungan ketiganya bisa diringkas begini: `useFetch(url)` kira-kira sama dengan `useAsyncData(key, () => $fetch(url))`, dengan key yang dibuat otomatis dari URL dan opsinya.\n\n| Alat | Dipakai di | Fitur SSR |\n| --- | --- | --- |\n| `useFetch` | Setup halaman atau komponen, satu URL | Ya |\n| `useAsyncData` | Setup, logika ambil data bebas | Ya |\n| `$fetch` | Event handler, server route, di dalam `useAsyncData` | Tidak |\n\n## Key, cache, dan dedupe\n\nKey pada `useAsyncData` bukan sekadar label. Nuxt memakainya untuk:\n\n- Menyimpan hasil di payload supaya browser tidak mengambil ulang saat hidrasi.\n- Berbagi hasil: dua komponen yang memakai key yang sama membaca data yang sama.\n- Mencegah request ganda (dedupe): bila request dengan key yang sama sedang berjalan, Nuxt tidak membuat request baru.\n\nKarena itu, key harus **unik untuk data yang berbeda**. Kalau rapor dua siswa diberi key yang sama, salah satunya bisa menampilkan data milik siswa lain. Sertakan pembeda di key, misalnya NIS.\n\n## Status, error, dan refresh\n\nSelain `data`, `useFetch` dan `useAsyncData` mengembalikan beberapa nilai lain:\n\n- `status`: salah satu dari `'idle'`, `'pending'`, `'success'`, atau `'error'`.\n- `pending`: `true` selama data sedang diambil.\n- `error`: berisi error bila request gagal, kosong bila berhasil.\n- `refresh()`: mengambil ulang data dengan key yang sama.\n\n```vue\n<script setup lang=\"ts\">\nconst { data: absensi, error, refresh } = await useFetch('/api/absensi')\n</script>\n\n<template>\n  <div v-if=\"error\">\n    <p>Absensi gagal dimuat.</p>\n    <button @click=\"refresh()\">Coba lagi</button>\n  </div>\n  <p v-else>Hadir hari ini: {{ absensi?.hadir }}</p>\n</template>\n```\n\nPola tombol \"Coba lagi\" ini sederhana tapi sangat membantu pengguna di jaringan sekolah yang kadang putus-nyambung. `refresh()` juga berguna setelah kamu menyimpan data dengan `$fetch`: panggil `refresh()` supaya daftar di layar ikut diperbarui.\n\n## Lazy dan transform\n\nSecara bawaan, `await useFetch(...)` menahan perpindahan halaman sampai data siap. Untuk data yang tidak terlalu penting, misalnya daftar ulasan menu, kamu bisa memakai `lazy: true`:\n\n```ts\nconst { data: ulasan, status } = await useFetch('/api/ulasan', {\n  lazy: true,\n})\n```\n\nDengan `lazy`, halaman langsung tampil dan data menyusul. Konsekuensinya, `data` awalnya kosong, jadi template wajib menangani keadaan `status === 'pending'`.\n\nOpsi `transform` mengolah hasil sebelum disimpan. Ini berguna untuk memotong data yang tidak diperlukan, karena data hasil SSR ikut dikirim ke browser di payload. Makin kecil datanya, makin ringan halamannya:\n\n```ts\nconst { data: murah } = await useFetch('/api/menu', {\n  transform: (menu) => menu.filter((m) => m.harga < 10000),\n})\n```\n\nAda juga opsi `pick` untuk mengambil beberapa field saja dari objek hasil, misalnya `pick: ['nama', 'harga']`.\n\n## Contoh lengkap: halaman daftar menu\n\nMari gabungkan semuanya dalam satu halaman. Halaman ini mengambil daftar menu, menyediakan filter kategori, dan tombol untuk memuat ulang:\n\n```vue\n<script setup lang=\"ts\">\nconst kategori = ref('semua')\nconst { data: menu, status, error, refresh } = await useFetch('/api/menu', {\n  query: { kategori },\n  transform: (daftar) => daftar.map((m) => ({ id: m.id, nama: m.nama, harga: m.harga })),\n})\n</script>\n```\n\nSaat `kategori` diubah lewat `<select v-model=\"kategori\">`, `useFetch` mengambil ulang data karena `kategori` adalah ref di opsi `query`. `transform` memastikan hanya tiga field yang disimpan di payload, dan `refresh` siap dipakai di tombol \"Muat ulang\".\n\n## Rangkuman\n\n- Mengambil data langsung di setup atau di `onMounted` membuat data diambil dua kali atau tidak ikut di HTML server.\n- `useFetch(url)` mengambil data di server, mengirimnya lewat payload, dan tidak mengambil ulang saat hidrasi.\n- `useAsyncData(key, fn)` memberi fitur yang sama untuk logika ambil data bebas; `$fetch` dipakai di event handler.\n- Key dipakai untuk payload, berbagi hasil, dan dedupe, jadi harus unik per data.\n- `status`, `error`, dan `refresh()` membantu menampilkan keadaan memuat, gagal, dan muat ulang.\n- `lazy: true` menampilkan halaman tanpa menunggu data; `transform` dan `pick` memperkecil data yang disimpan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tombol \"Simpan nilai\" mengirim data ke /api/nilai saat diklik. Alat mana yang paling tepat di dalam fungsi handler klik itu?",
+          "code": "",
+          "options": [
+            "useFetch, karena selalu dipakai untuk setiap jenis request di Nuxt",
+            "useAsyncData dengan key baru setiap kali tombol diklik oleh pengguna",
+            "$fetch",
+            "useState, karena data nilai harus dibagi ke semua komponen lain"
+          ],
+          "answer": 2,
+          "explanation": "$fetch cocok untuk request yang dipicu aksi pengguna; useFetch dan useAsyncData ditujukan untuk setup komponen."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Halaman detail siswa memakai kode ini untuk setiap siswa. Apa risikonya?",
+          "code": "const route = useRoute()\nconst { data } = await useAsyncData('rapor', () =>\n  $fetch(`/api/rapor/${route.params.nis}`),\n)",
+          "options": [
+            "Key sama untuk semua siswa, data bisa tertukar",
+            "$fetch tidak boleh dipanggil di dalam fungsi yang diberikan ke useAsyncData",
+            "route.params.nis selalu kosong saat dibaca di dalam halaman dinamis",
+            "Tidak ada risiko, karena Nuxt membuat key unik otomatis dari isi fungsi"
+          ],
+          "answer": 0,
+          "explanation": "Key dipakai untuk cache dan berbagi hasil, jadi key harus memuat pembeda seperti NIS."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan opsi lazy: true, halaman tampil lebih dulu dan data awalnya bisa kosong.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "lazy tidak menahan navigasi, jadi template perlu menangani keadaan pending."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa memanggil fetch biasa langsung di <script setup> kurang tepat di Nuxt?",
+          "code": "",
+          "options": [
+            "Karena fetch bawaan browser sama sekali tidak tersedia di dalam proyek Nuxt 4",
+            "Karena Nuxt melarang kode async di dalam blok script setup sebuah halaman",
+            "Karena hasil fetch biasa otomatis dikirim dua kali ke dalam payload halaman",
+            "Data diambil di server lalu diambil lagi saat hidrasi"
+          ],
+          "answer": 3,
+          "explanation": "Kode setup jalan di server dan di browser, jadi tanpa useFetch atau useAsyncData data diambil dua kali."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Cache data dengan key ala useAsyncData",
+          "prompt": "`useAsyncData` menyimpan hasil berdasarkan key, menggabungkan request yang sama, dan bisa di-refresh. Tiru perilakunya.\n\nBuat `buatPengambil()` yang mengembalikan `{ ambil, refresh }`:\n\n- `ambil(key, fn, opsi)` mengembalikan Promise berisi `{ data, error }`.\n  - Bila key sudah pernah diambil (atau sedang diambil), kembalikan Promise yang sama tanpa memanggil `fn` lagi.\n  - Bila `opsi.transform` ada, `data` adalah `transform(hasil)`.\n  - Bila `fn` melempar error, hasilnya `{ data: null, error: pesan }` dengan `pesan` dari `error.message`. Bila berhasil, `error` bernilai `null`.\n- `refresh(key)` memanggil ulang `fn` dan `opsi` yang tersimpan untuk key itu, menyimpan Promise baru, dan mengembalikannya.\n\nAgar dua panggilan yang bersamaan ikut digabung, simpan **Promise**-nya di cache, bukan hasil akhirnya.",
+          "starter": {
+            "code": "function buatPengambil() {\n  const cache = {};\n\n  async function ambil(key, fn, opsi = {}) {\n    // TODO: pakai cache, transform, dan tangkap error\n    const data = await fn();\n    return { data, error: null };\n  }\n\n  function refresh(key) {\n    // TODO: jalankan ulang fn untuk key ini\n  }\n\n  return { ambil, refresh };\n}\n"
+          },
+          "solution": {
+            "code": "function buatPengambil() {\n  const cache = {};\n  const sumber = {};\n\n  function jalankan(key) {\n    const { fn, opsi } = sumber[key];\n    cache[key] = (async () => {\n      try {\n        const hasil = await fn();\n        const data = opsi.transform ? opsi.transform(hasil) : hasil;\n        return { data, error: null };\n      } catch (e) {\n        return { data: null, error: e.message };\n      }\n    })();\n    return cache[key];\n  }\n\n  function ambil(key, fn, opsi = {}) {\n    if (cache[key]) return cache[key];\n    sumber[key] = { fn, opsi };\n    return jalankan(key);\n  }\n\n  function refresh(key) {\n    return jalankan(key);\n  }\n\n  return { ambil, refresh };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Key sama hanya memanggil fn sekali, termasuk yang bersamaan",
+              "check": "await (async () => { let n = 0; const p = buatPengambil(); const fn = async () => { n++; return [\"nasi\"]; }; await Promise.all([p.ambil(\"menu\", fn), p.ambil(\"menu\", fn)]); await p.ambil(\"menu\", fn); return n === 1; })()"
+            },
+            {
+              "name": "Key berbeda mengambil data masing-masing",
+              "check": "await (async () => { const p = buatPengambil(); const a = await p.ambil(\"a\", async () => 1); const b = await p.ambil(\"b\", async () => 2); return a.data === 1 && b.data === 2; })()"
+            },
+            {
+              "name": "transform mengolah hasil",
+              "check": "await (async () => { const p = buatPengambil(); const r = await p.ambil(\"murah\", async () => [3000, 12000, 8000], { transform: (h) => h.filter((x) => x < 10000) }); return JSON.stringify(r) === JSON.stringify({ data: [3000, 8000], error: null }); })()"
+            },
+            {
+              "name": "Error ditangkap menjadi pesan",
+              "check": "await (async () => { const p = buatPengambil(); const r = await p.ambil(\"rusak\", async () => { throw new Error(\"server mati\"); }); return r.data === null && r.error === \"server mati\"; })()"
+            },
+            {
+              "name": "refresh memanggil fn lagi dan memperbarui cache",
+              "check": "await (async () => { let n = 0; const p = buatPengambil(); const fn = async () => ++n; await p.ambil(\"hit\", fn); const r = await p.refresh(\"hit\"); const lagi = await p.ambil(\"hit\", fn); return r.data === 2 && lagi.data === 2 && n === 2; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "server-route-dan-nitro",
+      "title": "Server Route dan Nitro",
+      "est_minutes": 30,
+      "slide_from": 16,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Membuat endpoint API di folder `server/api` dengan `defineEventHandler`.\n- Membatasi method HTTP lewat nama file seperti `.get.ts` dan `.post.ts`.\n- Membaca query, body, dan parameter route dengan `getQuery`, `readBody`, dan `getRouterParam`.\n- Mengirim error dengan kode status yang tepat memakai `createError`, dan mengenal server middleware.\n\n## Nitro, server di dalam proyek Nuxt\n\nDi bab sebelumnya kamu memanggil `/api/menu` dengan `useFetch`. Sekarang saatnya membuat endpoint itu sendiri. Di aplikasi Vue biasa, kamu perlu proyek backend terpisah. Di Nuxt, backend sudah ada di proyek yang sama, dijalankan oleh **Nitro**.\n\nNitro adalah mesin server yang dipakai Nuxt. Ia menangani request, menjalankan handler, dan saat build menyiapkan keluaran untuk berbagai tempat hosting. Nitro dibangun di atas pustaka HTTP kecil bernama **h3**. Fungsi seperti `defineEventHandler`, `getQuery`, dan `readBody` berasal dari h3 dan sudah di-import otomatis di folder `server/`.\n\nSatu hal penting: kode di `server/` hanya berjalan di server. Kode ini tidak pernah dikirim ke browser, jadi aman untuk menyimpan logika rahasia seperti koneksi database atau pemeriksaan password.\n\n## Membuat server route pertama\n\nSetiap file di `server/api` otomatis menjadi endpoint dengan awalan `/api`:\n\n![Server route di folder server/api](slide:16)\n\n```ts\n// server/api/menu.get.ts\nexport default defineEventHandler(() => {\n  return [\n    { id: 1, nama: 'Nasi goreng', harga: 12000 },\n    { id: 2, nama: 'Mi ayam', harga: 10000 },\n    { id: 3, nama: 'Es teh', harga: 3000 },\n  ]\n})\n```\n\nBuka `http://localhost:3000/api/menu` dan kamu akan melihat JSON. Aturannya:\n\n- Isi file adalah `export default defineEventHandler(...)`.\n- Nilai yang di-return dikirim ke klien. Objek dan array otomatis diubah menjadi JSON.\n- Handler boleh berupa fungsi `async`, jadi kamu bisa `await` query database di dalamnya.\n\n### Method di nama file\n\nPerhatikan akhiran `.get.ts`. Akhiran ini membatasi method HTTP yang diterima:\n\n| File | Menangani |\n| --- | --- |\n| `server/api/menu.get.ts` | `GET /api/menu` |\n| `server/api/menu.post.ts` | `POST /api/menu` |\n| `server/api/menu/[id].get.ts` | `GET /api/menu/12` |\n| `server/api/menu/[id].delete.ts` | `DELETE /api/menu/12` |\n| `server/api/info.ts` | Semua method ke `/api/info` |\n\nKalau sebuah file punya akhiran method, request dengan method lain ke URL itu tidak akan masuk ke handler tersebut. Dengan memecah file per method, setiap handler jadi pendek dan fokus pada satu tugas. Pola kurung siku untuk parameter sama persis dengan `app/pages` yang kamu pelajari di bab routing.\n\nSelain `server/api`, ada juga folder `server/routes` untuk endpoint tanpa awalan `/api`, misalnya file `sitemap.xml` buatan sendiri. Untuk kebanyakan kebutuhan, `server/api` sudah cukup.\n\n## Membaca query, body, dan parameter\n\nHandler menerima satu argumen bernama `event`. Objek ini berisi semua informasi tentang request. Kamu membacanya lewat fungsi bantu:\n\n```ts\n// server/api/absensi.get.ts\nexport default defineEventHandler((event) => {\n  const { kelas } = getQuery(event)\n  // GET /api/absensi?kelas=XI-RPL  ->  kelas = \"XI-RPL\"\n  return daftarAbsensi.filter((a) => a.kelas === kelas)\n})\n```\n\n`getQuery(event)` mengembalikan objek berisi query string. Untuk request POST, data biasanya dikirim di body sebagai JSON. Baca dengan `readBody`, yang bersifat async:\n\n```ts\n// server/api/absensi.post.ts\nexport default defineEventHandler(async (event) => {\n  const body = await readBody(event)\n  const catatan = {\n    nis: body.nis,\n    status: body.status,\n    waktu: new Date().toISOString(),\n  }\n  daftarAbsensi.push(catatan)\n  setResponseStatus(event, 201)\n  return catatan\n})\n```\n\n`setResponseStatus` mengubah kode status jawaban. Kode 201 berarti \"data baru berhasil dibuat\". Bila tidak diatur, jawaban yang berhasil memakai 200.\n\nUntuk file dengan kurung siku, parameter dibaca dengan `getRouterParam`:\n\n```ts\n// server/api/menu/[id].get.ts\nexport default defineEventHandler((event) => {\n  const id = Number(getRouterParam(event, 'id'))\n  return daftarMenu.find((m) => m.id === id)\n})\n```\n\nSama seperti di halaman, parameter dari URL selalu berupa string. Ubah dulu ke angka bila perlu.\n\nDari sisi halaman, endpoint POST tadi dipanggil dengan `$fetch('/api/absensi', { method: 'POST', body: { nis: '2024001', status: 'hadir' } })`. Body objek otomatis dikirim sebagai JSON.\n\n## Error di server\n\nBagaimana kalau `/api/menu/99` diminta tapi menu nomor 99 tidak ada? Mengembalikan `undefined` membuat klien bingung. Lebih baik lempar error dengan kode status yang jelas memakai `createError`:\n\n```ts\n// server/api/menu/[id].get.ts\nexport default defineEventHandler((event) => {\n  const id = Number(getRouterParam(event, 'id'))\n  const item = daftarMenu.find((m) => m.id === id)\n  if (!item) {\n    throw createError({\n      status: 404,\n      statusText: 'Menu tidak ditemukan',\n    })\n  }\n  return item\n})\n```\n\nKode status yang paling sering kamu pakai:\n\n- **400 Bad Request**: input dari klien salah, misalnya harga berupa teks.\n- **401 Unauthorized**: belum login.\n- **403 Forbidden**: sudah login tapi tidak punya izin.\n- **404 Not Found**: data yang diminta tidak ada.\n- **500 Internal Server Error**: ada yang rusak di server. Error yang tidak kamu tangkap otomatis menjadi 500.\n\nDi sisi halaman, error ini muncul di nilai `error` milik `useFetch`, atau dilempar sebagai exception bila kamu memakai `$fetch`. Jadi pola `v-if=\"error\"` dari bab sebelumnya langsung bekerja.\n\nJangan lupa: **selalu periksa input**. Data dari `getQuery` dan `readBody` dikirim oleh pengguna dan bisa berisi apa saja. Contoh pemeriksaan sederhana:\n\n```ts\nconst body = await readBody(event)\nif (typeof body?.nama !== 'string' || typeof body?.harga !== 'number') {\n  throw createError({ status: 400, statusText: 'Data menu tidak lengkap' })\n}\n```\n\n## Server middleware\n\nFile di `server/middleware` dijalankan pada **setiap** request sebelum handler di `server/api`. Ini cocok untuk mencatat log atau menempelkan informasi ke `event`:\n\n```ts\n// server/middleware/log.ts\nexport default defineEventHandler((event) => {\n  console.log(`${event.method} ${event.path}`)\n})\n```\n\nServer middleware sebaiknya tidak me-return apa pun. Bila ia me-return nilai, request dianggap selesai dan handler aslinya tidak dijalankan. Jangan tertukar dengan route middleware di `app/middleware` yang menjaga perpindahan halaman; itu dibahas di bab autentikasi.\n\n## Menghubungkan endpoint dengan halaman\n\nSekarang kamu punya dua sisi yang lengkap. Alurnya untuk fitur absensi:\n\n1. Halaman `app/pages/absensi.vue` memanggil `useFetch('/api/absensi', { query: { kelas } })` untuk menampilkan daftar.\n2. Nitro menjalankan `server/api/absensi.get.ts` dan mengembalikan array absensi.\n3. Saat siswa menekan \"Hadir\", halaman memanggil `$fetch` dengan method POST ke `/api/absensi`.\n4. Nitro menjalankan `server/api/absensi.post.ts`, memeriksa body, lalu menyimpan data.\n5. Halaman memanggil `refresh()` supaya daftar di layar ikut diperbarui.\n\nDalam contoh bab ini data disimpan di array `daftarAbsensi` di memori server. Array seperti itu hilang setiap kali server dimatikan, jadi hanya cocok untuk latihan. Di aplikasi sungguhan, handler akan membaca dan menulis ke database.\n\n## Rangkuman\n\n- Nitro adalah server bawaan Nuxt; kode di `server/` hanya berjalan di server.\n- File di `server/api` menjadi endpoint `/api/...` dan berisi `export default defineEventHandler(...)`.\n- Akhiran `.get.ts`, `.post.ts`, dan lainnya membatasi method; `[id]` di nama file menjadi parameter.\n- `getQuery(event)` membaca query, `await readBody(event)` membaca body, `getRouterParam(event, 'id')` membaca parameter.\n- `throw createError({ status, statusText })` mengirim error dengan kode status yang jelas; selalu periksa input.\n- `server/middleware` berjalan di setiap request dan sebaiknya tidak me-return nilai.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "File mana yang menangani request POST ke /api/pesanan?",
+          "code": "",
+          "options": [
+            "app/pages/api/pesanan.post.vue",
+            "server/middleware/pesanan.post.ts",
+            "server/api/pesanan.post.ts",
+            "server/api/post/pesanan.ts"
+          ],
+          "answer": 2,
+          "explanation": "Endpoint ada di server/api, dan akhiran .post.ts membatasi handler ke method POST."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Klien memanggil GET /api/siswa?kelas=XII. Apa isi jawaban dari handler ini?",
+          "code": "// server/api/siswa.get.ts\nexport default defineEventHandler((event) => {\n  const { kelas } = getQuery(event)\n  return { kelas, jumlah: 32 }\n})",
+          "options": [
+            "{ \"kelas\": \"XII\", \"jumlah\": 32 }",
+            "Error 405 karena query string tidak boleh dikirim lewat request GET",
+            "{ \"kelas\": undefined, \"jumlah\": 32 } karena query perlu readBody",
+            "Halaman HTML berisi teks XII dan 32 yang dirender universal"
+          ],
+          "answer": 0,
+          "explanation": "getQuery membaca query string, jadi kelas bernilai \"XII\" dan objek dikirim sebagai JSON."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kode di folder server/ ikut dikirim ke browser sehingga tidak aman untuk menyimpan logika rahasia.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Kode di server/ hanya berjalan di server dan tidak dikirim ke browser."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Menu dengan id yang diminta tidak ada di daftar. Cara yang paling tepat di handler adalah...",
+          "code": "",
+          "options": [
+            "Return string kosong supaya klien tahu bahwa datanya tidak ditemukan",
+            "Lempar createError dengan status 404",
+            "Panggil navigateTo('/404') dari dalam handler agar pengguna dialihkan",
+            "Return objek { ok: false } dengan status 200 supaya halaman tetap tampil"
+          ],
+          "answer": 1,
+          "explanation": "createError dengan status 404 memberi tahu klien dengan jelas bahwa data tidak ada."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Server route mini ala Nitro",
+          "prompt": "Nitro memilih handler dari nama file di `server/api` lalu mengubah hasilnya menjadi jawaban HTTP. Tiru proses itu.\n\nBuat `buatServer(handlers)` yang mengembalikan fungsi async `panggil(method, path, opsi)`.\n\n- `handlers` adalah objek dengan key nama file relatif terhadap `server/api`, misalnya `\"menu.get.ts\"`, `\"menu.post.ts\"`, atau `\"info.ts\"` (semua method).\n- `path` selalu diawali `/api/`, misalnya `\"/api/menu\"`. `opsi` boleh berisi `query` dan `body`.\n\nAturan `panggil`:\n\n1. Ambil nama setelah `/api/`. Cari handler `nama.<method huruf kecil>.ts`, bila tidak ada cari `nama.ts`.\n2. Bila tidak ketemu: kembalikan `{ status: 405, body: { message: \"Method Not Allowed\" } }` jika ada file lain yang diawali `nama.`, selain itu `{ status: 404, body: { message: \"Not Found\" } }`.\n3. Panggil handler dengan `event = { method, query: opsi.query || {}, body: opsi.body }`, tunggu hasilnya, lalu kembalikan `{ status: 200, body: hasil }`.\n4. Bila handler melempar error yang punya `status`, kembalikan `{ status, body: { message: statusText } }`. Error lain menjadi `{ status: 500, body: { message: \"Internal Server Error\" } }`.\n\n`createError`, `getQuery`, dan `readBody` versi mini sudah disediakan.",
+          "starter": {
+            "code": "function buatServer(handlers) {\n  return async function panggil(method, path, opsi = {}) {\n    const nama = path.slice(\"/api/\".length);\n    const handler = handlers[nama + \".\" + method.toLowerCase() + \".ts\"];\n    // TODO: cari nama.ts, bedakan 404 dan 405, tangkap error\n    const hasil = await handler({ method, query: opsi.query || {}, body: opsi.body });\n    return { status: 200, body: hasil };\n  };\n}\n"
+          },
+          "solution": {
+            "code": "function buatServer(handlers) {\n  return async function panggil(method, path, opsi = {}) {\n    const nama = path.slice(\"/api/\".length);\n    const handler = handlers[nama + \".\" + method.toLowerCase() + \".ts\"] || handlers[nama + \".ts\"];\n    if (!handler) {\n      const ada = Object.keys(handlers).some((k) => k.startsWith(nama + \".\"));\n      return ada\n        ? { status: 405, body: { message: \"Method Not Allowed\" } }\n        : { status: 404, body: { message: \"Not Found\" } };\n    }\n    try {\n      const hasil = await handler({ method, query: opsi.query || {}, body: opsi.body });\n      return { status: 200, body: hasil };\n    } catch (e) {\n      if (e && e.status) return { status: e.status, body: { message: e.statusText } };\n      return { status: 500, body: { message: \"Internal Server Error\" } };\n    }\n  };\n}\n"
+          },
+          "setup": "function createError(o) { const e = new Error(o.statusText); e.status = o.status; e.statusText = o.statusText; return e; }\nfunction getQuery(event) { return event.query; }\nasync function readBody(event) { return event.body; }\nconst MENU = [{ id: 1, nama: \"Nasi goreng\" }, { id: 2, nama: \"Es teh\" }];\nconst HANDLERS = {\n  \"menu.get.ts\": (event) => MENU.filter((m) => !getQuery(event).cari || m.nama.includes(getQuery(event).cari)),\n  \"menu.post.ts\": async (event) => { const b = await readBody(event); if (!b || !b.nama) throw createError({ status: 400, statusText: \"Nama wajib diisi\" }); return { id: 3, nama: b.nama }; },\n  \"info.ts\": (event) => ({ method: event.method }),\n  \"rusak.get.ts\": () => { throw new Error(\"koneksi putus\"); },\n};",
+          "tests": [
+            {
+              "name": "GET memakai handler .get.ts dan membaca query",
+              "check": "await (async () => { const r = await buatServer(HANDLERS)(\"GET\", \"/api/menu\", { query: { cari: \"teh\" } }); return r.status === 200 && r.body.length === 1 && r.body[0].nama === \"Es teh\"; })()"
+            },
+            {
+              "name": "POST memakai handler .post.ts dan membaca body",
+              "check": "await (async () => { const r = await buatServer(HANDLERS)(\"POST\", \"/api/menu\", { body: { nama: \"Mi ayam\" } }); return JSON.stringify(r) === JSON.stringify({ status: 200, body: { id: 3, nama: \"Mi ayam\" } }); })()"
+            },
+            {
+              "name": "File tanpa method menerima semua method",
+              "check": "await (async () => { const r = await buatServer(HANDLERS)(\"DELETE\", \"/api/info\"); return r.status === 200 && r.body.method === \"DELETE\"; })()"
+            },
+            {
+              "name": "createError menjadi status dan pesan",
+              "check": "await (async () => { const r = await buatServer(HANDLERS)(\"POST\", \"/api/menu\", { body: {} }); return r.status === 400 && r.body.message === \"Nama wajib diisi\"; })()"
+            },
+            {
+              "name": "Membedakan 404, 405, dan 500",
+              "check": "await (async () => { const p = buatServer(HANDLERS); const a = await p(\"GET\", \"/api/nilai\"); const b = await p(\"PUT\", \"/api/menu\"); const c = await p(\"GET\", \"/api/rusak\"); return a.status === 404 && b.status === 405 && c.status === 500 && c.body.message === \"Internal Server Error\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "middleware-dan-autentikasi",
+      "title": "Middleware dan Autentikasi",
+      "est_minutes": 30,
+      "slide_from": 19,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Menulis route middleware dengan `defineNuxtRouteMiddleware` dan `navigateTo`.\n- Membedakan middleware bernama, middleware global, dan middleware inline.\n- Menyimpan sesi login di cookie dengan `useCookie` dan helper cookie di server.\n- Melindungi halaman sekaligus API, bukan hanya salah satunya.\n\n## Masalah: halaman khusus guru\n\nBayangkan aplikasi nilai rapor sekolah. Halaman depan dan halaman pengumuman boleh dibuka siapa saja. Tapi halaman `/nilai` yang berisi nilai semua siswa hanya boleh dibuka guru yang sudah masuk. Kalau orang yang belum login mengetik `/nilai` di browser, dia harus dibelokkan ke `/masuk`.\n\nUntuk itu kamu butuh tiga hal: tempat untuk mencegat perpindahan halaman sebelum halaman dirender, cara menyimpan tanda bahwa pengguna sudah login, dan pemeriksaan ulang di server tempat data diambil. Nuxt menyediakan route middleware, cookie, dan server route untuk ketiganya.\n\n## Route middleware\n\nRoute middleware adalah fungsi yang dijalankan Nuxt **sebelum** pindah ke sebuah halaman. File-nya diletakkan di folder `app/middleware`. Nama file menjadi nama middleware.\n\n```ts\n// app/middleware/auth.ts\nexport default defineNuxtRouteMiddleware((to, from) => {\n  const sesi = useCookie(\"sesi\");\n  if (!sesi.value) {\n    return navigateTo(\"/masuk\");\n  }\n});\n```\n\nFungsi ini menerima dua argumen: `to` (route tujuan) dan `from` (route asal). Keduanya berisi data seperti `path`, `params`, `query`, dan `meta`. Yang menentukan nasib perpindahan halaman adalah nilai yang dikembalikan:\n\n- Tidak mengembalikan apa-apa: perpindahan lanjut seperti biasa.\n- `return navigateTo(\"/masuk\")`: pengguna dibelokkan ke halaman lain.\n- `return abortNavigation()`: perpindahan dibatalkan, bisa juga dengan pesan error.\n\nPerhatikan kata `return`. Memanggil `navigateTo` tanpa `return` di dalam middleware adalah kesalahan yang sering terjadi, karena Nuxt tidak tahu kamu ingin membelokkan perpindahan.\n\nMiddleware bernama baru aktif setelah dipasang di halaman lewat `definePageMeta`:\n\n```vue\n<!-- app/pages/nilai.vue -->\n<script setup lang=\"ts\">\ndefinePageMeta({\n  middleware: \"auth\",\n});\n</script>\n\n<template>\n  <h1>Rekap nilai kelas XI RPL</h1>\n</template>\n```\n\nBila butuh lebih dari satu, tulis sebagai array, misalnya `middleware: [\"auth\", \"khusus-wali-kelas\"]`. Urutan di array adalah urutan jalannya.\n\nSatu hal penting: route middleware berjalan di dua tempat. Saat halaman pertama kali dibuka, middleware dijalankan di server sebelum HTML dirender. Setelah itu, setiap kali pengguna pindah halaman lewat `NuxtLink`, middleware dijalankan di browser. Jadi kode di dalamnya harus aman untuk kedua lingkungan.\n\n## Tiga jenis middleware\n\nNuxt mengenal tiga cara menulis route middleware:\n\n| Jenis | Cara menulis | Kapan jalan |\n| --- | --- | --- |\n| Bernama | `app/middleware/auth.ts` | Hanya di halaman yang memasangnya lewat `definePageMeta` |\n| Global | `app/middleware/log.global.ts` | Setiap kali pindah halaman, otomatis |\n| Inline | Fungsi langsung di `definePageMeta` | Hanya di halaman itu |\n\nMiddleware global cocok untuk aturan yang berlaku hampir di semua halaman. Akhiran `.global` di nama file membuatnya otomatis jalan. Kalau ada beberapa middleware global, Nuxt menjalankannya urut berdasarkan nama file, jadi kamu bisa memberi awalan angka seperti `01.auth.global.ts` dan `02.log.global.ts` untuk mengatur urutan. Middleware global selalu jalan lebih dulu, baru kemudian middleware bernama dari halaman.\n\nContoh middleware global yang melindungi semua halaman kecuali yang publik:\n\n```ts\n// app/middleware/01.auth.global.ts\nconst PUBLIK = [\"/\", \"/masuk\", \"/pengumuman\"];\n\nexport default defineNuxtRouteMiddleware((to) => {\n  if (PUBLIK.includes(to.path)) return;\n  const sesi = useCookie(\"sesi\");\n  if (!sesi.value) {\n    return navigateTo({ path: \"/masuk\", query: { dari: to.fullPath } });\n  }\n});\n```\n\nPerhatikan pengecualian untuk `/masuk`. Tanpa itu, pengguna yang belum login dibelokkan ke `/masuk`, middleware jalan lagi untuk `/masuk`, lalu dibelokkan lagi ke `/masuk`, dan seterusnya. Ini jebakan klasik middleware global. Query `dari` menyimpan halaman tujuan awal supaya setelah login pengguna bisa dikembalikan ke sana.\n\n![Melindungi halaman dengan middleware](slide:21)\n\n## Cookie dengan useCookie\n\n`useCookie` adalah composable untuk membaca dan menulis cookie. Hasilnya berupa ref, jadi kamu memakai `.value`. Ia bekerja di server (membaca cookie dari request) dan di browser.\n\n```ts\nconst tema = useCookie(\"tema\", {\n  default: () => \"terang\",\n  maxAge: 60 * 60 * 24 * 30, // 30 hari, dalam detik\n});\n\ntema.value = \"gelap\"; // cookie ikut diperbarui\n```\n\nCookie seperti `tema` aman ditulis dari browser karena isinya tidak rahasia. Token sesi berbeda. Token sesi sebaiknya memakai atribut `httpOnly`, yang membuat cookie tidak bisa dibaca JavaScript di browser. Tujuannya: bila ada script jahat yang menyusup ke halaman, token tetap tidak bisa dicuri. Konsekuensinya, cookie `httpOnly` harus dipasang dari server.\n\n## Login lewat server route\n\nForm masuk mengirim email dan sandi ke server route. Di sana, helper `setCookie` dari h3 (pustaka HTTP yang dipakai Nitro) memasang cookie sesi:\n\n```ts\n// server/api/masuk.post.ts\nexport default defineEventHandler(async (event) => {\n  const { email, sandi } = await readBody(event);\n  const guru = await cariGuru(email, sandi); // fungsi milikmu\n  if (!guru) {\n    throw createError({ status: 401, statusText: \"Email atau sandi salah\" });\n  }\n  setCookie(event, \"sesi\", buatToken(guru.id), {\n    httpOnly: true,\n    secure: true,\n    sameSite: \"lax\",\n    maxAge: 60 * 60 * 8,\n  });\n  return { ok: true };\n});\n```\n\nDi halaman `/masuk`, kamu memanggilnya dengan `await $fetch(\"/api/masuk\", { method: \"POST\", body: { email, sandi } })`, lalu `navigateTo(route.query.dari || \"/nilai\")`. Untuk keluar, buat server route yang memanggil `deleteCookie(event, \"sesi\")`.\n\nKarena cookie `httpOnly` tidak terbaca di browser, middleware yang berjalan di browser tidak bisa lagi mengandalkan `useCookie(\"sesi\")`. Pola yang umum: simpan data pengguna di state bersama, lalu isi dari endpoint seperti `/api/saya` yang membaca cookie di server. Banyak proyek tidak menulis semua ini dari nol, tapi memakai modul autentikasi komunitas seperti `nuxt-auth-utils` yang sudah mengurus cookie sesi terenkripsi. Konsepnya tetap sama dengan yang kamu pelajari di sini.\n\n## Melindungi API, bukan hanya halaman\n\nRoute middleware hanya menjaga perpindahan halaman. Ia **tidak** menjaga server route. Siapa pun bisa memanggil `/api/nilai` langsung lewat `curl` atau tab baru, melewati semua middleware di folder `app`. Jadi setiap server route yang menyentuh data sensitif harus memeriksa sesi sendiri:\n\n```ts\n// server/api/nilai.get.ts\nexport default defineEventHandler((event) => {\n  const token = getCookie(event, \"sesi\");\n  const guru = token ? cekToken(token) : null;\n  if (!guru) {\n    throw createError({ status: 401, statusText: \"Belum masuk\" });\n  }\n  return ambilNilaiKelas(guru.kelas);\n});\n```\n\nBila banyak endpoint butuh pemeriksaan yang sama, pindahkan ke server middleware di `server/middleware/`. Ingat perbedaannya: server middleware berjalan untuk setiap request ke server Nitro (termasuk API), sedangkan route middleware di `app/middleware` berjalan saat pindah halaman di aplikasi Vue. Server middleware biasanya hanya membaca sesi dan menaruh hasilnya di `event.context`, lalu setiap handler memutuskan sendiri apakah boleh lanjut.\n\nPrinsip amannya sederhana: middleware halaman memberi pengalaman yang enak (pengguna langsung dibelokkan ke halaman masuk), sedangkan pemeriksaan di server memberi keamanan yang sesungguhnya. Kamu butuh keduanya.\n\n## Rangkuman\n\n- Route middleware ditulis dengan `defineNuxtRouteMiddleware((to, from) => ...)` di `app/middleware`, dan membelokkan pengguna lewat `return navigateTo(...)`.\n- Middleware bernama dipasang lewat `definePageMeta({ middleware })`, middleware `.global` jalan di setiap perpindahan, dan middleware inline ditulis langsung di halaman.\n- Middleware global yang membelokkan ke `/masuk` wajib mengecualikan `/masuk` supaya tidak berputar terus.\n- `useCookie` cocok untuk cookie biasa; token sesi dipasang dari server dengan `setCookie` dan atribut `httpOnly`.\n- Server route tetap harus memeriksa sesi sendiri, karena route middleware tidak menjaga API.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang harus ditulis di route middleware supaya pengguna dibelokkan ke /masuk?",
+          "code": "",
+          "options": [
+            "Memanggil navigateTo(\"/masuk\") tanpa return",
+            "return navigateTo(\"/masuk\")",
+            "Mengubah nilai to.path menjadi \"/masuk\"",
+            "Melempar createError dengan statusCode 302"
+          ],
+          "answer": 1,
+          "explanation": "Nuxt hanya membelokkan perpindahan bila middleware mengembalikan hasil navigateTo. Tanpa return, perpindahan tetap lanjut."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kapan middleware di file ini dijalankan?",
+          "code": "// app/middleware/log.global.ts\nexport default defineNuxtRouteMiddleware((to) => {\n  console.log(\"Menuju\", to.path);\n});",
+          "options": [
+            "Hanya di halaman yang menulis middleware: \"log\"",
+            "Setiap kali pindah halaman, tanpa perlu dipasang",
+            "Hanya saat ada request ke folder server/api",
+            "Hanya sekali ketika server Nitro pertama kali menyala"
+          ],
+          "answer": 1,
+          "explanation": "Akhiran .global membuat middleware otomatis jalan di setiap perpindahan halaman."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Route middleware di folder app/middleware juga menjaga server route di server/api.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Route middleware hanya berjalan saat pindah halaman. Server route harus memeriksa sesi sendiri."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa token sesi sebaiknya disimpan di cookie httpOnly?",
+          "code": "",
+          "options": [
+            "Supaya tidak bisa dibaca JavaScript di browser",
+            "Supaya cookie terhapus setiap kali halaman dimuat ulang",
+            "Supaya ukuran cookie lebih kecil dan request lebih cepat",
+            "Supaya middleware di browser bisa membacanya lebih mudah"
+          ],
+          "answer": 0,
+          "explanation": "Cookie httpOnly tidak bisa diakses JavaScript, jadi token tidak bisa dicuri script jahat yang menyusup ke halaman."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Middleware auth mini",
+          "prompt": "Tiru route middleware `auth` tanpa Nuxt. Route tujuan disederhanakan menjadi `{ path, meta }` dan cookie menjadi objek biasa seperti `{ sesi: \"abc\" }`.\n\nTulis `authMiddleware(to, cookies)` yang mengembalikan:\n\n- `{ redirect: \"/masuk?dari=\" + to.path }` bila `to.meta.auth` bernilai `true` dan cookie `sesi` tidak ada atau string kosong.\n- `{ redirect: \"/nilai\" }` bila pengguna yang sudah punya sesi membuka `/masuk`.\n- `undefined` (tidak mengembalikan apa-apa) untuk selain itu, artinya perpindahan lanjut.\n\nObjek `{ redirect }` di sini menggantikan `return navigateTo(...)` pada middleware asli, dan `undefined` sama dengan middleware yang tidak mengembalikan apa-apa.",
+          "starter": {
+            "code": "function authMiddleware(to, cookies) {\n  // TODO: halaman dengan meta.auth butuh cookie sesi\n  // TODO: pengguna yang sudah masuk tidak perlu membuka /masuk lagi\n  return undefined;\n}\n"
+          },
+          "solution": {
+            "code": "function authMiddleware(to, cookies) {\n  const sesi = cookies && cookies.sesi;\n  const butuhLogin = Boolean(to.meta && to.meta.auth === true);\n  if (butuhLogin && !sesi) return { redirect: \"/masuk?dari=\" + to.path };\n  if (to.path === \"/masuk\" && sesi) return { redirect: \"/nilai\" };\n  return undefined;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Halaman publik lanjut tanpa redirect",
+              "check": "authMiddleware({ path: \"/\", meta: {} }, {}) === undefined"
+            },
+            {
+              "name": "Halaman terlindungi tanpa sesi dibelokkan",
+              "check": "JSON.stringify(authMiddleware({ path: \"/nilai\", meta: { auth: true } }, {})) === JSON.stringify({ redirect: \"/masuk?dari=/nilai\" })"
+            },
+            {
+              "name": "Halaman terlindungi dengan sesi lanjut",
+              "check": "authMiddleware({ path: \"/nilai\", meta: { auth: true } }, { sesi: \"t0k3n\" }) === undefined"
+            },
+            {
+              "name": "Sesi kosong dianggap belum masuk",
+              "check": "authMiddleware({ path: \"/rapor/12\", meta: { auth: true } }, { sesi: \"\" }).redirect === \"/masuk?dari=/rapor/12\""
+            },
+            {
+              "name": "Sudah masuk membuka /masuk dibelokkan ke /nilai",
+              "check": "authMiddleware({ path: \"/masuk\", meta: {} }, { sesi: \"t0k3n\" }).redirect === \"/nilai\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "seo-dan-rendering",
+      "title": "SEO dan Rendering",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Mengisi judul dan meta tag halaman dengan `useHead` dan `useSeoMeta`.\n- Mengatur cara setiap route dirender dengan `routeRules`.\n- Memahami hidrasi dan penyebab hydration mismatch.\n- Memakai `<ClientOnly>` untuk bagian yang hanya bisa jalan di browser.\n\n## Kenapa SEO dan rendering dibahas bersama\n\nMisalkan perpustakaan sekolahmu punya katalog buku online. Kamu ingin dua hal: halaman buku muncul di hasil pencarian Google, dan saat link buku dibagikan di grup WhatsApp kelas, muncul pratinjau berisi judul, deskripsi, dan gambar sampul.\n\nKeduanya bergantung pada HTML yang dikirim server. Mesin pencari dan aplikasi chat membaca tag `<title>` dan `<meta>` di HTML. Karena Nuxt secara bawaan merender halaman di server (mode universal), HTML yang diterima sudah berisi teks dan meta tag lengkap, bukan halaman kosong yang menunggu JavaScript. Itulah kenapa SEO dan cara render saling terkait.\n\n## useHead\n\n`useHead` mengatur isi `<head>` dari dalam komponen. Composable ini otomatis tersedia, tanpa import.\n\n```vue\n<!-- app/pages/buku/[id].vue -->\n<script setup lang=\"ts\">\nconst route = useRoute();\nconst { data: buku } = await useFetch(`/api/buku/${route.params.id}`);\n\nuseHead({\n  title: () => buku.value?.judul ?? \"Buku\",\n  htmlAttrs: { lang: \"id\" },\n  link: [{ rel: \"icon\", href: \"/favicon.ico\" }],\n});\n</script>\n```\n\nPerhatikan `title` ditulis sebagai fungsi. Dengan begitu judul ikut berubah bila data berubah. Kamu juga bisa memberi ref atau computed.\n\nSupaya semua halaman punya akhiran nama situs yang sama, pakai `titleTemplate`, biasanya di `app.vue`:\n\n```ts\nuseHead({\n  titleTemplate: (judul) =>\n    judul ? `${judul} - Perpustakaan SMK Nusantara` : \"Perpustakaan SMK Nusantara\",\n});\n```\n\nHalaman yang menulis `title: \"Laskar Pelangi\"` akan menghasilkan judul tab \"Laskar Pelangi - Perpustakaan SMK Nusantara\".\n\n## useSeoMeta\n\nMenulis meta tag lewat `useHead` berarti menulis array objek `{ name, content }` atau `{ property, content }`, dan gampang salah ketik. `useSeoMeta` lebih nyaman karena setiap meta tag menjadi properti biasa yang sudah punya tipe:\n\n```ts\nuseSeoMeta({\n  title: () => buku.value?.judul,\n  description: () => buku.value?.sinopsis,\n  ogTitle: () => buku.value?.judul,\n  ogDescription: () => buku.value?.sinopsis,\n  ogImage: () => buku.value?.sampul,\n  twitterCard: \"summary_large_image\",\n});\n```\n\nProperti `og...` menjadi tag Open Graph yang dibaca WhatsApp, Facebook, dan aplikasi lain untuk membuat pratinjau link. Salah ketik nama properti akan ditandai editor, karena tipenya diketahui.\n\nAturan praktis: pakai `useSeoMeta` untuk meta tag SEO dan media sosial, pakai `useHead` untuk hal lain di `<head>` seperti `link`, `script`, atau atribut `html`.\n\n## routeRules: aturan render per route\n\nMode universal bawaan berarti setiap request dirender di server lalu dihidrasi di browser. Itu pilihan yang baik untuk umum, tapi tidak semua halaman butuh perlakuan sama. Halaman \"Tentang\" jarang berubah, katalog buku berubah beberapa kali sehari, sedangkan panel admin tidak perlu SEO sama sekali.\n\n`routeRules` di `nuxt.config.ts` mengatur ini per pola route:\n\n```ts\n// nuxt.config.ts\nexport default defineNuxtConfig({\n  routeRules: {\n    \"/\": { prerender: true },\n    \"/tentang\": { prerender: true },\n    \"/buku/**\": { swr: 3600 },\n    \"/admin/**\": { ssr: false },\n    \"/katalog-lama\": { redirect: \"/buku\" },\n  },\n});\n```\n\nArtinya:\n\n- `prerender: true`: halaman dirender sekali saat build menjadi file HTML statis. Sangat cepat, tapi isinya baru berubah saat build ulang.\n- `swr: 3600`: hasil render disimpan di cache server selama 3600 detik. Request berikutnya mendapat versi cache, dan setelah kedaluwarsa Nuxt merender ulang di latar belakang. Nama ini dari pola stale-while-revalidate.\n- `ssr: false`: route dirender hanya di browser, seperti aplikasi SPA biasa. Server mengirim HTML kosong plus JavaScript.\n- `redirect`: membelokkan route ke alamat lain.\n\nPola `**` berarti route itu dan semua route di bawahnya. Bila sebuah path cocok dengan beberapa pola, aturannya digabung, dan pola yang lebih spesifik menang untuk opsi yang sama. Ada juga opsi lain seperti `headers` dan `cors`, serta `isr` yang memanfaatkan cache platform seperti Vercel dan Netlify.\n\nHebatnya, satu aplikasi bisa memakai semua mode sekaligus. Kamu tidak perlu memilih antara \"situs statis\" dan \"aplikasi server\" untuk seluruh proyek.\n\n![routeRules mengatur render per route](slide:23)\n\n## Memilih mode untuk setiap halaman\n\nBingung memilih? Pakai pertanyaan sederhana berikut untuk setiap kelompok halaman di katalog perpustakaan:\n\n| Halaman | Seberapa sering berubah | Perlu SEO? | Pilihan |\n| --- | --- | --- | --- |\n| Beranda, Tentang | Jarang | Ya | `prerender: true` |\n| Detail buku | Beberapa kali sehari | Ya | `swr` dengan waktu cache |\n| Status pinjaman siswa | Setiap request, beda per orang | Tidak | SSR biasa atau `ssr: false` |\n| Panel admin | Sering | Tidak | `ssr: false` |\n\nHalaman yang isinya berbeda untuk setiap pengguna, seperti daftar pinjaman milik siswa yang sedang login, jangan diberi cache `swr` atau `prerender`. Cache itu dibagi ke semua pengunjung, jadi data milik satu siswa bisa terlihat oleh siswa lain. Untuk halaman pribadi, biarkan dirender per request.\n\n## Hidrasi\n\nSaat halaman dirender di server, browser menerima HTML yang sudah jadi. Pengguna bisa langsung membaca isinya, tapi tombol belum bisa diklik karena Vue belum berjalan. Setelah JavaScript termuat, Vue merender ulang komponen di browser dan mencocokkannya dengan HTML yang sudah ada, lalu memasang event listener. Proses \"menghidupkan\" HTML statis ini disebut **hidrasi**.\n\nHidrasi mengandaikan hasil render di server dan di browser sama persis. Bila berbeda, Vue memberi peringatan hydration mismatch di console, dan tampilan bisa berkedip atau salah. Penyebab yang sering muncul:\n\n- Memakai `Date.now()` atau `new Date()` langsung di template. Jam server dan jam browser berbeda.\n- Memakai `Math.random()` saat render.\n- Membaca `window`, `localStorage`, atau ukuran layar saat render. Di server, objek itu tidak ada sama sekali.\n\nCara memperbaikinya: hitung nilai seperti itu di `onMounted` (yang hanya jalan di browser), simpan hasil hitungan server di `useState` supaya browser memakai nilai yang sama, atau bungkus bagian itu dengan `<ClientOnly>`.\n\n## ClientOnly\n\nKomponen `<ClientOnly>` membuat isinya hanya dirender di browser. Di server, yang dirender adalah slot `fallback` bila ada.\n\n```vue\n<template>\n  <h1>Peminjaman saya</h1>\n  <ClientOnly>\n    <GrafikPeminjaman />\n    <template #fallback>\n      <p>Memuat grafik...</p>\n    </template>\n  </ClientOnly>\n</template>\n```\n\nIni cocok untuk pustaka grafik atau peta yang langsung membaca `window`. Cara lain: beri akhiran `.client.vue` pada file komponen, misalnya `GrafikPeminjaman.client.vue`, maka komponen itu otomatis hanya dirender di browser. Di dalam kode, kamu juga bisa memeriksa `import.meta.client` atau `import.meta.server` untuk menjalankan cabang yang berbeda.\n\nJangan membungkus semua hal dengan `<ClientOnly>`. Isi di dalamnya tidak ada di HTML server, jadi tidak terbaca mesin pencari. Pakai hanya untuk bagian yang memang tidak bisa dirender di server.\n\n## Rangkuman\n\n- `useHead` mengatur isi `<head>`, dan `titleTemplate` memberi akhiran judul yang sama untuk semua halaman.\n- `useSeoMeta` menulis meta SEO dan Open Graph sebagai properti bertipe, cocok untuk pratinjau link.\n- `routeRules` mengatur render per pola route: `prerender`, `swr`, `ssr: false`, dan `redirect`.\n- Hidrasi menghidupkan HTML dari server, dan memberi peringatan mismatch bila hasil render server dan browser berbeda.\n- `<ClientOnly>` dan akhiran `.client.vue` dipakai untuk bagian yang hanya bisa jalan di browser.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Composable mana yang paling nyaman untuk mengisi meta tag Open Graph seperti ogTitle dan ogImage?",
+          "code": "",
+          "options": [
+            "useRuntimeConfig dengan kunci og",
+            "definePageMeta di setiap halaman",
+            "useState dengan nama seo-meta",
+            "useSeoMeta"
+          ],
+          "answer": 3,
+          "explanation": "useSeoMeta menulis meta tag SEO dan Open Graph sebagai properti bertipe, sehingga salah ketik mudah ketahuan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa arti aturan untuk /buku/** pada konfigurasi ini?",
+          "code": "routeRules: {\n  \"/\": { prerender: true },\n  \"/buku/**\": { swr: 3600 },\n  \"/admin/**\": { ssr: false },\n}",
+          "options": [
+            "Halaman buku dirender sekali saat build lalu isinya tidak pernah berubah lagi",
+            "Hasil render di-cache di server dan diperbarui di latar belakang",
+            "Halaman buku hanya dirender di browser seperti aplikasi SPA biasa",
+            "Halaman buku dibelokkan ke alamat lain setiap 3600 detik sekali"
+          ],
+          "answer": 1,
+          "explanation": "swr menyimpan hasil render di cache server selama waktu yang ditentukan, lalu merender ulang di latar belakang setelah kedaluwarsa."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mana yang paling mungkin menyebabkan hydration mismatch?",
+          "code": "",
+          "options": [
+            "Memakai useFetch untuk mengambil daftar buku dari server",
+            "Menulis judul halaman dengan useHead dan titleTemplate",
+            "Menampilkan Date.now() langsung di template",
+            "Membungkus komponen grafik dengan ClientOnly dan fallback"
+          ],
+          "answer": 2,
+          "explanation": "Waktu di server dan di browser berbeda, sehingga HTML hasil render keduanya tidak sama."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Satu aplikasi Nuxt bisa memakai prerender untuk sebagian route dan SSR biasa untuk route lain.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "routeRules mengatur mode render per pola route, jadi beberapa mode bisa dipakai sekaligus."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Mencari aturan route",
+          "prompt": "Tiru cara Nuxt mencari `routeRules` untuk sebuah path. `rules` berupa objek seperti di `nuxt.config.ts`:\n\n```js\n{ \"/\": { prerender: true }, \"/buku/**\": { swr: 3600 }, \"/admin/**\": { ssr: false } }\n```\n\nTulis `aturanRoute(rules, path)` yang mengembalikan gabungan semua aturan yang cocok:\n\n- Pola tanpa `**` cocok bila sama persis dengan path.\n- Pola berakhiran `/**` cocok dengan path dasarnya dan semua path di bawahnya. `/admin/**` cocok dengan `/admin` dan `/admin/nilai`, tapi tidak dengan `/adminku`. Pola `/**` cocok dengan semua path.\n- Bila beberapa pola cocok, gabungkan aturannya. Pola yang lebih panjang (lebih spesifik) menimpa opsi yang sama dari pola yang lebih pendek.\n- Jangan mengubah objek `rules`. Bila tidak ada yang cocok, kembalikan `{}`.\n\nMembandingkan panjang pola adalah penyederhanaan dari cara Nitro mengurutkan aturan, tapi hasilnya sama untuk contoh di sini.",
+          "starter": {
+            "code": "function cocok(pola, path) {\n  // TODO: pola persis dan pola berakhiran /**\n  return false;\n}\n\nfunction aturanRoute(rules, path) {\n  // TODO: kumpulkan pola yang cocok, urutkan dari yang paling pendek, gabungkan\n  return {};\n}\n"
+          },
+          "solution": {
+            "code": "function cocok(pola, path) {\n  if (pola.endsWith(\"/**\")) {\n    const dasar = pola.slice(0, -3);\n    return path === dasar || path.startsWith(dasar + \"/\");\n  }\n  return pola === path;\n}\n\nfunction aturanRoute(rules, path) {\n  const hasil = {};\n  Object.keys(rules)\n    .filter((pola) => cocok(pola, path))\n    .sort((a, b) => a.length - b.length)\n    .forEach((pola) => Object.assign(hasil, rules[pola]));\n  return hasil;\n}\n"
+          },
+          "setup": "const RULES = {\n  \"/**\": { cors: true },\n  \"/\": { prerender: true },\n  \"/buku/**\": { swr: 3600 },\n  \"/buku/langka/**\": { swr: 60, prerender: false },\n  \"/admin/**\": { ssr: false },\n};\n",
+          "tests": [
+            {
+              "name": "Pola persis untuk halaman depan",
+              "check": "aturanRoute(RULES, \"/\").prerender === true && aturanRoute(RULES, \"/\").ssr === undefined"
+            },
+            {
+              "name": "Pola /** cocok dengan dasar dan turunannya",
+              "check": "aturanRoute(RULES, \"/admin\").ssr === false && aturanRoute(RULES, \"/admin/nilai/12\").ssr === false"
+            },
+            {
+              "name": "Path yang hanya mirip tidak cocok",
+              "check": "JSON.stringify(aturanRoute(RULES, \"/adminku\")) === JSON.stringify({ cors: true }) && JSON.stringify(aturanRoute({ \"/admin/**\": { ssr: false } }, \"/adminku\")) === \"{}\""
+            },
+            {
+              "name": "Aturan digabung dan pola spesifik menang",
+              "check": "(() => { const r = aturanRoute(RULES, \"/buku/langka/7\"); return r.cors === true && r.swr === 60 && r.prerender === false; })()"
+            },
+            {
+              "name": "Objek rules tidak diubah",
+              "check": "(() => { aturanRoute(RULES, \"/buku/langka/7\"); return RULES[\"/**\"].swr === undefined && RULES[\"/buku/**\"].swr === 3600; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "konfigurasi-dan-modul",
+      "title": "Konfigurasi dan Modul",
+      "est_minutes": 30,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Membaca dan mengubah `nuxt.config.ts` dengan percaya diri.\n- Membedakan `runtimeConfig` rahasia dan `runtimeConfig.public`.\n- Mengisi konfigurasi dari environment variable berawalan `NUXT_`.\n- Memasang dan mengatur modul Nuxt seperti Nuxt UI, Content, dan Image.\n\n## nuxt.config.ts: pusat pengaturan\n\nHampir semua pengaturan aplikasi Nuxt berkumpul di satu file di akar proyek: `nuxt.config.ts`. Isinya satu objek yang dibungkus `defineNuxtConfig`, supaya editor bisa memberi saran dan memeriksa tipe.\n\n```ts\n// nuxt.config.ts\nexport default defineNuxtConfig({\n  compatibilityDate: \"2025-07-15\",\n  devtools: { enabled: true },\n  modules: [\"@nuxt/image\", \"@pinia/nuxt\"],\n  css: [\"~/assets/css/utama.css\"],\n  app: {\n    head: {\n      htmlAttrs: { lang: \"id\" },\n      title: \"Kantin SMK Nusantara\",\n    },\n  },\n  routeRules: {\n    \"/\": { prerender: true },\n  },\n});\n```\n\nBeberapa kunci yang paling sering kamu sentuh:\n\n- `modules`: daftar modul yang dipasang.\n- `css`: file CSS global yang dimuat di semua halaman. Tanda `~` menunjuk ke folder `app`.\n- `app.head`: isi `<head>` bawaan untuk semua halaman, sebelum ditimpa `useHead` di halaman.\n- `routeRules`: aturan render per route, seperti di bab sebelumnya.\n- `runtimeConfig`: nilai konfigurasi yang bisa diganti saat aplikasi berjalan.\n- `compatibilityDate`: tanggal yang mengunci perilaku Nitro dan preset deploy, supaya pembaruan tidak tiba-tiba mengubah cara aplikasimu berjalan.\n\nSaat `npm run dev` berjalan, Nuxt memantau file ini. Bila kamu mengubahnya, server dev memuat ulang sendiri.\n\n![nuxt.config.ts sebagai pusat pengaturan](slide:25)\n\n## runtimeConfig: rahasia dan publik\n\nAplikasi kantin sekolahmu memanggil API pembayaran. API itu butuh kunci rahasia, dan alamatnya berbeda antara mode uji dan produksi. Nilai seperti ini jangan ditulis langsung di kode. Tempatnya di `runtimeConfig`:\n\n```ts\n// nuxt.config.ts\nexport default defineNuxtConfig({\n  runtimeConfig: {\n    kunciPembayaran: \"\",          // rahasia, hanya di server\n    public: {\n      alamatApi: \"/api\",          // boleh dilihat browser\n      namaKantin: \"Kantin Bu Sri\",\n    },\n  },\n});\n```\n\nAturannya jelas:\n\n- Kunci di level atas `runtimeConfig` (seperti `kunciPembayaran`) **hanya** tersedia di server. Nilainya tidak pernah dikirim ke browser.\n- Kunci di dalam `runtimeConfig.public` tersedia di server dan browser. Anggap semua yang ada di sini bisa dibaca siapa saja lewat DevTools.\n\nCara membacanya sama di mana-mana, dengan `useRuntimeConfig()`:\n\n```ts\n// server/api/bayar.post.ts\nexport default defineEventHandler(async (event) => {\n  const config = useRuntimeConfig(event);\n  const { total } = await readBody(event);\n  return await $fetch(\"https://contoh-pembayaran.id/tagih\", {\n    method: \"POST\",\n    headers: { Authorization: `Bearer ${config.kunciPembayaran}` },\n    body: { total },\n  });\n});\n```\n\n```vue\n<!-- app/pages/index.vue -->\n<script setup lang=\"ts\">\nconst config = useRuntimeConfig();\n</script>\n\n<template>\n  <h1>Selamat datang di {{ config.public.namaKantin }}</h1>\n</template>\n```\n\nDi komponen Vue, `config.kunciPembayaran` akan kosong di browser. Itu memang disengaja: rahasia tidak boleh bocor ke sisi klien. Kesalahan paling berbahaya adalah memindahkan kunci rahasia ke `public` hanya karena \"di browser nilainya kosong\". Kalau browser butuh hasil yang memakai rahasia, buat server route yang memakai rahasia itu, lalu panggil route tersebut dari browser.\n\n## Mengisi dari environment variable\n\nNilai di `nuxt.config.ts` hanyalah nilai bawaan. Saat aplikasi berjalan, Nuxt menimpanya dengan environment variable yang namanya cocok:\n\n| Kunci di runtimeConfig | Environment variable |\n| --- | --- |\n| `kunciPembayaran` | `NUXT_KUNCI_PEMBAYARAN` |\n| `public.alamatApi` | `NUXT_PUBLIC_ALAMAT_API` |\n| `public.namaKantin` | `NUXT_PUBLIC_NAMA_KANTIN` |\n\nPolanya: awalan `NUXT_`, tambah `PUBLIC_` untuk kunci publik, lalu nama kunci camelCase diubah menjadi huruf besar dengan garis bawah di antara kata. Saat pengembangan, tulis nilainya di file `.env` di akar proyek:\n\n```bash\n# .env (jangan di-commit ke Git)\nNUXT_KUNCI_PEMBAYARAN=sk_uji_123\nNUXT_PUBLIC_NAMA_KANTIN=\"Kantin Bu Sri (uji)\"\n```\n\nAda tiga hal yang sering bikin bingung:\n\n1. Environment variable hanya menimpa kunci yang **sudah ada** di `runtimeConfig`. Menulis `NUXT_KUNCI_BARU` tanpa mendaftarkan `kunciBaru` di config tidak berpengaruh apa-apa.\n2. File `.env` dibaca saat `nuxt dev`, tapi tidak otomatis dibaca oleh aplikasi hasil build. Di produksi, isi environment variable lewat pengaturan hosting atau server.\n3. Masukkan `.env` ke `.gitignore`. Bagikan contoh tanpa nilai rahasia, misalnya `.env.example`.\n\nUntuk pengaturan yang tidak rahasia dan tidak berubah antar lingkungan, seperti warna tema atau nama menu, Nuxt juga punya `app.config.ts`. Bedanya, nilai di sana ditetapkan saat build dan tidak bisa ditimpa environment variable.\n\n## Jebakan: process.env di dalam config\n\nKamu mungkin tergoda menulis begini:\n\n```ts\nruntimeConfig: {\n  kunciPembayaran: process.env.KUNCI_PEMBAYARAN,\n},\n```\n\nCara ini memang berjalan, tapi ada jebakan waktu. File `nuxt.config.ts` dieksekusi saat **build**, jadi `process.env.KUNCI_PEMBAYARAN` dibaca di mesin yang menjalankan build. Bila build dilakukan di laptopmu dan aplikasi dijalankan di server sekolah, nilai yang terpakai adalah nilai di laptop, atau malah kosong. Lebih parah lagi, bila kunci itu ditaruh di `public`, nilainya ikut tertanam di file JavaScript hasil build.\n\nPola yang lebih aman: isi nilai bawaan dengan string kosong atau nilai uji, lalu biarkan environment variable `NUXT_...` menimpanya saat aplikasi berjalan. Dengan begitu, satu hasil build yang sama bisa dipakai di server uji dan server produksi hanya dengan mengganti environment variable.\n\nSatu kebiasaan baik lagi: periksa konfigurasi penting saat aplikasi mulai dipakai. Misalnya, di server route pembayaran, lempar `createError` dengan pesan jelas bila `config.kunciPembayaran` masih kosong. Pesan \"kunci pembayaran belum diatur\" jauh lebih mudah dilacak daripada error misterius dari API pembayaran.\n\n## Modul: menambah kemampuan Nuxt\n\nModul adalah paket yang menambahkan fitur ke Nuxt saat build: mendaftarkan komponen, composable, server route, atau mengubah konfigurasi. Satu baris di `modules` bisa menggantikan banyak langkah setup manual.\n\nCara termudah memasangnya adalah lewat CLI:\n\n```bash\nnpx nuxt module add image\n```\n\nPerintah ini memasang paket dan menambahkannya ke `modules` di `nuxt.config.ts`. Beberapa modul resmi yang populer:\n\n- **Nuxt UI** (`@nuxt/ui`): kumpulan komponen siap pakai seperti tombol, form, tabel, dan modal, dibangun di atas Tailwind CSS.\n- **Nuxt Content** (`@nuxt/content`): menulis halaman dari file Markdown di folder `content/`, cocok untuk blog sekolah atau dokumentasi.\n- **Nuxt Image** (`@nuxt/image`): komponen `<NuxtImg>` dan `<NuxtPicture>` yang mengubah ukuran dan format gambar secara otomatis.\n\nAda juga modul pendukung pustaka lain, seperti `@pinia/nuxt` untuk Pinia yang sudah kamu kenal di bab komponen.\n\nSebagian besar modul bisa diatur lewat kunci dengan nama modulnya di config:\n\n```ts\nexport default defineNuxtConfig({\n  modules: [\"@nuxt/image\"],\n  image: {\n    quality: 80,\n  },\n});\n```\n\nJangan tertukar antara modul dan plugin. Modul bekerja saat build dan mengubah cara Nuxt menyusun aplikasimu. Plugin, yang ditulis di folder `app/plugins`, adalah kode yang dijalankan setiap kali aplikasi Vue dimulai, misalnya untuk mendaftarkan pustaka pihak ketiga. Banyak modul sebenarnya menambahkan plugin untukmu di balik layar.\n\nSebelum memasang modul, cek daftarnya di situs resmi Nuxt: apakah modul itu masih dirawat dan mendukung Nuxt 4. Jangan memasang modul untuk hal yang bisa kamu tulis dengan beberapa baris kode. Setiap modul menambah dependensi yang ikut harus diperbarui.\n\n## Rangkuman\n\n- `nuxt.config.ts` berisi `defineNuxtConfig` dengan kunci seperti `modules`, `css`, `app.head`, `routeRules`, dan `runtimeConfig`.\n- Kunci atas `runtimeConfig` hanya ada di server; `runtimeConfig.public` ikut terkirim ke browser.\n- `useRuntimeConfig()` membaca konfigurasi; di server route, berikan `event` sebagai argumen.\n- Environment variable `NUXT_...` dan `NUXT_PUBLIC_...` menimpa kunci yang sudah terdaftar.\n- Modul seperti Nuxt UI, Content, dan Image dipasang lewat `nuxt module add` dan diatur dengan kunci bernama modulnya.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di mana kunci API pembayaran yang rahasia sebaiknya ditulis?",
+          "code": "",
+          "options": [
+            "runtimeConfig.public.kunciPembayaran",
+            "runtimeConfig.kunciPembayaran",
+            "app.config.ts di dalam folder app",
+            "Sebagai string langsung di komponen Vue"
+          ],
+          "answer": 1,
+          "explanation": "Kunci di level atas runtimeConfig hanya tersedia di server dan tidak dikirim ke browser."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Environment variable apa yang menimpa nilai alamatApi saat aplikasi berjalan?",
+          "code": "export default defineNuxtConfig({\n  runtimeConfig: {\n    public: {\n      alamatApi: \"/api\",\n    },\n  },\n});",
+          "options": [
+            "NUXT_ALAMAT_API",
+            "PUBLIC_NUXT_ALAMATAPI",
+            "NUXT_PUBLIC_ALAMAT_API",
+            "NUXT_PUBLIC_ALAMATAPI_URL"
+          ],
+          "answer": 2,
+          "explanation": "Kunci publik memakai awalan NUXT_PUBLIC_, lalu alamatApi diubah menjadi ALAMAT_API."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Environment variable NUXT_KUNCI_BARU tetap berpengaruh walaupun kunciBaru tidak didaftarkan di runtimeConfig.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Environment variable NUXT_ hanya menimpa kunci yang sudah ada di runtimeConfig."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah apa yang memasang modul Nuxt Image sekaligus menambahkannya ke nuxt.config.ts?",
+          "code": "",
+          "options": [
+            "npm run build -- --module image",
+            "npx nuxt generate --with image",
+            "npm install nuxt-image-plugin --save",
+            "npx nuxt module add image"
+          ],
+          "answer": 3,
+          "explanation": "nuxt module add memasang paket modul dan menuliskannya ke daftar modules di config."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Menimpa runtimeConfig dari environment",
+          "prompt": "Tiru cara Nuxt mengisi `runtimeConfig` dari environment variable.\n\n1. Tulis `namaEnv(kunci, publik)` yang mengubah nama kunci camelCase menjadi nama environment variable: `namaEnv(\"kunciPembayaran\", false)` menjadi `\"NUXT_KUNCI_PEMBAYARAN\"`, dan `namaEnv(\"alamatApi\", true)` menjadi `\"NUXT_PUBLIC_ALAMAT_API\"`.\n2. Tulis `gabungConfig(bawaan, env)` yang mengembalikan config **baru** berisi kunci yang sama dengan `bawaan` (termasuk `public`). Untuk setiap kunci, bila ada environment variable yang cocok, nilainya menimpa nilai bawaan. Bila nilai bawaan berupa angka, ubah nilai dari env menjadi angka dengan `Number`.\n\nEnvironment variable yang tidak punya kunci di `bawaan` diabaikan, sama seperti di Nuxt asli. Objek `bawaan` tidak boleh diubah. Fungsi `contoh()` sudah disediakan dan mengembalikan config bawaan kantin.",
+          "starter": {
+            "code": "function namaEnv(kunci, publik) {\n  // TODO: awalan NUXT_, tambah PUBLIC_ bila publik, camelCase jadi HURUF_BESAR\n  return \"\";\n}\n\nfunction gabungConfig(bawaan, env) {\n  // TODO: salin kunci bawaan dan public, timpa dengan env yang cocok\n  return bawaan;\n}\n"
+          },
+          "solution": {
+            "code": "function namaEnv(kunci, publik) {\n  const besar = kunci.replace(/([A-Z])/g, \"_$1\").toUpperCase();\n  return \"NUXT_\" + (publik ? \"PUBLIC_\" : \"\") + besar;\n}\n\nfunction ambil(asal, nilai) {\n  if (nilai === undefined) return asal;\n  return typeof asal === \"number\" ? Number(nilai) : nilai;\n}\n\nfunction gabungConfig(bawaan, env) {\n  const hasil = {};\n  for (const k of Object.keys(bawaan)) {\n    if (k !== \"public\") hasil[k] = ambil(bawaan[k], env[namaEnv(k, false)]);\n  }\n  hasil.public = {};\n  for (const k of Object.keys(bawaan.public || {})) {\n    hasil.public[k] = ambil(bawaan.public[k], env[namaEnv(k, true)]);\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "function contoh() {\n  return {\n    kunciPembayaran: \"\",\n    batasPesanan: 50,\n    public: { alamatApi: \"/api\", namaKantin: \"Kantin Bu Sri\" },\n  };\n}\n",
+          "tests": [
+            {
+              "name": "namaEnv mengikuti pola NUXT_ dan NUXT_PUBLIC_",
+              "check": "namaEnv(\"kunciPembayaran\", false) === \"NUXT_KUNCI_PEMBAYARAN\" && namaEnv(\"alamatApi\", true) === \"NUXT_PUBLIC_ALAMAT_API\""
+            },
+            {
+              "name": "Kunci rahasia ditimpa, kunci lain tetap",
+              "check": "(() => { const c = gabungConfig(contoh(), { NUXT_KUNCI_PEMBAYARAN: \"sk_123\" }); return c.kunciPembayaran === \"sk_123\" && c.public.alamatApi === \"/api\"; })()"
+            },
+            {
+              "name": "Kunci publik ditimpa lewat NUXT_PUBLIC_",
+              "check": "gabungConfig(contoh(), { NUXT_PUBLIC_NAMA_KANTIN: \"Kantin Pak Budi\" }).public.namaKantin === \"Kantin Pak Budi\""
+            },
+            {
+              "name": "Angka tetap angka dan env asing diabaikan",
+              "check": "(() => { const c = gabungConfig(contoh(), { NUXT_BATAS_PESANAN: \"80\", NUXT_KUNCI_BARU: \"x\" }); return c.batasPesanan === 80 && !(\"kunciBaru\" in c); })()"
+            },
+            {
+              "name": "Config bawaan tidak diubah",
+              "check": "(() => { const b = contoh(); gabungConfig(b, { NUXT_KUNCI_PEMBAYARAN: \"sk_123\", NUXT_PUBLIC_ALAMAT_API: \"/v2\" }); return b.kunciPembayaran === \"\" && b.public.alamatApi === \"/api\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "build-dan-deploy",
+      "title": "Build dan Deploy",
+      "est_minutes": 30,
+      "slide_from": 28,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Membedakan `nuxt dev`, `nuxt build`, `nuxt preview`, dan `nuxt generate`.\n- Memahami isi folder `.output` dan cara menjalankannya dengan Node.\n- Memilih preset Nitro yang tepat untuk Vercel, Netlify, server Node, atau hosting statis.\n- Menyusun langkah belajar berikutnya setelah kelas ini.\n\n## Dari laptop ke internet\n\nSelama ini kamu menjalankan aplikasi dengan `npm run dev`. Mode pengembangan itu nyaman: perubahan file langsung terlihat, error ditampilkan lengkap, dan DevTools aktif. Tapi mode ini lambat dan boros, tidak cocok untuk melayani pengunjung sungguhan. Sebelum aplikasi bisa dibuka teman sekelas atau guru dari HP mereka, kamu perlu membangun versi produksi lalu menaruhnya di server.\n\nDi Nuxt, semua perintah itu berasal dari CLI `nuxt` (paket `@nuxt/cli`), yang sudah ikut terpasang bersama Nuxt. Skrip di `package.json` proyek baru biasanya sudah memanggilnya:\n\n```json\n{\n  \"scripts\": {\n    \"dev\": \"nuxt dev\",\n    \"build\": \"nuxt build\",\n    \"generate\": \"nuxt generate\",\n    \"preview\": \"nuxt preview\"\n  }\n}\n```\n\nMungkin kamu masih menemukan nama lama `nuxi` di tutorial, misalnya `npx nuxi build`. Nama itu masih jalan, tapi dokumentasi sekarang menulis `npx nuxt build`. Kamu cukup menjalankan `npm run build`.\n\n## nuxt build: aplikasi server\n\n`nuxt build` menyusun aplikasimu menjadi versi produksi: kode Vue diubah menjadi JavaScript yang diperkecil, server route dan semua dependensinya dibundel oleh Nitro, dan halaman yang diberi `prerender: true` di `routeRules` dirender menjadi HTML. Hasilnya ada di folder `.output`:\n\n```text\n.output/\n  public/          file statis: JS, CSS, gambar, HTML hasil prerender\n  server/\n    index.mjs      titik masuk server Nitro\n  nitro.json       informasi preset yang dipakai\n```\n\nFolder ini berdiri sendiri. Kamu tidak perlu menyalin `node_modules` atau folder `app` ke server, cukup `.output`. Untuk menjalankannya:\n\n```bash\nnpm run build\nnode .output/server/index.mjs\n```\n\nServer mendengarkan port dari environment variable `PORT` (bawaan 3000). Jangan lupa mengisi environment variable `NUXT_...` dari bab sebelumnya, karena `.env` tidak dibaca otomatis di sini.\n\nSebelum mengunggah, coba dulu hasil build di laptop dengan `npm run preview`. Perintah ini menjalankan isi `.output` seperti di produksi. Banyak bug yang tidak muncul di mode dev, misalnya hydration mismatch atau environment variable yang lupa diisi, baru terlihat di sini.\n\n## nuxt generate: situs statis\n\n`nuxt generate` merender **semua** halaman menjadi file HTML saat build. Nuxt mulai dari halaman depan, mengikuti setiap link yang ditemukan, dan menyimpan hasilnya di `.output/public`. Folder itu bisa diunggah ke hosting statis mana saja, termasuk GitHub Pages, tanpa server Node.\n\nCocok untuk situs profil sekolah, portofolio, atau dokumentasi yang isinya jarang berubah. Tapi ada batasannya:\n\n- Tidak ada server saat aplikasi berjalan. Server route di `server/api` tidak bisa dipanggil pengunjung. Panggilan `useFetch` yang terjadi saat build ikut disimpan, tapi tidak bisa diperbarui sampai build ulang.\n- Halaman dinamis yang tidak ditautkan dari mana pun tidak akan ditemukan. Daftarkan secara manual di config, misalnya lewat opsi `nitro.prerender.routes`.\n- Login, form yang menyimpan data, dan halaman yang berbeda per pengguna butuh layanan lain atau mode server.\n\nIngat juga, kamu tidak harus memilih statis atau server untuk seluruh aplikasi. Dengan `routeRules`, sebagian halaman bisa di-prerender sementara sisanya tetap dirender server.\n\n## Preset Nitro\n\nNitro, mesin server Nuxt, bisa membungkus aplikasi untuk berbagai tempat. Bentuk bungkusan itu disebut **preset**. Server Node biasa memakai preset `node-server` (bawaan). Platform seperti Vercel dan Netlify butuh bentuk berbeda: fungsi serverless, aturan routing khusus, dan lokasi file statis yang sudah ditentukan. Preset yang tepat menyiapkan semua itu untukmu.\n\nAda dua cara memilih preset:\n\n```bash\n# lewat environment variable saat build\nNITRO_PRESET=netlify npm run build\n```\n\n```ts\n// atau di nuxt.config.ts\nexport default defineNuxtConfig({\n  nitro: {\n    preset: \"node-server\",\n  },\n});\n```\n\nKabar baiknya, saat build berjalan di Vercel atau Netlify, Nitro mendeteksi platformnya sendiri dan memilih preset yang cocok. Kamu tidak perlu menulis apa pun.\n\n![Preset Nitro untuk berbagai tempat deploy](slide:29)\n\n## Tiga jalur deploy\n\n**Vercel atau Netlify.** Jalur paling mudah untuk proyek sekolah. Unggah proyek ke GitHub, buat proyek baru di dasbor platform, lalu pilih repository-nya. Platform mengenali Nuxt, menjalankan build, dan memberi alamat publik. Isi environment variable seperti `NUXT_KUNCI_PEMBAYARAN` di pengaturan proyek. Setiap `git push` ke cabang utama memicu deploy baru.\n\n**Server Node (VPS).** Cocok bila sekolah punya server sendiri. Jalankan build, salin `.output` ke server, lalu jalankan `node .output/server/index.mjs`. Supaya proses tetap hidup setelah terminal ditutup dan otomatis menyala lagi bila crash, pakai pengelola proses seperti PM2. Biasanya server web seperti Nginx dipasang di depannya untuk HTTPS dan nama domain.\n\n**Hosting statis.** Jalankan `npm run generate`, lalu unggah isi `.output/public`. Murah dan cepat, dengan batasan yang sudah dibahas di atas.\n\nSebelum deploy apa pun, periksa daftar ini:\n\n- `npm run build` berhasil tanpa error dan `npm run preview` berjalan normal.\n- Semua environment variable rahasia sudah diisi di platform, bukan di kode.\n- File `.env` tidak ikut ter-commit.\n- Halaman pribadi tidak diberi `prerender` atau `swr`.\n\n## Setelah aplikasi online\n\nDeploy bukan akhir pekerjaan. Begitu aplikasi dipakai orang sungguhan, kamu perlu tahu kalau ada yang rusak. Beberapa kebiasaan yang membantu:\n\n- **Baca log.** Vercel dan Netlify menampilkan log setiap fungsi server di dasbornya. Di server Node, PM2 menyimpan log keluaran dan error. Pesan dari `console.log` di server route muncul di sini, bukan di console browser.\n- **Bedakan pesan untuk pengguna dan untuk kamu.** Di produksi, halaman error tidak menampilkan detail teknis seperti stack trace. Itu bagus untuk keamanan, jadi pastikan informasi yang kamu butuhkan untuk melacak masalah tercatat di log server.\n- **Coba dari HP.** Buka aplikasi lewat data seluler, bukan Wi-Fi sekolah. Kamu akan merasakan sendiri pentingnya prerender, cache, dan gambar yang sudah diperkecil.\n\nBila ada yang salah setelah deploy, cara tercepat biasanya kembali ke versi sebelumnya. Vercel dan Netlify menyimpan riwayat deploy sehingga kamu bisa mengaktifkan versi lama dengan beberapa klik sambil memperbaiki bug.\n\n## Langkah berikutnya\n\nSelamat, kamu sudah melewati perjalanan dari routing berbasis file sampai deploy. Berikut arah belajar selanjutnya:\n\n- **Bangun proyek utuh.** Misalnya aplikasi peminjaman buku perpustakaan: katalog dengan `swr`, login guru dengan cookie `httpOnly`, server route untuk peminjaman, dan halaman admin `ssr: false`.\n- **Nuxt UI dan Nuxt Content.** Percepat pembuatan tampilan dan halaman berbasis Markdown.\n- **Database.** Sambungkan server route ke database, misalnya PostgreSQL atau MySQL yang sudah kamu pelajari di kelas lain.\n- **Testing.** Pelajari `@nuxt/test-utils` bersama Vitest untuk menguji komponen dan server route.\n- **Baca kode sumber modul.** Modul resmi Nuxt adalah contoh bagus cara menulis kode Nuxt yang rapi.\n\nDokumentasi resmi di nuxt.com selalu menjadi rujukan utama, terutama saat versi baru keluar.\n\n## Rangkuman\n\n- `nuxt dev` untuk pengembangan; `nuxt build` membuat folder `.output` yang dijalankan dengan `node .output/server/index.mjs`.\n- `nuxt preview` mencoba hasil build di laptop sebelum diunggah.\n- `nuxt generate` merender semua halaman menjadi HTML statis, tanpa server route saat berjalan.\n- Preset Nitro menyesuaikan hasil build dengan tempat deploy, dan Vercel serta Netlify terdeteksi otomatis.\n- Isi environment variable di platform, uji dengan preview, dan jangan cache halaman pribadi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah apa untuk menjalankan aplikasi hasil nuxt build di server Node?",
+          "code": "",
+          "options": [
+            "npm run dev -- --production",
+            "node app/app.vue --port 3000",
+            "node .output/server/index.mjs",
+            "nuxt generate lalu buka index.html"
+          ],
+          "answer": 2,
+          "explanation": "nuxt build menghasilkan folder .output dengan titik masuk server di .output/server/index.mjs."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Saat build berjalan di Vercel, Nitro bisa mendeteksi platform dan memilih preset yang cocok sendiri.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Vercel dan Netlify terdeteksi otomatis, jadi preset tidak perlu ditulis manual."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kamu ingin situs profil sekolah di GitHub Pages tanpa server. Perintah build mana yang tepat?",
+          "code": "",
+          "options": [
+            "nuxt generate",
+            "nuxt build dengan preset node-server",
+            "nuxt dev lalu salin folder .nuxt",
+            "nuxt preview lalu unggah node_modules"
+          ],
+          "answer": 0,
+          "explanation": "nuxt generate merender semua halaman menjadi file statis di .output/public yang bisa diunggah ke hosting statis."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa efek NITRO_PRESET pada perintah ini?",
+          "code": "NITRO_PRESET=netlify npm run build",
+          "options": [
+            "Aplikasi langsung diunggah ke akun Netlify milikmu",
+            "Server dev berjalan memakai pengaturan milik Netlify",
+            "Semua halaman dirender statis menjadi file HTML saja",
+            "Hasil build dibungkus untuk platform Netlify"
+          ],
+          "answer": 3,
+          "explanation": "Preset menentukan bentuk hasil build. Mengunggah ke Netlify tetap dilakukan terpisah."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memilih preset deploy",
+          "prompt": "Tulis `pilihPreset(kebutuhan)` yang membantu memilih preset Nitro dan perintah build. `kebutuhan` berisi `{ platform, statis, butuhServer }` (semua opsional).\n\nAturan, diperiksa berurutan:\n\n1. Bila `statis` dan `butuhServer` keduanya `true`, lempar `Error`, karena situs statis tidak bisa menjalankan server route.\n2. Bila `statis` bernilai `true`, kembalikan `{ preset: \"static\", perintah: \"nuxt generate\" }`.\n3. Bila `platform` adalah `\"vercel\"` atau `\"netlify\"`, kembalikan `{ preset: platform, perintah: \"nuxt build\" }`.\n4. Selain itu, kembalikan `{ preset: \"node-server\", perintah: \"nuxt build\" }`.\n\nDi Nuxt asli, preset dipilih lewat `NITRO_PRESET` atau `nitro.preset`, dan Vercel serta Netlify terdeteksi otomatis saat build berjalan di sana.",
+          "starter": {
+            "code": "function pilihPreset(kebutuhan) {\n  // TODO: periksa statis + butuhServer, statis, platform, lalu bawaan\n  return { preset: \"node-server\", perintah: \"nuxt build\" };\n}\n"
+          },
+          "solution": {
+            "code": "function pilihPreset(kebutuhan) {\n  const k = kebutuhan || {};\n  if (k.statis && k.butuhServer) {\n    throw new Error(\"Situs statis tidak bisa menjalankan server route\");\n  }\n  if (k.statis) return { preset: \"static\", perintah: \"nuxt generate\" };\n  if (k.platform === \"vercel\" || k.platform === \"netlify\") {\n    return { preset: k.platform, perintah: \"nuxt build\" };\n  }\n  return { preset: \"node-server\", perintah: \"nuxt build\" };\n}\n"
+          },
+          "setup": "function sama(a, b) {\n  return JSON.stringify(a) === JSON.stringify(b);\n}\n",
+          "tests": [
+            {
+              "name": "Tanpa kebutuhan khusus memakai node-server",
+              "check": "sama(pilihPreset({}), { preset: \"node-server\", perintah: \"nuxt build\" })"
+            },
+            {
+              "name": "Situs statis memakai nuxt generate",
+              "check": "sama(pilihPreset({ statis: true }), { preset: \"static\", perintah: \"nuxt generate\" })"
+            },
+            {
+              "name": "Vercel dan Netlify memakai preset platform",
+              "check": "pilihPreset({ platform: \"vercel\" }).preset === \"vercel\" && pilihPreset({ platform: \"netlify\", butuhServer: true }).preset === \"netlify\""
+            },
+            {
+              "name": "Platform lain kembali ke node-server",
+              "check": "pilihPreset({ platform: \"vps-sekolah\", butuhServer: true }).preset === \"node-server\""
+            },
+            {
+              "name": "Statis yang butuh server melempar error",
+              "check": "(() => { try { pilihPreset({ statis: true, butuhServer: true }); return false; } catch (e) { return true; } })()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
