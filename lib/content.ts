@@ -324,34 +324,29 @@ export async function getCertificate(code: string): Promise<Certificate | null> 
 
 export type SearchHit = { kind: "kelas" | "bab"; href: string; title: string; context: string; snippet: string };
 
-// Words typed by a visitor go into a PostgREST filter, so strip what would
-// change its meaning. Not cached: every query differs.
-// ponytail: ilike scans titles and chapter bodies; add a tsvector index if
-// content grows past a few thousand chapters.
+// Ranked full-text search through search_content() (migration
+// 20261128070000): every word must match, the last as a prefix. Not cached:
+// every query differs.
 export const cleanQuery = (q: string) => q.replace(/[%_,()*\\"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
 
 export async function searchContent(raw: string): Promise<SearchHit[]> {
   const q = cleanQuery(raw);
   if (q.length < 2) return [];
-  const [topics, chapters] = await Promise.all([
-    publicClient.from("topics").select("slug, title, description").or(`title.ilike.%${q}%,description.ilike.%${q}%`).limit(8),
-    publicClient.from("chapters").select("slug, title, body, topics!inner(slug, title)").or(`title.ilike.%${q}%,body.ilike.%${q}%`).limit(20),
-  ]);
+  const { data, error } = await publicClient.rpc("search_content", { p_q: q });
+  if (error) throw new Error(`searchContent: ${error.message}`);
+  const rows = (data ?? []) as { kind: "kelas" | "bab"; topic_slug: string; topic_title: string; slug: string | null; title: string; body: string }[];
+  const words = q.toLowerCase().split(" ");
   const snippet = (text: string) => {
-    const at = text.toLowerCase().indexOf(q.toLowerCase());
+    const lower = text.toLowerCase();
+    const at = [q.toLowerCase(), ...words].map((w) => lower.indexOf(w)).find((i) => i >= 0) ?? -1;
     if (at < 0) return "";
     let clean = text.slice(Math.max(0, at - 60), at + 120).replace(/[#*`>\[\]!]/g, "").replace(/\s+/g, " ").trim();
     if (at > 60) clean = clean.replace(/^\S+\s/, ""); // drop a word cut in half
     return `${at > 60 ? "..." : ""}${clean}...`;
   };
-  return [
-    ...(topics.data ?? []).map((t) => ({ kind: "kelas" as const, href: `/belajar/${t.slug}`, title: t.title, context: "Kelas", snippet: snippet(t.description ?? "") })),
-    ...((chapters.data ?? []) as unknown as { slug: string; title: string; body: string; topics: { slug: string; title: string } }[]).map((c) => ({
-      kind: "bab" as const,
-      href: `/belajar/${c.topics.slug}/${c.slug}`,
-      title: c.title,
-      context: c.topics.title,
-      snippet: snippet(c.body),
-    })),
-  ];
+  return rows.map((r) =>
+    r.kind === "kelas"
+      ? { kind: "kelas", href: `/belajar/${r.topic_slug}`, title: r.title, context: "Kelas", snippet: snippet(r.body) }
+      : { kind: "bab", href: `/belajar/${r.topic_slug}/${r.slug}`, title: r.title, context: r.topic_title, snippet: snippet(r.body) },
+  );
 }
