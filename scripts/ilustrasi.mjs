@@ -73,22 +73,22 @@ const PEOPLE = {
 }
 
 // A group of empty-handed figures, overlapping a little, for the signup nudge.
-// Listed back to front: later ones are drawn on top.
+// Listed back to front: later ones are drawn on top. flip turns a figure to face left.
 {
   const CREW = [
     { x: 0, body: "PoloSweater", face: "Smile", hair: "ShortCurly" },
-    { x: 1900, body: "Sweater", face: "Calm", hair: "LongBangs" },
+    { x: 1900, flip: true, body: "Sweater", face: "Calm", hair: "LongBangs" },
     { x: 560, body: "ArmsCrossed", face: "Smile", hair: "ShortWavy" },
-    { x: 1340, body: "Hoodie", face: "Calm", hair: "ShortVolumed" },
+    { x: 1340, flip: true, body: "Hoodie", face: "Calm", hair: "ShortVolumed" },
     { x: 950, body: "Turtleneck", face: "Calm", hair: "Hijab" },
   ];
-  const figs = CREW.map(({ x, ...p }) => {
+  const figs = CREW.map(({ x, flip, ...p }) => {
     const peep = renderToStaticMarkup(h(Peep, { ...p, strokeColor: INK, backgroundColor: "#ffffff" }))
       .replace(/<svg[^>]*>/, "<g>")
       .replace(/<\/svg>$/, "</g>");
-    return `<g transform="translate(${x} 0)">${peep}</g>`;
+    return `<g transform="${flip ? `translate(${x + 1000} 0) scale(-1 1)` : `translate(${x} 0)`}">${peep}</g>`;
   });
-  writeFileSync("public/ilustrasi/kelompok.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -10 2790 1220">${figs.join("")}</svg>`);
+  writeFileSync("public/ilustrasi/kelompok.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -10 2940 1220">${figs.join("")}</svg>`);
   console.log("kelompok");
 }
 
