@@ -148,7 +148,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
         </p>
       )}
 
-      <h2 className="mt-5 text-xl leading-snug font-bold tracking-tight text-balance sm:mt-8 sm:text-2xl">{q.prompt}</h2>
+      <h2 className="mt-5 text-xl leading-snug font-bold tracking-tight text-balance [overflow-wrap:anywhere] sm:mt-8 sm:text-2xl">{q.prompt}</h2>
       {q.code && (
         <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
@@ -164,7 +164,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
             }`}
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">{"ABCD"[n]}</span>
-            <span className="flex-1">{opt}</span>
+            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{opt}</span>
           </button>
         ))}
       </div>

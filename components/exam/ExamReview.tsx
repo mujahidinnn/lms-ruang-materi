@@ -35,7 +35,7 @@ export default function ExamReview({ review, slug, children }: { review: Review;
         {review.questions.map((q, n) => (
           <li key={n} className="rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:rounded-[18px] sm:p-6">
             <p className="text-xs text-zinc-500">Soal {n + 1}</p>
-            <p className="mt-1 text-lg font-semibold">{q.prompt}</p>
+            <p className="mt-1 text-lg font-semibold [overflow-wrap:anywhere]">{q.prompt}</p>
             {q.code && (
               <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-xl bg-zinc-800/60 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>
             )}
@@ -46,7 +46,7 @@ export default function ExamReview({ review, slug, children }: { review: Review;
                 return (
                   <li key={i} className={`flex items-start gap-2 ${key ? "text-accent" : wrong ? "text-red-500" : "text-zinc-400"}`}>
                     {key ? <Check aria-label="kunci" className="mt-0.5 size-4 shrink-0" /> : wrong ? <X aria-label="salah" className="mt-0.5 size-4 shrink-0" /> : <span className="size-4 shrink-0" />}
-                    <span><span aria-hidden className="mr-1.5 font-semibold">{"ABCD"[i]}.</span>{opt}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]"><span aria-hidden className="mr-1.5 font-semibold">{"ABCD"[i]}.</span>{opt}</span>
                     {q.chosen === i && <span className="text-xs text-zinc-500">(jawabanmu)</span>}
                   </li>
                 );

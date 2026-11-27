@@ -124,7 +124,7 @@ export default function ChapterQuiz({
                 <li key={q.id} id={`soal-${qi + 1}`} className="scroll-mt-24">
                   <p className="flex gap-3 font-semibold leading-snug">
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-noir text-xs text-on-noir tabular-nums">{qi + 1}</span>
-                    <span className="pt-0.5">{q.prompt}</span>
+                    <span className="min-w-0 pt-0.5 [overflow-wrap:anywhere]">{q.prompt}</span>
                   </p>
                   {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-[18px] bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
                   <div role="group" aria-label={`Pilihan jawaban soal ${qi + 1}`} className="mt-3 grid gap-2">
@@ -143,7 +143,7 @@ export default function ChapterQuiz({
                         >
                           {/* Letters, all alike: color appears only once answered. */}
                           <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold ${right || wrong ? "bg-noir text-on-noir" : "bg-zinc-800 text-zinc-300"}`}>{"ABCD"[n]}</span>
-                          <span className="flex-1">{opt}</span>
+                          <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{opt}</span>
                           {right && <Check aria-label="benar" className="size-5" />}
                           {wrong && <X aria-label="salah" className="size-5" />}
                         </button>

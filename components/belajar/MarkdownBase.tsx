@@ -69,6 +69,7 @@ export default function MarkdownBase({
           },
           // Ids match lib/toc.ts, so "Di bab ini" can link to each section.
           h2: ({ children }) => <h2 id={headingId(textOf(children).replace(/[`*_]/g, ""))} className="scroll-mt-24">{children}</h2>,
+          table: ({ children }) => <div className="table-wrap scrollbar-thin"><table>{children}</table></div>,
           pre: ({ children }) => <>{children}</>,
           code: ({ className, children }) => {
             const text = String(children ?? "");
