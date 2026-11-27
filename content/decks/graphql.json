@@ -1,0 +1,338 @@
+{
+  "theme": "graphql",
+  "deck": "GraphQL",
+  "kicker": "KELAS",
+  "subtitle": "API yang membiarkan klien memilih datanya sendiri: dari schema, query, resolver, dan mutation sampai error, DataLoader, server Node.js, dan keamanan.",
+  "slides": [
+    {
+      "title": "GraphQL"
+    },
+    {
+      "title": "Apa itu GraphQL?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Bahasa query untuk API, dibuat Facebook, terbuka sejak 2015",
+        "Satu endpoint, biasanya POST /graphql",
+        "Klien menulis sendiri field yang ia butuhkan",
+        "Server menjawab JSON dengan bentuk yang sama",
+        "Schema bertipe menjadi kontrak klien dan server"
+      ],
+      "code": "query {\n  buku(id: 1) {\n    judul\n    penulis { nama }\n  }\n}"
+    },
+    {
+      "title": "Over-fetching dan under-fetching",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Over-fetching: menerima field yang tidak dipakai",
+        "Under-fetching: satu layar butuh beberapa request",
+        "REST: GET /buku/1, lalu GET /penulis/1, lalu ...",
+        "GraphQL: satu query mengambil buku sekaligus penulisnya",
+        "Hemat kuota untuk aplikasi HP dengan sinyal lemah"
+      ],
+      "code": "# REST: dua kali bolak-balik\nGET /buku/1\nGET /penulis/1\n\n# GraphQL: satu request\nPOST /graphql\n{ buku(id: 1) { judul penulis { nama } } }"
+    },
+    {
+      "title": "GraphQL atau REST?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "REST: sederhana, cache HTTP mudah, cocok untuk API publik",
+        "GraphQL: cocok untuk banyak klien dengan kebutuhan beda",
+        "GraphQL: data saling terhubung, satu layar banyak sumber",
+        "Upload file dan cache CDN lebih repot di GraphQL",
+        "Keduanya bisa hidup berdampingan di satu sistem"
+      ],
+      "note": "GraphQL bukan pengganti wajib REST. Pilih sesuai bentuk data dan klienmu."
+    },
+    {
+      "title": "Schema Definition Language",
+      "kicker": "SCHEMA",
+      "bullets": [
+        "SDL: bahasa untuk menulis bentuk data API",
+        "Setiap type punya field, setiap field punya tipe",
+        "Query dan Mutation adalah tipe akar (root type)",
+        "Schema menjadi dokumentasi yang selalu terbaru"
+      ],
+      "code": "type Buku {\n  id: ID!\n  judul: String!\n  harga: Int\n}\n\ntype Query {\n  buku(id: ID!): Buku\n  daftarBuku: [Buku!]!\n}"
+    },
+    {
+      "title": "Scalar dan tanda seru",
+      "kicker": "SCHEMA",
+      "bullets": [
+        "Int: bilangan bulat 32 bit, Float: bilangan desimal",
+        "String: teks, Boolean: true atau false",
+        "ID: penanda unik, dikirim sebagai string",
+        "Tanda ! berarti nilainya tidak boleh null",
+        "Tanpa ! field boleh berisi null"
+      ],
+      "code": "type Siswa {\n  id: ID!\n  nama: String!\n  nilaiRata: Float\n  aktif: Boolean!\n}"
+    },
+    {
+      "title": "Object type dan list",
+      "kicker": "SCHEMA",
+      "bullets": [
+        "Field boleh bertipe object lain: relasi antar data",
+        "[Buku] artinya list berisi Buku",
+        "[Buku!]! artinya list wajib ada dan isinya tidak null",
+        "Relasi dua arah: Buku.penulis dan Penulis.buku"
+      ],
+      "code": "type Penulis {\n  id: ID!\n  nama: String!\n  buku: [Buku!]!\n}\ntype Buku {\n  id: ID!\n  judul: String!\n  penulis: Penulis!\n}"
+    },
+    {
+      "title": "Enum dan input type",
+      "kicker": "SCHEMA",
+      "bullets": [
+        "Enum: daftar nilai yang diizinkan",
+        "Nilai di luar enum langsung ditolak server",
+        "input: tipe khusus untuk argumen, sering di mutation",
+        "Field input hanya scalar, enum, atau input lain"
+      ],
+      "code": "enum Kategori { FIKSI SAINS SEJARAH }\n\ninput BukuBaru {\n  judul: String!\n  kategori: Kategori!\n  stok: Int = 1\n}"
+    },
+    {
+      "title": "Query pertama",
+      "kicker": "QUERY",
+      "bullets": [
+        "Selection set: kurung kurawal berisi field yang diminta",
+        "Field bertipe object wajib punya selection set sendiri",
+        "Bentuk JSON hasil mengikuti bentuk query",
+        "Kata query di depan boleh dihilangkan"
+      ],
+      "code": "{\n  daftarBuku {\n    judul\n    penulis { nama }\n  }\n}"
+    },
+    {
+      "title": "Argumen dan alias",
+      "kicker": "QUERY",
+      "bullets": [
+        "Argumen ditulis dalam kurung: buku(id: 1)",
+        "Field mana pun boleh punya argumen, bukan hanya root",
+        "Alias mengganti nama kunci di hasil",
+        "Alias wajib saat field sama dipanggil dua kali"
+      ],
+      "code": "{\n  fiksi: daftarBuku(kategori: FIKSI) { judul }\n  sains: daftarBuku(kategori: SAINS) { judul }\n  buku(id: 1) { __typename judul }\n}"
+    },
+    {
+      "title": "Variabel",
+      "kicker": "QUERY",
+      "bullets": [
+        "Nilai dinamis jangan ditempel ke string query",
+        "Deklarasikan $nama beserta tipenya di operasi",
+        "Nilainya dikirim terpisah di JSON variables",
+        "Teks query tetap sama, aman dan mudah di-cache"
+      ],
+      "code": "query AmbilBuku($id: ID!) {\n  buku(id: $id) { judul harga }\n}\n\n# variables\n{ \"id\": \"1\" }"
+    },
+    {
+      "title": "Apa itu resolver?",
+      "kicker": "RESOLVER",
+      "bullets": [
+        "Resolver: fungsi yang mengisi nilai satu field",
+        "Schema berkata apa, resolver berkata bagaimana",
+        "Server memanggil resolver dari root ke bawah",
+        "Sumber data bebas: database, REST, file, memori"
+      ],
+      "code": "const resolvers = {\n  Query: {\n    daftarBuku: () => BUKU,\n    buku: (_, args) =>\n      BUKU.find((b) => b.id === Number(args.id)),\n  },\n};"
+    },
+    {
+      "title": "Parent, args, context",
+      "kicker": "RESOLVER",
+      "bullets": [
+        "parent: hasil resolver di level atasnya",
+        "args: argumen yang ditulis di query",
+        "context: objek bersama untuk satu request",
+        "Isi context: user login, koneksi database, loader",
+        "Argumen keempat, info, jarang dipakai pemula"
+      ],
+      "code": "Buku: {\n  penulis: (buku, args, ctx) =>\n    ctx.db.penulis.find(\n      (p) => p.id === buku.penulisId\n    ),\n},"
+    },
+    {
+      "title": "Resolver bawaan",
+      "kicker": "RESOLVER",
+      "bullets": [
+        "Field tanpa resolver membaca parent[namaField]",
+        "judul dan harga cukup diambil dari objek buku",
+        "Tulis resolver hanya untuk field yang dihitung",
+        "Contoh: tersedia, rataRata, umur"
+      ],
+      "code": "Buku: {\n  // judul, harga: resolver bawaan\n  tersedia: (buku) => buku.stok > 0,\n},"
+    },
+    {
+      "title": "Resolver bersarang",
+      "kicker": "RESOLVER",
+      "bullets": [
+        "Hasil Query.buku menjadi parent untuk Buku.penulis",
+        "Hasil Buku.penulis menjadi parent untuk field nama",
+        "Resolver boleh async dan mengembalikan Promise",
+        "Server menunggu Promise sebelum turun ke bawah"
+      ],
+      "code": "Query: {\n  buku: async (_, { id }, ctx) =>\n    ctx.db.cariBuku(id),\n},\nBuku: {\n  penulis: async (buku, _, ctx) =>\n    ctx.db.cariPenulis(buku.penulisId),\n},"
+    },
+    {
+      "title": "Mutation",
+      "kicker": "MUTATION",
+      "bullets": [
+        "Mutation: operasi yang mengubah data",
+        "Didaftarkan di type Mutation pada schema",
+        "Field root mutation dijalankan berurutan",
+        "Kembalikan objek yang diubah agar klien bisa update"
+      ],
+      "code": "type Mutation {\n  pinjamBuku(bukuId: ID!): Peminjaman!\n}\n\nmutation {\n  pinjamBuku(bukuId: 3) { id buku { stok } }\n}"
+    },
+    {
+      "title": "Input type",
+      "kicker": "MUTATION",
+      "bullets": [
+        "Argumen banyak lebih rapi dikemas dalam satu input",
+        "Nama umum: TambahBukuInput, UbahBukuInput",
+        "Klien biasanya mengirim input lewat variabel",
+        "Resolver menerima args.input sebagai objek biasa"
+      ],
+      "code": "input TambahBukuInput {\n  judul: String!\n  harga: Int!\n}\ntype Mutation {\n  tambahBuku(input: TambahBukuInput!): Buku!\n}"
+    },
+    {
+      "title": "Validasi di mutation",
+      "kicker": "MUTATION",
+      "bullets": [
+        "Schema hanya memeriksa tipe, bukan aturan bisnis",
+        "Harga negatif tetap lolos sebagai Int",
+        "Cek di resolver, lempar Error bila tidak valid",
+        "Pesan error yang jelas memudahkan tampilan di klien"
+      ],
+      "code": "tambahBuku: (_, { input }) => {\n  if (!input.judul.trim())\n    throw new Error(\"Judul wajib diisi\");\n  if (input.harga <= 0)\n    throw new Error(\"Harga harus lebih dari 0\");\n  const buku = { id: BUKU.length + 1, ...input };\n  BUKU.push(buku);\n  return buku;\n},"
+    },
+    {
+      "title": "Bentuk respons",
+      "kicker": "ERROR",
+      "bullets": [
+        "Respons JSON berisi kunci data dan, bila ada, errors",
+        "Sukses penuh: hanya data",
+        "Gagal sebagian: field yang error bernilai null",
+        "Status HTTP sering tetap 200 walau ada errors",
+        "Klien wajib memeriksa errors, bukan hanya status"
+      ],
+      "code": "{\n  \"data\": { \"buku\": null },\n  \"errors\": [{\n    \"message\": \"Buku tidak ditemukan\",\n    \"path\": [\"buku\"]\n  }]\n}"
+    },
+    {
+      "title": "Error dari resolver",
+      "kicker": "ERROR",
+      "bullets": [
+        "throw di resolver menjadi satu item di errors",
+        "Field lain yang sukses tetap dikirim di data",
+        "Error di field non-null membuat null naik ke parent",
+        "Jangan bocorkan stack trace atau pesan database"
+      ],
+      "code": "Query: {\n  buku: (_, { id }) => {\n    const b = BUKU.find((x) => x.id === Number(id));\n    if (!b) throw new Error(\"Buku tidak ditemukan\");\n    return b;\n  },\n},"
+    },
+    {
+      "title": "Kode error",
+      "kicker": "ERROR",
+      "bullets": [
+        "extensions.code membuat error mudah dibedakan klien",
+        "Contoh: BAD_USER_INPUT, UNAUTHENTICATED, FORBIDDEN",
+        "Paket graphql menyediakan kelas GraphQLError",
+        "Klien memilih tindakan dari kode, bukan dari teks"
+      ],
+      "code": "import { GraphQLError } from \"graphql\";\n\nthrow new GraphQLError(\"Stok habis\", {\n  extensions: { code: \"BAD_USER_INPUT\" },\n});"
+    },
+    {
+      "title": "Masalah N+1",
+      "kicker": "N+1",
+      "bullets": [
+        "Query daftar 50 buku: 1 query untuk daftar buku",
+        "Buku.penulis dipanggil 50 kali: 50 query lagi",
+        "Total 1 + N query ke database",
+        "Makin lambat saat data dan pengguna bertambah"
+      ],
+      "code": "{ daftarBuku { judul penulis { nama } } }\n\nSELECT * FROM buku;            -- 1 kali\nSELECT * FROM penulis\n  WHERE id = 7;               -- N kali"
+    },
+    {
+      "title": "Batching",
+      "kicker": "N+1",
+      "bullets": [
+        "Kumpulkan semua id yang diminta dalam satu putaran",
+        "Ambil sekaligus: WHERE id IN (7, 8, 9)",
+        "Bagikan hasil ke setiap resolver sesuai id",
+        "Cache per request: id sama tidak diambil dua kali"
+      ],
+      "code": "SELECT * FROM penulis\n  WHERE id IN (1, 2, 3, 4);   -- 1 kali saja"
+    },
+    {
+      "title": "DataLoader",
+      "kicker": "N+1",
+      "bullets": [
+        "Library dataloader: batching dan cache per request",
+        "Fungsi batch menerima array key, kembalikan array",
+        "Urutan hasil harus sama dengan urutan key",
+        "Buat loader baru di context untuk setiap request"
+      ],
+      "code": "const loader = new DataLoader(async (ids) => {\n  const rows = await db.penulisByIds(ids);\n  return ids.map((id) =>\n    rows.find((p) => p.id === id) ?? null);\n});\n\n// di resolver\npenulis: (b, _, ctx) =>\n  ctx.loader.load(b.penulisId),"
+    },
+    {
+      "title": "Memilih server",
+      "kicker": "SERVER",
+      "bullets": [
+        "Apollo Server: populer, dokumentasi lengkap",
+        "GraphQL Yoga: ringan, berbasis standar Fetch API",
+        "Keduanya memakai paket graphql sebagai mesin inti",
+        "Konsep sama: typeDefs, resolvers, context",
+        "Keduanya punya halaman untuk mencoba query"
+      ]
+    },
+    {
+      "title": "typeDefs dan resolvers",
+      "kicker": "SERVER",
+      "bullets": [
+        "typeDefs: schema dalam bentuk string SDL",
+        "resolvers: objek dengan kunci sesuai nama type",
+        "startStandaloneServer membuka server di port 4000",
+        "Buka URL-nya untuk mencoba query di Apollo Sandbox"
+      ],
+      "code": "import { ApolloServer } from \"@apollo/server\";\nimport { startStandaloneServer }\n  from \"@apollo/server/standalone\";\nconst typeDefs = `type Query { halo: String! }`;\nconst resolvers = {\n  Query: { halo: () => \"Halo, kantin!\" },\n};\nconst server = new ApolloServer({\n  typeDefs, resolvers });\nawait startStandaloneServer(server);"
+    },
+    {
+      "title": "Context dan header",
+      "kicker": "SERVER",
+      "bullets": [
+        "Fungsi context dipanggil sekali untuk setiap request",
+        "Baca token dari header Authorization",
+        "Simpan user dan loader di context",
+        "Semua resolver bisa membaca ctx.user"
+      ],
+      "code": "await startStandaloneServer(server, {\n  context: async ({ req }) => ({\n    user: await userDariToken(req),\n    loader: buatLoaderPenulis(),\n  }),\n  listen: { port: 4000 },\n});"
+    },
+    {
+      "title": "Autentikasi dan otorisasi",
+      "kicker": "KEAMANAN",
+      "bullets": [
+        "Autentikasi: siapa kamu, dicek sekali di context",
+        "Otorisasi: boleh apa, dicek di resolver",
+        "Field sensitif seperti email dicek per field",
+        "Belum login: UNAUTHENTICATED, tak berhak: FORBIDDEN"
+      ],
+      "code": "Query: {\n  saya: (_, __, ctx) => {\n    if (!ctx.user) throw new GraphQLError(\n      \"Harus login dulu\",\n      { extensions: { code: \"UNAUTHENTICATED\" } });\n    return ctx.user;\n  },\n},"
+    },
+    {
+      "title": "Batas kedalaman query",
+      "kicker": "KEAMANAN",
+      "bullets": [
+        "Relasi dua arah membuat query bisa bersarang terus",
+        "Batasi kedalaman, misalnya maksimal 5 level",
+        "Hitung kompleksitas: field list diberi bobot lebih",
+        "Persisted query: server hanya terima query terdaftar",
+        "Batasi jumlah item dengan pagination"
+      ],
+      "code": "{ buku(id: 1) { penulis { buku {\n  penulis { buku { penulis {\n    buku { judul }\n  } } }\n} } } }"
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "KEAMANAN",
+      "bullets": [
+        "Pagination cursor: pola Connection, edges, pageInfo",
+        "Fragment untuk memakai ulang selection set",
+        "Subscription untuk data realtime",
+        "Klien frontend seperti Apollo Client atau urql",
+        "Codegen: tipe TypeScript otomatis dari schema"
+      ],
+      "code": "{\n  daftarBuku(first: 10, after: \"Y3Vyc29yOjk=\") {\n    edges { cursor node { judul } }\n    pageInfo { hasNextPage endCursor }\n  }\n}"
+    }
+  ]
+}
