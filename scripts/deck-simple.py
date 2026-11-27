@@ -1160,7 +1160,8 @@ class Http(St):
         rect(s, 0.6, 1.72, 12.1, 0.02, T.line)
         return (0.6, 1.95, 12.1, 4.85)
 
-    def mark(self, s, x, cy, i): self.chip(s, x, cy - 0.18, self.CODES[i % len(self.CODES)])
+    # Plain numbers: a status code beside a bullet would read as that bullet's code.
+    def mark(self, s, x, cy, i): self.chip(s, x, cy - 0.18, f"[{i + 1}]")
     def rowbg(self, s, x, y, w, h, i):
         if i: rect(s, x, y, w, 0.012, T.line)
 

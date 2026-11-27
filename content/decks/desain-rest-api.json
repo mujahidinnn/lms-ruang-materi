@@ -1,0 +1,329 @@
+{
+  "theme": "rest",
+  "deck": "Desain REST API",
+  "kicker": "KELAS",
+  "subtitle": "Merancang API yang konsisten dan mudah dipakai: URL, method, status code, format error, paginasi, versioning, caching, sampai OpenAPI.",
+  "slides": [
+    {
+      "title": "Desain REST API"
+    },
+    {
+      "title": "Apa itu API?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Kontrak cara satu program meminta data ke program lain",
+        "Klien: aplikasi web, aplikasi HP, atau server lain",
+        "Server: menerima request, membalas respons",
+        "Web API berjalan di atas HTTP dengan data JSON",
+        "API yang baik mudah ditebak tanpa membaca kodenya"
+      ],
+      "code": "GET /buku/7 HTTP/1.1\nHost: api.perpus.sch.id\nAccept: application/json\n\nHTTP/1.1 200 OK\nContent-Type: application/json\n\n{ \"id\": 7, \"judul\": \"Laskar Pelangi\" }"
+    },
+    {
+      "title": "Prinsip REST",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Resource: setiap data punya alamat URL sendiri",
+        "Representasi: resource dikirim sebagai JSON",
+        "Stateless: tiap request membawa semua info yang perlu",
+        "Client-server: tampilan dan data dipisah",
+        "Antarmuka seragam: method HTTP dan status code standar"
+      ],
+      "note": "REST adalah gaya arsitektur dari disertasi Roy Fielding tahun 2000, bukan library."
+    },
+    {
+      "title": "REST dan alternatifnya",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "REST: resource + method HTTP, paling umum dan mudah di-cache",
+        "RPC: memanggil fungsi, misalnya POST /hitungNilai",
+        "GraphQL: satu endpoint, klien memilih field sendiri",
+        "Kelas ini fokus ke REST, gaya yang paling sering kamu temui"
+      ],
+      "code": "# REST\nGET  /siswa/12/nilai\n# RPC\nPOST /ambilNilaiSiswa  { \"id\": 12 }\n# GraphQL\nPOST /graphql\n{ siswa(id: 12) { nilai { mapel } } }"
+    },
+    {
+      "title": "Resource dan URL",
+      "kicker": "URL DAN RESOURCE",
+      "bullets": [
+        "Resource adalah benda: buku, siswa, pesanan",
+        "Koleksi memakai kata benda jamak: /buku",
+        "Satu item: koleksi diikuti ID, /buku/7",
+        "Huruf kecil, kata dipisah tanda hubung",
+        "Tanpa ekstensi file seperti .json atau .php"
+      ],
+      "code": "/buku              koleksi buku\n/buku/7            satu buku\n/anggota/21        satu anggota\n/kategori-buku     dua kata, tanda hubung"
+    },
+    {
+      "title": "Kata benda, bukan kata kerja",
+      "kicker": "URL DAN RESOURCE",
+      "bullets": [
+        "Aksi sudah diwakili method HTTP",
+        "Jangan menulis /ambilBuku atau /hapusBuku",
+        "Satu URL, banyak method: GET, POST, DELETE",
+        "Aksi khusus jadikan resource: /peminjaman"
+      ],
+      "code": "# Hindari\nPOST /buatBuku\nGET  /hapusBuku?id=7\n\n# Lebih baik\nPOST   /buku\nDELETE /buku/7\nPOST   /buku/7/peminjaman"
+    },
+    {
+      "title": "Resource bersarang",
+      "kicker": "URL DAN RESOURCE",
+      "bullets": [
+        "Pakai sarang bila anak selalu milik satu induk",
+        "/kelas/:id/siswa: siswa di satu kelas",
+        "Cukup satu tingkat, jangan /a/1/b/2/c/3/d",
+        "Item anak boleh punya alamat sendiri: /siswa/88"
+      ],
+      "code": "GET  /kelas/xi-rpl-1/siswa\nPOST /kelas/xi-rpl-1/siswa\nGET  /siswa/88\nGET  /siswa/88/nilai"
+    },
+    {
+      "title": "Path atau query?",
+      "kicker": "URL DAN RESOURCE",
+      "bullets": [
+        "Path: identitas resource, misalnya /buku/7",
+        "Query: menyaring, mengurutkan, memotong hasil",
+        "Query opsional, URL tetap sah tanpanya",
+        "Jangan taruh ID utama di query: /buku?id=7"
+      ],
+      "code": "GET /buku/7\nGET /buku?kategori=novel\nGET /buku?sort=-tahun&halaman=2\nGET /kelas/xi-rpl-1/siswa?aktif=true"
+    },
+    {
+      "title": "Lima method utama",
+      "kicker": "METHOD HTTP",
+      "bullets": [
+        "GET: membaca koleksi atau satu item",
+        "POST: membuat item baru di koleksi",
+        "PUT: mengganti item secara utuh",
+        "PATCH: mengubah sebagian field",
+        "DELETE: menghapus item"
+      ],
+      "code": "GET    /buku       daftar buku\nGET    /buku/7     detail buku 7\nPOST   /buku       tambah buku\nPUT    /buku/7     ganti buku 7\nPATCH  /buku/7     ubah sebagian\nDELETE /buku/7     hapus buku 7"
+    },
+    {
+      "title": "Aman dan idempoten",
+      "kicker": "METHOD HTTP",
+      "bullets": [
+        "Aman: tidak mengubah data di server (GET, HEAD)",
+        "Idempoten: diulang berkali-kali hasilnya sama",
+        "GET, PUT, DELETE idempoten; POST tidak",
+        "PATCH tidak dijamin idempoten",
+        "Klien dan proxy boleh mengulang request idempoten"
+      ],
+      "note": "Karena itu GET tidak boleh dipakai untuk menghapus atau mengubah data."
+    },
+    {
+      "title": "PUT atau PATCH?",
+      "kicker": "METHOD HTTP",
+      "bullets": [
+        "PUT mengirim seluruh isi item yang baru",
+        "Field yang tidak dikirim lewat PUT ikut hilang",
+        "PATCH hanya mengirim field yang berubah",
+        "Untuk form edit kecil, PATCH lebih praktis"
+      ],
+      "code": "// buku 7: { judul, penulis, stok: 3 }\nPUT /buku/7\n{ \"judul\": \"Bumi\", \"penulis\": \"Tere Liye\",\n  \"stok\": 5 }\n\nPATCH /buku/7\n{ \"stok\": 5 }"
+    },
+    {
+      "title": "Kelompok status code",
+      "kicker": "STATUS CODE",
+      "bullets": [
+        "2xx: berhasil",
+        "3xx: pengalihan atau pakai cache",
+        "4xx: kesalahan dari sisi klien",
+        "5xx: kesalahan di server",
+        "Klien membaca angka dulu, baru isi body"
+      ]
+    },
+    {
+      "title": "Sukses: 200, 201, 204",
+      "kicker": "STATUS CODE",
+      "bullets": [
+        "200 OK: berhasil dan ada isi",
+        "201 Created: item baru dibuat, sertakan header Location",
+        "204 No Content: berhasil tanpa body, cocok untuk DELETE"
+      ],
+      "code": "app.post(\"/buku\", (req, res) => {\n  const buku = { id: 8, ...req.body };\n  daftar.push(buku);\n  res.set(\"Location\", \"/buku/8\");\n  res.status(201).json(buku);\n});"
+    },
+    {
+      "title": "Error dari klien",
+      "kicker": "STATUS CODE",
+      "bullets": [
+        "400 Bad Request: JSON rusak atau format salah",
+        "401 belum login, 403 sudah login tapi tidak berhak",
+        "404 Not Found: resource tidak ada",
+        "409 Conflict: bentrok dengan keadaan data, mis. stok habis",
+        "422: format benar tapi isinya tidak lolos validasi"
+      ]
+    },
+    {
+      "title": "Error dari server",
+      "kicker": "STATUS CODE",
+      "bullets": [
+        "500: bug atau kejadian tak terduga di server",
+        "503: server sedang sibuk atau perawatan",
+        "Jangan kirim stack trace ke klien",
+        "Catat detail error di log server",
+        "Jangan pernah balas 200 untuk sebuah error"
+      ],
+      "code": "// Salah\nres.status(200).json({ sukses: false })\n\n// Benar\nres.status(404).json({\n  error: { code: \"BUKU_TIDAK_ADA\",\n           message: \"Buku 99 tidak ditemukan\" }\n})"
+    },
+    {
+      "title": "Bentuk respons yang konsisten",
+      "kicker": "FORMAT RESPONS",
+      "bullets": [
+        "Semua endpoint memakai pola yang sama",
+        "Koleksi dibungkus: { data: [...], meta: {...} }",
+        "Satu item boleh dikirim langsung sebagai objek",
+        "Klien cukup belajar satu bentuk"
+      ],
+      "code": "{\n  \"data\": [\n    { \"id\": 7, \"judul\": \"Bumi\" },\n    { \"id\": 8, \"judul\": \"Hujan\" }\n  ],\n  \"meta\": { \"total\": 42 }\n}"
+    },
+    {
+      "title": "Format error",
+      "kicker": "FORMAT RESPONS",
+      "bullets": [
+        "Satu bentuk error untuk semua endpoint",
+        "code untuk program, message untuk manusia",
+        "details menunjuk field yang salah",
+        "Alternatif standar: Problem Details, RFC 9457"
+      ],
+      "code": "{\n  \"error\": {\n    \"code\": \"VALIDASI_GAGAL\",\n    \"message\": \"Data buku tidak valid\",\n    \"details\": [\n      { \"field\": \"tahun\", \"message\": \"wajib angka\" }\n    ]\n  }\n}"
+    },
+    {
+      "title": "Tanggal, angka, dan nama field",
+      "kicker": "FORMAT RESPONS",
+      "bullets": [
+        "Tanggal pakai ISO 8601: 2026-07-17T08:00:00Z",
+        "Angka dikirim sebagai number, bukan string",
+        "Pilih satu gaya nama: camelCase atau snake_case",
+        "Boolean ditulis true atau false, bukan \"ya\""
+      ],
+      "code": "{\n  \"id\": 7,\n  \"tanggalPinjam\": \"2026-07-17T08:00:00Z\",\n  \"batasKembali\": \"2026-07-24\",\n  \"denda\": 2000,\n  \"sudahKembali\": false\n}"
+    },
+    {
+      "title": "Filter dan sort",
+      "kicker": "FILTER DAN PAGINASI",
+      "bullets": [
+        "Filter memakai nama field: ?kategori=novel",
+        "Beberapa filter digabung dengan &",
+        "sort=judul naik, sort=-tahun turun",
+        "Abaikan atau tolak parameter yang tidak dikenal"
+      ],
+      "code": "GET /buku?kategori=novel\nGET /buku?kategori=novel&tahun=2020\nGET /buku?sort=-tahun\n\nlet hasil = daftar;\nif (q.kategori)\n  hasil = hasil.filter(\n    (b) => b.kategori === q.kategori);"
+    },
+    {
+      "title": "Paginasi offset",
+      "kicker": "FILTER DAN PAGINASI",
+      "bullets": [
+        "?halaman=2&per=10 atau ?offset=10&limit=10",
+        "Mudah: bisa lompat ke halaman mana saja",
+        "Lambat di data besar, bisa melompati data baru",
+        "Kirim metadata total agar klien tahu jumlah halaman"
+      ],
+      "code": "const halaman = Number(q.halaman) || 1;\nconst per = Number(q.per) || 10;\nconst awal = (halaman - 1) * per;\nres.json({\n  data: hasil.slice(awal, awal + per),\n  meta: { total: hasil.length, halaman, per }\n});"
+    },
+    {
+      "title": "Paginasi cursor",
+      "kicker": "FILTER DAN PAGINASI",
+      "bullets": [
+        "Cursor menunjuk item terakhir yang sudah dilihat",
+        "Stabil walau ada data baru masuk",
+        "Cepat di tabel besar karena memakai index",
+        "Tidak bisa lompat ke halaman 50 langsung"
+      ],
+      "code": "GET /pengumuman?limit=20\n{\n  \"data\": [ ... ],\n  \"meta\": { \"next\": \"eyJpZCI6MTIwfQ\" }\n}\n\nGET /pengumuman?limit=20&cursor=eyJpZCI6MTIwfQ"
+    },
+    {
+      "title": "Versioning",
+      "kicker": "VERSIONING DAN KEAMANAN",
+      "bullets": [
+        "Versi di URL: /v1/buku, paling mudah dilihat",
+        "Alternatif: versi lewat header",
+        "Naikkan versi mayor hanya untuk perubahan merusak",
+        "Umumkan deprecation dan tanggal versi lama dimatikan"
+      ],
+      "code": "GET /v1/buku/7\nGET /v2/buku/7\n\nHTTP/1.1 200 OK\nDeprecation: true\nSunset: Wed, 31 Dec 2026 23:59:59 GMT"
+    },
+    {
+      "title": "Perubahan yang merusak",
+      "kicker": "VERSIONING DAN KEAMANAN",
+      "bullets": [
+        "Merusak: menghapus atau mengganti nama field",
+        "Merusak: mengubah tipe data atau arti status code",
+        "Aman: menambah field atau endpoint baru",
+        "Aman: menambah parameter query opsional",
+        "Klien yang baik mengabaikan field tak dikenal"
+      ]
+    },
+    {
+      "title": "Keamanan dasar API",
+      "kicker": "VERSIONING DAN KEAMANAN",
+      "bullets": [
+        "Selalu HTTPS, jangan HTTP biasa",
+        "Validasi semua input dari klien di server",
+        "Auth lewat header Authorization: Bearer <token>",
+        "CORS hanya untuk origin yang kamu percayai",
+        "Detail auth: lihat kelas Autentikasi dan Keamanan API"
+      ],
+      "code": "GET /v1/anggota/saya\nAuthorization: Bearer eyJhbGciOi...\n\nHTTP/1.1 401 Unauthorized\n{ \"error\": { \"code\": \"BELUM_LOGIN\" } }"
+    },
+    {
+      "title": "Cache-Control",
+      "kicker": "CACHING DAN RATE LIMIT",
+      "bullets": [
+        "Header yang memberi tahu berapa lama respons boleh disimpan",
+        "max-age=60: pakai salinan selama 60 detik",
+        "no-store: jangan simpan, cocok untuk data pribadi",
+        "private: hanya browser, bukan cache bersama"
+      ],
+      "code": "res.set(\"Cache-Control\", \"public, max-age=300\");\nres.json(daftarKategori);\n\n// data pribadi\nres.set(\"Cache-Control\", \"no-store\");"
+    },
+    {
+      "title": "ETag dan 304",
+      "kicker": "CACHING DAN RATE LIMIT",
+      "bullets": [
+        "ETag: sidik jari versi sebuah respons",
+        "Klien menyimpan ETag lalu mengirim If-None-Match",
+        "Sama: balas 304 Not Modified tanpa body",
+        "Beda: balas 200 dengan data baru dan ETag baru"
+      ],
+      "code": "const tag = `\"buku-${b.id}-v${b.versi}\"`;\nif (req.headers[\"if-none-match\"] === tag)\n  return res.status(304).end();\nres.set(\"ETag\", tag);\nres.json(b);"
+    },
+    {
+      "title": "Rate limit dan 429",
+      "kicker": "CACHING DAN RATE LIMIT",
+      "bullets": [
+        "Batasi jumlah request per klien per menit",
+        "Lewat batas: 429 Too Many Requests",
+        "Retry-After: berapa detik klien harus menunggu",
+        "Idempotency-Key mencegah POST ganda saat diulang"
+      ],
+      "code": "HTTP/1.1 429 Too Many Requests\nRetry-After: 30\n\n{ \"error\": { \"code\": \"TERLALU_BANYAK\",\n  \"message\": \"Coba lagi 30 detik lagi\" } }"
+    },
+    {
+      "title": "OpenAPI",
+      "kicker": "OPENAPI",
+      "bullets": [
+        "Standar menulis kontrak API dalam YAML atau JSON",
+        "Versi terbaru yang umum dipakai: OpenAPI 3.1",
+        "Berisi paths, parameters, requestBody, responses",
+        "Schema menjelaskan bentuk data",
+        "Swagger UI mengubahnya jadi halaman dokumentasi interaktif"
+      ]
+    },
+    {
+      "title": "Contoh spesifikasi",
+      "kicker": "OPENAPI",
+      "code": "openapi: 3.1.0\ninfo: { title: API Perpus, version: 1.0.0 }\npaths:\n  /v1/buku/{id}:\n    get:\n      parameters:\n        - { name: id, in: path, required: true,\n            schema: { type: integer } }\n      responses:\n        \"200\": { description: Detail buku }"
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "OPENAPI",
+      "bullets": [
+        "Rancang URL dan status code sebelum menulis kode",
+        "Proyek akhir: API Perpustakaan Sekolah /v1/buku",
+        "Lanjut: Autentikasi dan Keamanan API",
+        "Coba juga: GraphQL, gRPC, dan webhook"
+      ]
+    }
+  ]
+}
