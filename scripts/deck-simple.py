@@ -890,7 +890,146 @@ class Console(St):
         text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("DDEFF3"), gap=2, font=MONO)
 
 
-STYLES = {"laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 17. Next.js: app/ file tree beside the page ----------
+class FileTree(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.1, 0.5
+
+    def tree(self, s, x, y, seg, dark):
+        fg, hi = (SLATE, WHITE) if dark else (T.grey, T.ink)
+        rows = [("app/", 0, fg), ("layout.tsx", 1, fg), (f"{seg}/", 1, fg), ("page.tsx", 2, hi)]
+        for k, (name, d, col) in enumerate(rows):
+            yy = y + k * 0.36
+            if k == 3: rrect(s, x + d * 0.28 - 0.1, yy - 0.02, 1.9, 0.34, T.accent if dark else T.light, adj=0.3)
+            text(s, x + d * 0.28, yy, 2.4, 0.3, name, 12, k == 3, WHITE if (k == 3 and dark) else col, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        for k in range(14): rect(s, 0, k * 0.55, W, 0.004, mix(T.ink, WHITE, 0.08))
+        text(s, 0.9, 1.0, 8, 0.4, "npx create-next-app@latest", 15, color=SLATE, font=MONO, gap=0)
+        text(s, 0.9, 1.8, 7.5, 1.6, sl["title"], 72, True, WHITE, gap=0, font=self.head, spc=-200)
+        text(s, 0.9, 3.5, 6.8, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        self.tree(s, 0.9, 5.0, "belajar", True)
+        oval(s, 8.9, 1.7, 3.4, 3.4, WHITE)
+        logo(s, "ink", 9.35, 2.15, 2.5)
+
+    def chrome(self, s, n, sl):
+        seg = re.sub(r"[^a-z0-9]+", "-", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("-")
+        rect(s, 0, 0, 2.9, H, T.card)
+        rect(s, 2.9, 0, 0.012, H, T.line)
+        self.tree(s, 0.45, 0.55, seg[:16], False)
+        logo(s, "ink", 0.45, 6.15, 0.55)
+        self.title(s, 3.3, 0.5, 9.4, sl["title"])
+        return (3.3, 1.55, 9.45, 5.25)
+
+    def foot(self, s, n, sl):
+        text(s, 3.3, 7.03, 7, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.03, 1.0, 0.25, f"{n} / {N}", 10, color=T.grey, gap=0, align=PP_ALIGN.RIGHT)
+
+    def mark(self, s, x, cy, i): rect(s, x, cy - 0.12, 0.05, 0.24, T.accent)
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.03)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 44 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("E5E7EB"), gap=2, font=MONO)
+
+
+# ---------- 18. MongoDB: a document in braces ----------
+class Document(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.75
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 0.9, 9, 0.4, 'db.kelas.findOne({ nama: "MongoDB" })', 15, color=T.amber, font=MONO, gap=0)
+        text(s, 0.75, 1.5, 0.6, 4.5, "{", 120, color=T.accent, font=MONO, gap=0)
+        text(s, 1.6, 2.0, 7.0, 1.6, sl["title"], 68, True, WHITE, gap=0, font=self.head)
+        text(s, 1.6, 3.6, 6.4, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 1.6, 4.9, 6, 0.3, '_id: ObjectId("…"),  bab: 9', 13, color=SLATE, font=MONO, gap=0)
+        text(s, 0.75, 5.0, 0.6, 1.6, "}", 120, color=T.accent, font=MONO, gap=0)
+        oval(s, 8.9, 1.6, 3.4, 3.4, T.accent)
+        logo(s, "white", 9.5, 2.2, 2.2)
+
+    def chrome(self, s, n, sl):
+        k = re.sub(r"[^a-z0-9]+", "_", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("_")
+        text(s, 0.6, 0.4, 10, 0.35, f'db.{k}.find({{ slide: {n} }})', 13, color=T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.85, 11, sl["title"])
+        logo(s, "accent", 12.1, 0.4, 0.6)
+        text(s, 0.45, 1.75, 0.4, 0.5, "{", 26, True, T.accent, font=MONO, gap=0)
+        text(s, 0.45, 6.4, 0.4, 0.5, "}", 26, True, T.accent, font=MONO, gap=0)
+        return (0.85, 2.0, 11.85, 4.6)
+
+    def mark(self, s, x, cy, i):
+        text(s, x, cy - 0.2, 0.7, 0.4, f'"{i + 1}":', 13, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i): rrect(s, x - 0.05, y + 0.05, w, h - 0.1, T.card if i % 2 == 0 else WHITE, adj=0.2)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("D7F5E9"), gap=2, font=MONO)
+
+
+# ---------- 19. Machine learning: scatter plot and fitted line ----------
+class Plot(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.1, 0.55
+    PTS = [(0.3, 0.75), (0.8, 0.62), (1.2, 0.66), (1.7, 0.45), (2.1, 0.5), (2.6, 0.3), (3.0, 0.33), (3.4, 0.15)]
+
+    def scatter(self, s, x, y, w, h, dot, line, axis):
+        rect(s, x, y + h, w, 0.025, axis); rect(s, x, y, 0.025, h, axis)
+        for px, py in self.PTS: oval(s, x + px / 3.6 * w, y + py * h, 0.16, 0.16, dot)
+        poly(s, [(x + 0.1, y + 0.82 * h), (x + w - 0.1, y + 0.1 * h)], line, 2.5)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 1.0, 8, 0.4, "model.fit(X, y)", 16, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.7, 7.4, 2.4, sl["title"], 58, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.2, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        self.scatter(s, 8.4, 1.4, 4.0, 3.8, T.accent, WHITE, T.mid)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).capitalize()
+        text(s, 0.6, 0.42, 8, 0.3, f"{k}  ·  langkah {n}", 12, True, T.accent, gap=0)
+        self.title(s, 0.6, 0.8, 10.2, sl["title"])
+        self.scatter(s, 11.0, 0.35, 1.6, 1.15, T.accent, T.ink, T.line)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def mark(self, s, x, cy, i): oval(s, x, cy - 0.1, 0.2, 0.2, T.accent)
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.card, line=T.line, adj=0.03)
+        rect(s, x, y + 0.15, 0.07, h - 0.3, T.accent)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.35, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=T.ink, gap=2, font=MONO)
+
+
+STYLES = {"nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
