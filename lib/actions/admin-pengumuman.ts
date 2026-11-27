@@ -55,18 +55,28 @@ export async function kirimPengumuman(input: unknown): Promise<Result> {
   if (error || !row) return { error: "Gagal menyimpan pengumuman." };
 
   let note = web ? "Tampil di Dashboard murid." : "";
+  let emailNote = "";
   if (email) {
     const { data: rcpt } = await db.rpc("announce_recipients", { p_audience: audience, p_ids: audience === "users" ? userIds : [] });
     const to = ((rcpt ?? []) as { email: string }[]).map((r) => r.email);
     try {
       const { sent, failed, quota } = to.length ? await sendEmails(to, title, announcementHtml({ title, body, link })) : { sent: 0, failed: 0, quota: undefined };
       await db.from("announcements").update({ email_sent: sent, email_failed: failed }).eq("id", row.id);
-      note += ` Email: ${sent} terkirim${failed ? `, ${failed} gagal` : ""}${to.length ? "" : " (tidak ada penerima)"}.${used(quota)}`;
+      emailNote = `${sent} terkirim${failed ? `, ${failed} gagal` : ""}${to.length ? "" : " (tidak ada penerima)"}`;
+      note += ` Email: ${emailNote}.${used(quota)}`;
     } catch (e) {
-      note += ` Email gagal: ${e instanceof Error ? e.message : "kesalahan tak dikenal"}.`;
+      emailNote = `gagal: ${e instanceof Error ? e.message : "kesalahan tak dikenal"}`;
+      note += ` Email ${emailNote}.`;
     }
   }
-  await audit(admin, "Kirim pengumuman", `${title} (${audience}${email ? ", email" : ""})`);
+  await audit(admin, "Kirim pengumuman", `${title} (${audience}${email ? ", email" : ""})`, [
+    ["Judul", title],
+    ["Isi", body],
+    ["Tautan", link ?? ""],
+    ["Sasaran", { all: "Semua akun", student: "Semua murid", admin: "Semua admin", users: `${userIds.length} pengguna dipilih` }[audience]],
+    ["Tampil di website", web ? "Ya" : "Tidak"],
+    ["Email", email ? emailNote : "Tidak dikirim"],
+  ]);
   refresh();
   return { ok: `Terkirim.${note ? " " + note : ""}` };
 }

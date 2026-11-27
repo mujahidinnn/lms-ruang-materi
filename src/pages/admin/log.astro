@@ -1,6 +1,6 @@
 ---
 import EmptyState from "../../components/EmptyState.astro";
-import { History, Megaphone, ShieldCheck, Trash2, Undo2, Upload, UserPlus } from "lucide-react";
+import { ChevronDown, History, Megaphone, ShieldCheck, Trash2, Undo2, Upload, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../components/AppShell.astro";
 import Base from "../../layouts/Base.astro";
@@ -9,12 +9,13 @@ import { adminOnly } from "../../lib/guard";
 const user = await adminOnly(Astro);
 if (user instanceof Response) return user;
 
-type Row = { id: number; admin_email: string; action: string; detail: string; created_at: string };
-const { data } = await (await createClient()).from("admin_audit_log").select("id, admin_email, action, detail, created_at").order("created_at", { ascending: false }).limit(200);
+type Row = { id: number; admin_email: string; action: string; detail: string; meta: [string, string][]; created_at: string };
+const { data } = await (await createClient()).from("admin_audit_log").select("id, admin_email, action, detail, meta, created_at").order("created_at", { ascending: false }).limit(200);
 // Older rows stored the account's UUID; show its email where it still exists.
 const { data: people } = await (await createClient()).rpc("admin_users");
 const emails = new Map(((people ?? []) as { user_id: string; email: string }[]).map((p) => [p.user_id, p.email]));
 const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, detail: r.detail?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => emails.get(id) ?? id) }));
+const full = new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeStyle: "medium", timeZone: "Asia/Jakarta" });
 const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 const dayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
 const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
@@ -53,14 +54,30 @@ for (const r of rows) {
                 {d.rows.map((r, i) => {
                   const { Icon, tone } = look(r.action);
                   return (
-                    <li class={`flex items-start gap-3 py-3.5 ${i ? "border-t border-zinc-800" : ""}`}>
-                      <span aria-hidden class={`grid size-10 shrink-0 place-items-center rounded-xl text-zinc-50 ${tone}`}><Icon className="size-[18px]" /></span>
-                      <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium">{r.action}</p>
-                        {r.detail && <p class="mt-0.5 text-sm break-words text-zinc-400">{r.detail}</p>}
-                        <p class="mt-1 truncate text-xs text-zinc-500">{r.admin_email}</p>
-                      </div>
-                      <time datetime={r.created_at} class="shrink-0 pt-0.5 text-xs tabular-nums text-zinc-500">{clock.format(new Date(r.created_at))}</time>
+                    <li class={i ? "border-t border-zinc-800" : ""}>
+                      <details class="group">
+                        <summary class="-mx-2 flex cursor-pointer list-none items-start gap-3 rounded-xl px-2 py-3.5 hover:bg-zinc-800/50 focus-visible:outline-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
+                          <span aria-hidden class={`grid size-10 shrink-0 place-items-center rounded-xl text-zinc-50 ${tone}`}><Icon className="size-[18px]" /></span>
+                          <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium">{r.action}</p>
+                            {r.detail && <p class="mt-0.5 text-sm break-words text-zinc-400">{r.detail}</p>}
+                            <p class="mt-1 truncate text-xs text-zinc-500">{r.admin_email}</p>
+                          </div>
+                          <span class="flex shrink-0 items-center gap-1.5 pt-0.5 text-xs tabular-nums text-zinc-500">
+                            <time datetime={r.created_at}>{clock.format(new Date(r.created_at))}</time>
+                            <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                          </span>
+                        </summary>
+                        <dl class="mb-3.5 ml-13 grid grid-cols-1 gap-x-4 gap-y-2 rounded-xl bg-zinc-950/60 p-3 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
+                          {([["Waktu", full.format(new Date(r.created_at))], ["Admin", r.admin_email], ...(r.meta ?? [])] as [string, string][]).map(([k, v]) => (
+                            <>
+                              <dt class="text-xs font-medium text-zinc-500 sm:pt-0.5">{k}</dt>
+                              <dd class="break-words whitespace-pre-line text-zinc-300 max-sm:-mt-1.5">{v}</dd>
+                            </>
+                          ))}
+                          {!r.meta?.length && <p class="text-xs text-zinc-500 sm:col-span-2">Rincian tambahan belum dicatat untuk baris ini.</p>}
+                        </dl>
+                      </details>
                     </li>
                   );
                 })}

@@ -2,16 +2,17 @@ import { createClient as createAnon } from "@supabase/supabase-js";
 import { SITE_URL } from "@/lib/site";
 import { refresh } from "@/lib/request";
 import { z } from "zod";
-import { audit } from "@/lib/audit";
+import { audit, type Meta } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { loadPeople } from "@/lib/pengguna";
 import { createClient } from "@/lib/supabase/server";
 
-// Audit rows name the account by email, not its UUID. Looked up before the
-// change, so a deleted account still resolves.
-async function emailOf(id: string) {
+// Audit rows name the account, not its UUID. Looked up before the change, so
+// a deleted account still resolves.
+async function personOf(id: string) {
   const { data } = await (await createClient()).rpc("admin_users");
-  return ((data ?? []) as { user_id: string; email: string }[]).find((r) => r.user_id === id)?.email ?? id;
+  const r = ((data ?? []) as { user_id: string; email: string; display_name: string | null; role: string; created_at: string }[]).find((r) => r.user_id === id);
+  return { email: r?.email ?? id, meta: [["Nama", r?.display_name ?? ""], ["Email", r?.email ?? ""], ["ID akun", id], ["Bergabung", r ? new Date(r.created_at).toLocaleDateString("id-ID", { dateStyle: "long", timeZone: "Asia/Jakarta" }) : ""]] as Meta, role: r?.role ?? "" };
 }
 
 const input = z.object({ user_id: z.uuid(), role: z.enum(["student", "admin"]) });
@@ -22,10 +23,10 @@ export async function gantiRole(_: { error?: string; ok?: string }, form: FormDa
   const admin = await requireAdmin();
   const parsed = input.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "Data tidak valid." };
-  const email = await emailOf(parsed.data.user_id);
+  const who = await personOf(parsed.data.user_id);
   const { error } = await (await createClient()).rpc("set_user_role", { target: parsed.data.user_id, new_role: parsed.data.role });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal mengubah role." };
-  await audit(admin, "Ganti role", `${email} menjadi ${parsed.data.role}`);
+  await audit(admin, "Ganti role", `${who.email} menjadi ${parsed.data.role}`, [...who.meta, ["Role sebelumnya", who.role], ["Role baru", parsed.data.role]]);
   refresh();
   return { ok: "Role diubah." };
 }
@@ -34,10 +35,10 @@ export async function hapusPengguna(_: { error?: string; ok?: string }, form: Fo
   const admin = await requireAdmin();
   const parsed = z.uuid().safeParse(form.get("user_id"));
   if (!parsed.success) return { error: "Data tidak valid." };
-  const email = await emailOf(parsed.data);
+  const who = await personOf(parsed.data);
   const { error } = await (await createClient()).rpc("admin_delete_user", { target: parsed.data });
   if (error) return { error: error.code === "P0001" ? error.message : "Gagal menghapus pengguna." };
-  await audit(admin, "Hapus pengguna", email);
+  await audit(admin, "Hapus pengguna", who.email, [...who.meta, ["Role", who.role]]);
   refresh();
   return { ok: "Pengguna dihapus." };
 }

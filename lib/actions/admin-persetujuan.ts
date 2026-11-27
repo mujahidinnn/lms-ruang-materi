@@ -49,7 +49,7 @@ export async function setujuiPerubahan(_: State, form: FormData): Promise<State>
   } catch (e) {
     if (!(e instanceof Redirect) && !(e instanceof NotFound)) return fail(row, e instanceof Error ? e.message : "kesalahan server.");
   }
-  await audit(user, "Setujui perubahan", `${row.action} dari ${row.requested_email}`);
+  await audit(user, "Setujui perubahan", `${row.action} dari ${row.requested_email}`, [["Aksi", row.action], ["Diminta oleh", row.requested_email], ["Nomor permintaan", String(row.id)]]);
   return { ok: "Disetujui dan dijalankan." };
 }
 
@@ -57,6 +57,6 @@ export async function tolakPerubahan(_: State, form: FormData): Promise<State> {
   const user = await approver();
   const row = await claim(form, "rejected", String(form.get("note") ?? ""));
   if (!row) return { error: "Sudah diputuskan." };
-  await audit(user, "Tolak perubahan", `${row.action} dari ${row.requested_email}`);
+  await audit(user, "Tolak perubahan", `${row.action} dari ${row.requested_email}`, [["Aksi", row.action], ["Diminta oleh", row.requested_email], ["Nomor permintaan", String(row.id)], ["Alasan", String(form.get("note") ?? "")]]);
   return { ok: "Ditolak." };
 }
