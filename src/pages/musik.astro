@@ -396,7 +396,27 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   }
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
-  fill(picks, JSON.parse(picks.dataset.picks!), ["Belum ada pilihan", "Pilihan lagu belum tersedia."]);
+  const pickList: Playlist[] = JSON.parse(picks.dataset.picks!);
+  fill(picks, pickList, ["Belum ada pilihan", "Pilihan lagu belum tersedia."]);
+  // Covers come from Spotify's oEmbed (no login, CORS open); a row keeps its
+  // plain tile if that fails. Old history entries pick the cover up too.
+  Promise.all(pickList.map(async (p, i) => {
+    try {
+      const r = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(p.src.replace("/embed/", "/"))}`);
+      p.cover = (await r.json()).thumbnail_url;
+    } catch { return; }
+    if (!p.cover) return;
+    const img = Object.assign(document.createElement("img"), { src: p.cover, alt: "", loading: "lazy", referrerPolicy: "no-referrer" });
+    img.className = "size-11 shrink-0 rounded-xl border-2 border-noir bg-matcha-200 object-cover";
+    picks.querySelectorAll("li > button")[i]?.firstElementChild?.replaceWith(img);
+  })).then(() => {
+    const old = played();
+    const fixed = old.map((h) => h.cover ? h : { ...h, cover: pickList.find((p) => p.src === h.src)?.cover });
+    if (fixed.some((h, i) => h.cover !== old[i].cover)) {
+      try { localStorage.setItem(HISTORY, JSON.stringify(fixed)); } catch {}
+      renderHistory();
+    }
+  });
 
   // Local files: an <audio> player that moves on to the next file by itself.
   const localInput = document.querySelector<HTMLInputElement>("[data-local]")!;
