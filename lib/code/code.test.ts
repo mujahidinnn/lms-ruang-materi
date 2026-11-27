@@ -49,3 +49,10 @@ test("drafted code cannot reach the worker's process, env or files", async () =>
   expect(r.results.map((x) => x.pass)).toEqual([false, false]);
   expect(r.results[0].error).toMatch(/code generation from strings/i);
 });
+
+test("express shim passes request headers and returns response headers", async () => {
+  const { require, request } = expressShim();
+  const app = require("express")();
+  app.post("/buku", (req, res) => res.status(201).set("Location", "/buku/9").json({ token: req.headers.authorization }));
+  expect(await request("POST", "/buku", {}, { Authorization: "Bearer x" })).toEqual({ status: 201, body: { token: "Bearer x" }, headers: { location: "/buku/9" } });
+});
