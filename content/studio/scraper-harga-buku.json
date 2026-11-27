@@ -1,0 +1,606 @@
+{
+  "slug": "scraper-harga-buku",
+  "title": "Scraper Harga Buku dengan Python",
+  "summary": "Bangun scraper Python yang sopan untuk situs latihan books.toscrape.com: cek robots.txt, jeda dan User-Agent jujur, retry dengan backoff, parsing 1000 buku dengan httpx dan BeautifulSoup, simpan ke SQLite dengan upsert dan riwayat harga, tes pytest tanpa jaringan, CLI dengan log JSON, laporan CSV dan grafik, lalu jalan otomatis setiap hari di GitHub Actions.",
+  "level": "menengah",
+  "est_hours": 12,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-tujuan-scraper",
+      "title": "Tentukan tujuan scraper-mu",
+      "est_minutes": 15,
+      "body": "## Data yang kamu kumpulkan sendiri\n\nToko online, situs lowongan, dan portal berita tidak selalu menyediakan API. Scraper mengisi celah itu: program yang membuka halaman web seperti browser, mengambil data yang kamu perlukan, lalu menyimpannya dengan rapi. Bedanya dengan skrip asal jalan ada di tiga hal: **sopan** pada server orang lain, **tahan** terhadap gangguan jaringan, dan **teruji** tanpa harus membuka internet setiap kali tes dijalankan.\n\nDi proyek ini kamu memantau harga 1000 buku di [books.toscrape.com](https://books.toscrape.com). Situs itu memang dibuat untuk latihan scraping (bacalah kotak kuning di halaman depannya), jadi kamu bebas bereksperimen tanpa merugikan siapa pun. Kebiasaan yang kamu latih tetap kebiasaan untuk situs sungguhan.\n\n![Hasil akhir proyek ini: grafik rata-rata harga per kategori yang dibuat otomatis dari database setelah crawl penuh 1000 buku](/studio/scraper-harga-buku/grafik-kategori.webp)\n\n## Yang perlu kamu kerjakan\n\n1. Buka books.toscrape.com di browser. Klik satu buku, perhatikan data apa saja yang ada di halaman detailnya, lalu klik **next** di bawah katalog untuk melihat cara situs membagi halaman.\n2. Salin template brief di bagian Bahan ke catatanmu (atau ke berkas `BRIEF.md`).\n3. Lengkapi kalimat tujuan dan tujuan pribadimu. Proyek ini bagus untuk portofolio data engineering atau backend: ada HTTP, parsing, database, tes, dan otomatisasi terjadwal.\n4. Baca daftar **Wajib ada**. Tujuh butir itulah ukuran selesai proyek ini.\n\n> Ukuran keberhasilan: setiap pagi repositorimu mendapat commit baru dari GitHub Actions berisi database harga terbaru, dan tidak satu pun tes membutuhkan internet.\n",
+      "materials": [
+        {
+          "id": "sh-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Scraper Harga Buku\n\nKalimat tujuan:\nScraper ini dipakai oleh ___ untuk ___.\n(Contoh: \"dipakai oleh aku sendiri untuk memantau perubahan harga dan stok buku setiap hari.\")\n\nSumber data:\n- https://books.toscrape.com, situs latihan yang memang dibuat untuk dipraktikkan scraping.\n- 1000 buku, 50 halaman katalog, 20 buku per halaman.\n\nData per buku:\n- UPC (kunci unik), judul, harga (GBP), jumlah stok, rating 1-5, kategori, URL\n\nWajib ada:\n- [ ] Sopan: cek robots.txt, User-Agent yang jujur, jeda minimal 0,5 detik antar permintaan\n- [ ] Tahan gangguan: timeout, coba lagi dengan backoff untuk 429/5xx dan koneksi putus\n- [ ] Data di SQLite: satu baris per UPC (upsert) dan tabel riwayat harga\n- [ ] Perubahan harga antar-run terdeteksi dan dicatat di log\n- [ ] Tes pytest dengan HTML tersimpan, tanpa jaringan sama sekali\n- [ ] CLI: crawl dan laporan (CSV + grafik harga per kategori)\n- [ ] Jalan otomatis setiap hari lewat GitHub Actions\n\nBukan untuk versi pertama:\n- Scraping paralel/async\n- Situs yang butuh JavaScript (Playwright)\n- Notifikasi email/Telegram saat harga turun\n\nTujuan pribadiku: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-brief-kalimat",
+          "text": "Aku sudah melengkapi kalimat \"Scraper ini dipakai oleh ... untuk ...\"."
+        },
+        {
+          "id": "sh-brief-wajib",
+          "text": "Aku paham tujuh butir Wajib ada dan setuju itu ukuran selesai."
+        },
+        {
+          "id": "sh-brief-situs",
+          "text": "Aku sudah membuka books.toscrape.com dan membaca peringatan bahwa situs itu dibuat untuk latihan scraping."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "etika-dan-kasus-tepi",
+      "title": "Etika scraping dan kasus tepi",
+      "est_minutes": 30,
+      "body": "## Scraper yang sopan\n\nSetiap permintaan scraper memakai CPU dan bandwidth server orang lain. Scraper yang mengirim ratusan permintaan per detik bisa membuat situs kecil tumbang, dan pemiliknya berhak memblokirmu. Lima kebiasaan yang dipakai di proyek ini:\n\n| Kebiasaan | Wujudnya di kode |\n| --- | --- |\n| Baca aturan main | Ketentuan layanan (terms of service) situs, dan `robots.txt` yang dicek otomatis sebelum mengambil halaman |\n| Pelan-pelan | Jeda minimal 0,5 detik antar permintaan, bawaan 1 detik. `Crawl-delay` di robots.txt menang kalau lebih besar |\n| Jujur soal identitas | User-Agent berisi nama proyek dan tautan repositori, bukan menyamar sebagai Chrome |\n| Mundur saat diminta | Jawaban 429 (terlalu banyak permintaan) atau 5xx: tunggu makin lama, hormati `Retry-After` |\n| Jangan mengunduh ulang | Saat mengembangkan parser, simpan HTML di cache disk. Ubah kode 50 kali, server cukup dikunjungi sekali |\n\n`robots.txt` adalah berkas teks di akar situs yang memberi tahu bot bagian mana yang boleh dan tidak boleh diambil. Aturannya distandarkan di RFC 9309. Coba buka `https://books.toscrape.com/robots.txt`: jawabannya **404**. Menurut RFC 9309, robots.txt yang tidak ada (4xx) berarti tidak ada larangan. Kalau servernya error (5xx), bot harus menganggap semuanya dilarang. Dua aturan itu akan kamu tulis di kode.\n\n> robots.txt bukan izin hukum. Untuk situs sungguhan, baca juga ketentuan layanannya, jangan mengambil data pribadi, dan pakai API resmi kalau tersedia.\n\n## Kasus tepi\n\nTulis apa yang **seharusnya terjadi** untuk setiap baris:\n\n| Kasus | Pertanyaan untukmu |\n| --- | --- |\n| Harga tampil `Â£51.77`, bukan `£51.77` | Dari mana `Â` itu? Parser harus tetap menghasilkan 51.77? |\n| Buku habis (`Out of stock`) | Stoknya 0, atau baris dilewati? |\n| Halaman katalog terakhir | Tidak ada tombol next. Loop berhenti dengan sendirinya? |\n| Server menjawab 503 atau koneksi timeout | Langsung menyerah, atau coba lagi? Berapa kali? |\n| Server menjawab 404 | Ada gunanya dicoba lagi? |\n| Satu halaman detail rusak | Seluruh crawl berhenti, atau buku itu saja yang dilewati? |\n| Crawl terputus di tengah | Data yang sudah tersimpan hilang? |\n| Harga hari ini sama dengan kemarin | Riwayat harga bertambah satu baris lagi? |\n\nJawaban yang dipakai proyek ini: parser kebal terhadap `Â`, habis berarti stok 0, 429/5xx/timeout dicoba lagi 3 kali, 404 tidak, satu buku rusak dicatat lalu dilewati, setiap buku disimpan dalam transaksinya sendiri, dan riwayat hanya bertambah saat harga **berubah**.\n\n## Yang perlu kamu kerjakan\n\n1. Buka `/robots.txt` situs latihan dan catat kode statusnya.\n2. Isi kolom \"seharusnya terjadi\" untuk delapan kasus di atas.\n3. Tulis satu fitur menggoda yang kamu tunda, misalnya notifikasi Telegram saat harga turun.\n",
+      "materials": [
+        {
+          "id": "sh-m-rfc-robots",
+          "kind": "tautan",
+          "name": "RFC 9309: Robots Exclusion Protocol",
+          "url": "https://www.rfc-editor.org/rfc/rfc9309.html"
+        },
+        {
+          "id": "sh-m-py-robotparser",
+          "kind": "tautan",
+          "name": "Python: urllib.robotparser",
+          "url": "https://docs.python.org/3/library/urllib.robotparser.html"
+        },
+        {
+          "id": "sh-m-mdn-429",
+          "kind": "tautan",
+          "name": "MDN: 429 Too Many Requests dan Retry-After",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/429"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-ide-etika",
+          "text": "Aku bisa menyebutkan lima kebiasaan scraper yang sopan."
+        },
+        {
+          "id": "sh-ide-robots",
+          "text": "Aku sudah membuka /robots.txt situs latihan dan tahu arti jawaban 404-nya."
+        },
+        {
+          "id": "sh-ide-tepi",
+          "text": "Aku sudah menulis perilaku yang diharapkan untuk setiap kasus tepi di tabel."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-httpx-beautifulsoup-sqlite",
+      "title": "Pilih alat: httpx, BeautifulSoup, SQLite",
+      "est_minutes": 30,
+      "body": "## Alat yang dipakai\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Bahasa | Python 3.15 (kode jalan di 3.12 ke atas) | Rilis stabil terbaru |\n| Pengelola proyek | uv | Memasang Python, virtualenv, dependensi, dan `uv.lock` dalam satu alat |\n| HTTP | httpx | Timeout bawaan, encoding UTF-8 bawaan, `MockTransport` untuk tes |\n| Parsing HTML | BeautifulSoup (`html.parser`) | API paling ramah, selector CSS lewat `select()` |\n| Database | `sqlite3` bawaan Python | Satu berkas, tanpa server, mendukung upsert |\n| CLI | `argparse` bawaan | Dua subcommand tidak butuh pustaka tambahan |\n| Log | `logging` bawaan + formatter JSON 10 baris | Satu baris JSON per kejadian |\n| Grafik | matplotlib | Standar untuk grafik statis PNG |\n| Tes dan gaya | pytest, ruff | Sama seperti proyek Python modern lainnya |\n\n### Kenapa httpx, bukan requests?\n\nKeduanya bagus dan API-nya mirip. Untuk scraper ini httpx unggul di tiga hal yang kamu pakai langsung:\n\n1. **Timeout bawaan.** requests menunggu selamanya kalau kamu lupa `timeout=`. httpx punya timeout 5 detik sejak awal, dan di proyek ini kamu menyetelnya eksplisit.\n2. **Encoding.** books.toscrape.com mengirim `Content-Type: text/html` tanpa `charset`. Untuk kasus itu requests memakai ISO-8859-1 (aturan HTTP lama), sehingga byte UTF-8 untuk `£` terbaca sebagai `Â£`. httpx memakai UTF-8, jadi `£51.77` terbaca benar. Parser tetap dibuat kebal terhadap `Â` untuk berjaga-jaga.\n3. **Tes tanpa server.** `httpx.MockTransport` membuat server palsu dalam satu fungsi. Kamu bisa menguji 503, timeout, dan `Retry-After` tanpa pustaka tambahan.\n\nCoba sendiri di Python mana pun: `\"£\".encode(\"utf-8\").decode(\"latin-1\")` menghasilkan `'Â£'`. Itulah asal huruf aneh yang sering muncul di hasil scraping.\n\n### Kenapa BeautifulSoup, bukan selectolax?\n\nselectolax jauh lebih cepat, tapi untuk 1050 halaman dengan jeda 0,5-1 detik, waktu parsing (milidetik) tidak berarti dibanding waktu menunggu. BeautifulSoup lebih dikenal, dokumentasinya lengkap, dan dengan `html.parser` bawaan Python kamu tidak perlu memasang pustaka C apa pun. Kalau suatu saat parsing jadi hambatan, cukup `parser.py` yang diganti.\n\n## Yang perlu kamu siapkan\n\n1. Pasang uv. macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`. Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"`.\n2. Buka terminal baru, cek `uv --version`. Python 3.15 diunduh uv saat dibutuhkan.\n3. Pastikan `git --version` jalan dan kamu punya akun GitHub.\n",
+      "materials": [
+        {
+          "id": "sh-m-uv-install",
+          "kind": "tautan",
+          "name": "uv: cara memasang",
+          "url": "https://docs.astral.sh/uv/getting-started/installation/"
+        },
+        {
+          "id": "sh-m-httpx",
+          "kind": "tautan",
+          "name": "HTTPX: dokumentasi",
+          "url": "https://www.python-httpx.org/"
+        },
+        {
+          "id": "sh-m-bs4",
+          "kind": "tautan",
+          "name": "Beautiful Soup: dokumentasi",
+          "url": "https://www.crummy.com/software/BeautifulSoup/bs4/doc/"
+        },
+        {
+          "id": "sh-m-py-sqlite",
+          "kind": "tautan",
+          "name": "Python: modul sqlite3",
+          "url": "https://docs.python.org/3/library/sqlite3.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-tek-uv",
+          "text": "uv --version berjalan di terminalku."
+        },
+        {
+          "id": "sh-tek-httpx",
+          "text": "Aku bisa menjelaskan kenapa memilih httpx dibanding requests untuk proyek ini."
+        },
+        {
+          "id": "sh-tek-pound",
+          "text": "Aku paham kenapa harga bisa muncul sebagai Â£51.77 kalau encoding salah."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-selector-dan-tabel",
+      "title": "Rancang selector, tabel, dan alur crawl",
+      "est_minutes": 40,
+      "body": "## Selector dulu, kode kemudian\n\nBuka halaman katalog dan satu halaman detail, klik kanan pada data yang kamu incar, lalu pilih **Inspect**. Cari selector CSS yang stabil: kelas yang bermakna (`product_pod`, `product_main`, `star-rating`) lebih awet daripada posisi seperti \"div ketiga dari atas\". Rancangan di bagian Bahan sudah berisi selector yang dipakai, tetapi cocokkan sendiri satu per satu.\n\nDua hal yang tidak terlihat sekilas:\n\n- Link di katalog **relatif** (`a-light-in-the-attic_1000/index.html`). Ubah jadi URL lengkap dengan `urljoin(url_halaman, href)`.\n- Rating tidak ditulis sebagai angka. Ia ada di nama kelas: `<p class=\"star-rating Three\">`.\n\n## Alur crawl\n\n![Alur crawl: halaman katalog memberi 20 URL detail dan URL berikutnya; setiap permintaan lewat pengambil yang sopan; setiap buku disimpan dengan upsert, dan riwayat harga hanya bertambah kalau harganya berubah](/studio/scraper-harga-buku/alur-crawl.svg)\n\nUPC (Universal Product Code) adalah kunci yang tepat: unik per buku dan tidak berubah. Judul bisa diperbaiki penjual, URL bisa berganti, tetapi UPC tetap.\n\n## Uang bukan float\n\n`0.1 + 0.2` di Python menghasilkan `0.30000000000000004`. Untuk uang, galat sekecil itu menumpuk dan membuat perbandingan \"harga berubah?\" salah. Maka harga diubah dari teks ke `Decimal` (tepat), lalu disimpan sebagai **pence** dalam kolom `INTEGER`: £51.77 menjadi 5177. SQLite tidak punya tipe desimal; `REAL` adalah float. Bilangan bulat tepat, mudah dibandingkan, dan `AVG()` di SQL tetap bisa dipakai untuk laporan.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `rancangan.md` dari bagian Bahan (nanti ikut di-commit).\n2. Cocokkan setiap selector dengan DevTools. Di Console kamu bisa mencoba `document.querySelectorAll(\"article.product_pod h3 a\").length`; hasilnya harus 20.\n3. Jawab: buku yang sama di-crawl tiga hari berturut-turut dengan harga 51.77, 51.77, 45.00. Berapa baris di `riwayat_harga` untuk buku itu? (Jawaban: 2.)\n",
+      "materials": [
+        {
+          "id": "sh-m-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan Scraper Harga Buku\n\n## Alur\n1. Ambil halaman katalog (mulai catalogue/page-1.html).\n2. parse_daftar -> 20 URL detail + URL \"next\" (None di halaman 50).\n3. Untuk tiap URL detail: ambil, parse_buku, simpan_buku.\n4. Ulangi dengan URL \"next\" sampai habis atau batas --halaman tercapai.\n\n## Selector (cek sendiri dengan DevTools)\n| Data      | Halaman  | Selector CSS                            | Contoh mentah             |\n| --------- | -------- | --------------------------------------- | ------------------------- |\n| URL buku  | katalog  | article.product_pod h3 a  (href)        | a-light-in-the-attic_1000/index.html |\n| Next      | katalog  | ul.pager li.next a  (href)              | page-2.html               |\n| Judul     | detail   | div.product_main h1                     | A Light in the Attic      |\n| UPC       | detail   | table.table-striped, baris \"UPC\"        | a897fe39b1053632          |\n| Harga     | detail   | baris \"Price (incl. tax)\"               | £51.77                    |\n| Stok      | detail   | baris \"Availability\"                    | In stock (22 available)   |\n| Rating    | detail   | p.star-rating (kelas kedua)             | star-rating Three         |\n| Kategori  | detail   | ul.breadcrumb li ke-3                   | Poetry                    |\n\n## Normalisasi\n- Harga: buang semua selain angka dan titik -> Decimal -> simpan sebagai pence (int).\n- Stok: angka di dalam \"(N available)\", tidak ada = 0.\n- Rating: One..Five -> 1..5.\n- URL relatif -> absolut dengan urljoin.\n\n## Tabel\nbuku(upc PK, judul, harga_pence, stok, rating, kategori, url, pertama_dilihat, terakhir_dilihat)\nriwayat_harga(id PK, upc FK, harga_pence, dicatat)\n- Baris riwayat ditambah hanya saat buku baru atau harganya berbeda dari yang tersimpan.\n\n## Kesopanan\n- User-Agent: scraper-buku/0.1 (proyek belajar; +URL repositori)\n- Jeda bawaan 1 detik (minimal 0,5). Crawl-delay di robots.txt menang kalau lebih besar.\n- Timeout 10 detik (connect 5). Coba lagi 3x untuk 429/500/502/503/504 dan galat koneksi: tunggu 1, 2 detik (Retry-After dihormati).\n- 404 dan 4xx lain: tidak dicoba lagi.\n- Cache HTML di disk hanya saat pengembangan (--cache).\n\n## Modul\n- parser.py      : HTML -> data (murni)\n- pengambil.py   : HTTP sopan (robots, jeda, retry, cache)\n- penyimpanan.py : SQLite, upsert, riwayat harga\n- laporan.py     : CSV + grafik\n- __init__.py    : jelajah(), CLI, log JSON\n"
+        },
+        {
+          "id": "sh-m-sqlite-upsert",
+          "kind": "tautan",
+          "name": "SQLite: UPSERT (ON CONFLICT DO UPDATE)",
+          "url": "https://sqlite.org/lang_upsert.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-ran-selector",
+          "text": "Aku sudah mencocokkan setiap selector di rancangan dengan DevTools di halaman aslinya."
+        },
+        {
+          "id": "sh-ran-pence",
+          "text": "Aku bisa menjelaskan kenapa harga disimpan sebagai pence (bilangan bulat), bukan float."
+        },
+        {
+          "id": "sh-ran-riwayat",
+          "text": "Aku tahu kapan satu baris riwayat_harga ditambahkan."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-dan-fixture",
+      "title": "Siapkan proyek uv dan simpan fixture HTML",
+      "est_minutes": 35,
+      "body": "## Proyek berbentuk paket\n\n`uv init --package` membuat susunan `src/scraper_buku/` dan mendaftarkan perintah `scraper-buku` di `[project.scripts]`. Nama proyeknya `scraper-buku` (tanda hubung), modul Python-nya `scraper_buku` (garis bawah).\n\n## Fixture: halaman web yang dibekukan\n\nTes yang membuka internet lambat, bisa gagal karena Wi-Fi, dan membebani server setiap kali kamu menekan simpan. Solusinya: unduh beberapa halaman **sekali**, simpan di `tests/fixtures/`, commit ke git, lalu semua tes parser membaca berkas itu. Tiga halaman cukup: katalog halaman 1 (ada tombol next), katalog halaman 50 (tidak ada next), dan satu halaman detail.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan `setup.sh` baris demi baris. Di langkah 4 harus muncul `Hello from scraper-buku!`.\n2. Samakan `pyproject.toml` dengan versi di Bahan: ubah `description` dan `authors`, turunkan `requires-python` ke `>=3.12`, tambahkan `[tool.ruff]` dan `[tool.pytest]`. Biarkan `[build-system]` dan versi dependensi seperti buatan uv di komputermu.\n3. Jalankan `simpan-fixture.sh` (Windows: pakai Git Bash, atau unduh ketiga URL dengan browser lewat **Save Page As > HTML only**). Perhatikan `-A` untuk User-Agent dan `sleep 1` di antara unduhan: sopan sejak skrip pertama.\n4. Cek isinya: `grep \"£51.77\" tests/fixtures/buku-light-attic.html` harus menemukan tiga baris: harga besar di atas, lalu harga sebelum dan sesudah pajak di tabel.\n5. Jalankan `uv run ruff check`, lalu commit dengan pesan `Fixture HTML untuk tes`.\n\n> Jangan aktifkan virtualenv dengan `source .venv/bin/activate`. `uv run` selalu memakai lingkungan yang benar.\n",
+      "materials": [
+        {
+          "id": "sh-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "# 1. Buat proyek berbentuk paket (uv mengunduh Python 3.15 kalau belum ada)\nuv init --package --python 3.15 scraper-buku\ncd scraper-buku\n\n# 2. Dependensi program dan alat pengembangan\nuv add httpx beautifulsoup4 matplotlib\nuv add --dev pytest ruff\n\n# 3. Folder yang tidak boleh masuk git: cache HTML pengembangan\necho \".cache-html/\" >> .gitignore\n\n# 4. Cek: harus muncul Hello from scraper-buku!\nuv run scraper-buku\n\nmkdir -p tests/fixtures\ngit add .\ngit commit -m \"Kerangka proyek scraper dengan uv\"\n"
+        },
+        {
+          "id": "sh-m-pyproject",
+          "kind": "kode",
+          "name": "pyproject.toml",
+          "lang": "toml",
+          "content": "[project]\nname = \"scraper-buku\"\nversion = \"0.1.0\"\ndescription = \"Scraper sopan untuk books.toscrape.com: SQLite, riwayat harga, laporan harian\"\nreadme = \"README.md\"\nauthors = [\n    { name = \"Nama Kamu\", email = \"kamu@example.com\" }\n]\nrequires-python = \">=3.12\"\ndependencies = [\n    \"beautifulsoup4>=4.15.0\",\n    \"httpx>=0.29.0\",\n    \"matplotlib>=3.11.2\",\n]\n\n[project.scripts]\nscraper-buku = \"scraper_buku:main\"\n\n# Bagian ini biarkan persis seperti buatan uv di komputermu (versinya bisa beda).\n[build-system]\nrequires = [\"uv_build>=0.13.10,<0.14.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\n    \"pytest>=9.2.0\",\n    \"ruff>=0.17.6\",\n]\n\n[tool.ruff]\nline-length = 100\n\n[tool.ruff.lint]\nselect = [\"E\", \"F\", \"I\", \"B\", \"UP\"]\n\n[tool.pytest]\ntestpaths = [\"tests\"]\n"
+        },
+        {
+          "id": "sh-m-fixture",
+          "kind": "kode",
+          "name": "simpan-fixture.sh",
+          "lang": "bash",
+          "content": "# Simpan tiga halaman sebagai fixture tes. Jalankan SEKALI, lalu commit.\n# Tes tidak pernah menyentuh jaringan; mereka membaca berkas ini.\nUA=\"scraper-buku/0.1 (proyek belajar)\"\nmkdir -p tests/fixtures\ncurl -sS -A \"$UA\" -o tests/fixtures/katalog-1.html https://books.toscrape.com/catalogue/page-1.html\nsleep 1\ncurl -sS -A \"$UA\" -o tests/fixtures/katalog-50.html https://books.toscrape.com/catalogue/page-50.html\nsleep 1\ncurl -sS -A \"$UA\" -o tests/fixtures/buku-light-attic.html https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\nls -l tests/fixtures\n"
+        },
+        {
+          "id": "sh-m-uv-projects",
+          "kind": "tautan",
+          "name": "uv: bekerja dengan proyek",
+          "url": "https://docs.astral.sh/uv/guides/projects/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-setup-hello",
+          "text": "uv run scraper-buku menampilkan Hello from scraper-buku!"
+        },
+        {
+          "id": "sh-setup-fixture",
+          "text": "Tiga berkas HTML ada di tests/fixtures dan berisi £51.77 untuk A Light in the Attic."
+        },
+        {
+          "id": "sh-setup-commit",
+          "text": "Kerangka proyek dan fixture sudah di-commit, tanpa .venv dan .cache-html."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "parser-katalog-dan-detail",
+      "title": "Tulis parser halaman katalog dan detail",
+      "est_minutes": 60,
+      "body": "## Parser: HTML masuk, data keluar\n\nBuat `src/scraper_buku/parser.py` dari bagian Bahan. Sama seperti aturan permainan di proyek Python sebelumnya, berkas ini **murni**: tidak ada jaringan, berkas, atau database. Masukannya teks HTML dan URL, keluarannya data. Akibatnya, setiap fungsi bisa dicoba di REPL dengan fixture dan dites dalam milidetik.\n\nHal yang perlu kamu perhatikan:\n\n- **`select()` dan `select_one()`** menerima selector CSS, persis seperti yang kamu coba di DevTools. `select_one` mengembalikan `None` kalau tidak ketemu, jadi `parse_daftar` tahu halaman terakhir tidak punya next.\n- **Tabel spesifikasi diubah jadi dict** dengan satu baris: `{th: td for tr in ...}`. Setelah itu kamu mengambil data dengan nama (`tabel[\"UPC\"]`), bukan posisi baris. Kalau situs menambah baris baru, kodemu tidak terpengaruh.\n- **`parse_harga`** membuang semua karakter selain angka dan titik dengan regex, lalu membuat `Decimal`. `Â£51.77`, ` £51.77 `, dan `£1,234.50` semuanya aman. Kalau hasilnya bukan angka, ia melempar `ValueError` dengan pesan yang jelas.\n- **Rating** dicari dari daftar kelas: `[\"star-rating\", \"Three\"]` dicocokkan dengan `RATING`, menghasilkan 3.\n- **Kategori** adalah item ketiga breadcrumb: Home > Books > **Poetry** > judul.\n\n## Coba di REPL\n\n```bash\nuv run python\n```\n\n```python\n>>> from pathlib import Path\n>>> from scraper_buku.parser import parse_buku, parse_daftar\n>>> url = \"https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\"\n>>> buku = parse_buku(Path(\"tests/fixtures/buku-light-attic.html\").read_text(), url)\n>>> buku[\"upc\"], buku[\"harga\"], buku[\"stok\"], buku[\"rating\"], buku[\"kategori\"]\n('a897fe39b1053632', Decimal('51.77'), 22, 3, 'Poetry')\n>>> tautan, berikut = parse_daftar(Path(\"tests/fixtures/katalog-1.html\").read_text(),\n...                                \"https://books.toscrape.com/catalogue/page-1.html\")\n>>> len(tautan), berikut\n(20, 'https://books.toscrape.com/catalogue/page-2.html')\n```\n\nDi Windows, tambahkan `encoding=\"utf-8\"` di `read_text()` supaya `£` tidak rusak.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `parser.py`, lalu jalankan contoh REPL di atas. Hasilnya harus sama persis.\n2. Coba `parse_daftar` pada `katalog-50.html`. `berikut` harus `None`.\n3. Coba `parse_buku` pada `katalog-1.html`. Harus muncul `ValueError: Bukan halaman buku`.\n4. Jalankan `uv run ruff check` dan `uv run ruff format --check`, lalu commit dengan pesan `Parser katalog dan detail`.\n",
+      "materials": [
+        {
+          "id": "sh-m-parser",
+          "kind": "kode",
+          "name": "src/scraper_buku/parser.py",
+          "lang": "python",
+          "content": "\"\"\"Ubah HTML menjadi data. Tidak ada jaringan, berkas, atau database di sini.\"\"\"\n\nimport re\nfrom decimal import Decimal, InvalidOperation\nfrom urllib.parse import urljoin\n\nfrom bs4 import BeautifulSoup\n\nRATING = {\"One\": 1, \"Two\": 2, \"Three\": 3, \"Four\": 4, \"Five\": 5}\n\n\ndef parse_harga(teks: str) -> Decimal:\n    \"\"\"'£51.77' -> Decimal('51.77'). Buang semua selain angka dan titik.\"\"\"\n    bersih = re.sub(r\"[^0-9.]\", \"\", teks)\n    try:\n        return Decimal(bersih)\n    except InvalidOperation:\n        raise ValueError(f\"Harga tidak dikenali: {teks!r}\") from None\n\n\ndef parse_stok(teks: str) -> int:\n    \"\"\"'In stock (22 available)' -> 22. 'Out of stock' -> 0.\"\"\"\n    cocok = re.search(r\"\\((\\d+) available\\)\", teks)\n    return int(cocok.group(1)) if cocok else 0\n\n\ndef parse_daftar(html: str, url: str) -> tuple[list[str], str | None]:\n    \"\"\"Halaman katalog -> (URL absolut detail buku, URL halaman berikutnya atau None).\"\"\"\n    sup = BeautifulSoup(html, \"html.parser\")\n    tautan = [urljoin(url, a[\"href\"]) for a in sup.select(\"article.product_pod h3 a\")]\n    berikut = sup.select_one(\"ul.pager li.next a\")\n    return tautan, urljoin(url, berikut[\"href\"]) if berikut else None\n\n\ndef parse_buku(html: str, url: str) -> dict:\n    \"\"\"Halaman detail -> dict siap disimpan.\"\"\"\n    sup = BeautifulSoup(html, \"html.parser\")\n    utama = sup.select_one(\"div.product_main\")\n    if utama is None:\n        raise ValueError(f\"Bukan halaman buku: {url}\")\n    tabel = {\n        tr.th.get_text(strip=True): tr.td.get_text(strip=True)\n        for tr in sup.select(\"table.table-striped tr\")\n    }\n    kelas_rating = sup.select_one(\"p.star-rating\")[\"class\"]\n    return {\n        \"upc\": tabel[\"UPC\"],\n        \"judul\": utama.h1.get_text(strip=True),\n        \"harga\": parse_harga(tabel[\"Price (incl. tax)\"]),\n        \"stok\": parse_stok(tabel[\"Availability\"]),\n        \"rating\": next(RATING[k] for k in kelas_rating if k in RATING),\n        \"kategori\": sup.select(\"ul.breadcrumb li\")[2].get_text(strip=True),\n        \"url\": url,\n    }\n"
+        },
+        {
+          "id": "sh-m-bs4-select",
+          "kind": "tautan",
+          "name": "Beautiful Soup: selector CSS (select, select_one)",
+          "url": "https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors-through-the-css-property"
+        },
+        {
+          "id": "sh-m-py-decimal",
+          "kind": "tautan",
+          "name": "Python: modul decimal",
+          "url": "https://docs.python.org/3/library/decimal.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-parser-repl",
+          "text": "parse_buku pada fixture menghasilkan UPC a897fe39b1053632, harga Decimal('51.77'), stok 22, rating 3, kategori Poetry."
+        },
+        {
+          "id": "sh-parser-next",
+          "text": "parse_daftar mengembalikan None sebagai halaman berikutnya untuk katalog-50."
+        },
+        {
+          "id": "sh-parser-commit",
+          "text": "ruff check lulus dan perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "pengambil-yang-sopan",
+      "title": "Tulis pengambil yang sopan: robots, jeda, retry, cache",
+      "est_minutes": 75,
+      "body": "## Satu pintu untuk semua permintaan\n\nSemua akses ke internet lewat satu kelas, `Pengambil`, di `src/scraper_buku/pengambil.py`. Kalau kesopanan tersebar di banyak tempat, satu tempat pasti lupa. Dengan satu pintu, setiap permintaan otomatis melewati lima pemeriksaan:\n\n![Urutan pemeriksaan setiap kali ambil(url) dipanggil: cache, robots.txt, jeda, permintaan dengan timeout, lalu keputusan coba lagi dengan backoff atau berhenti](/studio/scraper-harga-buku/keputusan-pengambil.svg)\n\nBagian penting:\n\n- **`USER_AGENT`** menyebut nama proyek dan tautan repositori (`REPO`). Pemilik situs yang melihat log servernya tahu siapa kamu dan bisa menghubungimu. Ganti `USERNAME` di baris `REPO` dengan username GitHub-mu.\n- **`httpx.Timeout(10.0, connect=5.0)`**: maksimal 5 detik untuk tersambung dan 10 detik untuk setiap tahap lain. Tanpa timeout, satu koneksi macet bisa membuat crawl terhenti selamanya.\n- **`_robots`** membaca robots.txt sekali per situs, memakai `RobotFileParser` bawaan Python. Ingat aturan RFC 9309: 404 berarti semua boleh, 5xx berarti semua dilarang. `Crawl-delay` yang lebih besar dari jedamu ikut dipakai.\n- **`_tunggu_giliran`** memakai `time.monotonic()`, jam yang tidak mundur walau jam komputer disetel ulang. Kalau parsing dan penyimpanan sudah makan 0,3 detik, jeda tinggal 0,7 detik.\n- **`_get`** mencoba lagi untuk 429, 500, 502, 503, 504, dan galat transport (timeout, koneksi putus). Tunggunya bertambah dua kali lipat: 1, lalu 2 detik. Itu **exponential backoff**: kalau server sedang kewalahan, kamu memberinya ruang, bukan ikut menambah beban. `Retry-After` dari server dihormati kalau lebih lama. Status lain seperti 404 langsung dilempar karena mencoba lagi tidak akan mengubah hasilnya.\n- **Cache** menyimpan HTML dengan nama berkas dari hash URL. Kalau berkasnya sudah ada, server tidak dihubungi sama sekali, bahkan robots.txt pun tidak.\n- **`klien`, `tidur`, dan `jam` adalah parameter.** Saat dipakai sungguhan, nilainya httpx, `time.sleep`, dan `time.monotonic`. Saat dites, kamu menyuntikkan server palsu dan jam palsu, jadi tes backoff tidak perlu benar-benar menunggu.\n\n## Coba di REPL\n\n```python\n>>> from scraper_buku.pengambil import Pengambil\n>>> p = Pengambil()\n>>> html = p.ambil(\"https://books.toscrape.com/catalogue/page-1.html\")\n>>> \"£51.77\" in html, p.robots\n(True, {'https://books.toscrape.com/': <urllib.robotparser.RobotFileParser object at 0x...>})\n```\n\nIni dua permintaan sungguhan: robots.txt (404) dan halaman katalog, dengan jeda 1 detik di antaranya.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `pengambil.py` dan ganti `USERNAME` di baris `REPO`.\n2. Jalankan contoh REPL di atas sekali. Jangan diulang-ulang dalam loop.\n3. Jelaskan dengan kata-katamu: kenapa 404 tidak dicoba lagi tetapi 503 dicoba lagi?\n4. Jalankan ruff, lalu commit dengan pesan `Pengambil sopan: robots, jeda, retry, cache`.\n",
+      "materials": [
+        {
+          "id": "sh-m-pengambil",
+          "kind": "kode",
+          "name": "src/scraper_buku/pengambil.py",
+          "lang": "python",
+          "content": "\"\"\"Ambil halaman dengan sopan: robots.txt, jeda, User-Agent, timeout, retry, cache.\"\"\"\n\nimport hashlib\nimport logging\nimport time\nfrom pathlib import Path\nfrom urllib.parse import urljoin\nfrom urllib.robotparser import RobotFileParser\n\nimport httpx\n\n# Ganti USERNAME dengan username GitHub-mu: pemilik situs bisa melihat siapa yang berkunjung.\nREPO = \"https://github.com/USERNAME/scraper-harga-buku\"\nUSER_AGENT = f\"scraper-buku/0.1 (proyek belajar; +{REPO})\"\nSTATUS_COBA_LAGI = {429, 500, 502, 503, 504}\n\nlog = logging.getLogger(__name__)\n\n\nclass DilarangRobots(Exception):\n    \"\"\"robots.txt tidak mengizinkan URL ini.\"\"\"\n\n\nclass Pengambil:\n    def __init__(\n        self,\n        jeda: float = 1.0,\n        percobaan: int = 3,\n        folder_cache: Path | None = None,\n        klien: httpx.Client | None = None,\n        tidur=time.sleep,\n        jam=time.monotonic,\n    ):\n        self.klien = klien or httpx.Client(\n            headers={\"User-Agent\": USER_AGENT},\n            timeout=httpx.Timeout(10.0, connect=5.0),\n            follow_redirects=True,\n        )\n        self.jeda = jeda\n        self.percobaan = percobaan\n        self.folder_cache = folder_cache\n        self.tidur = tidur\n        self.jam = jam\n        self.robots: dict[str, RobotFileParser] = {}\n        self.terakhir = float(\"-inf\")\n\n    def _robots(self, url: str) -> RobotFileParser:\n        akar = urljoin(url, \"/\")\n        if akar not in self.robots:\n            rp = RobotFileParser()\n            jawab = self._get(urljoin(akar, \"robots.txt\"), cek_status=False)\n            if jawab.status_code == 200:\n                rp.parse(jawab.text.splitlines())\n            elif jawab.status_code >= 500:\n                rp.disallow_all = True  # server bermasalah: anggap semua dilarang\n            else:\n                rp.parse([])  # 404 dan sejenisnya: tidak ada aturan, semua boleh\n            tunda = rp.crawl_delay(USER_AGENT)\n            if tunda and float(tunda) > self.jeda:\n                self.jeda = float(tunda)\n            self.robots[akar] = rp\n        return self.robots[akar]\n\n    def _tunggu_giliran(self) -> None:\n        sisa = self.terakhir + self.jeda - self.jam()\n        if sisa > 0:\n            self.tidur(sisa)\n        self.terakhir = self.jam()\n\n    def _get(self, url: str, cek_status: bool = True) -> httpx.Response:\n        for ke in range(1, self.percobaan + 1):\n            self._tunggu_giliran()\n            tunggu = 2 ** (ke - 1)  # 1, 2, 4, ... detik\n            try:\n                jawab = self.klien.get(url)\n            except httpx.TransportError as galat:  # timeout, koneksi putus, DNS gagal\n                if ke == self.percobaan:\n                    raise\n                alasan = type(galat).__name__\n            else:\n                if jawab.status_code not in STATUS_COBA_LAGI or ke == self.percobaan:\n                    if cek_status:\n                        jawab.raise_for_status()\n                    return jawab\n                alasan = f\"status {jawab.status_code}\"\n                if jawab.headers.get(\"Retry-After\", \"\").isdigit():\n                    tunggu = max(tunggu, int(jawab.headers[\"Retry-After\"]))\n            data = {\"url\": url, \"alasan\": alasan, \"tunggu\": tunggu}\n            log.warning(\"coba_lagi\", extra={\"data\": data})\n            self.tidur(tunggu)\n        raise RuntimeError(\"percobaan harus >= 1\")\n\n    def ambil(self, url: str) -> str:\n        \"\"\"HTML dari url. Pakai cache kalau ada (hanya untuk pengembangan).\"\"\"\n        berkas = None\n        if self.folder_cache:\n            berkas = self.folder_cache / (hashlib.sha256(url.encode()).hexdigest()[:20] + \".html\")\n            if berkas.exists():\n                return berkas.read_text(encoding=\"utf-8\")\n        if not self._robots(url).can_fetch(USER_AGENT, url):\n            raise DilarangRobots(url)\n        html = self._get(url).text\n        if berkas:\n            berkas.parent.mkdir(parents=True, exist_ok=True)\n            berkas.write_text(html, encoding=\"utf-8\")\n        return html\n"
+        },
+        {
+          "id": "sh-m-httpx-timeout",
+          "kind": "tautan",
+          "name": "HTTPX: timeout",
+          "url": "https://www.python-httpx.org/advanced/timeouts/"
+        },
+        {
+          "id": "sh-m-httpx-exc",
+          "kind": "tautan",
+          "name": "HTTPX: daftar exception",
+          "url": "https://www.python-httpx.org/exceptions/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-ambil-ua",
+          "text": "Aku sudah mengganti USERNAME di baris REPO dengan username GitHub-ku."
+        },
+        {
+          "id": "sh-ambil-repl",
+          "text": "Pengambil().ambil() di REPL mengembalikan HTML katalog berisi £ yang benar."
+        },
+        {
+          "id": "sh-ambil-backoff",
+          "text": "Aku bisa menjelaskan urutan tunggu 1, 2 detik dan kapan Retry-After dipakai."
+        },
+        {
+          "id": "sh-ambil-commit",
+          "text": "ruff check lulus dan perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "simpan-sqlite-dan-riwayat-harga",
+      "title": "Simpan ke SQLite dengan upsert dan riwayat harga",
+      "est_minutes": 50,
+      "body": "## Dua tabel, dua tugas\n\nBuat `src/scraper_buku/penyimpanan.py` dari bagian Bahan.\n\n- **`buku`** menyimpan keadaan **terakhir** setiap buku, satu baris per UPC. `pertama_dilihat` tidak pernah berubah, `terakhir_dilihat` diperbarui setiap run. Buku yang `terakhir_dilihat`-nya tertinggal berarti sudah hilang dari katalog.\n- **`riwayat_harga`** menyimpan **perubahan**, satu baris setiap kali buku baru muncul atau harganya berbeda dari yang tersimpan. Kolom `upc` adalah foreign key ke `buku`.\n\n![Satu baris di tabel induk bisa dirujuk banyak baris di tabel anak lewat foreign key, sama seperti satu buku punya banyak baris riwayat_harga](sim:fk-relation)\n\nKenapa tidak mencatat harga di setiap run? 1000 buku x 365 hari = 365.000 baris per tahun, hampir semuanya sama. Mencatat perubahan saja membuat tabelnya kecil, dan setiap barisnya bermakna.\n\n## Upsert\n\n`INSERT ... ON CONFLICT (upc) DO UPDATE SET ...` adalah **upsert**: masukkan kalau UPC belum ada, perbarui kalau sudah. `excluded.harga_pence` berarti \"nilai yang tadinya mau dimasukkan\". Perhatikan `pertama_dilihat` tidak ada di daftar `SET`, jadi nilainya tetap yang pertama.\n\nHarga lama dibaca dulu sebelum upsert, lalu dibandingkan. Ketiganya (baca, upsert, riwayat) ada di dalam satu `with conn:`, yaitu satu **transaksi**: kalau program mati di tengah, tidak akan ada buku yang harganya sudah berubah tetapi riwayatnya belum tercatat.\n\n## Coba di REPL\n\n```python\n>>> from decimal import Decimal\n>>> from scraper_buku.penyimpanan import buka, simpan_buku\n>>> conn = buka(\":memory:\")\n>>> b = {\"upc\": \"x1\", \"judul\": \"Coba\", \"harga\": Decimal(\"10.50\"), \"stok\": 3,\n...      \"rating\": 4, \"kategori\": \"Uji\", \"url\": \"https://contoh.test/x1\"}\n>>> simpan_buku(conn, b, \"2026-01-01\")\n('baru', None)\n>>> simpan_buku(conn, b, \"2026-01-02\")\n('sama', 1050)\n>>> simpan_buku(conn, {**b, \"harga\": Decimal(\"9.99\")}, \"2026-01-03\")\n('berubah', 1050)\n>>> conn.execute(\"SELECT harga_pence, dicatat FROM riwayat_harga\").fetchall()\n[(1050, '2026-01-01'), (999, '2026-01-03')]\n```\n\n`\":memory:\"` membuat database di memori yang hilang saat Python ditutup. Cocok untuk mencoba dan untuk tes.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `penyimpanan.py`, lalu jalankan contoh REPL di atas.\n2. Coba `simpan_buku(conn, {**b, \"rating\": 9}, \"2026-01-04\")`. `CHECK (rating BETWEEN 1 AND 5)` harus menolaknya dengan `IntegrityError`. Database ikut menjaga data, bukan hanya kode Python.\n3. Jalankan ruff, lalu commit dengan pesan `SQLite: upsert dan riwayat harga`.\n",
+      "materials": [
+        {
+          "id": "sh-m-penyimpanan",
+          "kind": "kode",
+          "name": "src/scraper_buku/penyimpanan.py",
+          "lang": "python",
+          "content": "\"\"\"SQLite: tabel buku (satu baris per UPC) dan riwayat_harga (satu baris per perubahan).\"\"\"\n\nimport sqlite3\nfrom decimal import Decimal\nfrom pathlib import Path\n\nSKEMA = \"\"\"\nCREATE TABLE IF NOT EXISTS buku (\n    upc              TEXT PRIMARY KEY,\n    judul            TEXT NOT NULL,\n    harga_pence      INTEGER NOT NULL CHECK (harga_pence >= 0),\n    stok             INTEGER NOT NULL,\n    rating           INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),\n    kategori         TEXT NOT NULL,\n    url              TEXT NOT NULL,\n    pertama_dilihat  TEXT NOT NULL,\n    terakhir_dilihat TEXT NOT NULL\n);\nCREATE TABLE IF NOT EXISTS riwayat_harga (\n    id          INTEGER PRIMARY KEY,\n    upc         TEXT NOT NULL REFERENCES buku (upc),\n    harga_pence INTEGER NOT NULL,\n    dicatat     TEXT NOT NULL\n);\nCREATE INDEX IF NOT EXISTS riwayat_per_upc ON riwayat_harga (upc, dicatat);\n\"\"\"\n\n\ndef buka(berkas: Path | str) -> sqlite3.Connection:\n    if berkas != \":memory:\":\n        Path(berkas).parent.mkdir(parents=True, exist_ok=True)\n    conn = sqlite3.connect(berkas)\n    conn.execute(\"PRAGMA foreign_keys = ON\")\n    conn.executescript(SKEMA)\n    return conn\n\n\ndef ke_pence(harga: Decimal) -> int:\n    \"\"\"Decimal('51.77') -> 5177. Simpan uang sebagai bilangan bulat, bukan float.\"\"\"\n    return int(harga * 100)\n\n\ndef simpan_buku(conn: sqlite3.Connection, buku: dict, waktu: str) -> tuple[str, int | None]:\n    \"\"\"Upsert satu buku. Kembalikan ('baru' | 'berubah' | 'sama', harga lama dalam pence).\"\"\"\n    pence = ke_pence(buku[\"harga\"])\n    with conn:  # satu transaksi: buku dan riwayatnya tersimpan bersama, atau tidak sama sekali\n        lama = conn.execute(\"SELECT harga_pence FROM buku WHERE upc = ?\", (buku[\"upc\"],)).fetchone()\n        conn.execute(\n            \"\"\"\n            INSERT INTO buku (upc, judul, harga_pence, stok, rating, kategori, url,\n                              pertama_dilihat, terakhir_dilihat)\n            VALUES (:upc, :judul, :pence, :stok, :rating, :kategori, :url, :waktu, :waktu)\n            ON CONFLICT (upc) DO UPDATE SET\n                judul = excluded.judul,\n                harga_pence = excluded.harga_pence,\n                stok = excluded.stok,\n                rating = excluded.rating,\n                kategori = excluded.kategori,\n                url = excluded.url,\n                terakhir_dilihat = excluded.terakhir_dilihat\n            \"\"\",\n            {**buku, \"pence\": pence, \"waktu\": waktu},\n        )\n        if lama is not None and lama[0] == pence:\n            return \"sama\", lama[0]\n        conn.execute(\n            \"INSERT INTO riwayat_harga (upc, harga_pence, dicatat) VALUES (?, ?, ?)\",\n            (buku[\"upc\"], pence, waktu),\n        )\n    return (\"baru\", None) if lama is None else (\"berubah\", lama[0])\n"
+        },
+        {
+          "id": "sh-m-py-sqlite-tx",
+          "kind": "tautan",
+          "name": "Python: sqlite3 dan transaksi (with conn)",
+          "url": "https://docs.python.org/3/library/sqlite3.html#sqlite3-connection-context-manager"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-db-status",
+          "text": "simpan_buku mengembalikan baru, lalu sama, lalu berubah sesuai contoh di REPL."
+        },
+        {
+          "id": "sh-db-riwayat",
+          "text": "riwayat_harga hanya bertambah saat buku baru atau harganya berubah."
+        },
+        {
+          "id": "sh-db-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "cli-log-json-dan-laporan",
+      "title": "Satukan dengan CLI, log JSON, dan laporan",
+      "est_minutes": 60,
+      "body": "## Menyatukan semuanya\n\nGanti isi `src/scraper_buku/__init__.py` dengan versi di Bahan, lalu buat `__main__.py` dan `laporan.py`.\n\n- **`jelajah(ambil, url, maks_halaman)`** adalah generator: ia `yield` satu buku setiap kali selesai di-parse, jadi buku langsung disimpan tanpa menunggu 1000 buku terkumpul di memori. Ia hanya butuh fungsi `ambil(url) -> str`, bukan `Pengambil`. Di tes, kamu memberinya fungsi palsu yang membaca fixture.\n- **Satu buku gagal tidak menghentikan crawl.** Galat HTTP, `ValueError`, atau `KeyError` saat mengambil satu detail dicatat sebagai `buku_gagal`, lalu crawl lanjut. Kode keluar jadi 1 supaya GitHub Actions menandai run itu merah dan kamu tahu ada yang perlu diperiksa. Kalau halaman **katalog** yang gagal, crawl berhenti; buku yang sudah tersimpan tetap aman karena masing-masing di-commit sendiri.\n- **Log JSON.** `FormatJson` mengubah setiap log jadi satu baris JSON berisi `waktu`, `level`, `kejadian`, dan data tambahan dari `extra={\"data\": {...}}`. Manusia masih bisa membacanya, dan mesin bisa mengolahnya, misalnya `grep harga_berubah`. Log ditulis ke stderr; log permintaan dari httpx dibisukan supaya tidak ada 1050 baris yang tidak perlu.\n- **`--jeda` di bawah 0,5 ditolak** sebelum satu permintaan pun dikirim. Batas kesopanan dijaga kode, bukan hanya niat baik.\n- **`laporan.py`** mengekspor tabel `buku` ke CSV dan membuat grafik batang horizontal rata-rata harga untuk 20 kategori terbanyak. `matplotlib.use(\"Agg\")` membuatnya bisa berjalan tanpa layar, misalnya di GitHub Actions. Import matplotlib ada di dalam `perintah_laporan` supaya perintah `crawl` tidak ikut menanggung waktu muat matplotlib.\n\n## Yang perlu kamu kerjakan\n\n1. Lihat bantuan: `uv run scraper-buku --help` dan `uv run scraper-buku crawl --help`.\n2. Crawl satu halaman dengan cache:\n\n```bash\nuv run scraper-buku crawl --halaman 1 --cache .cache-html\n```\n\n   Butuh sekitar 25 detik (21 permintaan, jeda 1 detik). Baris terakhir log harus berisi `\"kejadian\": \"selesai\", \"baru\": 20`.\n3. Jalankan `uv run scraper-buku laporan`, lalu buka `laporan/harga-per-kategori.png` dan `laporan/buku.csv`.\n4. Coba `uv run scraper-buku crawl --jeda 0.1`. Harus ditolak dengan pesan minimal 0.5 detik.\n5. Jalankan ruff, lalu commit hanya kodenya: `git add src && git commit -m \"CLI, log JSON, dan laporan\"`. Folder `data/` dan `laporan/` baru di-commit setelah crawl penuh.\n",
+      "materials": [
+        {
+          "id": "sh-m-init",
+          "kind": "kode",
+          "name": "src/scraper_buku/__init__.py",
+          "lang": "python",
+          "content": "\"\"\"Scraper harga buku untuk situs latihan books.toscrape.com.\"\"\"\n\nimport argparse\nimport json\nimport logging\nimport sys\nfrom collections import Counter\nfrom collections.abc import Callable, Iterator\nfrom datetime import UTC, datetime\nfrom pathlib import Path\n\nimport httpx\n\nfrom scraper_buku.parser import parse_buku, parse_daftar\nfrom scraper_buku.pengambil import DilarangRobots, Pengambil\nfrom scraper_buku.penyimpanan import buka, simpan_buku\n\nURL_AWAL = \"https://books.toscrape.com/catalogue/page-1.html\"\nlog = logging.getLogger(\"scraper_buku\")\n\n\nclass FormatJson(logging.Formatter):\n    \"\"\"Satu baris JSON per kejadian: mudah dibaca manusia, mudah di-grep dan diolah mesin.\"\"\"\n\n    def format(self, record: logging.LogRecord) -> str:\n        isi = {\n            \"waktu\": datetime.fromtimestamp(record.created, UTC).isoformat(timespec=\"seconds\"),\n            \"level\": record.levelname,\n            \"kejadian\": record.getMessage(),\n            **getattr(record, \"data\", {}),\n        }\n        return json.dumps(isi, ensure_ascii=False, default=str)\n\n\ndef atur_log(level: str) -> None:\n    penangan = logging.StreamHandler()  # ke stderr, supaya stdout tetap bersih\n    penangan.setFormatter(FormatJson())\n    logging.basicConfig(level=level, handlers=[penangan], force=True)\n    logging.getLogger(\"httpx\").setLevel(logging.WARNING)  # jangan catat setiap request\n\n\ndef jelajah(ambil: Callable[[str], str], url: str, maks_halaman: int | None) -> Iterator[dict]:\n    \"\"\"Ikuti tombol next dari halaman katalog, lalu buka setiap detail buku.\"\"\"\n    halaman = 0\n    while url and (maks_halaman is None or halaman < maks_halaman):\n        tautan, berikut = parse_daftar(ambil(url), url)\n        halaman += 1\n        log.info(\"halaman\", extra={\"data\": {\"ke\": halaman, \"url\": url, \"buku\": len(tautan)}})\n        for tautan_buku in tautan:\n            try:\n                yield parse_buku(ambil(tautan_buku), tautan_buku)\n            except (httpx.HTTPError, ValueError, KeyError) as galat:\n                log.error(\"buku_gagal\", extra={\"data\": {\"url\": tautan_buku, \"galat\": repr(galat)}})\n                yield {\"gagal\": tautan_buku}\n        url = berikut\n\n\ndef perintah_crawl(args, ambil: Callable[[str], str] | None = None) -> int:\n    if ambil is None:\n        ambil = Pengambil(jeda=args.jeda, folder_cache=args.cache).ambil\n    waktu = datetime.now(UTC).isoformat(timespec=\"seconds\")\n    hitung = Counter()\n    conn = buka(args.db)\n    try:\n        for buku in jelajah(ambil, args.url, args.halaman):\n            if \"gagal\" in buku:\n                hitung[\"gagal\"] += 1\n                continue\n            status, lama = simpan_buku(conn, buku, waktu)\n            hitung[status] += 1\n            if status == \"berubah\":\n                log.info(\n                    \"harga_berubah\",\n                    extra={\n                        \"data\": {\n                            \"upc\": buku[\"upc\"],\n                            \"judul\": buku[\"judul\"],\n                            \"lama\": f\"{lama / 100:.2f}\",\n                            \"baru\": str(buku[\"harga\"]),\n                        }\n                    },\n                )\n    except DilarangRobots as galat:\n        log.error(\"dilarang_robots\", extra={\"data\": {\"url\": str(galat)}})\n        return 2\n    except httpx.HTTPError as galat:  # halaman katalog gagal: berhenti, data yang sudah ada aman\n        log.error(\"katalog_gagal\", extra={\"data\": {\"galat\": repr(galat)}})\n        return 1\n    finally:\n        conn.close()\n    log.info(\"selesai\", extra={\"data\": dict(hitung)})\n    return 1 if hitung[\"gagal\"] else 0\n\n\ndef perintah_laporan(args) -> int:\n    # matplotlib berat: baru dimuat saat laporan dibuat, crawl tetap cepat\n    from scraper_buku.laporan import ekspor_csv, grafik_kategori\n\n    conn = buka(args.db)\n    jumlah = ekspor_csv(conn, args.keluar / \"buku.csv\")\n    grafik_kategori(conn, args.keluar / \"harga-per-kategori.png\")\n    conn.close()\n    log.info(\"laporan\", extra={\"data\": {\"buku\": jumlah, \"folder\": str(args.keluar)}})\n    return 0\n\n\ndef buat_parser() -> argparse.ArgumentParser:\n    p = argparse.ArgumentParser(prog=\"scraper-buku\", description=__doc__)\n    p.add_argument(\"--db\", type=Path, default=Path(\"data/buku.db\"), help=\"berkas SQLite\")\n    p.add_argument(\"--log\", default=\"INFO\", choices=[\"DEBUG\", \"INFO\", \"WARNING\", \"ERROR\"])\n    sub = p.add_subparsers(dest=\"perintah\", required=True)\n\n    c = sub.add_parser(\"crawl\", help=\"ambil katalog dan simpan ke database\")\n    c.add_argument(\"--halaman\", type=int, default=None, help=\"batas halaman (bawaan: semua)\")\n    c.add_argument(\"--jeda\", type=float, default=1.0, help=\"detik antar permintaan (minimal 0.5)\")\n    c.add_argument(\"--cache\", type=Path, default=None, help=\"folder cache HTML (pengembangan)\")\n    c.add_argument(\"--url\", default=URL_AWAL, help=argparse.SUPPRESS)\n    c.set_defaults(jalankan=perintah_crawl)\n\n    r = sub.add_parser(\"laporan\", help=\"tulis CSV dan grafik dari database\")\n    r.add_argument(\"--keluar\", type=Path, default=Path(\"laporan\"))\n    r.set_defaults(jalankan=perintah_laporan)\n    return p\n\n\ndef main(argv: list[str] | None = None) -> int:\n    args = buat_parser().parse_args(argv)\n    if getattr(args, \"jeda\", 1.0) < 0.5:\n        sys.exit(\"--jeda minimal 0.5 detik. Situs orang lain bukan tempat uji beban.\")\n    atur_log(args.log)\n    return args.jalankan(args)\n"
+        },
+        {
+          "id": "sh-m-main",
+          "kind": "kode",
+          "name": "src/scraper_buku/__main__.py",
+          "lang": "python",
+          "content": "import sys\n\nfrom scraper_buku import main\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+        },
+        {
+          "id": "sh-m-laporan",
+          "kind": "kode",
+          "name": "src/scraper_buku/laporan.py",
+          "lang": "python",
+          "content": "\"\"\"Laporan dari database: CSV semua buku dan grafik rata-rata harga per kategori.\"\"\"\n\nimport csv\nimport sqlite3\nfrom pathlib import Path\n\nimport matplotlib\n\nmatplotlib.use(\"Agg\")  # tanpa layar: aman di server dan GitHub Actions\nimport matplotlib.pyplot as plt  # noqa: E402\n\n\ndef ekspor_csv(conn: sqlite3.Connection, berkas: Path) -> int:\n    kursor = conn.execute(\n        \"\"\"\n        SELECT upc, judul, kategori, printf('%.2f', harga_pence / 100.0) AS harga_gbp,\n               stok, rating, terakhir_dilihat\n        FROM buku ORDER BY kategori, judul\n        \"\"\"\n    )\n    baris = kursor.fetchall()\n    berkas.parent.mkdir(parents=True, exist_ok=True)\n    with berkas.open(\"w\", newline=\"\", encoding=\"utf-8\") as f:\n        tulis = csv.writer(f)\n        tulis.writerow([kolom[0] for kolom in kursor.description])\n        tulis.writerows(baris)\n    return len(baris)\n\n\ndef grafik_kategori(conn: sqlite3.Connection, berkas: Path, maks: int = 20) -> None:\n    data = conn.execute(\n        \"\"\"\n        SELECT kategori, AVG(harga_pence) / 100.0 AS rata, COUNT(*) AS jumlah\n        FROM buku GROUP BY kategori\n        ORDER BY jumlah DESC, kategori LIMIT ?\n        \"\"\",\n        (maks,),\n    ).fetchall()\n    data.sort(key=lambda b: b[1])  # termahal di atas setelah barh membalik urutan\n    label = [f\"{k} ({n})\" for k, _, n in data]\n    rata = [r for _, r, _ in data]\n\n    fig, ax = plt.subplots(figsize=(9, 0.32 * len(data) + 1.4))\n    batang = ax.barh(label, rata, color=\"#7a9a3a\")\n    ax.bar_label(batang, labels=[f\"£{r:.2f}\" for r in rata], padding=4, fontsize=8)\n    ax.set_xlabel(\"Rata-rata harga (GBP)\")\n    ax.set_title(\n        f\"Rata-rata harga, {len(data)} kategori terbanyak (angka dalam kurung = jumlah buku)\"\n    )\n    ax.spines[[\"top\", \"right\"]].set_visible(False)\n    ax.margins(x=0.12)\n    fig.tight_layout()\n    berkas.parent.mkdir(parents=True, exist_ok=True)\n    fig.savefig(berkas, dpi=120)\n    plt.close(fig)\n"
+        },
+        {
+          "id": "sh-m-argparse",
+          "kind": "tautan",
+          "name": "Python: argparse dan subcommand",
+          "url": "https://docs.python.org/3/library/argparse.html#sub-commands"
+        },
+        {
+          "id": "sh-m-logging-cookbook",
+          "kind": "tautan",
+          "name": "Python: logging cookbook",
+          "url": "https://docs.python.org/3/howto/logging-cookbook.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-cli-help",
+          "text": "uv run scraper-buku --help dan crawl --help menampilkan pilihan perintah."
+        },
+        {
+          "id": "sh-cli-satu",
+          "text": "crawl --halaman 1 --cache .cache-html menyimpan 20 buku dan log terakhirnya selesai dengan baru: 20."
+        },
+        {
+          "id": "sh-cli-jeda",
+          "text": "crawl --jeda 0.1 ditolak dengan pesan minimal 0.5 detik."
+        },
+        {
+          "id": "sh-cli-commit",
+          "text": "ruff check lulus dan perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-pytest-tanpa-jaringan",
+      "title": "Tes pytest dengan fixture, tanpa jaringan",
+      "est_minutes": 75,
+      "body": "## Tes yang tidak pernah menyentuh internet\n\nBuat kelima berkas tes dari Bahan. Tiga teknik yang dipakai:\n\n- **Fixture HTML.** `tests/conftest.py` menyediakan fixture `html(\"katalog-1\")` yang membaca berkas dari `tests/fixtures/`. Tes parser memeriksa nilai persis: UPC, `Decimal(\"51.77\")`, 22 stok, rating 3, Poetry.\n- **Server palsu.** `httpx.MockTransport(tangani)` membuat klien httpx yang memanggil fungsi `tangani(request)` sebagai pengganti server. Tes bisa menyusun urutan jawaban \"503, lalu timeout, lalu 200\" dan memeriksa bahwa `Pengambil` mencoba tiga kali dengan tunggu `[1, 2]`. Jam dan `tidur` juga palsu: tidur hanya menambah angka jam, jadi tes backoff selesai seketika.\n- **Jaringan diblokir.** Fixture `autouse` di `conftest.py` mengganti `socket.socket.connect` dengan fungsi yang melempar error. Kalau suatu hari ada tes yang tanpa sengaja membuka koneksi sungguhan, tes itu gagal keras alih-alih diam-diam bergantung pada internet.\n\n`test_cli.py` menjalankan crawl lengkap ke database di `tmp_path` dengan situs palsu: katalog dari fixture, detail dari fixture yang UPC-nya diganti per URL supaya 20 buku berbeda. Crawl kedua dengan harga £40.00 harus menghasilkan 20 log `harga_berubah`. `capsys` menangkap stderr, lalu setiap baris di-parse sebagai JSON. Sekaligus terbukti bahwa log-mu memang JSON yang valid.\n\n## Yang perlu kamu kerjakan\n\n1. Buat kelima berkas, lalu matikan Wi-Fi (sungguhan!) dan jalankan:\n\n```bash\nuv run pytest\nuv run ruff check\nuv run ruff format --check\n```\n\n   pytest harus melaporkan `29 passed`. Nyalakan lagi Wi-Fi-mu.\n2. Rusak parser dengan sengaja: di `parse_stok`, ganti `else 0` dengan `else None`. Tes stok harus gagal dan menunjukkan `None == 0`. Kembalikan seperti semula.\n3. Coba lagi: di `pengambil.py`, hapus `429` dari `STATUS_COBA_LAGI`. Tes mana yang gagal, dan kenapa?\n4. Tambahkan satu tes milikmu, misalnya `parse_harga(\"£0.99\") == Decimal(\"0.99\")` atau robots.txt yang menjawab 503 harus membuat `ambil()` melempar `DilarangRobots`.\n5. Commit dengan pesan `Tes pytest tanpa jaringan`.\n\nSebagian besar tesmu adalah tes unit yang cepat. Hanya sedikit tes yang menjalankan crawl utuh, dan pengujian terhadap situs sungguhan kamu lakukan dengan tangan di langkah berikutnya.\n\n![Atur jumlah tes unit, integrasi, dan end-to-end, lalu lihat dampaknya ke waktu dan risiko tes goyah; tes scraper ini hampir semuanya unit, ditambah beberapa tes crawl utuh dengan situs palsu](sim:piramida-tes)\n",
+      "materials": [
+        {
+          "id": "sh-m-conftest",
+          "kind": "kode",
+          "name": "tests/conftest.py",
+          "lang": "python",
+          "content": "import socket\nfrom pathlib import Path\n\nimport pytest\n\nFIXTURE = Path(__file__).parent / \"fixtures\"\n\n\n@pytest.fixture(autouse=True)\ndef tanpa_jaringan(monkeypatch):\n    \"\"\"Tes yang tidak sengaja membuka koneksi langsung gagal, bukan diam-diam lambat.\"\"\"\n\n    def tolak(*args, **kwargs):\n        raise RuntimeError(\"Tes tidak boleh memakai jaringan\")\n\n    monkeypatch.setattr(socket.socket, \"connect\", tolak)\n\n\n@pytest.fixture\ndef html():\n    \"\"\"html(\"katalog-1\") -> isi tests/fixtures/katalog-1.html\"\"\"\n    return lambda nama: (FIXTURE / f\"{nama}.html\").read_text(encoding=\"utf-8\")\n"
+        },
+        {
+          "id": "sh-m-test-parser",
+          "kind": "kode",
+          "name": "tests/test_parser.py",
+          "lang": "python",
+          "content": "from decimal import Decimal\n\nimport pytest\n\nfrom scraper_buku.parser import parse_buku, parse_daftar, parse_harga, parse_stok\n\nKATALOG_1 = \"https://books.toscrape.com/catalogue/page-1.html\"\nDETAIL = \"https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\"\n\n\n@pytest.mark.parametrize(\n    \"teks, hasil\",\n    [(\"£51.77\", \"51.77\"), (\"Â£51.77\", \"51.77\"), (\" £0.00 \", \"0.00\"), (\"£1,234.50\", \"1234.50\")],\n)\ndef test_parse_harga(teks, hasil):\n    assert parse_harga(teks) == Decimal(hasil)\n\n\ndef test_parse_harga_bukan_angka():\n    with pytest.raises(ValueError, match=\"Harga tidak dikenali\"):\n        parse_harga(\"gratis\")\n\n\n@pytest.mark.parametrize(\n    \"teks, hasil\",\n    [(\"In stock (22 available)\", 22), (\"In stock (1 available)\", 1), (\"Out of stock\", 0)],\n)\ndef test_parse_stok(teks, hasil):\n    assert parse_stok(teks) == hasil\n\n\ndef test_halaman_pertama(html):\n    tautan, berikut = parse_daftar(html(\"katalog-1\"), KATALOG_1)\n    assert len(tautan) == 20\n    assert tautan[0] == DETAIL\n    assert berikut == \"https://books.toscrape.com/catalogue/page-2.html\"\n\n\ndef test_halaman_terakhir_tanpa_next(html):\n    tautan, berikut = parse_daftar(html(\"katalog-50\"), KATALOG_1.replace(\"1\", \"50\"))\n    assert len(tautan) == 20\n    assert berikut is None\n\n\ndef test_detail_buku(html):\n    buku = parse_buku(html(\"buku-light-attic\"), DETAIL)\n    assert buku == {\n        \"upc\": \"a897fe39b1053632\",\n        \"judul\": \"A Light in the Attic\",\n        \"harga\": Decimal(\"51.77\"),\n        \"stok\": 22,\n        \"rating\": 3,\n        \"kategori\": \"Poetry\",\n        \"url\": DETAIL,\n    }\n\n\ndef test_bukan_halaman_buku(html):\n    with pytest.raises(ValueError, match=\"Bukan halaman buku\"):\n        parse_buku(html(\"katalog-1\"), KATALOG_1)\n"
+        },
+        {
+          "id": "sh-m-test-pengambil",
+          "kind": "kode",
+          "name": "tests/test_pengambil.py",
+          "lang": "python",
+          "content": "import httpx\nimport pytest\n\nfrom scraper_buku.pengambil import USER_AGENT, DilarangRobots, Pengambil\n\nURL = \"https://contoh.test/katalog.html\"\n\n\ndef pengambil(tangani, **kwargs):\n    \"\"\"Server palsu (MockTransport) dan jam palsu: tanpa jaringan, tanpa menunggu.\"\"\"\n    sekarang = [0.0]\n    tidur = []\n\n    def tidur_palsu(detik):\n        tidur.append(detik)\n        sekarang[0] += detik\n\n    klien = httpx.Client(transport=httpx.MockTransport(tangani), headers={\"User-Agent\": USER_AGENT})\n    p = Pengambil(klien=klien, tidur=tidur_palsu, jam=lambda: sekarang[0], **kwargs)\n    return p, tidur\n\n\ndef tanpa_robots(urutan):\n    \"\"\"Server palsu: robots.txt 404, lalu jawaban dari daftar `urutan` satu per satu.\"\"\"\n    dipanggil = []\n\n    def tangani(request):\n        if request.url.path == \"/robots.txt\":\n            return httpx.Response(404)\n        dipanggil.append(request)\n        jawab = urutan.pop(0)\n        if isinstance(jawab, Exception):\n            raise jawab\n        return jawab\n\n    return tangani, dipanggil\n\n\ndef test_berhasil_dan_mengirim_user_agent():\n    tangani, dipanggil = tanpa_robots([httpx.Response(200, text=\"<p>£1</p>\")])\n    p, _ = pengambil(tangani)\n    assert p.ambil(URL) == \"<p>£1</p>\"\n    assert dipanggil[0].headers[\"User-Agent\"].startswith(\"scraper-buku/\")\n\n\ndef test_coba_lagi_dengan_backoff_lalu_berhasil():\n    tangani, dipanggil = tanpa_robots(\n        [httpx.Response(503), httpx.ConnectTimeout(\"lambat\"), httpx.Response(200, text=\"ok\")]\n    )\n    p, tidur = pengambil(tangani, jeda=0)\n    assert p.ambil(URL) == \"ok\"\n    assert len(dipanggil) == 3\n    assert tidur == [1, 2]  # backoff eksponensial\n\n\ndef test_retry_after_dihormati():\n    tangani, _ = tanpa_robots(\n        [httpx.Response(429, headers={\"Retry-After\": \"7\"}), httpx.Response(200)]\n    )\n    p, tidur = pengambil(tangani, jeda=0)\n    p.ambil(URL)\n    assert tidur == [7]\n\n\ndef test_menyerah_setelah_batas_percobaan():\n    tangani, dipanggil = tanpa_robots([httpx.Response(500)] * 3)\n    p, _ = pengambil(tangani, jeda=0)\n    with pytest.raises(httpx.HTTPStatusError):\n        p.ambil(URL)\n    assert len(dipanggil) == 3\n\n\ndef test_404_tidak_dicoba_lagi():\n    tangani, dipanggil = tanpa_robots([httpx.Response(404)])\n    p, _ = pengambil(tangani)\n    with pytest.raises(httpx.HTTPStatusError):\n        p.ambil(URL)\n    assert len(dipanggil) == 1\n\n\ndef test_robots_melarang():\n    def tangani(request):\n        if request.url.path == \"/robots.txt\":\n            return httpx.Response(200, text=\"User-agent: *\\nDisallow: /rahasia/\\n\")\n        return httpx.Response(200, text=\"boleh\")\n\n    p, _ = pengambil(tangani)\n    assert p.ambil(URL) == \"boleh\"\n    with pytest.raises(DilarangRobots):\n        p.ambil(\"https://contoh.test/rahasia/a.html\")\n\n\ndef test_jeda_antar_permintaan():\n    tangani, _ = tanpa_robots([httpx.Response(200), httpx.Response(200)])\n    p, tidur = pengambil(tangani, jeda=1.0)\n    p.ambil(URL)  # robots.txt lalu halaman: halaman menunggu 1 detik\n    p.ambil(URL)  # menunggu 1 detik lagi\n    assert tidur == [1.0, 1.0]\n\n\ndef test_cache_tidak_meminta_ulang(tmp_path):\n    tangani, dipanggil = tanpa_robots([httpx.Response(200, text=\"sekali\")])\n    p, _ = pengambil(tangani, folder_cache=tmp_path)\n    assert p.ambil(URL) == \"sekali\"\n    assert p.ambil(URL) == \"sekali\"\n    assert len(dipanggil) == 1\n"
+        },
+        {
+          "id": "sh-m-test-penyimpanan",
+          "kind": "kode",
+          "name": "tests/test_penyimpanan.py",
+          "lang": "python",
+          "content": "from decimal import Decimal\n\nfrom scraper_buku.penyimpanan import buka, ke_pence, simpan_buku\n\nBUKU = {\n    \"upc\": \"a897fe39b1053632\",\n    \"judul\": \"A Light in the Attic\",\n    \"harga\": Decimal(\"51.77\"),\n    \"stok\": 22,\n    \"rating\": 3,\n    \"kategori\": \"Poetry\",\n    \"url\": \"https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\",\n}\n\n\ndef riwayat(conn):\n    return conn.execute(\"SELECT harga_pence, dicatat FROM riwayat_harga ORDER BY id\").fetchall()\n\n\ndef test_ke_pence_tanpa_galat_float():\n    assert ke_pence(Decimal(\"51.77\")) == 5177\n    assert ke_pence(Decimal(\"0.10\")) + ke_pence(Decimal(\"0.20\")) == 30  # 0.1 + 0.2 aman\n\n\ndef test_buku_baru_lalu_sama_lalu_berubah():\n    conn = buka(\":memory:\")\n    assert simpan_buku(conn, BUKU, \"2026-01-01\") == (\"baru\", None)\n    assert simpan_buku(conn, BUKU, \"2026-01-02\") == (\"sama\", 5177)\n    assert simpan_buku(conn, {**BUKU, \"harga\": Decimal(\"45.00\")}, \"2026-01-03\") == (\"berubah\", 5177)\n    assert riwayat(conn) == [(5177, \"2026-01-01\"), (4500, \"2026-01-03\")]\n\n\ndef test_upsert_satu_baris_per_upc_dan_waktu_diperbarui():\n    conn = buka(\":memory:\")\n    simpan_buku(conn, BUKU, \"2026-01-01\")\n    simpan_buku(conn, {**BUKU, \"stok\": 5}, \"2026-01-02\")\n    baris = conn.execute(\"SELECT stok, pertama_dilihat, terakhir_dilihat FROM buku\").fetchall()\n    assert baris == [(5, \"2026-01-01\", \"2026-01-02\")]\n\n\ndef test_data_tetap_ada_setelah_ditutup(tmp_path):\n    berkas = tmp_path / \"data\" / \"buku.db\"\n    conn = buka(berkas)\n    simpan_buku(conn, BUKU, \"2026-01-01\")\n    conn.close()\n    assert buka(berkas).execute(\"SELECT COUNT(*) FROM buku\").fetchone() == (1,)\n"
+        },
+        {
+          "id": "sh-m-test-cli",
+          "kind": "kode",
+          "name": "tests/test_cli.py",
+          "lang": "python",
+          "content": "import csv\nimport json\n\nfrom scraper_buku import atur_log, buat_parser, jelajah, main, perintah_crawl\n\nKATALOG_1 = \"https://books.toscrape.com/catalogue/page-1.html\"\nDETAIL = \"https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\"\n\n\ndef situs_palsu(html):\n    \"\"\"Pengganti Pengambil.ambil: katalog dari fixture, setiap detail memakai fixture yang sama\n    tapi UPC-nya dibuat unik dari URL supaya 20 buku tidak saling menimpa.\"\"\"\n    katalog = html(\"katalog-50\")  # tidak punya tombol next: hanya satu halaman\n    detail = html(\"buku-light-attic\")\n\n    def ambil(url):\n        if url == KATALOG_1:\n            return katalog\n        return detail.replace(\"a897fe39b1053632\", url.split(\"/\")[-2])\n\n    return ambil\n\n\ndef jalankan_crawl(tmp_path, html, ambil=None):\n    args = buat_parser().parse_args([\"--db\", str(tmp_path / \"buku.db\"), \"crawl\"])\n    atur_log(\"INFO\")\n    return perintah_crawl(args, ambil=ambil or situs_palsu(html))\n\n\ndef test_jelajah_berhenti_di_batas_halaman(html):\n    ambil = situs_palsu(html)\n    assert len(list(jelajah(ambil, KATALOG_1, maks_halaman=1))) == 20\n    assert list(jelajah(ambil, KATALOG_1, maks_halaman=0)) == []\n\n\ndef test_crawl_dua_kali_mendeteksi_perubahan_harga(tmp_path, html, capsys):\n    assert jalankan_crawl(tmp_path, html) == 0\n    asli = situs_palsu(html)\n\n    def harga_turun(url):\n        return asli(url).replace(\"£51.77\", \"£40.00\")\n\n    assert jalankan_crawl(tmp_path, html, ambil=harga_turun) == 0\n    log = [json.loads(b) for b in capsys.readouterr().err.splitlines()]\n    berubah = [b for b in log if b[\"kejadian\"] == \"harga_berubah\"]\n    assert len(berubah) == 20\n    assert berubah[0][\"lama\"] == \"51.77\" and berubah[0][\"baru\"] == \"40.00\"\n    assert log[-1] == {**log[-1], \"kejadian\": \"selesai\", \"berubah\": 20}\n\n\ndef test_buku_gagal_dicatat_dan_kode_keluar_1(tmp_path, html, capsys):\n    asli = situs_palsu(html)\n\n    def kadang_rusak(url):\n        return \"<html>rusak</html>\" if \"frankenstein\" in url else asli(url)\n\n    assert jalankan_crawl(tmp_path, html, ambil=kadang_rusak) == 1\n    log = [json.loads(b) for b in capsys.readouterr().err.splitlines()]\n    assert [b[\"url\"] for b in log if b[\"kejadian\"] == \"buku_gagal\"] == [\n        \"https://books.toscrape.com/catalogue/frankenstein_20/index.html\"\n    ]\n    assert log[-1][\"baru\"] == 19 and log[-1][\"gagal\"] == 1\n\n\ndef test_laporan_csv_dan_grafik(tmp_path, html):\n    jalankan_crawl(tmp_path, html)\n    keluar = tmp_path / \"laporan\"\n    assert main([\"--db\", str(tmp_path / \"buku.db\"), \"laporan\", \"--keluar\", str(keluar)]) == 0\n    with (keluar / \"buku.csv\").open(encoding=\"utf-8\") as f:\n        baris = list(csv.DictReader(f))\n    assert len(baris) == 20\n    assert baris[0][\"harga_gbp\"] == \"51.77\"\n    assert (keluar / \"harga-per-kategori.png\").read_bytes()[:4] == b\"\\x89PNG\"\n\n\ndef test_jeda_terlalu_kecil_ditolak(capsys):\n    try:\n        main([\"crawl\", \"--jeda\", \"0.1\"])\n    except SystemExit as keluar:\n        assert \"minimal 0.5\" in str(keluar.code)\n    else:\n        raise AssertionError(\"harus berhenti\")\n"
+        },
+        {
+          "id": "sh-m-httpx-mock",
+          "kind": "tautan",
+          "name": "HTTPX: MockTransport untuk tes",
+          "url": "https://www.python-httpx.org/advanced/transports/#mock-transports"
+        },
+        {
+          "id": "sh-m-pytest-monkeypatch",
+          "kind": "tautan",
+          "name": "pytest: monkeypatch",
+          "url": "https://docs.pytest.org/en/stable/how-to/monkeypatch.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-tes-lulus",
+          "text": "uv run pytest lulus semua tanpa koneksi internet."
+        },
+        {
+          "id": "sh-tes-rusak",
+          "text": "Aku sudah merusak parser dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "sh-tes-offline",
+          "text": "Aku paham kenapa conftest.py memblokir socket."
+        },
+        {
+          "id": "sh-tes-ruff",
+          "text": "ruff check dan ruff format --check lulus."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-sungguhan-ke-situs-latihan",
+      "title": "Uji sungguhan ke situs latihan",
+      "est_minutes": 45,
+      "body": "## Tes otomatis tidak melihat semuanya\n\nFixture adalah foto situs hari ini. Yang belum terbukti: koneksi HTTPS sungguhan, robots.txt yang sesungguhnya, jeda yang terasa di dunia nyata, dan crawl 50 halaman sampai habis. Itu yang kamu periksa sekarang, tetap dengan sopan.\n\n## Yang perlu kamu kerjakan\n\nJalankan perintah di `uji-live.sh` satu per satu, bukan sebagai satu skrip, dan baca log-nya.\n\n1. **Dua halaman dengan cache**, mulai dari database kosong. Halaman 1 sudah tersimpan di cache sejak langkah CLI, jadi hanya halaman 2 yang benar-benar diunduh: sekitar 25 detik, kira-kira satu buku per detik.\n2. **Ulangi dari cache.** Selesai dalam 1-2 detik dengan `\"sama\": 40`, tanpa satu pun permintaan ke server. Inilah alasan cache ada: kamu boleh mengubah parser dan menjalankan ulang sesering apa pun.\n3. **Perubahan harga palsu.** Situs latihan tidak pernah mengubah harganya, jadi kamu memalsukan \"kemarin\" dengan mengubah database: harga A Light in the Attic jadi 99.99. Crawl berikutnya harus mencatat `harga_berubah` dari `99.99` ke `51.77`, dan `riwayat_harga` untuk UPC itu berisi dua baris. Keduanya 5177, karena kamu hanya memalsukan tabel `buku`; baris kedua tercatat karena harga tersimpan (99.99) berbeda dengan harga di situs. `python -m sqlite3` adalah klien SQLite bawaan Python 3.12 ke atas, jadi tidak perlu memasang apa pun.\n4. **Laporan** dari 40 buku.\n5. **Crawl penuh, sekali saja.** Hapus database percobaan, lalu ambil seluruh 1000 buku dengan jeda 0,5 detik: 1 robots.txt, 50 halaman katalog, dan 1000 halaman detail. Siapkan 10-20 menit. Hasil akhir: `1000` buku di `50` kategori, dan log terakhir `\"baru\": 1000`. Jangan diulang; mulai besok, GitHub Actions yang mengerjakannya.\n\n![Grafik dari crawl penuh 1000 buku: rata-rata harga per kategori, diurutkan dari yang termahal; angka dalam kurung adalah jumlah buku di kategori itu](/studio/scraper-harga-buku/grafik-kategori.webp)\n\nSitus latihan memberi harga acak tetapi tetap, jadi grafikmu akan sama persis dengan di atas. Perhatikan kategori `Add a comment` dan `Default`: keduanya memang tertulis begitu di breadcrumb situs. Data sungguhan selalu punya keanehan seperti ini, dan tugasmu mencatatnya, bukan diam-diam membuangnya. Di situs sungguhan, grafik seperti ini yang kamu pantau dari hari ke hari.\n\nCatat hal aneh yang kamu temukan. Contoh yang bagus untuk diceritakan saat wawancara: \"Saat crawl penuh, satu halaman timeout; log `coba_lagi` menunjukkan percobaan kedua berhasil.\"\n",
+      "materials": [
+        {
+          "id": "sh-m-uji-live",
+          "kind": "kode",
+          "name": "uji-live.sh",
+          "lang": "bash",
+          "content": "# Jalankan satu per satu dan baca log-nya. Semua ke situs latihan books.toscrape.com.\n\n# 0. Mulai dari database kosong (hasil percobaan di langkah CLI dibuang)\nrm -f data/buku.db\n\n# 1. Dua halaman katalog (40 buku), jeda 1 detik, HTML disimpan di cache.\n#    Halaman 1 sudah ada di cache sejak langkah CLI, jadi hanya halaman 2\n#    yang diunduh: sekitar 25 detik. Log terakhir: {\"kejadian\": \"selesai\", \"baru\": 40}\nuv run scraper-buku crawl --halaman 2 --cache .cache-html\n\n# 2. Ulangi. Kali ini semua dari cache: selesai dalam 1-2 detik, \"sama\": 40.\nuv run scraper-buku crawl --halaman 2 --cache .cache-html\n\n# 3. Pura-pura harga kemarin berbeda, lalu crawl lagi dari cache.\nuv run python -m sqlite3 data/buku.db \"UPDATE buku SET harga_pence = 9999 WHERE upc = 'a897fe39b1053632'\"\nuv run scraper-buku crawl --halaman 2 --cache .cache-html\n#    Harus muncul: \"kejadian\": \"harga_berubah\", ..., \"lama\": \"99.99\", \"baru\": \"51.77\"\nuv run python -m sqlite3 data/buku.db \"SELECT * FROM riwayat_harga WHERE upc = 'a897fe39b1053632'\"\n\n# 4. Laporan: laporan/buku.csv dan laporan/harga-per-kategori.png\nuv run scraper-buku laporan\n\n# 5. SEKALI saja: seluruh katalog tanpa cache, jeda 0,5 detik (1050 permintaan, 10-20 menit).\n#    Jangan diulang-ulang; itu tugas GitHub Actions nanti.\nrm data/buku.db\nuv run scraper-buku crawl --jeda 0.5\nuv run scraper-buku laporan\nuv run python -m sqlite3 data/buku.db \"SELECT COUNT(*), COUNT(DISTINCT kategori) FROM buku\"\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-live-cache",
+          "text": "Crawl kedua dari cache selesai dalam beberapa detik dengan sama: 40."
+        },
+        {
+          "id": "sh-live-berubah",
+          "text": "Perubahan harga palsu terdeteksi: log harga_berubah dan dua baris di riwayat_harga."
+        },
+        {
+          "id": "sh-live-penuh",
+          "text": "Crawl penuh selesai sekali dengan 1000 buku di 50 kategori."
+        },
+        {
+          "id": "sh-live-laporan",
+          "text": "laporan/buku.csv dan laporan/harga-per-kategori.png sudah kubuka dan isinya masuk akal."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "jadwal-harian-github-actions",
+      "title": "Jadwalkan scrape harian di GitHub Actions",
+      "est_minutes": 50,
+      "body": "## Scraper yang bangun sendiri setiap pagi\n\nGitHub Actions bisa menjalankan workflow sesuai jadwal **cron**. `23 8 * * *` dengan `timezone: \"Asia/Jakarta\"` berarti setiap hari pukul 08.23 WIB. Tanpa `timezone`, jadwal memakai UTC (pukul 08.23 UTC sama dengan 15.23 WIB). Menit 0 sengaja dihindari karena banyak workflow di seluruh GitHub dijadwalkan tepat di awal jam, dan run terjadwal bisa tertunda saat antrean ramai.\n\nBagian penting `scrape-harian.yml`:\n\n- **Action di-pin ke SHA commit** (`actions/checkout@3d3c42e...  # v7.0.1`), bukan tag `v7`. Tag bisa dipindahkan pemiliknya ke kode lain; SHA tidak bisa. Komentar versinya membantu manusia dan Dependabot.\n- **`uv sync --locked`** memasang versi persis dari `uv.lock` dan gagal kalau lock file tidak cocok dengan `pyproject.toml`.\n- **Tes dulu.** Kalau pytest gagal, crawl tidak berjalan. Lebih baik satu hari tanpa data daripada database yang diisi parser rusak.\n- **`if: ${{ !cancelled() }}`** pada langkah laporan dan commit: tetap berjalan walau crawl keluar dengan kode 1 (ada buku yang gagal), karena 999 buku lainnya tetap berharga.\n- **`permissions: contents: write`** memberi token bawaan izin push. Commit yang dibuat dengan token ini tidak memicu workflow baru, jadi tidak ada loop.\n- **`concurrency`** mencegah dua run (jadwal dan manual) menulis database bersamaan.\n\n## Commit database, bukan artifact\n\nDeteksi perubahan harga butuh database **kemarin**. Ada dua cara menyimpannya:\n\n| | Commit ke repositori | Upload sebagai artifact |\n| --- | --- | --- |\n| Run berikutnya mendapat database lama | Otomatis lewat checkout | Harus mengunduh artifact run sebelumnya (butuh run ID dan token) |\n| Umur data | Selamanya, ada di git | Bawaan 90 hari, lalu hilang |\n| Riwayat | `git log`, dan diff `laporan/buku.csv` yang bisa dibaca | Hanya per run |\n| Kekurangan | Berkas biner, repositori membesar setiap hari | Rantai putus kalau satu run gagal mengunggah |\n\nUntuk database 1000 buku (di bawah 1 MB), commit jauh lebih sederhana. CSV di `laporan/` ikut di-commit sehingga perubahan harga terlihat di diff GitHub. Kalau datanya tumbuh ke puluhan MB, pindahkan database ke penyimpanan objek (misalnya S3 atau R2) atau rilis GitHub.\n\n![Langkah-langkah job berjalan berurutan; kalau satu langkah gagal, langkah setelahnya dilewati kecuali diberi kondisi if seperti !cancelled()](sim:pipeline-actions)\n\n## Yang perlu kamu kerjakan\n\n1. Buat `.github/workflows/scrape-harian.yml` dari Bahan.\n2. Buat repositori **publik** kosong `scraper-harga-buku` di GitHub, lalu jalankan `deploy.sh` bagian 1 (ganti `USERNAME`).\n3. Periksa workflow dengan actionlint (bagian 2). Kalau binernya tidak bisa diunduh di sistemmu, lewati dan bandingkan baris demi baris dengan Bahan; GitHub juga menampilkan galat sintaks di tab **Actions**.\n4. Commit database dari crawl penuh, laporan, dan workflow (bagian 3).\n5. Di tab **Actions**, pilih **Scrape harian > Run workflow**. Setelah 10-20 menit, harus ada commit baru `Data harga YYYY-MM-DD` dari `github-actions[bot]`.\n6. Besok pagi, cek lagi: run terjadwal pertama seharusnya muncul sendiri.\n\n> Di repositori publik, GitHub menonaktifkan workflow terjadwal kalau repositori tidak ada aktivitas selama 60 hari. Kalau itu terjadi, aktifkan lagi dari tab Actions.\n",
+      "materials": [
+        {
+          "id": "sh-m-workflow",
+          "kind": "kode",
+          "name": ".github/workflows/scrape-harian.yml",
+          "lang": "yaml",
+          "content": "name: Scrape harian\n\non:\n  schedule:\n    - cron: \"23 8 * * *\" # setiap hari 08.23; hindari menit 0 yang ramai\n      timezone: \"Asia/Jakarta\" # tanpa ini, jadwal memakai UTC\n  workflow_dispatch: # tombol \"Run workflow\" untuk menjalankan manual\n\npermissions:\n  contents: write # perlu untuk commit database kembali ke repositori\n\nconcurrency:\n  group: scrape-harian\n  cancel-in-progress: false # jangan potong run yang sedang menulis database\n\njobs:\n  scrape:\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n\n      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0\n\n      - name: Pasang dependensi persis sesuai uv.lock\n        run: uv sync --locked\n\n      - name: Tes dulu, jangan scrape dengan kode rusak\n        run: uv run pytest\n\n      - name: Crawl seluruh katalog\n        run: uv run scraper-buku crawl --jeda 0.5\n\n      - name: Buat laporan\n        if: ${{ !cancelled() }}\n        run: uv run scraper-buku laporan\n\n      - name: Commit database dan laporan\n        if: ${{ !cancelled() }}\n        run: |\n          git config user.name \"github-actions[bot]\"\n          git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"\n          git add data/buku.db laporan/\n          if git diff --cached --quiet; then\n            echo \"Tidak ada perubahan.\"\n          else\n            git commit -m \"Data harga $(date -u +%F)\"\n            git push\n          fi\n"
+        },
+        {
+          "id": "sh-m-deploy",
+          "kind": "kode",
+          "name": "deploy.sh",
+          "lang": "bash",
+          "content": "# 1. Repositori publik kosong bernama scraper-harga-buku di github.com, lalu:\ngit branch -M main\ngit remote add origin https://github.com/USERNAME/scraper-harga-buku.git\ngit push -u origin main\n\n# 2. Periksa workflow sebelum push (Linux x86-64; macOS: brew install actionlint)\ncurl -sSL -o actionlint.tgz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz\ntar xzf actionlint.tgz actionlint && rm actionlint.tgz\n./actionlint            # tidak ada keluaran = tidak ada masalah\nrm actionlint\n\n# 3. Commit database hasil crawl penuh sebagai titik awal, lalu workflow\ngit add data/buku.db laporan/ .github/workflows/scrape-harian.yml\ngit commit -m \"Database awal dan jadwal scrape harian\"\ngit push\n"
+        },
+        {
+          "id": "sh-m-gh-schedule",
+          "kind": "tautan",
+          "name": "GitHub Actions: event schedule",
+          "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule"
+        },
+        {
+          "id": "sh-m-gh-pin",
+          "kind": "tautan",
+          "name": "GitHub: pin action ke SHA commit",
+          "url": "https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions"
+        },
+        {
+          "id": "sh-m-setup-uv",
+          "kind": "tautan",
+          "name": "astral-sh/setup-uv",
+          "url": "https://github.com/astral-sh/setup-uv"
+        },
+        {
+          "id": "sh-m-actionlint",
+          "kind": "tautan",
+          "name": "actionlint",
+          "url": "https://github.com/rhysd/actionlint"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-dep-actionlint",
+          "text": "actionlint tidak melaporkan masalah pada workflow-ku."
+        },
+        {
+          "id": "sh-dep-manual",
+          "text": "Run manual lewat Run workflow berhasil dan membuat commit Data harga dari github-actions[bot]."
+        },
+        {
+          "id": "sh-dep-alasan",
+          "text": "Aku bisa menjelaskan kenapa database di-commit, bukan diunggah sebagai artifact."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "Tulis README dan kirim tautannya",
+      "est_minutes": 30,
+      "body": "## README untuk proyek data\n\nOrang yang membuka repositorimu ingin tahu: data apa yang dikumpulkan, dari mana, apakah caranya etis, dan apakah datanya masih segar. Badge workflow menjawab pertanyaan terakhir dengan sekali lihat.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti isi `README.md` dengan template di Bahan, ganti `USERNAME`, dan isi semua `___`.\n2. Grafik di README langsung memakai `laporan/harga-per-kategori.png` yang diperbarui workflow setiap hari, jadi tidak perlu tangkapan layar terpisah.\n3. Di **Keputusan desain**, tulis dua keputusan nyata beserta alasannya. Pilihan bagus: harga sebagai pence, httpx dibanding requests, commit database dibanding artifact, atau kenapa riwayat hanya mencatat perubahan.\n4. Di **Yang kupelajari**, tulis tiga hal spesifik, misalnya \"server tanpa charset di Content-Type bisa membuat `£` terbaca `Â£`\". Tulis juga satu rencana berikutnya, misalnya notifikasi saat harga turun atau scraping paralel yang tetap sopan dengan `asyncio` dan batas konkurensi.\n5. Salin `rancangan.md` ke repositori.\n6. Commit, push, lalu isi bagian **About** repositori dengan satu kalimat deskripsi.\n7. Kirim tautan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membuat pipeline data kecil yang lengkap: mengambil data dengan sopan, tahan gangguan, menyimpannya dengan riwayat, diuji tanpa internet, dan berjalan sendiri setiap hari. Pola yang sama (satu pintu untuk HTTP, parser murni, upsert dengan kunci alami, log terstruktur, jadwal di CI) kamu pakai lagi untuk memantau harga toko, mengumpulkan lowongan kerja, atau menarik data dari API apa pun.\n",
+      "materials": [
+        {
+          "id": "sh-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Scraper Harga Buku\n\n[![Scrape harian](https://github.com/USERNAME/scraper-harga-buku/actions/workflows/scrape-harian.yml/badge.svg)](https://github.com/USERNAME/scraper-harga-buku/actions/workflows/scrape-harian.yml)\n\nScraper Python yang sopan untuk situs latihan [books.toscrape.com](https://books.toscrape.com): mengambil 1000 buku, menyimpannya di SQLite, mencatat setiap perubahan harga, dan berjalan sendiri setiap hari lewat GitHub Actions. ___ (satu kalimat: kenapa kamu membuatnya)\n\n![Rata-rata harga per kategori](laporan/harga-per-kategori.png)\n\n## Cara menjalankan\n\nButuh [uv](https://docs.astral.sh/uv/).\n\n```bash\ngit clone https://github.com/USERNAME/scraper-harga-buku\ncd scraper-harga-buku\nuv run scraper-buku crawl --halaman 2 --cache .cache-html   # 2 halaman, untuk mencoba\nuv run scraper-buku laporan                                 # laporan/buku.csv dan grafik\nuv run scraper-buku --help\n```\n\n## Etika scraping\n\n- Hanya situs latihan yang memang mengizinkan scraping. robots.txt selalu dicek.\n- User-Agent jujur berisi nama proyek dan tautan repositori ini.\n- Jeda minimal 0,5 detik antar permintaan (bawaan 1 detik), timeout 10 detik.\n- Coba lagi maksimal 3 kali dengan backoff untuk 429/5xx; 404 tidak dicoba lagi.\n- Cache HTML hanya untuk pengembangan, supaya kode bisa diubah tanpa mengunduh ulang.\n\n## Data\n\n| Tabel | Isi |\n| ----- | --- |\n| `buku` | Satu baris per UPC: judul, harga (pence), stok, rating, kategori, kapan pertama/terakhir terlihat |\n| `riwayat_harga` | Satu baris setiap kali buku baru muncul atau harganya berubah |\n\nDatabase ada di `data/buku.db` dan diperbarui workflow setiap hari. Laporan terbaru: [`laporan/buku.csv`](laporan/buku.csv).\n\n## Tes\n\n```bash\nuv run pytest          # memakai HTML tersimpan di tests/fixtures, tanpa jaringan\nuv run ruff check\nuv run ruff format --check\n```\n\n## Keputusan desain\n\n- ___ (contoh: kenapa harga disimpan sebagai pence, bukan float)\n- ___ (contoh: kenapa database di-commit, bukan diunggah sebagai artifact)\n\n## Yang kupelajari\n\n- ___\n- ___\n- ___\n\nRencana berikutnya: ___\n"
+        },
+        {
+          "id": "sh-m-gh-readme",
+          "kind": "tautan",
+          "name": "GitHub: tentang README",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes"
+        }
+      ],
+      "checks": [
+        {
+          "id": "sh-dok-jalan",
+          "text": "README menjelaskan cara menjalankan dan aturan etika scraping-ku."
+        },
+        {
+          "id": "sh-dok-keputusan",
+          "text": "Aku menulis dua keputusan desain beserta alasannya."
+        },
+        {
+          "id": "sh-dok-grafik",
+          "text": "README menampilkan grafik dari laporan/ dan badge workflow."
+        },
+        {
+          "id": "sh-dok-tautan",
+          "text": "Tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
