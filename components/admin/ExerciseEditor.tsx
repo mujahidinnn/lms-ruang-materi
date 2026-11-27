@@ -17,7 +17,7 @@ const pretty = (v: unknown) => JSON.stringify(v, null, 2);
 const label = "text-sm text-zinc-400";
 
 // One exercise. "Uji solusi" runs the solution through the learner sandbox.
-const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"]] as const;
+const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"], ["php", "PHP"]] as const;
 
 export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: ExerciseRow; n: number }) {
   const [kind, setKind] = useState(ex.kind);
@@ -34,7 +34,7 @@ export default function ExerciseEditor({ topic, ex, n }: { topic: string; ex: Ex
     } catch {
       return setOut({ logs: [], results: [], error: "JSON tidak valid" });
     }
-    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python" && kind !== "mikrotik") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
+    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python" && kind !== "mikrotik" && kind !== "php") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
     setOut(await run({ kind, setup, ...input }));
   }
 

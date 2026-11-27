@@ -3,10 +3,11 @@ import { sandboxEngine, type EnginePayload } from "./engine";
 import { expressShim } from "./express-shim";
 import { guardLoops } from "./loop-guard";
 import { mikrotikCode } from "./mikrotik";
+import { phpScript } from "./php";
 import { routerOSShim } from "./routeros";
 
 export type ExerciseFiles = { html?: string; css?: string; js?: string; code?: string };
-export type SandboxKind = "web" | "js" | "express" | "python" | "mikrotik";
+export type SandboxKind = "web" | "js" | "express" | "python" | "mikrotik" | "php";
 
 // Loop guards end a runaway loop before the parent's 3 s cut-off.
 const LIMIT = 2500;
@@ -65,14 +66,45 @@ const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, bas
   return { logs, results };
 };
 
+// PHP runs on php-wasm (WordPress Playground build) in a classic Worker: a
+// module worker does not load in the null-origin iframe. It posts raw
+// stdout/stderr; useSandbox parses them with parsePhp. Builds older than the
+// php2shell fix (CVE-2026-109618/109619: 8.2.35, 8.3.36, 8.4.27, 8.5.12) are refused.
+const PHP_WASM = "https://esm.sh/@php-wasm/";
+const PHP_WASM_VERSION = "3.1.66";
+const PHP_ENGINE = `(async () => {
+  // Top-level TLS code in php-wasm needs crypto.subtle, which a null origin lacks; no network is used.
+  if (!crypto.subtle) Object.defineProperty(crypto, "subtle", { value: { generateKey: () => new Promise(() => {}) } });
+  try {
+    const { loadWebRuntime } = await import(${JSON.stringify(`${PHP_WASM}web@${PHP_WASM_VERSION}`)});
+    const { PHP } = await import(${JSON.stringify(`${PHP_WASM}universal@${PHP_WASM_VERSION}`)});
+    const php = new PHP(await loadWebRuntime("8.4"));
+    const v = (await php.run({ code: "<?php echo PHP_VERSION;" })).text;
+    const [major, minor, patch] = v.split(".").map(Number);
+    const min = { 2: 35, 3: 36, 4: 27, 5: 12 }[minor];
+    if (major !== 8 || min === undefined || patch < min) return postMessage({ logs: [], results: [], error: "PHP " + v + " belum aman (php2shell), latihan PHP dimatikan" });
+    postMessage({ ready: true });
+    try {
+      const r = await php.run({ code: SCRIPT });
+      postMessage({ php: { stdout: r.text, stderr: r.errors } });
+    } catch (e) {
+      postMessage({ php: { stdout: "", stderr: String(e && e.message || e) } });
+    }
+  } catch (e) {
+    postMessage({ logs: [], results: [], error: "PHP gagal dimuat: " + (e && e.message || e) });
+  }
+})();`;
+
 // early: run the learner's JS at DOMContentLoaded instead of load, so slow images or
 // fonts cannot eat the time limit (the playground sets it).
 export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles; setup: string; tests: Check[]; nonce: string; early?: boolean }): string {
   const { kind, files, setup, tests, nonce, early } = input;
   const head = '<!doctype html><html><head><meta charset="utf-8">';
   const post = `const post = (m) => parent.postMessage({ nonce: ${embed(nonce)}, ...m }, "*");`;
-  if (kind === "python") {
-    const worker = `(${PY_ENGINE.toString()})(${JSON.stringify({ setup, code: files.code ?? "", tests })}, ${JSON.stringify(PYODIDE)}).then((r) => postMessage(r), (e) => postMessage({ logs: [], results: [], error: "Python gagal dimuat: " + (e && e.message || e) }));`;
+  if (kind === "python" || kind === "php") {
+    const worker = kind === "php"
+      ? `const SCRIPT = ${JSON.stringify(phpScript({ setup, code: files.code ?? "", tests }))};\n${PHP_ENGINE}`
+      : `(${PY_ENGINE.toString()})(${JSON.stringify({ setup, code: files.code ?? "", tests })}, ${JSON.stringify(PYODIDE)}).then((r) => postMessage(r), (e) => postMessage({ logs: [], results: [], error: "Python gagal dimuat: " + (e && e.message || e) }));`;
     return `${head}<script>${post}
 const w = new Worker(URL.createObjectURL(new Blob([${embed(worker)}], { type: "text/javascript" })));
 w.onmessage = (e) => post(e.data);

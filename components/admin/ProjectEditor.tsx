@@ -29,7 +29,7 @@ const label = "text-sm text-zinc-400";
 
 // The final project. Learners see it only once "Uji solusi" passes on the
 // saved version; saving clears that mark.
-const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"]] as const;
+const KINDS = [["web", "Web"], ["js", "JavaScript"], ["express", "Express"], ["python", "Python"], ["mikrotik", "MikroTik"], ["php", "PHP"]] as const;
 
 export default function ProjectEditor({ p }: { p: ProjectRow }) {
   const [kind, setKind] = useState(p.kind);
@@ -47,7 +47,7 @@ export default function ProjectEditor({ p }: { p: ProjectRow }) {
     } catch {
       return setOut({ logs: [], results: [], error: "JSON tidak valid" });
     }
-    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python" && kind !== "mikrotik") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
+    if (kind !== "web" && kind !== "js" && kind !== "express" && kind !== "python" && kind !== "mikrotik" && kind !== "php") return setOut({ logs: [], results: [], error: `Jenis ${kind} belum bisa diuji` });
     const r = await run({ kind, setup, ...input });
     setOut(r);
     // Only the saved version can be marked; unsaved edits would not match.

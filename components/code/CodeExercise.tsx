@@ -19,7 +19,7 @@ const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
 const editorSkeleton = <div className="h-40 animate-pulse rounded-[18px] bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
-const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"], mikrotik: ["code"] };
+const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"], mikrotik: ["code"], php: ["code"] };
 const LANG: Record<Part, EditorLanguage> = { html: "html", css: "css", js: "javascript", code: "javascript" };
 const LABEL: Record<Part, string> = { html: "HTML", css: "CSS", js: "JS", code: "Kode" };
 const editorLabel = (kind: string, part: Part) => (kind === "mikrotik" ? "Editor terminal" : `Editor ${LABEL[part]}`);
@@ -97,7 +97,7 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
 
   async function go(withChecks: boolean) {
     setBusy(true);
-    if (ex.kind === "python" && !out) setOut({ logs: ["Menyiapkan Python (sekali per kunjungan, beberapa detik)..."], results: [] });
+    if ((ex.kind === "python" || ex.kind === "php") && !out) setOut({ logs: [`Menyiapkan ${ex.kind === "php" ? "PHP" : "Python"} (sekali per kunjungan, beberapa detik)...`], results: [] });
     const r = await run({ kind: ex.kind, files, setup: ex.setup, tests: withChecks ? ex.tests : [], previewEl: ex.kind === "web" ? preview.current : null });
     setOut(r);
     setBusy(false);
@@ -151,7 +151,7 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
       <div className="mt-3">
         {mounted ? (
           <Suspense fallback={editorSkeleton}>
-            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={ex.kind === "python" ? "python" : ex.kind === "mikrotik" ? "plain" : LANG[part]} label={editorLabel(ex.kind, part)} />
+            <CodeEditor key={`${part}-${version}`} value={files[part] ?? ""} onChange={(v) => edit(part, v)} language={ex.kind === "python" ? "python" : ex.kind === "mikrotik" || ex.kind === "php" ? "plain" : LANG[part]} label={editorLabel(ex.kind, part)} />
           </Suspense>
         ) : editorSkeleton}
       </div>

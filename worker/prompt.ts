@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { runChecksNode } from "../lib/code/check-node.ts";
+import { runChecksPhp } from "../lib/code/check-php.ts";
 import { runChecksPython } from "../lib/code/check-python.ts";
 
 // One schema for every provider. Whatever a provider returns is parsed with
@@ -21,7 +22,7 @@ const question = z
 const files = z.object({ html: z.string().optional(), css: z.string().optional(), js: z.string().optional(), code: z.string().optional() });
 
 const exercise = z.object({
-  kind: z.enum(["web", "js", "express", "python", "mikrotik"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express, python untuk Python 3, mikrotik untuk perintah RouterOS (tes memeriksa objek router dan keluaran)"),
+  kind: z.enum(["web", "js", "express", "python", "mikrotik", "php"]).describe("web untuk HTML/CSS/DOM, js untuk logika JavaScript, express untuk route Express, python untuk Python 3, mikrotik untuk perintah RouterOS (tes memeriksa objek router dan keluaran), php untuk PHP 8 (tes berupa ekspresi PHP yang harus true)"),
   title: z.string().min(1).max(120),
   prompt: z.string().min(1).describe("Instruksi markdown singkat: apa yang dibuat dan hasil yang diharapkan"),
   starter: files.describe("Kode awal untuk murid: html, css, js untuk web; code untuk js dan express"),
@@ -92,7 +93,7 @@ const outlineItem = z.object({
   slide_from: z.int().min(1),
   slide_to: z.int().min(1),
   goals: z.array(z.string().min(1)).min(2).max(4).describe("Tujuan belajar bab, kalimat pendek"),
-  code_kind: z.enum(["web", "js", "express", "python", "mikrotik", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
+  code_kind: z.enum(["web", "js", "express", "python", "mikrotik", "php", "none"]).describe("Jenis latihan kode yang cocok, none bila bab konsep"),
 });
 export type Outline = z.infer<typeof outlineItem>;
 
@@ -172,7 +173,7 @@ export function repairChapter(output: unknown): unknown {
 export async function failingChecks(e: Exercise): Promise<string[]> {
   if (e.kind === "web") return [];
   const input = { code: e.solution.code ?? "", setup: e.setup, tests: e.tests };
-  const r = e.kind === "python" ? await runChecksPython(input) : await runChecksNode({ ...input, kind: e.kind });
+  const r = e.kind === "python" ? await runChecksPython(input) : e.kind === "php" ? await runChecksPhp(input) : await runChecksNode({ ...input, kind: e.kind });
   return r.error ? e.tests.map((t) => t.name) : r.results.filter((x) => !x.pass).map((x) => x.name);
 }
 
