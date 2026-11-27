@@ -140,7 +140,7 @@ function expandContract() {
   b += col(40, "Rilis N: Expand", M1,
     chip(64, 206, "client_email", "#ffffff") + chip(234, 206, "contact_email", M3, true) + text(214, 268, "trigger sinkron dua arah", S({ size: 16, weight: 700, anchor: "middle" })),
     ["v lama: client_email", "v N: client_email", "trigger mengisi kolom baru"],
-    ["tambah kolom (nullable)", "trigger sinkron dua arah", "backfill per 5.000 baris,", "  commit tiap batch", "CHECK ... NOT VALID,", "  lalu VALIDATE", "indeks CONCURRENTLY", "lock_timeout 5s"]);
+    ["kolom nullable, trigger", "  sinkron, CHECK NOT VALID", "backfill 5.000 baris per", "  transaksi, dari shell", "lalu VALIDATE", "indeks CONCURRENTLY", "  (berkas sendiri)", "lock_timeout 5s"]);
   b += col(420, "Rilis N+1: Pindah", M3,
     chip(444, 206, "client_email", "#ffffff") + chip(614, 206, "contact_email", M3) + text(594, 268, "keduanya masih tersinkron", S({ size: 16, weight: 700, anchor: "middle" })),
     ["v N dan v N+1 sempat", "berjalan bersamaan;", "trigger menjaga keduanya benar"],
