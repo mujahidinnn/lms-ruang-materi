@@ -34,8 +34,16 @@ function done() {
   refresh();
 }
 
+// A roadmap node as "Judul kelas (slug)" for log rows.
+async function nodeName(nodeId: string) {
+  const { data } = await (await createClient()).from("track_nodes").select("optional, topics(title, slug), tracks(title, slug)").eq("id", nodeId).maybeSingle();
+  const t = data?.topics as unknown as { title: string; slug: string } | null;
+  const tr = data?.tracks as unknown as { title: string; slug: string } | null;
+  return { kelas: t ? `${t.title} (${t.slug})` : nodeId, track: tr?.slug ?? "", trackTitle: tr?.title ?? "", optional: !!data?.optional };
+}
+
 export async function buatTrack(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const parsed = z
     .object({ slug, title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), icon })
     .safeParse(Object.fromEntries(form));
@@ -43,19 +51,30 @@ export async function buatTrack(_: RoadmapState, form: FormData): Promise<Roadma
 
   const { error } = await (await createClient()).from("tracks").insert(parsed.data);
   if (error) return fail(error, "Gagal membuat track.");
+  await audit(admin, "Buat roadmap", parsed.data.title, [["Judul", parsed.data.title], ["Slug", parsed.data.slug], ["Deskripsi", parsed.data.description], ["Halaman admin", `/admin/roadmap/${parsed.data.slug}`]]);
   redirect(`/admin/roadmap/${parsed.data.slug}`);
 }
 
 export async function simpanTrack(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const track = slug.parse(form.get("track"));
   const parsed = z
     .object({ title: z.string().trim().min(1, "Judul wajib diisi."), description: z.string().trim(), icon, slug: slug.optional() })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const { error } = await (await createClient()).from("tracks").update({ ...parsed.data, slug: parsed.data.slug ?? track }).eq("slug", track);
+  const db = await createClient();
+  const { data: old } = await db.from("tracks").select("title, description").eq("slug", track).maybeSingle();
+  const { error } = await db.from("tracks").update({ ...parsed.data, slug: parsed.data.slug ?? track }).eq("slug", track);
   if (error) return fail(error, "Gagal menyimpan.");
+  const now = parsed.data.slug ?? track;
+  await audit(admin, "Simpan roadmap", parsed.data.title, [
+    ["Judul", old && old.title !== parsed.data.title ? `${old.title} -> ${parsed.data.title}` : parsed.data.title],
+    ["Slug", now !== track ? `${track} -> ${now}` : track],
+    ["Deskripsi", old && old.description !== parsed.data.description ? `${old.description || "(kosong)"}\n-> ${parsed.data.description || "(kosong)"}` : parsed.data.description],
+    ["Ikon", parsed.data.icon ? (parsed.data.icon.startsWith("<svg") ? "SVG khusus" : parsed.data.icon) : "Otomatis"],
+    ["Halaman admin", `/admin/roadmap/${now}`],
+  ]);
   invalidateContent();
   // The admin page lives at the slug: follow it.
   if (parsed.data.slug && parsed.data.slug !== track) redirect(`/admin/roadmap/${parsed.data.slug}`);
@@ -64,56 +83,77 @@ export async function simpanTrack(_: RoadmapState, form: FormData): Promise<Road
 }
 
 export async function tambahNode(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const track = slug.parse(form.get("track"));
   const db = await createClient();
   const { data: t } = await db.from("tracks").select("id, track_nodes(position)").eq("slug", track).single();
   if (!t) return { error: "Track tidak ditemukan." };
 
-  const { error } = await db.from("track_nodes").insert({
+  const { data: node, error } = await db.from("track_nodes").insert({
     track_id: t.id,
     topic_id: id.parse(form.get("topic_id")),
     // After the last one, not the count: deleted nodes leave gaps.
     position: Math.max(-1, ...t.track_nodes.map((n) => n.position)) + 1,
-  });
+  }).select("id, position").single();
   if (error) return fail(error, "Gagal menambah topik.");
+  const n = await nodeName(node.id);
+  await audit(admin, "Tambah kelas ke roadmap", `${n.kelas} di ${track}`, [["Roadmap", n.trackTitle], ["Kelas", n.kelas], ["Urutan", String(node.position + 1)], ["Status", "Draf sampai roadmap diterbitkan lagi"], ["Halaman admin", `/admin/roadmap/${track}`]]);
   done();
   return {};
 }
 
 export async function simpanNode(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const nodeId = id.parse(form.get("id"));
+  const position = z.coerce.number().int().min(0).parse(form.get("position"));
+  const optional = form.get("optional") === "on";
+  const n = await nodeName(nodeId);
   const { error } = await (await createClient())
     .from("track_nodes")
     .update({
-      position: z.coerce.number().int().min(0).parse(form.get("position")),
-      optional: form.get("optional") === "on",
+      position,
+      optional,
       // An edit goes live only when the track is published again.
       status: "draft",
     })
-    .eq("id", id.parse(form.get("id")));
+    .eq("id", nodeId);
   if (error) return fail(error, "Gagal menyimpan topik.");
+  await audit(admin, "Simpan kelas di roadmap", `${n.kelas} di ${n.track}`, [["Roadmap", n.trackTitle], ["Kelas", n.kelas], ["Posisi", String(position)], ["Opsional", optional === n.optional ? (optional ? "Ya" : "Tidak") : `${n.optional ? "Ya" : "Tidak"} -> ${optional ? "Ya" : "Tidak"}`], ["Halaman admin", `/admin/roadmap/${n.track}`]]);
   done();
   return {};
 }
 
 export async function tambahEdge(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
-  const { error } = await (await createClient()).from("track_edges").insert({
-    from_node_id: id.parse(form.get("from")),
-    to_node_id: id.parse(form.get("to")),
-  });
+  const admin = await requireAdmin();
+  const from = id.parse(form.get("from"));
+  const to = id.parse(form.get("to"));
+  const { error } = await (await createClient()).from("track_edges").insert({ from_node_id: from, to_node_id: to });
   if (error) return fail(error, "Gagal menambah prasyarat.");
+  const [a, b] = await Promise.all([nodeName(from), nodeName(to)]);
+  await audit(admin, "Tambah prasyarat roadmap", `${a.kelas} -> ${b.kelas}`, [["Roadmap", a.trackTitle], ["Kelas prasyarat", a.kelas], ["Sebelum kelas", b.kelas], ["Halaman admin", `/admin/roadmap/${a.track}`]]);
   done();
   return {};
 }
 
 // Deletes take effect right away, also on the published roadmap.
 export async function hapus(_: RoadmapState, form: FormData): Promise<RoadmapState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const table = z.enum(["track_nodes", "track_edges"]).parse(form.get("table"));
-  const { error } = await (await createClient()).from(table).delete().eq("id", id.parse(form.get("id")));
+  const rowId = id.parse(form.get("id"));
+  const db = await createClient();
+  // Read what goes before it goes, so the log can name it.
+  let action: string, detail: string, meta: Meta;
+  if (table === "track_nodes") {
+    const n = await nodeName(rowId);
+    [action, detail, meta] = ["Hapus kelas dari roadmap", `${n.kelas} dari ${n.track}`, [["Roadmap", n.trackTitle], ["Kelas", n.kelas], ["Catatan", "Prasyarat yang terhubung ikut terhapus"], ["Halaman admin", `/admin/roadmap/${n.track}`]]];
+  } else {
+    const { data: e } = await db.from("track_edges").select("from_node_id, to_node_id").eq("id", rowId).maybeSingle();
+    const [a, b] = e ? await Promise.all([nodeName(e.from_node_id), nodeName(e.to_node_id)]) : [null, null];
+    [action, detail, meta] = ["Hapus prasyarat roadmap", a && b ? `${a.kelas} -> ${b.kelas}` : rowId, [["Roadmap", a?.trackTitle ?? ""], ["Kelas prasyarat", a?.kelas ?? ""], ["Sebelum kelas", b?.kelas ?? ""], ["Halaman admin", a ? `/admin/roadmap/${a.track}` : ""]]];
+  }
+  const { error } = await db.from(table).delete().eq("id", rowId);
   if (error) return fail(error, "Gagal menghapus.");
+  await audit(admin, action, detail, meta);
   done();
   return {};
 }

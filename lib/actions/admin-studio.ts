@@ -78,7 +78,7 @@ export async function hapusProyekStudio(form: FormData) {
 }
 
 export async function tambahLangkahStudio(form: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { def } = z.object({ def: z.uuid() }).parse(Object.fromEntries(form));
   const db = await createClient();
   const { data: rows } = await db.from("studio_steps").select("position, stage").eq("def_id", def);
@@ -89,6 +89,8 @@ export async function tambahLangkahStudio(form: FormData) {
     slug: `langkah-${n}-${Math.random().toString(36).slice(2, 6)}`, title: `Langkah ${n}`, body: "Tulis arahan lengkap di sini.",
   });
   if (error) throw new Error(error.message);
+  const { data: proj } = await db.from("studio_defs").select("title, slug").eq("id", def).maybeSingle();
+  await audit(admin, "Tambah langkah Studio", `Langkah ${n} (${proj?.title ?? def})`, [["Proyek", proj?.title ?? ""], ["Langkah", `Langkah ${n}`], ["Halaman admin", proj ? `/admin/studio/${proj.slug}` : ""]]);
   refresh();
 }
 
@@ -127,16 +129,18 @@ export async function simpanLangkahStudio(_: State, form: FormData): Promise<Sta
 
 // Swaps positions with the neighbour step.
 export async function geserLangkahStudio(form: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id, arah } = z.object({ id: z.uuid(), arah: z.enum(["naik", "turun"]) }).parse(Object.fromEntries(form));
   const db = await createClient();
-  const { data: me } = await db.from("studio_steps").select("def_id, position").eq("id", id).single();
+  const { data: me } = await db.from("studio_steps").select("def_id, position, title, studio_defs(title, slug)").eq("id", id).single();
   if (!me) throw new Error("Langkah tidak ditemukan.");
-  const { data: other } = await db.from("studio_steps").select("id, position").eq("def_id", me.def_id)
+  const { data: other } = await db.from("studio_steps").select("id, position, title").eq("def_id", me.def_id)
     .filter("position", arah === "naik" ? "lt" : "gt", me.position).order("position", { ascending: arah === "turun" }).limit(1).maybeSingle();
   if (!other) return;
   await db.from("studio_steps").update({ position: other.position }).eq("id", id);
   await db.from("studio_steps").update({ position: me.position }).eq("id", other.id);
+  const proj = me.studio_defs as unknown as { title: string; slug: string } | null;
+  await audit(admin, "Geser langkah Studio", `${me.title} ${arah} (${proj?.title ?? ""})`, [["Proyek", proj?.title ?? ""], ["Langkah", me.title], ["Arah", arah], ["Bertukar dengan", other.title], ["Halaman admin", proj ? `/admin/studio/${proj.slug}` : ""]]);
   refresh();
 }
 
