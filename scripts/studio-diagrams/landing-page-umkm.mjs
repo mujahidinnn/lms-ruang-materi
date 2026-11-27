@@ -42,7 +42,7 @@ function wireframe() {
   b += box(px + 28, y + 146, pw - 56, 90, { fill: "#ffffff", r: 8, sw: 2, dash: "8 6" }) + text(px + pw / 2, y + 197, "foto produk andalan", S({ size: 17, anchor: "middle" }));
   y += 262;
   b += sec(px + 14, y, pw - 28, 150, "Menu", M1);
-  for (let i = 0; i < 3; i++) b += text(px + 28, y + 62 + i * 30, ["Kopi susu aren", "Americano", "Roti bakar"][i], S({ size: 17 })) + text(px + pw - 30, y + 62 + i * 30, ["Rp15.000", "Rp12.000", "Rp10.000"][i], { size: 17, weight: 700, anchor: "end" });
+  for (let i = 0; i < 3; i++) b += text(px + 28, y + 62 + i * 30, ["Es Kopi Susu Aren", "Kopi Tubruk", "Pisang Goreng Madu"][i], S({ size: 15 })) + text(px + pw - 30, y + 62 + i * 30, ["Rp15.000", "Rp8.000", "Rp12.000"][i], { size: 17, weight: 700, anchor: "end" });
   y += 162;
   b += sec(px + 14, y, pw - 28, 70, "Testimoni x3");
   y += 82;
@@ -58,8 +58,10 @@ function wireframe() {
   b += sec(wx + 16, wy + 54, ww - 32, 44, "Kedai Teras") + text(wx + ww - 30, wy + 82, "Menu   Lokasi", S({ size: 16, anchor: "end" }));
   b += sec(wx + 16, wy + 112, 280, 200, "Kopi susu aren yang", M3) + text(wx + 30, wy + 166, "bikin balik lagi.", { size: 19, weight: 700 }) + bar(wx + 30, wy + 186, 220, 12) + pill(wx + 30, wy + 216, 220, 38, "Pesan lewat WhatsApp");
   b += box(wx + 312, wy + 112, ww - 328, 200, { r: 10, sw: 2, dash: "8 6" }) + text(wx + 312 + (ww - 328) / 2, wy + 218, "foto produk andalan", S({ size: 18, anchor: "middle" }));
-  b += sec(wx + 16, wy + 326, ww - 32, 70, "Menu dan harga", M1);
-  b += sec(wx + 16, wy + 408, 280, 92, "Alamat dan jam", M1) + box(wx + 312, wy + 408, ww - 328, 92, { r: 10, sw: 3 }) + text(wx + 312 + (ww - 328) / 2, wy + 460, "peta Google Maps", S({ size: 18, anchor: "middle" }));
+  b += sec(wx + 16, wy + 326, ww - 32, 52, "Menu dan harga (2 kolom)", M1);
+  const tw = (ww - 32 - 24) / 3;
+  for (let i = 0; i < 3; i++) b += box(wx + 16 + i * (tw + 12), wy + 388, tw, 46, { r: 10, sw: 3 }) + text(wx + 16 + i * (tw + 12) + tw / 2, wy + 418, `testimoni ${i + 1}`, S({ size: 17, anchor: "middle" }));
+  b += sec(wx + 16, wy + 444, 280, 62, "Alamat dan jam", M1) + box(wx + 312, wy + 444, ww - 328, 62, { r: 10, sw: 3 }) + text(wx + 312 + (ww - 328) / 2, wy + 482, "peta Google Maps", S({ size: 18, anchor: "middle" }));
   b += text(wx + ww / 2, 710, "Tanpa prefiks = gaya HP. Kelas md: berlaku mulai 768px:", S({ anchor: "middle", size: 22 })) + text(wx + ww / 2, 740, "pembuka jadi dua kolom, tombol melayang disembunyikan.", S({ anchor: "middle", size: 22 }));
   return frame("Sketsa landing page UMKM di HP dan layar lebar: pembuka dengan tombol WhatsApp, menu dan harga, testimoni, lokasi, dan tombol melayang di HP", 910, b);
 }
