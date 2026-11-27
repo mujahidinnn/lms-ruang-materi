@@ -1,0 +1,2013 @@
+{
+  "title": "Next.js",
+  "description": "Belajar Next.js 16 dengan App Router: routing berbasis folder, server dan client component, data fetching dan caching, server action, proxy dan autentikasi, database, sampai deploy ke Vercel, ditutup proyek Mini App Router.",
+  "summary": "Next.js adalah framework React full-stack: satu proyek berisi tampilan dan kode server sekaligus. Kelas ini dimulai dari perbedaan CSR, SSR, dan SSG, membuat proyek dengan create-next-app, lalu menyusun halaman lewat App Router, tempat folder di app/ menjadi URL lengkap dengan layout bertingkat, route dinamis, dan halaman 404.\n\nBagian inti membahas server component yang menjadi bawaan dan client component yang ditandai \"use client\", mengambil data langsung di server, menyimpan hasilnya dengan \"use cache\" lalu menyegarkannya dengan revalidate, serta menampilkan status memuat dengan loading.tsx dan Suspense. Kamu juga menerima data lewat route handler dan server action yang divalidasi di server.\n\nBagian akhir membawa aplikasi ke produksi: styling dengan CSS Modules dan Tailwind, next/image dan next/font, metadata untuk SEO, proxy.ts dan cookie sesi untuk melindungi halaman, akses database lewat data access layer dan environment variable yang aman, lalu build, deploy ke Vercel, dan Core Web Vitals. Kelas ditutup dengan proyek Mini App Router.",
+  "tips": [
+    "Mulai setiap komponen sebagai server component, lalu pindahkan hanya bagian yang butuh interaksi ke file \"use client\".",
+    "Selalu await params, searchParams, dan cookies(), karena di Next.js 16 semuanya async.",
+    "Cache hanya data yang boleh sedikit terlambat, lalu panggil revalidatePath atau revalidateTag setelah data berubah.",
+    "Validasi input di server action dan route handler walau form sudah punya atribut required.",
+    "Cek hasil next build: halaman yang seharusnya statis tapi bertanda ƒ biasanya membaca cookies() atau searchParams tanpa perlu."
+  ],
+  "flashcards": [
+    {
+      "front": "Next.js",
+      "back": "Framework React full-stack: tampilan dan server dalam satu proyek."
+    },
+    {
+      "front": "CSR, SSR, SSG",
+      "back": "CSR merakit di browser, SSR membuat HTML di server tiap request, SSG membuat HTML sekali saat build."
+    },
+    {
+      "front": "create-next-app",
+      "back": "npx create-next-app@latest nama-proyek membuat proyek baru; npm run dev menjalankannya di port 3000."
+    },
+    {
+      "front": "Turbopack",
+      "back": "Bundler bawaan Next.js 16 untuk dev dan build."
+    },
+    {
+      "front": "page.tsx",
+      "back": "File yang membuat sebuah folder di app/ bisa dibuka sebagai URL."
+    },
+    {
+      "front": "layout.tsx",
+      "back": "Membungkus halaman di bawahnya, bertingkat, dan tidak dirender ulang saat navigasi."
+    },
+    {
+      "front": "Route group (nama)",
+      "back": "Folder dalam kurung untuk mengelompokkan halaman tanpa mengubah URL."
+    },
+    {
+      "front": "[id] dan [...slug]",
+      "back": "[id] menangkap satu segmen; [...slug] menangkap banyak segmen sebagai array."
+    },
+    {
+      "front": "params dan searchParams",
+      "back": "Berupa Promise di Next.js 16, jadi harus di-await."
+    },
+    {
+      "front": "<Link>",
+      "back": "Komponen next/link untuk pindah halaman tanpa reload."
+    },
+    {
+      "front": "notFound()",
+      "back": "Menghentikan render dan menampilkan not-found.tsx terdekat."
+    },
+    {
+      "front": "Server component",
+      "back": "Bawaan di app/: boleh async, akses data langsung, kodenya tidak dikirim ke browser."
+    },
+    {
+      "front": "\"use client\"",
+      "back": "Direktif di baris pertama file untuk state, event, dan API browser."
+    },
+    {
+      "front": "Props yang bisa diserialisasi",
+      "back": "string, number, array, objek biasa, Date, elemen JSX, server action; bukan fungsi biasa atau instance class."
+    },
+    {
+      "front": "\"use cache\"",
+      "back": "Direktif untuk menyimpan hasil fungsi atau komponen setelah cacheComponents aktif."
+    },
+    {
+      "front": "cacheLife dan cacheTag",
+      "back": "cacheLife mengatur masa berlaku cache; cacheTag memberi label untuk dibuang."
+    },
+    {
+      "front": "revalidatePath dan revalidateTag",
+      "back": "Menyegarkan cache satu path atau semua data bertag; revalidateTag(tag, \"max\")."
+    },
+    {
+      "front": "loading.tsx, error.tsx, Suspense",
+      "back": "Tampilan memuat dan error per segmen; Suspense mengalirkan bagian lambat belakangan."
+    },
+    {
+      "front": "Route handler",
+      "back": "File route.ts yang mengekspor GET, POST, dan seterusnya, mengembalikan Response.json."
+    },
+    {
+      "front": "Server action",
+      "back": "Fungsi \"use server\" yang dipanggil dari form; selalu validasi input di dalamnya."
+    },
+    {
+      "front": "next/image",
+      "back": "Mengecilkan gambar, memesan ruang, lazy loading; gambar utama memakai preload."
+    },
+    {
+      "front": "metadata dan generateMetadata",
+      "back": "Mengatur judul dan deskripsi halaman; generateMetadata untuk halaman dinamis."
+    },
+    {
+      "front": "proxy.ts",
+      "back": "Dulu middleware.ts; fungsi proxy berjalan sebelum route, dibatasi config.matcher."
+    },
+    {
+      "front": "server-only",
+      "back": "Import yang membuat build gagal bila file khusus server diimpor dari client component."
+    },
+    {
+      "front": "NEXT_PUBLIC_",
+      "back": "Awalan env var yang ditanam ke bundle browser saat build; jangan untuk rahasia."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Halaman Tentang Sekolah yang isinya sama untuk semua pengunjung dan jarang berubah paling hemat dirender dengan cara apa?",
+      "code": "",
+      "options": [
+        "SSG, dibuat sekali saat build",
+        "CSR, dirakit di browser setelah JavaScript jalan",
+        "SSR, dibuat ulang di server setiap ada request",
+        "CSR tanpa HTML awal"
+      ],
+      "answer": 0,
+      "explanation": "Isi yang sama untuk semua orang cukup dibuat sekali saat build lalu dikirim berulang kali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah resmi apa yang membuat proyek Next.js baru?",
+      "code": "",
+      "options": [
+        "npm install next-app --global lalu next new",
+        "npx create-next-app@latest nama-proyek",
+        "npx create-react-app nama-proyek --next",
+        "npm init next nama-proyek --with-app-router"
+      ],
+      "answer": 1,
+      "explanation": "create-next-app adalah alat resmi untuk menyiapkan proyek Next.js."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File apa yang membuat folder app/tentang bisa dibuka sebagai URL /tentang?",
+      "code": "",
+      "options": [
+        "index.tsx",
+        "route.tsx",
+        "page.tsx",
+        "layout.tsx"
+      ],
+      "answer": 2,
+      "explanation": "Segmen baru bisa dibuka setelah foldernya punya page.tsx."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Komponen apa yang dipakai untuk berpindah antar halaman aplikasi tanpa memuat ulang seluruh halaman?",
+      "code": "",
+      "options": [
+        "Tag <a> biasa dengan atribut href",
+        "<Navigate>",
+        "window.location di dalam onClick",
+        "<Link> dari next/link"
+      ],
+      "answer": 3,
+      "explanation": "<Link> berpindah halaman di sisi client tanpa reload dan tetap menghasilkan tag <a>."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana cara menandai sebuah file sebagai client component?",
+      "code": "",
+      "options": [
+        "Menulis \"use client\" di baris pertama",
+        "Menulis \"use server\" di baris pertama file",
+        "Menulis \"use browser\" di akhir file komponen",
+        "Memberi akhiran .client.tsx"
+      ],
+      "answer": 0,
+      "explanation": "Direktif \"use client\" harus berada di baris pertama, sebelum import apa pun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Prop mana yang tidak bisa dikirim dari server component ke client component?",
+      "code": "",
+      "options": [
+        "Objek biasa berisi nama dan harga menu",
+        "Fungsi biasa () => alert(\"hai\")",
+        "Array berisi angka harga dari database",
+        "String nama menu seperti \"Es teh manis\""
+      ],
+      "answer": 1,
+      "explanation": "Props harus bisa diserialisasi. Fungsi biasa tidak bisa melewati batas server ke client."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana menjalankan getMenu() dan getPromo() yang tidak saling bergantung secara bersamaan?",
+      "code": "",
+      "options": [
+        "await getMenu(); lalu await getPromo();",
+        "Memakai useEffect dengan dua state terpisah",
+        "await Promise.all([getMenu(), getPromo()])",
+        "Memanggil keduanya di loading.tsx agar berjalan lebih dulu"
+      ],
+      "answer": 2,
+      "explanation": "Promise.all menjalankan keduanya bersamaan sehingga waktu tunggunya kira-kira sama dengan yang paling lama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File apa yang tampil otomatis selama server masih menunggu data sebuah halaman?",
+      "code": "",
+      "options": [
+        "error.tsx",
+        "not-found.tsx",
+        "layout.tsx",
+        "loading.tsx"
+      ],
+      "answer": 3,
+      "explanation": "loading.tsx menjadi tampilan sementara untuk segmen yang sedang memuat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di route handler, bagaimana mengembalikan JSON dengan kode status 201?",
+      "code": "",
+      "options": [
+        "Response.json(data, { status: 201 })",
+        "res.status(201).json(data) seperti di Express",
+        "return { status: 201, body: data } langsung",
+        "Response.status(201)"
+      ],
+      "answer": 0,
+      "explanation": "Opsi kedua Response.json mengatur kode status respons."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Direktif apa yang menandai sebuah fungsi sebagai server action?",
+      "code": "",
+      "options": [
+        "\"use client\"",
+        "\"use server\"",
+        "\"use action\"",
+        "\"use cache\""
+      ],
+      "answer": 1,
+      "explanation": "\"use server\" membuat fungsi dijalankan di server walau dipanggil dari form."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Next.js 16, properti next/image apa yang meminta gambar utama di atas layar dimuat lebih awal?",
+      "code": "",
+      "options": [
+        "priority",
+        "eager",
+        "preload",
+        "loading=\"first\""
+      ],
+      "answer": 2,
+      "explanation": "Di versi lama namanya priority; di Next.js 16 diganti preload."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Next.js 16, fungsi apa yang diekspor dari file proxy.ts?",
+      "code": "",
+      "options": [
+        "middleware",
+        "handler",
+        "guardian",
+        "proxy"
+      ],
+      "answer": 3,
+      "explanation": "Sejak Next.js 16 middleware.ts diganti nama menjadi proxy.ts dengan fungsi proxy."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama environment variable mana yang aman untuk menyimpan alamat database?",
+      "code": "",
+      "options": [
+        "DATABASE_URL",
+        "NEXT_PUBLIC_DATABASE_URL",
+        "PUBLIC_DATABASE_URL",
+        "DB_PUBLIC"
+      ],
+      "answer": 0,
+      "explanation": "Variabel berawalan NEXT_PUBLIC_ ikut terkirim ke browser, jadi rahasia ditulis tanpa awalan itu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Semua komponen di folder app/ adalah server component secara bawaan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Komponen baru menjadi client component bila filenya memakai \"use client\"."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di Next.js 16, params di halaman dinamis bisa langsung dibaca tanpa await.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "params berupa Promise sehingga harus di-await dulu."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Next.js disebut framework full-stack karena",
+      "code": "",
+      "options": [
+        "Satu proyek berisi tampilan React sekaligus bagian server",
+        "Next.js punya database sendiri",
+        "Next.js hanya bisa dipakai bersama database bawaan Vercel",
+        "Semua halaman wajib dirender di browser seperti React biasa"
+      ],
+      "answer": 0,
+      "explanation": "Next.js menggabungkan tampilan React dan kode server dalam satu proyek."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara render mana yang membuat HTML baru di server setiap kali halaman dibuka?",
+      "code": "",
+      "options": [
+        "SSG (Static Site Generation)",
+        "SSR (Server-Side Rendering)",
+        "CSR (Client-Side Rendering)",
+        "ISR (Incremental Static Regeneration)"
+      ],
+      "answer": 1,
+      "explanation": "SSR membuat HTML di server pada setiap request."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa nama bundler bawaan Next.js 16 untuk dev dan build?",
+      "code": "",
+      "options": [
+        "Webpack versi 4",
+        "Parcel",
+        "Turbopack",
+        "Rollup dengan Babel"
+      ],
+      "answer": 2,
+      "explanation": "Sejak Next.js 16, Turbopack menjadi bundler bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File public/logo.png di proyek Next.js bisa dibuka di alamat",
+      "code": "",
+      "options": [
+        "http://localhost:3000/public/logo.png",
+        "http://localhost:3000/app/logo.png",
+        "http://localhost:3000/static/logo.png",
+        "http://localhost:3000/logo.png"
+      ],
+      "answer": 3,
+      "explanation": "Isi folder public disajikan dari akar URL tanpa nama folder public."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dilakukan dua perintah berikut?",
+      "code": "npm run build\nnpm run start",
+      "options": [
+        "Membuat versi produksi lalu menjalankannya",
+        "Menjalankan server pengembangan dengan muat ulang otomatis",
+        "Membuat proyek baru lalu memasang semua paket yang dibutuhkan",
+        "Memasang ulang semua paket"
+      ],
+      "answer": 0,
+      "explanation": "build membuat versi produksi yang dioptimasi, start menjalankan hasil build itu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Next.js 16 membutuhkan Node.js minimal versi berapa?",
+      "code": "",
+      "options": [
+        "16.0",
+        "20.9",
+        "18.0",
+        "14.17"
+      ],
+      "answer": 1,
+      "explanation": "Next.js 16 membutuhkan Node.js 20.9 atau lebih baru."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "URL apa yang dihasilkan struktur folder berikut?",
+      "code": "app/\n  (toko)/\n    katalog/\n      page.tsx",
+      "options": [
+        "/(toko)/katalog",
+        "/toko/katalog",
+        "/katalog",
+        "/katalog/page"
+      ],
+      "answer": 2,
+      "explanation": "Route group dalam kurung tidak muncul di URL."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang tampil saat membuka /kelas/12?",
+      "code": "// app/kelas/[id]/page.tsx\nexport default async function Kelas({\n  params,\n}: { params: Promise<{ id: string }> }) {\n  const { id } = await params;\n  return <p>{typeof id}</p>;\n}",
+      "options": [
+        "number",
+        "undefined",
+        "object",
+        "string"
+      ],
+      "answer": 3,
+      "explanation": "Nilai segmen dinamis selalu berupa string."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "File mana yang menerima URL /arsip dan juga /arsip/2025?",
+      "code": "",
+      "options": [
+        "app/arsip/[[...slug]]/page.tsx",
+        "app/arsip/[...slug]/page.tsx",
+        "app/arsip/[slug]/page.tsx",
+        "app/(arsip)/[slug]/index/page.tsx"
+      ],
+      "answer": 0,
+      "explanation": "Kurung ganda [[...slug]] juga menerima URL tanpa segmen tambahan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa keistimewaan layout saat pengguna berpindah antar halaman di bawahnya?",
+      "code": "",
+      "options": [
+        "Layout dihapus lalu dibuat ulang dari awal setiap kali",
+        "Layout tidak dirender ulang, isinya tetap",
+        "Layout ikut dirender ulang",
+        "Layout hanya dipakai pada halaman beranda saja"
+      ],
+      "answer": 1,
+      "explanation": "Layout bertahan saat navigasi, jadi isian di dalamnya tidak hilang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang dipanggil di halaman dinamis saat data menu dengan id itu tidak ada di database?",
+      "code": "",
+      "options": [
+        "redirect(\"/404\") dari next/link",
+        "Response.error()",
+        "notFound() dari next/navigation",
+        "Response.json(null, { status: 404 })"
+      ],
+      "answer": 2,
+      "explanation": "notFound() menghentikan render dan menampilkan not-found.tsx terdekat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hook apa yang dipakai untuk menandai menu navigasi yang sedang aktif?",
+      "code": "",
+      "options": [
+        "useSearchParams()",
+        "useRouterPath()",
+        "useCurrentRoute()",
+        "usePathname()"
+      ],
+      "answer": 3,
+      "explanation": "usePathname dari next/navigation mengembalikan path saat ini dan hanya bisa dipakai di client component."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang TIDAK mengharuskan komponen memakai \"use client\"?",
+      "code": "",
+      "options": [
+        "Mengambil data dengan await",
+        "Menyimpan jumlah pesanan dengan useState",
+        "Memasang onClick pada tombol buatan sendiri",
+        "Memakai onChange di input"
+      ],
+      "answer": 0,
+      "explanation": "Server component boleh async dan menunggu data. State, event, dan API browser butuh client."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kenapa komponen berikut tidak menjadi client component dan menimbulkan error?",
+      "code": "import { useState } from \"react\";\n\"use client\";\n\nexport function Suka() {\n  const [n, setN] = useState(0);\n  return (\n    <button onClick={() => setN(n + 1)}>{n}</button>\n  );\n}",
+      "options": [
+        "useState tidak boleh dipakai bersama onClick di satu komponen",
+        "\"use client\" ditulis setelah import",
+        "Komponen yang memakai state wajib diekspor default dan berupa fungsi async",
+        "Tombol butuh atribut type"
+      ],
+      "answer": 1,
+      "explanation": "Direktif hanya dianggap bila berada di baris pertama file."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa \"use client\" sebaiknya diletakkan sedalam mungkin di pohon komponen?",
+      "code": "",
+      "options": [
+        "Agar build lebih lama",
+        "Agar layout dirender ulang setiap kali pindah halaman",
+        "Agar kode yang dikirim ke browser sekecil mungkin",
+        "Agar komponen server ikut mendapat useState dan useEffect"
+      ],
+      "answer": 2,
+      "explanation": "File bertanda \"use client\" dan semua yang diimpornya ikut dikirim ke browser."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana client component Laci bisa menampilkan DaftarUlasan yang membaca database?",
+      "code": "",
+      "options": [
+        "Laci mengimpor DaftarUlasan lalu memanggil database dari browser",
+        "DaftarUlasan diberi \"use client\" agar bisa dipakai di dalam Laci",
+        "Laci memanggil useEffect untuk merender DaftarUlasan di server",
+        "Server component mengirim DaftarUlasan sebagai children"
+      ],
+      "answer": 3,
+      "explanation": "DaftarUlasan sudah dirender di server sebelum diserahkan ke Laci lewat children."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dimaksud RSC payload?",
+      "code": "",
+      "options": [
+        "Data ringkas hasil server component untuk browser",
+        "File JavaScript berisi seluruh kode server component beserta library-nya",
+        "Cookie berisi sesi yang dikirim bersama setiap request ke server",
+        "Isi file package.json"
+      ],
+      "answer": 0,
+      "explanation": "Server component dikirim sebagai HTML dan RSC payload, bukan sebagai kode JavaScript."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di client component, di mana sebaiknya window dibaca?",
+      "code": "",
+      "options": [
+        "Di badan komponen",
+        "Di dalam useEffect atau event handler",
+        "Di baris pertama file sebelum \"use client\"",
+        "Di props yang dikirim dari server component"
+      ],
+      "answer": 1,
+      "explanation": "Badan komponen juga dijalankan di server saat render awal, ketika window belum ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Next.js 16, apakah hasil fetch di-cache secara otomatis?",
+      "code": "",
+      "options": [
+        "Ya, selalu disimpan",
+        "Ya, tetapi hanya fetch di client component",
+        "Tidak, caching harus diminta eksplisit",
+        "Tidak, karena fetch dilarang di server component"
+      ],
+      "answer": 2,
+      "explanation": "Sejak Next.js 15 fetch tidak di-cache otomatis, dan Next.js 16 memakai \"use cache\" untuk meminta caching."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi next.config.ts apa yang mengaktifkan Cache Components?",
+      "code": "",
+      "options": [
+        "useCache: \"enabled\"",
+        "experimental.fetchCache: true",
+        "caching: { auto: true }",
+        "cacheComponents: true"
+      ],
+      "answer": 3,
+      "explanation": "cacheComponents: true mengaktifkan direktif \"use cache\"."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa guna baris cacheTag(\"menu\") pada kode berikut?",
+      "code": "import { cacheLife, cacheTag } from \"next/cache\";\n\nexport async function getMenu() {\n  \"use cache\";\n  cacheLife(\"hours\");\n  cacheTag(\"menu\");\n  return db.menu.findMany();\n}",
+      "options": [
+        "Memberi label agar cache bisa dibuang tepat sasaran",
+        "Mengatur masa berlaku cache menjadi beberapa jam saja",
+        "Menyimpan hasil query di cookie bernama menu",
+        "Membuat route baru bernama /menu secara otomatis"
+      ],
+      "answer": 0,
+      "explanation": "Tag dipakai revalidateTag untuk membuang cache tertentu. Masa berlaku diatur cacheLife."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah admin mengubah harga, panggilan mana yang menyegarkan semua data bertag menu di Next.js 16?",
+      "code": "",
+      "options": [
+        "cacheLife(\"menu\")",
+        "revalidateTag(\"menu\", \"max\")",
+        "revalidate(\"menu\")",
+        "cacheTag(\"menu\", { hapus: true })"
+      ],
+      "answer": 1,
+      "explanation": "Di Next.js 16 revalidateTag memakai dua argumen; bentuk satu argumen sudah usang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang membuat sebuah bagian halaman menjadi dinamis (dirender saat request)?",
+      "code": "",
+      "options": [
+        "Menampilkan teks judul yang ditulis langsung di JSX",
+        "Mengimpor CSS Modules untuk tampilan kartu menu",
+        "Membaca cookies() untuk tahu siapa yang login",
+        "Memakai next/font untuk font judul halaman"
+      ],
+      "answer": 2,
+      "explanation": "cookies(), headers(), searchParams, dan data tanpa cache baru diketahui saat request."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa beda loading.tsx dan <Suspense>?",
+      "code": "",
+      "options": [
+        "loading.tsx berjalan di browser, Suspense hanya berjalan saat build",
+        "Keduanya sama, Suspense hanya nama lama dari file loading.tsx",
+        "loading.tsx untuk error, Suspense untuk halaman yang tidak ditemukan",
+        "loading.tsx untuk satu halaman, Suspense untuk satu bagian"
+      ],
+      "answer": 3,
+      "explanation": "loading.tsx membungkus seluruh segmen, sedangkan Suspense mengalirkan satu bagian lambat belakangan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana route handler untuk URL /api/menu ditulis?",
+      "code": "",
+      "options": [
+        "app/api/menu/route.ts",
+        "app/api/menu.ts",
+        "pages/api/menu/handler.ts",
+        "app/api/menu/server.ts"
+      ],
+      "answer": 0,
+      "explanation": "Route handler ditulis di file route.ts di folder yang sesuai URL."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa body respons saat membuka /api/menu/7?",
+      "code": "// app/api/menu/[id]/route.ts\nexport async function GET(\n  request: Request,\n  { params }: { params: Promise<{ id: string }> }\n) {\n  const { id } = await params;\n  return Response.json({ id });\n}",
+      "options": [
+        "{\"id\":7}",
+        "{\"id\":\"7\"}",
+        "{\"params\":{\"id\":\"7\"}}",
+        "{\"menu\":7,\"status\":200}"
+      ],
+      "answer": 1,
+      "explanation": "params di route handler adalah argumen kedua, harus di-await, dan nilainya string."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kode status apa yang tepat bila input dari pengguna tidak lengkap?",
+      "code": "",
+      "options": [
+        "201 Created",
+        "401 Unauthorized",
+        "400 Bad Request",
+        "500 Internal Server Error"
+      ],
+      "answer": 2,
+      "explanation": "400 dipakai untuk input yang salah. 401 untuk pengguna yang belum login."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang terjadi saat tombol Simpan diklik?",
+      "code": "async function tambahMenu(formData: FormData) {\n  \"use server\";\n  const nama = formData.get(\"nama\");\n  // simpan ke database\n}\n\n<form action={tambahMenu}>\n  <input name=\"nama\" />\n  <button>Simpan</button>\n</form>",
+      "options": [
+        "Fungsi tambahMenu dijalankan di browser lalu hasilnya disimpan",
+        "Halaman dimuat ulang tanpa data",
+        "Tidak terjadi apa-apa karena form butuh onSubmit buatan sendiri",
+        "tambahMenu dijalankan di server dengan data form"
+      ],
+      "answer": 3,
+      "explanation": "Fungsi bertanda \"use server\" yang dipasang di action form dijalankan di server dan menerima FormData."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa redirect() di server action dipanggil di luar blok try/catch?",
+      "code": "",
+      "options": [
+        "redirect melempar sinyal khusus yang tak boleh tertangkap",
+        "redirect hanya boleh dipanggil sekali per file, jadi harus berada di baris paling akhir",
+        "try/catch membuat server action berjalan di browser sehingga redirect tidak tersedia",
+        "redirect butuh await yang tidak diizinkan di dalam blok try milik server action"
+      ],
+      "answer": 0,
+      "explanation": "redirect bekerja dengan melempar sinyal khusus; bila tertangkap catch, pengalihan batal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hook React apa yang menampilkan pesan error dan status pending dari server action?",
+      "code": "",
+      "options": [
+        "useFormError",
+        "useActionState",
+        "useServerAction",
+        "useEffect"
+      ],
+      "answer": 1,
+      "explanation": "useActionState menyimpan nilai kembalian action terakhir dan memberi nilai pending."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nama file CSS Modules harus diakhiri dengan",
+      "code": "",
+      "options": [
+        ".mod.css",
+        ".styles.css",
+        ".module.css",
+        ".component.css"
+      ],
+      "answer": 2,
+      "explanation": "Next.js mengenali CSS Modules dari akhiran .module.css."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dilakukan Next.js pada kelas .kartu saat build?",
+      "code": "import styles from \"./produk.module.css\";\n\nexport default function Katalog() {\n  return <div className={styles.kartu}>Kaos</div>;\n}",
+      "options": [
+        "Menyalinnya ke globals.css agar berlaku di semua halaman",
+        "Menghapusnya karena kelas harus ditulis dengan Tailwind",
+        "Membiarkannya apa adanya",
+        "Mengubahnya menjadi nama kelas unik"
+      ],
+      "answer": 3,
+      "explanation": "Nama kelas dibuat unik sehingga tidak bentrok dengan modul lain."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk gambar dari URL luar di next/image, selain width dan height kamu wajib",
+      "code": "",
+      "options": [
+        "Mendaftarkan domain di images.remotePatterns",
+        "Memakai tag <img>",
+        "Menulis atribut preload di setiap gambar dari luar",
+        "Mengubah formatnya ke WebP sebelum dipakai di halaman"
+      ],
+      "answer": 0,
+      "explanation": "Domain gambar luar harus didaftarkan di next.config.ts lewat images.remotePatterns."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa keuntungan next/font dibanding tag <link> ke Google Fonts?",
+      "code": "",
+      "options": [
+        "Font otomatis diterjemahkan ke bahasa Indonesia oleh Next.js",
+        "Font diunduh saat build, tanpa request ke Google",
+        "Semua font Google bisa dipakai tanpa perlu diimpor sama sekali",
+        "Font dimuat oleh browser setelah halaman selesai digulir pengguna"
+      ],
+      "answer": 1,
+      "explanation": "next/font menyimpan file font di proyek, jadi browser tidak menghubungi server font luar."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa judul tab saat membuka /tentang?",
+      "code": "// app/layout.tsx\nexport const metadata = {\n  title: {\n    template: \"%s | Koperasi SMK\",\n    default: \"Koperasi SMK\",\n  },\n};\n// app/tentang/page.tsx tidak menulis title",
+      "options": [
+        "%s | Koperasi SMK",
+        "tentang | Koperasi SMK",
+        "Koperasi SMK",
+        "Tentang"
+      ],
+      "answer": 2,
+      "explanation": "Halaman yang tidak menulis title memakai nilai default."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di mana file proxy.ts diletakkan?",
+      "code": "",
+      "options": [
+        "Di dalam folder app/api bersama semua route handler",
+        "Di folder public agar bisa diakses langsung oleh browser",
+        "Di setiap folder route yang ingin dilindungi dari tamu",
+        "Di root proyek, sejajar folder app"
+      ],
+      "answer": 3,
+      "explanation": "proxy.ts berada di root proyek, atau di dalam src bila proyek memakai folder src."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Pengunjung tanpa cookie sesi membuka /dasbor/rekap. Apa yang terjadi?",
+      "code": "export function proxy(request: NextRequest) {\n  if (!request.cookies.get(\"sesi\")) {\n    const url = new URL(\"/masuk\", request.url);\n    return NextResponse.redirect(url);\n  }\n  return NextResponse.next();\n}\nexport const config = {\n  matcher: [\"/dasbor/:path*\"],\n};",
+      "options": [
+        "Diarahkan ke /masuk",
+        "Halaman /dasbor/rekap tampil seperti biasa",
+        "Muncul 404",
+        "Proxy dilewati karena rekap tidak ada di matcher"
+      ],
+      "answer": 0,
+      "explanation": ":path* mencakup /dasbor/rekap, dan tanpa cookie sesi proxy mengalihkan ke /masuk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibatnya bila proxy tidak diberi matcher?",
+      "code": "",
+      "options": [
+        "Build selalu gagal karena config.matcher wajib diisi",
+        "Proxy berjalan untuk hampir semua request",
+        "Proxy hanya berjalan untuk halaman beranda dan file di public",
+        "Proxy tidak pernah berjalan sama sekali sampai di-deploy"
+      ],
+      "answer": 1,
+      "explanation": "Tanpa matcher proxy ikut berjalan untuk aset dan gambar, jadi boros."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Next.js 16, bagaimana cookies() dari next/headers dipakai?",
+      "code": "",
+      "options": [
+        "Dipanggil di client component dari dalam useEffect",
+        "Tanpa await",
+        "Di-await karena bersifat async",
+        "Diimpor dari next/link lalu dipanggil tanpa await"
+      ],
+      "answer": 2,
+      "explanation": "cookies() bersifat async sehingga hasilnya harus di-await."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa halaman tetap perlu memeriksa sesi di server walaupun proxy sudah ada?",
+      "code": "",
+      "options": [
+        "Proxy hanya berjalan saat npm run dev dan otomatis mati setelah di-deploy",
+        "Proxy sama sekali tidak bisa membaca cookie yang dikirim browser",
+        "Halaman tidak bisa dibuka tanpa memanggil cookies() di dalam setiap komponen",
+        "Ada jalan lain ke data dan matcher bisa salah"
+      ],
+      "answer": 3,
+      "explanation": "Server action dan matcher yang salah tulis bisa melewati proxy, jadi pemeriksaan diulang dekat data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa kode yang mengakses database hanya boleh berjalan di server?",
+      "code": "",
+      "options": [
+        "Agar kredensial tidak terkirim ke browser",
+        "Karena browser sama sekali tidak bisa menjalankan JavaScript",
+        "Karena database hanya bisa dibaca saat proses build berjalan",
+        "Agar halaman jadi statis"
+      ],
+      "answer": 0,
+      "explanation": "Kode client dikirim ke browser, jadi password database akan ikut terlihat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di Prisma, struktur tabel ditulis di file apa?",
+      "code": "",
+      "options": [
+        "prisma.config.json",
+        "schema.prisma",
+        "tables.sql di folder app",
+        "db.ts"
+      ],
+      "answer": 1,
+      "explanation": "Prisma membaca struktur tabel dari schema.prisma lalu membuat klien bertipe."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Nilai apa yang tercetak oleh console.log di client component ini?",
+      "code": "// .env.local\nDATABASE_URL=\"postgres://...\"\nNEXT_PUBLIC_NAMA_SEKOLAH=\"SMK Nusantara\"\n\n// di client component\nconsole.log(process.env.DATABASE_URL);",
+      "options": [
+        "postgres://...",
+        "null",
+        "undefined",
+        "Error saat build"
+      ],
+      "answer": 2,
+      "explanation": "Variabel tanpa awalan NEXT_PUBLIC_ hanya tersedia di server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna membungkus fungsi data access layer dengan cache dari React?",
+      "code": "",
+      "options": [
+        "Hasil fungsi disimpan permanen di database sampai server dimatikan",
+        "Fungsi otomatis dikirim ke browser agar bisa dipanggil client component",
+        "Semua halaman yang memanggilnya otomatis menjadi statis saat build",
+        "Dijalankan sekali per request walau dipanggil berkali-kali"
+      ],
+      "answer": 3,
+      "explanation": "cache dari React mencegah query ganda dalam satu request, misalnya dari page dan generateMetadata."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tiga tugas fungsi di data access layer adalah",
+      "code": "",
+      "options": [
+        "Cek sesi, ambil data, kembalikan kolom yang aman",
+        "Membuat tabel, mengisi data contoh, lalu menghapus tabel lama",
+        "Merender HTML, memasang CSS, lalu mengirim JavaScript ke browser",
+        "Render, cache, deploy"
+      ],
+      "answer": 0,
+      "explanation": "DAL memeriksa siapa yang meminta, mengambil data, lalu mengembalikan DTO kecil."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kelebihan ORM seperti Prisma dan Drizzle dibanding menyambung string SQL sendiri adalah",
+      "code": "",
+      "options": [
+        "Database tidak perlu lagi dijalankan di server mana pun",
+        "Query bertipe dan aman dari SQL injection",
+        "Query otomatis berjalan di browser pengguna tanpa server",
+        "Tabel tidak perlu dibuat karena data disimpan di cookie"
+      ],
+      "answer": 1,
+      "explanation": "ORM mengirim nilai terpisah dari perintah dan memberi tipe pada hasil query."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Halaman mana yang HTML-nya dibuat sekali saat build?",
+      "code": "Route (app)\n┌ ○ /\n├ ○ /tentang\n├ ƒ /dasbor\n└ ƒ /api/nilai",
+      "options": [
+        "/dasbor dan /api/nilai",
+        "/dasbor",
+        "/ dan /tentang",
+        "Semua route di daftar ini"
+      ],
+      "answer": 2,
+      "explanation": "Simbol ○ berarti statis, sedangkan ƒ dirender setiap ada request."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Halaman /menu yang isinya jarang berubah ternyata bertanda ƒ saat build. Penyebab yang mungkin adalah",
+      "code": "",
+      "options": [
+        "Halaman memakai CSS Modules untuk tampilan kartunya",
+        "Halaman memakai next/image untuk menampilkan foto menu",
+        "Halaman ditulis dengan TypeScript, bukan JavaScript",
+        "Ada pemanggilan cookies() yang tidak perlu"
+      ],
+      "answer": 3,
+      "explanation": "Membaca cookies() membuat halaman dinamis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah mengubah variabel NEXT_PUBLIC_ di dashboard Vercel, apa yang perlu dilakukan?",
+      "code": "",
+      "options": [
+        "Deploy ulang agar nilainya ditanam lagi",
+        "Tidak perlu apa-apa, nilainya langsung berubah saat itu juga",
+        "Menghapus cookie semua pengguna agar nilai baru terbaca",
+        "Hapus cache browser"
+      ],
+      "answer": 0,
+      "explanation": "Nilai NEXT_PUBLIC_ ditanam ke bundle saat build."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Metrik apa yang mengukur jeda antara klik dan layar berubah?",
+      "code": "",
+      "options": [
+        "LCP (Largest Contentful Paint) untuk gambar",
+        "INP (Interaction to Next Paint)",
+        "CLS (Cumulative Layout Shift)",
+        "TTFB (Time to First Byte)"
+      ],
+      "answer": 1,
+      "explanation": "INP mengukur seberapa cepat halaman merespons interaksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa Core Web Vitals sebaiknya diukur dari versi produksi?",
+      "code": "",
+      "options": [
+        "Lighthouse tidak bisa dibuka sama sekali di halaman localhost",
+        "Skor dev selalu 100",
+        "Angka npm run dev jauh lebih lambat",
+        "Core Web Vitals hanya dihitung untuk domain berakhiran vercel.app"
+      ],
+      "answer": 2,
+      "explanation": "Mode development tidak dioptimasi sehingga angkanya tidak mewakili pengguna."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di Next.js kamu tetap memakai komponen, JSX, props, dan hook seperti di React.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Next.js dibangun di atas React, jadi semua dasar React tetap terpakai."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Komponen <Link> tetap menghasilkan tag <a> di HTML sehingga aman untuk SEO.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "<Link> merender tag <a> dan bisa dibuka di tab baru."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Instance class buatan sendiri boleh dikirim sebagai prop dari server component ke client component.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Instance class tidak bisa diserialisasi, jadi tidak bisa dikirim."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Argumen fungsi ber-\"use cache\" ikut menjadi kunci cache, jadi getMenuById(1) dan getMenuById(2) disimpan terpisah.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Setiap kombinasi argumen punya entri cache sendiri."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Fungsi safeParse dari zod melempar error bila data tidak valid.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "safeParse tidak melempar error; ia mengembalikan objek dengan success true atau false."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Di Next.js 16, properti priority pada next/image sudah usang dan digantikan preload.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Nama propertinya berganti menjadi preload."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Opsi secure pada cookie membuat cookie hanya dikirim lewat HTTPS.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "secure mencegah cookie terkirim lewat koneksi tanpa enkripsi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Paket server-only membuat build gagal bila file khusus server diimpor dari client component.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Kesalahan ketahuan saat development, bukan setelah data bocor."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Halaman dengan INP 350 ms termasuk kategori baik.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Baik maks 200 ms dan buruk di atas 500 ms, jadi 350 ms perlu perbaikan."
+    }
+  ],
+  "prerequisites": [
+    "reactjs"
+  ],
+  "project": {
+    "kind": "js",
+    "title": "Mini App Router",
+    "brief": "Bangun **Mini App Router**: versi kecil dari cara Next.js mengubah isi folder `app/` menjadi route. Next.js sendiri tidak bisa dijalankan di sini, jadi kamu menulis logikanya sebagai fungsi JavaScript murni. Setelah proyek ini, aturan routing yang kamu pelajari di bab 2 dan aturan metadata di bab 6 tidak akan terasa ajaib lagi.\n\n## Masukan\n\n`buatRouter(files, meta)` menerima daftar path file seperti hasil `ls -R app`:\n\n```js\n[\n  \"app/layout.tsx\",\n  \"app/page.tsx\",\n  \"app/not-found.tsx\",\n  \"app/(toko)/layout.tsx\",\n  \"app/(toko)/produk/[id]/page.tsx\",\n  \"app/(toko)/produk/baru/page.tsx\",\n  \"app/blog/[...slug]/page.tsx\",\n]\n```\n\nEkstensi bisa `.tsx`, `.ts`, `.jsx`, atau `.js`. Hanya file bernama `page`, `layout`, dan `not-found` (di folder `app` langsung) yang dipakai; file lain diabaikan.\n\n`meta` adalah objek opsional yang memetakan path file ke metadata-nya: berupa objek, atau fungsi `(params) => objek` seperti `generateMetadata`.\n\n## Fitur wajib\n\n| Fitur | Aturan |\n| --- | --- |\n| `resolve(url)` | Mengembalikan `{ page, layouts, params }`. Query string (`?...`) dan garis miring di akhir diabaikan. |\n| Segmen statis | `app/tentang/page.tsx` cocok dengan `/tentang`. `app/page.tsx` cocok dengan `/`. |\n| `[id]` | Cocok dengan tepat satu segmen. `params.id` berupa string. |\n| `[...slug]` | Cocok dengan satu segmen atau lebih. `params.slug` berupa array string. |\n| Route group | Folder `(nama)` tidak muncul di URL, tapi layout di dalamnya tetap dipakai. |\n| Prioritas | Bila beberapa page cocok, segmen statis menang dari `[id]`, dan `[id]` menang dari `[...slug]`, dibandingkan dari segmen paling kiri. |\n| `layouts` | Semua `layout` dari `app/` sampai folder page, urut dari luar ke dalam (termasuk layout di folder route group). |\n| Tidak ditemukan | `{ page: \"app/not-found.tsx\", layouts: [layout root], params: {} }`. Folder yang hanya punya `layout` tanpa `page` juga dianggap tidak ditemukan. |\n| `generateMetadata(url)` | Gabungkan metadata layout lalu page untuk route hasil `resolve`; nilai yang lebih dalam menimpa. `title` boleh berupa string atau `{ default, template }`. Judul string dimasukkan ke `%s` pada template terdekat di atasnya; bila page tidak menulis judul, pakai `default`. Hasil selalu punya `title` berupa string. |\n\n## Contoh hasil\n\n```js\nconst router = buatRouter(FILES, META);\n\nrouter.resolve(\"/produk/12\");\n// { page: \"app/(toko)/produk/[id]/page.tsx\",\n//   layouts: [\"app/layout.tsx\", \"app/(toko)/layout.tsx\"],\n//   params: { id: \"12\" } }\n\nrouter.resolve(\"/produk/baru\").page;\n// \"app/(toko)/produk/baru/page.tsx\"   (statis menang dari [id])\n\nrouter.resolve(\"/blog/2026/11/rilis\").params;\n// { slug: [\"2026\", \"11\", \"rilis\"] }\n\nrouter.resolve(\"/tidak-ada\");\n// { page: \"app/not-found.tsx\", layouts: [\"app/layout.tsx\"], params: {} }\n\nrouter.generateMetadata(\"/produk/12\");\n// { description: \"Detail produk 12\", title: \"Kaos Angkatan | Koperasi SMK Nusantara\" }\n\nrouter.generateMetadata(\"/\");\n// { description: \"Toko online koperasi sekolah\", title: \"Koperasi SMK Nusantara\" }\n```\n\n## Hubungan dengan Next.js asli\n\nNext.js melakukan hal yang sama saat build: memindai `app/`, membuat tabel route, lalu untuk setiap request mencari page yang cocok dan membungkusnya dengan layout dari luar ke dalam. Bedanya, Next.js juga menangani `loading`, `error`, route paralel, dan banyak lagi. Versi kecilmu cukup fokus pada inti di atas.\n\nPemeriksa sudah menyiapkan `FILES` (struktur toko koperasi sekolah), `META`, `contohRouter()` yang memanggil `buatRouter(FILES, META)`, dan `sama(a, b)` untuk membandingkan objek lewat JSON.\n",
+    "prompt": "Tulis buatRouter(files, meta) yang mengubah daftar path file app/ menjadi router: resolve(url) mengembalikan { page, layouts, params } dengan dukungan segmen statis, [id], [...slug], route group, not-found, serta prioritas statis di atas dinamis dan dinamis di atas catch-all; generateMetadata(url) menggabungkan metadata layout dan page dengan title.template, persis seperti aturan App Router di Next.js.",
+    "starter": {
+      "code": "// Lengkapi buatRouter supaya resolve(url) dan generateMetadata(url) bekerja.\n// Petunjuk: pisahkan file menjadi page, layout, dan not-found terlebih dulu.\n\nfunction buatRouter(files, meta = {}) {\n  function resolve(url) {\n    // TODO: buang query string, pecah path, cocokkan dengan setiap page.\n    // Urutan prioritas: statis, lalu [param], lalu [...param].\n    // TODO: kumpulkan layout dari app/ sampai folder page.\n    // TODO: bila tidak ada yang cocok, kembalikan not-found.\n    return { page: null, layouts: [], params: {} };\n  }\n\n  function generateMetadata(url) {\n    // TODO: gabungkan metadata layout lalu page, terapkan title.template.\n    return { title: \"\" };\n  }\n\n  return { resolve, generateMetadata };\n}\n"
+    },
+    "solution": {
+      "code": "// Ubah \"app/(toko)/produk/[id]/page.tsx\" menjadi folder \"app/(toko)/produk/[id]\"\nfunction folderDari(file) {\n  return file.slice(0, file.lastIndexOf(\"/\"));\n}\n\nfunction namaFile(file) {\n  return file.slice(file.lastIndexOf(\"/\") + 1).replace(/\\.(t|j)sx?$/, \"\");\n}\n\n// Jenis segmen URL: 0 statis, 1 dinamis [id], 2 catch-all [...slug]\nfunction jenisSegmen(seg) {\n  if (seg.startsWith(\"[...\") && seg.endsWith(\"]\")) return { jenis: 2, nama: seg.slice(4, -1) };\n  if (seg.startsWith(\"[\") && seg.endsWith(\"]\")) return { jenis: 1, nama: seg.slice(1, -1) };\n  return { jenis: 0, nama: seg };\n}\n\nfunction cocokkan(pola, bagian) {\n  const params = {};\n  for (let i = 0; i < pola.length; i++) {\n    const s = pola[i];\n    if (s.jenis === 2) {\n      const sisa = bagian.slice(i);\n      if (sisa.length === 0) return null;\n      params[s.nama] = sisa;\n      return params;\n    }\n    if (i >= bagian.length) return null;\n    if (s.jenis === 1) params[s.nama] = bagian[i];\n    else if (s.nama !== bagian[i]) return null;\n  }\n  return pola.length === bagian.length ? params : null;\n}\n\n// Bandingkan dua route: segmen statis menang dari dinamis, dinamis menang dari catch-all\nfunction lebihSpesifik(a, b) {\n  const n = Math.max(a.length, b.length);\n  for (let i = 0; i < n; i++) {\n    const ja = a[i] ? a[i].jenis : 3;\n    const jb = b[i] ? b[i].jenis : 3;\n    if (ja !== jb) return ja - jb;\n  }\n  return 0;\n}\n\nfunction buatRouter(files, meta = {}) {\n  const layoutDi = {};\n  const pages = [];\n  let notFound = null;\n  for (const file of files) {\n    const nama = namaFile(file);\n    const folder = folderDari(file);\n    if (nama === \"layout\") layoutDi[folder] = file;\n    else if (nama === \"not-found\" && folder === \"app\") notFound = file;\n    else if (nama === \"page\") {\n      const segmen = folder.split(\"/\").slice(1).filter((s) => !(s.startsWith(\"(\") && s.endsWith(\")\")));\n      pages.push({ file, folder, pola: segmen.map(jenisSegmen) });\n    }\n  }\n  pages.sort((a, b) => lebihSpesifik(a.pola, b.pola));\n\n  function layoutsUntuk(folder) {\n    const hasil = [];\n    const bagian = folder.split(\"/\");\n    for (let i = 1; i <= bagian.length; i++) {\n      const f = bagian.slice(0, i).join(\"/\");\n      if (layoutDi[f]) hasil.push(layoutDi[f]);\n    }\n    return hasil;\n  }\n\n  function resolve(url) {\n    const path = url.split(\"?\")[0].split(\"#\")[0];\n    const bagian = path.split(\"/\").filter(Boolean);\n    for (const p of pages) {\n      const params = cocokkan(p.pola, bagian);\n      if (params) return { page: p.file, layouts: layoutsUntuk(p.folder), params };\n    }\n    return { page: notFound, layouts: layoutsUntuk(\"app\"), params: {} };\n  }\n\n  function generateMetadata(url) {\n    const r = resolve(url);\n    let template = null;\n    let judulDefault = null;\n    let title = null;\n    const hasil = {};\n    for (const file of [...r.layouts, r.page]) {\n      const sumber = meta[file];\n      if (!sumber) continue;\n      const m = typeof sumber === \"function\" ? sumber(r.params) : sumber;\n      for (const [k, v] of Object.entries(m)) {\n        if (k !== \"title\") hasil[k] = v;\n      }\n      if (m.title && typeof m.title === \"object\") {\n        if (m.title.template) template = m.title.template;\n        if (m.title.default) judulDefault = m.title.default;\n        title = null;\n      } else if (typeof m.title === \"string\") {\n        title = template ? template.replace(\"%s\", m.title) : m.title;\n      }\n    }\n    hasil.title = title ?? judulDefault ?? \"\";\n    return hasil;\n  }\n\n  return { resolve, generateMetadata };\n}\n"
+    },
+    "setup": "// Struktur folder app/ toko koperasi sekolah\nconst FILES = [\n  \"app/layout.tsx\",\n  \"app/page.tsx\",\n  \"app/not-found.tsx\",\n  \"app/tentang/page.tsx\",\n  \"app/(toko)/layout.tsx\",\n  \"app/(toko)/keranjang/page.tsx\",\n  \"app/(toko)/produk/page.tsx\",\n  \"app/(toko)/produk/[id]/page.tsx\",\n  \"app/(toko)/produk/baru/page.tsx\",\n  \"app/blog/page.tsx\",\n  \"app/blog/[...slug]/page.tsx\",\n  \"app/dasbor/layout.tsx\",\n];\n\n// Katalog untuk metadata halaman produk\nconst KATALOG = { \"12\": \"Kaos Angkatan\", \"7\": \"Buku Tulis\" };\n\nconst META = {\n  \"app/layout.tsx\": { title: { default: \"Koperasi SMK Nusantara\", template: \"%s | Koperasi SMK Nusantara\" }, description: \"Toko online koperasi sekolah\" },\n  \"app/tentang/page.tsx\": { title: \"Tentang Kami\" },\n  \"app/(toko)/produk/[id]/page.tsx\": (params) => ({ title: KATALOG[params.id] ?? \"Produk\", description: \"Detail produk \" + params.id }),\n};\n\nfunction contohRouter() {\n  return buatRouter(FILES, META);\n}\n\nfunction sama(a, b) {\n  return JSON.stringify(a) === JSON.stringify(b);\n}\n",
+    "tests": [
+      {
+        "name": "Halaman depan memakai root layout",
+        "check": "sama(contohRouter().resolve(\"/\"), { page: \"app/page.tsx\", layouts: [\"app/layout.tsx\"], params: {} })"
+      },
+      {
+        "name": "Segmen statis dan garis miring di akhir",
+        "check": "contohRouter().resolve(\"/tentang/\").page === \"app/tentang/page.tsx\""
+      },
+      {
+        "name": "Route dinamis [id] dengan layout route group",
+        "check": "sama(contohRouter().resolve(\"/produk/12\"), { page: \"app/(toko)/produk/[id]/page.tsx\", layouts: [\"app/layout.tsx\", \"app/(toko)/layout.tsx\"], params: { id: \"12\" } })"
+      },
+      {
+        "name": "Segmen statis menang dari [id]",
+        "check": "sama(contohRouter().resolve(\"/produk/baru\"), { page: \"app/(toko)/produk/baru/page.tsx\", layouts: [\"app/layout.tsx\", \"app/(toko)/layout.tsx\"], params: {} })"
+      },
+      {
+        "name": "Route group tidak muncul di URL",
+        "check": "contohRouter().resolve(\"/keranjang\").page === \"app/(toko)/keranjang/page.tsx\" && contohRouter().resolve(\"/(toko)/keranjang\").page === \"app/not-found.tsx\""
+      },
+      {
+        "name": "Catch-all mengumpulkan segmen jadi array",
+        "check": "sama(contohRouter().resolve(\"/blog/2026/11/rilis\").params, { slug: [\"2026\", \"11\", \"rilis\"] }) && contohRouter().resolve(\"/blog\").page === \"app/blog/page.tsx\""
+      },
+      {
+        "name": "Query string diabaikan",
+        "check": "sama(contohRouter().resolve(\"/produk/7?warna=hitam\").params, { id: \"7\" })"
+      },
+      {
+        "name": "URL tak dikenal dan folder tanpa page menuju not-found",
+        "check": "sama(contohRouter().resolve(\"/tidak-ada\"), { page: \"app/not-found.tsx\", layouts: [\"app/layout.tsx\"], params: {} }) && contohRouter().resolve(\"/dasbor\").page === \"app/not-found.tsx\""
+      },
+      {
+        "name": "Prioritas tidak bergantung urutan file",
+        "check": "buatRouter([\"app/[kelas]/page.tsx\", \"app/[...semua]/page.tsx\", \"app/jadwal/page.tsx\"]).resolve(\"/jadwal\").page === \"app/jadwal/page.tsx\" && buatRouter([\"app/[...semua]/page.tsx\", \"app/[kelas]/page.tsx\"]).resolve(\"/xii-rpl\").page === \"app/[kelas]/page.tsx\""
+      },
+      {
+        "name": "generateMetadata memakai template dan params",
+        "check": "sama(contohRouter().generateMetadata(\"/produk/12\"), { description: \"Detail produk 12\", title: \"Kaos Angkatan | Koperasi SMK Nusantara\" })"
+      },
+      {
+        "name": "Tanpa judul di page memakai default layout",
+        "check": "contohRouter().generateMetadata(\"/\").title === \"Koperasi SMK Nusantara\" && contohRouter().generateMetadata(\"/tentang\").title === \"Tentang Kami | Koperasi SMK Nusantara\""
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "pengenalan-nextjs",
+      "title": "Pengenalan Next.js",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu Next.js dan apa bedanya dengan React biasa.\n- Membedakan tiga cara merender halaman: CSR, SSR, dan SSG.\n- Membuat proyek Next.js baru dengan `create-next-app` dan menjalankannya.\n- Mengenali isi folder `app/` dan file penting lain di proyek baru.\n\n## Dari React ke Next.js\n\nDi kelas React kamu sudah membuat komponen, mengirim props, menyimpan state dengan `useState`, dan mungkin memakai React Router untuk berpindah halaman. Semua itu berjalan di **browser**. Server hanya mengirim satu file HTML yang hampir kosong, lalu JavaScript merakit seluruh tampilan di perangkat pengguna.\n\nCara itu cukup untuk aplikasi kecil, tapi ada beberapa masalah yang cepat terasa:\n\n- **Halaman pertama lambat.** Pengguna harus menunggu JavaScript selesai diunduh dan dijalankan sebelum melihat isi apa pun. Di HP murah dengan sinyal pas-pasan, ini bisa beberapa detik.\n- **SEO lemah.** Mesin pencari memang bisa menjalankan JavaScript, tapi halaman yang isinya sudah ada di HTML jauh lebih mudah dibaca dan diindeks.\n- **Butuh server terpisah.** Untuk menyimpan data ke database, kamu tetap perlu membuat backend sendiri, misalnya dengan Express atau Laravel.\n- **Banyak keputusan sendiri.** Routing, struktur folder, optimasi gambar, dan cara build harus kamu pilih dan rangkai sendiri.\n\n**Next.js** adalah framework React buatan Vercel yang menjawab masalah-masalah itu. Ia disebut framework **full-stack** karena satu proyek Next.js berisi bagian tampilan (React) sekaligus bagian server: merender halaman di server, membuat endpoint API, dan memproses form. Kelas ini memakai **Next.js 16** dengan **App Router**, cara routing modern yang berbasis folder `app/`.\n\nKabar baiknya, Next.js tetap React. Komponen, JSX, props, hook, dan pola yang kamu pelajari sebelumnya semuanya tetap terpakai. Yang bertambah adalah aturan di sekitarnya: di mana file ditaruh, kode mana yang berjalan di server, dan kode mana yang dikirim ke browser.\n\n## Tiga cara merender halaman\n\n\"Merender\" artinya mengubah komponen menjadi HTML yang bisa ditampilkan. Pertanyaan pentingnya: **di mana dan kapan** HTML itu dibuat?\n\n![Perbandingan CSR, SSR, dan SSG](slide:3)\n\n| Cara | Di mana HTML dibuat | Kapan | Cocok untuk |\n| --- | --- | --- | --- |\n| **CSR** (Client-Side Rendering) | Browser | Setelah JavaScript jalan | Dashboard pribadi, halaman di balik login |\n| **SSR** (Server-Side Rendering) | Server | Setiap ada request | Data yang berubah tiap saat atau beda per pengguna |\n| **SSG** (Static Site Generation) | Server | Sekali saat build | Halaman yang isinya sama untuk semua orang |\n\nBayangkan website kantin sekolah:\n\n- Halaman **Tentang Kantin** berisi jam buka dan alamat. Isinya jarang berubah dan sama untuk semua pengunjung. Paling hemat dibuat sekali saat build (**SSG**), lalu file HTML-nya tinggal dikirim berulang kali.\n- Halaman **Stok Hari Ini** harus selalu menampilkan jumlah porsi terbaru dan ingin muncul di pencarian. HTML-nya dibuat baru di server setiap kali dibuka (**SSR**).\n- Halaman **Riwayat Pesananku** hanya untuk siswa yang sudah login dan tidak perlu muncul di Google. Boleh saja dirakit di browser (**CSR**).\n\nKeunggulan Next.js adalah kamu tidak harus memilih satu cara untuk seluruh aplikasi. Setiap halaman, bahkan setiap bagian halaman, bisa memakai cara yang paling cocok. Next.js juga cukup pintar menebak: halaman yang tidak memakai data per request otomatis dibuat statis saat build, sedangkan halaman yang membaca cookie atau parameter pencarian dirender saat request.\n\nAda juga istilah **ISR** (Incremental Static Regeneration): halaman statis yang dibuat ulang secara berkala, misalnya setiap satu jam. Di Next.js modern, perilaku ini diatur lewat caching dan revalidate yang akan kamu pelajari di bab 4.\n\n## Membuat proyek baru\n\nNext.js 16 membutuhkan **Node.js 20.9** atau lebih baru. Cek versimu dengan `node -v`. Setelah itu buat proyek dengan perintah resmi:\n\n```bash\nnpx create-next-app@latest kantin-sekolah\n```\n\nKamu akan ditanya beberapa pilihan. Untuk kelas ini, terima saja pilihan yang disarankan: **TypeScript**, **ESLint**, **Tailwind CSS**, dan **App Router**. Tidak perlu takut dengan TypeScript; di kelas ini kita hanya memakai tipe sederhana seperti `string` dan `number`, dan kamu bisa membacanya seperti JavaScript biasa.\n\nSetelah selesai, masuk ke folder proyek dan jalankan server pengembangan:\n\n```bash\ncd kantin-sekolah\nnpm run dev\n```\n\nBuka `http://localhost:3000` di browser. Halaman sambutan Next.js akan muncul. Coba ubah teks di `app/page.tsx` lalu simpan; halaman di browser langsung berubah tanpa perlu dimuat ulang manual.\n\nServer pengembangan ini memakai **Turbopack**, bundler bawaan Next.js 16 yang ditulis dengan Rust. Tugas bundler adalah menggabungkan dan mengolah kode supaya bisa dijalankan browser. Kamu tidak perlu mengatur apa pun; cukup tahu bahwa ia yang membuat perubahan kode terasa cepat.\n\n## Isi folder proyek\n\nProyek baru berisi beberapa file dan folder. Yang paling sering kamu sentuh:\n\n```text\nkantin-sekolah/\n  app/\n    layout.tsx     kerangka HTML untuk semua halaman\n    page.tsx       halaman beranda (/)\n    globals.css    CSS global\n    favicon.ico\n  public/          file statis: gambar, ikon, robots.txt\n  next.config.ts   pengaturan Next.js\n  package.json     daftar paket dan skrip\n  tsconfig.json    pengaturan TypeScript\n```\n\n- **`app/`** adalah jantung App Router. Struktur folder di dalamnya menentukan URL aplikasimu. Bab berikutnya membahas ini secara lengkap.\n- **`app/layout.tsx`** adalah *root layout*: kerangka yang membungkus semua halaman. Di sinilah tag `<html>` dan `<body>` ditulis.\n- **`app/page.tsx`** adalah isi halaman beranda.\n- **`public/`** berisi file yang disajikan apa adanya. File `public/logo.png` bisa dibuka di `http://localhost:3000/logo.png`.\n- **`next.config.ts`** dipakai untuk mengaktifkan fitur atau mengatur domain gambar luar. Untuk awal, biarkan seperti bawaannya.\n\nIsi `app/page.tsx` versi sederhana kira-kira seperti ini:\n\n```tsx\nexport default function Home() {\n  return (\n    <main>\n      <h1>Kantin SMK Nusantara</h1>\n      <p>Buka setiap hari sekolah, pukul 07.00 sampai 14.00.</p>\n    </main>\n  );\n}\n```\n\nPerhatikan bahwa tidak ada `import React`, tidak ada `ReactDOM.createRoot`, dan tidak ada pengaturan router. Next.js mengurus semuanya. Kamu cukup mengekspor komponen secara `default` dari file bernama `page.tsx`.\n\n## Skrip di package.json\n\nAda tiga skrip yang akan sering kamu pakai:\n\n| Perintah | Fungsi |\n| --- | --- |\n| `npm run dev` | Server pengembangan dengan muat ulang otomatis |\n| `npm run build` | Membuat versi produksi yang sudah dioptimasi |\n| `npm run start` | Menjalankan hasil build di mode produksi |\n\nSelama belajar, kamu hampir selalu memakai `npm run dev`. Perintah `build` dan `start` dibahas lagi di bab deploy.\n\n## Kapan memilih Next.js?\n\nNext.js bukan jawaban untuk semua proyek. Ia paling terasa manfaatnya bila aplikasimu punya halaman publik yang perlu cepat tampil dan mudah ditemukan di mesin pencari, misalnya website sekolah, katalog toko online, atau blog ekstrakurikuler. Ia juga cocok bila kamu ingin tampilan dan logika server berada dalam satu proyek tanpa merawat backend terpisah.\n\nSebaliknya, untuk aplikasi yang seluruhnya berada di balik login, seperti alat bantu kasir offline, React dengan Vite masih pilihan yang ringan dan sah. Yang penting, kamu paham alasan di balik pilihanmu, bukan sekadar ikut tren.\n\n## Rangkuman\n\n- Next.js adalah framework React full-stack: tampilan dan server ada dalam satu proyek.\n- CSR merakit halaman di browser, SSR membuat HTML di server setiap request, SSG membuat HTML sekali saat build.\n- Next.js bisa memakai cara render berbeda untuk setiap halaman sesuai kebutuhan datanya.\n- Proyek baru dibuat dengan `npx create-next-app@latest` dan dijalankan dengan `npm run dev` di port 3000.\n- Folder `app/` menentukan route, `layout.tsx` adalah kerangka, dan `page.tsx` adalah isi halaman.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Halaman jadwal kantin yang isinya sama untuk semua pengunjung dan jarang berubah paling cocok dirender dengan cara apa?",
+          "code": "",
+          "options": [
+            "SSR, karena HTML dibuat baru setiap kali ada request masuk",
+            "SSG, karena HTML cukup dibuat sekali saat build",
+            "CSR, karena browser yang paling cepat merakit HTML-nya",
+            "Tidak bisa, halaman statis harus memakai backend terpisah"
+          ],
+          "answer": 1,
+          "explanation": "Isi yang sama untuk semua orang dan jarang berubah cukup dibuat sekali saat build lalu dipakai ulang, itulah SSG."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Next.js 16 membutuhkan Node.js versi 20.9 atau lebih baru.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Next.js 16 menaikkan versi minimum Node.js menjadi 20.9."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "File apa yang menjadi kerangka HTML untuk semua halaman dan berisi tag `<html>` serta `<body>`?",
+          "code": "",
+          "options": [
+            "app/page.tsx di folder utama proyek",
+            "next.config.ts di akar folder proyek",
+            "app/layout.tsx",
+            "public/index.html yang dibuat oleh create-next-app"
+          ],
+          "answer": 2,
+          "explanation": "Root layout `app/layout.tsx` membungkus semua halaman dan wajib berisi tag html dan body."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Di proyek Next.js, kode berikut disimpan di `app/page.tsx`. Apa yang terjadi saat kamu membuka `http://localhost:3000`?",
+          "code": "export default function Home() {\n  return <h1>Kantin SMK Nusantara</h1>;\n}",
+          "options": [
+            "Error, karena komponen belum dipasang dengan createRoot",
+            "Error, karena React belum diimpor di bagian atas file",
+            "Halaman kosong sampai kamu mengatur router secara manual",
+            "Tampil judul Kantin SMK Nusantara di halaman beranda"
+          ],
+          "answer": 3,
+          "explanation": "Next.js otomatis menjadikan ekspor default dari `app/page.tsx` sebagai halaman `/`, tanpa createRoot atau pengaturan router."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Memilih cara render halaman",
+          "prompt": "Saat merancang aplikasi Next.js, kamu memutuskan cara render untuk tiap halaman. Buat fungsi `jenisRender(halaman)` yang menerima objek `{ nama, perluSeo, berubahTiapRequest }` dan mengembalikan string `\"CSR\"`, `\"SSR\"`, atau `\"SSG\"` dengan aturan:\n\n1. Bila `perluSeo` bernilai `false`, kembalikan `\"CSR\"` (misalnya halaman riwayat pesanan pribadi).\n2. Bila perlu SEO dan `berubahTiapRequest` bernilai `true`, kembalikan `\"SSR\"`.\n3. Selain itu kembalikan `\"SSG\"`.\n\nLalu buat `rencanaRender(daftar)` yang mengubah array halaman menjadi objek `{ [nama]: jenis }`. Contoh: `rencanaRender([{ nama: \"tentang\", perluSeo: true, berubahTiapRequest: false }])` menghasilkan `{ tentang: \"SSG\" }`.\n\nDi Next.js asli kamu tidak menulis label ini; Next.js menentukannya dari kode halaman. Latihan ini melatih cara berpikir yang sama.",
+          "starter": {
+            "code": "function jenisRender(halaman) {\n  // TODO: terapkan tiga aturan sesuai urutan\n  return \"SSG\";\n}\n\nfunction rencanaRender(daftar) {\n  const hasil = {};\n  // TODO: isi hasil[nama] dengan jenisRender tiap halaman\n  return hasil;\n}\n"
+          },
+          "solution": {
+            "code": "function jenisRender(halaman) {\n  if (!halaman.perluSeo) return \"CSR\";\n  if (halaman.berubahTiapRequest) return \"SSR\";\n  return \"SSG\";\n}\n\nfunction rencanaRender(daftar) {\n  const hasil = {};\n  for (const h of daftar) hasil[h.nama] = jenisRender(h);\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Halaman tanpa SEO memakai CSR",
+              "check": "jenisRender({ nama: \"riwayat\", perluSeo: false, berubahTiapRequest: true }) === \"CSR\""
+            },
+            {
+              "name": "Data berubah tiap request memakai SSR",
+              "check": "jenisRender({ nama: \"stok\", perluSeo: true, berubahTiapRequest: true }) === \"SSR\""
+            },
+            {
+              "name": "Halaman tetap memakai SSG",
+              "check": "jenisRender({ nama: \"tentang\", perluSeo: true, berubahTiapRequest: false }) === \"SSG\""
+            },
+            {
+              "name": "rencanaRender memetakan semua halaman",
+              "check": "JSON.stringify(rencanaRender([{ nama: \"tentang\", perluSeo: true, berubahTiapRequest: false }, { nama: \"stok\", perluSeo: true, berubahTiapRequest: true }, { nama: \"riwayat\", perluSeo: false, berubahTiapRequest: false }])) === JSON.stringify({ tentang: \"SSG\", stok: \"SSR\", riwayat: \"CSR\" })"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "routing-app-router",
+      "title": "Routing dengan App Router",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Membuat halaman baru dengan menyusun folder dan file `page.tsx` di dalam `app/`.\n- Memakai `layout.tsx` bertingkat dan route group untuk berbagi tampilan.\n- Membuat route dinamis dengan `[id]` dan `[...slug]` lalu membaca `params`.\n- Berpindah halaman dengan `<Link>` dan menampilkan halaman 404 dengan `not-found.tsx`.\n\n## Folder adalah route\n\nDi React Router kamu menulis daftar route di dalam kode, misalnya `<Route path=\"/menu\" element={<Menu />} />`. App Router di Next.js memakai cara lain: **struktur folder di dalam `app/` adalah peta URL aplikasimu**. Ini disebut *file-based routing*.\n\nAturannya sederhana:\n\n- Setiap **folder** menjadi satu **segmen** URL.\n- Sebuah segmen baru bisa dibuka setelah foldernya punya file **`page.tsx`**.\n- File `app/page.tsx` adalah halaman beranda `/`.\n\n```text\napp/\n  page.tsx                 /\n  menu/\n    page.tsx               /menu\n    promo/\n      page.tsx             /menu/promo\n    KartuMenu.tsx          (bukan halaman)\n  tentang/\n    page.tsx               /tentang\n```\n\nFile lain di folder yang sama, seperti `KartuMenu.tsx`, **tidak** menjadi halaman. Kamu boleh menyimpan komponen di dekat halaman yang memakainya. Bila ingin lebih rapi, beri awalan garis bawah pada folder, misalnya `app/_komponen/`. Folder berawalan `_` disebut *private folder* dan selalu diabaikan oleh router.\n\nSelain `page.tsx`, Next.js mengenali beberapa nama file khusus di setiap folder: `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, dan `route.ts`. Masing-masing akan kamu temui di bab ini dan bab-bab berikutnya.\n\n## Layout bertingkat\n\n**Layout** adalah tampilan yang membungkus halaman, misalnya navbar dan footer. Layout menerima prop `children` yang berisi halaman (atau layout lain) di bawahnya.\n\n```tsx\n// app/menu/layout.tsx\nexport default function MenuLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <section>\n      <nav>Makanan | Minuman | Camilan</nav>\n      {children}\n    </section>\n  );\n}\n```\n\nLayout bersifat **bertingkat**. Saat kamu membuka `/menu/promo`, Next.js menyusun:\n\n1. `app/layout.tsx` (root layout, berisi `<html>` dan `<body>`)\n2. `app/menu/layout.tsx` (navigasi kategori menu)\n3. `app/menu/promo/page.tsx` (isi halaman)\n\nRoot layout **wajib** ada dan wajib berisi tag `<html>` dan `<body>`. Layout lain opsional.\n\nKeistimewaan layout: ia **tidak dirender ulang** saat pengguna berpindah antar halaman di bawahnya. Jadi kalau di layout ada kolom pencarian yang sudah diketik, isinya tetap ada saat pindah dari `/menu` ke `/menu/promo`. Hanya bagian `children` yang berganti.\n\n## Route group\n\nKadang kamu ingin mengelompokkan halaman tanpa mengubah URL. Misalnya halaman `/masuk` dan `/daftar` memakai layout polos tanpa navbar, sedangkan halaman lain memakai layout lengkap. Caranya dengan **route group**: folder yang namanya diapit kurung.\n\n```text\napp/\n  (umum)/\n    layout.tsx       navbar dan footer\n    page.tsx         /\n    menu/page.tsx    /menu\n  (akun)/\n    layout.tsx       layout polos di tengah layar\n    masuk/page.tsx   /masuk\n    daftar/page.tsx  /daftar\n```\n\nNama `(umum)` dan `(akun)` **tidak muncul di URL**. Fungsinya hanya mengelompokkan file dan memberi layout berbeda. Hati-hati: dua group tidak boleh menghasilkan URL yang sama, misalnya `(umum)/menu/page.tsx` dan `(akun)/menu/page.tsx`, karena Next.js tidak tahu mana yang dipakai.\n\n## Route dinamis\n\nKantin punya puluhan menu. Tidak mungkin membuat folder untuk setiap menu satu per satu. Untuk itu ada **segmen dinamis**: folder yang namanya diapit kurung siku.\n\n![Segmen dinamis dan params](slide:7)\n\n```tsx\n// app/menu/[id]/page.tsx\nexport default async function DetailMenu({\n  params,\n}: {\n  params: Promise<{ id: string }>;\n}) {\n  const { id } = await params;\n  return <h1>Detail menu nomor {id}</h1>;\n}\n```\n\nMembuka `/menu/12` akan menampilkan \"Detail menu nomor 12\". Nilai segmen selalu berupa **string**, jadi ubah dengan `Number(id)` bila perlu angka.\n\nPerhatikan bahwa `params` berupa **Promise** dan harus di-`await`. Sejak Next.js 15, `params` dan `searchParams` dibuat asinkron supaya Next.js bisa mulai menyiapkan bagian halaman yang tidak bergantung pada URL lebih dulu. Karena itu komponen halamannya ditulis sebagai `async function`.\n\nAda dua variasi lain:\n\n| Pola folder | Contoh URL | Isi params |\n| --- | --- | --- |\n| `[id]` | `/menu/12` | `{ id: \"12\" }` |\n| `[...slug]` | `/arsip/2025/juli/lomba` | `{ slug: [\"2025\", \"juli\", \"lomba\"] }` |\n| `[[...slug]]` | `/arsip` atau `/arsip/2025` | `{}` atau `{ slug: [\"2025\"] }` |\n\n`[...slug]` disebut *catch-all*: ia menangkap satu segmen atau lebih sekaligus dan nilainya berupa array. Versi dengan kurung ganda `[[...slug]]` juga menerima URL tanpa segmen tambahan.\n\nBila ada folder statis dan dinamis di level yang sama, misalnya `menu/promo` dan `menu/[id]`, maka `/menu/promo` akan membuka halaman promo. **Segmen statis selalu menang** atas segmen dinamis, dan segmen dinamis tunggal menang atas catch-all.\n\nBila daftar nilai segmen sudah diketahui sejak awal, misalnya 20 menu tetap di kantin, kamu bisa meminta Next.js membuat semua halaman detailnya saat build dengan fungsi `generateStaticParams`:\n\n```tsx\nexport async function generateStaticParams() {\n  const menu = await getSemuaMenu();\n  return menu.map((m) => ({ id: String(m.id) }));\n}\n```\n\nHasilnya, `/menu/1` sampai `/menu/20` menjadi halaman statis yang sangat cepat dibuka, persis seperti SSG di bab sebelumnya.\n\n## Berpindah halaman dengan Link\n\nUntuk tautan antar halaman di aplikasimu, pakai komponen `<Link>` dari `next/link`, bukan tag `<a>` biasa.\n\n```tsx\nimport Link from \"next/link\";\n\nexport default function DaftarMenu() {\n  return (\n    <ul>\n      <li><Link href=\"/menu/1\">Nasi goreng</Link></li>\n      <li><Link href=\"/menu/2\">Mi ayam</Link></li>\n    </ul>\n  );\n}\n```\n\n`<Link>` tetap menghasilkan tag `<a>` di HTML, jadi aman untuk SEO dan bisa dibuka di tab baru. Bedanya, saat diklik ia berpindah halaman **tanpa memuat ulang** seluruh halaman, dan layout yang sama tidak dirender ulang. Di produksi, link yang terlihat di layar juga di-*prefetch*: Next.js mengambil data halaman tujuan lebih awal sehingga perpindahan terasa instan.\n\nUntuk tautan ke website lain, tag `<a>` biasa sudah cukup.\n\n## Membaca query string\n\nSelain segmen path, URL sering membawa *query string*, misalnya `/menu?kategori=minuman&urut=harga`. Di halaman, nilainya tersedia lewat prop `searchParams` yang juga berupa Promise:\n\n```tsx\n// app/menu/page.tsx\nexport default async function Menu({\n  searchParams,\n}: {\n  searchParams: Promise<{ kategori?: string }>;\n}) {\n  const { kategori } = await searchParams;\n  return <h1>Menu kategori {kategori ?? \"semua\"}</h1>;\n}\n```\n\nBedanya dengan `params`: query string bersifat opsional, jadi selalu siapkan nilai cadangan bila kosong. Halaman yang membaca `searchParams` otomatis dirender saat request, karena isinya baru diketahui ketika pengguna membuka URL.\n\nUntuk menandai menu navigasi yang sedang aktif, kamu bisa memakai hook `usePathname()` dari `next/navigation`. Hook ini hanya bisa dipakai di client component, yang akan dibahas di bab berikutnya.\n\n## Halaman 404\n\nBila pengguna membuka URL yang tidak ada, Next.js menampilkan halaman 404. Kamu bisa mendesainnya sendiri dengan file `app/not-found.tsx`:\n\n```tsx\nimport Link from \"next/link\";\n\nexport default function NotFound() {\n  return (\n    <main>\n      <h1>Menu tidak ditemukan</h1>\n      <Link href=\"/menu\">Kembali ke daftar menu</Link>\n    </main>\n  );\n}\n```\n\nDi route dinamis, URL `/menu/999` tetap cocok dengan `[id]` meskipun menu nomor 999 tidak ada di database. Untuk kasus ini panggil fungsi `notFound()` dari `next/navigation`:\n\n```tsx\nimport { notFound } from \"next/navigation\";\n\nconst menu = await getMenu(id);\nif (!menu) notFound();\n```\n\nNext.js akan menghentikan render halaman itu dan menampilkan `not-found.tsx` terdekat.\n\n## Rangkuman\n\n- Folder di dalam `app/` adalah segmen URL, dan segmen baru bisa dibuka setelah ada `page.tsx`.\n- `layout.tsx` membungkus halaman di bawahnya, bertingkat, dan tidak dirender ulang saat berpindah halaman.\n- Route group `(nama)` mengelompokkan halaman dan memberi layout berbeda tanpa mengubah URL.\n- `[id]` menangkap satu segmen, `[...slug]` menangkap banyak segmen sebagai array, dan `params` harus di-`await`.\n- `<Link>` berpindah halaman tanpa reload, sedangkan `notFound()` dan `not-found.tsx` menangani halaman yang tidak ada.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "File mana yang membuat URL `/menu/promo` bisa dibuka?",
+          "code": "",
+          "options": [
+            "app/menu/promo.tsx di dalam folder menu",
+            "app/menu/promo/page.tsx",
+            "app/menu/promo/layout.tsx tanpa file halaman apa pun",
+            "pages/menu-promo.tsx di akar folder proyek"
+          ],
+          "answer": 1,
+          "explanation": "Segmen URL berasal dari folder, dan segmen itu baru bisa dibuka setelah ada file `page.tsx` di dalamnya."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kode ini ada di `app/arsip/[...slug]/page.tsx`. Apa isi `slug` saat membuka `/arsip/2025/juli`?",
+          "code": "export default async function Arsip({ params }) {\n  const { slug } = await params;\n  return <p>{JSON.stringify(slug)}</p>;\n}",
+          "options": [
+            "String \"2025/juli\" yang masih berisi garis miring",
+            "String \"juli\" saja, karena hanya segmen terakhir yang diambil",
+            "Halaman 404, karena catch-all hanya menangkap satu segmen",
+            "[\"2025\",\"juli\"]"
+          ],
+          "answer": 3,
+          "explanation": "Catch-all `[...slug]` menangkap semua segmen sisa dan menyimpannya sebagai array string."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Folder `app/(akun)/masuk/page.tsx` menghasilkan URL `/(akun)/masuk`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Route group yang namanya diapit kurung tidak muncul di URL, jadi halamannya dibuka di `/masuk`."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Ada folder `app/menu/promo` dan `app/menu/[id]`, keduanya punya `page.tsx`. Halaman mana yang tampil saat membuka `/menu/promo`?",
+          "code": "",
+          "options": [
+            "Halaman promo, karena segmen statis menang",
+            "Halaman [id] dengan id bernilai \"promo\", karena dinamis lebih umum",
+            "Error saat build, karena kedua folder dianggap bentrok",
+            "Yang tampil bergantung pada urutan nama folder di disk"
+          ],
+          "answer": 0,
+          "explanation": "Next.js selalu mendahulukan segmen statis daripada segmen dinamis di level yang sama."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Mencocokkan URL dengan file route",
+          "prompt": "Router Next.js mencari file `page.tsx` yang cocok dengan URL. Tiru cara kerjanya dengan fungsi `cocokkanRoute(daftarFile, path)`.\n\n- `daftarFile` berisi path seperti `\"app/page.tsx\"`, `\"app/menu/[id]/page.tsx\"`, atau `\"app/arsip/[...slug]/page.tsx\"`. Buang `app` di depan dan `page.tsx` di belakang untuk mendapat segmennya.\n- Segmen biasa harus sama persis. `[nama]` menangkap satu segmen URL ke `params.nama`. `[...nama]` (hanya di posisi terakhir) menangkap satu segmen atau lebih sebagai array.\n- Bila beberapa file cocok, pilih yang paling spesifik: segmen statis menang atas `[nama]`, dan `[nama]` menang atas `[...nama]` (hitung skor: `[nama]` = 1, `[...nama]` = 2, ambil skor terkecil).\n- Kembalikan `{ file, params }`, atau `null` bila tidak ada yang cocok.\n\nContoh: `cocokkanRoute([\"app/menu/[id]/page.tsx\"], \"/menu/12\")` menghasilkan `{ file: \"app/menu/[id]/page.tsx\", params: { id: \"12\" } }`.",
+          "starter": {
+            "code": "function cocokkanRoute(daftarFile, path) {\n  const bagianUrl = path.split(\"/\").filter(Boolean);\n  for (const file of daftarFile) {\n    // \"app/menu/[id]/page.tsx\" -> [\"menu\", \"[id]\"]\n    const seg = file.split(\"/\").slice(1, -1);\n    // TODO: bandingkan seg dengan bagianUrl satu per satu\n    // TODO: [nama] mengisi params, [...nama] menangkap sisa URL sebagai array\n    // TODO: bila beberapa file cocok, pilih yang paling sedikit segmen dinamisnya\n  }\n  return null;\n}\n"
+          },
+          "solution": {
+            "code": "function cocokkanRoute(daftarFile, path) {\n  const bagianUrl = path.split(\"/\").filter(Boolean);\n  let terbaik = null;\n  for (const file of daftarFile) {\n    const seg = file.split(\"/\").slice(1, -1);\n    const params = {};\n    let skor = 0;\n    let cocok = true;\n    for (let i = 0; i < seg.length; i++) {\n      const s = seg[i];\n      if (s.startsWith(\"[...\")) {\n        const sisa = bagianUrl.slice(i);\n        if (i !== seg.length - 1 || sisa.length === 0) { cocok = false; break; }\n        params[s.slice(4, -1)] = sisa;\n        skor += 2;\n        break;\n      }\n      if (i >= bagianUrl.length) { cocok = false; break; }\n      if (s.startsWith(\"[\")) {\n        params[s.slice(1, -1)] = bagianUrl[i];\n        skor += 1;\n      } else if (s !== bagianUrl[i]) {\n        cocok = false;\n        break;\n      }\n    }\n    const pakaiCatchAll = seg.length && seg[seg.length - 1].startsWith(\"[...\");\n    if (!pakaiCatchAll && seg.length !== bagianUrl.length) cocok = false;\n    if (cocok && (!terbaik || skor < terbaik.skor)) terbaik = { file, params, skor };\n  }\n  return terbaik ? { file: terbaik.file, params: terbaik.params } : null;\n}\n"
+          },
+          "setup": "const FILES = [\"app/page.tsx\", \"app/menu/page.tsx\", \"app/menu/promo/page.tsx\", \"app/menu/[id]/page.tsx\", \"app/arsip/[...slug]/page.tsx\"];",
+          "tests": [
+            {
+              "name": "Beranda cocok dengan app/page.tsx",
+              "check": "JSON.stringify(cocokkanRoute(FILES, \"/\")) === JSON.stringify({ file: \"app/page.tsx\", params: {} })"
+            },
+            {
+              "name": "Segmen dinamis mengisi params",
+              "check": "JSON.stringify(cocokkanRoute(FILES, \"/menu/12\")) === JSON.stringify({ file: \"app/menu/[id]/page.tsx\", params: { id: \"12\" } })"
+            },
+            {
+              "name": "Segmen statis menang atas dinamis",
+              "check": "cocokkanRoute(FILES, \"/menu/promo\").file === \"app/menu/promo/page.tsx\""
+            },
+            {
+              "name": "Catch-all menangkap array",
+              "check": "JSON.stringify(cocokkanRoute(FILES, \"/arsip/2025/juli\").params) === JSON.stringify({ slug: [\"2025\", \"juli\"] })"
+            },
+            {
+              "name": "URL tak dikenal menghasilkan null",
+              "check": "cocokkanRoute(FILES, \"/kantin/stok\") === null && cocokkanRoute(FILES, \"/arsip\") === null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "server-dan-client-component",
+      "title": "Server dan Client Component",
+      "est_minutes": 30,
+      "slide_from": 9,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu server component dan mengapa ia menjadi bawaan di App Router.\n- Menandai client component dengan `\"use client\"` dan tahu kapan benar-benar membutuhkannya.\n- Menggabungkan server dan client component di satu halaman dengan pola yang hemat.\n- Mengenali props yang bisa dan tidak bisa dikirim dari server ke client.\n\n## Dua jenis komponen\n\nDi kelas React, semua komponenmu berjalan di browser. Di App Router, ada dua jenis komponen:\n\n| | Server component | Client component |\n| --- | --- | --- |\n| Berjalan di | Server (saat build atau request) | Server untuk HTML awal, lalu di browser |\n| Kodenya dikirim ke browser | Tidak | Ya |\n| Boleh `async` dan akses database | Ya | Tidak |\n| Boleh `useState`, `useEffect`, `onClick` | Tidak | Ya |\n| Cara menandai | Bawaan, tanpa tanda | `\"use client\"` di baris pertama file |\n\n**Semua komponen di folder `app/` adalah server component secara bawaan.** Kamu baru membuat client component bila menuliskan direktif `\"use client\"`.\n\n## Server component\n\nServer component dijalankan di server, lalu hasilnya dikirim ke browser sebagai HTML dan data ringkas yang disebut *RSC payload*. Kode JavaScript komponennya sendiri tidak pernah dikirim. Ini membawa beberapa keuntungan:\n\n- **Bundle lebih kecil.** Library besar yang hanya dipakai di server, misalnya pengolah markdown atau format tanggal, tidak membebani HP pengguna.\n- **Akses langsung ke data.** Komponen boleh berupa `async function` dan langsung memanggil database atau API, tanpa `useEffect`.\n- **Rahasia tetap aman.** API key atau password database yang dipakai di server component tidak ikut terkirim ke browser.\n\n```tsx\n// app/menu/page.tsx (server component)\nimport { getMenu } from \"@/lib/data\";\n\nexport default async function MenuPage() {\n  const menu = await getMenu();\n  return (\n    <ul>\n      {menu.map((m) => (\n        <li key={m.id}>{m.nama}: Rp{m.harga}</li>\n      ))}\n    </ul>\n  );\n}\n```\n\nTidak ada state loading dan tidak ada efek. Komponen menunggu data, lalu langsung mengembalikan JSX. Tanda `@/` adalah alias untuk akar proyek yang disiapkan `create-next-app`.\n\nBatasannya: server component tidak bisa interaktif. Ia tidak bisa menyimpan state, memasang event seperti `onClick`, atau memakai API browser seperti `window` dan `localStorage`, karena saat ia dijalankan memang tidak ada browser.\n\n## Client component\n\nBila komponen butuh interaksi, tandai filenya dengan `\"use client\"` di baris paling atas, sebelum import apa pun.\n\n```tsx\n// app/menu/TombolPesan.tsx\n\"use client\";\n\nimport { useState } from \"react\";\n\nexport function TombolPesan({ nama }: { nama: string }) {\n  const [jumlah, setJumlah] = useState(0);\n  return (\n    <button onClick={() => setJumlah(jumlah + 1)}>\n      Pesan {nama} ({jumlah})\n    </button>\n  );\n}\n```\n\nKamu butuh client component bila komponen memakai salah satu dari:\n\n- **State dan efek**: `useState`, `useReducer`, `useEffect`.\n- **Event handler**: `onClick`, `onChange`, `onSubmit` dengan fungsi buatanmu.\n- **API browser**: `window`, `document`, `localStorage`, geolokasi.\n- **Hook khusus client** seperti `usePathname` atau library yang bergantung pada hal-hal di atas.\n\nSalah paham yang sering muncul: client component **tetap dirender di server** untuk HTML awalnya, jadi isinya tetap terlihat sebelum JavaScript dimuat. Setelah JavaScript tiba, React \"menghidupkan\" HTML itu supaya tombolnya bisa diklik. Proses ini disebut *hydration*.\n\n## Batas \"use client\"\n\n![Server dan client component dalam satu halaman](slide:11)\n\nDirektif `\"use client\"` menandai sebuah **batas**. File yang memakainya, beserta semua yang ia impor, ikut menjadi kode client dan dikirim ke browser. Karena itu, letakkan `\"use client\"` **sedalam mungkin** di pohon komponen.\n\nContoh: halaman detail menu berisi gambar, deskripsi panjang, ulasan, dan satu tombol pesan. Jangan menandai seluruh halaman sebagai client hanya karena tombolnya. Cukup pisahkan tombol ke file sendiri:\n\n```tsx\n// app/menu/[id]/page.tsx (server component)\nimport { getMenuById } from \"@/lib/data\";\nimport { TombolPesan } from \"../TombolPesan\";\n\nexport default async function Detail({\n  params,\n}: {\n  params: Promise<{ id: string }>;\n}) {\n  const { id } = await params;\n  const menu = await getMenuById(id);\n  return (\n    <article>\n      <h1>{menu.nama}</h1>\n      <p>{menu.deskripsi}</p>\n      <TombolPesan nama={menu.nama} />\n    </article>\n  );\n}\n```\n\nDengan begitu, hanya kode tombol yang dikirim ke browser. Sisanya tetap HTML ringan.\n\nSebaliknya, komponen yang **diimpor** oleh client component ikut menjadi kode client, sehingga tidak bisa lagi membaca database atau memakai `async`. Bila client component perlu menampilkan isi dari server, kirimkan sebagai `children`:\n\n```tsx\n// Server component yang menyusun\n<Laci>\n  <DaftarUlasan />\n</Laci>\n```\n\n`Laci` adalah client component yang mengatur buka tutup dengan state, sedangkan `DaftarUlasan` tetap server component yang membaca database. Ini berhasil karena `DaftarUlasan` sudah dirender di server sebelum diserahkan sebagai `children`.\n\n## Props yang bisa dikirim\n\nSaat server component mengirim props ke client component, props itu harus melewati jaringan. Artinya props harus bisa **diserialisasi**, yaitu diubah menjadi data yang bisa dikirim lalu dibangun ulang di browser.\n\n| Bisa dikirim | Tidak bisa dikirim |\n| --- | --- |\n| string, number, boolean, `null`, `undefined` | Fungsi biasa, misalnya `() => alert(\"hai\")` |\n| Array dan objek biasa berisi nilai yang bisa dikirim | Instance class buatan sendiri |\n| `Date`, `Map`, `Set` | Koneksi database atau objek berisi method |\n| Elemen JSX dan Promise | Symbol yang tidak terdaftar |\n| Server action (fungsi bertanda `\"use server\"`) | |\n\nKesalahan yang sering terjadi adalah mengirim fungsi:\n\n```tsx\n// Salah: fungsi biasa tidak bisa melewati batas server ke client\n<TombolPesan nama=\"Es teh\" onPesan={() => console.log(\"pesan\")} />\n```\n\nNext.js akan menampilkan error yang menyebut fungsi tidak bisa dikirim ke client component. Solusinya: tulis fungsi itu di dalam client component sendiri, atau jadikan server action yang akan kamu pelajari di bab 5.\n\nIngat juga bahwa semua props yang dikirim ke client **terlihat oleh pengguna** lewat devtools. Jangan kirim seluruh baris database bila yang dibutuhkan hanya nama dan harga.\n\n## Kesalahan yang sering terjadi\n\nBeberapa kesalahan berikut hampir selalu dialami pemula saat pertama kali memakai App Router:\n\n- **Menaruh `\"use client\"` di `page.tsx` atau `layout.tsx` \"biar aman\".** Hasilnya seluruh halaman dan semua yang diimpornya ikut dikirim ke browser, dan kamu kehilangan kemampuan mengambil data langsung di komponen.\n- **Memanggil `useEffect` untuk mengambil data awal.** Di server component, cukup `await` datanya. Pola `useEffect` masih boleh untuk data yang memang harus diambil di browser, tapi bukan pilihan pertama.\n- **Mengakses `window` di luar efek.** Bahkan di client component, kode di badan komponen juga dijalankan di server saat render awal, ketika `window` belum ada. Baca API browser di dalam `useEffect` atau event handler.\n- **Lupa bahwa direktif harus di baris pertama.** `\"use client\"` yang ditulis setelah import tidak dianggap sebagai direktif.\n\nKalau ragu, mulai dari server component, lalu pindahkan bagian kecil yang butuh interaksi ke client component.\n\n## Rangkuman\n\n- Komponen di `app/` adalah server component secara bawaan: boleh async, akses data langsung, dan kodenya tidak dikirim ke browser.\n- `\"use client\"` di baris pertama file membuat client component untuk state, event, dan API browser.\n- Client component tetap dirender ke HTML di server lalu di-hydrate di browser.\n- Taruh `\"use client\"` sedalam mungkin, dan kirim server component ke client lewat `children`.\n- Props dari server ke client harus bisa diserialisasi: fungsi biasa dan instance class tidak boleh.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Komponen mana yang harus diberi `\"use client\"`?",
+          "code": "",
+          "options": [
+            "Halaman daftar menu yang mengambil data dengan await dari database",
+            "Footer berisi alamat kantin dan jam buka yang tidak pernah berubah",
+            "Tombol favorit yang menyimpan pilihan ke localStorage",
+            "Layout yang hanya membungkus halaman dengan navbar berisi beberapa Link"
+          ],
+          "answer": 2,
+          "explanation": "localStorage adalah API browser dan tombolnya butuh event, jadi harus client component."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "File berikut tidak punya `\"use client\"`. Apa yang terjadi?",
+          "code": "import { useState } from \"react\";\n\nexport default function Page() {\n  const [n, setN] = useState(0);\n  return <button onClick={() => setN(n + 1)}>{n}</button>;\n}",
+          "options": [
+            "Berjalan normal, karena Next.js otomatis mendeteksi bahwa ini client component",
+            "Error, karena server component tidak bisa memakai useState",
+            "Tombol tampil tapi angkanya hanya bertambah di terminal server",
+            "Berjalan normal, tapi halamannya berubah menjadi CSR secara diam-diam"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa direktif, komponen di `app/` adalah server component, dan hook state tidak tersedia di sana."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Server component mengirim prop ke client component. Prop mana yang akan menimbulkan error?",
+          "code": "",
+          "options": [
+            "harga={15000} berupa angka biasa",
+            "dibuat={new Date()} berupa objek tanggal",
+            "rasa={[\"pedas\", \"manis\"]} berupa array teks",
+            "onPesan={() => alert(\"ok\")}"
+          ],
+          "answer": 3,
+          "explanation": "Fungsi biasa tidak bisa diserialisasi untuk dikirim dari server ke client; angka, Date, dan array bisa."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Client component hanya dirender di browser, sehingga isinya tidak ada di HTML awal yang dikirim server.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Client component tetap dirender ke HTML di server, lalu di-hydrate di browser agar interaktif."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Perlu client component atau tidak?",
+          "prompt": "Buat fungsi `perluClient(komponen)` yang menerima objek `{ nama, pakai }`. `pakai` adalah array berisi hal-hal yang dipakai komponen, misalnya `[\"fetch\", \"useState\"]`.\n\nKembalikan `true` bila ada satu saja yang hanya tersedia di browser, yaitu yang ada di daftar `KHUSUS_CLIENT`: `useState`, `useEffect`, `useReducer`, `onClick`, `onChange`, `window`, `localStorage`. Selain itu kembalikan `false`.\n\nLalu buat `tandaiFile(daftar)` yang mengembalikan array nama komponen yang perlu diberi `\"use client\"`, sesuai urutan masukan.\n\nDi Next.js asli, keputusan ini kamu ambil sendiri saat menulis `\"use client\"`; latihan ini melatih kebiasaan memeriksanya.",
+          "starter": {
+            "code": "const KHUSUS_CLIENT = [\"useState\", \"useEffect\"];\n// TODO: lengkapi daftar KHUSUS_CLIENT\n\nfunction perluClient(komponen) {\n  // TODO: true bila ada isi pakai yang termasuk KHUSUS_CLIENT\n  return false;\n}\n\nfunction tandaiFile(daftar) {\n  // TODO: ambil nama komponen yang perlu client\n  return [];\n}\n"
+          },
+          "solution": {
+            "code": "const KHUSUS_CLIENT = [\"useState\", \"useEffect\", \"useReducer\", \"onClick\", \"onChange\", \"window\", \"localStorage\"];\n\nfunction perluClient(komponen) {\n  return komponen.pakai.some((p) => KHUSUS_CLIENT.includes(p));\n}\n\nfunction tandaiFile(daftar) {\n  return daftar.filter(perluClient).map((k) => k.nama);\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Komponen yang hanya fetch tetap server",
+              "check": "perluClient({ nama: \"DaftarMenu\", pakai: [\"fetch\", \"await\"] }) === false"
+            },
+            {
+              "name": "onClick membutuhkan client",
+              "check": "perluClient({ nama: \"TombolPesan\", pakai: [\"onClick\"] }) === true"
+            },
+            {
+              "name": "localStorage membutuhkan client",
+              "check": "perluClient({ nama: \"Favorit\", pakai: [\"fetch\", \"localStorage\"] }) === true"
+            },
+            {
+              "name": "tandaiFile memilih yang perlu client",
+              "check": "JSON.stringify(tandaiFile([{ nama: \"Footer\", pakai: [] }, { nama: \"Cari\", pakai: [\"onChange\", \"useState\"] }, { nama: \"Peta\", pakai: [\"window\"] }])) === JSON.stringify([\"Cari\", \"Peta\"])"
+            }
+          ]
+        },
+        {
+          "kind": "js",
+          "title": "Memeriksa props yang bisa dikirim",
+          "prompt": "Buat fungsi `bisaDikirim(nilai)` yang mengembalikan `true` bila `nilai` aman dikirim dari server component ke client component, mengikuti aturan sederhana ini:\n\n- string, number, boolean, `null`, dan `undefined`: boleh.\n- `Date`: boleh.\n- Array: boleh bila semua isinya boleh.\n- Objek biasa (prototipenya `Object.prototype` atau `null`): boleh bila semua nilai propertinya boleh.\n- Fungsi, symbol, dan objek lain seperti instance class: tidak boleh.\n\nPemeriksaan harus menelusuri isi bersarang, misalnya `{ menu: [{ nama: \"Es teh\", hapus() {} }] }` tidak boleh karena ada fungsi di dalamnya.",
+          "starter": {
+            "code": "function bisaDikirim(nilai) {\n  if (nilai === null || nilai === undefined) return true;\n  const t = typeof nilai;\n  if (t === \"string\" || t === \"number\" || t === \"boolean\") return true;\n  // TODO: Date boleh\n  // TODO: array dan objek biasa diperiksa isinya satu per satu\n  // TODO: selain itu tidak boleh\n  return true;\n}\n"
+          },
+          "solution": {
+            "code": "function bisaDikirim(nilai) {\n  if (nilai === null || nilai === undefined) return true;\n  const t = typeof nilai;\n  if (t === \"string\" || t === \"number\" || t === \"boolean\") return true;\n  if (t !== \"object\") return false;\n  if (nilai instanceof Date) return true;\n  if (Array.isArray(nilai)) return nilai.every(bisaDikirim);\n  const proto = Object.getPrototypeOf(nilai);\n  if (proto !== Object.prototype && proto !== null) return false;\n  return Object.values(nilai).every(bisaDikirim);\n}\n"
+          },
+          "setup": "class Keranjang { constructor() { this.isi = []; } }",
+          "tests": [
+            {
+              "name": "Nilai dasar dan Date boleh",
+              "check": "bisaDikirim(\"Es teh\") && bisaDikirim(5000) && bisaDikirim(null) && bisaDikirim(new Date())"
+            },
+            {
+              "name": "Fungsi tidak boleh",
+              "check": "bisaDikirim(() => 1) === false"
+            },
+            {
+              "name": "Instance class tidak boleh",
+              "check": "bisaDikirim(new Keranjang()) === false"
+            },
+            {
+              "name": "Fungsi bersarang terdeteksi",
+              "check": "bisaDikirim({ menu: [{ nama: \"Es teh\", hapus() {} }] }) === false"
+            },
+            {
+              "name": "Objek dan array biasa boleh",
+              "check": "bisaDikirim({ nama: \"Nasi goreng\", rasa: [\"pedas\"], stok: { pagi: 10 } }) === true"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "data-fetching-dan-caching",
+      "title": "Data Fetching dan Caching",
+      "est_minutes": 35,
+      "slide_from": 12,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Mengambil data langsung di server component dengan `async` dan `await`.\n- Menyimpan hasil pengambilan data dengan `\"use cache\"` lalu menyegarkannya dengan revalidate.\n- Membedakan bagian halaman yang statis dan yang dinamis.\n- Menampilkan status memuat dan error dengan `loading.tsx`, `error.tsx`, dan `<Suspense>`.\n\n## Mengambil data di server\n\nDi React biasa, kamu mengambil data seperti ini: render komponen kosong, jalankan `useEffect`, panggil `fetch`, simpan hasilnya ke state, lalu render ulang. Ada tiga state yang harus diurus (data, loading, error) dan pengguna melihat halaman kosong dulu.\n\nDi App Router, server component boleh berupa fungsi `async`. Kamu cukup menunggu datanya:\n\n```tsx\n// app/menu/page.tsx\nexport default async function MenuPage() {\n  const res = await fetch(\"https://api.kantin-sekolah.id/menu\");\n  if (!res.ok) throw new Error(\"Gagal memuat menu\");\n  const menu: { id: number; nama: string; harga: number }[] = await res.json();\n\n  return (\n    <ul>\n      {menu.map((m) => (\n        <li key={m.id}>{m.nama}: Rp{m.harga}</li>\n      ))}\n    </ul>\n  );\n}\n```\n\nSelain `fetch`, kamu juga boleh langsung memanggil database atau fungsi lain yang berjalan di server. Pengguna menerima HTML yang sudah berisi daftar menu.\n\nBila halaman butuh beberapa data yang tidak saling bergantung, jangan menunggu satu per satu. Jalankan bersamaan dengan `Promise.all`:\n\n```tsx\nconst [menu, promo] = await Promise.all([getMenu(), getPromo()]);\n```\n\nKalau `getMenu` butuh 1 detik dan `getPromo` butuh 1 detik, cara berurutan memakan 2 detik, sedangkan `Promise.all` cukup sekitar 1 detik.\n\n## Caching: menyimpan hasil supaya tidak mengulang\n\nBayangkan 500 siswa membuka halaman menu saat jam istirahat. Kalau setiap kunjungan memanggil database, server bekerja 500 kali untuk data yang sama. **Cache** adalah tempat menyimpan hasil yang sudah pernah dihitung supaya bisa dipakai ulang.\n\nSejak Next.js 15, `fetch` **tidak lagi di-cache secara otomatis**. Next.js 16 melanjutkan arah itu: caching harus kamu minta secara eksplisit. Caranya lewat fitur **Cache Components** yang diaktifkan di `next.config.ts`:\n\n```ts\n// next.config.ts\nimport type { NextConfig } from \"next\";\n\nconst nextConfig: NextConfig = {\n  cacheComponents: true,\n};\n\nexport default nextConfig;\n```\n\nSetelah itu, tulis direktif `\"use cache\"` di awal fungsi (atau komponen) yang hasilnya ingin disimpan:\n\n```ts\n// lib/data.ts\nimport { cacheLife, cacheTag } from \"next/cache\";\n\nexport async function getMenu() {\n  \"use cache\";\n  cacheLife(\"hours\");\n  cacheTag(\"menu\");\n  return db.menu.findMany();\n}\n```\n\n![Caching dan revalidate](slide:13)\n\n- `\"use cache\"` menandai bahwa hasil fungsi ini boleh disimpan. Argumen fungsi ikut menjadi bagian kunci cache, jadi `getMenuById(1)` dan `getMenuById(2)` disimpan terpisah.\n- `cacheLife(\"hours\")` mengatur masa berlaku. Ada profil siap pakai seperti `\"minutes\"`, `\"hours\"`, `\"days\"`, dan `\"max\"`.\n- `cacheTag(\"menu\")` memberi label supaya cache bisa dibuang secara tepat sasaran.\n\n## Revalidate: menyegarkan cache\n\nData yang di-cache bisa basi. Harga es teh naik, tapi halaman masih menampilkan harga lama. Proses membuang cache lama supaya data baru diambil disebut **revalidate**. Ada dua cara:\n\n1. **Berdasarkan waktu.** Masa berlaku dari `cacheLife` habis, lalu permintaan berikutnya memicu pengambilan data baru. Cocok untuk data yang boleh sedikit terlambat, misalnya daftar menu.\n2. **Berdasarkan kejadian.** Setelah admin kantin mengubah harga, kode server memanggil `revalidatePath(\"/menu\")` untuk menyegarkan satu halaman, atau `revalidateTag(\"menu\", \"max\")` untuk semua data berlabel `menu`. Ini dibahas lagi di bab server action.\n\nDi proyek yang belum memakai Cache Components, kamu akan sering bertemu cara lama seperti `export const revalidate = 60` di file halaman atau opsi `fetch(url, { next: { revalidate: 60 } })`. Idenya sama: simpan hasil, lalu segarkan setelah 60 detik.\n\n## Statis dan dinamis\n\nSaat `next build`, Next.js mencoba membuat sebanyak mungkin bagian halaman menjadi HTML **statis**. Sebuah bagian menjadi **dinamis**, yaitu dirender saat request, bila ia membaca sesuatu yang baru diketahui ketika pengguna datang:\n\n- `cookies()` atau `headers()`, misalnya untuk mengetahui siapa yang login.\n- `searchParams`, misalnya `/menu?kategori=minuman`.\n- Data yang tidak di-cache, misalnya stok porsi saat ini.\n\nDengan Cache Components, satu halaman bisa berisi keduanya. Judul, navigasi, dan daftar menu yang di-cache menjadi kerangka statis yang langsung dikirim. Bagian dinamis seperti \"Stok tersisa\" atau \"Halo, Rina\" diisi saat request. Bagian dinamis seperti ini harus dibungkus `<Suspense>`, yang dibahas di bawah.\n\n## loading.tsx dan error.tsx\n\nSelama server menunggu data, apa yang dilihat pengguna? Buat file `loading.tsx` di folder route:\n\n```tsx\n// app/menu/loading.tsx\nexport default function Loading() {\n  return <p>Memuat menu kantin...</p>;\n}\n```\n\nNext.js otomatis membungkus `page.tsx` di folder itu dengan tampilan loading ini. Layout tetap tampil, hanya bagian halaman yang diganti sementara.\n\nBila terjadi error saat render, misalnya API kantin mati, tangkap dengan `error.tsx`. File ini **wajib** client component karena memakai tombol:\n\n```tsx\n// app/menu/error.tsx\n\"use client\";\n\nexport default function Error({\n  error,\n  reset,\n}: {\n  error: Error;\n  reset: () => void;\n}) {\n  return (\n    <div>\n      <p>Menu gagal dimuat.</p>\n      <button onClick={() => reset()}>Coba lagi</button>\n    </div>\n  );\n}\n```\n\nError di satu segmen hanya mengganti segmen itu. Navbar di layout atasnya tetap berfungsi, jadi pengguna masih bisa pindah ke halaman lain.\n\n## Streaming dengan Suspense\n\n`loading.tsx` bekerja untuk satu halaman penuh. Bila hanya satu bagian yang lambat, misalnya ulasan siswa yang butuh 3 detik, bungkus bagian itu dengan `<Suspense>`:\n\n```tsx\nimport { Suspense } from \"react\";\n\nexport default function MenuPage() {\n  return (\n    <main>\n      <h1>Menu Kantin</h1>\n      <DaftarMenu />\n      <Suspense fallback={<p>Memuat ulasan...</p>}>\n        <DaftarUlasan />\n      </Suspense>\n    </main>\n  );\n}\n```\n\nServer langsung mengirim judul dan daftar menu beserta teks \"Memuat ulasan...\". Ketika `DaftarUlasan` selesai, HTML-nya dikirim menyusul lewat koneksi yang sama dan menggantikan fallback. Teknik ini disebut **streaming**. Pengguna bisa mulai membaca menu tanpa menunggu bagian paling lambat.\n\n## Memilih apa yang di-cache\n\nTidak semua data cocok disimpan. Pakai pertanyaan sederhana ini sebagai pegangan:\n\n| Data | Boleh di-cache? | Alasan |\n| --- | --- | --- |\n| Daftar menu dan harga | Ya, beberapa jam | Jarang berubah dan sama untuk semua siswa |\n| Pengumuman kantin | Ya, lalu revalidate saat admin mengubahnya | Berubah hanya karena kejadian tertentu |\n| Stok porsi saat ini | Tidak, atau hanya beberapa detik | Harus selalu terbaru |\n| Riwayat pesanan milik Rina | Jangan di-cache bersama | Isinya berbeda untuk setiap pengguna |\n\nHati-hati dengan data pribadi. Fungsi ber-`\"use cache\"` tidak boleh membaca `cookies()` atau `headers()` di dalamnya. Bila hasilnya bergantung pada pengguna, kirim identitasnya sebagai argumen supaya kuncinya berbeda, atau jangan di-cache sama sekali. Lebih baik halaman sedikit lebih lambat daripada siswa melihat pesanan milik orang lain.\n\nKebiasaan yang baik: mulailah tanpa cache, ukur bagian yang lambat atau sering dipanggil, lalu tambahkan `\"use cache\"` di tempat yang memang perlu. Dengan begitu kamu selalu tahu data mana yang mungkin basi dan kapan ia disegarkan.\n\n## Rangkuman\n\n- Server component boleh `async` dan langsung `await` data, jalankan pengambilan yang independen dengan `Promise.all`.\n- Next.js 16 tidak meng-cache data secara otomatis; pakai `\"use cache\"` dengan `cacheLife` dan `cacheTag` setelah mengaktifkan `cacheComponents`.\n- Revalidate bisa berdasarkan waktu atau kejadian lewat `revalidatePath` dan `revalidateTag`.\n- Bagian yang membaca cookie, header, searchParams, atau data tanpa cache menjadi dinamis.\n- `loading.tsx` dan `error.tsx` menangani status per segmen, sedangkan `<Suspense>` mengalirkan bagian lambat belakangan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di Next.js 16 dengan Cache Components aktif, bagaimana cara meminta agar hasil fungsi `getMenu()` disimpan dan dipakai ulang?",
+          "code": "",
+          "options": [
+            "Tidak perlu apa-apa, karena semua fetch di-cache otomatis",
+            "Membungkus pemanggilan getMenu() dengan useEffect di halaman",
+            "Menulis \"use cache\" di awal fungsi getMenu",
+            "Menyimpan hasilnya ke localStorage lewat client component"
+          ],
+          "answer": 2,
+          "explanation": "Caching di Next.js 16 bersifat eksplisit: direktif `\"use cache\"` menandai fungsi yang hasilnya boleh disimpan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Masing-masing fungsi butuh sekitar 1 detik. Berapa lama kira-kira kode ini menunggu?",
+          "code": "const [menu, promo] = await Promise.all([\n  getMenu(),\n  getPromo(),\n]);",
+          "options": [
+            "Sekitar 1 detik",
+            "Sekitar 2 detik, karena getPromo menunggu getMenu selesai",
+            "Sekitar 0 detik, karena Promise.all tidak menunggu apa pun",
+            "Sekitar 3 detik, karena ada jeda tambahan untuk menggabungkan hasil"
+          ],
+          "answer": 0,
+          "explanation": "Promise.all menjalankan keduanya bersamaan, jadi waktu tunggunya kira-kira sama dengan yang paling lama."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "File `error.tsx` boleh ditulis sebagai server component biasa tanpa `\"use client\"`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "`error.tsx` wajib client component karena menangani error di sisi browser dan menyediakan tombol reset."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Halaman menu punya bagian ulasan yang lambat. Apa yang terjadi bila bagian itu dibungkus `<Suspense fallback={...}>`?",
+          "code": "",
+          "options": [
+            "Seluruh halaman menunggu ulasan selesai, baru semuanya dikirim bersamaan",
+            "Bagian lain tampil dulu, fallback tampil sampai ulasan siap",
+            "Ulasan dipindahkan ke browser dan diambil ulang dengan useEffect",
+            "Ulasan tidak pernah dirender di server dan hanya muncul setelah halaman dimuat ulang"
+          ],
+          "answer": 1,
+          "explanation": "Suspense memungkinkan streaming: bagian cepat dikirim dulu dan bagian lambat menyusul menggantikan fallback."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Cache mini dengan masa berlaku",
+          "prompt": "Tiru cara kerja `\"use cache\"` dengan `cacheLife` dan `revalidateTag` dalam versi mini. Buat `buatCache(ttl)` yang mengembalikan objek dengan dua method:\n\n- `ambil(kunci, sekarang, muat)`: bila ada simpanan untuk `kunci` dan umurnya (`sekarang - waktu simpan`) **kurang dari** `ttl`, kembalikan nilai simpanan tanpa memanggil `muat`. Bila tidak, panggil `muat()`, simpan hasilnya bersama waktu `sekarang`, lalu kembalikan hasilnya.\n- `hapus(kunci)`: buang simpanan untuk kunci itu sehingga `ambil` berikutnya pasti memanggil `muat` lagi (seperti revalidate berdasarkan kejadian).\n\nWaktu (`sekarang` dan `ttl`) dalam detik dan dikirim sebagai angka supaya mudah diuji. Kunci berbeda disimpan terpisah.",
+          "starter": {
+            "code": "function buatCache(ttl) {\n  const isi = new Map();\n  return {\n    ambil(kunci, sekarang, muat) {\n      // TODO: bila ada simpanan dan umurnya kurang dari ttl, kembalikan nilainya\n      // TODO: bila tidak, panggil muat(), simpan { nilai, waktu: sekarang }\n      return muat();\n    },\n    hapus(kunci) {\n      // TODO: buang simpanan untuk kunci ini\n    },\n  };\n}\n"
+          },
+          "solution": {
+            "code": "function buatCache(ttl) {\n  const isi = new Map();\n  return {\n    ambil(kunci, sekarang, muat) {\n      const simpanan = isi.get(kunci);\n      if (simpanan && sekarang - simpanan.waktu < ttl) return simpanan.nilai;\n      const nilai = muat();\n      isi.set(kunci, { nilai, waktu: sekarang });\n      return nilai;\n    },\n    hapus(kunci) {\n      isi.delete(kunci);\n    },\n  };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Pengambilan pertama memanggil muat",
+              "check": "buatCache(60).ambil(\"menu\", 0, () => \"Es teh\") === \"Es teh\""
+            },
+            {
+              "name": "Dalam masa berlaku memakai cache",
+              "check": "(() => { let n = 0; const c = buatCache(60); c.ambil(\"menu\", 0, () => ++n); const v = c.ambil(\"menu\", 30, () => ++n); return n === 1 && v === 1; })()"
+            },
+            {
+              "name": "Lewat masa berlaku memuat ulang",
+              "check": "(() => { let n = 0; const c = buatCache(60); c.ambil(\"menu\", 0, () => ++n); const v = c.ambil(\"menu\", 60, () => ++n); return n === 2 && v === 2; })()"
+            },
+            {
+              "name": "hapus memaksa muat ulang",
+              "check": "(() => { let n = 0; const c = buatCache(60); c.ambil(\"menu\", 0, () => ++n); c.hapus(\"menu\"); c.ambil(\"menu\", 5, () => ++n); return n === 2; })()"
+            },
+            {
+              "name": "Kunci berbeda disimpan terpisah",
+              "check": "(() => { const c = buatCache(60); c.ambil(\"menu\", 0, () => \"A\"); return c.ambil(\"promo\", 1, () => \"B\") === \"B\" && c.ambil(\"menu\", 2, () => \"X\") === \"A\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "route-handler-dan-server-action",
+      "title": "Route Handler dan Server Action",
+      "est_minutes": 35,
+      "slide_from": 16,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Membuat endpoint API dengan route handler di file `route.ts`.\n- Menulis server action dengan `\"use server\"` dan memasangnya di form.\n- Memvalidasi input di server dan menampilkan pesan error ke pengguna.\n- Menyegarkan halaman setelah data berubah dengan `revalidatePath` dan `redirect`.\n\n## Dua cara menerima data\n\nSejauh ini aplikasimu hanya **menampilkan** data. Aplikasi nyata juga perlu **menerima** data: siswa memesan makanan, petugas menambah menu, atau aplikasi HP mengambil daftar menu dalam bentuk JSON. Next.js menyediakan dua alat untuk itu:\n\n| | Route handler | Server action |\n| --- | --- | --- |\n| Bentuk | File `route.ts` dengan fungsi `GET`, `POST`, dan lainnya | Fungsi async bertanda `\"use server\"` |\n| Dipanggil oleh | Siapa saja lewat URL: browser, aplikasi HP, layanan lain | Form dan komponen di aplikasi Next.js-mu sendiri |\n| Cocok untuk | API publik, webhook, data JSON | Menyimpan isian form, tombol hapus, ubah data |\n\n## Route handler\n\nRoute handler dibuat dengan file `route.ts` di dalam `app/`. Konvensinya, letakkan di bawah folder `api` supaya mudah dibedakan dari halaman:\n\n```ts\n// app/api/menu/route.ts\nconst menu = [\n  { id: 1, nama: \"Nasi goreng\", harga: 12000, kategori: \"makanan\" },\n  { id: 2, nama: \"Es teh\", harga: 4000, kategori: \"minuman\" },\n];\n\nexport async function GET(request: Request) {\n  const { searchParams } = new URL(request.url);\n  const kategori = searchParams.get(\"kategori\");\n  const hasil = kategori ? menu.filter((m) => m.kategori === kategori) : menu;\n  return Response.json(hasil);\n}\n```\n\nBuka `http://localhost:3000/api/menu?kategori=minuman` dan kamu akan melihat JSON berisi es teh. Fungsi diberi nama sesuai **method HTTP**: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`. Parameter dan nilai kembaliannya memakai objek standar web, yaitu `Request` dan `Response`, sama seperti yang dipakai `fetch` di browser.\n\nUntuk menerima data, buat fungsi `POST`:\n\n```ts\nexport async function POST(request: Request) {\n  const data = await request.json();\n  if (!data.nama || typeof data.harga !== \"number\") {\n    return Response.json({ error: \"nama dan harga wajib\" }, { status: 400 });\n  }\n  const baru = { id: menu.length + 1, ...data };\n  menu.push(baru);\n  return Response.json(baru, { status: 201 });\n}\n```\n\nOpsi kedua `Response.json` mengatur kode status. Gunakan kode yang tepat: `200` untuk berhasil, `201` untuk data baru dibuat, `400` untuk input salah, `401` bila belum login, dan `404` bila data tidak ada. (Array `menu` di contoh ini hanya hidup di memori server dan hilang saat server dimulai ulang. Di bab 8 kamu akan menyimpannya ke database.)\n\nRoute handler juga mendukung segmen dinamis. File `app/api/menu/[id]/route.ts` menerima `params` sebagai argumen kedua, dan seperti di halaman, `params` itu harus di-`await`.\n\nSatu aturan penting: dalam satu folder **tidak boleh** ada `page.tsx` dan `route.ts` sekaligus, karena keduanya sama-sama ingin menjawab URL yang sama.\n\n## Server action\n\nUntuk form di dalam aplikasimu sendiri, membuat endpoint API lalu memanggilnya dengan `fetch` terasa berbelit. **Server action** memangkas langkah itu: kamu menulis fungsi yang berjalan di server, lalu memasangnya langsung di atribut `action` milik form.\n\n![Server action di form](slide:17)\n\n```tsx\n// app/menu/baru/page.tsx\nimport { simpanMenu } from \"@/lib/data\";\n\nexport default function MenuBaru() {\n  async function tambahMenu(formData: FormData) {\n    \"use server\";\n    const nama = String(formData.get(\"nama\"));\n    const harga = Number(formData.get(\"harga\"));\n    await simpanMenu({ nama, harga });\n  }\n\n  return (\n    <form action={tambahMenu}>\n      <input name=\"nama\" placeholder=\"Nama menu\" />\n      <input name=\"harga\" type=\"number\" placeholder=\"Harga\" />\n      <button type=\"submit\">Simpan</button>\n    </form>\n  );\n}\n```\n\nSaat tombol ditekan, browser mengirim isi form ke server, Next.js menjalankan `tambahMenu`, dan hasilnya kembali ke halaman. Kamu tidak menulis URL, `fetch`, atau `JSON.stringify` sama sekali. Form ini bahkan tetap bekerja sebelum JavaScript selesai dimuat.\n\nServer action juga bisa ditaruh di file terpisah yang baris pertamanya `\"use server\"`. Semua fungsi yang diekspor dari file itu menjadi server action dan bisa diimpor oleh client component, misalnya untuk tombol hapus.\n\n## Validasi di server\n\nAtribut `required` di HTML membantu pengguna, tapi **tidak bisa diandalkan** untuk keamanan. Siapa pun bisa mengirim request langsung tanpa melewati form. Server action pada dasarnya adalah endpoint publik, jadi perlakukan inputnya seperti input dari orang asing: periksa lagi semuanya di server.\n\nLibrary **Zod** populer untuk keperluan ini:\n\n```ts\n// app/menu/actions.ts\n\"use server\";\n\nimport { z } from \"zod\";\nimport { revalidatePath } from \"next/cache\";\nimport { redirect } from \"next/navigation\";\nimport { simpanMenu } from \"@/lib/data\";\n\nconst SkemaMenu = z.object({\n  nama: z.string().min(3, \"Nama minimal 3 huruf\"),\n  harga: z.coerce.number().int().min(1000, \"Harga minimal Rp1.000\"),\n});\n\nexport async function tambahMenu(_state: unknown, formData: FormData) {\n  const hasil = SkemaMenu.safeParse({\n    nama: formData.get(\"nama\"),\n    harga: formData.get(\"harga\"),\n  });\n  if (!hasil.success) {\n    return { error: hasil.error.issues[0].message };\n  }\n  await simpanMenu(hasil.data);\n  revalidatePath(\"/menu\");\n  redirect(\"/menu\");\n}\n```\n\n`safeParse` tidak melempar error, melainkan mengembalikan objek `success` beserta data yang sudah bersih atau daftar masalahnya. Selain bentuk data, periksa juga **siapa** yang mengirim: hanya petugas kantin yang boleh menambah menu. Pemeriksaan sesi dibahas di bab 7.\n\nUntuk menampilkan pesan error di form, pakai hook `useActionState` dari React di sebuah client component. Hook ini menyimpan nilai kembalian action terakhir:\n\n```tsx\n\"use client\";\nimport { useActionState } from \"react\";\nimport { tambahMenu } from \"./actions\";\n\nexport function FormMenu() {\n  const [state, action, pending] = useActionState(tambahMenu, null);\n  return (\n    <form action={action}>\n      <input name=\"nama\" />\n      <input name=\"harga\" type=\"number\" />\n      {state?.error && <p>{state.error}</p>}\n      <button disabled={pending}>Simpan</button>\n    </form>\n  );\n}\n```\n\nKarena dipakai bersama `useActionState`, action menerima state sebelumnya sebagai argumen pertama dan `FormData` sebagai argumen kedua. Nilai `pending` bernilai `true` selama action berjalan, berguna untuk mematikan tombol supaya data tidak terkirim dua kali.\n\n## Menyegarkan halaman\n\nSetelah menu baru tersimpan, halaman `/menu` yang mungkin sudah di-cache masih menampilkan daftar lama. `revalidatePath(\"/menu\")` membuang cache halaman itu sehingga kunjungan berikutnya memuat data terbaru. Bila datamu diberi label dengan `cacheTag`, kamu bisa memakai `revalidateTag` untuk menyegarkan semua data dengan label itu sekaligus.\n\nTerakhir, `redirect(\"/menu\")` membawa pengguna ke halaman daftar. Panggil `redirect` di luar blok `try/catch`, karena fungsi ini bekerja dengan cara melempar sinyal khusus yang tidak boleh ikut tertangkap.\n\n## Kapan memakai yang mana?\n\nPegangan sederhananya: bila yang memanggil adalah halaman di aplikasimu sendiri, terutama form, pakai **server action**. Bila yang memanggil adalah pihak luar, misalnya aplikasi HP OSIS, layanan pembayaran yang mengirim webhook, atau skrip lain yang butuh JSON, pakai **route handler**. Untuk mengambil data saat menampilkan halaman, kamu tidak butuh keduanya; cukup `await` data di server component seperti di bab sebelumnya.\n\n## Rangkuman\n\n- Route handler di `route.ts` mengekspor fungsi bernama method HTTP dan mengembalikan `Response.json` dengan kode status yang tepat.\n- Server action adalah fungsi async bertanda `\"use server\"` yang dipasang di `<form action>` dan menerima `FormData`.\n- Validasi selalu di server, misalnya dengan Zod, karena server action bisa dipanggil langsung tanpa form.\n- `useActionState` menampilkan pesan error dan status pending di client component.\n- `revalidatePath` menyegarkan halaman setelah data berubah, lalu `redirect` mengarahkan pengguna.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aplikasi HP milik OSIS ingin mengambil daftar menu kantin dalam bentuk JSON. Alat Next.js mana yang paling cocok?",
+          "code": "",
+          "options": [
+            "Server action yang dipasang di atribut action sebuah form",
+            "File loading.tsx di folder menu yang mengembalikan data JSON",
+            "Client component dengan useEffect yang menyimpan data di state",
+            "Route handler GET di app/api/menu/route.ts"
+          ],
+          "answer": 3,
+          "explanation": "Route handler menyediakan URL yang bisa dipanggil siapa saja, termasuk aplikasi di luar Next.js."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Request POST dikirim dengan body `{ \"nama\": \"Es jeruk\" }` tanpa harga. Apa respons yang diterima?",
+          "code": "export async function POST(request: Request) {\n  const data = await request.json();\n  if (!data.nama || typeof data.harga !== \"number\") {\n    return Response.json({ error: \"wajib\" }, { status: 400 });\n  }\n  return Response.json(data, { status: 201 });\n}",
+          "options": [
+            "Status 201 dengan body berisi nama Es jeruk",
+            "Status 400 dengan body { error: \"wajib\" }",
+            "Status 500 karena harga bernilai undefined di dalam objek",
+            "Status 200 karena Response.json selalu mengembalikan berhasil"
+          ],
+          "answer": 1,
+          "explanation": "Harga tidak ada sehingga `typeof data.harga` bukan number, dan handler mengembalikan status 400."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Karena form sudah memakai atribut `required`, server action tidak perlu memvalidasi input lagi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Server action bisa dipanggil langsung tanpa melewati form, jadi validasi di server tetap wajib."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Setelah server action menyimpan menu baru, mengapa `revalidatePath(\"/menu\")` dipanggil?",
+          "code": "",
+          "options": [
+            "Agar halaman /menu tidak menampilkan data cache lama",
+            "Agar isian form diperiksa ulang sebelum dikirim ke database",
+            "Agar pengguna otomatis diarahkan ke halaman /menu setelah menyimpan",
+            "Agar route handler GET /api/menu ikut dibuat ulang saat build"
+          ],
+          "answer": 0,
+          "explanation": "`revalidatePath` membuang cache halaman sehingga kunjungan berikutnya memuat data terbaru; pengalihan dilakukan oleh `redirect`."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Route handler mini untuk menu kantin",
+          "prompt": "Route handler asli menerima `Request` dan mengembalikan `Response`. Di latihan ini keduanya disederhanakan menjadi objek biasa: `request` berbentuk `{ query, body }` dan hasilnya `{ status, body }`. Objek `query` menggantikan `new URL(request.url).searchParams` di kode asli.\n\nLengkapi dua fungsi:\n\n- `GET(request)`: baca `request.query.kategori` (`query` bisa tidak ada). Bila ada, kembalikan menu dengan kategori itu saja; bila tidak, semua menu. Status `200`.\n- `POST(request)`: `request.body` berisi `{ nama, harga, kategori }`. Bila `nama` bukan string atau kurang dari 3 huruf, atau `harga` bukan angka atau kurang dari 1000, kembalikan status `400` dengan `body.error` berisi pesan. Bila valid, tambahkan menu baru dengan `id` = jumlah menu + 1 (kategori bawaan `\"lainnya\"`), lalu kembalikan status `201` dan menu baru itu sebagai `body`.",
+          "starter": {
+            "code": "const menu = [\n  { id: 1, nama: \"Nasi goreng\", harga: 12000, kategori: \"makanan\" },\n  { id: 2, nama: \"Es teh\", harga: 4000, kategori: \"minuman\" },\n];\n\nfunction GET(request) {\n  // TODO: baca request.query.kategori, saring menu bila ada\n  return { status: 200, body: menu };\n}\n\nfunction POST(request) {\n  const data = request.body;\n  // TODO: validasi nama (minimal 3 huruf) dan harga (angka >= 1000)\n  // TODO: bila valid, tambahkan ke menu dengan id baru dan kembalikan status 201\n  return { status: 500, body: { error: \"belum dibuat\" } };\n}\n"
+          },
+          "solution": {
+            "code": "const menu = [\n  { id: 1, nama: \"Nasi goreng\", harga: 12000, kategori: \"makanan\" },\n  { id: 2, nama: \"Es teh\", harga: 4000, kategori: \"minuman\" },\n];\n\nfunction GET(request) {\n  const kategori = request.query?.kategori;\n  const hasil = kategori ? menu.filter((m) => m.kategori === kategori) : menu;\n  return { status: 200, body: hasil };\n}\n\nfunction POST(request) {\n  const data = request.body;\n  if (typeof data.nama !== \"string\" || data.nama.length < 3) {\n    return { status: 400, body: { error: \"nama minimal 3 huruf\" } };\n  }\n  if (typeof data.harga !== \"number\" || data.harga < 1000) {\n    return { status: 400, body: { error: \"harga minimal 1000\" } };\n  }\n  const baru = { id: menu.length + 1, nama: data.nama, harga: data.harga, kategori: data.kategori ?? \"lainnya\" };\n  menu.push(baru);\n  return { status: 201, body: baru };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "GET tanpa filter mengembalikan semua menu",
+              "check": "GET({}).status === 200 && GET({}).body.length >= 2"
+            },
+            {
+              "name": "GET menyaring kategori",
+              "check": "JSON.stringify(GET({ query: { kategori: \"minuman\" } }).body.map((m) => m.nama)) === JSON.stringify([\"Es teh\"])"
+            },
+            {
+              "name": "POST menolak harga tidak valid",
+              "check": "(() => { const r = POST({ body: { nama: \"Es jeruk\", harga: 500 } }); return r.status === 400 && typeof r.body.error === \"string\"; })()"
+            },
+            {
+              "name": "POST menolak nama terlalu pendek",
+              "check": "POST({ body: { nama: \"Es\", harga: 5000 } }).status === 400"
+            },
+            {
+              "name": "POST valid menambah menu",
+              "check": "(() => { const r = POST({ body: { nama: \"Es jeruk\", harga: 5000, kategori: \"minuman\" } }); return r.status === 201 && r.body.id === 3 && GET({ query: { kategori: \"minuman\" } }).body.length === 2; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "styling-gambar-dan-metadata",
+      "title": "Styling, Gambar, dan Metadata",
+      "est_minutes": 30,
+      "slide_from": 19,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Memilih cara styling yang tepat di Next.js: CSS global, CSS Modules, atau Tailwind CSS.\n- Menampilkan gambar yang ringan dan tidak membuat halaman bergeser dengan `next/image`.\n- Memuat font dengan `next/font` tanpa request tambahan ke server font luar.\n- Mengisi `metadata` dan `generateMetadata` supaya halaman rapi di mesin pencari dan saat dibagikan.\n\n## Tampilan juga bagian dari aplikasi\n\nDi bab sebelumnya kamu sudah membuat halaman, mengambil data, dan menerima kiriman form. Secara fungsi aplikasinya sudah jalan, tapi pengguna pertama kali menilai dari tampilan: apakah rapi, apakah gambar cepat muncul, dan apakah judul tab browser masuk akal. Next.js menyediakan beberapa alat bawaan untuk tiga urusan itu: styling, gambar dan font, serta metadata.\n\nKita pakai contoh toko online koperasi sekolah yang menjual seragam, buku tulis, dan kaos angkatan. Halaman katalognya ada di `app/produk/page.tsx` dan halaman detailnya di `app/produk/[id]/page.tsx`.\n\n## CSS global\n\nCSS global berlaku untuk seluruh aplikasi. Biasanya isinya reset sederhana, warna dasar, dan font tubuh. File ini cukup diimpor sekali di root layout:\n\n```tsx\n// app/layout.tsx\nimport \"./globals.css\";\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang=\"id\">\n      <body>{children}</body>\n    </html>\n  );\n}\n```\n\nHati-hati, semua selector di file global bisa bertabrakan. Kalau kamu menulis `.kartu { padding: 8px }` di sini lalu tim lain menulis `.kartu` dengan arti berbeda, hasilnya membingungkan. Karena itu CSS global sebaiknya dipakai hanya untuk hal yang memang berlaku di mana-mana.\n\n## CSS Modules\n\nCSS Modules menyelesaikan masalah tabrakan nama. Nama file diakhiri `.module.css`, lalu kamu mengimpornya sebagai objek:\n\n```css\n/* app/produk/produk.module.css */\n.kartu {\n  border: 1px solid #ddd;\n  border-radius: 12px;\n  padding: 16px;\n}\n.harga {\n  font-weight: 700;\n}\n```\n\n```tsx\n// app/produk/page.tsx\nimport styles from \"./produk.module.css\";\n\nexport default function Katalog() {\n  return (\n    <div className={styles.kartu}>\n      <h2>Kaos Angkatan</h2>\n      <p className={styles.harga}>Rp85.000</p>\n    </div>\n  );\n}\n```\n\nSaat build, Next.js mengubah `kartu` menjadi nama kelas unik, misalnya `produk_kartu__x7k2a`. Jadi `.kartu` di modul produk tidak akan pernah bentrok dengan `.kartu` di modul lain. CSS Modules bisa dipakai di server component maupun client component.\n\n## Tailwind CSS\n\nSaat membuat proyek dengan `create-next-app`, kamu ditawari memasang Tailwind CSS. Tailwind memakai kelas utilitas kecil yang langsung ditulis di JSX:\n\n```tsx\nexport function KartuProduk({ nama, harga }: { nama: string; harga: string }) {\n  return (\n    <div className=\"rounded-xl border p-4 hover:shadow-md\">\n      <h2 className=\"text-lg font-semibold\">{nama}</h2>\n      <p className=\"font-bold text-green-700\">{harga}</p>\n    </div>\n  );\n}\n```\n\nKelebihannya, kamu jarang perlu pindah file dan tidak perlu memikirkan nama kelas. Saat build, hanya kelas yang benar-benar dipakai yang masuk ke CSS akhir, jadi ukurannya tetap kecil. Tailwind dihubungkan lewat file CSS global, jadi kamu tetap mengimpor `globals.css` di root layout.\n\nMana yang dipilih? Tidak ada jawaban mutlak. Banyak tim memakai Tailwind untuk hampir semua hal dan CSS Modules untuk bagian yang rumit seperti animasi. Yang penting konsisten dalam satu proyek.\n\n## Gambar dengan next/image\n\nTag `<img>` biasa punya dua masalah umum. Pertama, file aslinya sering besar, misalnya foto produk 3 MB dari kamera HP. Kedua, sebelum gambar selesai dimuat, browser belum tahu tingginya, jadi teks di bawahnya meloncat saat gambar muncul. Komponen `Image` dari `next/image` mengurus keduanya:\n\n```tsx\nimport Image from \"next/image\";\nimport fotoKaos from \"./kaos.jpg\";\n\nexport default function DetailKaos() {\n  return (\n    <Image\n      src={fotoKaos}\n      alt=\"Kaos angkatan warna hitam\"\n      sizes=\"(max-width: 768px) 100vw, 50vw\"\n    />\n  );\n}\n```\n\nBeberapa hal yang terjadi di balik layar:\n\n- **Ukuran otomatis.** Next.js membuat beberapa versi gambar dengan lebar berbeda dan format modern seperti WebP, lalu browser mengambil yang paling pas dengan layar.\n- **Ruang dipesan.** Karena lebar dan tinggi diketahui, tempat gambar sudah disiapkan sebelum file datang, jadi tata letak tidak bergeser.\n- **Lazy loading.** Gambar yang belum terlihat di layar baru dimuat saat pengguna menggulir mendekatinya.\n\nUntuk gambar yang diimpor statis seperti `fotoKaos`, ukuran dibaca otomatis. Untuk gambar dari URL luar, kamu wajib menulis `width` dan `height` (atau memakai `fill` agar gambar mengisi kotak induknya), dan domain asalnya harus didaftarkan di `next.config.ts` lewat `images.remotePatterns`. Ini mencegah server gambarmu dipakai orang lain untuk mengoptimasi gambar sembarangan.\n\nAtribut `alt` wajib diisi. Tulis isi gambar dengan singkat, karena teks ini dibaca pembaca layar dan dipakai mesin pencari. Untuk gambar utama yang langsung terlihat di atas layar, kamu bisa meminta Next.js memuatnya lebih awal. Di versi lama properti itu bernama `priority`, sedangkan di Next.js 16 namanya `preload`.\n\n## Font dengan next/font\n\nFont dari Google Fonts biasanya dimuat lewat tag `<link>` ke server Google. Artinya ada request tambahan, dan teks bisa berkedip berganti font. Dengan `next/font`, file font diunduh saat build lalu disajikan dari domainmu sendiri:\n\n```tsx\n// app/layout.tsx\nimport { Plus_Jakarta_Sans } from \"next/font/google\";\nimport \"./globals.css\";\n\nconst jakarta = Plus_Jakarta_Sans({ subsets: [\"latin\"] });\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang=\"id\" className={jakarta.className}>\n      <body>{children}</body>\n    </html>\n  );\n}\n```\n\nBrowser pengguna tidak pernah menghubungi Google, dan Next.js menyiapkan font cadangan dengan ukuran mirip supaya pergantian font tidak menggeser teks. Untuk file font milik sendiri, pakai `next/font/local` dengan menunjuk path file-nya.\n\n## Metadata untuk SEO\n\nMetadata adalah informasi tentang halaman: judul di tab browser, deskripsi di hasil pencarian Google, dan gambar pratinjau saat link dibagikan ke WhatsApp. Di App Router kamu tidak menulis tag `<head>` sendiri. Cukup ekspor objek `metadata` dari `layout.tsx` atau `page.tsx`:\n\n```tsx\n// app/layout.tsx\nimport type { Metadata } from \"next\";\n\nexport const metadata: Metadata = {\n  title: { default: \"Koperasi SMK Nusantara\", template: \"%s | Koperasi SMK Nusantara\" },\n  description: \"Belanja seragam, buku, dan kaos angkatan secara online.\",\n};\n```\n\n`template` berguna sekali. Halaman anak cukup menulis `title: \"Katalog\"`, lalu judul akhirnya menjadi \"Katalog | Koperasi SMK Nusantara\". Halaman yang tidak menulis judul memakai `default`. Metadata digabung dari root layout sampai page, dan nilai yang lebih dalam menimpa nilai di atasnya.\n\n![Metadata statis dan generateMetadata](slide:21)\n\n## generateMetadata untuk halaman dinamis\n\nHalaman detail produk punya judul yang berbeda untuk setiap produk, jadi objek statis tidak cukup. Untuk itu ada fungsi `generateMetadata`:\n\n```tsx\n// app/produk/[id]/page.tsx\nimport type { Metadata } from \"next\";\nimport { ambilProduk } from \"@/lib/produk\";\n\ntype Props = { params: Promise<{ id: string }> };\n\nexport async function generateMetadata({ params }: Props): Promise<Metadata> {\n  const { id } = await params;\n  const produk = await ambilProduk(id);\n  return {\n    title: produk.nama,\n    description: produk.deskripsi.slice(0, 160),\n    openGraph: { images: [produk.foto] },\n  };\n}\n\nexport default async function DetailProduk({ params }: Props) {\n  const { id } = await params;\n  const produk = await ambilProduk(id);\n  return <h1>{produk.nama}</h1>;\n}\n```\n\nSeperti `page`, `params` di sini berupa Promise sehingga perlu di-`await`. Bagian `openGraph` mengatur pratinjau saat link dibagikan di media sosial. Deskripsi dipotong sekitar 160 karakter karena mesin pencari biasanya tidak menampilkan lebih dari itu.\n\nKamu mungkin khawatir `ambilProduk` dipanggil dua kali. Kalau di dalamnya memakai `fetch` dengan URL dan opsi yang sama, Next.js menggabungkan request itu selama satu kali render. Kalau memakai database langsung, kamu bisa membungkusnya dengan `cache` dari React supaya hasilnya dipakai ulang.\n\nIngat juga bahwa `metadata` dan `generateMetadata` hanya didukung di server component. Kalau page-mu memakai `\"use client\"`, pindahkan bagian interaktif ke komponen terpisah dan biarkan page tetap server component.\n\n## Rangkuman\n\n- CSS global diimpor sekali di root layout; CSS Modules (`.module.css`) membuat nama kelas unik per file; Tailwind memakai kelas utilitas langsung di JSX.\n- `next/image` mengecilkan dan mengubah format gambar, memesan ruang agar tata letak tidak bergeser, dan memuat gambar secara lazy. Atribut `alt` wajib, dan gambar dari domain luar harus didaftarkan.\n- `next/font` mengunduh font saat build sehingga browser tidak perlu menghubungi server font luar.\n- `metadata` statis diekspor dari layout atau page, dengan `title.template` untuk pola judul yang seragam.\n- `generateMetadata` dipakai untuk halaman dinamis, menerima `params` yang harus di-`await`, dan hanya berjalan di server component.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa keuntungan utama CSS Modules dibanding CSS global?",
+          "code": "",
+          "options": [
+            "Nama kelas dibuat unik per file sehingga tidak bentrok",
+            "File CSS-nya dimuat lewat CDN milik Vercel secara otomatis",
+            "Bisa dipakai tanpa perlu menulis atribut className sama sekali",
+            "Semua aturannya langsung berlaku di seluruh halaman aplikasi"
+          ],
+          "answer": 0,
+          "explanation": "Next.js mengubah nama kelas di file .module.css menjadi nama unik, jadi kelas dengan nama sama di modul lain tidak saling menimpa."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Jika halaman produk menulis `title: \"Katalog\"`, judul akhir di tab browser adalah...",
+          "code": "export const metadata = {\n  title: {\n    default: \"Koperasi\",\n    template: \"%s | Koperasi\",\n  },\n};",
+          "options": [
+            "Koperasi",
+            "Katalog",
+            "Katalog | Koperasi",
+            "%s | Koperasi"
+          ],
+          "answer": 2,
+          "explanation": "Judul string dari halaman anak dimasukkan ke posisi %s pada template milik layout di atasnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Gambar dari domain luar ditampilkan dengan next/image. Apa yang wajib disiapkan?",
+          "code": "",
+          "options": [
+            "Mengubah gambar ke format WebP sendiri sebelum diunggah ke server",
+            "width dan height (atau fill) serta domain di images.remotePatterns",
+            "Menambahkan \"use client\" di file page yang menampilkan gambarnya",
+            "Memanggil generateMetadata supaya ukuran gambar diketahui saat build"
+          ],
+          "answer": 1,
+          "explanation": "Ukuran gambar luar tidak bisa dibaca saat build, dan domainnya harus didaftarkan agar optimasi gambar tidak disalahgunakan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "generateMetadata bisa diekspor dari page yang memakai direktif \"use client\".",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "metadata dan generateMetadata hanya didukung di server component."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Membuat metadata halaman produk",
+          "prompt": "Di Next.js, `generateMetadata` mengembalikan objek metadata untuk halaman dinamis. Tulis versi kecilnya: `buatMetadata(produk)` yang menerima `{ nama, deskripsi, foto }` dan mengembalikan objek berikut.\n\n- `title`: `nama` yang sudah di-trim. Bila kosong atau tidak ada, pakai `\"Produk\"`.\n- `description`: `deskripsi` yang sudah di-trim. Bila panjangnya lebih dari 160 karakter, ambil 157 karakter pertama lalu tambahkan `\"...\"` (total 160). Bila tidak ada, string kosong.\n- `openGraph`: `{ title, description, images }` dengan `title` dan `description` yang sama, dan `images` berisi `[foto]`, atau `[]` bila `foto` tidak ada.\n\nContoh: `buatMetadata({ nama: \" Kaos Angkatan \", deskripsi: \"Bahan katun\", foto: \"/kaos.jpg\" })` menghasilkan `{ title: \"Kaos Angkatan\", description: \"Bahan katun\", openGraph: { title: \"Kaos Angkatan\", description: \"Bahan katun\", images: [\"/kaos.jpg\"] } }`.",
+          "starter": {
+            "code": "function buatMetadata(produk) {\n  const title = produk.nama;\n  // TODO: trim, fallback \"Produk\", potong deskripsi 160 karakter, isi openGraph\n  return { title };\n}\n"
+          },
+          "solution": {
+            "code": "function buatMetadata(produk) {\n  const title = (produk.nama ?? \"\").trim() || \"Produk\";\n  let description = (produk.deskripsi ?? \"\").trim();\n  if (description.length > 160) description = description.slice(0, 157) + \"...\";\n  const images = produk.foto ? [produk.foto] : [];\n  return { title, description, openGraph: { title, description, images } };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Contoh lengkap sesuai",
+              "check": "JSON.stringify(buatMetadata({ nama: \" Kaos Angkatan \", deskripsi: \"Bahan katun\", foto: \"/kaos.jpg\" })) === JSON.stringify({ title: \"Kaos Angkatan\", description: \"Bahan katun\", openGraph: { title: \"Kaos Angkatan\", description: \"Bahan katun\", images: [\"/kaos.jpg\"] } })"
+            },
+            {
+              "name": "Nama kosong memakai judul Produk",
+              "check": "buatMetadata({ nama: \"   \" }).title === \"Produk\" && buatMetadata({}).title === \"Produk\""
+            },
+            {
+              "name": "Deskripsi panjang dipotong jadi 160 karakter",
+              "check": "(() => { const d = buatMetadata({ nama: \"Buku\", deskripsi: \"a\".repeat(200) }).description; return d.length === 160 && d.endsWith(\"...\"); })()"
+            },
+            {
+              "name": "Tanpa foto, images berupa array kosong",
+              "check": "(() => { const m = buatMetadata({ nama: \"Pulpen\" }); return Array.isArray(m.openGraph.images) && m.openGraph.images.length === 0 && m.description === \"\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "proxy-cookie-dan-autentikasi",
+      "title": "Proxy, Cookie, dan Autentikasi",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Memahami tugas `proxy.ts` (dulu bernama middleware) dan cara membatasinya dengan `matcher`.\n- Membaca dan menulis cookie dengan `cookies()` dari `next/headers`.\n- Menyimpan sesi login dengan aman memakai cookie `httpOnly`.\n- Melindungi halaman, server action, dan data di server, bukan hanya di proxy.\n\n## Masalah: halaman yang hanya untuk anggota\n\nBayangkan aplikasi absensi kelas. Siapa pun boleh membuka halaman depan, tapi halaman `/dasbor` yang berisi rekap kehadiran hanya boleh dibuka guru yang sudah masuk. Kalau orang yang belum login membuka `/dasbor`, dia harus diarahkan ke `/masuk`.\n\nUntuk itu kita butuh tiga hal: tempat untuk mencegat request sebelum halaman dirender, cara menyimpan tanda bahwa pengguna sudah login, dan pemeriksaan ulang di dekat data. Next.js menyediakan proxy, cookie, dan fungsi `redirect` untuk ketiganya.\n\n## Proxy: pos satpam di depan aplikasi\n\nFile `proxy.ts` diletakkan di root proyek (sejajar folder `app`, atau di dalam `src` bila kamu memakai folder `src`). Isinya fungsi bernama `proxy` yang dijalankan **sebelum** request sampai ke route. Sebelum Next.js 16, file ini bernama `middleware.ts` dengan fungsi `middleware`. Namanya diganti karena perannya memang seperti proxy: berdiri di depan aplikasi dan meneruskan atau membelokkan request.\n\n```ts\n// proxy.ts\nimport { NextResponse, type NextRequest } from \"next/server\";\n\nexport function proxy(request: NextRequest) {\n  const sesi = request.cookies.get(\"sesi\")?.value;\n  if (!sesi) {\n    const url = new URL(\"/masuk\", request.url);\n    url.searchParams.set(\"dari\", request.nextUrl.pathname);\n    return NextResponse.redirect(url);\n  }\n  return NextResponse.next();\n}\n\nexport const config = {\n  matcher: [\"/dasbor/:path*\", \"/akun/:path*\"],\n};\n```\n\nPenjelasannya:\n\n- `request.cookies.get(\"sesi\")` membaca cookie bernama `sesi` dari request.\n- Bila tidak ada, `NextResponse.redirect` mengirim pengguna ke `/masuk`. Parameter `dari` menyimpan halaman tujuan awal supaya setelah login pengguna bisa dikembalikan ke sana.\n- Bila ada, `NextResponse.next()` meneruskan request seperti biasa.\n- `config.matcher` membatasi proxy hanya untuk path tertentu. `:path*` berarti nol atau lebih segmen setelahnya, jadi `/dasbor`, `/dasbor/rekap`, dan `/dasbor/kelas/12` semuanya kena.\n\nTanpa `matcher`, proxy berjalan untuk hampir setiap request, termasuk file gambar dan aset. Itu boros, jadi selalu batasi.\n\n![Proxy mencegat request sebelum halaman](slide:22)\n\n## Urutan kerja satu request\n\nSupaya gambarannya utuh, ikuti perjalanan satu request. Bu Rina, wali kelas XI RPL, mengetik alamat `/dasbor/rekap` di browser. Browser mengirim request beserta semua cookie milik domain aplikasi. Sebelum Next.js mencari file `app/dasbor/rekap/page.tsx`, fungsi `proxy` dijalankan lebih dulu karena path itu cocok dengan matcher. Proxy membaca cookie `sesi`. Bila ada, request diteruskan dan halaman dirender seperti biasa. Bila tidak ada, browser menerima respons redirect dan otomatis membuka `/masuk?dari=/dasbor/rekap`. Setelah Bu Rina berhasil masuk, server action login bisa membaca nilai `dari` itu dan mengarahkannya kembali ke halaman rekap.\n\nProxy juga bisa melakukan hal lain selain redirect, misalnya menambahkan header ke respons atau menulis ulang (rewrite) URL ke route lain tanpa mengubah alamat di browser. Untuk kelas ini, cukup pahami pola redirect dan teruskan.\n\n## Proxy hanya pemeriksaan cepat\n\nProxy berjalan untuk banyak request, jadi isinya harus ringan. Jangan melakukan query database berat di sini. Dokumentasi Next.js menyebut pemeriksaan di proxy sebagai pemeriksaan **optimis**: cukup melihat apakah cookie sesi ada, lalu redirect bila tidak. Pemeriksaan sebenarnya (apakah sesi itu sah, apakah pengguna berhak) tetap dilakukan di server saat data diambil.\n\nKenapa tidak cukup di proxy saja? Karena ada jalan lain menuju data. Server action, misalnya, dipanggil lewat request POST ke halaman, dan matcher yang salah tulis bisa membuat sebuah path lolos. Prinsip amannya: setiap tempat yang menyentuh data sensitif memeriksa sendiri.\n\n## Cookie dengan cookies()\n\nDi server component, server action, dan route handler, cookie dibaca lewat fungsi `cookies()` dari `next/headers`. Sejak Next.js 15 fungsi ini bersifat async, jadi harus di-`await`:\n\n```tsx\n// app/dasbor/page.tsx\nimport { cookies } from \"next/headers\";\n\nexport default async function Dasbor() {\n  const cookieStore = await cookies();\n  const tema = cookieStore.get(\"tema\")?.value ?? \"terang\";\n  return <p>Tema kamu: {tema}</p>;\n}\n```\n\nMembaca cookie membuat halaman menjadi dinamis, karena isinya bergantung pada request setiap pengguna. Menulis cookie hanya boleh di server action atau route handler, tidak di server component biasa, karena saat komponen dirender header respons sudah dikirim.\n\n## Menyimpan sesi saat login\n\nBerikut contoh server action untuk form masuk. Detail pengecekan password disederhanakan; yang penting adalah cara cookie sesi dipasang:\n\n```ts\n// app/masuk/actions.ts\n\"use server\";\nimport { cookies } from \"next/headers\";\nimport { redirect } from \"next/navigation\";\nimport { cekGuru, buatSesi } from \"@/lib/auth\";\n\nexport async function masuk(formData: FormData) {\n  const email = String(formData.get(\"email\"));\n  const password = String(formData.get(\"password\"));\n  const guru = await cekGuru(email, password);\n  if (!guru) return { error: \"Email atau password salah\" };\n\n  const token = await buatSesi(guru.id);\n  const cookieStore = await cookies();\n  cookieStore.set(\"sesi\", token, {\n    httpOnly: true,\n    secure: true,\n    sameSite: \"lax\",\n    path: \"/\",\n    maxAge: 60 * 60 * 24 * 7,\n  });\n  redirect(\"/dasbor\");\n}\n```\n\nOpsi cookie-nya penting:\n\n- `httpOnly: true` membuat cookie tidak bisa dibaca JavaScript di browser, jadi script jahat dari serangan XSS tidak bisa mencurinya.\n- `secure: true` membuat cookie hanya dikirim lewat HTTPS.\n- `sameSite: \"lax\"` mengurangi risiko cookie ikut terkirim dari situs lain.\n- `maxAge` dalam detik; di contoh ini sesi berlaku 7 hari.\n\nIsi cookie sebaiknya token acak yang dicocokkan dengan tabel sesi di database, atau data yang ditandatangani (misalnya JWT) sehingga tidak bisa dipalsukan. Jangan pernah menyimpan `role=guru` polos di cookie, karena pengguna bisa mengubahnya sendiri lewat DevTools.\n\nUntuk keluar, server action cukup memanggil `cookieStore.delete(\"sesi\")` lalu redirect ke halaman depan.\n\n## Melindungi halaman di server\n\nSelain proxy, halaman sensitif juga memeriksa sesi sendiri. Fungsi `redirect` dari `next/navigation` bisa dipanggil langsung di server component:\n\n```tsx\n// app/dasbor/page.tsx\nimport { redirect } from \"next/navigation\";\nimport { ambilSesi } from \"@/lib/auth\";\n\nexport default async function Dasbor() {\n  const sesi = await ambilSesi();\n  if (!sesi) redirect(\"/masuk\");\n  return <h1>Halo, {sesi.nama}</h1>;\n}\n```\n\nAda satu jebakan: jangan hanya memeriksa sesi di `layout.tsx`. Saat pengguna berpindah antar halaman di dalam layout yang sama, layout tidak dirender ulang, jadi pemeriksaannya tidak selalu berjalan. Taruh pemeriksaan di page, dan lebih baik lagi di fungsi pengambil data yang dipanggil page. Server action juga harus memeriksa sesi di baris pertamanya, karena action bisa dipanggil langsung tanpa melewati halaman.\n\n## Memakai library autentikasi\n\nMenulis sistem login sendiri bagus untuk belajar, tapi untuk aplikasi sungguhan kamu sebaiknya memakai library yang sudah teruji. Beberapa pilihan populer untuk Next.js adalah Auth.js (dulu bernama NextAuth.js), Better Auth, dan layanan seperti Clerk. Library ini mengurus login dengan Google atau GitHub, penyimpanan sesi, enkripsi cookie, dan perlindungan CSRF. Polanya tetap sama dengan yang kamu pelajari di sini: ada fungsi untuk membaca sesi di server, lalu halaman dan action memeriksa hasilnya sebelum menampilkan data.\n\n## Rangkuman\n\n- `proxy.ts` (dulu `middleware.ts`) menjalankan fungsi `proxy` sebelum request sampai ke route; batasi dengan `config.matcher`.\n- `NextResponse.redirect` membelokkan request, `NextResponse.next()` meneruskannya.\n- `cookies()` dari `next/headers` bersifat async; cookie dibaca di server component dan ditulis di server action atau route handler.\n- Cookie sesi dipasang dengan `httpOnly`, `secure`, dan `sameSite`, dan isinya harus token yang tidak bisa dipalsukan.\n- Proxy hanya pemeriksaan optimis; page, server action, dan fungsi data tetap memeriksa sesi sendiri, dan jangan mengandalkan layout untuk itu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di Next.js 16, file middleware.ts diganti nama menjadi apa?",
+          "code": "",
+          "options": [
+            "proxy.ts",
+            "guard.ts di dalam folder app",
+            "handler.ts di folder app/api",
+            "intercept.ts sejajar package.json"
+          ],
+          "answer": 0,
+          "explanation": "Next.js 16 mengganti nama middleware.ts menjadi proxy.ts dengan fungsi bernama proxy."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Dengan matcher ini, path mana yang TIDAK dijalankan oleh proxy?",
+          "code": "export const config = {\n  matcher: [\"/dasbor/:path*\"],\n};",
+          "options": [
+            "/dasbor",
+            "/dasbor/rekap",
+            "/dasbor/kelas/12",
+            "/masuk"
+          ],
+          "answer": 3,
+          "explanation": "Pola /dasbor/:path* mencakup /dasbor dan semua path di bawahnya, sedangkan /masuk tidak cocok."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa cookie sesi sebaiknya diberi opsi httpOnly?",
+          "code": "",
+          "options": [
+            "Agar cookie terkirim ke semua domain lain yang membuka situs",
+            "Agar JavaScript di browser tidak bisa membacanya",
+            "Agar cookie otomatis terhapus saat tab browser ditutup",
+            "Agar cookie bisa diubah dari halaman client component"
+          ],
+          "answer": 1,
+          "explanation": "Cookie httpOnly tidak bisa dibaca document.cookie, sehingga script jahat dari serangan XSS tidak bisa mencurinya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Memeriksa sesi di layout.tsx saja sudah cukup untuk melindungi semua halaman di bawahnya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Layout tidak dirender ulang saat berpindah halaman di dalamnya, jadi pemeriksaan harus ada di page atau fungsi pengambil data."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Proxy mini untuk halaman terlindungi",
+          "prompt": "Tiru cara kerja `proxy.ts` tanpa Next.js. Request disederhanakan menjadi objek `{ pathname, cookies }`, dengan `cookies` berupa objek biasa seperti `{ sesi: \"abc\" }`.\n\nTulis `proxy(request)` yang mengembalikan:\n\n- `{ type: \"redirect\", to: \"/masuk?dari=\" + pathname }` bila path terlindungi dan cookie `sesi` tidak ada atau string kosong.\n- `{ type: \"redirect\", to: \"/dasbor\" }` bila pengguna yang sudah punya sesi membuka `/masuk`.\n- `{ type: \"next\" }` untuk selain itu.\n\nPath terlindungi meniru matcher `/dasbor/:path*` dan `/akun/:path*`: path sama persis dengan `/dasbor` atau `/akun`, atau diawali `/dasbor/` atau `/akun/`. Perhatikan `/dasborku` tidak termasuk.\n\nIni sama dengan proxy asli yang memanggil `NextResponse.redirect` atau `NextResponse.next()`.",
+          "starter": {
+            "code": "const TERLINDUNGI = [\"/dasbor\", \"/akun\"];\n\nfunction proxy(request) {\n  const { pathname, cookies } = request;\n  // TODO: cek path terlindungi, cookie sesi, dan pengguna login yang membuka /masuk\n  return { type: \"next\" };\n}\n"
+          },
+          "solution": {
+            "code": "const TERLINDUNGI = [\"/dasbor\", \"/akun\"];\n\nfunction proxy(request) {\n  const { pathname, cookies } = request;\n  const sesi = cookies && cookies.sesi;\n  const terlindungi = TERLINDUNGI.some((p) => pathname === p || pathname.startsWith(p + \"/\"));\n  if (terlindungi && !sesi) return { type: \"redirect\", to: \"/masuk?dari=\" + pathname };\n  if (pathname === \"/masuk\" && sesi) return { type: \"redirect\", to: \"/dasbor\" };\n  return { type: \"next\" };\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tanpa sesi ke /dasbor/rekap diarahkan ke /masuk",
+              "check": "JSON.stringify(proxy({ pathname: \"/dasbor/rekap\", cookies: {} })) === JSON.stringify({ type: \"redirect\", to: \"/masuk?dari=/dasbor/rekap\" })"
+            },
+            {
+              "name": "Dengan sesi, /akun diteruskan",
+              "check": "proxy({ pathname: \"/akun\", cookies: { sesi: \"t0k3n\" } }).type === \"next\""
+            },
+            {
+              "name": "Halaman publik dan /dasborku tidak dilindungi",
+              "check": "proxy({ pathname: \"/\", cookies: {} }).type === \"next\" && proxy({ pathname: \"/dasborku\", cookies: {} }).type === \"next\""
+            },
+            {
+              "name": "Sesi kosong dianggap belum masuk",
+              "check": "proxy({ pathname: \"/dasbor\", cookies: { sesi: \"\" } }).to === \"/masuk?dari=/dasbor\""
+            },
+            {
+              "name": "Sudah masuk membuka /masuk dibelokkan ke /dasbor",
+              "check": "JSON.stringify(proxy({ pathname: \"/masuk\", cookies: { sesi: \"t0k3n\" } })) === JSON.stringify({ type: \"redirect\", to: \"/dasbor\" })"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "database-dan-data-layer",
+      "title": "Database dan Data Layer",
+      "est_minutes": 30,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Memahami kenapa akses database hanya boleh terjadi di server.\n- Mengenal peran ORM seperti Prisma dan Drizzle untuk menulis query dengan aman.\n- Memakai paket `server-only` dan data access layer untuk menjaga data sensitif.\n- Membedakan environment variable rahasia dan yang berawalan `NEXT_PUBLIC_`.\n\n## Kenapa database hanya di server\n\nDi kelas React, semua kode berjalan di browser. Kalau aplikasi React butuh data, dia memanggil API milik backend terpisah. Di Next.js kamu bisa langsung membaca database dari server component, dan ini salah satu alasan Next.js disebut framework full-stack.\n\nTapi ada aturan yang tidak bisa ditawar: kode yang terhubung ke database harus tetap di server. Koneksi database membutuhkan alamat server, username, dan password. Kalau kode itu terkirim ke browser, siapa pun bisa membuka DevTools, mengambil password-nya, lalu membaca atau menghapus seluruh data. Untuk aplikasi nilai rapor sekolah, itu bencana.\n\nKabar baiknya, server component tidak pernah dikirim ke browser sebagai kode. Yang dikirim hanya hasil render-nya. Jadi query di dalam server component aman:\n\n```tsx\n// app/perpustakaan/page.tsx\nimport { db } from \"@/lib/db\";\n\nexport default async function DaftarBuku() {\n  const buku = await db.buku.findMany({ where: { tersedia: true } });\n  return (\n    <ul>\n      {buku.map((b) => <li key={b.id}>{b.judul}</li>)}\n    </ul>\n  );\n}\n```\n\nRisikonya muncul saat sebuah file dengan kode database tidak sengaja diimpor oleh client component. Kita akan bahas cara mencegahnya sebentar lagi.\n\n## Memakai ORM\n\nKamu bisa menulis SQL langsung, tapi banyak proyek Next.js memakai ORM (Object Relational Mapper). ORM membuat tabel terasa seperti objek JavaScript, memberi autocomplete dan pengecekan tipe dari TypeScript, serta otomatis memakai parameter sehingga aman dari SQL injection. Dua yang paling sering dipakai adalah Prisma dan Drizzle.\n\nDengan **Prisma**, struktur tabel ditulis di file `schema.prisma`:\n\n```prisma\nmodel Buku {\n  id       Int     @id @default(autoincrement())\n  judul    String\n  penulis  String\n  tersedia Boolean @default(true)\n}\n```\n\nLalu perintah migrasi Prisma membuat tabelnya di database, dan Prisma menghasilkan klien bertipe. Query-nya terlihat seperti ini:\n\n```ts\nconst buku = await prisma.buku.findMany({\n  where: { tersedia: true },\n  orderBy: { judul: \"asc\" },\n});\n```\n\n**Drizzle** mengambil pendekatan lain: skema ditulis sebagai kode TypeScript, dan query-nya mirip SQL:\n\n```ts\nconst buku = await db\n  .select()\n  .from(tabelBuku)\n  .where(eq(tabelBuku.tersedia, true));\n```\n\nCara memasang klien keduanya berubah dari versi ke versi, jadi ikuti panduan resmi ORM yang kamu pilih. Polanya sama: satu file seperti `lib/db.ts` membuat klien database, lalu file lain mengimpornya. Saat development, Next.js memuat ulang modul setiap kali kamu menyimpan file, jadi panduan resmi biasanya menyarankan menyimpan klien di `globalThis` agar tidak membuat koneksi baru terus menerus.\n\n![Satu klien database di lib/db.ts](slide:26)\n\n## Paket server-only\n\nMisalkan temanmu membuat client component untuk tombol pencarian, lalu tanpa sadar mengimpor fungsi dari `lib/db.ts`. Next.js akan mencoba memasukkan kode itu ke bundle browser. Untuk mencegahnya, tambahkan satu baris di awal file yang hanya boleh dipakai server:\n\n```ts\n// lib/db.ts\nimport \"server-only\";\n// ...kode pembuatan klien database\n```\n\nPaket `server-only` tidak melakukan apa-apa di server. Tapi bila file ini sampai diimpor dari client component, build gagal dengan pesan error yang jelas. Kesalahan ditemukan saat development, bukan setelah password database bocor ke produksi. Ada juga pasangannya, `client-only`, untuk kode yang hanya boleh jalan di browser.\n\n## Data access layer\n\nTim Next.js menyarankan pola **data access layer** (DAL): semua akses data dikumpulkan di satu folder, misalnya `lib/dal.ts`. Setiap fungsi di sana melakukan tiga hal: memeriksa sesi, mengambil data, lalu mengembalikan hanya kolom yang aman ditampilkan.\n\n```ts\n// lib/dal.ts\nimport \"server-only\";\nimport { cache } from \"react\";\nimport { db } from \"@/lib/db\";\nimport { ambilSesi } from \"@/lib/auth\";\n\nexport const nilaiSaya = cache(async () => {\n  const sesi = await ambilSesi();\n  if (!sesi) throw new Error(\"Belum masuk\");\n  const baris = await db.nilai.findMany({ where: { siswaId: sesi.siswaId } });\n  return baris.map((n) => ({ mapel: n.mapel, nilai: n.nilai }));\n});\n```\n\nPerhatikan baris terakhir. Tabel nilai mungkin menyimpan catatan internal guru atau id lain. Dengan memetakan hasil ke objek kecil (sering disebut DTO, data transfer object), kolom yang tidak perlu tidak pernah sampai ke komponen. Ini penting karena props dari server component ke client component ikut dikirim ke browser. Kalau kamu mengirim seluruh objek pengguna termasuk hash password, data itu terlihat di kode sumber halaman.\n\n`cache` dari React membuat fungsi ini hanya dijalankan sekali per request walaupun dipanggil dari beberapa komponen. Halaman dan `generateMetadata` bisa sama-sama memanggil `nilaiSaya()` tanpa query ganda.\n\n## Di mana memanggil data access layer\n\nFungsi di DAL dipanggil dari tiga tempat: server component untuk menampilkan data, server action untuk mengubah data, dan route handler bila ada aplikasi lain (misalnya aplikasi Android sekolah) yang membutuhkan API. Karena pemeriksaan sesi sudah ada di dalam fungsi DAL, ketiga tempat itu otomatis terlindungi. Kamu tidak perlu ingat menulis ulang pengecekan login di setiap halaman, dan kalau aturan aksesnya berubah, misalnya wali kelas boleh melihat nilai seluruh kelasnya, kamu cukup mengubah satu file.\n\nBandingkan dengan pola lama di mana setiap halaman menulis query sendiri. Begitu aplikasi punya puluhan halaman, hampir pasti ada satu yang lupa memeriksa sesi. Data access layer membuat cara yang benar menjadi cara yang paling mudah.\n\n## Environment variable\n\nAlamat database dan kunci API tidak boleh ditulis langsung di kode, karena kode masuk ke Git. Simpan di file `.env.local` di root proyek. Next.js memuatnya otomatis, dan file ini sudah masuk `.gitignore` di proyek dari `create-next-app`.\n\n```bash\n# .env.local\nDATABASE_URL=\"postgresql://admin:rahasia@localhost:5432/sekolah\"\nRESEND_API_KEY=\"re_xxxxxxxx\"\nNEXT_PUBLIC_NAMA_SEKOLAH=\"SMK Nusantara\"\n```\n\nAturannya sederhana tapi sering bikin salah paham:\n\n- Variabel **tanpa** awalan `NEXT_PUBLIC_` hanya tersedia di server lewat `process.env.DATABASE_URL`. Di browser nilainya `undefined`.\n- Variabel **dengan** awalan `NEXT_PUBLIC_` ditanam ke bundle JavaScript saat build, sehingga bisa dipakai di client component. Artinya siapa pun yang membuka situsmu bisa melihat nilainya.\n\nJadi jangan pernah menamai variabel rahasia dengan `NEXT_PUBLIC_`. `NEXT_PUBLIC_DATABASE_URL` sama saja dengan menempel password database di papan pengumuman sekolah. Awalan itu hanya untuk nilai yang memang publik, seperti nama sekolah atau URL situs.\n\nKarena nilai `NEXT_PUBLIC_` ditanam saat build, mengubahnya di server produksi tidak berpengaruh sampai aplikasi di-build ulang. Variabel rahasia server dibaca saat aplikasi berjalan pada halaman dinamis.\n\n## Rangkuman\n\n- Kode yang terhubung ke database hanya boleh berjalan di server; server component aman karena yang dikirim ke browser hanya hasil render-nya.\n- ORM seperti Prisma dan Drizzle memberi query bertipe yang aman dari SQL injection; buat satu klien di `lib/db.ts`.\n- `import \"server-only\"` membuat build gagal bila file khusus server diimpor dari client component.\n- Data access layer memeriksa sesi, mengambil data, lalu mengembalikan DTO berisi kolom yang aman saja.\n- Variabel tanpa `NEXT_PUBLIC_` hanya ada di server; yang berawalan `NEXT_PUBLIC_` ikut terkirim ke browser, jadi jangan pernah dipakai untuk rahasia.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang terjadi bila file berisi `import \"server-only\"` diimpor dari client component?",
+          "code": "",
+          "options": [
+            "Build gagal dengan pesan error",
+            "File tetap dikirim ke browser tetapi isinya dienkripsi dulu",
+            "Next.js memindahkan seluruh komponen itu ke server secara diam-diam",
+            "Kode berjalan normal namun memunculkan peringatan di console browser"
+          ],
+          "answer": 0,
+          "explanation": "Paket server-only membuat build gagal sehingga kode khusus server tidak pernah masuk ke bundle browser."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang tercetak di console browser?",
+          "code": "// .env.local\nDATABASE_URL=\"postgresql://...\"\nNEXT_PUBLIC_NAMA_SEKOLAH=\"SMK Nusantara\"\n\n// di dalam client component\nconsole.log(process.env.DATABASE_URL);",
+          "options": [
+            "postgresql://...",
+            "SMK Nusantara",
+            "undefined",
+            "Error: env tidak ditemukan saat build"
+          ],
+          "answer": 2,
+          "explanation": "Variabel tanpa awalan NEXT_PUBLIC_ tidak ditanam ke bundle browser, jadi nilainya undefined di client component."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa fungsi data access layer sebaiknya mengembalikan DTO, bukan seluruh baris tabel?",
+          "code": "",
+          "options": [
+            "Agar database lebih cepat karena menulis lebih sedikit kolom",
+            "Agar TypeScript tidak perlu lagi memeriksa tipe datanya",
+            "Agar kolom sensitif tidak ikut terkirim ke komponen",
+            "Agar fungsi cache dari React bisa dipakai di dalamnya"
+          ],
+          "answer": 2,
+          "explanation": "Props dari server ke client ikut terkirim ke browser, jadi hanya kolom yang aman yang boleh dikembalikan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Mengubah nilai NEXT_PUBLIC_NAMA_SEKOLAH di server produksi langsung berlaku tanpa build ulang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Nilai NEXT_PUBLIC_ ditanam ke bundle saat build, jadi perubahan baru terlihat setelah build ulang."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Penjaga environment variable",
+          "prompt": "Saat build, Next.js menanam variabel berawalan `NEXT_PUBLIC_` ke bundle browser. Tulis dua fungsi untuk meniru dan menjaga aturan itu.\n\n1. `envAman(nama)` mengembalikan `false` bila `nama` berawalan `NEXT_PUBLIC_` **dan** mengandung salah satu kata `SECRET`, `PASSWORD`, `TOKEN`, `KEY`, atau `DATABASE` (huruf besar kecil diabaikan). Selain itu `true`. Contoh: `envAman(\"NEXT_PUBLIC_API_KEY\")` adalah `false`, `envAman(\"API_KEY\")` adalah `true` karena tetap di server.\n2. `envUntukBrowser(env)` menerima objek seperti `process.env` dan mengembalikan objek baru yang hanya berisi variabel berawalan `NEXT_PUBLIC_`. Objek asli tidak boleh diubah.\n\nFungsi pertama cocok dipasang sebagai pemeriksaan di skrip build tim, dan fungsi kedua menggambarkan apa saja yang bisa dilihat pengunjung situs.",
+          "starter": {
+            "code": "const KATA_RAHASIA = [\"SECRET\", \"PASSWORD\", \"TOKEN\", \"KEY\", \"DATABASE\"];\n\nfunction envAman(nama) {\n  // TODO: false bila publik dan namanya mengandung kata rahasia\n  return true;\n}\n\nfunction envUntukBrowser(env) {\n  // TODO: ambil hanya variabel NEXT_PUBLIC_\n  return env;\n}\n"
+          },
+          "solution": {
+            "code": "const KATA_RAHASIA = [\"SECRET\", \"PASSWORD\", \"TOKEN\", \"KEY\", \"DATABASE\"];\n\nfunction envAman(nama) {\n  const besar = nama.toUpperCase();\n  if (!besar.startsWith(\"NEXT_PUBLIC_\")) return true;\n  return !KATA_RAHASIA.some((k) => besar.includes(k));\n}\n\nfunction envUntukBrowser(env) {\n  const hasil = {};\n  for (const [nama, nilai] of Object.entries(env)) {\n    if (nama.startsWith(\"NEXT_PUBLIC_\")) hasil[nama] = nilai;\n  }\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Kunci publik berisi KEY tidak aman",
+              "check": "envAman(\"NEXT_PUBLIC_API_KEY\") === false && envAman(\"next_public_database_url\") === false"
+            },
+            {
+              "name": "Variabel server dan publik biasa aman",
+              "check": "envAman(\"DATABASE_URL\") === true && envAman(\"NEXT_PUBLIC_NAMA_SEKOLAH\") === true"
+            },
+            {
+              "name": "Browser hanya menerima NEXT_PUBLIC_",
+              "check": "JSON.stringify(envUntukBrowser({ DATABASE_URL: \"pg://x\", NEXT_PUBLIC_NAMA_SEKOLAH: \"SMK Nusantara\", RESEND_API_KEY: \"re_1\" })) === JSON.stringify({ NEXT_PUBLIC_NAMA_SEKOLAH: \"SMK Nusantara\" })"
+            },
+            {
+              "name": "Objek env asli tidak diubah",
+              "check": "(() => { const env = { A: \"1\", NEXT_PUBLIC_B: \"2\" }; const h = envUntukBrowser(env); return h !== env && env.A === \"1\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "deploy-dan-optimasi",
+      "title": "Deploy dan Optimasi",
+      "est_minutes": 25,
+      "slide_from": 28,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Menjalankan `next build` dan membaca ringkasan route statis dan dinamis.\n- Men-deploy aplikasi Next.js ke Vercel dan mengatur environment variable produksi.\n- Memahami tiga metrik Core Web Vitals beserta batas nilainya.\n- Mengetahui topik lanjutan yang bisa kamu pelajari setelah kelas ini.\n\n## Dari development ke produksi\n\nSelama belajar kamu memakai `npm run dev`. Server development memuat ulang halaman setiap kali file disimpan, menampilkan pesan error yang detail, dan tidak terlalu peduli kecepatan. Itu cocok untuk menulis kode, tapi tidak untuk dipakai ratusan siswa yang membuka aplikasi kantin sekolah di jam istirahat.\n\nUntuk produksi, aplikasi harus di-build dulu:\n\n```bash\nnpm run build   # menjalankan next build\nnpm run start   # menjalankan next start di port 3000\n```\n\n`next build` mengompilasi TypeScript, memeriksa tipe, membuat bundle JavaScript yang diperkecil, dan merender halaman statis sebelumnya. Sejak Next.js 16, Turbopack menjadi bundler bawaan untuk build maupun development, jadi kamu tidak perlu menambah opsi apa pun.\n\n## Membaca hasil build\n\nDi akhir build, Next.js mencetak daftar route. Bentuknya kira-kira seperti ini:\n\n```text\nRoute (app)\n┌ ○ /\n├ ○ /menu\n├ ƒ /pesanan\n└ ƒ /api/pesanan\n\n○  (Static)   prerendered as static content\nƒ  (Dynamic)  server-rendered on demand\n```\n\nSimbol `○` berarti halaman statis: HTML-nya dibuat sekali saat build lalu disajikan berulang kali, jadi sangat cepat. Simbol `ƒ` berarti halaman dinamis yang dirender setiap ada request. Halaman menjadi dinamis bila memakai `cookies()`, `headers()`, `searchParams`, atau data yang tidak di-cache.\n\nDaftar ini bagus untuk mengecek dugaanmu. Kalau halaman `/menu` yang isinya jarang berubah ternyata bertanda `ƒ`, mungkin ada pemanggilan `cookies()` yang tidak perlu di dalamnya. Kalau build gagal karena error tipe atau error saat merender halaman statis, perbaiki dulu di lokal. Kebiasaan baik: jalankan `npm run build` sebelum setiap push.\n\n## Deploy ke Vercel\n\nVercel adalah perusahaan yang membuat Next.js, jadi deploy ke sana paling sederhana. Langkahnya:\n\n1. Push proyekmu ke repository GitHub.\n2. Masuk ke vercel.com dengan akun GitHub, lalu pilih **Add New Project** dan impor repository tersebut.\n3. Vercel mendeteksi Next.js secara otomatis. Isi environment variable seperti `DATABASE_URL` di bagian pengaturan proyek.\n4. Klik **Deploy**. Beberapa menit kemudian aplikasi punya alamat `nama-proyek.vercel.app`.\n\nSetelah terhubung, setiap push ke branch utama otomatis membuat deployment produksi baru. Push ke branch lain atau pull request membuat **preview deployment** dengan URL sendiri, jadi temanmu bisa mencoba fitur baru sebelum digabung.\n\n![Alur deploy dari GitHub ke Vercel](slide:28)\n\n## Environment variable produksi\n\nFile `.env.local` tidak ikut ke Git, jadi Vercel tidak tahu isinya. Kamu harus memasukkan setiap variabel lewat dashboard. Vercel membedakan tiga lingkungan: Production, Preview, dan Development. Sebaiknya database produksi dan database preview dipisah, supaya percobaan di branch fitur tidak merusak data asli.\n\nIngat pelajaran bab sebelumnya: variabel `NEXT_PUBLIC_` ditanam saat build. Jadi setelah mengubahnya di dashboard, kamu perlu men-deploy ulang agar nilainya berubah.\n\nVercel bukan satu-satunya pilihan. Next.js bisa dijalankan di server Node.js mana pun dengan `next start`, misalnya VPS milik sekolah. Ada juga opsi `output: \"standalone\"` di `next.config.ts` yang menghasilkan folder berisi server minimal, cocok untuk dibungkus Docker.\n\n## Memeriksa setelah deploy\n\nDeploy yang berhasil belum tentu berarti aplikasinya berjalan benar. Biasakan memeriksa beberapa hal setelah deployment pertama:\n\n- Buka halaman-halaman utama dan pastikan data dari database muncul. Bila kosong, biasanya ada environment variable yang lupa diisi.\n- Coba alur penting seperti login dan mengirim form, karena di sinilah cookie dan server action diuji sungguhan.\n- Lihat tab **Logs** di dashboard Vercel. Error dari server component dan route handler tercatat di sana, lengkap dengan waktu dan path-nya.\n\nKalau deployment baru ternyata bermasalah, Vercel menyimpan deployment lama sehingga kamu bisa mengembalikannya ke versi sebelumnya dengan beberapa klik sambil memperbaiki bug di lokal.\n\n## Core Web Vitals\n\nAplikasi yang sudah online perlu diukur kecepatannya dari sisi pengguna. Google memakai tiga metrik yang disebut **Core Web Vitals**, dan nilainya ikut memengaruhi peringkat di hasil pencarian.\n\n| Metrik | Mengukur | Baik | Buruk |\n| --- | --- | --- | --- |\n| LCP (Largest Contentful Paint) | Waktu sampai elemen terbesar, biasanya gambar utama atau judul, tampil | maks 2,5 detik | lebih dari 4 detik |\n| INP (Interaction to Next Paint) | Jeda antara klik atau ketikan dan layar berubah | maks 200 ms | lebih dari 500 ms |\n| CLS (Cumulative Layout Shift) | Seberapa banyak tata letak bergeser tiba-tiba | maks 0,1 | lebih dari 0,25 |\n\nNilai di antara batas baik dan buruk dikategorikan **perlu perbaikan**.\n\nBanyak fitur yang sudah kamu pelajari sebenarnya membantu metrik ini:\n\n- **LCP** terbantu oleh halaman statis, streaming dengan Suspense, dan `next/image` yang mengecilkan gambar. Gambar utama di atas layar sebaiknya dimuat lebih awal.\n- **INP** terbantu oleh server component, karena makin sedikit JavaScript yang harus dijalankan browser, makin cepat halaman merespons. Taruh `\"use client\"` hanya di komponen yang benar-benar interaktif.\n- **CLS** terbantu oleh `next/image` yang memesan ruang gambar, dan `next/font` yang mencegah teks bergeser saat font berganti.\n\nUntuk mengukurnya, kamu bisa memakai Lighthouse di Chrome DevTools (tab Lighthouse), PageSpeed Insights dari Google, atau fitur Speed Insights di dashboard Vercel yang mengumpulkan data dari pengunjung sungguhan. Next.js juga menyediakan hook `useReportWebVitals` dari `next/web-vitals` bila kamu ingin mengirim angka ini ke layanan analitik sendiri.\n\nSatu hal penting: ukur selalu versi produksi. Angka dari `npm run dev` jauh lebih lambat dan tidak mencerminkan pengalaman pengguna.\n\n## Langkah berikutnya\n\nSelamat, kamu sudah melewati semua bagian inti Next.js: routing, server dan client component, data fetching dan caching, route handler dan server action, styling dan metadata, autentikasi, database, sampai deploy. Beberapa topik yang bisa kamu pelajari selanjutnya:\n\n- **Parallel routes dan intercepting routes** untuk membuat modal yang punya URL sendiri, misalnya foto produk yang terbuka di atas katalog.\n- **Internasionalisasi** agar aplikasi bisa tampil dalam bahasa Indonesia dan Inggris.\n- **Testing** dengan Vitest untuk fungsi dan Playwright untuk alur lengkap di browser.\n- **Caching lanjutan** dengan `\"use cache\"`, `cacheLife`, dan `cacheTag`.\n\nCara belajar terbaik adalah membangun proyek nyata, misalnya sistem pemesanan kantin, katalog perpustakaan sekolah, atau portofolio pribadi, lalu men-deploy-nya. Dokumentasi resmi di nextjs.org juga punya kursus gratis bernama Learn Next.js yang bisa kamu ikuti.\n\n## Rangkuman\n\n- `next build` menyiapkan versi produksi dan mencetak daftar route dengan tanda statis (`○`) atau dinamis (`ƒ`); `next start` menjalankannya.\n- Deploy ke Vercel cukup dengan mengimpor repository GitHub; setiap push membuat deployment baru, dan branch lain mendapat preview deployment.\n- Environment variable produksi diisi lewat dashboard, dan perubahan `NEXT_PUBLIC_` butuh deploy ulang.\n- Core Web Vitals terdiri dari LCP (baik maks 2,5 detik), INP (baik maks 200 ms), dan CLS (baik maks 0,1).\n- Server component, `next/image`, `next/font`, dan streaming membantu ketiga metrik itu; ukur selalu versi produksi.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Dari ringkasan build ini, halaman mana yang dirender setiap ada request?",
+          "code": "Route (app)\n┌ ○ /\n├ ○ /menu\n└ ƒ /pesanan",
+          "options": [
+            "/",
+            "/menu",
+            "/pesanan",
+            "Semua halaman di daftar"
+          ],
+          "answer": 2,
+          "explanation": "Tanda ƒ berarti dinamis dan dirender saat request, sedangkan ○ berarti statis."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Halaman dengan LCP 3,2 detik termasuk kategori apa?",
+          "code": "",
+          "options": [
+            "Baik, karena masih di bawah lima detik",
+            "Perlu perbaikan",
+            "Buruk, karena sudah melewati tiga detik",
+            "Tidak dinilai karena LCP diukur dalam ms"
+          ],
+          "answer": 1,
+          "explanation": "LCP baik maksimal 2,5 detik dan buruk di atas 4 detik, jadi 3,2 detik ada di tengah."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Metrik Core Web Vitals mana yang paling terbantu oleh `next/image` yang memesan ruang gambar?",
+          "code": "",
+          "options": [
+            "INP, jeda dari klik sampai layar berubah",
+            "TTFB, waktu byte pertama dari server",
+            "FCP, waktu teks pertama tampil di layar",
+            "CLS"
+          ],
+          "answer": 3,
+          "explanation": "Ruang yang sudah dipesan mencegah tata letak bergeser saat gambar selesai dimuat, dan itu yang diukur CLS."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Push ke branch selain branch utama di Vercel membuat preview deployment dengan URL sendiri.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Setiap branch dan pull request mendapat preview deployment, sementara branch utama menjadi produksi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Menilai Core Web Vitals",
+          "prompt": "Speed Insights dan PageSpeed Insights memberi label pada setiap metrik. Tulis `skorVitals(metrik)` yang menerima `{ lcp, inp, cls }` (lcp dan inp dalam milidetik, cls tanpa satuan) dan mengembalikan `{ lcp, inp, cls, total }` berisi label.\n\n| Metrik | `\"baik\"` bila | `\"buruk\"` bila |\n| --- | --- | --- |\n| lcp | <= 2500 | > 4000 |\n| inp | <= 200 | > 500 |\n| cls | <= 0.1 | > 0.25 |\n\nNilai di antaranya mendapat label `\"perlu perbaikan\"`. `total` adalah label terburuk dari ketiganya (buruk lebih buruk dari perlu perbaikan, yang lebih buruk dari baik).\n\nContoh: `skorVitals({ lcp: 3200, inp: 150, cls: 0.05 })` menghasilkan `{ lcp: \"perlu perbaikan\", inp: \"baik\", cls: \"baik\", total: \"perlu perbaikan\" }`.",
+          "starter": {
+            "code": "const BATAS = { lcp: [2500, 4000], inp: [200, 500], cls: [0.1, 0.25] };\n\nfunction label(nilai, [baik, buruk]) {\n  // TODO: \"baik\", \"perlu perbaikan\", atau \"buruk\"\n  return \"baik\";\n}\n\nfunction skorVitals(metrik) {\n  // TODO: label setiap metrik dan total terburuk\n  return {};\n}\n"
+          },
+          "solution": {
+            "code": "const BATAS = { lcp: [2500, 4000], inp: [200, 500], cls: [0.1, 0.25] };\nconst URUTAN = [\"baik\", \"perlu perbaikan\", \"buruk\"];\n\nfunction label(nilai, [baik, buruk]) {\n  if (nilai <= baik) return \"baik\";\n  if (nilai <= buruk) return \"perlu perbaikan\";\n  return \"buruk\";\n}\n\nfunction skorVitals(metrik) {\n  const hasil = {};\n  for (const k of [\"lcp\", \"inp\", \"cls\"]) hasil[k] = label(metrik[k], BATAS[k]);\n  hasil.total = URUTAN[Math.max(...[\"lcp\", \"inp\", \"cls\"].map((k) => URUTAN.indexOf(hasil[k])))];\n  return hasil;\n}\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Contoh dari soal",
+              "check": "JSON.stringify(skorVitals({ lcp: 3200, inp: 150, cls: 0.05 })) === JSON.stringify({ lcp: \"perlu perbaikan\", inp: \"baik\", cls: \"baik\", total: \"perlu perbaikan\" })"
+            },
+            {
+              "name": "Nilai tepat di batas baik masih baik",
+              "check": "skorVitals({ lcp: 2500, inp: 200, cls: 0.1 }).total === \"baik\""
+            },
+            {
+              "name": "Satu metrik buruk membuat total buruk",
+              "check": "(() => { const s = skorVitals({ lcp: 1800, inp: 650, cls: 0.2 }); return s.inp === \"buruk\" && s.cls === \"perlu perbaikan\" && s.total === \"buruk\"; })()"
+            },
+            {
+              "name": "CLS di atas 0.25 buruk",
+              "check": "skorVitals({ lcp: 1000, inp: 100, cls: 0.3 }).cls === \"buruk\""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
