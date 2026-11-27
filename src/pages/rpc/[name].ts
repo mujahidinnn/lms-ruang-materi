@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { ACTIONS, type ActionName } from "@/lib/actions";
 import { currentRequest, NotFound, Pending, Redirect } from "@/lib/request";
+import { logError } from "@/lib/error-log";
 import { decodeArgs, encodeArgs, type RpcReply } from "@/lib/rpc-wire";
 import { safeNext } from "@/lib/safe-next";
 
@@ -26,6 +27,7 @@ export const POST: APIRoute = async ({ params, request, url }) => {
     if (e instanceof Pending) reply = { ok: { ok: "Terkirim, menunggu persetujuan admin utama." } };
     else if (!(e instanceof Redirect)) {
       console.error(`rpc ${params.name}`, e);
+      await logError("rpc", `/rpc/${params.name}`, e);
       reply = { error: "Terjadi kesalahan di server. Coba lagi." };
     } else reply = { redirect: e.to };
   }

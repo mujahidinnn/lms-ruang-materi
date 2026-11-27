@@ -100,6 +100,23 @@ const ogImage = new URL("/opengraph-image.png", SITE_URL).href;
         setInterval(ping, 6e4);
         document.addEventListener("visibilitychange", ping);
       }
+      // Uncaught errors from our own scripts go to /admin/error (lib/actions/
+      // error.ts), five per page at most. Extension and cross-origin errors
+      // arrive without a file of ours or as "Script error." and are skipped.
+      let sent = 0;
+      const report = (message: string, stack = "") => {
+        if (sent++ >= 5 || !message || message === "Script error." || /ResizeObserver loop/.test(message)) return;
+        fetch("/rpc/laporError", { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify(encodeArgs([{ path: location.pathname, message: message.slice(0, 500), stack: stack.slice(0, 4000) }])) }).catch(() => {});
+      };
+      addEventListener("error", (e) => {
+        if (e.filename && !e.filename.startsWith(location.origin)) return;
+        report(String(e.message), e.error?.stack);
+      });
+      addEventListener("unhandledrejection", (e) => {
+        const r = e.reason;
+        if (r?.stack && !String(r.stack).includes(location.origin)) return;
+        report(r instanceof Error ? `${r.name}: ${r.message}` : String(r), r?.stack);
+      });
       // Work done before signing in (lib/pending.ts) is sent once there is a
       // session; loaded only when something is waiting.
       try {

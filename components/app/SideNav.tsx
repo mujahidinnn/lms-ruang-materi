@@ -1,4 +1,4 @@
-import { Award, ShieldCheck, BookOpen, ClipboardCheck, BarChart3, History, Flag, GraduationCap, FileUp, LayoutDashboard, Megaphone, MessageSquareText, Rocket, Route, Users } from "lucide-react";
+import { Award, ShieldCheck, BookOpen, ClipboardCheck, BarChart3, History, Flag, GraduationCap, FileUp, LayoutDashboard, Megaphone, MessageSquareText, Rocket, Route, TriangleAlert, Users } from "lucide-react";
 
 // Admin links in titled groups (learners use SiteHeader, GUIDELINE Navigation).
 const SETS = {
@@ -36,6 +36,7 @@ const SETS = {
         { href: "/admin/laporan", label: "Laporan", Icon: Flag },
         { href: "/admin/masukan", label: "Masukan", Icon: MessageSquareText },
         { href: "/admin/log", label: "Log aktivitas", Icon: History },
+        { href: "/admin/error", label: "Error", Icon: TriangleAlert },
       ],
     },
   ],

@@ -10,6 +10,7 @@ import * as adminSlug from "./admin-slug";
 import * as adminStudio from "./admin-studio";
 import * as adminTopik from "./admin-topik";
 import * as adminUjian from "./admin-ujian";
+import * as errorLog from "./error";
 import * as flashcard from "./flashcard";
 import * as laporan from "./laporan";
 import * as latihan from "./latihan";
@@ -44,6 +45,7 @@ export const ACTIONS = {
   ...pick(latihan),
   ...pick(masuk),
   ...pick(masukan),
+  ...pick(errorLog),
   ...pick(profil),
   ...pick(ujian),
 };

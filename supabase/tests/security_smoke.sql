@@ -1,5 +1,5 @@
 begin;
-select plan(125);
+select plan(130);
 
 -- Setup as postgres. Murid asks for admin in its metadata.
 insert into auth.users (id, email, raw_user_meta_data)
@@ -871,6 +871,19 @@ set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000003", 
 select throws_ok($$ select public.publish_topic('uji-proyek-belum') $$,
   'P0001', 'Proyek akhir belum lolos uji solusi', 'a topic with an unverified project cannot be published');
 reset role;
+
+-- error_log: anyone logs through log_error, only admins read, nobody else edits.
+set local role anon;
+select is(public.log_error('client', '/uji?q=1', 'UjiError', ''), true, 'a new error asks for an alert');
+select is(public.log_error('client', '/uji', 'UjiError', ''), false, 'a repeat of an open error does not');
+select is((select count(*)::int from public.error_log), 0, 'anon cannot read error_log');
+reset role;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "00000000-0000-0000-0000-000000000001", "role": "authenticated"}';
+update public.error_log set resolved_at = now();
+select is((select count(*)::int from public.error_log), 0, 'a learner cannot read error_log');
+reset role;
+select is((select count from public.error_log where path = '/uji' and resolved_at is null), 2, 'repeats share one row and a learner cannot resolve it');
 
 select * from finish();
 rollback;
