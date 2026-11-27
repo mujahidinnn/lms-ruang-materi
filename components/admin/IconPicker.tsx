@@ -12,6 +12,8 @@ export default function IconPicker({ slug, defaultValue }: { slug?: string; defa
   const [err, setErr] = useState("");
   const name = useId();
   const custom = isSvg(value);
+  // Sticker icons need dark strokes on a light chip in both themes.
+  const chipIcon = "grid size-10 place-items-center rounded-lg bg-matcha-100 text-noir";
   const tile = "grid size-14 place-items-center rounded-xl bg-zinc-800 peer-checked:ring-2 peer-checked:ring-accent peer-focus-visible:outline-2 peer-focus-visible:outline-accent hover:bg-zinc-700";
 
   function pick(v: string) {
@@ -41,7 +43,7 @@ export default function IconPicker({ slug, defaultValue }: { slug?: string; defa
         {Object.entries(TRACK_PRESETS).map(([key, [label, Icon]]) => (
           <label key={key} className="cursor-pointer" title={label}>
             <input type="radio" name={name} checked={value === key} onChange={() => pick(key)} className="peer sr-only" />
-            <span className={tile}><Icon className="size-8" /></span>
+            <span className={tile}><span className={chipIcon}><Icon className="size-7" /></span></span>
             <span className="sr-only">{label}</span>
           </label>
         ))}
@@ -65,7 +67,7 @@ export default function IconPicker({ slug, defaultValue }: { slug?: string; defa
         <span className="block text-xs text-zinc-500">Unggah file .svg lewat tombol di atas atau tempel kodenya, maksimal 8 KB. Warna dari file SVG dipakai apa adanya, tanpa mengikuti tema.</span>
       </label>
       {slug && value === "" && (
-        <p className="flex items-center gap-2 text-xs text-zinc-500"><TrackIcon slug={slug} className="size-6" />Ikon otomatis untuk slug ini.</p>
+        <p className="flex items-center gap-2 text-xs text-zinc-500"><span className={chipIcon}><TrackIcon slug={slug} className="size-6" /></span>Ikon otomatis untuk slug ini.</p>
       )}
     </fieldset>
   );
