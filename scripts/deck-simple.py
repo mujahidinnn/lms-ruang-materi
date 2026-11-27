@@ -1180,7 +1180,140 @@ class Http(St):
         text(s, x + 0.3, y + 0.65, w - 0.6, h - 0.8, lines, sz, color=C("EDE9FE"), gap=2, font=MONO)
 
 
-STYLES = {"nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 23. Deep learning: layers of neurons ----------
+class Network(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.1, 0.55
+
+    def net(self, s, x, y, w, h, node, edge, r=0.22, layers=(3, 4, 4, 2)):
+        cols = [[(x + i * w / (len(layers) - 1), y + (j + 0.5) * h / n) for j in range(n)] for i, n in enumerate(layers)]
+        for a, b in zip(cols, cols[1:]):
+            for p in a:
+                for q in b: poly(s, [p, q], edge, 0.75)
+        for i, col in enumerate(cols):
+            for (cx, cy) in col: oval(s, cx - r / 2, cy - r / 2, r, r, node if i in (0, len(cols) - 1) else WHITE, line=node, lw=1.5)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 1.0, 8, 0.4, "loss.backward()", 16, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.7, 7.4, 2.4, sl["title"], 58, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.2, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        self.net(s, 8.5, 1.3, 3.8, 4.4, T.accent, T.mid, r=0.32)
+        logo(s, "white", 0.9, 5.7, 0.8)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).capitalize()
+        text(s, 0.6, 0.42, 8, 0.3, f"Lapisan {n}  ·  {k}", 12, True, T.accent, gap=0)
+        self.title(s, 0.6, 0.8, 10.2, sl["title"])
+        self.net(s, 11.0, 0.35, 1.6, 1.2, T.accent, T.line, r=0.13, layers=(2, 3, 1))
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def mark(self, s, x, cy, i): oval(s, x, cy - 0.11, 0.22, 0.22, WHITE, line=T.accent, lw=2.5)
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("FDE7E1"), gap=2, font=MONO)
+
+
+# ---------- 24. GraphQL: schema type blocks ----------
+class Schema(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.75
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 0.9, 9, 0.4, "type Kelas {", 16, True, T.amber, font=MONO, gap=0)
+        text(s, 1.4, 1.6, 7.0, 1.6, sl["title"], 70, True, WHITE, gap=0, font=self.head)
+        text(s, 1.4, 3.3, 6.4, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 1.4, 4.7, 7, 0.35, "bab: [Bab!]!", 15, color=T.light, font=MONO, gap=0)
+        text(s, 0.9, 5.3, 2, 0.4, "}", 16, True, T.amber, font=MONO, gap=0)
+        oval(s, 8.9, 1.6, 3.4, 3.4, mix(T.ink, T.accent, 0.3))
+        logo(s, "white", 9.5, 2.2, 2.2)
+
+    def chrome(self, s, n, sl):
+        k = "".join(w.capitalize() for w in re.split(r"[^A-Za-z0-9]+", sl.get("kicker", spec.get("kicker", "KELAS"))) if w)
+        text(s, 0.6, 0.4, 10, 0.35, f"type {k} {{  # slide {n}", 13, True, T.accent, font=MONO, gap=0)
+        self.title(s, 1.0, 0.85, 10.6, sl["title"])
+        logo(s, "accent", 12.05, 0.35, 0.65)
+        text(s, 0.6, 6.55, 1, 0.35, "}", 13, True, T.accent, font=MONO, gap=0)
+        return (1.0, 1.95, 11.7, 4.6)
+
+    def mark(self, s, x, cy, i):
+        text(s, x, cy - 0.2, 0.75, 0.4, f"f{i + 1}:", 13, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.card, line=T.line, adj=0.04)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=T.ink, gap=2, font=MONO)
+
+
+# ---------- 25. Web security: audit report rows ----------
+class Audit(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.9
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        for k in range(0, 14): rect(s, 0, 0.3 + k * 0.52, 0.12, 0.26, T.accent if k % 3 == 0 else T.deep)
+        text(s, 0.9, 0.9, 9, 0.4, "LAPORAN AUDIT  ·  RAHASIA", 14, True, T.amber, font=MONO, gap=0, spc=200)
+        text(s, 0.9, 1.6, 7.6, 2.4, sl["title"], 58, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.9, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        for k, (lv, c) in enumerate((("TINGGI", T.accent), ("SEDANG", T.mid), ("RENDAH", T.deep))):
+            rrect(s, 0.9 + k * 1.45, 5.5, 1.3, 0.38, c, adj=0.3)
+            text(s, 0.9 + k * 1.45, 5.5, 1.3, 0.38, lv, 11, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+        oval(s, 8.9, 1.6, 3.4, 3.4, WHITE)
+        logo(s, "ink", 9.45, 2.15, 2.3)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).upper()
+        text(s, 0.6, 0.4, 10, 0.35, f"TEMUAN #{n:02d}  ·  {k}", 12, True, T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.8, 11, sl["title"])
+        logo(s, "ink", 12.05, 0.35, 0.65)
+        rect(s, 0.6, 1.72, 12.1, 0.03, T.ink)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def mark(self, s, x, cy, i):
+        rrect(s, x, cy - 0.16, 0.7, 0.32, T.light, adj=0.3)
+        text(s, x, cy - 0.16, 0.7, 0.32, f"{i + 1:02d}", 11, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x, y + 0.2, 0.08, h - 0.4, T.accent)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.35, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("F5E8D3"), gap=2, font=MONO)
+
+
+STYLES = {"dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
