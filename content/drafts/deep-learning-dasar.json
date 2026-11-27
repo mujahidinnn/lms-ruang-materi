@@ -1,0 +1,2125 @@
+{
+  "title": "Deep Learning Dasar",
+  "description": "Bangun jaringan saraf dari nol dengan Python murni: neuron, aktivasi, forward pass, loss, backpropagation, regularisasi, CNN, sampai training loop PyTorch. Ditutup proyek Jaringan Pengenal Pola Absensi.",
+  "summary": "Deep learning adalah cabang machine learning yang memakai jaringan saraf berlapis banyak. Kelas ini melanjutkan Machine Learning Dasar: kamu belajar kapan deep learning layak dipakai, lalu membangun neuron sendiri dengan jumlah berbobot, bias, dan fungsi aktivasi seperti sigmoid, ReLU, tanh, dan softmax.\n\nBagian inti membahas cara jaringan belajar. Kamu menyusun lapisan sebagai matriks bobot, menjalankan forward pass, mengukur kesalahan dengan MSE dan cross-entropy, lalu memperbaiki bobot dengan gradient descent dan backpropagation yang dicek memakai gradien numerik. Setelah itu kamu melatih jaringan kecil sampai bisa memecahkan XOR dan melawan overfitting dengan early stopping, dropout, L2, dan augmentasi data.\n\nBagian akhir membawa ide yang sama ke gambar lewat konvolusi, pooling, dan transfer learning, lalu ke PyTorch: tensor, nn.Module, dan training loop yang bisa dicoba di Google Colab. Semua latihan di sini memakai Python murni, dan kelas ditutup dengan proyek Jaringan Pengenal Pola Absensi.",
+  "tips": [
+    "Hitung satu neuron dengan tangan dulu sebelum menulis kodenya; angka kecil membuat kesalahan mudah terlihat.",
+    "Cetak len() dari bobot dan masukan setiap lapisan, karena shape yang tidak cocok adalah bug paling sering.",
+    "Periksa backprop dengan gradien numerik pada jaringan dan data kecil sebelum melatih lebih lama.",
+    "Selalu gambar kurva loss latih dan validasi; kurva itu memberi tahu kapan learning rate salah atau jaringan mulai menghafal.",
+    "Pindahkan kode Python murnimu ke PyTorch di Google Colab dan cocokkan setiap baris dengan tabel padanan di bab 9."
+  ],
+  "flashcards": [
+    {
+      "front": "Deep learning",
+      "back": "Cabang machine learning yang memakai jaringan saraf tiruan berlapis banyak."
+    },
+    {
+      "front": "Representation learning",
+      "back": "Jaringan mempelajari sendiri fitur berguna dari data mentah seperti piksel."
+    },
+    {
+      "front": "Neuron tiruan",
+      "back": "Menghitung z = jumlah x*w + b, lalu melewatkan z ke fungsi aktivasi."
+    },
+    {
+      "front": "Bobot dan bias",
+      "back": "Parameter yang diacak di awal lalu disetel saat latihan."
+    },
+    {
+      "front": "Sigmoid",
+      "back": "1 / (1 + e^(-z)), hasil 0 sampai 1; untuk keluaran dua kelas."
+    },
+    {
+      "front": "ReLU",
+      "back": "max(0, z); pilihan standar untuk lapisan tersembunyi."
+    },
+    {
+      "front": "Tanh",
+      "back": "Mirip sigmoid tetapi berpusat di nol, hasil -1 sampai 1."
+    },
+    {
+      "front": "Softmax",
+      "back": "Mengubah skor beberapa kelas menjadi peluang positif yang berjumlah 1."
+    },
+    {
+      "front": "Matriks bobot",
+      "back": "Satu baris per neuron, satu kolom per masukan; nn.Linear(3, 2) berbentuk (2, 3)."
+    },
+    {
+      "front": "Forward pass",
+      "back": "Data mengalir dari masukan ke keluaran; keluaran satu lapisan jadi masukan lapisan berikutnya."
+    },
+    {
+      "front": "Jumlah parameter lapisan dense",
+      "back": "masukan x neuron + neuron."
+    },
+    {
+      "front": "MSE",
+      "back": "Rata-rata kuadrat selisih tebakan dan label; loss untuk regresi."
+    },
+    {
+      "front": "Cross-entropy",
+      "back": "-log(peluang kelas yang benar); yakin tapi salah dihukum sangat berat."
+    },
+    {
+      "front": "Gradient descent",
+      "back": "w_baru = w_lama - lr * gradien."
+    },
+    {
+      "front": "Learning rate",
+      "back": "Besar langkah; terlalu kecil lambat, terlalu besar loss meledak."
+    },
+    {
+      "front": "Aturan rantai",
+      "back": "dL/dw = dL/dy * dy/dz * dz/dw."
+    },
+    {
+      "front": "Backpropagation",
+      "back": "Menghitung delta dari keluaran lalu menyebarkannya mundur untuk mendapat gradien semua bobot."
+    },
+    {
+      "front": "Gradien numerik",
+      "back": "(f(w + h) - f(w - h)) / (2h); alat memeriksa backprop."
+    },
+    {
+      "front": "Epoch, batch, iterasi",
+      "back": "Epoch: semua data sekali; batch: kelompok contoh; iterasi: satu pembaruan bobot."
+    },
+    {
+      "front": "Inisialisasi bobot",
+      "back": "Acak kecil untuk memecah simetri; Xavier untuk tanh/sigmoid, He untuk ReLU."
+    },
+    {
+      "front": "Early stopping",
+      "back": "Berhenti bila loss validasi tidak membaik selama sejumlah epoch kesabaran, lalu pakai bobot terbaik."
+    },
+    {
+      "front": "Dropout",
+      "back": "Mematikan neuron acak saat latihan dan mengalikan yang hidup dengan 1 / (1 - p); mati saat prediksi."
+    },
+    {
+      "front": "Konvolusi",
+      "back": "Menggeser filter kecil di atas gambar, kalikan lalu jumlahkan; ukuran hasil n - k + 1."
+    },
+    {
+      "front": "Max pooling",
+      "back": "Mengambil nilai terbesar di setiap kotak untuk memperkecil peta fitur."
+    },
+    {
+      "front": "Training loop PyTorch",
+      "back": "optimizer.zero_grad(), model(xb), loss_fn(...), loss.backward(), optimizer.step()."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dihitung neuron sebelum hasilnya masuk ke fungsi aktivasi?",
+      "code": "",
+      "options": [
+        "Jumlah berbobot masukan ditambah bias",
+        "Rata-rata semua label data latih",
+        "Peluang setiap kelas lewat softmax",
+        "Selisih antara loss latih dan validasi"
+      ],
+      "answer": 0,
+      "explanation": "Neuron menghitung z = x1*w1 + ... + xn*wn + b, lalu z masuk ke aktivasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa nilai sigmoid(0)?",
+      "code": "",
+      "options": [
+        "0",
+        "0.5",
+        "1.0",
+        "-0.5"
+      ],
+      "answer": 1,
+      "explanation": "1 / (1 + e^0) = 1 / 2 = 0.5."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa hasil relu(-4)?",
+      "code": "",
+      "options": [
+        "-4",
+        "4",
+        "0",
+        "-0.4"
+      ],
+      "answer": 2,
+      "explanation": "ReLU = max(0, z), jadi nilai negatif menjadi 0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Untuk apa softmax dipakai di lapisan keluaran?",
+      "code": "",
+      "options": [
+        "Mengubah semua nilai negatif menjadi nol",
+        "Menghitung jumlah parameter dari sebuah lapisan dense",
+        "Memperkecil ukuran peta fitur gambar",
+        "Mengubah skor beberapa kelas menjadi peluang"
+      ],
+      "answer": 3,
+      "explanation": "Softmax membuat skor (logit) menjadi peluang positif yang jumlahnya 1."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Jaringan dengan 3 masukan, 2 neuron tersembunyi, dan 1 neuron keluaran punya berapa parameter total?",
+      "code": "",
+      "options": [
+        "11",
+        "9",
+        "6",
+        "8"
+      ],
+      "answer": 0,
+      "explanation": "Lapisan tersembunyi 3 x 2 + 2 = 8, lapisan keluaran 2 x 1 + 1 = 3, total 11."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Loss apa yang cocok untuk menebak nilai ujian berupa angka bebas?",
+      "code": "",
+      "options": [
+        "Binary cross-entropy (BCE)",
+        "MSE (Mean Squared Error)",
+        "Softmax",
+        "Dropout"
+      ],
+      "answer": 1,
+      "explanation": "Regresi memakai MSE: rata-rata kuadrat selisih tebakan dan label."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana cross-entropy satu contoh dihitung?",
+      "code": "",
+      "options": [
+        "log(peluang kelas yang terbesar)",
+        "Jumlah kuadrat selisih semua peluang",
+        "-log(peluang kelas yang benar)",
+        "1 - peluang kelas yang benar"
+      ],
+      "answer": 2,
+      "explanation": "Cross-entropy = -log(p[kelas_benar]); makin kecil peluang kelas benar, makin besar loss."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menurut aturan rantai, turunan fungsi bertingkat sama dengan",
+      "code": "",
+      "options": [
+        "Jumlah turunan setiap tingkatnya",
+        "Turunan tingkat paling akhir saja",
+        "Rata-rata turunan dari semua tingkat",
+        "Hasil kali turunan tiap tingkat"
+      ],
+      "answer": 3,
+      "explanation": "dL/dw = dL/dy * dy/dz * dz/dw: pengaruh tiap tingkat dikalikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Satu iterasi (step) saat melatih jaringan berarti",
+      "code": "",
+      "options": [
+        "Satu kali pembaruan bobot",
+        "Seluruh data latih dilihat sekali",
+        "Satu lapisan baru ditambahkan",
+        "Satu kali menyimpan model ke file"
+      ],
+      "answer": 0,
+      "explanation": "Iterasi adalah satu pembaruan bobot; epoch adalah seluruh data dilihat sekali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Early stopping menghentikan latihan ketika",
+      "code": "",
+      "options": [
+        "Loss latih sudah tepat bernilai nol",
+        "Loss validasi tidak membaik selama sejumlah epoch",
+        "Akurasi latih sudah mencapai angka 50 persen dari target",
+        "Learning rate sudah habis terpakai"
+      ],
+      "answer": 1,
+      "explanation": "Early stopping memantau loss validasi dengan kesabaran (patience), lalu memakai bobot terbaik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana dropout bekerja saat latihan?",
+      "code": "",
+      "options": [
+        "Menghapus data latih yang labelnya salah",
+        "Mengurangi learning rate di setiap epoch",
+        "Mematikan sebagian neuron secara acak",
+        "Menambah lapisan baru setiap kali loss naik"
+      ],
+      "answer": 2,
+      "explanation": "Dropout menjadikan nol keluaran sebagian neuron secara acak di setiap langkah latihan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa hasil menggeser filter konvolusi di atas sebuah gambar?",
+      "code": "",
+      "options": [
+        "Label kelas gambar",
+        "Nilai learning rate",
+        "Data validasi baru",
+        "Peta fitur (feature map)"
+      ],
+      "answer": 3,
+      "explanation": "Setiap posisi filter menghasilkan satu angka; kumpulannya disebut peta fitur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Baris PyTorch apa yang menghitung gradien semua bobot lewat backpropagation?",
+      "code": "",
+      "options": [
+        "loss.backward()",
+        "optimizer.step()",
+        "model.eval()",
+        "torch.no_grad()"
+      ],
+      "answer": 0,
+      "explanation": "loss.backward() menjalankan autograd dan menyimpan gradien di .grad tiap parameter."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Deep learning adalah cabang dari machine learning, bukan ilmu yang terpisah.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Deep learning adalah machine learning yang memakai jaringan saraf berlapis banyak."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Bias pada neuron harus selalu bernilai nol dan tidak ikut dilatih.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Bias adalah parameter yang ikut disetel saat latihan, sama seperti bobot."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pernyataan mana yang paling tepat tentang deep learning?",
+      "code": "",
+      "options": [
+        "Cabang machine learning yang memakai jaringan saraf berlapis",
+        "Ilmu terpisah dari machine learning yang tidak butuh data latih sama sekali",
+        "Nama lain regresi linear yang memakai banyak kolom",
+        "Teknik menulis aturan if-else secara otomatis"
+      ],
+      "answer": 0,
+      "explanation": "Deep learning adalah bagian dari machine learning; kata deep merujuk pada banyaknya lapisan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti fitur dipelajari sendiri pada deep learning?",
+      "code": "",
+      "options": [
+        "Manusia memilih kolom penting lalu model menghitung rata-ratanya saja",
+        "Lapisan jaringan menemukan pola berguna dari data mentah",
+        "Fitur diambil acak dari internet setiap kali latihan",
+        "Kolom data dihapus satu per satu sampai akurasi naik"
+      ],
+      "answer": 1,
+      "explanation": "Lapisan awal menangkap tepi, lapisan berikutnya bentuk, lapisan akhir keputusan (representation learning)."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tiga bahan yang membuat deep learning populer beberapa tahun terakhir adalah",
+      "code": "",
+      "options": [
+        "Internet cepat, ponsel murah, dan media sosial populer",
+        "Perceptron baru, spreadsheet, dan bahasa C",
+        "Data melimpah, GPU, dan pustaka seperti PyTorch",
+        "Hard disk besar, monitor lebar, dan RAM 4 GB"
+      ],
+      "answer": 2,
+      "explanation": "Data yang banyak, GPU untuk perkalian paralel, dan pustaka serta teknik baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kasus mana yang paling cocok diselesaikan dengan deep learning?",
+      "code": "",
+      "options": [
+        "Menghitung denda telat pengembalian buku perpustakaan sekolah",
+        "Menebak kelulusan dari 300 baris nilai yang alasannya harus jelas",
+        "Menjumlahkan total belanja kantin per hari",
+        "Mengenali angka tulisan tangan dari 60.000 gambar"
+      ],
+      "answer": 3,
+      "explanation": "Data gambar dalam jumlah besar adalah wilayah deep learning (CNN). Kasus lain cukup ML biasa atau aturan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Layanan apa yang menyediakan notebook Python lengkap dengan PyTorch dan GPU gratis berbatas?",
+      "code": "",
+      "options": [
+        "Google Colab",
+        "Microsoft Excel",
+        "Google Forms",
+        "Canva"
+      ],
+      "answer": 0,
+      "explanation": "Google Colab berjalan di browser dan menyediakan GPU gratis dengan batas pemakaian."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "def perlu_deep_learning(k):\n    if k[\"harus_dijelaskan\"]:\n        return \"ml biasa\"\n    if k[\"jenis_data\"] == \"tabel\":\n        return \"ml biasa\"\n    if k[\"jumlah_data\"] < 1000:\n        return \"ml biasa\"\n    return \"deep learning\"\n\nkasus = {\"jenis_data\": \"suara\", \"jumlah_data\": 800, \"harus_dijelaskan\": False}\nprint(perlu_deep_learning(kasus))",
+      "options": [
+        "deep learning",
+        "ml biasa",
+        "None",
+        "KeyError"
+      ],
+      "answer": 1,
+      "explanation": "Data suara tidak harus dijelaskan dan bukan tabel, tetapi jumlahnya 800 < 1000, jadi ml biasa."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Untuk data tabel kecil, deep learning selalu lebih akurat daripada pohon keputusan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Untuk data tabel kecil, model seperti pohon keputusan atau random forest sering sudah sangat baik, dan jaringan mudah menghafal data latih."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "def jumlah_berbobot(x, w, b):\n    return sum(xi * wi for xi, wi in zip(x, w)) + b\n\nprint(jumlah_berbobot([1, 2, 3], [0.5, 0.5, -1], 2))",
+      "options": [
+        "2.5",
+        "-0.5",
+        "0.5",
+        "1.5"
+      ],
+      "answer": 2,
+      "explanation": "z = 1*0.5 + 2*0.5 + 3*(-1) + 2 = 0.5 + 1 - 3 + 2 = 0.5."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rumus fungsi sigmoid yang benar adalah",
+      "code": "",
+      "options": [
+        "max(0, z)",
+        "e^z / (1 + z)",
+        "(e^z - e^(-z)) / 2z",
+        "1 / (1 + e^(-z))"
+      ],
+      "answer": 3,
+      "explanation": "Sigmoid(z) = 1 / (1 + e^(-z)), hasilnya selalu di antara 0 dan 1."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rentang keluaran fungsi tanh adalah",
+      "code": "",
+      "options": [
+        "-1 sampai 1",
+        "0 sampai 1",
+        "0 sampai tak hingga",
+        "-tak hingga sampai 0"
+      ],
+      "answer": 0,
+      "explanation": "Tanh mirip sigmoid tetapi berpusat di nol, dengan rentang -1 sampai 1."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "def relu(z):\n    return max(0.0, z)\n\nprint([relu(v) for v in [-2, 0.5, 3]])",
+      "options": [
+        "[-2, 0.5, 3]",
+        "[0.0, 0.5, 3]",
+        "[0.0, 0.0, 3]",
+        "[2, 0.5, 3]"
+      ],
+      "answer": 1,
+      "explanation": "max(0.0, -2) = 0.0, max(0.0, 0.5) = 0.5, dan max(0.0, 3) mengembalikan 3 apa adanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna mengurangi skor maksimum sebelum math.exp di dalam softmax?",
+      "code": "",
+      "options": [
+        "Membuat peluang kelas terbesar menjadi tepat 1",
+        "Membalik urutan peluang dari kecil ke besar",
+        "Mencegah overflow tanpa mengubah hasil akhir",
+        "Mengubah skor negatif menjadi nol seperti ReLU"
+      ],
+      "answer": 2,
+      "explanation": "Hasil softmax tidak berubah, tetapi math.exp tidak meluap untuk skor besar seperti 1000."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "import math\n\nz = [0.0, math.log(3)]\ne = [math.exp(v) for v in z]\nprint([round(v / sum(e), 2) for v in e])",
+      "options": [
+        "[0.0, 1.0]",
+        "[0.5, 0.5]",
+        "[0.33, 0.67]",
+        "[0.25, 0.75]"
+      ],
+      "answer": 3,
+      "explanation": "e^0 = 1 dan e^(log 3) = 3, jadi peluangnya 1/4 dan 3/4."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Hasil softmax selalu positif dan jumlah semua peluangnya 1.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Softmax memangkatkan e (selalu positif) lalu membagi dengan totalnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam matriks bobot satu lapisan seperti di kelas ini, satu baris berisi",
+      "code": "",
+      "options": [
+        "Semua bobot yang dimiliki satu neuron",
+        "Semua bias dari seluruh lapisan jaringan",
+        "Satu contoh data dari data latih",
+        "Bobot dari satu masukan ke semua lapisan"
+      ],
+      "answer": 0,
+      "explanation": "Jumlah baris = jumlah neuron, jumlah kolom = jumlah masukan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa jumlah parameter lapisan dense dengan 5 masukan dan 4 neuron?",
+      "code": "",
+      "options": [
+        "20",
+        "24",
+        "9",
+        "29"
+      ],
+      "answer": 1,
+      "explanation": "Rumusnya masukan x neuron + neuron = 5 x 4 + 4 = 24."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "W = [[1, 0, -1], [0.5, 0.5, 0.5]]\nb = [0, -1]\nx = [2, 4, 6]\nprint([max(0, sum(xi * wi for xi, wi in zip(x, w)) + bi) for w, bi in zip(W, b)])",
+      "options": [
+        "[-4, 5.0]",
+        "[0, 6.0]",
+        "[0, 5.0]",
+        "[-4, 6.0]"
+      ],
+      "answer": 2,
+      "explanation": "Neuron 1: 2 - 6 + 0 = -4, max(0, -4) = 0. Neuron 2: 1 + 2 + 3 - 1 = 5.0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibatnya di Python murni bila jumlah kolom bobot tidak sama dengan panjang masukan dan perhitungannya memakai zip?",
+      "code": "",
+      "options": [
+        "Python langsung berhenti dengan pesan error shape mismatch",
+        "Bobot yang kurang otomatis diisi nol oleh Python",
+        "Masukan diperpanjang dengan angka acak",
+        "zip memotong ke yang terpendek dan hasilnya salah diam-diam"
+      ],
+      "answer": 3,
+      "explanation": "zip berhenti di list terpendek tanpa error, jadi hasilnya salah tanpa peringatan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "nn.Linear(3, 2) di PyTorch menyimpan matriks bobot berbentuk",
+      "code": "",
+      "options": [
+        "(2, 3)",
+        "(3, 2)",
+        "(3, 3)",
+        "(2, 2) ditambah (3,)"
+      ],
+      "answer": 0,
+      "explanation": "Bobotnya (keluaran, masukan) = (2, 3), sama seperti W1 dengan satu baris per neuron."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa PyTorch menulis satu contoh data berbentuk (1, 3), bukan (3,)?",
+      "code": "",
+      "options": [
+        "Angka 1 menandakan contoh itu sudah dinormalisasi",
+        "PyTorch selalu bekerja dengan batch",
+        "Dimensi pertama menyimpan label kelas contoh itu",
+        "Agar bobot ikut tersimpan di data"
+      ],
+      "answer": 1,
+      "explanation": "Dimensi pertama adalah ukuran batch, walau batch itu hanya berisi satu contoh."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "def mse(y, y_hat):\n    return sum((a - b) ** 2 for a, b in zip(y, y_hat)) / len(y)\n\nprint(mse([1, 2, 3, 4], [2, 2, 5, 4]))",
+      "options": [
+        "1.0",
+        "5",
+        "1.25",
+        "2.5"
+      ],
+      "answer": 2,
+      "explanation": "Selisihnya 1, 0, 2, 0; kuadratnya 1, 0, 4, 0; jumlah 5 dibagi 4 = 1.25."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "import math\n\np = [0.25, 0.5, 0.25]\nprint(round(-math.log(p[1]), 4))",
+      "options": [
+        "0.5",
+        "1.3863",
+        "-0.6931",
+        "0.6931"
+      ],
+      "answer": 3,
+      "explanation": "Kelas benar indeks 1 dengan peluang 0.5, jadi loss = -ln(0.5) = 0.6931."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pasangan aktivasi keluaran dan loss yang tepat untuk tiga kelas (hadir, izin, alpa) adalah",
+      "code": "",
+      "options": [
+        "Softmax dengan cross-entropy",
+        "Linear dengan MSE",
+        "Sigmoid dengan MSE untuk tiap kelas",
+        "ReLU dengan cross-entropy biner"
+      ],
+      "answer": 0,
+      "explanation": "Klasifikasi banyak kelas memakai softmax di keluaran dan loss cross-entropy."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rumus satu langkah gradient descent adalah",
+      "code": "",
+      "options": [
+        "w_baru = w_lama + lr * gradien",
+        "w_baru = w_lama - lr * gradien",
+        "w_baru = lr * w_lama * gradien",
+        "w_baru = w_lama - gradien / lr + 1"
+      ],
+      "answer": 1,
+      "explanation": "Bobot digeser berlawanan dengan gradien sejauh learning rate."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "w = 1.0\nlr = 0.1\ngrad = 2 * w - 6   # turunan loss (w - 3) ** 2\nw = w - lr * grad\nprint(w)",
+      "options": [
+        "0.6",
+        "1.0",
+        "1.4",
+        "-3.0"
+      ],
+      "answer": 2,
+      "explanation": "grad = 2*1.0 - 6 = -4.0, lalu w = 1.0 - 0.1 * (-4.0) = 1.4. Bobot bergerak mendekati 3."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hal apa yang perlu diingat saat memakai nn.CrossEntropyLoss di PyTorch?",
+      "code": "",
+      "options": [
+        "Ia hanya menerima peluang yang sudah berjumlah 1",
+        "Ia hanya bisa dipakai untuk regresi angka",
+        "Ia memperbarui bobot tanpa perlu optimizer",
+        "Ia menerima logit dan menjalankan softmax sendiri"
+      ],
+      "answer": 3,
+      "explanation": "nn.CrossEntropyLoss sudah berisi softmax, jadi jangan memberi softmax dua kali."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Gradien menunjuk ke arah turunnya loss, sehingga bobot digeser searah gradien.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Gradien menunjuk arah naiknya loss; bobot digeser berlawanan: w - lr * gradien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila y = sigmoid(z), turunan dy/dz adalah",
+      "code": "",
+      "options": [
+        "y * (1 - y)",
+        "1 - y",
+        "y ** 2",
+        "max(0, y) / z"
+      ],
+      "answer": 0,
+      "explanation": "Sifat khusus sigmoid: turunannya y * (1 - y), paling besar 0.25 saat y = 0.5."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "# L = (y - 1) ** 2 dan y = 3 * w\nw = 0.5\ny = 3 * w\ndL_dy = 2 * (y - 1)\ndy_dw = 3\nprint(dL_dy * dy_dw)",
+      "options": [
+        "1.0",
+        "3.0",
+        "1.5",
+        "6.0"
+      ],
+      "answer": 1,
+      "explanation": "y = 1.5, dL/dy = 2 * 0.5 = 1.0, dy/dw = 3, jadi dL/dw = 3.0."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "import math\n\nx, w, b, t = [2.0], [0.0], 0.0, 0\ny = 1 / (1 + math.exp(-(x[0] * w[0] + b)))\ndelta = 2 * (y - t) * y * (1 - y)\nprint(delta * x[0])",
+      "options": [
+        "0.25",
+        "1.0",
+        "0.5",
+        "-0.5"
+      ],
+      "answer": 2,
+      "explanation": "z = 0 sehingga y = 0.5, delta = 2 * 0.5 * 0.5 * 0.5 = 0.25, gradien bobot = 0.25 * 2.0 = 0.5."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang membuat backpropagation efisien untuk jaringan dengan jutaan bobot?",
+      "code": "",
+      "options": [
+        "Gradien numerik dihitung untuk setiap bobot satu per satu",
+        "Hanya bobot lapisan keluaran yang diperbarui",
+        "Fungsi aktivasi dilewati saat menghitung mundur",
+        "delta tiap lapisan dipakai ulang oleh lapisan sebelumnya"
+      ],
+      "answer": 3,
+      "explanation": "delta lapisan sesudahnya dipakai untuk lapisan sebelumnya, jadi tidak ada turunan yang dihitung dua kali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dimaksud vanishing gradient?",
+      "code": "",
+      "options": [
+        "Gradien mendekati nol di lapisan awal",
+        "Gradien hilang karena hasil print tidak muncul di layar",
+        "Gradien menjadi sangat besar lalu berubah menjadi nan",
+        "Gradien dihapus optimizer tiap epoch"
+      ],
+      "answer": 0,
+      "explanation": "Turunan sigmoid paling besar 0.25; dikalikan berulang kali membuat gradien lapisan awal nyaris nol."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "def f(w):\n    return w ** 2\n\nh = 1e-3\nprint(round((f(3 + h) - f(3 - h)) / (2 * h), 4))",
+      "options": [
+        "3.0",
+        "6.0",
+        "9.0",
+        "0.0"
+      ],
+      "answer": 1,
+      "explanation": "Gradien numerik dari w kuadrat di w = 3 adalah 2 * 3 = 6."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Gradien numerik dipakai untuk melatih jaringan besar karena lebih cepat daripada backpropagation.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Gradien numerik butuh dua forward pass per bobot, sangat lambat; ia hanya alat pemeriksa."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Satu epoch berarti",
+      "code": "",
+      "options": [
+        "Bobot diperbarui satu kali dengan satu contoh",
+        "Jaringan ditambah satu lapisan tersembunyi baru",
+        "Seluruh data latih dilihat jaringan sekali",
+        "Learning rate dikurangi setengahnya"
+      ],
+      "answer": 2,
+      "explanation": "Epoch = satu putaran penuh atas data latih."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Data latih berisi 1200 baris dengan mini-batch 100. Berapa iterasi dalam satu epoch?",
+      "code": "",
+      "options": [
+        "100",
+        "1200",
+        "120",
+        "12"
+      ],
+      "answer": 3,
+      "explanation": "1200 / 100 = 12 pembaruan bobot per epoch."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "data = list(range(10))\nukuran = 4\nbatch = [data[i:i + ukuran] for i in range(0, len(data), ukuran)]\nprint(len(batch), batch[-1])",
+      "options": [
+        "3 [8, 9]",
+        "2 [4, 5, 6, 7]",
+        "3 [9]",
+        "4 [9]"
+      ],
+      "answer": 0,
+      "explanation": "Batchnya [0..3], [4..7], dan [8, 9]; batch terakhir berisi sisa data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Masalah simetri pada inisialisasi bobot muncul karena",
+      "code": "",
+      "options": [
+        "Bobot acak membuat setiap neuron belajar pola yang berbeda-beda",
+        "Neuron dengan bobot awal sama berubah dengan cara sama",
+        "Bias diisi nol sehingga tidak bisa diperbarui sama sekali",
+        "Learning rate terlalu besar untuk data kecil"
+      ],
+      "answer": 1,
+      "explanation": "Bobot awal yang sama menghasilkan gradien yang sama, sehingga banyak neuron bekerja seperti satu neuron."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Inisialisasi He dengan skala sqrt(2 / n_masuk) cocok untuk aktivasi",
+      "code": "",
+      "options": [
+        "Sigmoid",
+        "Softmax",
+        "ReLU",
+        "Tanh dan sigmoid"
+      ],
+      "answer": 2,
+      "explanation": "He untuk ReLU; Xavier (Glorot) untuk tanh dan sigmoid."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kurva loss yang datar sejak awal latihan paling mungkin menandakan",
+      "code": "",
+      "options": [
+        "Latihan berjalan sangat sehat",
+        "Jaringan sudah overfitting sejak epoch pertama",
+        "Data validasi terlalu banyak",
+        "Learning rate terlalu kecil atau bug di gradien"
+      ],
+      "answer": 3,
+      "explanation": "Loss yang tidak bergerak berarti bobot hampir tidak berubah: lr terlalu kecil, bobot awal buruk, atau gradien salah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tanda overfitting pada kurva loss latih dan validasi adalah",
+      "code": "",
+      "options": [
+        "Loss latih terus turun, loss validasi mulai naik",
+        "Loss latih dan validasi sama-sama tinggi dan tidak bergerak",
+        "Loss latih dan validasi turun bersama-sama",
+        "Loss latih naik sementara loss validasi terus turun"
+      ],
+      "answer": 0,
+      "explanation": "Jarak yang melebar antara dua kurva berarti jaringan mulai menghafal data latih."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "loss_val = [0.8, 0.6, 0.65, 0.55, 0.58, 0.6, 0.62]\nsabar = 2\nterbaik, tunggu = float(\"inf\"), 0\nfor epoch, v in enumerate(loss_val):\n    if v < terbaik:\n        terbaik, tunggu = v, 0\n    else:\n        tunggu += 1\n        if tunggu >= sabar:\n            print(epoch)\n            break",
+      "options": [
+        "3",
+        "5",
+        "2",
+        "6"
+      ],
+      "answer": 1,
+      "explanation": "Rekor terakhir 0.55 di epoch 3. Epoch 4 (0.58) dan 5 (0.6) tidak lebih baik, jadi tunggu mencapai 2 di epoch 5."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dengan inverted dropout p = 0.5, neuron yang tetap hidup dan bernilai 3.0 saat latihan menjadi",
+      "code": "",
+      "options": [
+        "1.5",
+        "3.0",
+        "6.0",
+        "0.0"
+      ],
+      "answer": 2,
+      "explanation": "Neuron hidup dikalikan 1 / (1 - p) = 2, jadi 3.0 menjadi 6.0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana dropout diperlakukan saat prediksi?",
+      "code": "",
+      "options": [
+        "Dropout tetap mematikan separuh neuron secara acak",
+        "Semua keluaran dikali p",
+        "Neuron yang pernah dimatikan dihapus permanen",
+        "Dropout mati dan semua neuron bekerja"
+      ],
+      "answer": 3,
+      "explanation": "Dropout hanya aktif saat latihan; di PyTorch dimatikan lewat model.eval()."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Regularisasi L2 menambahkan apa ke loss?",
+      "code": "",
+      "options": [
+        "lam dikali jumlah kuadrat bobot",
+        "Jumlah semua bias di setiap lapisan",
+        "Akar dari learning rate",
+        "Selisih loss latih dan loss validasi"
+      ],
+      "answer": 0,
+      "explanation": "loss_total = loss_data + lam * (w1² + ... + wn²), sehingga bobot ditarik ke arah nol."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Augmentasi mana yang bisa merusak label?",
+      "code": "",
+      "options": [
+        "Membalik foto kucing dari kiri ke kanan",
+        "Membalik gambar angka 6 dari atas ke bawah",
+        "Mengubah sedikit kecerahan foto daun",
+        "Memutar foto sampah plastik beberapa derajat"
+      ],
+      "answer": 1,
+      "explanation": "Angka 6 yang dibalik atas bawah bisa terbaca 9, jadi labelnya berubah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa banyak angka yang menyusun satu gambar RGB berukuran 32 x 32?",
+      "code": "",
+      "options": [
+        "1024",
+        "96",
+        "3072",
+        "9216"
+      ],
+      "answer": 2,
+      "explanation": "32 x 32 x 3 kanal = 3072 angka."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "g = [[1, 2, 0], [0, 1, 3], [2, 0, 1]]\nf = [[1, 0], [0, -1]]\nhasil = [[sum(g[i + a][j + b] * f[a][b] for a in range(2) for b in range(2))\n          for j in range(2)] for i in range(2)]\nprint(hasil)",
+      "options": [
+        "[[2, 5], [0, 2]]",
+        "[[0, 1], [0, 0]]",
+        "[[1, -1], [2, 0]]",
+        "[[0, -1], [0, 0]]"
+      ],
+      "answer": 3,
+      "explanation": "Filter mengambil piksel kiri atas dikurangi piksel kanan bawah di setiap kotak 2 x 2: 1-1, 2-3, 0-0, 1-1."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "peta = [[1, 5, 2, 0], [3, 2, 4, 1], [0, 1, 7, 2], [6, 2, 3, 3]]\nhasil = [[max(peta[i][j], peta[i][j + 1], peta[i + 1][j], peta[i + 1][j + 1])\n          for j in (0, 2)] for i in (0, 2)]\nprint(hasil)",
+      "options": [
+        "[[5, 4], [6, 7]]",
+        "[[1, 2], [0, 2]]",
+        "[[5, 4], [7, 3]]",
+        "[[11, 7], [9, 15]]"
+      ],
+      "answer": 0,
+      "explanation": "Max pooling 2 x 2 mengambil nilai terbesar dari setiap kotak: 5, 4, 6, 7."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Gambar 28 x 28 dikonvolusi filter 3 x 3, geser satu langkah, tanpa padding. Berapa ukuran peta fiturnya?",
+      "code": "",
+      "options": [
+        "28 x 28",
+        "26 x 26",
+        "25 x 25",
+        "9 x 9"
+      ],
+      "answer": 1,
+      "explanation": "Ukurannya n - k + 1 = 28 - 3 + 1 = 26."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa CNN hemat parameter dibanding lapisan dense untuk gambar?",
+      "code": "",
+      "options": [
+        "CNN sama sekali tidak memakai bobot yang dilatih",
+        "CNN hanya membaca piksel di bagian tengah gambar",
+        "Bobot filter dipakai bersama di semua posisi",
+        "Filter ditulis tangan sehingga tidak perlu disimpan"
+      ],
+      "answer": 2,
+      "explanation": "Satu filter 3 x 3 hanya punya 9 bobot plus bias, dan dipakai di seluruh gambar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bentuk batch gambar di PyTorch ditulis dalam urutan",
+      "code": "",
+      "options": [
+        "(H, W, C, N)",
+        "(C, N, W, H) atau bebas",
+        "(N, H, C, W)",
+        "(N, C, H, W)"
+      ],
+      "answer": 3,
+      "explanation": "Banyak gambar, kanal warna, tinggi, lalu lebar; misalnya (32, 3, 224, 224)."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Max pooling 2 x 2 tanpa tumpang tindih mengubah peta fitur 4 x 4 menjadi 2 x 2.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Peta dibagi menjadi empat kotak 2 x 2 dan tiap kotak diwakili nilai terbesarnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan langkah di dalam training loop PyTorch yang benar adalah",
+      "code": "",
+      "options": [
+        "zero_grad, forward, loss, backward, step",
+        "forward, step, loss, zero_grad, lalu backward",
+        "backward, forward, zero_grad, loss, step",
+        "loss, forward, step, backward, zero_grad dan ulang"
+      ],
+      "answer": 0,
+      "explanation": "Nolkan gradien, forward, hitung loss, backward, lalu perbarui bobot dengan step."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Baris PyTorch yang memperbarui bobot memakai gradien yang sudah dihitung adalah",
+      "code": "",
+      "options": [
+        "loss.backward()",
+        "optimizer.step()",
+        "optimizer.zero_grad()",
+        "model.eval()"
+      ],
+      "answer": 1,
+      "explanation": "optimizer.step() menjalankan w - lr * gradien untuk semua parameter."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana PyTorch memperlakukan gradien baru dari loss.backward()?",
+      "code": "",
+      "options": [
+        "Menimpa gradien lama secara otomatis setiap langkah",
+        "Membuangnya bila loss naik",
+        "Menjumlahkannya ke gradien lama",
+        "Mengalikannya dengan learning rate lalu menyimpannya di bobot"
+      ],
+      "answer": 2,
+      "explanation": "Gradien diakumulasi, karena itu optimizer.zero_grad() dipanggil di awal setiap langkah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa jumlah parameter nn.Linear(4, 3)?",
+      "code": "",
+      "options": [
+        "12",
+        "7",
+        "19",
+        "15"
+      ],
+      "answer": 3,
+      "explanation": "Bobot 3 x 4 = 12 ditambah 3 bias = 15."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna torch.no_grad() saat validasi?",
+      "code": "",
+      "options": [
+        "Mematikan pencatatan gradien agar hemat memori",
+        "Menghapus semua bobot model",
+        "Mengaktifkan dropout",
+        "Memindahkan model ke GPU"
+      ],
+      "answer": 0,
+      "explanation": "Saat validasi tidak perlu gradien, jadi pencatatannya dimatikan agar cepat dan hemat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mekanisme yang membuat Transformer bisa menimbang kata mana yang penting adalah",
+      "code": "",
+      "options": [
+        "Max pooling",
+        "Attention",
+        "Dropout acak",
+        "Konvolusi 3 x 3"
+      ],
+      "answer": 1,
+      "explanation": "Dengan attention setiap kata bisa langsung melihat kata lain di kalimat."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Data absensi, nilai, dan foto siswa termasuk data pribadi yang pengelolaannya diatur UU Pelindungan Data Pribadi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "UU Nomor 27 Tahun 2022 mengatur data pribadi; minta izin dan simpan seperlunya."
+    }
+  ],
+  "prerequisites": [
+    "machine-learning-dasar"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Jaringan Pengenal Pola Absensi",
+    "brief": "Guru BK ingin tahu lebih awal siswa mana yang mulai menunjukkan pola absensi berisiko, supaya bisa disapa sebelum ketinggalan pelajaran terlalu jauh. Ia punya catatan 16 siswa bulan lalu dengan tiga fitur yang sudah diskalakan ke 0 sampai 1: kehadiran, jumlah terlambat dibagi 10, dan jarak rumah (km) dibagi 10. Label `1` berarti siswa itu kemudian sering absen, `0` berarti tidak. Tugasmu membangun **Jaringan Pengenal Pola Absensi** dari nol: 3 masukan, satu lapisan tersembunyi dengan tanh, dan 1 keluaran sigmoid.\n\nProgram hanya memakai `math` dan `random`, tanpa numpy, PyTorch, `input()`, atau file. Data sudah tersedia di `setup`:\n\n```python\nDATA = [([0.98, 0.0, 0.2], 0), ([0.70, 0.6, 0.8], 1), ...]\nX = [x for x, _ in DATA]\nY = [y for _, y in DATA]\n```\n\nParameter jaringan disimpan dalam dictionary `p = {\"W1\": ..., \"b1\": ..., \"W2\": ..., \"b2\": ...}`: `W1` list `n_tersembunyi` baris berisi `n_masuk` angka, `b1` list `n_tersembunyi` angka, `W2` list `n_tersembunyi` angka, dan `b2` satu angka.\n\n## Fungsi wajib\n\n| Nama | Tugas |\n| --- | --- |\n| `inisialisasi(n_masuk, n_tersembunyi, seed)` | Buat `rng = random.Random(seed)`. Isi `W1` baris demi baris dengan `rng.uniform(-1, 1)`, lalu `W2` dengan cara yang sama. `b1` berisi nol, `b2 = 0.0`. |\n| `forward(x, p)` | `h[j] = tanh(jumlah W1[j][i] * x[i] + b1[j])`, lalu `y_topi = sigmoid(jumlah W2[j] * h[j] + b2)`. Kembalikan tuple `(h, y_topi)`. |\n| `loss(y_topi, y)` | Binary cross-entropy `-(y log y_topi + (1 - y) log(1 - y_topi))`. Jepit dulu `y_topi` ke rentang `[1e-7, 1 - 1e-7]` agar tidak ada log nol. |\n| `backward(x, y, p)` | Kembalikan dictionary gradien loss terhadap `W1`, `b1`, `W2`, `b2` dengan bentuk sama seperti `p`. Jangan ubah `p`. |\n| `latih(X, Y, p, epoch, lr)` | SGD per contoh: setiap epoch, untuk setiap `(x, y)` berurutan, jumlahkan `loss` dengan parameter saat itu, hitung `backward`, lalu kurangi setiap parameter dengan `lr * gradien`. Simpan rata-rata loss tiap epoch ke list `riwayat`. Ubah `p` langsung dan kembalikan `riwayat`. |\n| `prediksi(x, p)` | `1` bila `y_topi >= 0.5`, selain itu `0`. |\n| `akurasi(X, Y, p)` | Proporsi prediksi yang benar, `round(..., 2)`. |\n\n## Petunjuk gradien\n\nDengan sigmoid dan cross-entropy, turunan terhadap jumlah berbobot keluaran sangat sederhana: `d2 = y_topi - y`. Dari situ:\n\n- `W2[j]`: `d2 * h[j]`, dan `b2`: `d2`.\n- Untuk neuron tersembunyi, `d1[j] = d2 * W2[j] * (1 - h[j] ** 2)` karena turunan tanh adalah `1 - tanh²`.\n- `W1[j][i]`: `d1[j] * x[i]`, dan `b1[j]`: `d1[j]`.\n\nPemeriksaan membandingkan `backward` milikmu dengan gradien numerik seperti di bab Backpropagation, jadi kesalahan tanda atau indeks akan ketahuan.\n\n## Contoh hasil\n\n```python\np = inisialisasi(3, 4, seed=7)\nakurasi(X, Y, p)          # 0.5, belum belajar\nriwayat = latih(X, Y, p, epoch=100, lr=0.5)\nround(riwayat[0], 4)      # 0.4488\nriwayat[-1] < riwayat[0]  # True\nakurasi(X, Y, p)          # 1.0\n```\n\nKerjakan dari atas ke bawah dan jalankan pemeriksaan setelah setiap fungsi. Catatan jujur: akurasi 1,0 di atas diukur pada data latih yang sangat kecil. Untuk dipakai sungguhan, kamu butuh data validasi terpisah, data yang jauh lebih banyak, dan izin pemakaian data siswa. Ingat juga bab terakhir: model ini hanya memberi tanda untuk guru BK, bukan alat menghukum. Kalau sudah selesai, coba tulis ulang jaringan yang sama dengan `nn.Module` dan training loop PyTorch di Google Colab.",
+    "prompt": "Lengkapi inisialisasi, forward, loss, backward, latih, prediksi, dan akurasi agar jaringan saraf kecil buatanmu bisa mengenali siswa dengan pola absensi berisiko.",
+    "starter": {
+      "code": "import math, random\n\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\n\ndef inisialisasi(n_masuk, n_tersembunyi, seed):\n    # TODO: W1 (n_tersembunyi x n_masuk) lalu W2 (n_tersembunyi) dari rng.uniform(-1, 1); bias nol\n    return {\"W1\": [], \"b1\": [], \"W2\": [], \"b2\": 0.0}\n\n\ndef forward(x, p):\n    # TODO: h = tanh(W1 x + b1), y_topi = sigmoid(W2 . h + b2); kembalikan (h, y_topi)\n    return [], 0.5\n\n\ndef loss(y_topi, y):\n    # TODO: binary cross-entropy, y_topi dijepit ke [1e-7, 1 - 1e-7]\n    return 0.0\n\n\ndef backward(x, y, p):\n    # TODO: gradien loss terhadap W1, b1, W2, b2 (bentuk sama dengan p)\n    return {\"W1\": [], \"b1\": [], \"W2\": [], \"b2\": 0.0}\n\n\ndef latih(X, Y, p, epoch, lr):\n    riwayat = []\n    # TODO: setiap epoch, untuk setiap contoh: catat loss, hitung gradien, perbarui p\n    return riwayat\n\n\ndef prediksi(x, p):\n    # TODO: 1 bila y_topi >= 0.5, selain itu 0\n    return 0\n\n\ndef akurasi(X, Y, p):\n    # TODO: proporsi prediksi benar, round(..., 2)\n    return 0.0\n\n\np = inisialisasi(3, 4, seed=7)\nriwayat = latih(X, Y, p, epoch=100, lr=0.5)\nprint(\"riwayat:\", riwayat[:3])\nprint(\"akurasi:\", akurasi(X, Y, p))\n"
+    },
+    "solution": {
+      "code": "import math, random\n\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\n\ndef inisialisasi(n_masuk, n_tersembunyi, seed):\n    rng = random.Random(seed)\n    W1 = [[rng.uniform(-1, 1) for _ in range(n_masuk)] for _ in range(n_tersembunyi)]\n    W2 = [rng.uniform(-1, 1) for _ in range(n_tersembunyi)]\n    return {\"W1\": W1, \"b1\": [0.0] * n_tersembunyi, \"W2\": W2, \"b2\": 0.0}\n\n\ndef forward(x, p):\n    h = [math.tanh(sum(w * xi for w, xi in zip(baris, x)) + b) for baris, b in zip(p[\"W1\"], p[\"b1\"])]\n    y_topi = sigmoid(sum(w * hj for w, hj in zip(p[\"W2\"], h)) + p[\"b2\"])\n    return h, y_topi\n\n\ndef loss(y_topi, y):\n    y_topi = min(max(y_topi, 1e-7), 1 - 1e-7)\n    return -(y * math.log(y_topi) + (1 - y) * math.log(1 - y_topi))\n\n\ndef backward(x, y, p):\n    h, y_topi = forward(x, p)\n    d2 = y_topi - y\n    d1 = [d2 * w * (1 - hj ** 2) for w, hj in zip(p[\"W2\"], h)]\n    return {\n        \"W1\": [[dj * xi for xi in x] for dj in d1],\n        \"b1\": d1,\n        \"W2\": [d2 * hj for hj in h],\n        \"b2\": d2,\n    }\n\n\ndef latih(X, Y, p, epoch, lr):\n    riwayat = []\n    for _ in range(epoch):\n        total = 0.0\n        for x, y in zip(X, Y):\n            total += loss(forward(x, p)[1], y)\n            g = backward(x, y, p)\n            for j in range(len(p[\"W1\"])):\n                for i in range(len(x)):\n                    p[\"W1\"][j][i] -= lr * g[\"W1\"][j][i]\n                p[\"b1\"][j] -= lr * g[\"b1\"][j]\n                p[\"W2\"][j] -= lr * g[\"W2\"][j]\n            p[\"b2\"] -= lr * g[\"b2\"]\n        riwayat.append(total / len(X))\n    return riwayat\n\n\ndef prediksi(x, p):\n    return 1 if forward(x, p)[1] >= 0.5 else 0\n\n\ndef akurasi(X, Y, p):\n    benar = sum(1 for x, y in zip(X, Y) if prediksi(x, p) == y)\n    return round(benar / len(X), 2)\n\n\np = inisialisasi(3, 4, seed=7)\nriwayat = latih(X, Y, p, epoch=100, lr=0.5)\nprint(\"loss awal:\", round(riwayat[0], 4), \"loss akhir:\", round(riwayat[-1], 4))\nprint(\"akurasi:\", akurasi(X, Y, p))\nprint(\"siswa baru:\", prediksi([0.74, 0.5, 0.6], p))\n"
+    },
+    "setup": "import copy, math, random\n\n# [kehadiran bulan lalu (0-1), terlambat per bulan / 10, jarak rumah km / 10]\nDATA = [\n    ([0.98, 0.0, 0.2], 0),\n    ([0.95, 0.1, 0.5], 0),\n    ([0.92, 0.2, 0.3], 0),\n    ([0.97, 0.1, 0.9], 0),\n    ([0.90, 0.3, 0.1], 0),\n    ([0.94, 0.0, 0.6], 0),\n    ([0.88, 0.2, 0.4], 0),\n    ([0.96, 0.4, 0.2], 0),\n    ([0.70, 0.6, 0.8], 1),\n    ([0.65, 0.5, 0.3], 1),\n    ([0.75, 0.8, 0.6], 1),\n    ([0.60, 0.3, 0.9], 1),\n    ([0.80, 0.7, 0.7], 1),\n    ([0.72, 0.4, 0.2], 1),\n    ([0.68, 0.9, 0.5], 1),\n    ([0.78, 0.6, 0.4], 1),\n]\nX = [x for x, _ in DATA]\nY = [y for _, y in DATA]\n\n\nP_UJI = {\"W1\": [[0.5, -1.0], [1.0, 1.0]], \"b1\": [0.1, 0.0], \"W2\": [2.0, -1.0], \"b2\": 0.5}\n\n\ndef _cek_backward(x, y, p, eps=1e-5):\n    # bandingkan backward() dengan gradien numerik (beda tengah)\n    g = backward(x, y, p)\n    posisi = [(\"b2\", ())]\n    posisi += [(\"W2\", (j,)) for j in range(len(p[\"W2\"]))] + [(\"b1\", (j,)) for j in range(len(p[\"b1\"]))]\n    posisi += [(\"W1\", (j, i)) for j in range(len(p[\"W1\"])) for i in range(len(x))]\n\n    def ambil(d, kunci, idx):\n        v = d[kunci]\n        for i in idx:\n            v = v[i]\n        return v\n\n    def loss_geser(kunci, idx, d):\n        q = copy.deepcopy(p)\n        if not idx:\n            q[kunci] += d\n        elif len(idx) == 1:\n            q[kunci][idx[0]] += d\n        else:\n            q[kunci][idx[0]][idx[1]] += d\n        return loss(forward(x, q)[1], y)\n\n    for kunci, idx in posisi:\n        numerik = (loss_geser(kunci, idx, eps) - loss_geser(kunci, idx, -eps)) / (2 * eps)\n        if abs(numerik - ambil(g, kunci, idx)) > 1e-5:\n            return False\n    return True\n",
+    "tests": [
+      {
+        "name": "Bentuk parameter sesuai ukuran",
+        "check": "(lambda p: len(p[\"W1\"]) == 4 and all(len(b) == 3 for b in p[\"W1\"]) and len(p[\"W2\"]) == 4 and p[\"b1\"] == [0.0] * 4 and p[\"b2\"] == 0.0)(inisialisasi(3, 4, 7))"
+      },
+      {
+        "name": "Bobot awal acak dalam [-1, 1] dan mengikuti seed",
+        "check": "inisialisasi(3, 4, 7) == inisialisasi(3, 4, 7) and inisialisasi(3, 4, 7) != inisialisasi(3, 4, 8) and all(-1 <= w <= 1 for b in inisialisasi(3, 4, 7)[\"W1\"] for w in b)"
+      },
+      {
+        "name": "W1 diisi lebih dulu, baru W2",
+        "check": "(lambda r: [r.uniform(-1, 1) for _ in range(3)])(random.Random(0)) == inisialisasi(2, 1, 0)[\"W1\"][0] + inisialisasi(2, 1, 0)[\"W2\"]"
+      },
+      {
+        "name": "Forward menghitung tanh lalu sigmoid",
+        "check": "(lambda h, y: [round(v, 6) for v in h] == [-0.885352, 0.995055] and round(y, 6) == 0.093999)(*forward([1.0, 2.0], P_UJI))"
+      },
+      {
+        "name": "Loss binary cross-entropy",
+        "check": "abs(loss(0.9, 1) - 0.1053605) < 1e-6 and abs(loss(0.2, 0) - 0.2231436) < 1e-6"
+      },
+      {
+        "name": "Loss dijepit sehingga tidak ada log nol",
+        "check": "abs(loss(1.0, 0) - 16.1180957) < 1e-4 and abs(loss(0.0, 1) - 16.1180957) < 1e-4"
+      },
+      {
+        "name": "Backward cocok dengan gradien numerik",
+        "check": "_cek_backward([1.0, 2.0], 1, P_UJI) and _cek_backward(X[3], Y[3], inisialisasi(3, 4, 7)) and _cek_backward(X[10], Y[10], inisialisasi(3, 5, 2))"
+      },
+      {
+        "name": "Backward tidak mengubah parameter",
+        "check": "(lambda p: (backward(X[0], Y[0], p), p)[1] == inisialisasi(3, 4, 7))(inisialisasi(3, 4, 7))"
+      },
+      {
+        "name": "Loss epoch pertama sesuai SGD per contoh",
+        "check": "abs(latih(X, Y, inisialisasi(3, 4, 7), 1, 0.5)[0] - 0.44876206) < 1e-6"
+      },
+      {
+        "name": "Latihan menurunkan loss dan mengubah p",
+        "check": "(lambda p: (lambda r: len(r) == 100 and r[-1] < r[0] * 0.1 and p != inisialisasi(3, 4, 7))(latih(X, Y, p, 100, 0.5)))(inisialisasi(3, 4, 7))"
+      },
+      {
+        "name": "Prediksi memakai ambang 0.5",
+        "check": "prediksi([0.0], {\"W1\": [[0.0]], \"b1\": [0.0], \"W2\": [0.0], \"b2\": 0.0}) == 1 and prediksi([0.0], {\"W1\": [[0.0]], \"b1\": [0.0], \"W2\": [0.0], \"b2\": -0.1}) == 0"
+      },
+      {
+        "name": "Akurasi naik dari 0.5 ke 1.0 setelah latihan",
+        "check": "(lambda p: akurasi(X, Y, p) == 0.5 and (latih(X, Y, p, 100, 0.5), akurasi(X, Y, p))[1] == 1.0)(inisialisasi(3, 4, 7))"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "dari-ml-ke-deep-learning",
+      "title": "Dari ML ke Deep Learning",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan hubungan antara machine learning dan deep learning.\n- Menjelaskan arti \"fitur dipelajari otomatis\" dibandingkan fitur yang dirancang manusia.\n- Menimbang kapan deep learning layak dipakai dan kapan ML biasa sudah cukup.\n- Mengenali kebutuhan data dan daya hitung (GPU) untuk deep learning.\n\n## Dari ML ke deep learning\n\nDi kelas Machine Learning Dasar kamu sudah membuat komputer menebak dari data: regresi linear untuk menebak angka, kNN dan pohon keputusan untuk menebak kategori. Polanya selalu sama. Ada data berisi fitur dan label, ada model, lalu model dilatih supaya tebakannya mendekati label.\n\n**Deep learning** adalah cabang dari machine learning, bukan ilmu yang terpisah. Bedanya ada di jenis modelnya. Deep learning memakai **jaringan saraf tiruan** (neural network): tumpukan banyak lapisan yang masing-masing berisi unit hitung kecil bernama neuron. Kata \"deep\" (dalam) merujuk pada jumlah lapisan yang banyak dan bertumpuk, bukan pada pemahaman yang dalam.\n\n![Apa itu deep learning](slide:2)\n\nSatu neuron sebenarnya sangat sederhana. Ia hanya mengalikan masukan dengan bobot, menjumlahkan, lalu melewatkan hasilnya ke sebuah fungsi. Kekuatannya muncul ketika ribuan sampai jutaan neuron disusun berlapis dan bobotnya disetel otomatis dari data. Kamu akan membangun neuron itu sendiri di bab berikutnya.\n\n## Fitur yang dipelajari sendiri\n\nIngat lagi data kelulusan dari kelas sebelumnya: jam belajar, persentase kehadiran, nilai tugas. Fitur-fitur itu **dipilih manusia**. Kamu yang memutuskan kolom mana yang relevan, lalu model mencari pola dari kolom tersebut.\n\nSekarang bayangkan tugasnya berbeda: mengenali apakah foto di kartu pelajar benar-benar foto wajah, atau membedakan foto kucing dan anjing. Fitur apa yang mau kamu tulis? \"Punya telinga runcing\"? \"Panjang moncong\"? Sangat sulit merumuskannya sebagai angka, dan foto bisa diambil dari sudut, cahaya, serta jarak yang berbeda-beda.\n\nDi sinilah deep learning unggul. Kamu cukup memberi data mentah, misalnya nilai setiap piksel gambar, beserta labelnya. Lapisan-lapisan jaringan kemudian **belajar sendiri** fitur yang berguna:\n\n- Lapisan awal biasanya menangkap pola kecil seperti garis dan tepi.\n- Lapisan tengah menggabungkan garis menjadi bentuk seperti mata atau telinga.\n- Lapisan akhir menggabungkan bentuk menjadi keputusan: kucing atau anjing.\n\nKemampuan ini disebut **representation learning**. Inilah alasan utama deep learning mendominasi tugas gambar, suara, dan teks.\n\n## Mengapa baru populer sekarang?\n\nIde jaringan saraf sudah ada sejak tahun 1950-an. Perceptron, neuron tiruan pertama yang bisa belajar, diperkenalkan pada akhir dekade itu. Lalu kenapa baru meledak beberapa tahun terakhir? Ada tiga bahan yang akhirnya lengkap:\n\n1. **Data melimpah.** Foto di ponsel, rekaman suara, dan teks di internet menyediakan jutaan contoh untuk belajar.\n2. **Daya hitung.** Melatih jaringan berarti melakukan perkalian angka dalam jumlah sangat besar. **GPU**, chip yang awalnya dibuat untuk grafis game, ternyata bisa mengerjakan ribuan perkalian sekaligus secara paralel.\n3. **Perangkat lunak dan teknik.** Pustaka seperti **PyTorch** menghitung banyak hal secara otomatis, dan para peneliti menemukan trik yang membuat jaringan dalam lebih stabil saat dilatih.\n\nKabar baiknya, kamu tidak perlu membeli GPU mahal untuk mulai. **Google Colab** menyediakan notebook Python di browser, lengkap dengan PyTorch, dan menyediakan GPU gratis dengan batas pemakaian.\n\n## Kapan memakai deep learning\n\nDeep learning bukan obat untuk semua masalah. Untuk banyak tugas, model dari kelas sebelumnya justru pilihan yang lebih tepat. Pakai pertanyaan berikut sebagai pegangan.\n\n**Data apa yang kamu punya?** Kalau datanya tabel rapi dengan beberapa kolom, misalnya nilai rapor, data penjualan kantin, atau rekap absensi, model seperti regresi, pohon keputusan, atau random forest sering sudah sangat baik. Deep learning bersinar pada data tidak terstruktur: gambar, suara, video, dan teks.\n\n**Seberapa banyak datanya?** Jaringan saraf punya sangat banyak bobot. Dengan data sedikit, misalnya 200 baris, jaringan mudah menghafal data latih dan gagal di data baru. Sebagai gambaran kasar, deep learning mulai masuk akal ketika contohnya ribuan ke atas, kecuali kamu memakai model yang sudah dilatih orang lain (transfer learning, dibahas di bab CNN).\n\n**Apakah hasilnya harus mudah dijelaskan?** Pohon keputusan bisa kamu baca aturannya satu per satu. Jaringan dengan jutaan bobot jauh lebih sulit dijelaskan. Kalau sekolah perlu tahu persis alasan sebuah keputusan, model sederhana lebih aman.\n\n**Ada daya hitungnya?** Melatih jaringan besar tanpa GPU bisa memakan waktu berjam-jam bahkan berhari-hari. Untuk belajar, Colab sudah cukup.\n\n| Kasus | Pilihan yang masuk akal |\n|---|---|\n| Menebak kelulusan dari 300 baris nilai | ML biasa (regresi logistik, pohon keputusan) |\n| Mengenali tulisan tangan angka dari 60.000 gambar | Deep learning (CNN) |\n| Menyaring komentar kasar dari jutaan teks | Deep learning |\n| Menghitung denda telat buku perpustakaan | Tidak perlu ML, cukup aturan biasa |\n\nPerhatikan juga biayanya. Model besar butuh listrik, waktu latih, dan tempat penyimpanan yang tidak sedikit. Kalau aplikasi kasir kantin sekolah hanya perlu menebak jumlah porsi nasi goreng besok, menjalankan jaringan raksasa di server akan jauh lebih mahal daripada manfaatnya. Model kecil yang bisa berjalan di laptop biasa sering menjadi pilihan yang paling masuk akal, apalagi kalau hasilnya hampir sama baiknya. Selain itu, model sederhana lebih cepat dicoba ulang, sehingga kamu bisa bereksperimen lebih banyak dalam waktu yang sama.\n\nPrinsip yang dipakai banyak praktisi: **mulai dari model paling sederhana** yang mungkin berhasil, ukur hasilnya, lalu naik ke model yang lebih rumit hanya kalau memang perlu.\n\n## Python murni di sini, PyTorch di Colab\n\nDi kelas ini kamu akan membangun jaringan saraf **dari nol** dengan Python murni: `math`, `random`, dan list biasa. Mesin pemeriksa latihan di Ruang Materi tidak memiliki numpy atau PyTorch, dan itu disengaja. Dengan menulis setiap perkalian sendiri, kamu benar-benar paham apa yang terjadi di dalam jaringan.\n\nSupaya tidak asing dengan dunia nyata, setiap bab juga menampilkan padanannya di PyTorch. Kode PyTorch itu bukan untuk latihan di sini, tetapi untuk kamu coba di Google Colab. Sebagai gambaran, inilah satu lapisan jaringan dengan PyTorch:\n\n```python\nimport torch\nimport torch.nn as nn\n\nlapisan = nn.Linear(3, 2)   # 3 masukan, 2 neuron\nx = torch.tensor([[0.8, 0.9, 0.7]])\nprint(lapisan(x))\n```\n\nBaris `nn.Linear(3, 2)` menyimpan 6 bobot dan 2 bias, lalu mengerjakan jumlah berbobot untuk kamu. Di bab 2 dan 3 kamu akan menulis isi dari baris itu dengan tangan.\n\n## Contoh pengambilan keputusan dengan kode\n\nLatihan bab ini bukan melatih jaringan, melainkan menuliskan pertimbangan tadi sebagai fungsi. Kasus disimpan sebagai dictionary:\n\n```python\nkasus = {\n    \"jenis_data\": \"gambar\",      # gambar, suara, teks, atau tabel\n    \"jumlah_data\": 50000,\n    \"harus_dijelaskan\": False,\n}\n```\n\nFungsi `perlu_deep_learning(kasus)` mengembalikan `\"deep learning\"` atau `\"ml biasa\"`. Aturannya sederhana dan sengaja dibuat kaku supaya bisa diperiksa: kalau hasilnya harus mudah dijelaskan, pilih ML biasa. Kalau datanya tabel, pilih ML biasa. Kalau datanya kurang dari 1000 contoh, pilih ML biasa. Selain itu, deep learning. Tentu keputusan di dunia nyata lebih bernuansa, tapi urutan pertanyaannya mirip.\n\n## Rangkuman\n\n- Deep learning adalah bagian dari machine learning yang memakai jaringan saraf berlapis banyak.\n- Keunggulan utamanya: fitur dipelajari sendiri dari data mentah seperti piksel, suara, dan teks.\n- Deep learning populer sekarang karena data melimpah, GPU, dan pustaka seperti PyTorch.\n- Untuk data tabel kecil atau keputusan yang harus dijelaskan, ML biasa sering lebih tepat.\n- Latihan di kelas ini memakai Python murni, sedangkan padanan PyTorch bisa kamu coba di Google Colab.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti kata \"deep\" pada deep learning?",
+          "code": "",
+          "options": [
+            "Model memahami makna data secara mendalam seperti manusia",
+            "Jaringan sarafnya punya banyak lapisan yang bertumpuk",
+            "Data latihnya disimpan jauh di dalam server khusus GPU",
+            "Proses latihnya selalu memakan waktu berhari-hari lamanya"
+          ],
+          "answer": 1,
+          "explanation": "Deep merujuk pada jumlah lapisan yang banyak, bukan pada pemahaman yang dalam."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Keunggulan utama deep learning untuk data gambar dibanding ML biasa adalah...",
+          "code": "",
+          "options": [
+            "Tidak membutuhkan label sama sekali untuk setiap gambar",
+            "Selalu lebih mudah dijelaskan alasan setiap keputusannya",
+            "Fitur berguna dipelajari sendiri dari piksel mentah",
+            "Bisa dilatih cepat dengan data puluhan gambar saja"
+          ],
+          "answer": 2,
+          "explanation": "Lapisan jaringan belajar sendiri fitur seperti tepi dan bentuk, sehingga manusia tidak perlu merancang fiturnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sekolah punya 300 baris data nilai rapor dan ingin menebak kelulusan dengan alasan yang mudah dijelaskan ke guru. Pilihan paling masuk akal?",
+          "code": "",
+          "options": [
+            "Pohon keputusan",
+            "Jaringan saraf dengan 20 lapisan tersembunyi",
+            "Transformer yang dilatih ulang dari nol di GPU",
+            "CNN karena nilai rapor bisa diubah menjadi gambar"
+          ],
+          "answer": 0,
+          "explanation": "Data tabel kecil dan kebutuhan penjelasan cocok untuk ML biasa seperti pohon keputusan."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "GPU membantu deep learning karena bisa mengerjakan banyak perkalian angka secara paralel.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Melatih jaringan berisi sangat banyak perkalian, dan GPU mengerjakan ribuan perkalian sekaligus."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Perlu deep learning atau tidak?",
+          "prompt": "Lengkapi `perlu_deep_learning(kasus)`. `kasus` adalah dictionary dengan kunci `jenis_data` (\"gambar\", \"suara\", \"teks\", atau \"tabel\"), `jumlah_data` (int), dan `harus_dijelaskan` (bool).\n\nPeriksa berurutan:\n\n1. Kalau `harus_dijelaskan` bernilai `True`, kembalikan `\"ml biasa\"`.\n2. Kalau `jenis_data` adalah `\"tabel\"`, kembalikan `\"ml biasa\"`.\n3. Kalau `jumlah_data` kurang dari 1000, kembalikan `\"ml biasa\"`.\n4. Selain itu kembalikan `\"deep learning\"`.\n\nContoh kasus ada di `KASUS`.",
+          "starter": {
+            "code": "def perlu_deep_learning(kasus):\n    if kasus[\"jenis_data\"] == \"tabel\":\n        return \"ml biasa\"\n    # TODO: periksa harus_dijelaskan dan jumlah_data\n    return \"deep learning\"\n\n\nfor nama, k in KASUS.items():\n    print(nama, perlu_deep_learning(k))\n"
+          },
+          "solution": {
+            "code": "def perlu_deep_learning(kasus):\n    if kasus[\"harus_dijelaskan\"]:\n        return \"ml biasa\"\n    if kasus[\"jenis_data\"] == \"tabel\":\n        return \"ml biasa\"\n    if kasus[\"jumlah_data\"] < 1000:\n        return \"ml biasa\"\n    return \"deep learning\"\n\n\nfor nama, k in KASUS.items():\n    print(nama, perlu_deep_learning(k))\n"
+          },
+          "setup": "KASUS = {\n    \"foto_kartu_pelajar\": {\"jenis_data\": \"gambar\", \"jumlah_data\": 50000, \"harus_dijelaskan\": False},\n    \"nilai_rapor\": {\"jenis_data\": \"tabel\", \"jumlah_data\": 300, \"harus_dijelaskan\": True},\n    \"rekaman_adzan\": {\"jenis_data\": \"suara\", \"jumlah_data\": 400, \"harus_dijelaskan\": False},\n    \"komentar_forum\": {\"jenis_data\": \"teks\", \"jumlah_data\": 200000, \"harus_dijelaskan\": True},\n}\n",
+          "tests": [
+            {
+              "name": "Foto dalam jumlah besar memakai deep learning",
+              "check": "perlu_deep_learning(KASUS[\"foto_kartu_pelajar\"]) == \"deep learning\""
+            },
+            {
+              "name": "Data tabel memakai ML biasa",
+              "check": "perlu_deep_learning(KASUS[\"nilai_rapor\"]) == \"ml biasa\""
+            },
+            {
+              "name": "Data suara yang sedikit memakai ML biasa",
+              "check": "perlu_deep_learning(KASUS[\"rekaman_adzan\"]) == \"ml biasa\""
+            },
+            {
+              "name": "Keputusan yang harus dijelaskan memakai ML biasa",
+              "check": "perlu_deep_learning(KASUS[\"komentar_forum\"]) == \"ml biasa\""
+            },
+            {
+              "name": "Tepat 1000 contoh teks sudah cukup",
+              "check": "perlu_deep_learning({\"jenis_data\": \"teks\", \"jumlah_data\": 1000, \"harus_dijelaskan\": False}) == \"deep learning\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "neuron-dan-aktivasi",
+      "title": "Neuron dan Fungsi Aktivasi",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Menghitung jumlah berbobot sebuah neuron dari masukan, bobot, dan bias.\n- Menjelaskan peran fungsi aktivasi sigmoid, tanh, dan ReLU.\n- Mengubah skor beberapa kelas menjadi peluang dengan softmax.\n- Menulis neuron dan softmax dengan Python murni.\n\n## Neuron tiruan\n\nNeuron tiruan terinspirasi dari sel saraf di otak, tetapi cara kerjanya jauh lebih sederhana. Ia menerima beberapa angka masukan, lalu mengeluarkan satu angka. Prosesnya dua tahap.\n\n**Tahap 1: jumlah berbobot.** Setiap masukan `x` dikalikan dengan **bobot** `w` miliknya, semua hasil kali dijumlahkan, lalu ditambah **bias** `b`. Hasil ini biasa diberi nama `z`:\n\n```\nz = x1*w1 + x2*w2 + ... + xn*wn + b\n```\n\n**Tahap 2: aktivasi.** Nilai `z` dilewatkan ke sebuah **fungsi aktivasi**, dan hasilnya menjadi keluaran neuron.\n\n![Neuron tiruan](slide:5)\n\nContoh dekat: koperasi sekolah ingin menebak apakah seorang siswa akan membeli minuman dingin saat istirahat. Masukannya suhu hari itu (sudah dinormalisasi) dan apakah ada jam olahraga sebelumnya (1 atau 0). Bobot menyatakan seberapa penting tiap masukan. Kalau bobot jam olahraga besar, adanya olahraga sangat menaikkan `z`. Bobot negatif berarti masukan itu justru menurunkan `z`. Bias mengatur titik awal: seberapa mudah neuron \"menyala\" walaupun semua masukan nol.\n\nDi Python murni, jumlah berbobot cukup satu baris dengan `zip`:\n\n```python\ndef jumlah_berbobot(x, w, b):\n    return sum(xi * wi for xi, wi in zip(x, w)) + b\n\nprint(jumlah_berbobot([2, 3], [0.5, -1], 1))\n```\n\nOutput:\n\n```\n-1.0\n```\n\nHitungannya: 2 x 0.5 = 1, 3 x (-1) = -3, ditambah bias 1, jadi -1.0.\n\nYang penting diingat: bobot dan bias **tidak ditulis manusia**. Nilainya diacak di awal, lalu disetel sedikit demi sedikit saat latihan supaya tebakan makin tepat. Bagaimana cara menyetelnya akan dibahas di bab loss dan backpropagation.\n\n## Perceptron, neuron paling awal\n\nNeuron tiruan pertama yang bisa belajar disebut **perceptron**. Aktivasinya berupa fungsi tangga: keluarkan 1 kalau `z` positif, selain itu 0. Perceptron bisa memisahkan data yang terbelah oleh satu garis lurus, misalnya \"lulus\" dan \"tidak lulus\" berdasarkan dua nilai. Namun ia gagal untuk pola yang tidak bisa dipisah satu garis, contoh terkenalnya XOR. Masalah ini baru terpecahkan ketika neuron disusun berlapis dan dipakai aktivasi yang halus, sehingga bisa dilatih dengan gradien.\n\n## Fungsi aktivasi\n\nTanpa aktivasi, neuron hanya melakukan perkalian dan penjumlahan, yaitu operasi linear. Masalahnya, tumpukan operasi linear tetap linear. Sepuluh lapisan tanpa aktivasi sama kuatnya dengan satu lapisan saja. Fungsi aktivasi menambahkan sifat **non-linear** sehingga jaringan bisa mempelajari pola yang melengkung dan rumit.\n\nTiga aktivasi yang paling sering kamu temui:\n\n| Aktivasi | Rumus | Rentang hasil | Dipakai di |\n|---|---|---|---|\n| Sigmoid | 1 / (1 + e^(-z)) | 0 sampai 1 | keluaran klasifikasi dua kelas |\n| Tanh | (e^z - e^(-z)) / (e^z + e^(-z)) | -1 sampai 1 | lapisan tersembunyi, jaringan lama |\n| ReLU | max(0, z) | 0 sampai tak hingga | lapisan tersembunyi, paling umum |\n\n```python\nimport math\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\ndef relu(z):\n    return max(0.0, z)\n\nprint(sigmoid(0), math.tanh(0), relu(-3), relu(2.5))\n```\n\nOutput:\n\n```\n0.5 0.0 0.0 2.5\n```\n\n**Sigmoid** cocok untuk keluaran berupa peluang, misalnya peluang siswa hadir besok. Kelemahannya, untuk `z` yang sangat besar atau sangat kecil kurvanya hampir datar, sehingga gradien menjadi kecil dan belajar melambat. **Tanh** mirip sigmoid tetapi berpusat di nol, dan sudah tersedia sebagai `math.tanh`. **ReLU** sangat sederhana: nilai negatif menjadi nol, nilai positif diteruskan apa adanya. Karena murah dihitung dan gradiennya tidak mengecil untuk nilai positif, ReLU menjadi pilihan standar untuk lapisan tersembunyi.\n\n## Menggabungkan semuanya\n\nSekarang jumlah berbobot dan aktivasi bisa digabung menjadi satu fungsi neuron. Nama aktivasi dikirim sebagai teks supaya fungsi yang sama bisa dipakai untuk berbagai neuron:\n\n```python\nimport math\n\ndef neuron(x, w, b, aktivasi):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    if aktivasi == \"sigmoid\":\n        return 1 / (1 + math.exp(-z))\n    if aktivasi == \"relu\":\n        return max(0.0, z)\n    if aktivasi == \"tanh\":\n        return math.tanh(z)\n    return z   # linear\n\nprint(round(neuron([1, 0], [2.0, -1.0], -2.0, \"sigmoid\"), 4))\n```\n\nOutput:\n\n```\n0.5\n```\n\nDi sini `z` = 1 x 2.0 + 0 x (-1.0) - 2.0 = 0, dan sigmoid dari 0 adalah 0.5. Neuron berada tepat di tengah, belum yakin ke arah mana pun. Coba ganti masukan pertama menjadi 3: `z` menjadi 4 dan keluaran naik menjadi sekitar 0.982. Satu perubahan masukan langsung terlihat pengaruhnya lewat bobot.\n\n## Memilih aktivasi\n\nPedoman singkat yang dipakai banyak orang:\n\n- **Lapisan tersembunyi:** mulai dengan ReLU. Ganti hanya kalau ada alasan kuat.\n- **Keluaran dua kelas** (hadir atau tidak, lulus atau tidak): satu neuron dengan sigmoid.\n- **Keluaran banyak kelas** (hadir, izin, alpa): satu neuron per kelas, lalu softmax.\n- **Keluaran angka bebas** (menebak nilai ujian): tanpa aktivasi, alias linear.\n\nReLU punya satu kelemahan yang perlu kamu tahu namanya: kalau `z` sebuah neuron selalu negatif, keluarannya selalu nol dan neuron itu berhenti belajar. Fenomena ini disebut \"dying ReLU\". Varian seperti Leaky ReLU membiarkan sedikit nilai negatif lewat untuk mengatasinya.\n\n## Softmax untuk banyak kelas\n\nSigmoid menghasilkan satu peluang, cocok untuk dua kelas. Bagaimana kalau kelasnya tiga, misalnya status absensi \"hadir\", \"izin\", dan \"alpa\"? Lapisan keluaran lalu punya tiga neuron yang masing-masing menghasilkan skor, disebut **logit**. Skor bisa negatif dan jumlahnya sembarang, jadi belum bisa dibaca sebagai peluang.\n\n**Softmax** mengubah skor itu menjadi peluang:\n\n1. Hitung `e` pangkat setiap skor, sehingga semuanya positif.\n2. Bagi setiap hasil dengan jumlah semuanya, sehingga totalnya tepat 1.\n\n```python\nimport math\n\ndef softmax(z):\n    m = max(z)\n    e = [math.exp(v - m) for v in z]\n    total = sum(e)\n    return [v / total for v in e]\n\np = softmax([2.0, 1.0, 0.1])\nprint([round(v, 3) for v in p])\n```\n\nOutput:\n\n```\n[0.659, 0.242, 0.099]\n```\n\nSkor terbesar mendapat peluang terbesar, dan urutannya tidak berubah. Perhatikan trik `v - m`: skor dikurangi skor maksimum sebelum dipangkatkan. Hasil akhirnya sama persis, tetapi mencegah `math.exp` meluap (OverflowError) kalau skornya sangat besar, misalnya 1000.\n\n## Padanan di PyTorch\n\nDi Google Colab, semua fungsi tadi sudah tersedia. Kode ini untuk dicoba di sana, bukan di latihan:\n\n```python\nimport torch\nimport torch.nn as nn\n\nz = torch.tensor([2.0, 1.0, 0.1])\nprint(torch.sigmoid(z))\nprint(nn.ReLU()(torch.tensor([-3.0, 2.5])))\nprint(torch.softmax(z, dim=0))\n```\n\nLatihan di Ruang Materi tetap Python murni, karena mesin pemeriksanya tidak memiliki PyTorch. Menulis sendiri juga membuatmu paham bahwa `nn.ReLU()` hanyalah `max(0, z)` untuk setiap angka.\n\n## Rangkuman\n\n- Neuron menghitung jumlah berbobot `z = sum(x * w) + b`, lalu melewatkannya ke fungsi aktivasi.\n- Bobot dan bias diacak di awal lalu disetel saat latihan.\n- Aktivasi membuat jaringan non-linear: sigmoid (0 sampai 1), tanh (-1 sampai 1), dan ReLU (max(0, z)).\n- Softmax mengubah skor beberapa kelas menjadi peluang yang semuanya positif dan berjumlah 1.\n- Kurangi skor maksimum sebelum `math.exp` supaya softmax tidak meluap.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "x = [2, 3]\nw = [0.5, -1]\nb = 1\nprint(sum(xi * wi for xi, wi in zip(x, w)) + b)",
+          "options": [
+            "-1.0",
+            "1.0",
+            "4.0",
+            "-2.0"
+          ],
+          "answer": 0,
+          "explanation": "2 x 0.5 + 3 x (-1) + 1 = 1 - 3 + 1 = -1.0."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mengapa jaringan saraf membutuhkan fungsi aktivasi non-linear?",
+          "code": "",
+          "options": [
+            "Agar bobot tidak perlu diacak lagi di awal setiap latihan",
+            "Agar keluaran setiap neuron selalu bernilai positif saja",
+            "Agar jaringan bisa belajar pola yang tidak lurus",
+            "Agar jumlah parameter jaringan menjadi jauh lebih sedikit"
+          ],
+          "answer": 2,
+          "explanation": "Tanpa aktivasi, tumpukan lapisan tetap linear dan setara dengan satu lapisan saja."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Hasil `softmax([1.0, 1.0])` adalah...",
+          "code": "",
+          "options": [
+            "[1.0, 1.0] karena kedua skornya sama besar",
+            "[0.5, 0.5]",
+            "[0.0, 0.0] karena selisih kedua skornya nol",
+            "[0.73, 0.27] karena skor pertama didahulukan"
+          ],
+          "answer": 1,
+          "explanation": "Skor yang sama menghasilkan peluang yang sama, dan totalnya harus 1."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "ReLU mengubah semua nilai negatif menjadi 0 dan meneruskan nilai positif apa adanya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "ReLU adalah max(0, z)."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Neuron dan softmax",
+          "prompt": "Lengkapi dua fungsi.\n\n1. `neuron(x, w, b, aktivasi)`: hitung `z = sum(x[i] * w[i]) + b`, lalu kembalikan hasil aktivasinya. `aktivasi` bisa `\"sigmoid\"`, `\"relu\"`, `\"tanh\"`, atau `\"linear\"` (kembalikan `z` apa adanya).\n2. `softmax(z)`: kurangi setiap skor dengan `max(z)`, pangkatkan dengan `math.exp`, lalu bagi dengan jumlahnya. Kembalikan list peluang.",
+          "starter": {
+            "code": "import math\n\n\ndef neuron(x, w, b, aktivasi):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    if aktivasi == \"relu\":\n        return max(0.0, z)\n    # TODO: sigmoid dan tanh\n    return z\n\n\ndef softmax(z):\n    # TODO: ubah skor menjadi peluang\n    return z\n\n\nprint(neuron([1, 0], [2.0, -1.0], -2.0, \"sigmoid\"))\nprint(softmax([2.0, 1.0, 0.1]))\n"
+          },
+          "solution": {
+            "code": "import math\n\n\ndef neuron(x, w, b, aktivasi):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    if aktivasi == \"relu\":\n        return max(0.0, z)\n    if aktivasi == \"sigmoid\":\n        return 1 / (1 + math.exp(-z))\n    if aktivasi == \"tanh\":\n        return math.tanh(z)\n    return z\n\n\ndef softmax(z):\n    m = max(z)\n    e = [math.exp(v - m) for v in z]\n    total = sum(e)\n    return [v / total for v in e]\n\n\nprint(neuron([1, 0], [2.0, -1.0], -2.0, \"sigmoid\"))\nprint(softmax([2.0, 1.0, 0.1]))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Sigmoid dari z = 0 adalah 0.5",
+              "check": "abs(neuron([1, 0], [2.0, -1.0], -2.0, \"sigmoid\") - 0.5) < 1e-6"
+            },
+            {
+              "name": "ReLU memotong nilai negatif",
+              "check": "neuron([2, 3], [0.5, -1], 1, \"relu\") == 0.0"
+            },
+            {
+              "name": "Tanh dihitung dengan benar",
+              "check": "abs(neuron([1, 1], [0.5, 0.5], 0, \"tanh\") - math.tanh(1)) < 1e-6"
+            },
+            {
+              "name": "Softmax berjumlah 1 dan urutannya benar",
+              "check": "abs(sum(softmax([2.0, 1.0, 0.1])) - 1) < 1e-6 and [round(p, 3) for p in softmax([2.0, 1.0, 0.1])] == [0.659, 0.242, 0.099]"
+            },
+            {
+              "name": "Softmax tidak meluap untuk skor besar",
+              "check": "abs(softmax([1000.0, 1000.0])[0] - 0.5) < 1e-6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "jaringan-dan-forward-pass",
+      "title": "Jaringan dan Forward Pass",
+      "est_minutes": 30,
+      "slide_from": 8,
+      "slide_to": 10,
+      "body": "## Tujuan\n\n- Menjelaskan susunan lapisan masukan, tersembunyi, dan keluaran.\n- Menyimpan bobot satu lapisan sebagai list bersarang (matriks).\n- Menjalankan forward pass melalui beberapa lapisan.\n- Membaca dan mencocokkan bentuk (shape) data dan bobot.\n\n## Dari neuron ke lapisan\n\nSatu neuron hanya bisa menangkap pola sederhana. Kekuatan jaringan muncul ketika banyak neuron disusun menjadi **lapisan**, lalu lapisan-lapisan itu ditumpuk.\n\n- **Lapisan masukan** bukan neuron sungguhan. Ia hanyalah fitur data, misalnya persentase kehadiran, nilai tugas, dan jam belajar.\n- **Lapisan tersembunyi** (hidden layer) berisi neuron yang mengolah masukan menjadi pola baru. Disebut tersembunyi karena nilainya tidak kita lihat di data.\n- **Lapisan keluaran** menghasilkan tebakan akhir, misalnya satu peluang lulus atau tiga skor untuk tiga kelas.\n\n![Lapisan dan jaringan](slide:8)\n\nJaringan yang paling dasar disebut **fully connected** atau **dense**: setiap neuron di sebuah lapisan menerima **semua** keluaran lapisan sebelumnya. Jaringan seperti ini juga sering disebut multilayer perceptron (MLP).\n\nContoh: jaringan untuk menebak kelulusan dengan 3 fitur, satu lapisan tersembunyi berisi 2 neuron, dan 1 neuron keluaran. Setiap neuron tersembunyi punya 3 bobot (satu untuk tiap fitur) dan 1 bias. Neuron keluaran punya 2 bobot (satu untuk tiap neuron tersembunyi) dan 1 bias. Total parameternya 2 x 3 + 2 + 2 + 1 = 11 angka yang akan disetel saat latihan.\n\n## Bobot sebagai matriks\n\nMenulis bobot satu per satu (`w11`, `w12`, ...) cepat menjadi berantakan. Cara yang rapi adalah menyimpannya sebagai **matriks**, yang di Python murni berupa list berisi list:\n\n```python\n# lapisan 3 masukan -> 2 neuron\nW1 = [\n    [0.2, -0.5, 0.1],   # bobot neuron pertama\n    [0.4, 0.3, -0.2],   # bobot neuron kedua\n]\nb1 = [0.0, 0.1]\n```\n\nSatu **baris** berisi semua bobot milik satu neuron. Jadi jumlah baris sama dengan jumlah neuron, dan jumlah kolom sama dengan jumlah masukan. Biasnya satu angka per neuron.\n\nDengan susunan ini, menghitung satu lapisan berarti mengulang jumlah berbobot dari bab sebelumnya untuk setiap baris:\n\n```python\ndef relu(z):\n    return max(0.0, z)\n\ndef lapisan(x, W, b):\n    hasil = []\n    for w, bi in zip(W, b):\n        z = sum(xi * wi for xi, wi in zip(x, w)) + bi\n        hasil.append(relu(z))\n    return hasil\n\nx = [1.0, 2.0, 3.0]\nprint(lapisan(x, W1, b1))\n```\n\nNeuron pertama: 0.2 - 1.0 + 0.3 + 0.0 = -0.5, setelah ReLU menjadi 0.0. Neuron kedua: 0.4 + 0.6 - 0.6 + 0.1 = 0.5. Output:\n\n```\n[0.0, 0.4999999999999999]\n```\n\nKenapa bukan tepat 0.5? Komputer menyimpan pecahan seperti 0.1 dan 0.3 dalam bentuk biner yang tidak persis, sehingga muncul selisih yang sangat kecil. Ini wajar di semua bahasa pemrograman. Karena itu, saat membandingkan pecahan, jangan memakai `==`. Pakai `abs(a - b) < 1e-6` atau `round(a, 4)`. Pemeriksa latihan di kelas ini juga memakai cara tersebut.\n\nDi matematika, perhitungan ini ditulis singkat sebagai `relu(W x + b)`, yaitu perkalian matriks lalu ditambah vektor bias.\n\n## Forward pass\n\n**Forward pass** adalah perjalanan data dari lapisan masukan sampai keluaran. Keluaran satu lapisan menjadi masukan lapisan berikutnya, persis seperti estafet.\n\nSupaya bisa dipakai untuk jaringan dengan banyak lapisan, simpan setiap lapisan sebagai tuple `(W, b, aktivasi)` di dalam list:\n\n```python\nimport math\n\nAKTIVASI = {\n    \"relu\": lambda z: max(0.0, z),\n    \"sigmoid\": lambda z: 1 / (1 + math.exp(-z)),\n    \"linear\": lambda z: z,\n}\n\njaringan = [\n    ([[0.2, -0.5, 0.1], [0.4, 0.3, -0.2]], [0.0, 0.1], \"relu\"),\n    ([[1.0, -1.0]], [0.2], \"sigmoid\"),\n]\n```\n\nLapisan terakhir memakai sigmoid karena kita ingin keluarannya berupa peluang lulus. Lapisan tersembunyi memakai ReLU. Pilihan `\"linear\"` berarti tanpa aktivasi, biasa dipakai di keluaran regresi atau sebelum softmax.\n\nForward pass lalu cukup berupa perulangan:\n\n```python\ndef forward(x, jaringan):\n    for W, b, nama in jaringan:\n        f = AKTIVASI[nama]\n        x = [f(sum(xi * wi for xi, wi in zip(x, w)) + bi)\n             for w, bi in zip(W, b)]\n    return x\n\nprint(forward([1.0, 2.0, 3.0], jaringan))\n```\n\nLapisan pertama menghasilkan `[0.0, 0.5]` seperti tadi. Lapisan kedua menghitung 0.0 x 1.0 + 0.5 x (-1.0) + 0.2 = -0.3, lalu sigmoid(-0.3) kira-kira 0.4256. Jaringan menebak peluang lulus sekitar 43 persen. Karena bobotnya masih contoh, tebakan ini belum berarti apa-apa. Bobot baru bermakna setelah dilatih.\n\nPerhatikan bahwa keluaran `forward` selalu list, bahkan kalau hanya satu neuron. Ini menjaga semua lapisan punya bentuk yang sama.\n\n## Bentuk data (shape)\n\nKesalahan paling sering saat membangun jaringan adalah **bentuk yang tidak cocok**. Shape menyatakan ukuran data di setiap dimensinya:\n\n| Data | Shape | Arti |\n|---|---|---|\n| Satu siswa, 3 fitur | (3,) | list 3 angka |\n| Batch 4 siswa | (4, 3) | 4 baris, 3 kolom |\n| Bobot lapisan 3 ke 2 neuron | (2, 3) | 2 baris, 3 kolom |\n| Bias lapisan itu | (2,) | 2 angka |\n| Keluaran lapisan itu | (2,) | 2 angka |\n\nAturan praktisnya: **jumlah kolom bobot harus sama dengan panjang masukan**, dan jumlah baris bobot menentukan panjang keluaran. Lapisan berikutnya harus punya kolom sebanyak keluaran lapisan ini. Kalau tidak cocok, `zip` di Python murni akan diam-diam memotong ke yang terpendek dan hasilnya salah tanpa pesan error. PyTorch lebih tegas: ia akan melempar error tentang shape yang tidak cocok.\n\nDi Python murni kamu bisa memeriksa bentuk dengan `len`:\n\n```python\nprint(len(W1), len(W1[0]))   # 2 3\n```\n\n## Berapa banyak parameter?\n\nMenghitung jumlah parameter membantu kamu membayangkan ukuran jaringan. Rumus untuk satu lapisan dense: `masukan x neuron + neuron`. Jaringan pengenal angka tulisan tangan yang sederhana, dengan masukan 784 piksel, satu lapisan tersembunyi 128 neuron, dan 10 neuron keluaran, sudah punya 784 x 128 + 128 + 128 x 10 + 10 = 101.770 parameter. Itu baru jaringan kecil. Model bahasa besar memiliki miliaran parameter, sehingga butuh GPU dan data yang sangat banyak untuk melatihnya.\n\n## Padanan di PyTorch\n\nDi Colab, jaringan yang sama ditulis seperti ini (untuk dicoba di sana, bukan di latihan):\n\n```python\nimport torch\nimport torch.nn as nn\n\nmodel = nn.Sequential(\n    nn.Linear(3, 2), nn.ReLU(),\n    nn.Linear(2, 1), nn.Sigmoid(),\n)\nx = torch.tensor([[1.0, 2.0, 3.0]])   # shape (1, 3)\nprint(model(x).shape)                 # torch.Size([1, 1])\n```\n\n`nn.Linear(3, 2)` menyimpan bobot berbentuk (2, 3), sama seperti `W1` milikmu, dan bobotnya diacak otomatis. PyTorch juga selalu bekerja dengan batch, sehingga satu contoh pun ditulis sebagai shape (1, 3). Latihan di sini tetap memakai list Python biasa.\n\n## Rangkuman\n\n- Jaringan tersusun dari lapisan masukan, lapisan tersembunyi, dan lapisan keluaran.\n- Bobot satu lapisan disimpan sebagai matriks: satu baris per neuron, satu kolom per masukan.\n- Forward pass menghitung `aktivasi(W x + b)` lapisan demi lapisan, dan keluaran satu lapisan menjadi masukan lapisan berikutnya.\n- Jumlah kolom bobot harus sama dengan panjang masukan, kalau tidak hasilnya salah.\n- Di PyTorch, `nn.Sequential` dan `nn.Linear` mengerjakan hal yang sama dengan bobot yang diacak otomatis.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sebuah lapisan menerima 4 masukan dan berisi 3 neuron. Bagaimana bentuk matriks bobotnya jika satu baris untuk satu neuron?",
+          "code": "",
+          "options": [
+            "4 baris dan 3 kolom, satu baris untuk setiap masukan",
+            "3 baris dan 4 kolom",
+            "7 baris dan 1 kolom karena masukan ditambah neuron",
+            "12 baris dan 12 kolom karena 4 dikali 3 sama dengan 12"
+          ],
+          "answer": 1,
+          "explanation": "Satu baris per neuron (3) dan satu kolom per masukan (4)."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Berapa jumlah parameter (bobot dan bias) lapisan dense dengan 3 masukan dan 2 neuron?",
+          "code": "",
+          "options": [
+            "6 parameter, hanya bobot",
+            "5 parameter, masukan ditambah neuron",
+            "8",
+            "9 parameter, karena bias ikut tiap masukan"
+          ],
+          "answer": 2,
+          "explanation": "Bobotnya 3 x 2 = 6, ditambah 2 bias, totalnya 8."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "def lapisan(x, W, b):\n    return [max(0.0, sum(xi * wi for xi, wi in zip(x, w)) + bi)\n            for w, bi in zip(W, b)]\n\nprint(lapisan([1.0, 2.0], [[1.0, 0.0], [0.0, -1.0]], [0.0, 1.0]))",
+          "options": [
+            "[1.0, 0.0]",
+            "[1.0, -1.0]",
+            "[0.0, 1.0]",
+            "[2.0, 0.0]"
+          ],
+          "answer": 0,
+          "explanation": "Neuron pertama: 1 + 0 = 1.0. Neuron kedua: -2 + 1 = -1.0, lalu ReLU menjadi 0.0."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada forward pass, keluaran satu lapisan menjadi masukan bagi lapisan berikutnya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Data mengalir seperti estafet dari lapisan masukan sampai lapisan keluaran."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Forward pass jaringan berlapis",
+          "prompt": "Lengkapi `forward(x, jaringan)`. `jaringan` adalah list lapisan, setiap lapisan berupa tuple `(W, b, aktivasi)`.\n\n- `W` adalah list baris bobot, satu baris untuk satu neuron.\n- `b` adalah list bias, satu untuk satu neuron.\n- `aktivasi` adalah nama di dictionary `AKTIVASI` (`\"relu\"`, `\"sigmoid\"`, `\"linear\"`).\n\nUntuk setiap lapisan secara berurutan, hitung `aktivasi(sum(x * w) + b)` untuk setiap neuron, lalu jadikan hasilnya masukan lapisan berikutnya. Kembalikan list keluaran lapisan terakhir. Jaringan contoh ada di `JARINGAN`.",
+          "starter": {
+            "code": "def forward(x, jaringan):\n    W, b, nama = jaringan[0]\n    f = AKTIVASI[nama]\n    x = [f(sum(xi * wi for xi, wi in zip(x, w)) + bi) for w, bi in zip(W, b)]\n    # TODO: lanjutkan ke semua lapisan, bukan hanya lapisan pertama\n    return x\n\n\nprint(forward([1.0, 2.0, 3.0], JARINGAN))\n"
+          },
+          "solution": {
+            "code": "def forward(x, jaringan):\n    for W, b, nama in jaringan:\n        f = AKTIVASI[nama]\n        x = [f(sum(xi * wi for xi, wi in zip(x, w)) + bi) for w, bi in zip(W, b)]\n    return x\n\n\nprint(forward([1.0, 2.0, 3.0], JARINGAN))\n"
+          },
+          "setup": "import math\n\nAKTIVASI = {\n    \"relu\": lambda z: max(0.0, z),\n    \"sigmoid\": lambda z: 1 / (1 + math.exp(-z)),\n    \"linear\": lambda z: z,\n}\n\nJARINGAN = [\n    ([[0.2, -0.5, 0.1], [0.4, 0.3, -0.2]], [0.0, 0.1], \"relu\"),\n    ([[1.0, -1.0]], [0.2], \"sigmoid\"),\n]\n",
+          "tests": [
+            {
+              "name": "Keluaran berupa list berisi satu peluang",
+              "check": "len(forward([1.0, 2.0, 3.0], JARINGAN)) == 1"
+            },
+            {
+              "name": "Peluang untuk contoh pertama benar",
+              "check": "abs(forward([1.0, 2.0, 3.0], JARINGAN)[0] - 0.425557) < 1e-5"
+            },
+            {
+              "name": "Satu lapisan linear sama dengan jumlah berbobot",
+              "check": "forward([1.0, 2.0], [([[1.0, 1.0], [2.0, -1.0]], [0.5, 0.0], \"linear\")]) == [3.5, 0.0]"
+            },
+            {
+              "name": "Tiga lapisan dijalankan semuanya",
+              "check": "forward([1.0], [([[2.0]], [0.0], \"linear\"), ([[3.0]], [0.0], \"linear\"), ([[-1.0]], [1.0], \"relu\")]) == [0.0]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "loss-dan-gradient-descent",
+      "title": "Loss dan Gradient Descent",
+      "est_minutes": 35,
+      "slide_from": 11,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menghitung loss MSE untuk regresi dan cross-entropy untuk klasifikasi.\n- Menjelaskan arti turunan dan gradien sebagai arah naiknya loss.\n- Melakukan satu langkah gradient descent untuk model sederhana.\n- Mengenali gejala learning rate yang terlalu besar atau terlalu kecil.\n\n## Mengukur kesalahan dengan loss\n\nJaringan dengan bobot acak menebak asal-asalan. Untuk memperbaikinya, kita perlu satu angka yang menyatakan **seberapa salah** tebakannya. Angka itu disebut **loss**. Makin kecil loss, makin baik tebakan. Seluruh proses latihan pada dasarnya adalah mencari bobot yang membuat loss sekecil mungkin.\n\nUntuk regresi, yaitu menebak angka, loss yang paling umum adalah **Mean Squared Error (MSE)** yang sudah kamu kenal dari kelas Machine Learning Dasar: rata-rata kuadrat selisih tebakan dan label.\n\n```python\ndef mse(y, y_hat):\n    n = len(y)\n    return sum((a - b) ** 2 for a, b in zip(y, y_hat)) / n\n\nprint(mse([80, 90], [78, 93]))\n```\n\nOutput:\n\n```\n6.5\n```\n\nSelisihnya 2 dan 3, kuadratnya 4 dan 9, rata-ratanya 6.5. Kuadrat membuat kesalahan besar dihukum jauh lebih berat daripada kesalahan kecil.\n\n![Fungsi loss](slide:11)\n\n## Cross-entropy untuk klasifikasi\n\nUntuk klasifikasi, keluaran jaringan berupa peluang dari softmax atau sigmoid. MSE kurang cocok di sini, dan yang dipakai adalah **cross-entropy**. Rumusnya untuk satu contoh sangat pendek:\n\n```\nloss = -log(peluang yang diberikan model ke kelas yang benar)\n```\n\n`log` di sini adalah logaritma natural, `math.log` di Python. Misalkan kelasnya hadir (0), izin (1), alpa (2), dan model memberi peluang `[0.7, 0.2, 0.1]`.\n\n```python\nimport math\n\ndef cross_entropy(p, kelas):\n    return -math.log(p[kelas])\n\np = [0.7, 0.2, 0.1]\nprint(round(cross_entropy(p, 0), 4))   # label benar: hadir\nprint(round(cross_entropy(p, 2), 4))   # label benar: alpa\n```\n\nOutput:\n\n```\n0.3567\n2.3026\n```\n\nKalau jawaban benar adalah hadir, model sudah cukup yakin (0.7) dan loss-nya kecil. Kalau jawaban benar adalah alpa, model hanya memberi 0.1 dan loss-nya jauh lebih besar. Sifat penting cross-entropy: **yakin tapi salah dihukum sangat berat**. Peluang 0.99 ke kelas benar memberi loss sekitar 0.01, sedangkan peluang 0.01 ke kelas benar memberi loss sekitar 4.6. Kalau peluangnya tepat 0, `math.log(0)` bahkan error, sehingga di praktik peluang dijaga agar tidak pernah tepat nol.\n\nUntuk banyak contoh, loss akhirnya adalah **rata-rata** cross-entropy semua contoh.\n\n## Memilih loss yang tepat\n\nLoss harus cocok dengan jenis keluaran jaringan. Kalau salah pilih, latihan bisa tetap berjalan tetapi hasilnya buruk atau sangat lambat. Pegangan singkatnya:\n\n| Tugas | Aktivasi keluaran | Loss |\n|---|---|---|\n| Menebak angka (nilai ujian, omzet kantin) | linear | MSE |\n| Dua kelas (hadir atau tidak) | sigmoid | binary cross-entropy |\n| Banyak kelas (hadir, izin, alpa) | softmax | cross-entropy |\n\nBinary cross-entropy hanyalah cross-entropy untuk dua kelas: kalau label 1, loss-nya `-log(p)`, kalau label 0, loss-nya `-log(1 - p)`, dengan `p` keluaran sigmoid.\n\n## Turunan dan gradien\n\nBagaimana cara mengubah bobot supaya loss turun? Kita butuh **turunan**. Turunan loss terhadap sebuah bobot menjawab pertanyaan: kalau bobot ini dinaikkan sedikit, loss naik atau turun, dan seberapa cepat?\n\n- Turunan positif: menaikkan bobot membuat loss naik, jadi bobot sebaiknya **diturunkan**.\n- Turunan negatif: menaikkan bobot membuat loss turun, jadi bobot sebaiknya **dinaikkan**.\n- Turunan mendekati nol: kita sudah dekat dengan titik terendah.\n\nKalau bobotnya banyak, kumpulan semua turunan itu disebut **gradien**. Gradien menunjuk ke arah naiknya loss yang paling curam.\n\n## Gradient descent\n\nIdenya seperti menuruni bukit dalam kabut tebal. Kamu tidak bisa melihat lembah, tapi bisa merasakan kemiringan tanah di bawah kaki. Langkah terbaik: melangkah sedikit ke arah turunan yang paling curam, lalu ulangi.\n\n```\nw_baru = w_lama - learning_rate * gradien\n```\n\nTanda minus membuat kita bergerak **berlawanan** dengan gradien, yaitu ke arah loss yang lebih kecil.\n\nMari coba pada model paling sederhana, `y = w * x + b`, dengan loss MSE. Data contohnya jam belajar tambahan dan kenaikan nilai kuis: `(1, 3)`, `(2, 5)`, `(3, 7)`. Polanya sebenarnya `y = 2x + 1`. Gradien MSE untuk model ini:\n\n```\ndL/dw = 2/n * jumlah((y_hat - y) * x)\ndL/db = 2/n * jumlah(y_hat - y)\n```\n\n```python\nDATA = [(1, 3), (2, 5), (3, 7)]\n\ndef langkah_gd(w, b, data, lr):\n    n = len(data)\n    gw = 2 / n * sum((w * x + b - y) * x for x, y in data)\n    gb = 2 / n * sum((w * x + b - y) for x, y in data)\n    return w - lr * gw, b - lr * gb\n\nw, b = langkah_gd(0.0, 0.0, DATA, 0.1)\nprint(round(w, 4), round(b, 4))\n```\n\nOutput:\n\n```\n2.2667 1.0\n```\n\nMulai dari `w = 0` dan `b = 0`, MSE-nya 27.67. Setelah **satu** langkah, MSE turun menjadi sekitar 0.33. Ulangi beberapa langkah lagi dan `w` akan mendekati 2, `b` mendekati 1. Begitulah seluruh deep learning bekerja, hanya saja dengan jutaan bobot sekaligus.\n\n## Learning rate\n\n**Learning rate** (`lr`) mengatur seberapa besar langkah yang diambil. Inilah pengaturan yang paling sering harus kamu coba-coba. Hasil lima langkah pada data di atas dengan tiga nilai `lr`:\n\n| lr | Loss setelah langkah 1 sampai 5 | Kesimpulan |\n|---|---|---|\n| 0.01 | 21.9, 17.3, 13.7, 10.8, 8.5 | turun, tapi lambat |\n| 0.1 | 0.33, 0.005, 0.001, 0.001, 0.001 | turun cepat dan stabil |\n| 0.5 | 572, 11820, 244332, ... | meledak |\n\n- **Terlalu kecil:** loss memang turun, tetapi butuh sangat banyak langkah. Seperti menuruni bukit dengan langkah semut.\n- **Terlalu besar:** langkahnya melompati lembah, mendarat di sisi seberang yang lebih tinggi, lalu makin jauh. Loss naik turun atau meledak menjadi sangat besar, bahkan bisa menjadi `nan`.\n- **Pas:** loss turun cepat lalu mendatar.\n\nTidak ada nilai ajaib yang selalu benar. Nilai awal yang sering dicoba adalah 0.1, 0.01, atau 0.001, lalu disesuaikan sambil melihat kurva loss.\n\n## Padanan di PyTorch\n\nDi Google Colab, loss dan langkah gradient descent sudah disediakan (kode ini untuk dicoba di sana):\n\n```python\nimport torch\nimport torch.nn as nn\n\nloss_fn = nn.CrossEntropyLoss()\nskor = torch.tensor([[2.0, 1.0, 0.1]])   # logit, belum softmax\nlabel = torch.tensor([0])\nprint(loss_fn(skor, label))\n\nmodel = nn.Linear(1, 1)\nopt = torch.optim.SGD(model.parameters(), lr=0.1)\n```\n\nPerhatikan bahwa `nn.CrossEntropyLoss` menerima skor mentah (logit) dan menjalankan softmax di dalamnya, jadi jangan memberi softmax dua kali. `torch.optim.SGD` menjalankan rumus `w - lr * gradien` untuk semua bobot sekaligus lewat `opt.step()`. Latihan di sini tetap Python murni.\n\n## Rangkuman\n\n- Loss adalah satu angka yang menyatakan seberapa salah model. Latihan berarti mengecilkan loss.\n- MSE dipakai untuk regresi, cross-entropy `-log(p[kelas_benar])` untuk klasifikasi.\n- Gradien menunjuk arah naiknya loss, jadi bobot digeser ke arah sebaliknya: `w - lr * gradien`.\n- Learning rate terlalu kecil membuat latihan lambat, terlalu besar membuat loss meledak.\n- Di PyTorch, `nn.MSELoss`, `nn.CrossEntropyLoss`, dan `torch.optim.SGD` mengerjakan hal yang sama.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "import math\np = [0.7, 0.2, 0.1]\nprint(round(-math.log(p[2]), 4))",
+          "options": [
+            "0.3567",
+            "2.3026",
+            "0.7",
+            "1.6094"
+          ],
+          "answer": 1,
+          "explanation": "Kelas benar adalah indeks 2 dengan peluang 0.1, dan -log(0.1) kira-kira 2.3026."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Gradien loss terhadap sebuah bobot bernilai positif. Ke mana bobot itu digeser oleh gradient descent?",
+          "code": "",
+          "options": [
+            "Naik, mengikuti arah gradien supaya loss cepat berubah",
+            "Tetap di tempat, karena gradien positif berarti sudah optimal",
+            "Turun",
+            "Diacak ulang, karena gradien positif menandakan bobot rusak"
+          ],
+          "answer": 2,
+          "explanation": "Rumusnya w - lr * gradien, jadi gradien positif membuat bobot turun."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Selama latihan, loss naik turun liar lalu menjadi sangat besar. Penyebab yang paling mungkin adalah...",
+          "code": "",
+          "options": [
+            "Learning rate terlalu besar",
+            "Jumlah data latih terlalu banyak untuk ditampung memori",
+            "Fungsi loss yang dipakai adalah MSE dan bukan cross-entropy",
+            "Bobot awal diacak dengan seed sehingga hasilnya selalu sama"
+          ],
+          "answer": 0,
+          "explanation": "Langkah yang terlalu besar melompati titik terendah sehingga loss makin jauh dan meledak."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Cross-entropy menghukum tebakan yang sangat yakin tetapi salah dengan loss yang sangat besar.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Peluang kecil untuk kelas yang benar membuat -log(p) bernilai besar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Cross-entropy dan satu langkah gradient descent",
+          "prompt": "Lengkapi dua fungsi.\n\n1. `cross_entropy(p, kelas)`: kembalikan `-math.log(p[kelas])`.\n2. `langkah_gd(w, b, data, lr)`: model `y_hat = w * x + b` dengan loss MSE. `data` berisi pasangan `(x, y)`. Hitung\n   - `gw = 2 / n * jumlah((y_hat - y) * x)`\n   - `gb = 2 / n * jumlah(y_hat - y)`\n\n   lalu kembalikan tuple `(w - lr * gw, b - lr * gb)`.\n\nData contoh ada di `DATA` dan fungsi `mse(w, b, data)` sudah disediakan.",
+          "starter": {
+            "code": "import math\n\n\ndef cross_entropy(p, kelas):\n    # TODO: -log dari peluang kelas yang benar\n    return 0.0\n\n\ndef langkah_gd(w, b, data, lr):\n    n = len(data)\n    gw = 2 / n * sum((w * x + b - y) * x for x, y in data)\n    gb = 0.0  # TODO: gradien bias\n    return w - lr * gw, b - lr * gb\n\n\nw, b = langkah_gd(0.0, 0.0, DATA, 0.1)\nprint(w, b, mse(w, b, DATA))\n"
+          },
+          "solution": {
+            "code": "import math\n\n\ndef cross_entropy(p, kelas):\n    return -math.log(p[kelas])\n\n\ndef langkah_gd(w, b, data, lr):\n    n = len(data)\n    gw = 2 / n * sum((w * x + b - y) * x for x, y in data)\n    gb = 2 / n * sum((w * x + b - y) for x, y in data)\n    return w - lr * gw, b - lr * gb\n\n\nw, b = langkah_gd(0.0, 0.0, DATA, 0.1)\nprint(w, b, mse(w, b, DATA))\n"
+          },
+          "setup": "DATA = [(1, 3), (2, 5), (3, 7)]\n\n\ndef mse(w, b, data):\n    return sum((w * x + b - y) ** 2 for x, y in data) / len(data)\n",
+          "tests": [
+            {
+              "name": "Cross-entropy kelas yakin benar kecil",
+              "check": "abs(cross_entropy([0.7, 0.2, 0.1], 0) - 0.356675) < 1e-5"
+            },
+            {
+              "name": "Cross-entropy kelas salah besar",
+              "check": "abs(cross_entropy([0.7, 0.2, 0.1], 2) - 2.302585) < 1e-5"
+            },
+            {
+              "name": "Satu langkah dari nol menghasilkan w dan b yang benar",
+              "check": "[round(v, 4) for v in langkah_gd(0.0, 0.0, DATA, 0.1)] == [2.2667, 1.0]"
+            },
+            {
+              "name": "Loss turun setelah satu langkah",
+              "check": "mse(*langkah_gd(0.0, 0.0, DATA, 0.1), DATA) < mse(0.0, 0.0, DATA)"
+            },
+            {
+              "name": "Di titik optimal bobot tidak bergeser",
+              "check": "[round(v, 6) for v in langkah_gd(2.0, 1.0, DATA, 0.1)] == [2.0, 1.0]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "backpropagation",
+      "title": "Backpropagation",
+      "est_minutes": 35,
+      "slide_from": 15,
+      "slide_to": 17,
+      "body": "## Tujuan\n\n- Menerapkan aturan rantai untuk fungsi yang bertingkat.\n- Menghitung gradien setiap bobot dan bias pada satu neuron sigmoid.\n- Menjelaskan cara backpropagation menyebarkan gradien mundur ke jaringan kecil.\n- Memeriksa hasil backpropagation dengan gradien numerik.\n\n## Masalahnya: bobot yang tersembunyi\n\nDi bab sebelumnya, gradien untuk model `y = w * x + b` bisa ditulis langsung. Di jaringan, keadaannya lebih rumit. Loss bergantung pada keluaran, keluaran bergantung pada lapisan tersembunyi, lapisan tersembunyi bergantung pada bobot pertama. Bobot di lapisan awal memengaruhi loss lewat jalur yang panjang. Bagaimana menghitung turunannya tanpa pusing?\n\nJawabannya adalah **backpropagation**, algoritma yang menghitung gradien semua bobot dengan efisien. Dasarnya hanya satu aturan dari kalkulus: aturan rantai.\n\n## Aturan rantai\n\nBayangkan uang jajanmu bergantung pada jumlah hari sekolah, dan jumlah hari sekolah bergantung pada kalender. Kalau satu hari libur tambahan mengurangi 1 hari sekolah, dan satu hari sekolah bernilai Rp15.000, maka satu hari libur mengurangi uang jajan Rp15.000. Pengaruh total adalah **hasil kali** pengaruh di setiap tingkat.\n\nItulah **aturan rantai**. Kalau `L` bergantung pada `y`, `y` bergantung pada `z`, dan `z` bergantung pada `w`, maka:\n\n```\ndL/dw = dL/dy * dy/dz * dz/dw\n```\n\n![Aturan rantai](slide:15)\n\nSetiap bagian kecilnya mudah dihitung sendiri-sendiri. Kita tinggal mengalikannya.\n\n## Backprop pada satu neuron\n\nAmbil satu neuron sigmoid dengan loss kuadrat untuk satu contoh:\n\n```\nz = w1*x1 + w2*x2 + b\ny = sigmoid(z)\nL = (y - t) ** 2        # t adalah label, 0 atau 1\n```\n\nTurunan tiap tingkat:\n\n- `dL/dy = 2 * (y - t)`\n- `dy/dz = y * (1 - y)`, sifat khusus sigmoid yang membuat turunannya murah dihitung.\n- `dz/dw1 = x1`, `dz/dw2 = x2`, dan `dz/db = 1`.\n\nKalikan sesuai aturan rantai. Karena dua bagian pertama dipakai bersama, simpan dulu sebagai `delta`:\n\n```python\nimport math\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\ndef backprop_neuron(x, w, b, t):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    y = sigmoid(z)\n    delta = 2 * (y - t) * y * (1 - y)      # dL/dz\n    grad_w = [delta * xi for xi in x]\n    grad_b = delta\n    return grad_w, grad_b\n\nprint(backprop_neuron([1.0, 2.0], [0.5, -0.25], 0.0, 1))\n```\n\nOutput:\n\n```\n([-0.25, -0.5], -0.25)\n```\n\nHitung manual untuk memastikan: `z = 0.5 - 0.5 + 0 = 0`, jadi `y = 0.5`. Label `t = 1`, jadi `dL/dy = 2 * (0.5 - 1) = -1`. Turunan sigmoid `0.5 * 0.5 = 0.25`. Maka `delta = -0.25`, gradien `w1` adalah `-0.25 * 1`, gradien `w2` adalah `-0.25 * 2`. Semua gradien negatif, artinya menaikkan bobot akan menurunkan loss. Masuk akal, karena neuron perlu menaikkan `y` dari 0.5 ke arah 1.\n\nPerhatikan juga: gradien `w2` dua kali lebih besar daripada `w1` karena masukan `x2` dua kali lebih besar. Bobot yang menerima masukan besar punya pengaruh besar, sehingga ikut disesuaikan lebih banyak.\n\n## Backprop pada jaringan kecil\n\nUntuk jaringan berlapis, idenya sama, hanya diulang **mundur** dari keluaran ke masukan. Itulah asal namanya: penyebaran balik.\n\n1. **Forward pass** seperti biasa, tetapi simpan nilai di setiap lapisan (masukan, `z`, dan keluaran aktivasi). Nilai ini dibutuhkan saat mundur.\n2. Hitung `delta` di lapisan keluaran, sama seperti neuron tunggal tadi.\n3. Gradien bobot lapisan keluaran = `delta` dikali keluaran lapisan tersembunyi.\n4. Kirim `delta` mundur: setiap neuron tersembunyi menerima `delta` keluaran dikali bobot yang menghubungkannya, lalu dikali turunan aktivasinya sendiri.\n5. Gradien bobot lapisan tersembunyi = `delta` tersembunyi dikali masukan.\n\nUntuk satu neuron tersembunyi `h` dengan aktivasi sigmoid yang tersambung ke keluaran lewat bobot `v`:\n\n```python\ndelta_keluaran = 2 * (y - t) * y * (1 - y)\ndelta_h = delta_keluaran * v * h * (1 - h)\ngrad_w_h = [delta_h * xi for xi in x]\n```\n\nRumusnya terasa panjang, tetapi setiap baris hanyalah aturan rantai yang sama. Yang membuat backpropagation efisien adalah `delta` setiap lapisan dipakai ulang untuk lapisan sebelumnya, sehingga tidak ada turunan yang dihitung dua kali. Jaringan dengan jutaan bobot pun cukup memerlukan satu forward pass dan satu backward pass per langkah.\n\nAda satu masalah klasik di sini. Turunan sigmoid paling besar hanya 0.25. Kalau lapisannya banyak dan semuanya sigmoid, `delta` dikalikan angka kecil berkali-kali hingga hampir nol di lapisan awal. Lapisan awal pun nyaris tidak belajar. Fenomena ini disebut **vanishing gradient**, dan menjadi salah satu alasan ReLU dipilih untuk lapisan tersembunyi.\n\n## Cek gradien numerik\n\nMenulis backprop dengan tangan rawan salah ketik. Cara memeriksanya: hitung gradien dengan cara lain yang lambat tapi pasti benar, yaitu **gradien numerik**. Geser bobot sedikit ke atas dan ke bawah, lalu lihat perubahan loss:\n\n```\ngradien kira-kira = (f(w + h) - f(w - h)) / (2 * h)\n```\n\ndengan `h` kecil, misalnya `1e-5`.\n\n```python\ndef gradien_numerik(f, w, h=1e-5):\n    return (f(w + h) - f(w - h)) / (2 * h)\n\ndef loss_w1(w1):\n    y = sigmoid(w1 * 1.0 + (-0.25) * 2.0 + 0.0)\n    return (y - 1) ** 2\n\nprint(round(gradien_numerik(loss_w1, 0.5), 6))\n```\n\nOutput:\n\n```\n-0.25\n```\n\nHasilnya cocok dengan `grad_w[0]` dari backprop. Kalau selisih kedua cara sangat kecil, misalnya di bawah `1e-6`, backprop-mu benar. Kalau jauh berbeda, pasti ada rumus yang salah. Gradien numerik tidak dipakai untuk melatih karena harus menjalankan forward pass dua kali untuk **setiap** bobot, sangat lambat untuk jutaan bobot. Ia hanya alat pemeriksa.\n\nSatu catatan praktis: gunakan gradien numerik pada jaringan kecil dan data kecil saja, misalnya dua atau tiga contoh. Kalau backprop sudah terbukti benar di sana, kode yang sama bisa dipercaya untuk data yang lebih besar. Pemeriksaan semacam ini juga dipakai para pembuat pustaka deep learning untuk menguji fungsi turunan yang mereka tulis.\n\n## Padanan di PyTorch\n\nPyTorch punya **autograd**: setiap operasi dicatat saat forward, lalu `loss.backward()` menjalankan backpropagation otomatis. Kode ini untuk dicoba di Google Colab:\n\n```python\nimport torch\n\nx = torch.tensor([1.0, 2.0])\nw = torch.tensor([0.5, -0.25], requires_grad=True)\nb = torch.tensor(0.0, requires_grad=True)\ny = torch.sigmoid((w * x).sum() + b)\nloss = (y - 1) ** 2\nloss.backward()\nprint(w.grad, b.grad)   # tensor([-0.2500, -0.5000]) tensor(-0.2500)\n```\n\nAngkanya sama dengan hasil hitunganmu. Di latihan Ruang Materi kamu tetap menulis backprop sendiri dengan Python murni, supaya tahu persis apa yang dikerjakan `loss.backward()`.\n\n## Rangkuman\n\n- Aturan rantai: turunan fungsi bertingkat adalah hasil kali turunan setiap tingkat.\n- Untuk neuron sigmoid dengan loss kuadrat, `delta = 2 * (y - t) * y * (1 - y)`, lalu gradien bobot = `delta * x` dan gradien bias = `delta`.\n- Backpropagation menghitung `delta` dari keluaran lalu menyebarkannya mundur, memakai ulang hasil lapisan sesudahnya.\n- Gradien numerik `(f(w + h) - f(w - h)) / (2h)` dipakai untuk memeriksa kebenaran backprop.\n- Di PyTorch, `loss.backward()` menghitung semua gradien otomatis dan menyimpannya di `.grad`.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Menurut aturan rantai, jika L bergantung pada y, y pada z, dan z pada w, maka dL/dw sama dengan...",
+          "code": "",
+          "options": [
+            "dL/dy + dy/dz + dz/dw, dijumlahkan dari setiap tingkat",
+            "dL/dy dibagi dz/dw, karena tingkat tengah saling menghapus",
+            "Hanya dz/dw, karena w langsung terhubung ke z saja",
+            "dL/dy * dy/dz * dz/dw"
+          ],
+          "answer": 3,
+          "explanation": "Aturan rantai mengalikan turunan di setiap tingkat."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "y, t, x = 0.5, 1, 1.0\ndelta = 2 * (y - t) * y * (1 - y)\nprint(delta * x)",
+          "options": [
+            "0.25",
+            "-0.25",
+            "0.5",
+            "-1.0"
+          ],
+          "answer": 1,
+          "explanation": "y = 0.5, delta = 2 x (0.5 - 1) x 0.5 x 0.5 = -0.25, dan gradien w = delta x 1.0."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Untuk apa gradien numerik (f(w + h) - f(w - h)) / (2h) dipakai?",
+          "code": "",
+          "options": [
+            "Melatih jaringan besar karena lebih cepat dari backprop",
+            "Memeriksa apakah hasil backprop yang kita tulis benar",
+            "Menggantikan fungsi aktivasi pada lapisan tersembunyi",
+            "Menentukan jumlah lapisan tersembunyi yang paling ideal"
+          ],
+          "answer": 1,
+          "explanation": "Gradien numerik lambat tetapi andal, sehingga dipakai sebagai pembanding hasil backprop."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Backpropagation menghitung gradien mulai dari lapisan masukan menuju lapisan keluaran.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Backpropagation berjalan mundur: dari loss di keluaran menuju lapisan awal."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Backprop satu neuron dan cek gradien",
+          "prompt": "Lengkapi dua fungsi.\n\n1. `gradien_numerik(f, w, h=1e-5)`: kembalikan `(f(w + h) - f(w - h)) / (2 * h)`.\n2. `backprop_neuron(x, w, b, t)`: neuron sigmoid dengan loss `(y - t) ** 2`.\n   - `z = sum(x[i] * w[i]) + b`, `y = sigmoid(z)`\n   - `delta = 2 * (y - t) * y * (1 - y)`\n   - kembalikan tuple `(grad_w, grad_b)` dengan `grad_w = [delta * x[i] ...]` dan `grad_b = delta`.\n\nFungsi `sigmoid` dan `loss_neuron(x, w, b, t)` sudah disediakan.",
+          "starter": {
+            "code": "def gradien_numerik(f, w, h=1e-5):\n    # TODO: selisih terpusat\n    return 0.0\n\n\ndef backprop_neuron(x, w, b, t):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    y = sigmoid(z)\n    delta = 2 * (y - t)  # TODO: kalikan dengan turunan sigmoid\n    grad_w = [delta * xi for xi in x]\n    return grad_w, delta\n\n\nprint(backprop_neuron([1.0, 2.0], [0.5, -0.25], 0.0, 1))\n"
+          },
+          "solution": {
+            "code": "def gradien_numerik(f, w, h=1e-5):\n    return (f(w + h) - f(w - h)) / (2 * h)\n\n\ndef backprop_neuron(x, w, b, t):\n    z = sum(xi * wi for xi, wi in zip(x, w)) + b\n    y = sigmoid(z)\n    delta = 2 * (y - t) * y * (1 - y)\n    grad_w = [delta * xi for xi in x]\n    return grad_w, delta\n\n\nprint(backprop_neuron([1.0, 2.0], [0.5, -0.25], 0.0, 1))\n"
+          },
+          "setup": "import math\n\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\n\ndef loss_neuron(x, w, b, t):\n    y = sigmoid(sum(xi * wi for xi, wi in zip(x, w)) + b)\n    return (y - t) ** 2\n",
+          "tests": [
+            {
+              "name": "Gradien numerik dari x kuadrat di x = 3 adalah 6",
+              "check": "abs(gradien_numerik(lambda v: v * v, 3.0) - 6.0) < 1e-6"
+            },
+            {
+              "name": "Gradien contoh di bab benar",
+              "check": "[round(g, 6) for g in backprop_neuron([1.0, 2.0], [0.5, -0.25], 0.0, 1)[0]] == [-0.25, -0.5] and abs(backprop_neuron([1.0, 2.0], [0.5, -0.25], 0.0, 1)[1] + 0.25) < 1e-6"
+            },
+            {
+              "name": "Gradien w cocok dengan cek numerik",
+              "check": "abs(backprop_neuron([0.5, -1.0], [0.3, 0.8], 0.1, 0)[0][1] - gradien_numerik(lambda v: loss_neuron([0.5, -1.0], [0.3, v], 0.1, 0), 0.8)) < 1e-6"
+            },
+            {
+              "name": "Gradien bias cocok dengan cek numerik",
+              "check": "abs(backprop_neuron([0.5, -1.0], [0.3, 0.8], 0.1, 0)[1] - gradien_numerik(lambda v: loss_neuron([0.5, -1.0], [0.3, 0.8], v, 0), 0.1)) < 1e-6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "melatih-jaringan",
+      "title": "Melatih Jaringan",
+      "est_minutes": 30,
+      "slide_from": 18,
+      "slide_to": 20,
+      "body": "## Tujuan\n\n- Membedakan epoch, batch, mini-batch, dan iterasi saat melatih jaringan.\n- Mengisi bobot awal dengan angka acak yang skalanya masuk akal.\n- Melatih jaringan kecil dari nol sampai bisa memecahkan XOR.\n- Membaca kurva loss untuk menilai apakah latihan berjalan sehat.\n\n## Dari satu langkah ke ribuan langkah\n\nDi bab sebelumnya kamu sudah punya semua bahan: forward pass untuk menghasilkan tebakan, fungsi loss untuk mengukur seberapa salah tebakan itu, backpropagation untuk menghitung gradien, dan gradient descent untuk menggeser bobot sedikit ke arah yang mengurangi loss. Satu langkah seperti itu hanya memperbaiki bobot sedikit sekali. Melatih jaringan berarti mengulang langkah itu ratusan sampai jutaan kali.\n\nBayangkan kamu belajar untuk ujian dengan satu tumpukan 100 soal latihan. Mengerjakan semua 100 soal sekali dari awal sampai akhir disebut satu **epoch**. Biasanya satu kali belum cukup, jadi kamu mengulang tumpukan yang sama beberapa kali. Setiap putaran, kamu sedikit lebih paham. Jaringan saraf juga begitu: satu epoch berarti seluruh data latih sudah dilihat satu kali.\n\n## Batch, mini-batch, dan iterasi\n\n![Epoch, batch, dan iterasi](slide:18)\n\nPertanyaan berikutnya: setelah berapa soal bobot diperbarui? Ada tiga pilihan.\n\n| Cara | Bobot diperbarui setiap | Ciri |\n| --- | --- | --- |\n| Batch penuh | seluruh data | gradien stabil, tetapi lambat dan boros memori |\n| Stochastic (SGD murni) | satu contoh | cepat bergerak, tetapi gradiennya berisik |\n| Mini-batch | sekelompok kecil, misalnya 32 | jalan tengah, paling sering dipakai |\n\nSatu kali pembaruan bobot disebut satu **iterasi** (atau satu step). Kalau data latihmu 1000 baris dan ukuran mini-batch 100, maka satu epoch terdiri dari 10 iterasi. Kalau ukurannya 64, satu epoch berisi 16 iterasi, dan batch terakhir hanya berisi 40 baris karena 1000 tidak habis dibagi 64.\n\nKenapa mini-batch populer? GPU sangat cepat menghitung banyak contoh sekaligus, jadi 32 contoh bisa diproses hampir secepat satu contoh. Gradien rata-rata dari 32 contoh juga jauh lebih tenang daripada gradien satu contoh, tetapi masih cukup berisik untuk membantu bobot keluar dari lembah yang dangkal. Sebelum setiap epoch, urutan data biasanya **diacak** supaya jaringan tidak menghafal urutan. Agar hasilnya bisa diulang, pengacakan memakai seed tetap.\n\n```python\nimport random\n\ndef buat_batch(data, ukuran, seed):\n    salinan = list(data)\n    random.Random(seed).shuffle(salinan)\n    return [salinan[i:i + ukuran] for i in range(0, len(salinan), ukuran)]\n\nprint(buat_batch(list(range(10)), 4, seed=1))\n# tiga batch: dua berisi 4 angka, satu berisi 2 angka\n```\n\n## Inisialisasi bobot\n\nSebelum latihan dimulai, bobot harus diberi nilai awal. Godaan pertama adalah mengisi semuanya dengan nol. Ini jebakan. Kalau semua bobot sama, semua neuron di satu lapisan menghitung hal yang sama, menerima gradien yang sama, dan berubah dengan cara yang sama. Sepuluh neuron itu akhirnya bekerja seperti satu neuron. Masalah ini disebut **simetri**, dan cara memecahkannya adalah mengisi bobot dengan angka acak kecil.\n\nBesar kecilnya angka acak juga penting:\n\n- Terlalu besar: jumlah berbobot jadi besar, sigmoid dan tanh menempel di ujung (jenuh), gradiennya hampir nol, dan latihan macet.\n- Terlalu kecil: sinyal mengecil setiap melewati lapisan, sehingga lapisan dalam hampir tidak belajar.\n\nPara peneliti menemukan aturan praktis. **Inisialisasi Xavier (Glorot)** mengambil angka acak seragam di antara `-batas` dan `batas` dengan `batas = sqrt(6 / (n_masuk + n_keluar))`, cocok untuk tanh dan sigmoid. **Inisialisasi He** memakai skala `sqrt(2 / n_masuk)`, cocok untuk ReLU. Kamu tidak perlu menghafal rumusnya. Yang penting kamu paham idenya: skala bobot awal disesuaikan dengan banyaknya masukan agar sinyal tidak meledak atau lenyap. Bias boleh diisi nol karena simetrinya sudah dipecah oleh bobot.\n\n## Belajar XOR dari nol\n\nXOR adalah contoh klasik. Keluarannya 1 kalau tepat satu masukan bernilai 1. Satu neuron tidak bisa mempelajarinya karena titik-titik XOR tidak bisa dipisahkan dengan satu garis lurus. Dengan satu lapisan tersembunyi, jaringan bisa melipat ruang masukan sehingga pola itu terpisah. Berikut jaringan 2 masukan, 4 neuron tersembunyi dengan tanh, dan 1 keluaran sigmoid. Kode ini Python murni dan bisa kamu jalankan di mana saja.\n\n```python\nimport math, random\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\nrng = random.Random(42)\nH = 4\nW1 = [[rng.uniform(-1, 1) for _ in range(2)] for _ in range(H)]\nb1 = [0.0] * H\nW2 = [rng.uniform(-1, 1) for _ in range(H)]\nb2 = 0.0\ndata = [([0, 0], 0), ([0, 1], 1), ([1, 0], 1), ([1, 1], 0)]\nlr = 0.5\n\nfor epoch in range(1000):\n    total = 0.0\n    for x, y in data:\n        h = [math.tanh(W1[j][0] * x[0] + W1[j][1] * x[1] + b1[j]) for j in range(H)]\n        p = sigmoid(sum(W2[j] * h[j] for j in range(H)) + b2)\n        total += -(y * math.log(p) + (1 - y) * math.log(1 - p))\n        d2 = p - y\n        for j in range(H):\n            d1 = d2 * W2[j] * (1 - h[j] ** 2)\n            W2[j] -= lr * d2 * h[j]\n            W1[j][0] -= lr * d1 * x[0]\n            W1[j][1] -= lr * d1 * x[1]\n            b1[j] -= lr * d1\n        b2 -= lr * d2\n    if epoch % 200 == 0:\n        print(epoch, round(total / 4, 4))\n```\n\nDi sini setiap contoh langsung memperbarui bobot, jadi ini SGD dengan ukuran batch 1. Keluarannya kira-kira seperti ini:\n\n```text\n0 0.9214\n200 0.0081\n400 0.0035\n600 0.0022\n800 0.0016\n```\n\nLoss turun tajam di awal lalu melandai. Setelah latihan, jaringan menebak sekitar 0,00 untuk `[0, 0]` dan `[1, 1]`, serta sekitar 1,00 untuk `[0, 1]` dan `[1, 0]`. Coba ganti seed menjadi 0. Dengan learning rate 0,5, loss bisa tersangkut di sekitar 0,76 dan semua tebakan mendekati 0,5. Ini pelajaran penting: inisialisasi dan learning rate bisa menentukan berhasil atau tidaknya latihan, bahkan untuk soal sekecil XOR.\n\n## Membaca kurva loss\n\nMencetak loss setiap epoch lalu menggambarnya sebagai grafik menghasilkan **kurva loss**. Kurva ini adalah alat diagnosa nomor satu.\n\n- Turun tajam lalu melandai: sehat. Latihan bisa dihentikan saat penurunannya sudah sangat kecil.\n- Datar sejak awal: learning rate terlalu kecil, bobot awal buruk, atau ada bug di gradien.\n- Naik turun liar atau malah naik: learning rate terlalu besar.\n- Menjadi `nan`: angka meledak, biasanya karena learning rate besar atau log dari nol.\n- Turun lalu datar di angka tinggi: model terlalu kecil, atau tersangkut seperti XOR dengan seed 0.\n\nKurva loss mini-batch selalu agak bergerigi karena setiap batch berbeda. Itu normal. Perhatikan trennya, bukan setiap gerigi. Di bab berikutnya kamu akan menggambar dua kurva sekaligus, loss latih dan loss validasi, untuk mendeteksi overfitting.\n\n## Padanan di PyTorch\n\nLatihan di kelas ini Python murni karena mesin pemeriksa tidak punya PyTorch. Di dunia nyata, bagian membagi batch dikerjakan oleh `DataLoader`. Coba kode ini di Google Colab, yang sudah menyediakan PyTorch:\n\n```python\nimport torch\nfrom torch.utils.data import TensorDataset, DataLoader\n\nX = torch.tensor([[0., 0.], [0., 1.], [1., 0.], [1., 1.]])\ny = torch.tensor([[0.], [1.], [1.], [0.]])\nloader = DataLoader(TensorDataset(X, y), batch_size=2, shuffle=True)\n\nfor epoch in range(3):\n    for xb, yb in loader:\n        print(epoch, xb.shape)\n```\n\n`nn.Linear` juga sudah mengisi bobot awal dengan angka acak kecil yang skalanya bergantung pada jumlah masukan, jadi kamu jarang perlu menulis inisialisasi sendiri.\n\n## Rangkuman\n\n- Satu epoch berarti seluruh data latih dilihat sekali; satu iterasi berarti satu kali pembaruan bobot.\n- Mini-batch adalah jalan tengah antara batch penuh yang lambat dan SGD satu contoh yang berisik; acak data sebelum setiap epoch.\n- Bobot awal harus acak kecil untuk memecah simetri, dengan skala seperti Xavier atau He.\n- Jaringan dengan satu lapisan tersembunyi bisa mempelajari XOR, tetapi seed dan learning rate tetap berpengaruh.\n- Kurva loss yang turun lalu melandai menandakan latihan sehat; kurva datar, liar, atau `nan` menandakan ada yang perlu diperbaiki.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Data latih berisi 1000 baris dan ukuran mini-batch 50. Berapa iterasi (pembaruan bobot) dalam 3 epoch?",
+          "code": "",
+          "options": [
+            "20",
+            "60",
+            "150",
+            "3000"
+          ],
+          "answer": 1,
+          "explanation": "Satu epoch berisi 1000 / 50 = 20 iterasi, jadi 3 epoch berisi 60 iterasi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa semua bobot sebaiknya tidak diisi nol sebelum latihan?",
+          "code": "",
+          "options": [
+            "Karena Python tidak bisa mengalikan bilangan nol dengan bilangan pecahan",
+            "Karena loss awal akan bernilai negatif sehingga latihan langsung berhenti",
+            "Semua neuron selapis jadi kembar dan berubah dengan cara yang sama",
+            "Karena fungsi ReLU dan sigmoid tidak terdefinisi untuk masukan bernilai nol"
+          ],
+          "answer": 2,
+          "explanation": "Bobot yang sama membuat neuron menghitung hal sama dan menerima gradien sama, jadi simetrinya tidak pernah pecah."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "data = list(range(10))\nukuran = 4\nbatch = [data[i:i + ukuran] for i in range(0, len(data), ukuran)]\nprint(len(batch), len(batch[-1]))",
+          "options": [
+            "2 4",
+            "3 4",
+            "2 2",
+            "3 2"
+          ],
+          "answer": 3,
+          "explanation": "Potongannya [0..3], [4..7], dan [8, 9], jadi ada 3 batch dan batch terakhir berisi 2 angka."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Kurva loss yang naik turun liar lalu menjadi nan biasanya menandakan learning rate terlalu besar.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Langkah yang terlalu besar membuat bobot melompat melewati lembah sampai angkanya meledak."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Membagi data menjadi mini-batch",
+          "prompt": "Lengkapi `buat_batch(data, ukuran, seed=None)`:\n\n- Buat salinan `data` (jangan ubah list aslinya).\n- Bila `seed` bukan `None`, acak salinan dengan `random.Random(seed).shuffle(salinan)`.\n- Potong salinan menjadi list batch berisi `ukuran` elemen. Batch terakhir boleh lebih pendek.\n\nContoh: `buat_batch([1, 2, 3, 4, 5], 2)` menghasilkan `[[1, 2], [3, 4], [5]]`.",
+          "starter": {
+            "code": "import random\n\n\ndef buat_batch(data, ukuran, seed=None):\n    salinan = list(data)\n    # TODO: acak bila seed diberikan, lalu potong per `ukuran`\n    return [salinan]\n\n\nprint(buat_batch([1, 2, 3, 4, 5], 2))\n"
+          },
+          "solution": {
+            "code": "import random\n\n\ndef buat_batch(data, ukuran, seed=None):\n    salinan = list(data)\n    if seed is not None:\n        random.Random(seed).shuffle(salinan)\n    return [salinan[i:i + ukuran] for i in range(0, len(salinan), ukuran)]\n\n\nprint(buat_batch([1, 2, 3, 4, 5], 2))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tanpa seed urutan tetap",
+              "check": "buat_batch([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]"
+            },
+            {
+              "name": "Ukuran batch 10 data per 4",
+              "check": "[len(b) for b in buat_batch(list(range(10)), 4, seed=3)] == [4, 4, 2]"
+            },
+            {
+              "name": "Seed sama menghasilkan batch sama dan semua data ada",
+              "check": "buat_batch(list(range(10)), 4, seed=3) == buat_batch(list(range(10)), 4, seed=3) and sorted(sum(buat_batch(list(range(10)), 4, seed=3), [])) == list(range(10))"
+            },
+            {
+              "name": "Pengacakan mengikuti random.Random(seed)",
+              "check": "(lambda s: (random.Random(5).shuffle(s), s)[1])(list(range(6))) == sum(buat_batch(list(range(6)), 6, seed=5), [])"
+            },
+            {
+              "name": "List asli tidak berubah",
+              "check": "(lambda d: (buat_batch(d, 2, seed=1), d)[1] == [3, 1, 2])([3, 1, 2])"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Melatih neuron sampai loss turun",
+          "prompt": "Fungsi `sigmoid` dan data `DATA_OR` (gerbang OR) sudah tersedia. Lengkapi `latih(data, epoch, lr)` dengan gradient descent batch penuh:\n\n- Mulai dari `w = [0.0, 0.0]` dan `b = 0.0`.\n- Setiap epoch, untuk setiap `(x, y)`: `p = sigmoid(w[0]*x[0] + w[1]*x[1] + b)`, jumlahkan loss `-(y*log(p) + (1-y)*log(1-p))`, dan jumlahkan gradien `(p - y) * x[i]` untuk `w[i]` serta `(p - y)` untuk `b`.\n- Di akhir epoch, simpan rata-rata loss ke `riwayat`, lalu kurangi setiap bobot dengan `lr * gradien / n`.\n- Kembalikan `(w, b, riwayat)`.",
+          "starter": {
+            "code": "import math\n\n\ndef latih(data, epoch, lr):\n    w = [0.0, 0.0]\n    b = 0.0\n    riwayat = []\n    for _ in range(epoch):\n        # TODO: hitung loss dan gradien rata-rata, simpan loss, perbarui w dan b\n        pass\n    return w, b, riwayat\n\n\nw, b, riwayat = latih(DATA_OR, 50, 1.0)\nprint(riwayat[:3])\n"
+          },
+          "solution": {
+            "code": "import math\n\n\ndef latih(data, epoch, lr):\n    w = [0.0, 0.0]\n    b = 0.0\n    riwayat = []\n    n = len(data)\n    for _ in range(epoch):\n        gw = [0.0, 0.0]\n        gb = 0.0\n        total = 0.0\n        for x, y in data:\n            p = sigmoid(w[0] * x[0] + w[1] * x[1] + b)\n            total += -(y * math.log(p) + (1 - y) * math.log(1 - p))\n            gw[0] += (p - y) * x[0]\n            gw[1] += (p - y) * x[1]\n            gb += p - y\n        riwayat.append(total / n)\n        w = [w[0] - lr * gw[0] / n, w[1] - lr * gw[1] / n]\n        b -= lr * gb / n\n    return w, b, riwayat\n\n\nw, b, riwayat = latih(DATA_OR, 50, 1.0)\nprint(riwayat[:3])\n"
+          },
+          "setup": "import math\n\n\ndef sigmoid(z):\n    return 1 / (1 + math.exp(-z))\n\n\nDATA_OR = [([0, 0], 0), ([0, 1], 1), ([1, 0], 1), ([1, 1], 1)]\n",
+          "tests": [
+            {
+              "name": "Riwayat berisi satu loss per epoch",
+              "check": "len(latih(DATA_OR, 7, 1.0)[2]) == 7"
+            },
+            {
+              "name": "Loss epoch pertama sama dengan log(2)",
+              "check": "abs(latih(DATA_OR, 1, 1.0)[2][0] - math.log(2)) < 1e-6"
+            },
+            {
+              "name": "Loss terus turun",
+              "check": "(lambda r: all(a > b for a, b in zip(r, r[1:])))(latih(DATA_OR, 50, 1.0)[2])"
+            },
+            {
+              "name": "Setelah latihan semua tebakan OR benar",
+              "check": "(lambda w, b, r: all((sigmoid(w[0]*x[0] + w[1]*x[1] + b) >= 0.5) == (y == 1) for x, y in DATA_OR))(*latih(DATA_OR, 200, 1.0))"
+            },
+            {
+              "name": "Nol epoch tidak mengubah bobot",
+              "check": "latih(DATA_OR, 0, 1.0) == ([0.0, 0.0], 0.0, [])"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "overfitting-dan-regularisasi",
+      "title": "Overfitting dan Regularisasi",
+      "est_minutes": 30,
+      "slide_from": 21,
+      "slide_to": 23,
+      "body": "## Tujuan\n\n- Mengenali overfitting dari jarak antara loss latih dan loss validasi.\n- Menerapkan early stopping dengan parameter kesabaran (patience).\n- Memahami cara kerja dropout dan regularisasi L2.\n- Memakai augmentasi data untuk memperbanyak contoh latih.\n\n## Jaringan yang terlalu pintar menghafal\n\nDi kelas Machine Learning Dasar kamu sudah bertemu overfitting: model yang hebat di data latih tetapi jeblok di data baru. Di deep learning masalah ini lebih sering muncul, karena jaringan saraf punya sangat banyak bobot. Jaringan kecil dengan dua lapisan tersembunyi berisi 100 neuron saja sudah punya belasan ribu bobot. Kalau datamu hanya 500 foto kartu pelajar, jaringan itu sanggup menghafal setiap foto, termasuk noda dan lipatan yang tidak ada hubungannya dengan tugasnya.\n\nIbaratnya siswa yang menghafal kunci jawaban latihan soal tahun lalu. Nilainya sempurna saat diberi soal yang sama, tetapi bingung saat soalnya sedikit diubah. Kita ingin jaringan yang memahami pola, bukan menghafal jawaban.\n\n## Data validasi dan dua kurva\n\nUntuk mendeteksi overfitting, sisihkan sebagian data sebagai **data validasi**. Data ini tidak dipakai untuk memperbarui bobot. Setelah setiap epoch, hitung loss di data latih dan di data validasi, lalu gambar keduanya.\n\n![Kurva latih dan validasi saat overfitting](slide:21)\n\nPolanya biasanya seperti ini:\n\n| Fase | Loss latih | Loss validasi | Artinya |\n| --- | --- | --- | --- |\n| Awal | turun | turun | jaringan sedang belajar pola umum |\n| Titik terbaik | rendah | paling rendah | saat terbaik untuk berhenti |\n| Lanjut terlalu lama | terus turun | mulai naik | jaringan mulai menghafal |\n\nJarak yang makin lebar antara dua kurva adalah tanda overfitting. Sebaliknya, kalau kedua loss sama-sama tinggi, jaringanmu justru underfitting: terlalu kecil atau dilatih terlalu sebentar.\n\nIngat pembagian tiga data. Data latih untuk memperbarui bobot, data validasi untuk memilih kapan berhenti dan memilih pengaturan seperti learning rate, dan data uji disimpan sampai akhir untuk satu kali pengukuran yang jujur.\n\n## Early stopping\n\nCara paling sederhana melawan overfitting adalah berhenti tepat waktu. Masalahnya, loss validasi bergerigi. Kalau kita berhenti begitu loss naik sekali saja, bisa jadi itu hanya gerigi kecil dan loss akan turun lagi di epoch berikutnya.\n\nSolusinya adalah **kesabaran** (patience). Kita catat loss validasi terbaik sejauh ini. Setiap epoch yang tidak lebih baik dari rekor menambah hitungan satu. Kalau hitungan mencapai batas kesabaran, latihan berhenti dan kita memakai bobot dari epoch terbaik.\n\n```python\nloss_val = [0.90, 0.70, 0.60, 0.62, 0.65, 0.61, 0.70]\nsabar = 2\nterbaik, idx_terbaik, tunggu = float(\"inf\"), -1, 0\nfor epoch, nilai in enumerate(loss_val):\n    if nilai < terbaik:\n        terbaik, idx_terbaik, tunggu = nilai, epoch, 0\n    else:\n        tunggu += 1\n        if tunggu >= sabar:\n            print(\"berhenti di epoch\", epoch, \"terbaik\", idx_terbaik)\n            break\n# berhenti di epoch 4 terbaik 2\n```\n\nDengan `sabar = 3`, latihan baru berhenti di epoch 5, karena 0,61 tetap tidak mengalahkan 0,60. Kesabaran yang terlalu kecil membuat latihan berhenti terlalu dini, sedangkan yang terlalu besar membuang waktu. Nilai 5 sampai 10 epoch sering dipakai sebagai awal.\n\n## Dropout\n\n**Dropout** adalah ide yang terdengar aneh tetapi sangat ampuh: saat latihan, matikan sebagian neuron secara acak di setiap langkah. Dengan `p = 0.5`, setiap neuron punya peluang 50 persen keluarannya dijadikan nol untuk langkah itu.\n\nKenapa ini membantu? Jaringan tidak bisa mengandalkan satu neuron tertentu, karena neuron itu bisa hilang kapan saja. Akibatnya pengetahuan tersebar ke banyak neuron, mirip kelompok belajar yang setiap anggotanya harus siap menjelaskan karena siapa pun bisa tiba-tiba absen.\n\nAda satu detail penting. Kalau separuh neuron mati, jumlah sinyal yang lewat juga tinggal separuh. Agar rata-ratanya tetap sama, neuron yang hidup dikalikan `1 / (1 - p)`. Teknik ini disebut **inverted dropout**, dan begitulah PyTorch melakukannya. Saat prediksi, dropout dimatikan sepenuhnya dan semua neuron bekerja.\n\n```python\nimport random\n\ndef dropout(nilai, p, seed):\n    rng = random.Random(seed)\n    return [0.0 if rng.random() < p else v / (1 - p) for v in nilai]\n\nprint(dropout([1.0, 2.0, 3.0, 4.0], 0.5, seed=0))\n```\n\n## Regularisasi L2\n\nOverfitting sering ditandai bobot yang membengkak besar untuk menangkap setiap detail data latih. **Regularisasi L2** menambahkan hukuman pada loss untuk bobot yang besar:\n\n```text\nloss_total = loss_data + lam * (w1² + w2² + ... + wn²)\n```\n\n`lam` (lambda) mengatur seberapa keras hukumannya. Karena turunan `lam * w²` adalah `2 * lam * w`, setiap langkah gradient descent sekarang juga menarik bobot sedikit ke arah nol. Itulah sebabnya L2 juga disebut **weight decay**. Ada yang menulis hukumannya `lam / 2` supaya turunannya rapi menjadi `lam * w`. Keduanya sama saja, asal kamu konsisten. Lambda yang terlalu besar membuat semua bobot mengecil sampai jaringan underfitting, jadi nilainya biasanya kecil, misalnya 0,0001 sampai 0,01.\n\n## Augmentasi data\n\nObat terbaik untuk overfitting sebenarnya adalah data yang lebih banyak. Kalau mengumpulkan data baru mahal, kita bisa membuat variasi dari data yang sudah ada. Untuk gambar, satu foto daun bisa dibalik kiri kanan, diputar sedikit, dipotong, atau diubah kecerahannya. Bagi jaringan, itu contoh baru, padahal labelnya jelas tetap sama.\n\nHati-hati memilih augmentasi yang masuk akal. Membalik foto kucing kiri kanan tetap kucing, tetapi membalik angka 6 atas bawah bisa menjadi 9. Augmentasi hanya diterapkan pada data latih, tidak pada data validasi atau uji.\n\n## Memilih senjata\n\nKamu tidak harus memakai semua teknik sekaligus. Urutan yang masuk akal saat jaringanmu overfitting:\n\n1. Pasang early stopping sejak awal. Hampir tidak ada ruginya, dan latihan jadi lebih singkat.\n2. Tambah data atau pakai augmentasi bila datanya gambar, suara, atau teks.\n3. Tambah dropout di antara lapisan besar, mulai dari `p` 0,2 sampai 0,5.\n4. Tambah L2 kecil, lalu naikkan perlahan sambil melihat loss validasi.\n5. Bila semuanya belum cukup, kecilkan jaringannya: kurangi lapisan atau neuron.\n\nUbah satu hal setiap kali, lalu bandingkan kurva validasinya. Kalau kamu mengubah tiga hal sekaligus dan hasilnya membaik, kamu tidak tahu mana yang sebenarnya membantu.\n\n## Padanan di PyTorch\n\nLatihan bab ini tetap Python murni. Di PyTorch, semua teknik tadi tinggal dipasang. Coba di Google Colab:\n\n```python\nimport torch\nfrom torch import nn\n\nmodel = nn.Sequential(\n    nn.Linear(4, 16), nn.ReLU(),\n    nn.Dropout(p=0.5),\n    nn.Linear(16, 3),\n)\noptimizer = torch.optim.SGD(model.parameters(), lr=0.1, weight_decay=1e-4)\nmodel.train()  # dropout aktif saat latihan\nmodel.eval()   # dropout mati saat validasi dan prediksi\n```\n\n`weight_decay` di optimizer berperan sebagai L2. Untuk augmentasi gambar, pustaka `torchvision.transforms` menyediakan transformasi seperti `RandomHorizontalFlip` dan `RandomRotation`. Lupa memanggil `model.eval()` sebelum validasi adalah kesalahan klasik, karena dropout masih mematikan neuron dan hasilnya jadi acak.\n\n## Rangkuman\n\n- Overfitting terlihat dari loss latih yang terus turun sementara loss validasi mulai naik.\n- Early stopping menghentikan latihan setelah loss validasi tidak membaik selama sejumlah epoch kesabaran, lalu memakai bobot terbaik.\n- Dropout mematikan neuron secara acak saat latihan dan menskalakan sisanya dengan `1 / (1 - p)`; saat prediksi dropout mati.\n- L2 menambahkan `lam` kali jumlah kuadrat bobot ke loss sehingga bobot ditarik ke arah nol.\n- Augmentasi data membuat variasi contoh latih tanpa mengubah labelnya, dan hanya dipakai pada data latih.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Loss latih terus turun dari epoch 1 sampai 50, tetapi loss validasi naik sejak epoch 20. Apa yang sedang terjadi?",
+          "code": "",
+          "options": [
+            "Jaringan underfitting karena modelnya terlalu kecil untuk datanya",
+            "Jaringan overfitting sejak sekitar epoch 20",
+            "Learning rate terlalu kecil sehingga bobot belum sempat bergerak",
+            "Data validasi tertukar dengan data uji sejak awal pembagian"
+          ],
+          "answer": 1,
+          "explanation": "Jarak yang melebar antara loss latih dan validasi adalah tanda menghafal data latih."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Dengan aturan early stopping seperti di bab ini (berhenti bila tidak ada rekor baru selama `sabar` epoch), di epoch berapa latihan berhenti?",
+          "code": "loss_val = [0.8, 0.6, 0.5, 0.55, 0.49, 0.6, 0.7]\nsabar = 2",
+          "options": [
+            "Epoch 3",
+            "Epoch 4",
+            "Epoch 5",
+            "Epoch 6"
+          ],
+          "answer": 3,
+          "explanation": "Epoch 4 memecahkan rekor (0,49) sehingga hitungan kembali nol, lalu epoch 5 dan 6 tidak membaik sehingga latihan berhenti di epoch 6."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Dengan inverted dropout `p = 0.2`, neuron yang tetap hidup dan bernilai 4.0 akan menjadi...",
+          "code": "",
+          "options": [
+            "5.0",
+            "3.2",
+            "4.0 (tetap sama)",
+            "0.8"
+          ],
+          "answer": 0,
+          "explanation": "Neuron yang hidup dikalikan 1 / (1 - 0,2) = 1,25, jadi 4,0 menjadi 5,0."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Augmentasi seperti membalik dan memutar gambar sebaiknya juga diterapkan pada data uji agar penilaiannya adil.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Augmentasi hanya untuk data latih. Data validasi dan uji harus mencerminkan data asli yang akan dihadapi model."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Early stopping dengan kesabaran",
+          "prompt": "Lengkapi `early_stopping(loss_val, sabar)` yang menerima list loss validasi per epoch dan mengembalikan tuple `(epoch_berhenti, epoch_terbaik)`:\n\n- Loss dianggap rekor baru bila **lebih kecil** dari rekor sebelumnya. Rekor baru mengatur ulang hitungan tunggu ke 0.\n- Epoch yang bukan rekor menambah hitungan satu. Bila hitungan mencapai `sabar`, berhenti di epoch itu.\n- Bila tidak pernah berhenti, `epoch_berhenti` adalah indeks epoch terakhir.\n\nContoh: `early_stopping([0.9, 0.7, 0.6, 0.62, 0.65, 0.61, 0.7], 2)` menghasilkan `(4, 2)`.",
+          "starter": {
+            "code": "def early_stopping(loss_val, sabar):\n    terbaik = float(\"inf\")\n    epoch_terbaik = 0\n    # TODO: telusuri loss_val, catat rekor, hitung epoch tanpa perbaikan\n    return len(loss_val) - 1, epoch_terbaik\n\n\nprint(early_stopping([0.9, 0.7, 0.6, 0.62, 0.65, 0.61, 0.7], 2))\n"
+          },
+          "solution": {
+            "code": "def early_stopping(loss_val, sabar):\n    terbaik = float(\"inf\")\n    epoch_terbaik = 0\n    tunggu = 0\n    for epoch, nilai in enumerate(loss_val):\n        if nilai < terbaik:\n            terbaik, epoch_terbaik, tunggu = nilai, epoch, 0\n        else:\n            tunggu += 1\n            if tunggu >= sabar:\n                return epoch, epoch_terbaik\n    return len(loss_val) - 1, epoch_terbaik\n\n\nprint(early_stopping([0.9, 0.7, 0.6, 0.62, 0.65, 0.61, 0.7], 2))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Berhenti di epoch 4 dengan sabar 2",
+              "check": "early_stopping([0.9, 0.7, 0.6, 0.62, 0.65, 0.61, 0.7], 2) == (4, 2)"
+            },
+            {
+              "name": "Sabar 3 menunggu lebih lama",
+              "check": "early_stopping([0.9, 0.7, 0.6, 0.62, 0.65, 0.61, 0.7], 3) == (5, 2)"
+            },
+            {
+              "name": "Rekor baru mengatur ulang hitungan",
+              "check": "early_stopping([0.8, 0.6, 0.5, 0.55, 0.49, 0.6, 0.7], 2) == (6, 4)"
+            },
+            {
+              "name": "Loss yang terus turun tidak pernah berhenti",
+              "check": "early_stopping([1.0, 0.8, 0.6, 0.5], 1) == (3, 3)"
+            },
+            {
+              "name": "Loss sama dengan rekor bukan perbaikan",
+              "check": "early_stopping([0.5, 0.5, 0.5], 2) == (2, 0)"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Dropout dan penalti L2",
+          "prompt": "Lengkapi dua fungsi:\n\n1. `dropout(nilai, p, seed)`: buat `rng = random.Random(seed)`. Untuk setiap `v` secara berurutan, bila `rng.random() < p` hasilnya `0.0`, selain itu `v / (1 - p)`. Kembalikan list baru.\n2. `penalti_l2(bobot, lam)`: kembalikan `lam` dikali jumlah kuadrat semua bobot dalam list `bobot`.\n\nContoh: `penalti_l2([1, -2, 3], 0.1)` menghasilkan `1.4`.",
+          "starter": {
+            "code": "import random\n\n\ndef dropout(nilai, p, seed):\n    rng = random.Random(seed)\n    # TODO: matikan neuron dengan peluang p, skalakan yang hidup dengan 1 / (1 - p)\n    return list(nilai)\n\n\ndef penalti_l2(bobot, lam):\n    # TODO: lam * jumlah kuadrat bobot\n    return 0.0\n\n\nprint(dropout([1.0, 2.0, 3.0, 4.0], 0.5, seed=0))\nprint(penalti_l2([1, -2, 3], 0.1))\n"
+          },
+          "solution": {
+            "code": "import random\n\n\ndef dropout(nilai, p, seed):\n    rng = random.Random(seed)\n    return [0.0 if rng.random() < p else v / (1 - p) for v in nilai]\n\n\ndef penalti_l2(bobot, lam):\n    return lam * sum(w * w for w in bobot)\n\n\nprint(dropout([1.0, 2.0, 3.0, 4.0], 0.5, seed=0))\nprint(penalti_l2([1, -2, 3], 0.1))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "p = 0 tidak mengubah nilai",
+              "check": "dropout([1.0, 2.0, 3.0], 0.0, seed=1) == [1.0, 2.0, 3.0]"
+            },
+            {
+              "name": "Hasil mengikuti random.Random(seed)",
+              "check": "(lambda r: [0.0 if r.random() < 0.5 else v * 2 for v in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]])(random.Random(9)) == dropout([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 0.5, seed=9)"
+            },
+            {
+              "name": "Rata-rata tetap sekitar 1 dan sebagian mati",
+              "check": "(lambda h: 400 < h.count(0.0) < 600 and abs(sum(h) / len(h) - 1) < 0.1)(dropout([1.0] * 1000, 0.5, seed=3))"
+            },
+            {
+              "name": "Penalti L2 contoh",
+              "check": "abs(penalti_l2([1, -2, 3], 0.1) - 1.4) < 1e-6"
+            },
+            {
+              "name": "Penalti nol untuk lam nol atau bobot nol",
+              "check": "penalti_l2([5, 5], 0) == 0 and penalti_l2([0.0, 0.0], 0.5) == 0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "cnn-dan-data-gambar",
+      "title": "CNN dan Data Gambar",
+      "est_minutes": 30,
+      "slide_from": 24,
+      "slide_to": 26,
+      "body": "## Tujuan\n\n- Melihat gambar sebagai tabel angka dan memahami bentuknya.\n- Menghitung konvolusi sebuah filter pada gambar kecil dengan tangan dan dengan Python.\n- Memakai max pooling untuk memperkecil peta fitur.\n- Memahami susunan CNN dan ide transfer learning.\n\n## Gambar hanyalah angka\n\nBagi komputer, foto hanyalah tabel angka. Gambar hitam putih (grayscale) berukuran 28 x 28 adalah 784 angka, masing-masing **piksel** bernilai 0 (hitam) sampai 255 (putih). Gambar berwarna punya tiga lapisan, yaitu merah, hijau, dan biru (RGB), sehingga foto 224 x 224 berisi 224 x 224 x 3 = 150.528 angka. Sebelum masuk jaringan, angka itu biasanya dibagi 255 agar berada di rentang 0 sampai 1.\n\n![Gambar sebagai tabel angka](slide:24)\n\nDi Python murni, gambar kecil bisa kita tulis sebagai list di dalam list. Ini huruf \"I\" ukuran 5 x 5 dengan nilai 0 sampai 9 supaya mudah dihitung:\n\n```python\ngambar = [\n    [0, 0, 9, 0, 0],\n    [0, 0, 9, 0, 0],\n    [0, 0, 9, 0, 0],\n    [0, 0, 9, 0, 0],\n    [0, 0, 9, 0, 0],\n]\nprint(len(gambar), len(gambar[0]))  # 5 5\n```\n\nDi PyTorch, satu kumpulan gambar disimpan dengan bentuk `(N, C, H, W)`: banyak gambar, banyak kanal warna, tinggi, dan lebar. Satu batch berisi 32 foto RGB 224 x 224 berbentuk `(32, 3, 224, 224)`.\n\n## Kenapa tidak pakai lapisan biasa saja?\n\nKamu bisa saja meratakan 150.528 angka itu menjadi satu baris lalu memasukkannya ke `nn.Linear` dengan 1000 neuron. Hasilnya lebih dari 150 juta bobot hanya untuk lapisan pertama. Selain boros, cara ini membuang informasi penting: piksel yang bertetangga saling berhubungan. Lapisan biasa juga harus belajar ulang mengenali kucing di pojok kiri dan kucing di pojok kanan, padahal bentuknya sama.\n\nGambar butuh cara yang memanfaatkan dua sifat: pola penting bersifat **lokal** (garis, sudut, tekstur), dan pola yang sama bisa muncul **di mana saja**. Inilah ide di balik konvolusi.\n\n## Konvolusi dan filter\n\n**Filter** (disebut juga kernel) adalah tabel bobot kecil, misalnya 3 x 3. Filter digeser di atas gambar. Di setiap posisi, angka filter dikalikan dengan piksel yang tertutup di bawahnya, lalu semua hasil kali dijumlahkan menjadi satu angka. Kumpulan angka itu membentuk **peta fitur** (feature map).\n\nContoh filter pendeteksi tepi tegak:\n\n```text\n 1  0 -1\n 1  0 -1\n 1  0 -1\n```\n\nFilter ini menghasilkan angka besar saat sisi kiri terang dan sisi kanan gelap, angka negatif besar untuk kebalikannya, dan nol di area yang rata. Kalau kita tempelkan di pojok kiri atas huruf \"I\", kolom kirinya 0, kolom tengah 0, dan kolom kanannya 9, sehingga hasilnya `0 + 0 + (-9 - 9 - 9) = -27`.\n\n```python\ndef konvolusi(gambar, filt):\n    k = len(filt)\n    tinggi = len(gambar) - k + 1\n    lebar = len(gambar[0]) - k + 1\n    hasil = []\n    for i in range(tinggi):\n        baris = []\n        for j in range(lebar):\n            total = 0\n            for a in range(k):\n                for b in range(k):\n                    total += gambar[i + a][j + b] * filt[a][b]\n            baris.append(total)\n        hasil.append(baris)\n    return hasil\n\ntepi = [[1, 0, -1], [1, 0, -1], [1, 0, -1]]\nprint(konvolusi(gambar, tepi))\n# [[-27, 0, 27], [-27, 0, 27], [-27, 0, 27]]\n```\n\nHasilnya 3 x 3 dan polanya jelas: tepi kiri garis memberi -27, tepi kanannya memberi 27. Rumus ukurannya, untuk geser satu langkah tanpa bantalan, adalah `n - k + 1`. Kalau filter digeser `s` langkah sekaligus (stride) dan tepi gambar diberi bantalan nol `p` piksel (padding), ukurannya menjadi `(n + 2p - k) / s + 1`, dibulatkan ke bawah.\n\nSatu catatan jujur: secara matematika, konvolusi asli membalik filter dulu. Pustaka deep learning tidak membaliknya (namanya cross-correlation), tetapi tetap menyebutnya konvolusi. Karena filternya dipelajari, perbedaan itu tidak berpengaruh.\n\nBagian terpentingnya: di CNN, angka di dalam filter **tidak ditulis tangan**. Angka itu adalah bobot yang dipelajari lewat backpropagation, persis seperti bobot di bab sebelumnya. Satu filter 3 x 3 hanya punya 9 bobot (ditambah bias), dan bobot yang sama dipakai di seluruh posisi gambar. Inilah yang membuat CNN hemat parameter.\n\n## Pooling\n\nSetelah konvolusi dan ReLU, peta fitur biasanya diperkecil dengan **pooling**. Max pooling 2 x 2 membagi peta menjadi kotak-kotak 2 x 2 yang tidak saling tumpang tindih, lalu hanya mengambil nilai terbesar di setiap kotak.\n\n```text\n1 3 | 2 0\n4 2 | 1 5      max pool 2x2      4 5\n----+----     ------------->     8 6\n0 8 | 6 1\n7 1 | 2 3\n```\n\nPeta 4 x 4 menjadi 2 x 2. Manfaatnya dua: jumlah angka yang harus diproses lapisan berikutnya turun empat kali lipat, dan jaringan jadi sedikit lebih tahan terhadap pergeseran kecil. Kalau garis bergeser satu piksel, nilai maksimumnya sering masih jatuh di kotak yang sama.\n\n## Susunan CNN\n\nCNN (convolutional neural network) umumnya menumpuk blok konvolusi, ReLU, dan pooling beberapa kali, lalu ditutup lapisan biasa untuk klasifikasi.\n\n- Blok awal belajar pola sederhana: tepi, garis miring, bercak warna.\n- Blok tengah menggabungkannya menjadi tekstur dan bentuk: lingkaran, pola kotak-kotak.\n- Blok akhir mengenali bagian benda: mata, roda, huruf.\n- Lapisan terakhir memakai softmax untuk memilih kelas.\n\nBerikut padanan PyTorch untuk gambar grayscale 28 x 28 dan 10 kelas. Coba di Google Colab; latihan bab ini sendiri tetap Python murni.\n\n```python\nfrom torch import nn\n\nmodel = nn.Sequential(\n    nn.Conv2d(in_channels=1, out_channels=8, kernel_size=3),  # 28 -> 26\n    nn.ReLU(),\n    nn.MaxPool2d(2),                                          # 26 -> 13\n    nn.Flatten(),\n    nn.Linear(8 * 13 * 13, 10),\n)\n```\n\n## Transfer learning\n\nMelatih CNN besar dari nol butuh jutaan gambar dan GPU berhari-hari. Untungnya, filter di blok awal (tepi, tekstur) berguna untuk hampir semua jenis foto. **Transfer learning** memanfaatkan ini: ambil model yang sudah dilatih pada kumpulan foto besar seperti ImageNet, bekukan sebagian besar lapisannya, lalu ganti dan latih ulang lapisan terakhir untuk tugasmu.\n\nMisalnya kamu ingin membedakan tiga jenis sampah di kantin sekolah: plastik, kertas, dan sisa makanan. Dengan transfer learning, beberapa ratus foto per kelas sering sudah cukup untuk hasil yang lumayan. Di `torchvision`, model seperti ResNet bisa dimuat beserta bobot hasil latihannya, lalu lapisan `fc` di ujungnya diganti dengan `nn.Linear` baru berkeluaran 3.\n\n## Rangkuman\n\n- Gambar adalah tabel angka piksel; gambar berwarna punya tiga kanal, dan PyTorch menyimpan batch gambar dengan bentuk `(N, C, H, W)`.\n- Konvolusi menggeser filter kecil di atas gambar, mengalikan lalu menjumlahkan, dan menghasilkan peta fitur berukuran `n - k + 1` per sisi.\n- Bobot filter dipelajari lewat backpropagation dan dipakai bersama di semua posisi, sehingga CNN hemat parameter.\n- Max pooling mengambil nilai terbesar di setiap kotak untuk memperkecil peta fitur.\n- Transfer learning memakai ulang model yang sudah terlatih sehingga data kecil pun bisa menghasilkan model yang berguna.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Gambar 32 x 32 dikonvolusi dengan filter 5 x 5, geser satu langkah, tanpa padding. Berapa ukuran peta fiturnya?",
+          "code": "",
+          "options": [
+            "32 x 32 (tetap)",
+            "27 x 27",
+            "28 x 28",
+            "30 x 30"
+          ],
+          "answer": 2,
+          "explanation": "Ukurannya n - k + 1 = 32 - 5 + 1 = 28 per sisi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa hasil satu langkah konvolusi berikut?",
+          "code": "potong = [[1, 2], [3, 4]]\nfilt = [[0, 1], [-1, 2]]\ntotal = sum(potong[a][b] * filt[a][b] for a in range(2) for b in range(2))\nprint(total)",
+          "options": [
+            "7",
+            "10",
+            "4",
+            "-1"
+          ],
+          "answer": 0,
+          "explanation": "Hasilnya 1 x 0 + 2 x 1 + 3 x (-1) + 4 x 2 = 0 + 2 - 3 + 8 = 7."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa alasan utama transfer learning bisa bekerja dengan data yang sedikit?",
+          "code": "",
+          "options": [
+            "Model terlatih sudah menyimpan seluruh foto ImageNet sebagai contoh cadangan",
+            "Transfer learning mematikan backpropagation sehingga tidak bisa overfitting",
+            "Data yang sedikit otomatis diperbanyak menjadi jutaan oleh pustaka torchvision",
+            "Filter di lapisan awal sudah mengenali tepi dan tekstur yang umum"
+          ],
+          "answer": 3,
+          "explanation": "Pola dasar seperti tepi dan tekstur berlaku untuk hampir semua foto, jadi cukup lapisan akhir yang dilatih ulang."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di CNN, angka-angka di dalam filter ditentukan oleh programmer sebelum latihan dan tidak berubah.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Bobot filter adalah parameter yang dipelajari lewat backpropagation, sama seperti bobot lapisan biasa."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Konvolusi dua dimensi",
+          "prompt": "Lengkapi `konvolusi(gambar, filt)` untuk gambar dan filter berbentuk list di dalam list (filter persegi `k x k`). Geser filter satu langkah, tanpa padding, tanpa membalik filter. Hasilnya berukuran `(tinggi - k + 1) x (lebar - k + 1)`.\n\nContoh: `konvolusi([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0], [0, 1]])` menghasilkan `[[6, 8], [12, 14]]`.",
+          "starter": {
+            "code": "def konvolusi(gambar, filt):\n    k = len(filt)\n    hasil = []\n    # TODO: untuk setiap posisi, jumlahkan perkalian filter dengan potongan gambar\n    return hasil\n\n\nprint(konvolusi([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0], [0, 1]]))\n"
+          },
+          "solution": {
+            "code": "def konvolusi(gambar, filt):\n    k = len(filt)\n    hasil = []\n    for i in range(len(gambar) - k + 1):\n        baris = []\n        for j in range(len(gambar[0]) - k + 1):\n            baris.append(sum(gambar[i + a][j + b] * filt[a][b] for a in range(k) for b in range(k)))\n        hasil.append(baris)\n    return hasil\n\n\nprint(konvolusi([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0], [0, 1]]))\n"
+          },
+          "setup": "HURUF_I = [[0, 0, 9, 0, 0] for _ in range(5)]\nTEPI = [[1, 0, -1], [1, 0, -1], [1, 0, -1]]\n",
+          "tests": [
+            {
+              "name": "Contoh 3 x 3 dengan filter 2 x 2",
+              "check": "konvolusi([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0], [0, 1]]) == [[6, 8], [12, 14]]"
+            },
+            {
+              "name": "Ukuran hasil n - k + 1",
+              "check": "(lambda h: len(h) == 4 and len(h[0]) == 2)(konvolusi([[0] * 4 for _ in range(6)], TEPI))"
+            },
+            {
+              "name": "Filter tepi pada huruf I",
+              "check": "konvolusi(HURUF_I, TEPI) == [[-27, 0, 27]] * 3"
+            },
+            {
+              "name": "Filter 1 x 1 mengalikan setiap piksel",
+              "check": "konvolusi([[1, 2], [3, 4]], [[2]]) == [[2, 4], [6, 8]]"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Max pooling",
+          "prompt": "Lengkapi `max_pool(peta, ukuran)` yang membagi peta fitur menjadi kotak `ukuran x ukuran` tanpa tumpang tindih (geser sejauh `ukuran`) dan mengambil nilai terbesar setiap kotak. Baris atau kolom sisa yang tidak membentuk kotak penuh diabaikan.\n\nContoh: peta 4 x 4 dengan `ukuran = 2` menjadi 2 x 2, peta 5 x 5 juga menjadi 2 x 2.",
+          "starter": {
+            "code": "def max_pool(peta, ukuran):\n    hasil = []\n    # TODO: ambil nilai terbesar di setiap kotak ukuran x ukuran\n    return hasil\n\n\npeta = [[1, 3, 2, 0], [4, 2, 1, 5], [0, 8, 6, 1], [7, 1, 2, 3]]\nprint(max_pool(peta, 2))\n"
+          },
+          "solution": {
+            "code": "def max_pool(peta, ukuran):\n    hasil = []\n    for i in range(0, len(peta) - ukuran + 1, ukuran):\n        baris = []\n        for j in range(0, len(peta[0]) - ukuran + 1, ukuran):\n            baris.append(max(peta[i + a][j + b] for a in range(ukuran) for b in range(ukuran)))\n        hasil.append(baris)\n    return hasil\n\n\npeta = [[1, 3, 2, 0], [4, 2, 1, 5], [0, 8, 6, 1], [7, 1, 2, 3]]\nprint(max_pool(peta, 2))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Peta 4 x 4 menjadi 2 x 2",
+              "check": "max_pool([[1, 3, 2, 0], [4, 2, 1, 5], [0, 8, 6, 1], [7, 1, 2, 3]], 2) == [[4, 5], [8, 6]]"
+            },
+            {
+              "name": "Sisa baris dan kolom diabaikan",
+              "check": "max_pool([[r * 5 + c for c in range(5)] for r in range(5)], 2) == [[6, 8], [16, 18]]"
+            },
+            {
+              "name": "Ukuran 1 tidak mengubah peta",
+              "check": "max_pool([[1, -2], [3, 4]], 1) == [[1, -2], [3, 4]]"
+            },
+            {
+              "name": "Nilai negatif tetap diambil yang terbesar",
+              "check": "max_pool([[-5, -3], [-4, -9]], 2) == [[-3]]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "pytorch-dan-langkah-berikutnya",
+      "title": "PyTorch dan Langkah Berikutnya",
+      "est_minutes": 30,
+      "slide_from": 27,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Mengenal tensor dan `nn.Module` sebagai padanan list dan fungsi yang sudah kamu tulis.\n- Menyusun training loop PyTorch dan memadankan setiap barisnya dengan versi Python murni.\n- Menjalankan model di GPU Google Colab.\n- Mendapat gambaran RNN, Transformer, dan LLM, serta etika memakai deep learning.\n\n## Dari list ke tensor\n\nSelama delapan bab, kamu membangun jaringan dengan list dan perulangan `for`. Itu sengaja: dengan menulis semuanya sendiri, kamu tahu persis apa yang terjadi di dalam. Latihan di kelas ini memang Python murni karena mesin pemeriksanya tidak punya PyTorch. Sekarang saatnya berkenalan dengan alat yang dipakai di dunia nyata. Semua kode PyTorch di bab ini bisa kamu coba di Google Colab, yang sudah menyediakan PyTorch tanpa instalasi.\n\n![Tensor di PyTorch](slide:27)\n\n**Tensor** adalah tabel angka berdimensi berapa saja, mirip list di dalam list, tetapi jauh lebih cepat karena dihitung oleh kode C dan bisa dipindah ke GPU.\n\n```python\nimport torch\n\nx = torch.tensor([[0.95, 0.1, 0.3], [0.70, 0.6, 0.8]])\nprint(x.shape)   # torch.Size([2, 3]): 2 siswa, 3 fitur\nprint(x.dtype)   # torch.float32\nprint(x @ x.T)   # perkalian matriks tanpa perulangan\n```\n\nBandingkan dengan fungsi `forward` di bab 3 yang memakai dua perulangan bersarang. Dengan tensor, perkalian satu batch penuh cukup ditulis `x @ W.T + b`. Satu fitur lagi yang membuat PyTorch istimewa adalah **autograd**: kalau sebuah tensor dibuat dengan `requires_grad=True`, PyTorch mencatat setiap operasi dan bisa menghitung gradiennya sendiri saat kamu memanggil `.backward()`. Semua turunan yang kamu tulis dengan tangan di bab backpropagation dikerjakan otomatis.\n\n```python\nw = torch.tensor(2.0, requires_grad=True)\nloss = (w * 3 - 5) ** 2\nloss.backward()\nprint(w.grad)  # 2 * (2*3 - 5) * 3 = 6\n```\n\n## nn.Module: wadah lapisan dan bobot\n\nDi PyTorch, model ditulis sebagai kelas turunan `nn.Module`. Lapisan dibuat di `__init__`, sedangkan alur data ditulis di `forward`.\n\n```python\nfrom torch import nn\n\nclass PengenalAbsensi(nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.lapis1 = nn.Linear(3, 4)\n        self.lapis2 = nn.Linear(4, 1)\n\n    def forward(self, x):\n        h = torch.tanh(self.lapis1(x))\n        return self.lapis2(h)\n\nmodel = PengenalAbsensi()\nprint(sum(p.numel() for p in model.parameters()))  # 3*4 + 4 + 4*1 + 1 = 21\n```\n\n`nn.Linear(3, 4)` adalah matriks bobot 4 x 3 ditambah 4 bias, persis bentuk `W1` dan `b1` yang kamu tulis sebagai list. Perhatikan bahwa `forward` di atas tidak memakai sigmoid di ujungnya. Itu karena loss `nn.BCEWithLogitsLoss` sudah menggabungkan sigmoid dan binary cross-entropy dengan cara yang lebih stabil secara angka.\n\n## Training loop PyTorch\n\nInilah inti bab ini. Training loop PyTorch selalu berbentuk hampir sama, dan setiap barisnya punya padanan di kode Python murnimu.\n\n```python\nloss_fn = nn.BCEWithLogitsLoss()\noptimizer = torch.optim.SGD(model.parameters(), lr=0.5)\n\nfor epoch in range(100):\n    model.train()\n    for xb, yb in loader:              # DataLoader membagi mini-batch\n        optimizer.zero_grad()          # 1. nolkan gradien lama\n        keluaran = model(xb)           # 2. forward pass\n        loss = loss_fn(keluaran, yb)   # 3. hitung loss\n        loss.backward()                # 4. backpropagation\n        optimizer.step()               # 5. perbarui bobot\n```\n\n| Langkah | Python murni di kelas ini | PyTorch |\n| --- | --- | --- |\n| Bagi data | `buat_batch(data, ukuran, seed)` | `DataLoader(..., shuffle=True)` |\n| Forward | `forward(x, p)` | `model(xb)` |\n| Loss | `loss(y_topi, y)` | `loss_fn(keluaran, yb)` |\n| Gradien | `backward(x, y, p)` | `loss.backward()` |\n| Perbarui bobot | `w -= lr * g` | `optimizer.step()` |\n| Hapus gradien lama | gradien dibuat baru setiap langkah | `optimizer.zero_grad()` |\n\nBaris yang paling sering dilupakan pemula adalah `optimizer.zero_grad()`. PyTorch **menjumlahkan** gradien baru ke gradien lama. Tanpa baris ini, gradien dari batch sebelumnya ikut terbawa dan bobot bergerak ke arah yang salah.\n\nUntuk mengukur akurasi di data validasi, matikan dropout dan pencatatan gradien supaya hasilnya stabil dan hemat memori:\n\n```python\nmodel.eval()\nwith torch.no_grad():\n    prediksi = (torch.sigmoid(model(X_val)) >= 0.5).float()\n    akurasi = (prediksi == y_val).float().mean().item()\n```\n\nSelain SGD, optimizer yang sangat populer adalah `torch.optim.Adam`, yang mengatur besar langkah setiap bobot secara otomatis. Untuk banyak soal, Adam dengan learning rate 0,001 adalah titik awal yang baik.\n\n## GPU di Google Colab\n\nDi Colab, buka menu Runtime lalu ubah jenis runtime menjadi GPU. Setelah itu, model dan data perlu dipindah ke perangkat yang sama:\n\n```python\nperangkat = \"cuda\" if torch.cuda.is_available() else \"cpu\"\nmodel = model.to(perangkat)\nxb, yb = xb.to(perangkat), yb.to(perangkat)\n```\n\nKesalahan umum adalah model sudah di GPU tetapi datanya masih di CPU, sehingga PyTorch menolak menghitung. Untuk data sekecil absensi satu kelas, CPU sebenarnya sudah cukup. GPU baru terasa manfaatnya untuk gambar, suara, dan teks dalam jumlah besar.\n\n## RNN, Transformer, dan LLM sekilas\n\nCNN cocok untuk gambar. Untuk data berurutan seperti teks atau deret waktu, dulu orang memakai **RNN** (recurrent neural network) yang membaca data satu per satu sambil membawa \"ingatan\". RNN lambat karena harus berurutan dan mudah lupa bagian awal kalimat yang panjang.\n\n**Transformer** mengatasinya dengan mekanisme **attention**: setiap kata bisa langsung \"melihat\" kata lain di kalimat dan menimbang mana yang penting. Pada kalimat \"Budi meminjam buku di perpustakaan karena ia ada tugas\", attention membantu model mengaitkan \"ia\" dengan \"Budi\". Karena semua kata diproses bersamaan, Transformer bisa dilatih sangat cepat di GPU.\n\n**LLM** (large language model) seperti model di balik chatbot modern adalah Transformer raksasa yang dilatih menebak **token** berikutnya pada teks dalam jumlah sangat besar. Bahan dasarnya tetap yang kamu pelajari: lapisan linear, aktivasi, softmax, cross-entropy, backpropagation, dan gradient descent. Yang berbeda adalah skala data, jumlah bobot, dan GPU yang dipakai.\n\n## Etika dan tanggung jawab\n\nDeep learning belajar dari data, jadi ia juga mewarisi kekurangan datanya.\n\n- **Bias**: model yang dilatih dari data satu sekolah bisa salah menilai siswa dari daerah lain.\n- **Privasi**: data absensi, nilai, dan foto siswa adalah data pribadi. Di Indonesia, pengelolaannya diatur Undang-Undang Pelindungan Data Pribadi (UU Nomor 27 Tahun 2022). Minta izin, simpan seperlunya, dan jangan menyebarkannya.\n- **Keputusan manusia**: model pengenal pola absensi sebaiknya hanya memberi tanda bagi guru BK untuk menyapa siswa, bukan menghukum otomatis.\n\n## Langkah berikutnya\n\nKamu sudah punya fondasi yang kuat. Beberapa jalan untuk melanjutkan: ikuti tutorial resmi di situs PyTorch, kerjakan kompetisi pemula di Kaggle, coba kursus gratis fast.ai yang sangat praktis, dan jelajahi model siap pakai di Hugging Face. Proyek kecil yang paling bagus adalah proyek dari masalah di sekitarmu sendiri.\n\n## Rangkuman\n\n- Tensor adalah tabel angka yang cepat dan bisa dipindah ke GPU; autograd menghitung gradien otomatis lewat `.backward()`.\n- Model PyTorch ditulis sebagai kelas `nn.Module` dengan lapisan di `__init__` dan alur data di `forward`.\n- Training loop selalu: `zero_grad`, forward, hitung loss, `backward`, lalu `step`; validasi memakai `model.eval()` dan `torch.no_grad()`.\n- Model dan data harus berada di perangkat yang sama, misalnya `cuda` di Colab.\n- Transformer memakai attention, dan LLM adalah Transformer raksasa penebak token berikutnya; pakai semuanya dengan memperhatikan bias dan privasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa akibatnya bila `optimizer.zero_grad()` dihapus dari training loop PyTorch?",
+          "code": "",
+          "options": [
+            "Gradien batch lama ikut terjumlah ke gradien baru",
+            "PyTorch langsung menolak menjalankan `loss.backward()` dan menampilkan error",
+            "Bobot tidak pernah diperbarui karena optimizer menganggap gradiennya nol",
+            "Latihan otomatis pindah dari GPU ke CPU agar tetap bisa berjalan"
+          ],
+          "answer": 0,
+          "explanation": "PyTorch menjumlahkan gradien ke `.grad`, jadi tanpa dinolkan gradien dari batch sebelumnya ikut terbawa."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa jumlah parameter yang dicetak?",
+          "code": "from torch import nn\n\nmodel = nn.Sequential(nn.Linear(4, 8), nn.ReLU(), nn.Linear(8, 2))\nprint(sum(p.numel() for p in model.parameters()))",
+          "options": [
+            "48",
+            "58",
+            "50",
+            "128"
+          ],
+          "answer": 1,
+          "explanation": "Lapisan pertama 4 x 8 + 8 = 40, lapisan kedua 8 x 2 + 2 = 18, ReLU tidak punya bobot, totalnya 58."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Baris PyTorch mana yang padanannya adalah menjalankan backpropagation untuk menghitung gradien setiap bobot?",
+          "code": "",
+          "options": [
+            "`optimizer.step()`",
+            "`model(xb)`",
+            "`loss.backward()`",
+            "`optimizer.zero_grad()`"
+          ],
+          "answer": 2,
+          "explanation": "`loss.backward()` menelusuri operasi yang dicatat autograd dan mengisi `.grad` setiap parameter."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "LLM pada dasarnya adalah Transformer besar yang dilatih untuk menebak token berikutnya pada teks.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Tugas latihan dasarnya memang menebak token berikutnya, dengan bahan yang sama: lapisan, softmax, cross-entropy, dan backpropagation."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Memadankan langkah training loop",
+          "prompt": "Isi dictionary `PADANAN` yang memetakan langkah Python murni ke baris PyTorch, dan list `URUTAN` berisi kunci-kunci itu sesuai urutan di dalam training loop.\n\nPilihan baris PyTorch (pakai teks persis):\n\n- `\"loss.backward()\"`\n- `\"optimizer.step()\"`\n- `\"optimizer.zero_grad()\"`\n- `\"keluaran = model(xb)\"`\n- `\"loss = loss_fn(keluaran, yb)\"`\n\nKunci: `\"nol_gradien\"`, `\"forward\"`, `\"hitung_loss\"`, `\"backward\"`, `\"perbarui_bobot\"`.",
+          "starter": {
+            "code": "PADANAN = {\n    \"nol_gradien\": \"\",\n    \"forward\": \"\",\n    \"hitung_loss\": \"\",\n    \"backward\": \"\",\n    \"perbarui_bobot\": \"\",\n}\n\n# TODO: urutkan kunci sesuai training loop PyTorch\nURUTAN = [\"forward\", \"hitung_loss\", \"perbarui_bobot\", \"backward\", \"nol_gradien\"]\n\nfor langkah in URUTAN:\n    print(PADANAN[langkah])\n"
+          },
+          "solution": {
+            "code": "PADANAN = {\n    \"nol_gradien\": \"optimizer.zero_grad()\",\n    \"forward\": \"keluaran = model(xb)\",\n    \"hitung_loss\": \"loss = loss_fn(keluaran, yb)\",\n    \"backward\": \"loss.backward()\",\n    \"perbarui_bobot\": \"optimizer.step()\",\n}\n\nURUTAN = [\"nol_gradien\", \"forward\", \"hitung_loss\", \"backward\", \"perbarui_bobot\"]\n\nfor langkah in URUTAN:\n    print(PADANAN[langkah])\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Forward dan loss dipadankan benar",
+              "check": "PADANAN[\"forward\"] == \"keluaran = model(xb)\" and PADANAN[\"hitung_loss\"] == \"loss = loss_fn(keluaran, yb)\""
+            },
+            {
+              "name": "Backward dan perbarui bobot dipadankan benar",
+              "check": "PADANAN[\"backward\"] == \"loss.backward()\" and PADANAN[\"perbarui_bobot\"] == \"optimizer.step()\""
+            },
+            {
+              "name": "Gradien lama dinolkan",
+              "check": "PADANAN[\"nol_gradien\"] == \"optimizer.zero_grad()\""
+            },
+            {
+              "name": "Backward sebelum perbarui bobot",
+              "check": "URUTAN.index(\"backward\") < URUTAN.index(\"perbarui_bobot\") and URUTAN.index(\"hitung_loss\") < URUTAN.index(\"backward\")"
+            },
+            {
+              "name": "Urutan lengkap training loop",
+              "check": "URUTAN == [\"nol_gradien\", \"forward\", \"hitung_loss\", \"backward\", \"perbarui_bobot\"]"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Lapisan Linear buatan sendiri",
+          "prompt": "Buat kelas `Linear` yang meniru `nn.Linear` dengan list biasa:\n\n- `__init__(self, n_masuk, n_keluar, seed=0)`: `rng = random.Random(seed)`, `batas = 1 / math.sqrt(n_masuk)`. Isi `self.bobot` berupa `n_keluar` baris, tiap baris `n_masuk` angka `rng.uniform(-batas, batas)` (isi baris demi baris). `self.bias` berisi `n_keluar` angka `0.0`.\n- `__call__(self, x)`: kembalikan list `n_keluar` angka, tiap angka jumlah `bobot[j][i] * x[i]` ditambah `bias[j]`.\n- `jumlah_parameter(self)`: banyaknya bobot ditambah banyaknya bias.",
+          "starter": {
+            "code": "import math, random\n\n\nclass Linear:\n    def __init__(self, n_masuk, n_keluar, seed=0):\n        rng = random.Random(seed)\n        batas = 1 / math.sqrt(n_masuk)\n        # TODO: isi bobot n_keluar x n_masuk dan bias nol\n        self.bobot = []\n        self.bias = []\n\n    def __call__(self, x):\n        # TODO: jumlah berbobot ditambah bias untuk setiap neuron\n        return []\n\n    def jumlah_parameter(self):\n        # TODO: banyak bobot + banyak bias\n        return 0\n\n\nlapis = Linear(3, 4)\nprint(lapis.jumlah_parameter())\n"
+          },
+          "solution": {
+            "code": "import math, random\n\n\nclass Linear:\n    def __init__(self, n_masuk, n_keluar, seed=0):\n        rng = random.Random(seed)\n        batas = 1 / math.sqrt(n_masuk)\n        self.bobot = [[rng.uniform(-batas, batas) for _ in range(n_masuk)] for _ in range(n_keluar)]\n        self.bias = [0.0] * n_keluar\n\n    def __call__(self, x):\n        return [sum(w * xi for w, xi in zip(baris, x)) + b for baris, b in zip(self.bobot, self.bias)]\n\n    def jumlah_parameter(self):\n        return sum(len(baris) for baris in self.bobot) + len(self.bias)\n\n\nlapis = Linear(3, 4)\nprint(lapis.jumlah_parameter())\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Bentuk bobot dan bias",
+              "check": "(lambda l: len(l.bobot) == 4 and all(len(b) == 3 for b in l.bobot) and l.bias == [0.0] * 4)(Linear(3, 4))"
+            },
+            {
+              "name": "Bobot dalam batas 1 / sqrt(n_masuk) dan mengikuti seed",
+              "check": "(lambda l: all(abs(w) <= 0.5 for b in l.bobot for w in b) and l.bobot == Linear(4, 2, seed=1).bobot and l.bobot[0][0] == random.Random(1).uniform(-0.5, 0.5))(Linear(4, 2, seed=1))"
+            },
+            {
+              "name": "Forward menghitung jumlah berbobot ditambah bias",
+              "check": "(lambda l: (setattr(l, 'bobot', [[1.0, 2.0], [0.5, -1.0]]), setattr(l, 'bias', [0.5, 1.0]), l([3.0, 1.0]))[2] == [5.5, 1.5])(Linear(2, 2))"
+            },
+            {
+              "name": "Jumlah parameter seperti nn.Linear",
+              "check": "Linear(3, 4).jumlah_parameter() == 16 and Linear(4, 8).jumlah_parameter() == 40"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
