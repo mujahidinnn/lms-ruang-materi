@@ -1,0 +1,2105 @@
+{
+  "title": "MySQL",
+  "description": "Belajar MySQL 8.4 untuk dunia kerja: utf8mb4, tipe data, CRUD aman, agregasi, JOIN, index dan EXPLAIN, transaksi InnoDB, hak akses, backup, sampai PDO. Ditutup proyek Database Perpustakaan Sekolah.",
+  "summary": "MySQL adalah database relasional yang dipakai WordPress, toko online, dan banyak sistem sekolah. Kelas ini memakai MySQL 8.4 LTS dan melanjutkan dasar SQL yang sudah kamu kenal. Kamu mulai dari cara kerja server dan client, memasang MySQL lewat XAMPP, Laragon, atau Docker, lalu masuk lewat klien mysql.\n\nBagian inti membahas membuat database dengan utf8mb4, memilih tipe data yang tepat, AUTO_INCREMENT, CRUD yang aman dengan sql_safe_updates, fungsi agregat dan tanggal, serta relasi dengan foreign key InnoDB dan JOIN. Setelah itu kamu belajar membuat query cepat dengan index dan EXPLAIN, lalu menjaga data tetap utuh dengan transaksi, isolation level, dan lock.\n\nBagian akhir menyiapkan MySQL untuk produksi: membuat user dengan hak minimum lewat GRANT dan REVOKE, backup dan restore dengan mysqldump, serta menghubungkan aplikasi PHP lewat PDO dengan prepared statement, view, dan stored procedure. Kelas ditutup dengan proyek Database Perpustakaan Sekolah.",
+  "tips": [
+    "Buat setiap database dengan CHARACTER SET utf8mb4 supaya nama dan pesan berisi emoji tidak rusak.",
+    "Sebelum UPDATE atau DELETE, jalankan SELECT dengan WHERE yang sama untuk melihat baris yang akan kena.",
+    "Jalankan EXPLAIN pada query yang terasa lambat dan perhatikan type ALL serta kolom key yang NULL.",
+    "Bungkus perubahan yang saling bergantung, seperti transfer saldo, dalam START TRANSACTION dan COMMIT.",
+    "Beri aplikasi user sendiri dengan hak minimum, jangan root, dan uji restore dari mysqldump secara rutin."
+  ],
+  "flashcards": [
+    {
+      "front": "MySQL",
+      "back": "RDBMS open source; kelas ini memakai MySQL 8.4 LTS."
+    },
+    {
+      "front": "mysqld vs mysql",
+      "back": "mysqld adalah server yang menyimpan data; mysql adalah klien terminal untuk mengirim perintah."
+    },
+    {
+      "front": "Port bawaan MySQL",
+      "back": "3306"
+    },
+    {
+      "front": "MariaDB",
+      "back": "Cabang (fork) MySQL; mirip, tetapi tidak selalu sama fitur dan perilakunya."
+    },
+    {
+      "front": "utf8mb4",
+      "back": "Charset yang menyimpan semua karakter Unicode, termasuk emoji. Bawaan MySQL 8."
+    },
+    {
+      "front": "InnoDB",
+      "back": "Storage engine bawaan: transaksi, foreign key, dan kunci per baris."
+    },
+    {
+      "front": "AUTO_INCREMENT",
+      "back": "Mengisi kolom id dengan nomor berikutnya secara otomatis."
+    },
+    {
+      "front": "LAST_INSERT_ID()",
+      "back": "Id AUTO_INCREMENT terakhir yang dibuat di koneksi yang sama."
+    },
+    {
+      "front": "DECIMAL vs FLOAT",
+      "back": "DECIMAL menyimpan angka persis (cocok untuk uang); FLOAT bisa membulatkan."
+    },
+    {
+      "front": "BOOLEAN",
+      "back": "Sinonim TINYINT(1): TRUE = 1, FALSE = 0."
+    },
+    {
+      "front": "ENUM",
+      "back": "Kolom yang isinya dibatasi pada daftar nilai tetap, misalnya ENUM('L','P')."
+    },
+    {
+      "front": "DESCRIBE tabel",
+      "back": "Menampilkan kolom, tipe, dan aturan sebuah tabel."
+    },
+    {
+      "front": "LIMIT n OFFSET m",
+      "back": "Lewati m baris, lalu ambil n baris; dipakai untuk halaman data."
+    },
+    {
+      "front": "sql_safe_updates",
+      "back": "Menolak UPDATE dan DELETE tanpa WHERE pada kolom kunci atau LIMIT."
+    },
+    {
+      "front": "WHERE vs HAVING",
+      "back": "WHERE menyaring baris sebelum GROUP BY; HAVING menyaring hasil kelompok."
+    },
+    {
+      "front": "DATE_FORMAT()",
+      "back": "Mengubah tanggal jadi teks, misalnya DATE_FORMAT(tgl, '%d-%m-%Y')."
+    },
+    {
+      "front": "IFNULL(a, b)",
+      "back": "Memakai b bila a bernilai NULL."
+    },
+    {
+      "front": "ON DELETE CASCADE",
+      "back": "Menghapus baris induk ikut menghapus baris anak yang merujuknya."
+    },
+    {
+      "front": "LEFT JOIN ... IS NULL",
+      "back": "Pola mencari baris tabel kiri yang tidak punya pasangan di tabel kanan."
+    },
+    {
+      "front": "Index gabungan",
+      "back": "Index beberapa kolom; dibaca dari kolom paling kiri."
+    },
+    {
+      "front": "EXPLAIN",
+      "back": "Menampilkan rencana query: type, key (index yang dipakai), dan rows (perkiraan baris)."
+    },
+    {
+      "front": "ACID",
+      "back": "Atomicity, Consistency, Isolation, Durability."
+    },
+    {
+      "front": "REPEATABLE READ",
+      "back": "Isolation level bawaan InnoDB."
+    },
+    {
+      "front": "GRANT dan REVOKE",
+      "back": "GRANT memberi hak ke 'user'@'host'; REVOKE mencabutnya."
+    },
+    {
+      "front": "mysqldump --single-transaction",
+      "back": "Backup InnoDB yang konsisten tanpa mengunci tabel; restore dengan mysql db < file.sql."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Port bawaan yang dipakai server MySQL untuk menerima koneksi client adalah",
+      "code": "",
+      "options": [
+        "3306",
+        "5432, port yang sama dipakai semua database relasional",
+        "8080, port yang biasa dipakai server web",
+        "1433"
+      ],
+      "answer": 0,
+      "explanation": "MySQL mendengarkan di port 3306. Port 5432 milik PostgreSQL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Charset apa yang sebaiknya dipakai saat membuat database MySQL baru?",
+      "code": "",
+      "options": [
+        "latin1, karena paling hemat ruang penyimpanan",
+        "utf8mb4",
+        "utf8 lama (utf8mb3) yang maksimal 3 byte",
+        "ascii"
+      ],
+      "answer": 1,
+      "explanation": "utf8mb4 menyimpan semua karakter Unicode termasuk emoji, dan menjadi bawaan MySQL 8."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Tipe data yang tepat untuk menyimpan harga barang di kantin adalah",
+      "code": "",
+      "options": [
+        "FLOAT, supaya angka di belakang koma bisa sangat panjang",
+        "VARCHAR(20) agar bisa diberi tanda Rp di depannya",
+        "DECIMAL(12,2)",
+        "DOUBLE"
+      ],
+      "answer": 2,
+      "explanation": "DECIMAL menyimpan angka persis, sedangkan FLOAT dan DOUBLE bisa membulatkan nilai uang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang mengembalikan id AUTO_INCREMENT dari INSERT terakhir di koneksi yang sama?",
+      "code": "",
+      "options": [
+        "MAX(id) dari tabel, karena selalu sama di semua kondisi",
+        "CURRENT_ID() yang dibaca dari tabel sistem",
+        "NEXTVAL()",
+        "LAST_INSERT_ID()"
+      ],
+      "answer": 3,
+      "explanation": "LAST_INSERT_ID() berlaku per koneksi, jadi aman walau ada client lain yang ikut menyisipkan data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibat menjalankan UPDATE siswa SET kelas = 'XI' tanpa WHERE?",
+      "code": "",
+      "options": [
+        "Semua baris di tabel siswa ikut berubah",
+        "Hanya baris pertama yang berubah",
+        "MySQL otomatis meminta konfirmasi lewat layar",
+        "Tidak ada baris yang berubah sama sekali"
+      ],
+      "answer": 0,
+      "explanation": "Tanpa WHERE, UPDATE mengenai seluruh baris. sql_safe_updates bisa mencegah kesalahan ini."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa beda WHERE dan HAVING?",
+      "code": "",
+      "options": [
+        "WHERE hanya untuk teks, HAVING hanya untuk angka",
+        "WHERE menyaring baris sebelum dikelompokkan, HAVING menyaring hasil kelompok",
+        "HAVING dijalankan lebih dulu sebelum WHERE",
+        "Keduanya sama persis, hanya beda nama"
+      ],
+      "answer": 1,
+      "explanation": "HAVING bekerja setelah GROUP BY, sehingga bisa memakai hasil agregat seperti COUNT(*)."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang mengganti nilai NULL dengan nilai lain, misalnya 0?",
+      "code": "",
+      "options": [
+        "ISNULL() yang hanya mengubah NULL jadi teks kosong",
+        "NULLIF() yang selalu mengembalikan angka nol",
+        "IFNULL()",
+        "COALESCE_ZERO()"
+      ],
+      "answer": 2,
+      "explanation": "IFNULL(kolom, 0) memakai 0 bila kolom bernilai NULL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Storage engine bawaan MySQL 8.4 yang mendukung transaksi dan foreign key adalah",
+      "code": "",
+      "options": [
+        "MyISAM yang dipakai sejak MySQL versi lama",
+        "MEMORY, karena semua data disimpan di RAM",
+        "CSV",
+        "InnoDB"
+      ],
+      "answer": 3,
+      "explanation": "InnoDB menjadi bawaan dan mendukung transaksi, foreign key, serta penguncian per baris."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "JOIN mana yang tetap menampilkan siswa yang belum pernah meminjam buku?",
+      "code": "",
+      "options": [
+        "LEFT JOIN dari tabel siswa ke tabel peminjaman",
+        "INNER JOIN antara siswa dan peminjaman",
+        "CROSS JOIN tanpa syarat ON sama sekali",
+        "JOIN biasa dengan WHERE id = id"
+      ],
+      "answer": 0,
+      "explanation": "LEFT JOIN mempertahankan semua baris tabel kiri. Kolom peminjaman berisi NULL bila tidak ada pasangan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada hasil EXPLAIN, type ALL berarti",
+      "code": "",
+      "options": [
+        "Semua index di tabel sedang dipakai sekaligus",
+        "MySQL membaca seluruh baris tabel",
+        "Query mengambil semua kolom dengan SELECT *",
+        "Hasil query disimpan di cache"
+      ],
+      "answer": 1,
+      "explanation": "type ALL adalah full table scan, tanda query mungkin butuh index."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Isolation level bawaan InnoDB adalah",
+      "code": "",
+      "options": [
+        "READ UNCOMMITTED, supaya transaksi berjalan paling cepat",
+        "SERIALIZABLE, level yang paling ketat dari semuanya",
+        "REPEATABLE READ",
+        "READ COMMITTED"
+      ],
+      "answer": 2,
+      "explanation": "InnoDB memakai REPEATABLE READ secara bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang memberi hak SELECT di semua tabel database toko kepada user laporan?",
+      "code": "",
+      "options": [
+        "ALLOW SELECT FOR 'laporan' IN toko;",
+        "SET PRIVILEGE SELECT toko TO laporan;",
+        "CREATE GRANT laporan SELECT toko;",
+        "GRANT SELECT ON toko.* TO 'laporan'@'localhost';"
+      ],
+      "answer": 3,
+      "explanation": "GRANT hak ON database.tabel TO 'user'@'host' adalah bentuk yang benar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Opsi mysqldump apa yang membuat backup InnoDB konsisten tanpa mengunci tabel?",
+      "code": "",
+      "options": [
+        "--single-transaction",
+        "--lock-all-tables, karena tabel harus dikunci penuh",
+        "--no-data agar proses backup jauh lebih cepat",
+        "--force"
+      ],
+      "answer": 0,
+      "explanation": "--single-transaction membaca snapshot konsisten di dalam satu transaksi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagian DSN PDO yang benar untuk MySQL adalah",
+      "code": "",
+      "options": [
+        "mysqli://localhost/toko?charset=utf8mb4&user=root",
+        "mysql:host=localhost;dbname=toko;charset=utf8mb4",
+        "jdbc:mysql:localhost:toko",
+        "pdo-mysql:localhost,toko"
+      ],
+      "answer": 1,
+      "explanation": "DSN PDO MySQL diawali mysql: lalu host, dbname, dan charset dipisah titik koma."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Setelah COMMIT, data transaksi tetap ada walau server mati mendadak.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Itu sifat Durability pada ACID: data yang sudah di-commit ditulis permanen."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "MySQL termasuk jenis perangkat lunak apa?",
+      "code": "",
+      "options": [
+        "Sistem manajemen basis data relasional (RDBMS)",
+        "Bahasa pemrograman sisi server seperti PHP dan Python",
+        "Web server pengganti Apache dan Nginx",
+        "Editor teks khusus SQL"
+      ],
+      "answer": 0,
+      "explanation": "MySQL adalah RDBMS yang menyimpan data di tabel yang saling berelasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Program yang berjalan di latar dan menyimpan data MySQL disebut",
+      "code": "",
+      "options": [
+        "mysql, yaitu klien terminal yang kamu ketik",
+        "mysqld",
+        "phpMyAdmin yang dibuka lewat browser",
+        "mysqldump"
+      ],
+      "answer": 1,
+      "explanation": "mysqld adalah server. mysql adalah klien untuk mengirim perintah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah terminal untuk masuk ke MySQL sebagai root dan diminta password adalah",
+      "code": "",
+      "options": [
+        "mysql --root --password=tanya",
+        "mysqld -u root",
+        "mysql -u root -p",
+        "sudo mysql start root"
+      ],
+      "answer": 2,
+      "explanation": "-u memilih user dan -p membuat klien meminta password."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang menampilkan semua database di server?",
+      "code": "",
+      "options": [
+        "LIST DATABASES; seperti di beberapa database lain",
+        "SELECT * FROM DATABASES;",
+        "DESCRIBE SERVER;",
+        "SHOW DATABASES;"
+      ],
+      "answer": 3,
+      "explanation": "SHOW DATABASES menampilkan daftar database yang bisa kamu lihat."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "MariaDB adalah cabang (fork) dari MySQL, jadi semua fitur MySQL 8.4 pasti sama persis di MariaDB.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "MariaDB berasal dari MySQL tetapi sudah berkembang sendiri, sehingga ada fitur dan perilaku yang berbeda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang termasuk klien MySQL berbasis grafis?",
+      "code": "",
+      "options": [
+        "DBeaver",
+        "mysqld, server yang berjalan di latar",
+        "InnoDB, mesin penyimpanan bawaan",
+        "utf8mb4"
+      ],
+      "answer": 0,
+      "explanation": "DBeaver dan phpMyAdmin adalah klien grafis, sedangkan mysqld adalah server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang terjadi bila kamu menekan Enter di klien mysql tanpa titik koma?",
+      "code": "",
+      "options": [
+        "Perintah langsung dijalankan seperti biasa, karena titik koma hanya opsional di klien mysql",
+        "Klien menunggu lanjutan perintah dengan prompt ->",
+        "Klien keluar dan koneksi ditutup otomatis",
+        "Server menolak dan menghapus perintah itu"
+      ],
+      "answer": 1,
+      "explanation": "Klien mysql baru mengirim perintah setelah bertemu titik koma."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna IF NOT EXISTS pada CREATE DATABASE toko?",
+      "code": "",
+      "options": [
+        "Menghapus database lama lalu membuat yang baru",
+        "Membuat database hanya bila server kosong",
+        "Mencegah error bila database toko sudah ada",
+        "Menyalin isi database lain ke toko"
+      ],
+      "answer": 2,
+      "explanation": "IF NOT EXISTS membuat perintah aman dijalankan ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa utf8mb4 lebih dipilih daripada utf8 lama (utf8mb3)?",
+      "code": "",
+      "options": [
+        "utf8mb4 lebih hemat ruang untuk semua jenis teks",
+        "utf8 lama tidak bisa menyimpan huruf latin biasa seperti a sampai z, hanya angka dan simbol",
+        "utf8mb4 hanya dipakai untuk kolom angka",
+        "utf8mb4 bisa menyimpan karakter 4 byte seperti emoji"
+      ],
+      "answer": 3,
+      "explanation": "utf8mb3 maksimal 3 byte per karakter sehingga emoji dan sebagian aksara gagal disimpan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "BOOLEAN di MySQL sebenarnya disimpan sebagai tipe apa?",
+      "code": "",
+      "options": [
+        "TINYINT(1)",
+        "BIT(8) yang menyimpan delapan nilai benar atau salah",
+        "ENUM('true','false')",
+        "CHAR(1)"
+      ],
+      "answer": 0,
+      "explanation": "BOOLEAN adalah sinonim TINYINT(1). TRUE bernilai 1, FALSE bernilai 0."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom jenis_kelamin hanya boleh berisi 'L' atau 'P'. Tipe paling pas adalah",
+      "code": "",
+      "options": [
+        "TEXT agar bisa menampung tulisan apa saja",
+        "ENUM('L','P')",
+        "INT dengan aturan 1 dan 2 di aplikasi",
+        "DATE"
+      ],
+      "answer": 1,
+      "explanation": "ENUM membatasi isi kolom pada daftar nilai tetap."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil perintah berikut?",
+      "code": "ALTER TABLE siswa\n  ADD COLUMN telepon VARCHAR(15);",
+      "options": [
+        "Mengganti nama tabel siswa menjadi telepon dan menyimpan semua datanya",
+        "Membuat tabel baru bernama telepon",
+        "Menambah kolom telepon di akhir tabel siswa",
+        "Menghapus kolom telepon bila sudah ada"
+      ],
+      "answer": 2,
+      "explanation": "ALTER TABLE ... ADD COLUMN menambah kolom baru ke tabel yang sudah ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang menampilkan struktur kolom tabel siswa?",
+      "code": "",
+      "options": [
+        "SHOW siswa COLUMNS ALL;",
+        "SELECT STRUCTURE FROM siswa;",
+        "EXPLAIN TABLE siswa STRUCTURE;",
+        "DESCRIBE siswa;"
+      ],
+      "answer": 3,
+      "explanation": "DESCRIBE (atau DESC) menampilkan nama kolom, tipe, dan aturannya."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Perhatikan tabel berikut. Kolom mana yang terisi otomatis saat INSERT?",
+      "code": "CREATE TABLE siswa (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  nis CHAR(10) NOT NULL,\n  nama VARCHAR(100) NOT NULL\n) ENGINE=InnoDB;",
+      "options": [
+        "id",
+        "nama, karena bertipe VARCHAR dan wajib diisi",
+        "nis",
+        "Tidak ada kolom yang terisi otomatis"
+      ],
+      "answer": 0,
+      "explanation": "AUTO_INCREMENT mengisi id dengan nomor berikutnya bila kolom itu tidak disebut."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana menyisipkan tiga baris sekaligus dalam satu perintah?",
+      "code": "",
+      "options": [
+        "INSERT INTO menu (nama) VALUES ('Soto'); ('Bakso'); ('Mie');",
+        "INSERT INTO menu (nama) VALUES ('Soto'), ('Bakso'), ('Mie');",
+        "INSERT MANY menu ('Soto','Bakso','Mie'); karena INSERT biasa hanya untuk satu baris",
+        "INSERT INTO menu ROWS 3 ('Soto','Bakso','Mie');"
+      ],
+      "answer": 1,
+      "explanation": "Satu INSERT bisa berisi banyak kelompok nilai yang dipisah koma."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query mana yang mencari buku yang judulnya diawali kata 'Belajar'?",
+      "code": "",
+      "options": [
+        "WHERE judul LIKE '%Belajar' untuk awal judul",
+        "WHERE judul = 'Belajar*'",
+        "WHERE judul LIKE 'Belajar%'",
+        "WHERE judul IN ('Belajar')"
+      ],
+      "answer": 2,
+      "explanation": "% berarti teks apa saja, jadi 'Belajar%' cocok dengan judul yang diawali Belajar."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil query berikut pada tabel produk berisi 50 baris?",
+      "code": "SELECT nama, harga FROM produk\nORDER BY harga\nLIMIT 10 OFFSET 20;",
+      "options": [
+        "Baris ke-10 sampai ke-20 menurut urutan harga",
+        "20 baris dengan harga termurah, karena angka OFFSET menentukan jumlah baris yang diambil",
+        "10 baris acak tanpa urutan tertentu",
+        "Baris ke-21 sampai ke-30 menurut urutan harga"
+      ],
+      "answer": 3,
+      "explanation": "OFFSET 20 melewati 20 baris pertama, lalu LIMIT 10 mengambil 10 baris berikutnya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "WHERE nilai BETWEEN 70 AND 80 termasuk nilai 70 dan 80.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "BETWEEN mencakup kedua batasnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dilakukan sql_safe_updates bila diaktifkan?",
+      "code": "",
+      "options": [
+        "Menolak UPDATE dan DELETE tanpa WHERE pada kolom kunci atau LIMIT",
+        "Membuat backup otomatis seluruh tabel sebelum setiap UPDATE dan DELETE dijalankan di server",
+        "Mengenkripsi data yang diubah oleh UPDATE",
+        "Membatalkan semua perubahan setelah satu jam"
+      ],
+      "answer": 0,
+      "explanation": "Mode ini mencegah perubahan massal yang tidak disengaja."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sebelum menjalankan DELETE dengan WHERE yang rumit, langkah aman yang disarankan adalah",
+      "code": "",
+      "options": [
+        "Matikan server dulu supaya tidak ada client lain yang terhubung",
+        "Jalankan SELECT dengan WHERE yang sama untuk melihat baris yang kena",
+        "Matikan dulu foreign key agar DELETE tidak ditolak, lalu nyalakan lagi setelah semua baris terhapus",
+        "Hapus index tabel agar DELETE lebih cepat"
+      ],
+      "answer": 1,
+      "explanation": "SELECT dengan kondisi yang sama menunjukkan baris mana yang akan terhapus."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Query mana yang mengambil siswa dari kelas X, XI, atau XII?",
+      "code": "",
+      "options": [
+        "WHERE kelas = 'X' AND kelas = 'XI' AND kelas = 'XII'",
+        "WHERE kelas BETWEEN 'X' OR 'XII'",
+        "WHERE kelas IN ('X', 'XI', 'XII')",
+        "WHERE kelas LIKE ('X', 'XI', 'XII')"
+      ],
+      "answer": 2,
+      "explanation": "IN mencocokkan salah satu nilai di daftar. AND pada kolom yang sama tidak pernah benar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom nilai berisi 80, NULL, 90. Apa hasil AVG(nilai)?",
+      "code": "",
+      "options": [
+        "56.67, karena NULL dihitung sebagai nol",
+        "NULL",
+        "170",
+        "85"
+      ],
+      "answer": 3,
+      "explanation": "Agregat mengabaikan NULL, jadi rata-ratanya (80 + 90) / 2 = 85."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa beda COUNT(*) dan COUNT(email)?",
+      "code": "",
+      "options": [
+        "COUNT(email) tidak menghitung baris yang email-nya NULL",
+        "COUNT(*) tidak menghitung baris yang punya NULL di kolom mana pun",
+        "COUNT(email) menghitung huruf di kolom email",
+        "Keduanya selalu menghasilkan angka yang sama"
+      ],
+      "answer": 0,
+      "explanation": "COUNT(kolom) melewatkan NULL, COUNT(*) menghitung semua baris."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran query berikut?",
+      "code": "SELECT kelas, COUNT(*) AS jumlah\nFROM siswa\nGROUP BY kelas\nHAVING COUNT(*) > 30;",
+      "options": [
+        "Semua kelas beserta jumlah siswanya tanpa penyaringan",
+        "Jumlah siswa per kelas, hanya kelas yang lebih dari 30 siswa",
+        "Siswa yang nilainya di atas 30",
+        "Error karena HAVING harus sebelum GROUP BY"
+      ],
+      "answer": 1,
+      "explanation": "GROUP BY membuat satu baris per kelas, lalu HAVING menyaring hasil kelompok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang mengubah tanggal 2025-08-17 menjadi teks '17-08-2025'?",
+      "code": "",
+      "options": [
+        "FORMAT_DATE(tgl, 'dd-mm-yyyy') seperti di spreadsheet",
+        "strftime('%d-%m-%Y', tgl)",
+        "DATE_FORMAT(tgl, '%d-%m-%Y')",
+        "TO_CHAR(tgl, 'DD-MM-YYYY')"
+      ],
+      "answer": 2,
+      "explanation": "DATE_FORMAT memakai kode %d, %m, %Y. strftime milik SQLite dan TO_CHAR milik PostgreSQL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa hasil CONCAT('Kelas ', NULL)?",
+      "code": "",
+      "options": [
+        "'Kelas ' karena NULL dianggap teks kosong oleh fungsi itu",
+        "'Kelas NULL'",
+        "Error",
+        "NULL"
+      ],
+      "answer": 3,
+      "explanation": "CONCAT mengembalikan NULL bila salah satu argumennya NULL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fungsi apa yang memberi tanggal hari ini tanpa jam?",
+      "code": "",
+      "options": [
+        "CURDATE()",
+        "NOW(), yang selalu memberi tanggal tanpa jam",
+        "TODAY_TIME()",
+        "DATE_NOW()"
+      ],
+      "answer": 0,
+      "explanation": "CURDATE() memberi tanggal saja, NOW() memberi tanggal dan jam."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dengan mode ONLY_FULL_GROUP_BY bawaan MySQL 8, kolom di SELECT harus ada di GROUP BY atau berada di dalam fungsi agregat.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Kolom lain ditolak karena nilainya tidak jelas untuk satu kelompok."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dilakukan InnoDB bila kamu menyisipkan peminjaman dengan id_siswa yang tidak ada di tabel siswa?",
+      "code": "",
+      "options": [
+        "Membuat baris siswa baru secara otomatis",
+        "Menolak INSERT karena melanggar foreign key",
+        "Menyimpan baris dengan id_siswa diganti NULL",
+        "Menyimpan baris lalu memberi peringatan saja"
+      ],
+      "answer": 1,
+      "explanation": "Foreign key di InnoDB menjaga agar setiap rujukan menunjuk baris yang ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa efek ON DELETE CASCADE pada foreign key peminjaman.id_buku?",
+      "code": "",
+      "options": [
+        "Menghapus peminjaman ikut menghapus bukunya",
+        "Buku tidak bisa dihapus selama masih ada peminjaman yang merujuk ke buku tersebut",
+        "Menghapus buku ikut menghapus peminjaman buku itu",
+        "Kolom id_buku diisi NULL saat buku dihapus"
+      ],
+      "answer": 2,
+      "explanation": "CASCADE meneruskan penghapusan dari baris induk ke baris anak."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa hasil query berikut?",
+      "code": "SELECT s.nama, b.judul\nFROM peminjaman p\nJOIN siswa s ON s.id = p.id_siswa\nJOIN buku b ON b.id = p.id_buku;",
+      "options": [
+        "Semua siswa termasuk yang belum pernah meminjam",
+        "Semua buku termasuk yang belum pernah dipinjam siswa",
+        "Error karena alias tidak boleh satu huruf",
+        "Nama siswa beserta judul buku yang pernah dipinjam"
+      ],
+      "answer": 3,
+      "explanation": "INNER JOIN hanya menampilkan pasangan yang cocok di ketiga tabel."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Query berikut mencari apa?",
+      "code": "SELECT b.judul\nFROM buku b\nLEFT JOIN peminjaman p ON p.id_buku = b.id\nWHERE p.id IS NULL;",
+      "options": [
+        "Buku yang belum pernah dipinjam",
+        "Buku yang sedang dipinjam saat ini oleh siswa",
+        "Peminjaman yang bukunya sudah dihapus",
+        "Buku yang dipinjam lebih dari sekali"
+      ],
+      "answer": 0,
+      "explanation": "LEFT JOIN mengisi NULL bila tidak ada pasangan, lalu IS NULL menyaring buku tanpa peminjaman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Siswa bisa ikut banyak ekskul, dan ekskul punya banyak anggota. Desain yang tepat adalah",
+      "code": "",
+      "options": [
+        "Kolom id_ekskul di tabel siswa saja, satu nilai per siswa",
+        "Tabel penghubung berisi id_siswa dan id_ekskul",
+        "Kolom berisi daftar id ekskul dipisah koma",
+        "Satu tabel besar yang menggabungkan siswa dan ekskul"
+      ],
+      "answer": 1,
+      "explanation": "Relasi banyak ke banyak dipecah lewat tabel penghubung dengan dua foreign key."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa tabel penghubung siswa_ekskul diberi PRIMARY KEY (id_siswa, id_ekskul)?",
+      "code": "",
+      "options": [
+        "Supaya tabel siswa ikut terhapus bila ekskul dihapus",
+        "Agar kolom id_siswa bisa berisi teks",
+        "Mencegah pasangan siswa dan ekskul yang sama tercatat dua kali",
+        "Membuat JOIN tidak diperlukan lagi"
+      ],
+      "answer": 2,
+      "explanation": "Primary key gabungan menjamin setiap pasangan unik."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Tabel MyISAM mendukung foreign key dan transaksi sama baiknya dengan InnoDB.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "MyISAM tidak mendukung foreign key maupun transaksi. Karena itu InnoDB menjadi bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Struktur data yang dipakai InnoDB untuk index biasa adalah",
+      "code": "",
+      "options": [
+        "Hash table yang tidak menyimpan urutan sama sekali",
+        "Linked list",
+        "Array acak",
+        "B-tree yang datanya terurut"
+      ],
+      "answer": 3,
+      "explanation": "B-tree terurut sehingga MySQL bisa langsung melompat ke nilai yang dicari."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ada index gabungan (kelas, nama). Query mana yang bisa memakai index itu?",
+      "code": "",
+      "options": [
+        "WHERE kelas = 'XI' AND nama = 'Rina'",
+        "WHERE nama = 'Rina' saja tanpa menyebut kolom kelas",
+        "WHERE UPPER(kelas) = 'XI'",
+        "WHERE nama LIKE '%ina'"
+      ],
+      "answer": 0,
+      "explanation": "Index gabungan dibaca dari kolom paling kiri, jadi kelas harus ikut disaring."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kolom key pada hasil EXPLAIN menunjukkan",
+      "code": "",
+      "options": [
+        "Primary key tabel walau tidak dipakai query",
+        "Index yang benar-benar dipakai MySQL",
+        "Jumlah baris hasil akhir query",
+        "Kunci enkripsi tabel"
+      ],
+      "answer": 1,
+      "explanation": "key berisi nama index yang dipilih, atau NULL bila tidak ada index yang dipakai."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Mengapa query berikut tidak memakai index pada kolom lahir?",
+      "code": "SELECT nama FROM siswa\nWHERE YEAR(lahir) = 2009;",
+      "options": [
+        "Index tidak pernah dipakai untuk kolom bertipe DATE di MySQL",
+        "Angka 2009 harus ditulis dalam tanda kutip",
+        "Kolom dibungkus fungsi YEAR(), jadi nilai index tidak bisa langsung dicocokkan",
+        "Karena query tidak memakai ORDER BY"
+      ],
+      "answer": 2,
+      "explanation": "Fungsi pada kolom membuat index tidak terpakai. Ganti dengan rentang lahir BETWEEN '2009-01-01' AND '2009-12-31'."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kerugian menambah index di terlalu banyak kolom?",
+      "code": "",
+      "options": [
+        "Semua SELECT jadi lebih lambat dari sebelumnya karena MySQL harus membaca setiap index satu per satu",
+        "Tabel tidak bisa lagi memakai primary key",
+        "Data di tabel bisa hilang saat server dinyalakan ulang",
+        "INSERT, UPDATE, dan DELETE jadi lebih lambat dan butuh ruang lebih"
+      ],
+      "answer": 3,
+      "explanation": "Setiap index ikut diperbarui saat data berubah dan memakan ruang disk."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Fitur MySQL apa yang mencatat query yang berjalan lebih lama dari batas tertentu?",
+      "code": "",
+      "options": [
+        "Slow query log",
+        "Binary log yang menyimpan semua perubahan data",
+        "General query log untuk error saja",
+        "Error log khusus untuk query yang gagal"
+      ],
+      "answer": 0,
+      "explanation": "Slow query log mencatat query yang melewati long_query_time."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Kolom rows pada EXPLAIN adalah jumlah pasti baris hasil query.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "rows adalah perkiraan jumlah baris yang akan dibaca MySQL, bukan jumlah hasil pasti."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Huruf A pada ACID berarti",
+      "code": "",
+      "options": [
+        "Availability: server selalu menyala tanpa henti",
+        "Atomicity: semua langkah berhasil atau tidak sama sekali",
+        "Accuracy: data dijamin selalu benar",
+        "Authorization: hanya user tertentu yang boleh mengubah"
+      ],
+      "answer": 1,
+      "explanation": "Atomicity menjamin transaksi tidak tersimpan setengah jalan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa isi saldo id 1 setelah kode berikut, bila awalnya 100000?",
+      "code": "START TRANSACTION;\nUPDATE dompet SET saldo = saldo - 50000\n  WHERE id = 1;\nROLLBACK;",
+      "options": [
+        "50000, karena UPDATE sudah dijalankan",
+        "0",
+        "100000",
+        "150000"
+      ],
+      "answer": 2,
+      "explanation": "ROLLBACK membatalkan UPDATE yang belum di-commit, jadi saldo kembali seperti awal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam keadaan bawaan (autocommit = 1), apa yang terjadi pada UPDATE tanpa START TRANSACTION?",
+      "code": "",
+      "options": [
+        "Menunggu perintah COMMIT dari pengguna, dan dibatalkan bila koneksi terputus sebelum itu",
+        "Dibatalkan otomatis saat koneksi ditutup",
+        "Disimpan sementara sampai server dinyalakan ulang",
+        "Langsung tersimpan permanen begitu perintah selesai"
+      ],
+      "answer": 3,
+      "explanation": "Dengan autocommit, setiap perintah adalah transaksi sendiri yang langsung di-commit."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa guna SELECT ... FOR UPDATE di dalam transaksi?",
+      "code": "",
+      "options": [
+        "Mengunci baris yang dibaca sampai transaksi selesai",
+        "Mengubah SELECT menjadi UPDATE secara otomatis",
+        "Membaca data tanpa memakai index sama sekali",
+        "Menyalin baris ke tabel cadangan"
+      ],
+      "answer": 0,
+      "explanation": "Baris terkunci agar transaksi lain tidak mengubahnya sebelum kamu selesai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dilakukan InnoDB saat dua transaksi saling menunggu (deadlock)?",
+      "code": "",
+      "options": [
+        "Menunggu selamanya sampai admin mematikan server, karena InnoDB tidak bisa mendeteksi deadlock",
+        "Membatalkan salah satu transaksi agar yang lain bisa lanjut",
+        "Menggabungkan kedua transaksi jadi satu",
+        "Menghapus tabel yang terkunci"
+      ],
+      "answer": 1,
+      "explanation": "InnoDB mendeteksi deadlock dan melakukan rollback pada salah satu transaksi."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Perintah DDL seperti CREATE TABLE di tengah transaksi bisa dibatalkan dengan ROLLBACK.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "DDL di MySQL memicu commit otomatis, jadi tidak bisa di-rollback."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa aplikasi web tidak boleh terhubung ke MySQL memakai root?",
+      "code": "",
+      "options": [
+        "root tidak bisa membaca tabel yang dibuat lewat aplikasi web",
+        "Koneksi root selalu lebih lambat daripada user biasa",
+        "Bila aplikasi dibobol, penyerang mendapat semua hak termasuk menghapus database",
+        "root hanya boleh dipakai dari phpMyAdmin"
+      ],
+      "answer": 2,
+      "explanation": "Prinsip hak minimum membatasi kerusakan bila akun aplikasi bocor."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang membuat user kasir yang hanya bisa masuk dari server itu sendiri?",
+      "code": "",
+      "options": [
+        "CREATE USER 'kasir'@'%' IDENTIFIED BY 'sandiKuat';",
+        "ADD USER kasir PASSWORD 'sandiKuat' LOCAL;",
+        "INSERT USER 'kasir' FROM localhost;",
+        "CREATE USER 'kasir'@'localhost' IDENTIFIED BY 'sandiKuat';"
+      ],
+      "answer": 3,
+      "explanation": "Host localhost membatasi login dari mesin yang sama. % berarti dari host mana saja."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa efek perintah berikut?",
+      "code": "REVOKE DELETE ON toko.*\n  FROM 'kasir'@'localhost';",
+      "options": [
+        "Mencabut hak DELETE user kasir di semua tabel database toko",
+        "Menghapus user kasir beserta semua haknya, sehingga user itu tidak bisa login lagi ke server",
+        "Menghapus semua data di database toko",
+        "Memberi hak DELETE kepada user kasir"
+      ],
+      "answer": 0,
+      "explanation": "REVOKE mencabut hak tertentu tanpa menghapus user."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Akun untuk dasbor laporan penjualan cukup diberi hak",
+      "code": "",
+      "options": [
+        "SELECT, INSERT, UPDATE, DELETE, dan DROP untuk jaga-jaga",
+        "SELECT",
+        "ALL PRIVILEGES",
+        "GRANT OPTION"
+      ],
+      "answer": 1,
+      "explanation": "Laporan hanya membaca data, jadi SELECT sudah cukup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perintah apa yang memulihkan backup toko.sql ke database toko?",
+      "code": "",
+      "options": [
+        "mysqldump -u root -p toko < toko.sql",
+        "mysql restore toko.sql",
+        "mysql -u root -p toko < toko.sql",
+        "mysqld --load toko.sql"
+      ],
+      "answer": 2,
+      "explanation": "Restore memakai klien mysql yang membaca file SQL. mysqldump hanya untuk membuat backup."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Backup dianggap aman bila file hasil mysqldump sudah ada, walau belum pernah dicoba di-restore.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Backup harus diuji dengan restore berkala, karena file bisa rusak atau tidak lengkap."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa keuntungan utama prepared statement di PDO?",
+      "code": "",
+      "options": [
+        "Query otomatis memakai index tanpa perlu dibuat",
+        "Koneksi database tidak perlu password lagi karena PDO menyimpan sandi di dalam prepared statement",
+        "Hasil query selalu disimpan di cache",
+        "Nilai dikirim terpisah dari SQL sehingga mencegah SQL injection"
+      ],
+      "answer": 3,
+      "explanation": "Input tidak pernah dirangkai menjadi perintah SQL, jadi tidak bisa mengubah perintah."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa nilai yang dikembalikan $pdo->lastInsertId() setelah kode berikut?",
+      "code": "$st = $pdo->prepare(\n  'INSERT INTO menu (nama, harga) VALUES (?, ?)');\n$st->execute(['Soto', 12000]);\n$id = $pdo->lastInsertId();",
+      "options": [
+        "id AUTO_INCREMENT milik baris menu yang baru disisipkan",
+        "Jumlah baris di tabel menu setelah INSERT selesai",
+        "Harga menu yang baru disisipkan",
+        "Selalu 0 karena memakai prepared statement"
+      ],
+      "answer": 0,
+      "explanation": "lastInsertId() di PDO MySQL membaca LAST_INSERT_ID() dari koneksi yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu VIEW di MySQL?",
+      "code": "",
+      "options": [
+        "Salinan fisik tabel yang diperbarui setiap malam",
+        "Query yang disimpan dan bisa dipakai seperti tabel virtual",
+        "Tampilan grafis tabel di phpMyAdmin",
+        "Index khusus untuk mempercepat SELECT"
+      ],
+      "answer": 1,
+      "explanation": "VIEW menyimpan query, datanya tetap dibaca dari tabel asli saat dipakai."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana memanggil stored procedure laporan_harian?",
+      "code": "",
+      "options": [
+        "EXEC PROCEDURE laporan_harian; seperti di SQL Server",
+        "RUN laporan_harian();",
+        "CALL laporan_harian();",
+        "SELECT laporan_harian;"
+      ],
+      "answer": 2,
+      "explanation": "Stored procedure MySQL dijalankan dengan CALL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa DSN PDO sebaiknya menyertakan charset=utf8mb4?",
+      "code": "",
+      "options": [
+        "Agar koneksi ke server otomatis terenkripsi dengan SSL tanpa perlu sertifikat tambahan",
+        "Agar PDO bisa terhubung tanpa nama database",
+        "Agar query berjalan dua kali lebih cepat",
+        "Agar teks yang dikirim dan diterima memakai encoding yang sama dengan tabel"
+      ],
+      "answer": 3,
+      "explanation": "Charset koneksi yang cocok mencegah huruf dan emoji rusak saat disimpan atau dibaca."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Laravel memakai migration untuk membuat dan mengubah struktur tabel MySQL lewat kode.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Migration menyimpan perubahan skema sebagai file kode sehingga bisa dijalankan ulang di server lain."
+    }
+  ],
+  "prerequisites": [
+    "sql"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Database Perpustakaan Sekolah",
+    "brief": "Perpustakaan sekolahmu masih mencatat peminjaman di buku tulis. Bangun modul database yang menyimpan **anggota**, **buku**, dan **peminjaman**, mencatat pinjam dan kembali dengan transaksi, lalu menghasilkan laporan untuk petugas.\n\nBrowser tidak bisa menjalankan server MySQL, jadi proyek ini memakai **SQLite lewat modul `sqlite3`**. Skema, JOIN, GROUP BY, index, dan transaksi yang kamu tulis sama dengan di MySQL. Bedanya: di MySQL kolom `id` memakai `INT AUTO_INCREMENT PRIMARY KEY`, transaksi dibuka dengan `START TRANSACTION` (di SQLite `BEGIN`), dan tanggal biasanya bertipe `DATE` (di sini teks `YYYY-MM-DD`, yang tetap bisa dibandingkan dengan `<`).\n\nFungsi yang harus kamu tulis, semuanya menerima koneksi `db` (mode autocommit, seperti MySQL):\n\n1. `buat_skema(db)`: jalankan `PRAGMA foreign_keys = ON`, lalu buat tabel `anggota` (`id`, `nama` wajib, `kelas` wajib), `buku` (`id`, `judul` wajib dan unik, `penulis` wajib, `stok` bilangan bulat tidak negatif), dan `peminjaman` (`id`, `anggota_id` merujuk `anggota`, `buku_id` merujuk `buku`, `tgl_pinjam`, `jatuh_tempo`, `tgl_kembali` boleh kosong).\n2. `pinjam(db, anggota_id, buku_id, tgl_pinjam, jatuh_tempo)`: dalam **satu transaksi**, kurangi `stok` buku hanya bila masih ada, lalu catat peminjaman. Kembalikan `True` bila berhasil. Bila stok habis atau anggota tidak ada, batalkan semuanya dan kembalikan `False`.\n3. `kembalikan(db, peminjaman_id, tgl_kembali)`: dalam satu transaksi, isi `tgl_kembali` (hanya bila belum dikembalikan) lalu tambah stok bukunya. `False` bila peminjaman sudah dikembalikan sebelumnya.\n4. `buku_terpopuler(db, n)`: `[(judul, jumlah_pinjam)]`, terbanyak dulu lalu judul, maksimal `n` baris.\n5. `anggota_terlambat(db, hari_ini)`: `[(nama, judul, jatuh_tempo)]` untuk peminjaman yang belum kembali dan `jatuh_tempo < hari_ini`, urut `jatuh_tempo` lalu `nama`.\n6. `stok_tersedia(db)`: `[(judul, stok)]` untuk buku yang stoknya lebih dari 0, urut judul.\n\nContoh untuk data pemeriksa: `buku_terpopuler(db, 2)` menghasilkan `[('Laskar Pelangi', 3), ('Negeri 5 Menara', 2)]`, dan `anggota_terlambat(db, '2026-03-10')` dimulai dengan `('Citra Dewi', 'Negeri 5 Menara', '2026-02-22')`.",
+    "prompt": "Lengkapi enam fungsi di kode awal. Pemeriksa membuat database baru memakai `buat_skema` milikmu, lalu mengisi data contoh dengan urutan kolom persis seperti di brief (`peminjaman`: id, anggota_id, buku_id, tgl_pinjam, jatuh_tempo, tgl_kembali). Pakai parameter `?` untuk setiap nilai, jangan menyambung string.",
+    "starter": {
+      "code": "import sqlite3\n\n\ndef buat_skema(db):\n    # TODO: aktifkan foreign key lalu buat tabel anggota, buku, dan peminjaman\n    pass\n\n\ndef pinjam(db, anggota_id, buku_id, tgl_pinjam, jatuh_tempo):\n    # TODO: dalam satu transaksi kurangi stok (hanya bila stok > 0) lalu catat\n    # peminjaman. True bila berhasil, False bila stok habis atau data tidak sah.\n    pass\n\n\ndef kembalikan(db, peminjaman_id, tgl_kembali):\n    # TODO: dalam satu transaksi isi tgl_kembali (hanya bila belum kembali)\n    # lalu tambah stok buku. True bila berhasil, False bila tidak ada yang berubah.\n    pass\n\n\ndef buku_terpopuler(db, n):\n    # TODO: [(judul, jumlah_pinjam)] terbanyak dulu, lalu judul, maksimal n baris\n    return []\n\n\ndef anggota_terlambat(db, hari_ini):\n    # TODO: [(nama, judul, jatuh_tempo)] belum kembali dan jatuh_tempo < hari_ini,\n    # urut jatuh_tempo lalu nama\n    return []\n\n\ndef stok_tersedia(db):\n    # TODO: [(judul, stok)] untuk buku dengan stok > 0, urut judul\n    return []\n"
+    },
+    "solution": {
+      "code": "import sqlite3\n\n\ndef buat_skema(db):\n    db.execute(\"PRAGMA foreign_keys = ON\")\n    db.executescript(\"\"\"\n    CREATE TABLE anggota (\n        id INTEGER PRIMARY KEY,\n        nama TEXT NOT NULL,\n        kelas TEXT NOT NULL\n    );\n    CREATE TABLE buku (\n        id INTEGER PRIMARY KEY,\n        judul TEXT NOT NULL UNIQUE,\n        penulis TEXT NOT NULL,\n        stok INTEGER NOT NULL CHECK (stok >= 0)\n    );\n    CREATE TABLE peminjaman (\n        id INTEGER PRIMARY KEY,\n        anggota_id INTEGER NOT NULL REFERENCES anggota (id),\n        buku_id INTEGER NOT NULL REFERENCES buku (id),\n        tgl_pinjam TEXT NOT NULL,\n        jatuh_tempo TEXT NOT NULL,\n        tgl_kembali TEXT\n    );\n    CREATE INDEX idx_peminjaman_buku ON peminjaman (buku_id);\n    \"\"\")\n\n\ndef pinjam(db, anggota_id, buku_id, tgl_pinjam, jatuh_tempo):\n    db.execute(\"BEGIN\")\n    try:\n        cur = db.execute(\"UPDATE buku SET stok = stok - 1 WHERE id = ? AND stok > 0\", (buku_id,))\n        if cur.rowcount == 0:\n            db.execute(\"ROLLBACK\")\n            return False\n        db.execute(\n            \"INSERT INTO peminjaman (anggota_id, buku_id, tgl_pinjam, jatuh_tempo) VALUES (?, ?, ?, ?)\",\n            (anggota_id, buku_id, tgl_pinjam, jatuh_tempo),\n        )\n        db.execute(\"COMMIT\")\n        return True\n    except sqlite3.IntegrityError:\n        db.execute(\"ROLLBACK\")\n        return False\n\n\ndef kembalikan(db, peminjaman_id, tgl_kembali):\n    db.execute(\"BEGIN\")\n    cur = db.execute(\n        \"UPDATE peminjaman SET tgl_kembali = ? WHERE id = ? AND tgl_kembali IS NULL\",\n        (tgl_kembali, peminjaman_id),\n    )\n    if cur.rowcount == 0:\n        db.execute(\"ROLLBACK\")\n        return False\n    db.execute(\n        \"UPDATE buku SET stok = stok + 1 WHERE id = (SELECT buku_id FROM peminjaman WHERE id = ?)\",\n        (peminjaman_id,),\n    )\n    db.execute(\"COMMIT\")\n    return True\n\n\ndef buku_terpopuler(db, n):\n    return db.execute(\"\"\"\n        SELECT b.judul, COUNT(*) AS jumlah\n        FROM peminjaman p\n        JOIN buku b ON b.id = p.buku_id\n        GROUP BY b.id, b.judul\n        ORDER BY jumlah DESC, b.judul\n        LIMIT ?\n    \"\"\", (n,)).fetchall()\n\n\ndef anggota_terlambat(db, hari_ini):\n    return db.execute(\"\"\"\n        SELECT a.nama, b.judul, p.jatuh_tempo\n        FROM peminjaman p\n        JOIN anggota a ON a.id = p.anggota_id\n        JOIN buku b ON b.id = p.buku_id\n        WHERE p.tgl_kembali IS NULL AND p.jatuh_tempo < ?\n        ORDER BY p.jatuh_tempo, a.nama\n    \"\"\", (hari_ini,)).fetchall()\n\n\ndef stok_tersedia(db):\n    return db.execute(\"SELECT judul, stok FROM buku WHERE stok > 0 ORDER BY judul\").fetchall()\n"
+    },
+    "setup": "import sqlite3\n\nDATA = \"\"\"\nINSERT INTO anggota VALUES (1, 'Andi Saputra', 'XI RPL 1'), (2, 'Bunga Lestari', 'XI TKJ 2'),\n  (3, 'Citra Dewi', 'X AKL 1'), (4, 'Dimas Pratama', 'XII RPL 2');\nINSERT INTO buku VALUES (1, 'Laskar Pelangi', 'Andrea Hirata', 2), (2, 'Bumi', 'Tere Liye', 1),\n  (3, 'Negeri 5 Menara', 'Ahmad Fuadi', 0), (4, 'Atomic Habits', 'James Clear', 3),\n  (5, 'Filosofi Teras', 'Henry Manampiring', 1);\nINSERT INTO peminjaman VALUES\n  (1, 1, 1, '2026-02-01', '2026-02-08', '2026-02-07'),\n  (2, 2, 1, '2026-02-10', '2026-02-17', '2026-02-20'),\n  (3, 3, 3, '2026-02-15', '2026-02-22', NULL),\n  (4, 1, 3, '2026-03-01', '2026-03-08', NULL),\n  (5, 4, 2, '2026-03-05', '2026-03-12', NULL),\n  (6, 2, 4, '2026-01-10', '2026-01-17', '2026-01-15'),\n  (7, 3, 1, '2026-03-02', '2026-03-09', '2026-03-09');\n\"\"\"\n\ndef skema_baru():\n    d = sqlite3.connect(\":memory:\", isolation_level=None)   # autocommit seperti MySQL\n    buat_skema(d)\n    return d\n\ndef fixture():\n    d = skema_baru()\n    d.executescript(DATA)\n    return d\n\ndef melanggar(d, sql):\n    try:\n        d.execute(sql)\n        return False\n    except sqlite3.IntegrityError:\n        return True\n\ndef stok(d, buku_id):\n    return d.execute(\"SELECT stok FROM buku WHERE id = ?\", (buku_id,)).fetchone()[0]\n\ndef jumlah_pinjam(d):\n    return d.execute(\"SELECT COUNT(*) FROM peminjaman\").fetchone()[0]\n\ndef uji_pinjam(anggota_id, buku_id):\n    d = fixture()\n    ok = pinjam(d, anggota_id, buku_id, '2026-03-10', '2026-03-17')\n    return ok, stok(d, buku_id), jumlah_pinjam(d), d.in_transaction\n\ndef uji_kembali():\n    d = fixture()\n    pertama = kembalikan(d, 4, '2026-03-10')\n    kedua = kembalikan(d, 4, '2026-03-11')\n    tgl = d.execute(\"SELECT tgl_kembali FROM peminjaman WHERE id = 4\").fetchone()[0]\n    return pertama, kedua, tgl, stok(d, 3), d.in_transaction\n",
+    "tests": [
+      {
+        "name": "buat_skema membuat tabel anggota, buku, dan peminjaman",
+        "check": "{r[0] for r in skema_baru().execute(\"SELECT name FROM sqlite_master WHERE type = 'table'\")} >= {'anggota', 'buku', 'peminjaman'}"
+      },
+      {
+        "name": "stok buku tidak boleh negatif",
+        "check": "melanggar(skema_baru(), \"INSERT INTO buku (judul, penulis, stok) VALUES ('A', 'X', -1)\")"
+      },
+      {
+        "name": "peminjaman harus merujuk anggota dan buku yang ada (foreign key aktif)",
+        "check": "melanggar(skema_baru(), \"INSERT INTO peminjaman (anggota_id, buku_id, tgl_pinjam, jatuh_tempo) VALUES (99, 99, '2026-03-01', '2026-03-08')\")"
+      },
+      {
+        "name": "pinjam berhasil mengurangi stok dan mencatat peminjaman",
+        "check": "uji_pinjam(1, 4) == (True, 2, 8, False)"
+      },
+      {
+        "name": "pinjam ditolak bila stok habis tanpa mengubah apa pun",
+        "check": "uji_pinjam(2, 3) == (False, 0, 7, False)"
+      },
+      {
+        "name": "pinjam oleh anggota yang tidak ada dibatalkan dan stok kembali",
+        "check": "uji_pinjam(99, 4) == (False, 3, 7, False)"
+      },
+      {
+        "name": "kembalikan mengisi tanggal, menambah stok, dan tidak bisa diulang",
+        "check": "uji_kembali() == (True, False, '2026-03-10', 1, False)"
+      },
+      {
+        "name": "buku_terpopuler mengurutkan jumlah lalu judul",
+        "check": "buku_terpopuler(fixture(), 3) == [('Laskar Pelangi', 3), ('Negeri 5 Menara', 2), ('Atomic Habits', 1)]"
+      },
+      {
+        "name": "buku_terpopuler menghormati batas n",
+        "check": "len(buku_terpopuler(fixture(), 2)) == 2"
+      },
+      {
+        "name": "anggota_terlambat hanya yang belum kembali dan lewat jatuh tempo",
+        "check": "anggota_terlambat(fixture(), '2026-03-10') == [('Citra Dewi', 'Negeri 5 Menara', '2026-02-22'), ('Andi Saputra', 'Negeri 5 Menara', '2026-03-08')]"
+      },
+      {
+        "name": "stok_tersedia hanya buku dengan stok, urut judul",
+        "check": "stok_tersedia(fixture()) == [('Atomic Habits', 3), ('Bumi', 1), ('Filosofi Teras', 1), ('Laskar Pelangi', 2)]"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "pengenalan-mysql",
+      "title": "Pengenalan MySQL",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu MySQL dan bedanya dengan MariaDB.\n- Memahami hubungan server dan client di MySQL.\n- Memasang MySQL dengan XAMPP, Laragon, atau Docker, lalu masuk lewat klien `mysql`.\n- Mengenal alat bantu grafis seperti phpMyAdmin dan DBeaver.\n\n## MySQL, si RDBMS paling populer di web\n\nDi kelas SQL kamu sudah belajar menulis `SELECT`, `INSERT`, dan kawan-kawannya. SQL itu bahasanya. Supaya bahasa itu bisa dipakai, kamu butuh program yang benar-benar menyimpan data dan menjalankan perintah. Program seperti itu disebut **RDBMS** (Relational Database Management System), dan MySQL adalah salah satu yang paling banyak dipakai di dunia.\n\nKenapa MySQL penting untuk kamu? Hampir semua lowongan programmer web di Indonesia menyebut MySQL. WordPress, aplikasi kasir, sistem informasi sekolah, sampai toko online buatan UMKM banyak yang berjalan di atasnya. Kalau nanti kamu belajar PHP atau Laravel, pasangan default-nya juga MySQL.\n\nBeberapa hal yang perlu kamu tahu sejak awal:\n\n- MySQL **open source** dan gratis untuk edisi Community. Pemiliknya sekarang Oracle.\n- Versi yang kita pakai adalah **MySQL 8.4 LTS**. LTS artinya didukung lama, cocok untuk dipakai di server sungguhan.\n- Data disimpan dalam **tabel** yang terdiri dari baris dan kolom, dan tabel bisa saling berelasi.\n- Mesin penyimpanan bawaannya bernama **InnoDB**. Mesin inilah yang mendukung transaksi dan foreign key. Kamu akan sering mendengar nama ini di bab-bab berikutnya.\n\n### MySQL atau MariaDB?\n\nSaat memasang XAMPP, kamu mungkin heran karena yang terpasang ternyata **MariaDB**. MariaDB adalah cabang (fork) dari MySQL yang dibuat oleh pendiri MySQL sendiri setelah MySQL dibeli Oracle. Perintah dasarnya hampir sama: `CREATE TABLE`, `SELECT`, `JOIN`, semuanya jalan.\n\nBedanya muncul di fitur yang lebih baru. Beberapa fungsi JSON, cara autentikasi user, dan sebagian perilaku optimizer berbeda. Untuk belajar di kelas ini, MariaDB masih bisa dipakai, tapi kalau kantor tempat kamu PKL memakai MySQL 8, biasakan menguji di MySQL juga. Cara mengeceknya mudah:\n\n```sql\nSELECT VERSION();\n```\n\nKalau hasilnya mengandung kata `MariaDB`, berarti kamu sedang memakai MariaDB.\n\n## Server dan client\n\nMySQL bekerja dengan pola **server dan client**. Ini ide yang sangat penting, jadi mari pahami pelan-pelan.\n\n- **Server** adalah program bernama `mysqld` yang berjalan terus di latar belakang. Ia menyimpan file data di disk, menunggu perintah, menjalankannya, lalu mengirim hasilnya. Secara bawaan ia mendengarkan di **port 3306**.\n- **Client** adalah program apa pun yang mengirim perintah SQL ke server. Bisa klien terminal `mysql`, bisa phpMyAdmin di browser, bisa DBeaver, dan bisa juga aplikasi PHP buatanmu.\n\nBayangkan kantin sekolah. Dapur adalah server: ia yang menyimpan bahan dan memasak. Siswa yang memesan adalah client: mereka hanya mengirim pesanan dan menerima hasilnya. Satu dapur melayani banyak siswa sekaligus, persis seperti satu server MySQL melayani banyak client.\n\n![Server MySQL melayani banyak client](slide:3)\n\nAkibat pola ini, server dan client tidak harus berada di komputer yang sama. Di dunia kerja, server MySQL biasanya ada di mesin khusus, sedangkan aplikasi web terhubung lewat jaringan. Di laptopmu, keduanya ada di mesin yang sama dan alamatnya `localhost` atau `127.0.0.1`.\n\n## Memasang MySQL\n\nAda beberapa cara, pilih yang paling cocok dengan komputermu.\n\n**XAMPP** (Windows, macOS, Linux). Paket berisi Apache, PHP, dan MariaDB. Setelah dipasang, buka XAMPP Control Panel lalu klik **Start** di baris MySQL. Ini cara paling umum di lab sekolah.\n\n**Laragon** (Windows). Lebih ringan dari XAMPP dan bisa memilih versi MySQL asli. Klik **Start All**, dan server MySQL langsung berjalan. Banyak programmer Laravel di Indonesia memakai Laragon.\n\n**Docker** (cocok untuk Linux dan server). Satu perintah sudah cukup untuk menjalankan MySQL 8.4 asli:\n\n```bash\ndocker run --name mysql-belajar \\\n  -e MYSQL_ROOT_PASSWORD=rahasia123 \\\n  -p 3306:3306 -d mysql:8.4\n```\n\nDi Linux kamu juga bisa memasang paket resmi, misalnya `sudo apt install mysql-server` di Ubuntu. Apa pun caranya, yang penting di akhir ada server yang berjalan di port 3306.\n\n## Masuk dengan klien `mysql`\n\nKlien terminal `mysql` adalah alat yang wajib kamu kuasai, karena di server sungguhan sering tidak ada tampilan grafis. Buka terminal (di XAMPP ada tombol **Shell**, di Laragon ada **Terminal**) lalu ketik:\n\n```bash\nmysql -u root -p\n```\n\nArtinya: masuk sebagai user `root`, dan `-p` meminta password. Kalau servernya ada di komputer lain, tambahkan `-h` untuk alamat host dan `-P` untuk port:\n\n```bash\nmysql -h 192.168.1.20 -P 3306 -u guru -p\n```\n\nSetelah berhasil, prompt berubah menjadi `mysql>`. Sekarang kamu bisa mengetik SQL. Ingat, **setiap perintah diakhiri titik koma**. Kalau lupa, MySQL menunggu dengan prompt `->` sampai kamu mengetik `;`.\n\nBeberapa perintah pertama yang berguna:\n\n```sql\nSELECT VERSION();\nSHOW DATABASES;\nUSE mysql;\nSHOW TABLES;\nSELECT NOW();\n```\n\n`SHOW DATABASES` menampilkan daftar database di server. Kamu akan melihat beberapa database bawaan seperti `mysql`, `information_schema`, `performance_schema`, dan `sys`. Database ini dipakai MySQL sendiri, jadi jangan diubah-ubah. `USE` memilih database yang aktif, dan `SHOW TABLES` menampilkan tabel di dalamnya. Untuk keluar, ketik `exit` atau tekan Ctrl+D.\n\n### Kenapa contoh latihan memakai SQLite?\n\nMySQL adalah server, jadi tidak bisa berjalan di dalam browser. Supaya kamu tetap bisa berlatih langsung di halaman ini, latihan kode memakai **SQLite** lewat modul `sqlite3` di Python. Query dasar seperti `SELECT`, `WHERE`, dan `ORDER BY` ditulis sama persis di keduanya. Kalau ada bagian yang sintaksnya berbeda, akan dijelaskan di soal. Untuk perintah khas MySQL, cobalah di MySQL yang sudah kamu pasang.\n\n## Alat bantu grafis\n\nTerminal itu penting, tapi alat grafis membuat pekerjaan sehari-hari lebih nyaman.\n\n| Alat | Jalan di | Kelebihan |\n| --- | --- | --- |\n| phpMyAdmin | browser, ikut XAMPP | langsung tersedia, mudah impor dan ekspor |\n| DBeaver | aplikasi desktop | gratis, bisa untuk MySQL, PostgreSQL, SQLite |\n| MySQL Workbench | aplikasi desktop | buatan resmi, ada desainer diagram |\n\nphpMyAdmin dibuka lewat `http://localhost/phpmyadmin` setelah Apache dan MySQL berjalan. DBeaver cocok kalau kamu ingin satu alat untuk banyak jenis database. Semuanya tetap client: di balik tombol-tombolnya, mereka mengirim SQL ke server yang sama.\n\nSaran untuk kamu: pakai alat grafis untuk melihat data, tapi biasakan menulis SQL sendiri. Perintah yang kamu tulis bisa disimpan, diulang, dan dipakai di aplikasi. Klik-klik di phpMyAdmin tidak.\n\n## Rangkuman\n\n- MySQL adalah RDBMS open source yang paling banyak dipakai aplikasi web; kita memakai MySQL 8.4 LTS dengan mesin InnoDB.\n- MariaDB adalah cabang MySQL yang mirip; cek dengan `SELECT VERSION();`.\n- Server `mysqld` menyimpan data dan mendengarkan di port 3306, sedangkan client (terminal, phpMyAdmin, DBeaver, aplikasi) mengirim perintah.\n- Pasang lewat XAMPP, Laragon, atau Docker, lalu masuk dengan `mysql -u root -p`.\n- `SHOW DATABASES`, `USE`, dan `SHOW TABLES` membantu kamu menjelajahi isi server.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Port bawaan yang didengarkan server MySQL adalah...",
+          "code": "",
+          "options": [
+            "80",
+            "5432",
+            "3306",
+            "8080"
+          ],
+          "answer": 2,
+          "explanation": "Server MySQL secara bawaan menunggu koneksi di port 3306."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "phpMyAdmin adalah server database yang menggantikan MySQL.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "phpMyAdmin hanya client berbasis browser; ia mengirim SQL ke server MySQL atau MariaDB."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa arti opsi `-p` pada perintah berikut?",
+          "code": "mysql -u kasir -p",
+          "options": [
+            "Meminta password saat masuk",
+            "Memilih port koneksi",
+            "Mencetak daftar database",
+            "Masuk sebagai user root tanpa memakai password"
+          ],
+          "answer": 0,
+          "explanation": "Huruf kecil `-p` meminta password; port ditulis dengan huruf besar `-P`."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perintah mana yang menampilkan semua database di server?",
+          "code": "",
+          "options": [
+            "SHOW TABLES;",
+            "SELECT DATABASE();",
+            "USE DATABASES;",
+            "SHOW DATABASES;"
+          ],
+          "answer": 3,
+          "explanation": "`SHOW DATABASES` mendaftar semua database, sedangkan `SHOW TABLES` hanya tabel di database aktif."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Query pertama di menu kantin",
+          "prompt": "Tabel `menu` kantin sudah tersedia dengan kolom `id`, `nama`, `kategori`, dan `harga`.\n\nTulis SQL di string `QUERY` yang menampilkan kolom `nama` dan `harga` untuk menu dengan harga **paling banyak 10000**, diurutkan dari yang **termurah**.\n\nQuery ini ditulis sama persis di MySQL dan SQLite.",
+          "starter": {
+            "code": "# Tampilkan nama dan harga menu yang harganya paling banyak 10000,\n# urut dari yang termurah.\nQUERY = \"\"\"\nSELECT nama, harga FROM menu\n-- TODO: tambahkan WHERE dan ORDER BY\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT nama, harga FROM menu\nWHERE harga <= 10000\nORDER BY harga\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE menu (id INTEGER PRIMARY KEY, nama TEXT, kategori TEXT, harga INTEGER);\n    INSERT INTO menu (nama, kategori, harga) VALUES\n      ('Nasi goreng', 'Makanan', 12000),\n      ('Es teh', 'Minuman', 3000),\n      ('Mie ayam', 'Makanan', 10000),\n      ('Gorengan', 'Camilan', 1500),\n      ('Bakso', 'Makanan', 13000),\n      ('Jus jeruk', 'Minuman', 7000);\n    \"\"\")\n    return c\n\ndef hasil():\n    return db().execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Hanya dua kolom: nama dan harga",
+              "check": "len(db().execute(QUERY).description) == 2"
+            },
+            {
+              "name": "Menu di atas 10000 tidak ikut",
+              "check": "all(r[1] <= 10000 for r in hasil())"
+            },
+            {
+              "name": "Menu seharga tepat 10000 ikut tampil",
+              "check": "('Mie ayam', 10000) in hasil()"
+            },
+            {
+              "name": "Urut dari yang termurah",
+              "check": "hasil() == [('Gorengan', 1500), ('Es teh', 3000), ('Jus jeruk', 7000), ('Mie ayam', 10000)]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "database-tabel-dan-tipe-data",
+      "title": "Database, Tabel, dan Tipe Data",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Membuat database dengan `CREATE DATABASE` dan character set `utf8mb4`.\n- Membuat tabel dengan tipe data MySQL yang tepat dan `AUTO_INCREMENT`.\n- Mengubah struktur tabel dengan `ALTER TABLE` dan menghapusnya dengan `DROP`.\n\n## Membuat database\n\nDi MySQL, satu server bisa menyimpan banyak database. Biasanya satu aplikasi punya satu database sendiri: `kantin` untuk aplikasi kasir, `perpus` untuk perpustakaan sekolah, `absensi` untuk aplikasi absen. Membuatnya cukup satu perintah:\n\n```sql\nCREATE DATABASE IF NOT EXISTS sekolah\n  CHARACTER SET utf8mb4\n  COLLATE utf8mb4_0900_ai_ci;\n```\n\nAda dua hal yang perlu kamu perhatikan.\n\n**`IF NOT EXISTS`** membuat perintah aman dijalankan ulang. Tanpanya, MySQL akan error kalau database `sekolah` sudah ada. Ini berguna saat kamu menyimpan perintah di file `.sql` dan menjalankannya berkali-kali.\n\n**`utf8mb4`** adalah character set, yaitu cara MySQL menyimpan huruf. Jangan tertipu nama `utf8` biasa: di MySQL, `utf8` lama hanya mendukung sebagian karakter dan tidak bisa menyimpan emoji atau beberapa huruf aksara. `utf8mb4` mendukung semuanya, dan sudah menjadi bawaan di MySQL 8. **Collation** `utf8mb4_0900_ai_ci` mengatur cara membandingkan dan mengurutkan teks; akhiran `ai_ci` artinya tidak peka aksen dan tidak peka huruf besar kecil, jadi `'Sari' = 'sari'` bernilai benar.\n\nSetelah database dibuat, pilih sebagai database aktif:\n\n```sql\nUSE sekolah;\nSHOW TABLES;\n```\n\nSemua perintah berikutnya akan berlaku di database `sekolah` sampai kamu `USE` database lain.\n\n## Membuat tabel\n\nSekarang buat tabel siswa. Setiap kolom punya nama, tipe data, dan aturan tambahan.\n\n```sql\nCREATE TABLE siswa (\n  id      INT AUTO_INCREMENT PRIMARY KEY,\n  nis     VARCHAR(10)  NOT NULL UNIQUE,\n  nama    VARCHAR(100) NOT NULL,\n  kelas   VARCHAR(20)  NOT NULL,\n  jk      ENUM('L', 'P') NOT NULL,\n  lahir   DATE,\n  aktif   BOOLEAN NOT NULL DEFAULT TRUE,\n  dibuat  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP\n) ENGINE = InnoDB;\n```\n\nMari bedah bagian yang khas MySQL:\n\n- **`AUTO_INCREMENT`** membuat MySQL mengisi `id` otomatis: 1, 2, 3, dan seterusnya. Kamu tidak perlu menulis `id` saat `INSERT`.\n- **`PRIMARY KEY`** menandai `id` sebagai pengenal unik setiap baris.\n- **`NOT NULL`** mewajibkan kolom diisi, **`UNIQUE`** melarang nilai kembar (dua siswa tidak boleh punya NIS sama), dan **`DEFAULT`** mengisi nilai bila kolom tidak disebut.\n- **`ENGINE = InnoDB`** memilih mesin penyimpanan. Di MySQL 8 ini sudah bawaan, jadi boleh tidak ditulis, tapi kamu akan sering melihatnya di skrip orang lain.\n\nUntuk melihat struktur tabel yang sudah jadi, pakai:\n\n```sql\nDESCRIBE siswa;\nSHOW CREATE TABLE siswa;\n```\n\n`DESCRIBE` menampilkan daftar kolom dalam bentuk tabel, sedangkan `SHOW CREATE TABLE` menampilkan perintah `CREATE TABLE` lengkap. Yang kedua sangat berguna saat kamu ingin menyalin struktur tabel ke server lain.\n\n## Tipe data penting\n\nMemilih tipe data itu seperti memilih wadah di dapur kantin. Kuah jangan ditaruh di piring datar, dan kerupuk tidak perlu panci besar.\n\n| Tipe | Untuk | Contoh |\n| --- | --- | --- |\n| `INT` | bilangan bulat sampai sekitar 2 miliar | jumlah stok, id |\n| `BIGINT` | bilangan bulat sangat besar | id transaksi aplikasi besar |\n| `DECIMAL(12,2)` | angka pecahan yang harus tepat | harga, saldo, nilai rapor |\n| `VARCHAR(n)` | teks pendek, maksimal n karakter | nama, NIS, email |\n| `TEXT` | teks panjang | isi pengumuman, catatan |\n| `DATE` | tanggal saja | tanggal lahir |\n| `DATETIME` | tanggal dan jam | waktu absen, waktu transaksi |\n| `ENUM(...)` | satu dari pilihan tetap | `'hadir','izin','sakit','alpa'` |\n| `BOOLEAN` | benar atau salah | status aktif |\n\n![Tipe data yang paling sering dipakai](slide:7)\n\nBeberapa jebakan yang sering terjadi:\n\n- **Jangan simpan uang di `FLOAT` atau `DOUBLE`.** Tipe itu menyimpan perkiraan, jadi 0.1 + 0.2 bisa menjadi 0.30000000000000004. Pakai `DECIMAL`. Di Indonesia harga biasanya bulat rupiah, jadi `INT` atau `BIGINT` juga aman.\n- **`BOOLEAN` sebenarnya `TINYINT(1)`.** MySQL menyimpan `TRUE` sebagai 1 dan `FALSE` sebagai 0. Jadi jangan kaget saat `SELECT` menampilkan angka.\n- **Nomor HP dan NIS simpan sebagai `VARCHAR`.** Walau isinya angka, kamu tidak pernah menjumlahkannya, dan angka 0 di depan (`0812...`) akan hilang kalau disimpan sebagai `INT`.\n- **Format tanggal di MySQL adalah `'YYYY-MM-DD'`**, misalnya `'2009-08-17'`. Format `17/08/2009` tidak akan dikenali.\n\n### Beda kecil dengan SQLite\n\nLatihan di halaman ini memakai SQLite. SQLite punya tipe yang lebih longgar dan tidak mengenal `AUTO_INCREMENT`. Di SQLite, kolom `INTEGER PRIMARY KEY` otomatis bertambah sendiri, dan kata kuncinya kalau ditulis adalah `AUTOINCREMENT` tanpa garis bawah. `ENUM` juga tidak ada di SQLite. Jadi kalau di latihan kamu menulis `id INTEGER PRIMARY KEY`, padanannya di MySQL adalah `id INT AUTO_INCREMENT PRIMARY KEY`.\n\n## Mengubah struktur dengan ALTER TABLE\n\nAplikasi terus berkembang. Hari ini kepala sekolah minta nomor HP orang tua disimpan juga. Kamu tidak perlu membuat ulang tabel, cukup ubah strukturnya:\n\n```sql\nALTER TABLE siswa ADD COLUMN hp_ortu VARCHAR(15) AFTER nama;\nALTER TABLE siswa MODIFY COLUMN nama VARCHAR(150) NOT NULL;\nALTER TABLE siswa RENAME COLUMN hp_ortu TO no_hp_ortu;\nALTER TABLE siswa DROP COLUMN no_hp_ortu;\n```\n\n- `ADD COLUMN` menambah kolom. `AFTER nama` adalah fitur MySQL untuk menentukan posisinya.\n- `MODIFY COLUMN` mengganti tipe atau aturan kolom. Tulis definisinya lengkap, karena aturan yang tidak disebut (misalnya `NOT NULL`) akan hilang.\n- `RENAME COLUMN` mengganti nama kolom.\n- `DROP COLUMN` menghapus kolom beserta seluruh isinya.\n\nKalau kolom baru diberi `NOT NULL`, sertakan `DEFAULT`. Baris lama tidak punya nilai untuk kolom itu, jadi MySQL butuh nilai pengisi.\n\n## DROP dan TRUNCATE: hati-hati\n\n```sql\nTRUNCATE TABLE absen_uji;\nDROP TABLE IF EXISTS siswa_lama;\nDROP DATABASE IF EXISTS latihan;\n```\n\n`TRUNCATE` mengosongkan semua baris tapi tabelnya tetap ada, dan penghitung `AUTO_INCREMENT` kembali ke 1. `DROP TABLE` menghapus tabel beserta isinya, dan `DROP DATABASE` menghapus semua tabel di dalamnya. Tidak ada tombol undo dan tidak ada tempat sampah. Sebelum menjalankan `DROP` di server sungguhan, pastikan kamu sedang terhubung ke server yang benar dan sudah punya backup. Cara backup akan kamu pelajari di bab User, Hak Akses, dan Backup.\n\n## Rangkuman\n\n- `CREATE DATABASE ... CHARACTER SET utf8mb4` membuat database yang aman untuk semua huruf; `USE` memilihnya.\n- `CREATE TABLE` mendefinisikan kolom, tipe, dan aturan; `AUTO_INCREMENT` mengisi id otomatis.\n- Pilih tipe dengan tepat: `DECIMAL` atau `INT` untuk uang, `VARCHAR` untuk NIS dan nomor HP, `DATE` dan `DATETIME` untuk waktu.\n- `ALTER TABLE` menambah, mengubah, mengganti nama, atau menghapus kolom tanpa membuat ulang tabel.\n- `DROP` dan `TRUNCATE` tidak bisa dibatalkan, jadi selalu cek server dan siapkan backup.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tipe data mana yang paling tepat untuk menyimpan saldo tabungan siswa?",
+          "code": "",
+          "options": [
+            "FLOAT",
+            "DECIMAL(12,2)",
+            "VARCHAR(20)",
+            "DOUBLE"
+          ],
+          "answer": 1,
+          "explanation": "`DECIMAL` menyimpan angka secara tepat, sedangkan `FLOAT` dan `DOUBLE` hanya perkiraan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa fungsi `AUTO_INCREMENT` pada kolom `id` berikut?",
+          "code": "CREATE TABLE buku (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  judul VARCHAR(200) NOT NULL\n);",
+          "options": [
+            "Membuat id boleh kembar",
+            "Mengurutkan buku berdasarkan judul",
+            "Menambah satu ke kolom stok setiap kali ada perintah INSERT baru",
+            "Mengisi id berurutan secara otomatis saat INSERT"
+          ],
+          "answer": 3,
+          "explanation": "MySQL memberi nilai id berikutnya sendiri, jadi kamu tidak perlu menulis id saat menyisipkan baris."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Nomor HP sebaiknya disimpan sebagai `VARCHAR`, bukan `INT`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Nomor HP tidak dihitung dan angka 0 di depannya akan hilang bila disimpan sebagai `INT`."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa database baru sebaiknya memakai `utf8mb4`?",
+          "code": "",
+          "options": [
+            "Supaya semua query berjalan dua kali lebih cepat di server produksi",
+            "Supaya tabel otomatis punya primary key",
+            "Supaya semua karakter, termasuk emoji, bisa disimpan",
+            "Supaya database bisa dibuka di SQLite"
+          ],
+          "answer": 2,
+          "explanation": "`utf8` lama di MySQL tidak mendukung semua karakter; `utf8mb4` mendukungnya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tabel siswa yang rapi",
+          "prompt": "Tulis DDL di string `SKEMA` untuk tabel `siswa` dengan kolom:\n\n- `id`: primary key yang bertambah otomatis\n- `nis`: teks, wajib diisi, tidak boleh kembar\n- `nama`: teks, wajib diisi\n- `aktif`: bilangan bulat, wajib, bawaan `1`\n\nLatihan berjalan di SQLite: tulis `id INTEGER PRIMARY KEY` (di MySQL padanannya `id INT AUTO_INCREMENT PRIMARY KEY`) dan pakai `TEXT` untuk teks.",
+          "starter": {
+            "code": "# Tabel siswa: id (primary key otomatis), nis (wajib, unik),\n# nama (wajib), aktif (wajib, bawaan 1)\nSKEMA = \"\"\"\nCREATE TABLE siswa (\n    id INTEGER PRIMARY KEY,\n    nis TEXT,\n    nama TEXT\n    -- TODO: aturan NOT NULL, UNIQUE, dan kolom aktif\n);\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "SKEMA = \"\"\"\nCREATE TABLE siswa (\n    id INTEGER PRIMARY KEY,\n    nis TEXT NOT NULL UNIQUE,\n    nama TEXT NOT NULL,\n    aktif INTEGER NOT NULL DEFAULT 1\n);\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef isi(ddl, *perintah):\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(ddl)\n    for p in perintah:\n        c.execute(p)\n    return c\n\ndef ditolak(c, sql):\n    try:\n        c.execute(sql)\n        return False\n    except sqlite3.IntegrityError:\n        return True\n\ndef kolom(c, tabel):\n    return {r[1]: r for r in c.execute(f\"PRAGMA table_info({tabel})\")}\n",
+          "tests": [
+            {
+              "name": "id terisi otomatis",
+              "check": "isi(SKEMA, \"INSERT INTO siswa (nis, nama) VALUES ('1001', 'Sari')\", \"INSERT INTO siswa (nis, nama) VALUES ('1002', 'Budi')\").execute('SELECT id FROM siswa ORDER BY id').fetchall() == [(1,), (2,)]"
+            },
+            {
+              "name": "NIS tidak boleh kembar",
+              "check": "ditolak(isi(SKEMA, \"INSERT INTO siswa (nis, nama) VALUES ('1001', 'Sari')\"), \"INSERT INTO siswa (nis, nama) VALUES ('1001', 'Budi')\")"
+            },
+            {
+              "name": "nama dan NIS wajib diisi",
+              "check": "ditolak(isi(SKEMA), \"INSERT INTO siswa (nis) VALUES ('1001')\") and ditolak(isi(SKEMA), \"INSERT INTO siswa (nama) VALUES ('Sari')\")"
+            },
+            {
+              "name": "aktif bernilai 1 bila tidak diisi",
+              "check": "isi(SKEMA, \"INSERT INTO siswa (nis, nama) VALUES ('1001', 'Sari')\").execute('SELECT aktif FROM siswa').fetchone() == (1,)"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Tambah kolom stok",
+          "prompt": "Tabel `buku` perpustakaan sudah berisi data. Tulis satu perintah `ALTER TABLE` di string `UBAH` yang menambah kolom `stok` bertipe bilangan bulat, **wajib diisi**, dengan nilai bawaan `0`.\n\nPerintah `ALTER TABLE ... ADD COLUMN` ini sama di MySQL dan SQLite (di SQLite pakai `INTEGER`).",
+          "starter": {
+            "code": "# Tambah kolom stok: bilangan bulat, wajib, bawaan 0\nUBAH = \"\"\"\n-- TODO: ALTER TABLE buku ...\nSELECT 1\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "UBAH = \"\"\"\nALTER TABLE buku ADD COLUMN stok INTEGER NOT NULL DEFAULT 0\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef isi(ddl, *perintah):\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(ddl)\n    for p in perintah:\n        c.execute(p)\n    return c\n\ndef ditolak(c, sql):\n    try:\n        c.execute(sql)\n        return False\n    except sqlite3.IntegrityError:\n        return True\n\ndef kolom(c, tabel):\n    return {r[1]: r for r in c.execute(f\"PRAGMA table_info({tabel})\")}\n\nBUKU = \"CREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT NOT NULL); INSERT INTO buku (judul) VALUES ('Laskar Pelangi'), ('Bumi');\"\n\ndef ubah():\n    c = isi(BUKU)\n    c.execute(UBAH)\n    return c\n",
+          "tests": [
+            {
+              "name": "Kolom stok ada",
+              "check": "'stok' in kolom(ubah(), 'buku')"
+            },
+            {
+              "name": "Buku lama mendapat stok 0",
+              "check": "ubah().execute('SELECT stok FROM buku ORDER BY id').fetchall() == [(0,), (0,)]"
+            },
+            {
+              "name": "stok wajib diisi (NOT NULL)",
+              "check": "ditolak(ubah(), \"INSERT INTO buku (judul, stok) VALUES ('Dilan', NULL)\")"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "crud-di-mysql",
+      "title": "CRUD di MySQL",
+      "est_minutes": 30,
+      "slide_from": 9,
+      "slide_to": 12,
+      "body": "## Tujuan\n\n- Menyisipkan banyak baris sekaligus dengan satu `INSERT`.\n- Mengambil data dengan `WHERE`, `LIKE`, `IN`, `BETWEEN`, `ORDER BY`, dan `LIMIT`.\n- Mengubah dan menghapus data dengan aman memakai `WHERE` dan `sql_safe_updates`.\n\n## CRUD: empat pekerjaan sehari-hari\n\nHampir semua aplikasi, dari kasir kantin sampai sistem absensi, hanya melakukan empat hal pada data: **Create** (`INSERT`), **Read** (`SELECT`), **Update** (`UPDATE`), dan **Delete** (`DELETE`). Kamu sudah mengenal keempatnya di kelas SQL. Di bab ini kita memakai versi MySQL-nya dan membahas kebiasaan yang dipakai programmer di dunia kerja.\n\nKita pakai tabel menu kantin berikut:\n\n```sql\nCREATE TABLE menu (\n  id       INT AUTO_INCREMENT PRIMARY KEY,\n  nama     VARCHAR(100) NOT NULL,\n  kategori ENUM('Makanan', 'Minuman', 'Camilan') NOT NULL,\n  harga    INT NOT NULL,\n  stok     INT NOT NULL DEFAULT 0\n);\n```\n\n## INSERT: banyak baris sekaligus\n\nKamu bisa menyisipkan satu baris per perintah, tapi MySQL mengizinkan banyak baris dalam satu `INSERT`. Cara ini jauh lebih cepat karena server hanya menerima satu perintah.\n\n```sql\nINSERT INTO menu (nama, kategori, harga, stok)\nVALUES\n  ('Nasi goreng', 'Makanan', 12000, 20),\n  ('Mie ayam',    'Makanan', 10000, 15),\n  ('Es teh',      'Minuman',  3000, 50),\n  ('Jus jeruk',   'Minuman',  7000, 10),\n  ('Gorengan',    'Camilan',  1500, 40);\n```\n\nKebiasaan baik: **selalu sebutkan nama kolom**. Kalau suatu hari ada kolom baru, `INSERT` yang menyebut kolom tetap berjalan, sedangkan `INSERT INTO menu VALUES (...)` tanpa nama kolom langsung rusak. Kolom `id` tidak perlu diisi karena `AUTO_INCREMENT`. Untuk tahu id yang baru saja dibuat, pakai:\n\n```sql\nSELECT LAST_INSERT_ID();\n```\n\nFungsi ini sering dipakai aplikasi, misalnya setelah membuat transaksi baru lalu menyimpan detail barangnya.\n\nBagaimana kalau salah satu baris melanggar aturan, misalnya `nama` kosong padahal `NOT NULL`? Di mode bawaan MySQL 8 (strict mode), seluruh perintah `INSERT` itu ditolak dan MySQL menampilkan pesan error beserta nomornya. Bacalah pesan itu baik-baik, karena biasanya ia langsung menyebut kolom yang bermasalah. MariaDB atau MySQL lama dengan pengaturan longgar kadang hanya memberi peringatan lalu mengisi nilai seadanya, dan ini sumber data kotor yang sulit dilacak. Cek dengan `SHOW WARNINGS;` bila hasil `INSERT` terasa aneh.\n\n## SELECT dengan penyaring\n\n`SELECT` mengambil data. Ambil kolom yang benar-benar perlu saja. `SELECT *` boleh untuk mengintip data, tapi di aplikasi ia membuang waktu dan memori untuk kolom yang tidak dipakai.\n\n```sql\nSELECT nama, harga\nFROM menu\nWHERE kategori = 'Makanan' AND stok > 0;\n```\n\n`WHERE` bisa dipadukan dengan beberapa operator praktis:\n\n| Operator | Contoh | Artinya |\n| --- | --- | --- |\n| `LIKE` | `nama LIKE 'mie%'` | nama diawali \"mie\" |\n| `LIKE` | `nama LIKE '%ayam%'` | nama mengandung \"ayam\" |\n| `IN` | `kategori IN ('Minuman', 'Camilan')` | salah satu dari daftar |\n| `BETWEEN` | `harga BETWEEN 5000 AND 10000` | 5000 sampai 10000, kedua ujung ikut |\n| `IS NULL` | `keterangan IS NULL` | kolom kosong |\n\nDi `LIKE`, tanda `%` berarti teks apa saja (boleh kosong) dan `_` berarti tepat satu karakter. Karena collation bawaan MySQL tidak peka huruf besar kecil, `nama LIKE '%AYAM%'` juga menemukan \"Mie ayam\". SQLite juga tidak peka huruf besar kecil untuk huruf latin pada `LIKE`, jadi contohnya bisa langsung kamu coba di latihan.\n\nIngat, `NULL` tidak bisa dibandingkan dengan `=`. Tulis `IS NULL` atau `IS NOT NULL`.\n\n## Mengurutkan dan membatasi\n\n`ORDER BY` mengurutkan hasil, `ASC` dari kecil ke besar (bawaan) dan `DESC` sebaliknya. Kamu bisa mengurutkan dengan beberapa kolom: kolom kedua dipakai bila kolom pertama bernilai sama.\n\n```sql\nSELECT nama, harga\nFROM menu\nORDER BY harga DESC, nama ASC\nLIMIT 3;\n```\n\n`LIMIT` membatasi jumlah baris. Ini yang dipakai untuk daftar \"3 menu termahal\" atau \"10 buku terbaru\". Untuk halaman berikutnya, tambahkan `OFFSET`:\n\n```sql\nSELECT nama, harga FROM menu\nORDER BY id\nLIMIT 10 OFFSET 20;\n```\n\nPerintah di atas melewati 20 baris pertama lalu mengambil 10, alias halaman ketiga kalau satu halaman berisi 10 baris. MySQL juga mengenal bentuk singkat `LIMIT 20, 10` dengan urutan offset dulu baru jumlah. Bentuk ini mudah tertukar, jadi lebih jelas pakai `OFFSET`. Tanpa `ORDER BY`, urutan baris tidak dijamin, jadi `LIMIT` sebaiknya selalu ditemani `ORDER BY`.\n\n## UPDATE dan DELETE yang aman\n\nIni bagian yang paling sering membuat orang panik di dunia kerja. Lihat perintah ini:\n\n```sql\nUPDATE menu SET harga = 5000;\n```\n\nTidak ada `WHERE`, jadi **semua** menu sekarang seharga 5000. Nasi goreng, es teh, gorengan, semuanya. Kesalahan yang sama dengan `DELETE FROM menu;` menghapus seluruh isi tabel. MySQL tidak bertanya \"yakin?\".\n\n![UPDATE dan DELETE harus selalu memakai WHERE](slide:12)\n\nKebiasaan aman yang dipakai programmer berpengalaman:\n\n1. **Tulis `SELECT` dulu dengan `WHERE` yang sama.** Kalau hasilnya tepat baris yang ingin diubah, baru ganti `SELECT` menjadi `UPDATE` atau `DELETE`.\n2. **Gunakan primary key bila bisa.** `WHERE id = 3` pasti hanya mengenai satu baris.\n3. **Nyalakan `sql_safe_updates`.**\n\n```sql\nSET sql_safe_updates = 1;\n\nUPDATE menu SET harga = 5000;\n-- ERROR 1175: You are using safe update mode ...\n\nUPDATE menu SET harga = harga + 1000\nWHERE kategori = 'Minuman';\n```\n\nDalam mode ini, MySQL menolak `UPDATE` dan `DELETE` yang tidak memakai `WHERE` pada kolom ber-index atau tanpa `LIMIT`. MySQL Workbench menyalakannya secara bawaan. Klien `mysql` juga punya opsi `--safe-updates` (atau nama lucunya `--i-am-a-dummy`) yang melakukan hal yang sama.\n\nContoh `UPDATE` yang memakai nilai lama: menaikkan harga minuman 10 persen. Karena harga bertipe `INT`, kalikan dengan 110 lalu bagi 100 supaya hasilnya tetap bulat:\n\n```sql\nUPDATE menu\nSET harga = harga * 110 / 100\nWHERE kategori = 'Minuman';\n```\n\nUntuk menghapus, pola amannya sama:\n\n```sql\nSELECT id, nama FROM menu WHERE stok = 0 AND kategori = 'Camilan';\nDELETE FROM menu WHERE stok = 0 AND kategori = 'Camilan';\n```\n\nSetelah `UPDATE` atau `DELETE`, MySQL melaporkan `Rows affected`. Bacalah angka itu. Kalau kamu berniat mengubah satu menu tapi tertulis `Rows affected: 37`, ada yang salah dengan `WHERE`-mu. Di bab Transaksi dan InnoDB kamu akan belajar cara membungkus perubahan dalam transaksi agar bisa dibatalkan dengan `ROLLBACK` sebelum disimpan.\n\n## Rangkuman\n\n- Satu `INSERT` bisa berisi banyak baris; selalu sebutkan nama kolom, dan `LAST_INSERT_ID()` memberi id terakhir.\n- `WHERE` menyaring baris, dibantu `LIKE`, `IN`, `BETWEEN`, dan `IS NULL`.\n- `ORDER BY` mengurutkan, `LIMIT ... OFFSET ...` membatasi dan membuat halaman; pakai keduanya bersama.\n- `UPDATE` dan `DELETE` tanpa `WHERE` mengenai semua baris; cek dulu dengan `SELECT` dan nyalakan `sql_safe_updates`.\n- Perhatikan angka `Rows affected` setiap kali mengubah data.\n",
+      "quiz": [
+        {
+          "type": "baca_kode",
+          "prompt": "Baris mana yang diambil query berikut?",
+          "code": "SELECT nama FROM menu\nORDER BY harga DESC\nLIMIT 2 OFFSET 1;",
+          "options": [
+            "Dua menu termurah",
+            "Menu termahal kedua dan ketiga",
+            "Dua menu termahal",
+            "Hanya satu menu dengan harga paling mahal"
+          ],
+          "answer": 1,
+          "explanation": "Urutan dari termahal, `OFFSET 1` melewati menu termahal, lalu `LIMIT 2` mengambil dua berikutnya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa akibat menjalankan `DELETE FROM menu;`?",
+          "code": "",
+          "options": [
+            "Hanya baris pertama yang terhapus",
+            "MySQL meminta konfirmasi terlebih dahulu",
+            "Struktur tabel menu ikut terhapus",
+            "Semua baris di tabel menu terhapus"
+          ],
+          "answer": 3,
+          "explanation": "Tanpa `WHERE`, `DELETE` mengenai semua baris, sedangkan struktur tabelnya tetap ada."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kondisi mana yang menemukan menu dengan nama mengandung kata \"ayam\" di posisi mana pun?",
+          "code": "",
+          "options": [
+            "nama LIKE '%ayam%'",
+            "nama = '%ayam%'",
+            "nama LIKE 'ayam%'",
+            "nama IN ('ayam')"
+          ],
+          "answer": 0,
+          "explanation": "`%` di kedua sisi berarti teks apa saja boleh ada sebelum dan sesudah \"ayam\"."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan `sql_safe_updates = 1`, MySQL menolak `UPDATE menu SET harga = 5000;` yang tidak punya `WHERE`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Mode aman menolak `UPDATE` dan `DELETE` tanpa `WHERE` pada kolom ber-index atau tanpa `LIMIT`."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Tiga makanan termurah yang tersedia",
+          "prompt": "Tabel `menu` berisi kolom `id`, `nama`, `kategori`, `harga`, dan `stok`.\n\nTulis SQL di string `QUERY` yang menampilkan `nama` dan `harga` untuk menu kategori `'Makanan'` yang **stoknya lebih dari 0**, urut dari harga **termurah**, dan ambil **3 baris** saja.",
+          "starter": {
+            "code": "# nama dan harga makanan yang stoknya > 0, termurah dulu, 3 baris\nQUERY = \"\"\"\nSELECT nama, harga FROM menu\nWHERE kategori = 'Makanan'\n-- TODO: saring stok, urutkan, dan batasi\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT nama, harga FROM menu\nWHERE kategori = 'Makanan' AND stok > 0\nORDER BY harga\nLIMIT 3\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE menu (id INTEGER PRIMARY KEY, nama TEXT, kategori TEXT, harga INTEGER, stok INTEGER);\n    INSERT INTO menu (nama, kategori, harga, stok) VALUES\n      ('Nasi goreng', 'Makanan', 12000, 20),\n      ('Mie ayam', 'Makanan', 10000, 15),\n      ('Es teh', 'Minuman', 3000, 50),\n      ('Jus jeruk', 'Minuman', 7000, 10),\n      ('Gorengan', 'Camilan', 1500, 40),\n      ('Bakso', 'Makanan', 13000, 0),\n      ('Nasi uduk', 'Makanan', 8000, 12),\n      ('Es jeruk', 'Minuman', 4000, 0);\n    \"\"\")\n    return c\n\ndef hasil():\n    return db().execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Hanya makanan yang tampil",
+              "check": "all(n not in [r[0] for r in hasil()] for n in ('Es teh', 'Gorengan'))"
+            },
+            {
+              "name": "Menu yang habis tidak ikut",
+              "check": "'Bakso' not in [r[0] for r in hasil()]"
+            },
+            {
+              "name": "Tepat 3 baris",
+              "check": "len(hasil()) == 3"
+            },
+            {
+              "name": "Urut dari termurah",
+              "check": "hasil() == [('Nasi uduk', 8000), ('Mie ayam', 10000), ('Nasi goreng', 12000)]"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Naikkan harga minuman dengan aman",
+          "prompt": "Tulis satu perintah `UPDATE` di string `NAIK` yang menaikkan harga **hanya kategori `'Minuman'`** sebesar 10 persen. Agar tetap bilangan bulat, hitung `harga * 110 / 100`.\n\nMenu kategori lain tidak boleh berubah sedikit pun.",
+          "starter": {
+            "code": "# Naikkan harga minuman 10 persen: harga * 110 / 100\nNAIK = \"\"\"\nUPDATE menu SET harga = harga * 110 / 100\n-- TODO: batasi hanya untuk kategori Minuman\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "NAIK = \"\"\"\nUPDATE menu SET harga = harga * 110 / 100\nWHERE kategori = 'Minuman'\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE menu (id INTEGER PRIMARY KEY, nama TEXT, kategori TEXT, harga INTEGER, stok INTEGER);\n    INSERT INTO menu (nama, kategori, harga, stok) VALUES\n      ('Nasi goreng', 'Makanan', 12000, 20),\n      ('Mie ayam', 'Makanan', 10000, 15),\n      ('Es teh', 'Minuman', 3000, 50),\n      ('Jus jeruk', 'Minuman', 7000, 10),\n      ('Gorengan', 'Camilan', 1500, 40),\n      ('Bakso', 'Makanan', 13000, 0),\n      ('Nasi uduk', 'Makanan', 8000, 12),\n      ('Es jeruk', 'Minuman', 4000, 0);\n    \"\"\")\n    return c\n\ndef sesudah():\n    c = db()\n    c.execute(NAIK)\n    return dict(c.execute('SELECT nama, harga FROM menu'))\n",
+          "tests": [
+            {
+              "name": "Es teh naik jadi 3300",
+              "check": "sesudah()['Es teh'] == 3300"
+            },
+            {
+              "name": "Semua minuman naik 10 persen",
+              "check": "(lambda h: (h['Jus jeruk'], h['Es jeruk']) == (7700, 4400))(sesudah())"
+            },
+            {
+              "name": "Makanan dan camilan tidak berubah",
+              "check": "(lambda h: (h['Nasi goreng'], h['Bakso'], h['Gorengan']) == (12000, 13000, 1500))(sesudah())"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "fungsi-dan-agregasi",
+      "title": "Fungsi dan Agregasi",
+      "est_minutes": 30,
+      "slide_from": 13,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Merangkum data dengan `COUNT`, `SUM`, `AVG`, `MIN`, dan `MAX`.\n- Mengelompokkan hasil dengan `GROUP BY` dan menyaringnya dengan `HAVING`.\n- Memakai fungsi teks dan tanggal khas MySQL: `CONCAT`, `DATE_FORMAT`, `NOW`, dan `IFNULL`.\n\n## Dari data mentah ke laporan\n\nIbu kantin tidak ingin melihat 2.000 baris transaksi satu per satu. Yang ia tanyakan adalah: \"Berapa omzet bulan ini?\", \"Menu apa yang paling laku?\", \"Hari apa paling ramai?\". Untuk menjawabnya, kamu perlu **merangkum** data. Di bab ini kita memakai tabel penjualan berikut:\n\n```sql\nCREATE TABLE penjualan (\n  id       INT AUTO_INCREMENT PRIMARY KEY,\n  tanggal  DATE NOT NULL,\n  menu     VARCHAR(100) NOT NULL,\n  jumlah   INT NOT NULL,\n  harga    INT NOT NULL,\n  pembeli  VARCHAR(100)\n);\n```\n\nSetiap baris berarti satu pembelian: siapa membeli menu apa, berapa porsi, dan harga satuannya. Kolom `pembeli` boleh kosong karena tidak semua pembeli dicatat namanya.\n\n## Fungsi agregat\n\nFungsi agregat mengubah banyak baris menjadi satu nilai.\n\n| Fungsi | Hasil |\n| --- | --- |\n| `COUNT(*)` | jumlah baris |\n| `COUNT(kolom)` | jumlah baris yang kolomnya tidak `NULL` |\n| `SUM(kolom)` | jumlah semua nilai |\n| `AVG(kolom)` | rata-rata |\n| `MIN(kolom)`, `MAX(kolom)` | nilai terkecil dan terbesar |\n\n```sql\nSELECT COUNT(*)               AS transaksi,\n       SUM(jumlah)            AS porsi,\n       SUM(jumlah * harga)    AS omzet,\n       AVG(jumlah * harga)    AS rata_rata,\n       MAX(jumlah * harga)    AS terbesar\nFROM penjualan\nWHERE tanggal BETWEEN '2026-11-01' AND '2026-11-30';\n```\n\nPerhatikan bahwa fungsi agregat boleh berisi ekspresi seperti `jumlah * harga`. Satu hal yang sering terlupa: **agregat mengabaikan `NULL`**. Jadi `COUNT(pembeli)` hanya menghitung baris yang nama pembelinya terisi, sedangkan `COUNT(*)` menghitung semua baris. Bedanya bisa dipakai untuk menjawab \"berapa transaksi yang tidak dicatat namanya?\".\n\n`AVG` di MySQL menghasilkan angka desimal. Untuk laporan, bulatkan dengan `ROUND(AVG(...), 0)`.\n\n## GROUP BY: satu baris per kelompok\n\nOmzet total itu berguna, tapi lebih berguna lagi omzet **per menu**. Di sinilah `GROUP BY` bekerja: baris dengan nilai yang sama dikumpulkan menjadi satu kelompok, lalu fungsi agregat dihitung per kelompok.\n\n```sql\nSELECT menu,\n       SUM(jumlah)         AS terjual,\n       SUM(jumlah * harga) AS omzet\nFROM penjualan\nGROUP BY menu\nORDER BY omzet DESC;\n```\n\nAturan pentingnya: setiap kolom di `SELECT` harus **ada di `GROUP BY`** atau **dibungkus fungsi agregat**. MySQL 8 menegakkan aturan ini lewat mode `ONLY_FULL_GROUP_BY` yang aktif secara bawaan. Kalau kamu menulis `SELECT menu, pembeli, SUM(jumlah) ... GROUP BY menu`, MySQL menolak, karena dalam satu kelompok menu ada banyak pembeli dan ia tidak tahu harus menampilkan yang mana. MySQL versi lama dan sebagian konfigurasi MariaDB diam-diam memilih satu nilai acak, dan hasil seperti itu menyesatkan.\n\n![GROUP BY mengelompokkan, HAVING menyaring kelompok](slide:14)\n\n## WHERE atau HAVING?\n\nKeduanya menyaring, tapi pada waktu yang berbeda:\n\n- **`WHERE`** menyaring **baris** sebelum dikelompokkan.\n- **`HAVING`** menyaring **kelompok** setelah agregat dihitung.\n\n```sql\nSELECT menu, SUM(jumlah) AS terjual\nFROM penjualan\nWHERE tanggal >= '2026-11-01'\nGROUP BY menu\nHAVING terjual >= 20\nORDER BY terjual DESC;\n```\n\nQuery di atas berarti: ambil penjualan sejak 1 November, kelompokkan per menu, lalu tampilkan hanya menu yang terjual minimal 20 porsi. Kamu tidak bisa menulis `WHERE SUM(jumlah) >= 20`, karena saat `WHERE` dijalankan, jumlahnya belum dihitung.\n\nMySQL mengizinkan alias seperti `terjual` dipakai di `HAVING`. SQLite juga mengizinkannya. Kalau kamu ingin query yang pasti jalan di database lain, tulis ulang ekspresinya: `HAVING SUM(jumlah) >= 20`.\n\nUrutan eksekusinya mudah diingat: `FROM`, lalu `WHERE`, lalu `GROUP BY`, lalu `HAVING`, lalu `SELECT`, lalu `ORDER BY`, terakhir `LIMIT`.\n\n## Contoh nyata: rekap absensi per kelas\n\nAgregat tidak hanya untuk uang. Wali kelas sering diminta rekap kehadiran. Misalkan tabel `absen` punya kolom `tanggal`, `nis`, `kelas`, dan `status` bertipe `ENUM('hadir','izin','sakit','alpa')`. Rekap per kelas bisa ditulis dengan agregat bersyarat:\n\n```sql\nSELECT kelas,\n       COUNT(*)                    AS catatan,\n       SUM(status = 'hadir')       AS hadir,\n       SUM(status = 'alpa')        AS alpa,\n       ROUND(AVG(status = 'hadir') * 100, 1) AS persen_hadir\nFROM absen\nWHERE tanggal BETWEEN '2026-11-01' AND '2026-11-30'\nGROUP BY kelas\nHAVING alpa > 0\nORDER BY persen_hadir;\n```\n\nTriknya ada di `SUM(status = 'hadir')`. Di MySQL, perbandingan menghasilkan 1 untuk benar dan 0 untuk salah, jadi menjumlahkannya sama dengan menghitung baris yang cocok. Rata-rata dari angka 1 dan 0 itu langsung menjadi proporsi kehadiran. Cara yang lebih standar dan jalan di semua database adalah `SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END)`. Hasil query di atas menampilkan kelas yang punya siswa alpa, diurutkan dari kehadiran paling rendah, sehingga wali kelas tahu kelas mana yang perlu diperhatikan lebih dulu.\n\n## Fungsi teks\n\nUntuk menyusun tampilan, MySQL punya banyak fungsi teks:\n\n```sql\nSELECT CONCAT(nama, ' (', kelas, ')') AS siswa,\n       UPPER(nama)       AS kapital,\n       LENGTH(nis)       AS panjang_nis,\n       SUBSTRING(nis, 1, 4) AS angkatan\nFROM siswa;\n```\n\n`CONCAT` menyambung beberapa teks. Hati-hati: kalau salah satu bagiannya `NULL`, hasil `CONCAT` seluruhnya menjadi `NULL`. Di SQLite, penyambung teks yang umum adalah operator `||`, sedangkan di MySQL `||` secara bawaan berarti OR logika. Inilah contoh query yang tidak bisa disalin mentah-mentah antar database.\n\n## Fungsi tanggal\n\n```sql\nSELECT NOW();        -- 2026-11-27 09:15:00\nSELECT CURDATE();    -- 2026-11-27\n\nSELECT DATE_FORMAT(tanggal, '%d/%m/%Y') AS tgl,\n       SUM(jumlah * harga) AS omzet\nFROM penjualan\nGROUP BY tanggal;\n```\n\n`NOW()` memberi tanggal dan jam sekarang, `CURDATE()` hanya tanggal. `DATE_FORMAT` mengubah tanggal menjadi teks dengan pola: `%d` hari, `%m` bulan angka, `%Y` tahun empat digit, `%H:%i` jam dan menit. Untuk laporan bulanan, pola `'%Y-%m'` sangat berguna:\n\n```sql\nSELECT DATE_FORMAT(tanggal, '%Y-%m') AS bulan,\n       SUM(jumlah * harga) AS omzet\nFROM penjualan\nGROUP BY bulan;\n```\n\nSQLite tidak punya `DATE_FORMAT`; padanannya `strftime('%Y-%m', tanggal)`. Karena itu, latihan di bab ini tidak memakai fungsi tanggal.\n\n## IFNULL untuk nilai kosong\n\n`IFNULL(a, b)` mengembalikan `a`, kecuali `a` bernilai `NULL`, maka hasilnya `b`. Cocok untuk tampilan dan perhitungan:\n\n```sql\nSELECT IFNULL(pembeli, 'Umum') AS pembeli,\n       COUNT(*) AS transaksi\nFROM penjualan\nGROUP BY IFNULL(pembeli, 'Umum');\n```\n\nTanpa `IFNULL`, pembeli yang tidak dicatat namanya muncul sebagai `NULL`, dan itu membingungkan di laporan. `COALESCE(a, b, c)` adalah versi standar SQL yang bisa menerima lebih dari dua nilai.\n\n## Rangkuman\n\n- `COUNT`, `SUM`, `AVG`, `MIN`, dan `MAX` merangkum banyak baris; semuanya mengabaikan `NULL` kecuali `COUNT(*)`.\n- `GROUP BY` membuat satu baris per kelompok; kolom di `SELECT` harus dikelompokkan atau diagregasi (`ONLY_FULL_GROUP_BY`).\n- `WHERE` menyaring baris sebelum pengelompokan, `HAVING` menyaring kelompok sesudahnya.\n- `CONCAT`, `UPPER`, dan `SUBSTRING` mengolah teks; `NOW`, `CURDATE`, dan `DATE_FORMAT` mengolah tanggal.\n- `IFNULL` mengganti `NULL` dengan nilai pengganti yang lebih mudah dibaca.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Klausa mana yang dipakai untuk menyaring hasil setelah `GROUP BY`?",
+          "code": "",
+          "options": [
+            "WHERE",
+            "ORDER BY",
+            "HAVING",
+            "LIMIT"
+          ],
+          "answer": 2,
+          "explanation": "`HAVING` bekerja pada kelompok yang agregatnya sudah dihitung, sedangkan `WHERE` bekerja sebelumnya."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Tabel `penjualan` punya 10 baris, dan 3 di antaranya kolom `pembeli`-nya `NULL`. Apa hasil query ini?",
+          "code": "SELECT COUNT(*), COUNT(pembeli)\nFROM penjualan;",
+          "options": [
+            "10 dan 10",
+            "10 dan 7",
+            "7 dan 7",
+            "7 dan 10"
+          ],
+          "answer": 1,
+          "explanation": "`COUNT(*)` menghitung semua baris, sedangkan `COUNT(pembeli)` melewati nilai `NULL`."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Di MySQL 8 dengan pengaturan bawaan, `SELECT menu, pembeli, SUM(jumlah) FROM penjualan GROUP BY menu` ditolak.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Mode `ONLY_FULL_GROUP_BY` menolak kolom `pembeli` yang tidak dikelompokkan dan tidak diagregasi."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa hasil `IFNULL(NULL, 'Umum')`?",
+          "code": "",
+          "options": [
+            "NULL",
+            "0",
+            "Error",
+            "'Umum'"
+          ],
+          "answer": 3,
+          "explanation": "`IFNULL` mengembalikan nilai kedua bila nilai pertama `NULL`."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Rekap menu terlaris kantin",
+          "prompt": "Tabel `penjualan` berisi kolom `tanggal`, `menu`, `jumlah`, dan `harga` (harga satuan).\n\nTulis SQL di string `QUERY` yang menghasilkan tiga kolom per menu: `menu`, `terjual` (jumlah porsi), dan `omzet` (jumlah dari `jumlah * harga`).\n\n- Tampilkan hanya menu yang terjual **minimal 10 porsi**.\n- Urutkan dari `omzet` **terbesar**.",
+          "starter": {
+            "code": "# menu, terjual (total porsi), omzet (total jumlah * harga)\n# hanya menu dengan terjual >= 10, urut omzet terbesar\nQUERY = \"\"\"\nSELECT menu, SUM(jumlah) AS terjual\nFROM penjualan\n-- TODO: GROUP BY, HAVING, ORDER BY, dan kolom omzet\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT menu,\n       SUM(jumlah) AS terjual,\n       SUM(jumlah * harga) AS omzet\nFROM penjualan\nGROUP BY menu\nHAVING SUM(jumlah) >= 10\nORDER BY omzet DESC\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE penjualan (id INTEGER PRIMARY KEY, tanggal TEXT, menu TEXT, jumlah INTEGER, harga INTEGER);\n    INSERT INTO penjualan (tanggal, menu, jumlah, harga) VALUES\n      ('2026-11-02', 'Nasi goreng', 6, 12000),\n      ('2026-11-02', 'Es teh', 10, 3000),\n      ('2026-11-03', 'Nasi goreng', 5, 12000),\n      ('2026-11-03', 'Bakso', 4, 13000),\n      ('2026-11-04', 'Es teh', 8, 3000),\n      ('2026-11-04', 'Mie ayam', 12, 10000),\n      ('2026-11-05', 'Bakso', 3, 13000),\n      ('2026-11-05', 'Gorengan', 9, 1500);\n    \"\"\")\n    return c\n\ndef hasil():\n    return db().execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Satu baris per menu, tiga kolom",
+              "check": "all(len(r) == 3 for r in hasil()) and len({r[0] for r in hasil()}) == len(hasil())"
+            },
+            {
+              "name": "Menu di bawah 10 porsi tidak tampil",
+              "check": "{r[0] for r in hasil()} == {'Nasi goreng', 'Es teh', 'Mie ayam'}"
+            },
+            {
+              "name": "Omzet dihitung dari jumlah * harga",
+              "check": "('Nasi goreng', 11, 132000) in hasil()"
+            },
+            {
+              "name": "Urut dari omzet terbesar",
+              "check": "hasil() == [('Nasi goreng', 11, 132000), ('Mie ayam', 12, 120000), ('Es teh', 18, 54000)]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "relasi-dan-join",
+      "title": "Relasi dan JOIN",
+      "est_minutes": 35,
+      "slide_from": 16,
+      "slide_to": 19,
+      "body": "## Tujuan\n\n- Membuat primary key dan foreign key di tabel InnoDB, termasuk `ON DELETE CASCADE`.\n- Menggabungkan tabel dengan `INNER JOIN` dan `LEFT JOIN`.\n- Merancang relasi banyak ke banyak dengan tabel penghubung.\n\n## Kenapa data dipecah ke beberapa tabel\n\nBayangkan perpustakaan sekolah mencatat peminjaman di satu tabel saja: nama anggota, kelas, nomor HP, judul buku, penulis, dan tanggal pinjam ditulis ulang di setiap baris. Sari yang meminjam 15 kali punya 15 salinan nomor HP. Kalau nomornya berganti, kamu harus mengubah 15 baris, dan cukup satu terlewat untuk membuat data tidak konsisten.\n\nSolusinya adalah memecah data menjadi beberapa tabel yang **saling berelasi**: `anggota`, `buku`, dan `peminjaman`. Data anggota disimpan sekali, lalu tabel peminjaman cukup menyimpan **nomor id** anggota dan buku.\n\n## Primary key dan foreign key di InnoDB\n\n```sql\nCREATE TABLE anggota (\n  id    INT AUTO_INCREMENT PRIMARY KEY,\n  nama  VARCHAR(100) NOT NULL,\n  kelas VARCHAR(20)  NOT NULL\n);\n\nCREATE TABLE buku (\n  id     INT AUTO_INCREMENT PRIMARY KEY,\n  judul  VARCHAR(200) NOT NULL,\n  stok   INT NOT NULL DEFAULT 0\n);\n\nCREATE TABLE peminjaman (\n  id          INT AUTO_INCREMENT PRIMARY KEY,\n  anggota_id  INT NOT NULL,\n  buku_id     INT NOT NULL,\n  tgl_pinjam  DATE NOT NULL,\n  tgl_kembali DATE,\n  CONSTRAINT fk_pinjam_anggota FOREIGN KEY (anggota_id)\n    REFERENCES anggota (id) ON DELETE CASCADE,\n  CONSTRAINT fk_pinjam_buku FOREIGN KEY (buku_id)\n    REFERENCES buku (id)\n);\n```\n\n- **Primary key** (`id`) adalah pengenal unik setiap baris.\n- **Foreign key** (`anggota_id`, `buku_id`) adalah kolom yang menunjuk primary key di tabel lain.\n\nForeign key hanya ditegakkan oleh mesin **InnoDB**. Mesin lama MyISAM menerima perintahnya tapi diam-diam mengabaikannya. Di MySQL 8 InnoDB sudah bawaan, jadi aman. InnoDB juga otomatis membuat index pada kolom foreign key, yang nanti mempercepat `JOIN`.\n\nDengan foreign key, InnoDB menolak data yang tidak masuk akal:\n\n```sql\nINSERT INTO peminjaman (anggota_id, buku_id, tgl_pinjam)\nVALUES (999, 1, '2026-11-20');\n-- ERROR 1452: Cannot add or update a child row:\n-- a foreign key constraint fails\n```\n\nAnggota nomor 999 tidak ada, jadi peminjaman ditolak.\n\n### Apa yang terjadi saat induk dihapus\n\n| Opsi `ON DELETE` | Saat baris induk dihapus |\n| --- | --- |\n| tanpa opsi (`RESTRICT`) | penghapusan ditolak selama masih ada baris anak |\n| `CASCADE` | semua baris anak ikut terhapus |\n| `SET NULL` | kolom foreign key di anak diisi `NULL` |\n\nPada contoh di atas, menghapus anggota ikut menghapus riwayat peminjamannya (`CASCADE`), sedangkan buku yang masih punya riwayat pinjam tidak bisa dihapus. Pilih dengan sadar: untuk data keuangan, `CASCADE` bisa berbahaya karena riwayat ikut hilang.\n\nPerhatikan juga kata `CONSTRAINT fk_pinjam_anggota` di depan foreign key. Nama ini opsional, tapi sangat membantu. Pesan error akan menyebut nama itu, sehingga kamu langsung tahu aturan mana yang dilanggar. Nama itu juga dipakai saat ingin menghapus aturannya, misalnya `ALTER TABLE peminjaman DROP FOREIGN KEY fk_pinjam_anggota;`. Tanpa nama, MySQL membuat nama otomatis yang sulit diingat.\n\n## INNER JOIN\n\n`JOIN` menggabungkan baris dari beberapa tabel berdasarkan kolom yang berelasi. Tanpa kata tambahan, `JOIN` berarti `INNER JOIN`: hanya baris yang **punya pasangan** di kedua tabel yang tampil.\n\n```sql\nSELECT a.nama, a.kelas, b.judul, p.tgl_pinjam\nFROM peminjaman AS p\nJOIN anggota AS a ON a.id = p.anggota_id\nJOIN buku    AS b ON b.id = p.buku_id\nWHERE p.tgl_kembali IS NULL\nORDER BY p.tgl_pinjam;\n```\n\nQuery ini menampilkan buku yang belum dikembalikan beserta nama peminjamnya. Alias `p`, `a`, dan `b` membuat query lebih pendek, dan menulis `a.nama` alih-alih `nama` mencegah kebingungan bila dua tabel punya kolom bernama sama.\n\n![INNER JOIN hanya menampilkan baris yang berpasangan](slide:17)\n\n## LEFT JOIN\n\nBagaimana kalau pustakawan ingin daftar **semua** anggota beserta jumlah pinjamannya, termasuk anggota yang belum pernah meminjam? `INNER JOIN` tidak cocok, karena anggota tanpa peminjaman tidak punya pasangan dan akan hilang. Gunakan `LEFT JOIN`:\n\n```sql\nSELECT a.nama, COUNT(p.id) AS jumlah_pinjam\nFROM anggota AS a\nLEFT JOIN peminjaman AS p ON p.anggota_id = a.id\nGROUP BY a.id, a.nama\nORDER BY jumlah_pinjam DESC, a.nama;\n```\n\n`LEFT JOIN` mempertahankan semua baris tabel kiri (`anggota`). Bila tidak ada pasangan, kolom dari tabel kanan berisi `NULL`. Karena `COUNT(p.id)` mengabaikan `NULL`, anggota yang belum pernah meminjam mendapat angka 0. Jangan pakai `COUNT(*)` di sini, karena baris berisi `NULL` itu tetap dihitung satu.\n\nPola `LEFT JOIN ... WHERE kanan.id IS NULL` juga sering dipakai untuk mencari \"yang belum pernah\":\n\n```sql\nSELECT b.judul\nFROM buku AS b\nLEFT JOIN peminjaman AS p ON p.buku_id = b.id\nWHERE p.id IS NULL;\n```\n\nHasilnya adalah buku yang belum pernah dipinjam sama sekali, cocok untuk bahan promosi di mading.\n\nMySQL juga punya `RIGHT JOIN`, kebalikan dari `LEFT JOIN`. Dalam praktik, kebanyakan programmer cukup menukar urutan tabel dan tetap memakai `LEFT JOIN` supaya mudah dibaca.\n\n## Relasi banyak ke banyak\n\nSatu siswa bisa ikut beberapa ekskul, dan satu ekskul punya banyak siswa. Relasi seperti ini tidak bisa disimpan dengan satu foreign key saja. Jawabannya adalah **tabel penghubung**:\n\n```sql\nCREATE TABLE ekskul (\n  id   INT AUTO_INCREMENT PRIMARY KEY,\n  nama VARCHAR(50) NOT NULL UNIQUE\n);\n\nCREATE TABLE siswa_ekskul (\n  siswa_id  INT NOT NULL,\n  ekskul_id INT NOT NULL,\n  PRIMARY KEY (siswa_id, ekskul_id),\n  FOREIGN KEY (siswa_id)  REFERENCES siswa (id)  ON DELETE CASCADE,\n  FOREIGN KEY (ekskul_id) REFERENCES ekskul (id) ON DELETE CASCADE\n);\n```\n\nSetiap baris `siswa_ekskul` berarti \"siswa ini ikut ekskul itu\". Primary key gabungan `(siswa_id, ekskul_id)` mencegah pasangan yang sama tercatat dua kali. Untuk mengambil daftar anggota ekskul Robotik, lakukan dua kali `JOIN` lewat tabel penghubung:\n\n```sql\nSELECT s.nama\nFROM siswa AS s\nJOIN siswa_ekskul AS se ON se.siswa_id = s.id\nJOIN ekskul       AS e  ON e.id = se.ekskul_id\nWHERE e.nama = 'Robotik'\nORDER BY s.nama;\n```\n\nPola yang sama berlaku untuk banyak kasus lain: produk dan kategori di toko online, guru dan mata pelajaran, atau buku dan penulis.\n\nDi SQLite yang dipakai latihan, foreign key baru ditegakkan setelah `PRAGMA foreign_keys = ON`. Perintah `JOIN` sendiri ditulis sama persis dengan MySQL.\n\n## Rangkuman\n\n- Pecah data ke beberapa tabel agar tidak ada salinan berulang, lalu hubungkan dengan primary key dan foreign key.\n- InnoDB menegakkan foreign key; `ON DELETE CASCADE` ikut menghapus baris anak, bawaannya menolak penghapusan.\n- `INNER JOIN` hanya menampilkan baris yang berpasangan; `LEFT JOIN` mempertahankan semua baris tabel kiri.\n- Pakai `COUNT(kolom_kanan)` bersama `LEFT JOIN` agar yang tidak punya pasangan mendapat 0.\n- Relasi banyak ke banyak memakai tabel penghubung dengan dua foreign key dan primary key gabungan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Mesin penyimpanan MySQL mana yang benar-benar menegakkan foreign key?",
+          "code": "",
+          "options": [
+            "MyISAM",
+            "MEMORY",
+            "CSV",
+            "InnoDB"
+          ],
+          "answer": 3,
+          "explanation": "InnoDB menegakkan foreign key, sedangkan MyISAM menerima perintahnya tapi mengabaikannya."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Ada 4 anggota, dan 1 di antaranya belum pernah meminjam. Berapa baris yang dihasilkan query ini?",
+          "code": "SELECT a.nama, COUNT(p.id)\nFROM anggota a\nLEFT JOIN peminjaman p\n  ON p.anggota_id = a.id\nGROUP BY a.id, a.nama;",
+          "options": [
+            "3 baris",
+            "4 baris",
+            "1 baris",
+            "Sebanyak jumlah peminjaman"
+          ],
+          "answer": 1,
+          "explanation": "`LEFT JOIN` mempertahankan semua anggota, dan yang belum meminjam tampil dengan hitungan 0."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan `ON DELETE CASCADE`, menghapus satu anggota ikut menghapus semua baris peminjamannya.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "`CASCADE` meneruskan penghapusan dari baris induk ke semua baris anak yang merujuknya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana cara menyimpan relasi siswa dan ekskul yang banyak ke banyak?",
+          "code": "",
+          "options": [
+            "Menambah kolom ekskul_id di tabel siswa",
+            "Menyimpan daftar ekskul dipisah koma di satu kolom teks pada tabel siswa",
+            "Membuat tabel penghubung berisi siswa_id dan ekskul_id",
+            "Menggabungkan tabel siswa dan ekskul menjadi satu"
+          ],
+          "answer": 2,
+          "explanation": "Tabel penghubung dengan dua foreign key mencatat setiap pasangan siswa dan ekskul sebagai satu baris."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Jumlah pinjaman semua anggota",
+          "prompt": "Tabel `anggota` (`id`, `nama`) dan `peminjaman` (`id`, `anggota_id`, `judul`) sudah tersedia.\n\nTulis SQL di string `QUERY` yang menampilkan `nama` dan jumlah peminjaman setiap anggota, **termasuk anggota yang belum pernah meminjam** (jumlahnya 0). Urutkan dari jumlah **terbanyak**, lalu nama dari A ke Z.",
+          "starter": {
+            "code": "# nama dan jumlah pinjaman semua anggota (yang belum pernah: 0)\n# urut jumlah terbanyak, lalu nama A-Z\nQUERY = \"\"\"\nSELECT a.nama, COUNT(p.id) AS jumlah\nFROM anggota AS a\nJOIN peminjaman AS p ON p.anggota_id = a.id\n-- TODO: pastikan anggota tanpa pinjaman ikut, lalu GROUP BY dan ORDER BY\nGROUP BY a.id, a.nama\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT a.nama, COUNT(p.id) AS jumlah\nFROM anggota AS a\nLEFT JOIN peminjaman AS p ON p.anggota_id = a.id\nGROUP BY a.id, a.nama\nORDER BY jumlah DESC, a.nama\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE anggota (id INTEGER PRIMARY KEY, nama TEXT);\n    CREATE TABLE peminjaman (id INTEGER PRIMARY KEY, anggota_id INTEGER REFERENCES anggota (id), judul TEXT);\n    INSERT INTO anggota (nama) VALUES ('Sari'), ('Budi'), ('Dewi'), ('Agus');\n    INSERT INTO peminjaman (anggota_id, judul) VALUES\n      (1, 'Laskar Pelangi'), (1, 'Bumi'), (1, 'Dilan'),\n      (2, 'Bumi'), (4, 'Negeri 5 Menara'), (2, 'Hujan');\n    \"\"\")\n    return c\n\ndef hasil():\n    return db().execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Semua 4 anggota tampil",
+              "check": "len(hasil()) == 4"
+            },
+            {
+              "name": "Anggota tanpa pinjaman bernilai 0",
+              "check": "('Dewi', 0) in hasil()"
+            },
+            {
+              "name": "Jumlah pinjaman Sari benar",
+              "check": "('Sari', 3) in hasil()"
+            },
+            {
+              "name": "Urut jumlah terbanyak lalu nama",
+              "check": "hasil() == [('Sari', 3), ('Budi', 2), ('Agus', 1), ('Dewi', 0)]"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Anggota ekskul Robotik",
+          "prompt": "Tabel `siswa` (`id`, `nama`), `ekskul` (`id`, `nama`), dan tabel penghubung `siswa_ekskul` (`siswa_id`, `ekskul_id`) sudah tersedia.\n\nTulis SQL di string `QUERY` yang menampilkan **nama siswa** yang ikut ekskul bernama `'Robotik'`, urut nama dari A ke Z. Jangan menulis id ekskul secara langsung; saring lewat nama ekskul.",
+          "starter": {
+            "code": "# nama siswa yang ikut ekskul 'Robotik', urut A-Z\nQUERY = \"\"\"\nSELECT s.nama\nFROM siswa AS s\n-- TODO: JOIN ke siswa_ekskul dan ekskul, saring nama ekskul\nORDER BY s.nama\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT s.nama\nFROM siswa AS s\nJOIN siswa_ekskul AS se ON se.siswa_id = s.id\nJOIN ekskul AS e ON e.id = se.ekskul_id\nWHERE e.nama = 'Robotik'\nORDER BY s.nama\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef db():\n    c = sqlite3.connect(\":memory:\")\n    c.executescript(\"\"\"\n    CREATE TABLE siswa (id INTEGER PRIMARY KEY, nama TEXT);\n    CREATE TABLE ekskul (id INTEGER PRIMARY KEY, nama TEXT);\n    CREATE TABLE siswa_ekskul (siswa_id INTEGER, ekskul_id INTEGER, PRIMARY KEY (siswa_id, ekskul_id));\n    INSERT INTO siswa (nama) VALUES ('Rina'), ('Andi'), ('Bayu'), ('Citra'), ('Doni');\n    INSERT INTO ekskul (nama) VALUES ('Robotik'), ('Futsal'), ('Paskibra');\n    INSERT INTO siswa_ekskul VALUES (1, 1), (2, 2), (3, 1), (3, 2), (4, 3), (5, 1);\n    \"\"\")\n    return c\n\ndef hasil():\n    return db().execute(QUERY).fetchall()\n",
+          "tests": [
+            {
+              "name": "Siswa yang tidak ikut Robotik tidak tampil",
+              "check": "all(n not in [r[0] for r in hasil()] for n in ('Andi', 'Citra'))"
+            },
+            {
+              "name": "Siswa yang ikut dua ekskul tetap tampil sekali",
+              "check": "[r[0] for r in hasil()].count('Bayu') == 1"
+            },
+            {
+              "name": "Daftar lengkap dan urut A-Z",
+              "check": "hasil() == [('Bayu',), ('Doni',), ('Rina',)]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "index-dan-explain",
+      "title": "Index dan EXPLAIN",
+      "est_minutes": 30,
+      "slide_from": 20,
+      "slide_to": 22,
+      "body": "## Tujuan\n\n- Memahami cara index B-tree mempercepat pencarian data di InnoDB.\n- Membuat index tunggal dan index gabungan, lalu memilih urutan kolomnya.\n- Membaca hasil `EXPLAIN` dan memakai slow query log untuk menemukan query lambat.\n- Mengenali kondisi yang membuat index tidak dipakai.\n\n## Kenapa query bisa lambat\n\nBayangkan tabel `peminjaman` di perpustakaan sekolah. Tahun pertama isinya baru ratusan baris, jadi query apa pun terasa instan. Lima tahun kemudian isinya sudah ratusan ribu baris, dan halaman \"riwayat pinjam saya\" mulai butuh beberapa detik untuk terbuka. Query-nya tidak berubah, datanya yang tumbuh.\n\nTanpa index, MySQL mencari data dengan cara paling polos: membaca **setiap baris** dari awal sampai akhir lalu memeriksa apakah baris itu cocok dengan `WHERE`. Cara ini disebut *full table scan*. Untuk 100 baris tidak masalah, untuk 500.000 baris sangat boros.\n\n## Index itu seperti daftar isi\n\nIndex adalah struktur data tambahan yang menyimpan nilai sebuah kolom dalam keadaan **terurut**, lengkap dengan penunjuk ke baris aslinya. Mirip katalog di perpustakaan: kamu tidak menyusuri seluruh rak untuk mencari buku karya Tere Liye, cukup buka katalog bagian huruf T.\n\nInnoDB menyimpan index dalam bentuk **B-tree** (tepatnya B+tree). Pohon ini lebar dan pendek, jadi untuk jutaan baris pun MySQL hanya perlu melompat tiga atau empat tingkat untuk sampai ke data yang dicari. Karena terurut, B-tree juga cepat untuk pencarian rentang seperti `BETWEEN` dan untuk `ORDER BY`.\n\nAda dua jenis index di InnoDB yang perlu kamu tahu:\n\n- **Clustered index**: dibentuk dari primary key. Baris tabel benar-benar disimpan berurutan menurut primary key, jadi mencari lewat `id` selalu cepat.\n- **Secondary index**: index lain yang kamu buat sendiri. Isinya nilai kolom plus primary key baris itu, lalu MySQL memakai primary key tersebut untuk mengambil baris lengkapnya.\n\n## Membuat index\n\n```sql\nCREATE INDEX idx_peminjaman_anggota ON peminjaman (anggota_id);\n\n-- melihat index yang ada di sebuah tabel\nSHOW INDEX FROM peminjaman;\n\n-- menghapus index\nDROP INDEX idx_peminjaman_anggota ON peminjaman;\n```\n\nBeri nama yang jelas, misalnya `idx_<tabel>_<kolom>`, supaya mudah dikenali saat membaca `EXPLAIN`. Kolom `UNIQUE` dan primary key otomatis punya index. Di InnoDB, kolom foreign key juga otomatis diberi index bila belum ada.\n\nIndex punya harga. Setiap `INSERT`, `UPDATE`, dan `DELETE` harus ikut memperbarui semua index di tabel itu, dan index memakan ruang disk. Jadi jangan memberi index ke semua kolom. Beri index pada kolom yang sering muncul di `WHERE`, `JOIN ... ON`, dan `ORDER BY`.\n\n## Index gabungan\n\nIndex bisa berisi lebih dari satu kolom. Misalnya laporan absensi sering mencari \"siswa kelas tertentu pada tanggal tertentu\":\n\n```sql\nCREATE INDEX idx_absensi_kelas_tanggal ON absensi (kelas, tanggal);\n```\n\nIndex gabungan diurutkan menurut kolom pertama, lalu kolom kedua di dalamnya, persis seperti buku telepon yang diurutkan menurut nama belakang lalu nama depan. Akibatnya berlaku **aturan prefiks kiri**:\n\n- `WHERE kelas = 'XI RPL 1'` memakai index.\n- `WHERE kelas = 'XI RPL 1' AND tanggal = '2026-03-02'` memakai index sepenuhnya.\n- `WHERE tanggal = '2026-03-02'` saja **tidak** bisa memakai index ini dengan efisien, karena tanggal bukan kolom paling kiri.\n\nTaruh kolom yang dibandingkan dengan `=` di depan, kolom rentang (`>`, `<`, `BETWEEN`) di belakang.\n\n## Membaca EXPLAIN\n\nTulis `EXPLAIN` di depan query untuk melihat rencana MySQL tanpa menjalankannya.\n\n![Kolom penting di hasil EXPLAIN](slide:21)\n\n```sql\nEXPLAIN SELECT * FROM peminjaman WHERE anggota_id = 42;\n```\n\nKolom yang paling sering kamu baca:\n\n- `type`: cara mengakses tabel. Dari yang terburuk: `ALL` (full table scan), `index` (membaca seluruh index), `range` (rentang), `ref` (cocok lewat index), `eq_ref` dan `const` (paling cepat, satu baris).\n- `possible_keys`: index yang mungkin dipakai.\n- `key`: index yang **benar-benar** dipilih. `NULL` artinya tidak ada index yang dipakai.\n- `rows`: perkiraan jumlah baris yang harus diperiksa. Makin kecil makin baik.\n- `Extra`: catatan tambahan. `Using filesort` berarti MySQL mengurutkan secara manual, `Using index` berarti semua data cukup diambil dari index.\n\nSebelum index dibuat, query di atas biasanya menunjukkan `type = ALL` dan `rows` mendekati jumlah seluruh baris. Setelah index dibuat, `type` berubah menjadi `ref` dan `key` berisi `idx_peminjaman_anggota`.\n\nDi MySQL 8 ada juga `EXPLAIN ANALYZE` yang benar-benar menjalankan query lalu melaporkan waktu dan jumlah baris sebenarnya. Hati-hati memakainya pada `UPDATE` atau `DELETE`, karena query itu ikut dijalankan.\n\n## Mencari query lambat dengan slow query log\n\nDi aplikasi nyata kamu sering tidak tahu query mana yang lambat. MySQL bisa mencatatnya ke **slow query log**:\n\n```sql\nSET GLOBAL slow_query_log = ON;\nSET GLOBAL long_query_time = 1;   -- catat query yang lebih dari 1 detik\nSHOW VARIABLES LIKE 'slow_query_log_file';\n```\n\nSetelah aplikasi berjalan sebentar, ringkas isi log dengan alat bawaan:\n\n```bash\nmysqldumpslow -s t /var/lib/mysql/nama-host-slow.log\n```\n\nHasilnya mengelompokkan query serupa dan mengurutkannya menurut total waktu. Ambil query teratas, jalankan `EXPLAIN`, lalu putuskan index apa yang dibutuhkan.\n\n## Kapan index tidak membantu\n\nIndex sudah ada, tetapi `key` di `EXPLAIN` tetap `NULL`. Penyebab yang paling sering:\n\n1. **Kolom dibungkus fungsi.** `WHERE YEAR(tanggal) = 2026` memaksa MySQL menghitung `YEAR()` untuk setiap baris. Tulis ulang sebagai rentang: `WHERE tanggal >= '2026-01-01' AND tanggal < '2027-01-01'`.\n2. **LIKE dengan wildcard di depan.** `LIKE 'Bu%'` bisa memakai index, `LIKE '%mi'` tidak, karena awal teksnya tidak diketahui.\n3. **Tipe data tidak cocok.** Kolom `nis` bertipe `VARCHAR` dibandingkan dengan angka `WHERE nis = 12345` membuat MySQL mengubah tipe setiap baris. Pakai `'12345'`.\n4. **Melanggar prefiks kiri** pada index gabungan.\n5. **Hasilnya terlalu banyak.** Bila kondisi cocok dengan sebagian besar tabel, misalnya `WHERE aktif = 1` dan 95% siswa aktif, membaca seluruh tabel justru lebih murah dan MySQL sengaja mengabaikan index.\n6. **Tabel masih kecil.** Untuk puluhan baris, full scan sudah sangat cepat.\n\nCatatan untuk latihan: browser tidak bisa menjalankan server MySQL, jadi latihan memakai SQLite. Perintah `CREATE INDEX` sama persis, sedangkan pengganti `EXPLAIN` di SQLite adalah `EXPLAIN QUERY PLAN` yang menulis `SCAN` untuk full scan dan `SEARCH ... USING INDEX` bila index dipakai.\n\n## Rangkuman\n\n- Tanpa index, MySQL membaca seluruh tabel. Index B-tree menyimpan nilai terurut sehingga pencarian cukup beberapa lompatan.\n- Primary key menjadi clustered index. Index lain dibuat dengan `CREATE INDEX` dan sebaiknya hanya untuk kolom yang sering dicari, digabung, atau diurutkan.\n- Index gabungan mengikuti aturan prefiks kiri, jadi urutan kolom penting.\n- `EXPLAIN` menunjukkan `type`, `key`, dan `rows`. `type = ALL` dengan `key = NULL` adalah tanda bahaya.\n- Fungsi pada kolom, `LIKE '%...'`, dan tipe yang tidak cocok membuat index tidak terpakai.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Di hasil `EXPLAIN`, kombinasi mana yang menandakan full table scan?",
+          "code": "",
+          "options": [
+            "type = const, key = PRIMARY",
+            "type = ref, key = idx_anggota",
+            "type = ALL, key = NULL",
+            "type = range, rows = 12"
+          ],
+          "answer": 2,
+          "explanation": "type ALL berarti seluruh baris dibaca, dan key NULL berarti tidak ada index yang dipilih."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Ada index gabungan `(kelas, tanggal)`. Kondisi mana yang TIDAK bisa memakai index itu dengan efisien?",
+          "code": "",
+          "options": [
+            "WHERE tanggal = '2026-03-02'",
+            "WHERE kelas = 'XI RPL 1'",
+            "WHERE kelas = 'XI RPL 1' AND tanggal = '2026-03-02'",
+            "WHERE kelas = 'X TKJ' AND tanggal > '2026-03-01'"
+          ],
+          "answer": 0,
+          "explanation": "Index gabungan mengikuti aturan prefiks kiri; tanpa kolom kelas, urutan index tidak bisa dimanfaatkan."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Index pada kolom `judul` sudah ada. Query mana yang bisa memakainya?",
+          "code": "-- 1\nSELECT * FROM buku WHERE judul LIKE 'Laskar%';\n-- 2\nSELECT * FROM buku WHERE judul LIKE '%Pelangi';",
+          "options": [
+            "Hanya query nomor 2",
+            "Hanya query nomor 1",
+            "Keduanya",
+            "Tidak ada"
+          ],
+          "answer": 1,
+          "explanation": "LIKE dengan awalan tetap bisa memakai B-tree, sedangkan wildcard di depan membuat awal teks tidak diketahui."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menambah index ke semua kolom selalu membuat database lebih cepat.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Setiap index harus diperbarui saat INSERT, UPDATE, dan DELETE serta memakan ruang, jadi index berlebihan memperlambat penulisan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Index untuk riwayat pinjam anggota",
+          "prompt": "Halaman \"riwayat pinjam saya\" menjalankan `SELECT * FROM peminjaman WHERE anggota_id = ?` dan mulai lambat.\n\nIsi `INDEX_SQL` dengan perintah `CREATE INDEX` bernama `idx_peminjaman_anggota` pada kolom `anggota_id`. Perintahnya sama di MySQL dan SQLite. Pemeriksa memakai `EXPLAIN QUERY PLAN` milik SQLite untuk memastikan query tidak lagi melakukan `SCAN` seluruh tabel.",
+          "starter": {
+            "code": "# Buat index bernama idx_peminjaman_anggota pada kolom anggota_id\n# di tabel peminjaman.\nINDEX_SQL = \"\"\"\n-- TODO: tulis CREATE INDEX di sini\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "INDEX_SQL = \"\"\"\nCREATE INDEX idx_peminjaman_anggota ON peminjaman (anggota_id);\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef siapkan():\n    d = sqlite3.connect(\":memory:\")\n    d.executescript(\"\"\"\n    CREATE TABLE peminjaman (id INTEGER PRIMARY KEY, anggota_id INTEGER, buku_id INTEGER, tanggal TEXT);\n    \"\"\")\n    d.executemany(\"INSERT INTO peminjaman (anggota_id, buku_id, tanggal) VALUES (?, ?, ?)\",\n                  [(i % 50, i % 30, '2026-03-01') for i in range(500)])\n    d.executescript(INDEX_SQL)\n    return d\n\ndef rencana(sql):\n    d = siapkan()\n    return \" \".join(r[3] for r in d.execute(\"EXPLAIN QUERY PLAN \" + sql))\n\ndef kolom_index():\n    d = siapkan()\n    hasil = []\n    for nama, in d.execute(\"SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'peminjaman'\"):\n        hasil.append([r[2] for r in d.execute(f\"PRAGMA index_info('{nama}')\")])\n    return hasil\n",
+          "tests": [
+            {
+              "name": "Query per anggota memakai index",
+              "check": "'USING INDEX' in rencana('SELECT * FROM peminjaman WHERE anggota_id = 7') or 'USING COVERING INDEX' in rencana('SELECT * FROM peminjaman WHERE anggota_id = 7')"
+            },
+            {
+              "name": "Index berisi kolom anggota_id",
+              "check": "['anggota_id'] in kolom_index()"
+            },
+            {
+              "name": "Index bernama idx_peminjaman_anggota",
+              "check": "'idx_peminjaman_anggota' in rencana('SELECT * FROM peminjaman WHERE anggota_id = 7')"
+            },
+            {
+              "name": "Data tabel tidak berubah",
+              "check": "siapkan().execute('SELECT COUNT(*) FROM peminjaman').fetchone()[0] == 500"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Query bulanan yang ramah index",
+          "prompt": "Tabel `absensi` sudah punya index pada kolom `tanggal`. Query di kode awal mengambil absensi bulan Maret 2026, tetapi kolomnya dibungkus fungsi `substr()` (setara `DATE_FORMAT(tanggal, '%Y-%m')` di MySQL), sehingga index diabaikan.\n\nTulis ulang `QUERY` memakai **rentang tanggal** (`tanggal >= ... AND tanggal < ...`) tanpa fungsi di kolom. Tampilkan `siswa`, `tanggal`, `status`, urut menurut `tanggal` lalu `siswa`.",
+          "starter": {
+            "code": "# Ambil absensi Maret 2026 tanpa membungkus kolom tanggal dengan fungsi,\n# supaya index idx_absensi_tanggal bisa dipakai.\nQUERY = \"\"\"\nSELECT siswa, tanggal, status\nFROM absensi\nWHERE substr(tanggal, 1, 7) = '2026-03'   -- TODO: ganti dengan rentang\nORDER BY tanggal, siswa\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "QUERY = \"\"\"\nSELECT siswa, tanggal, status\nFROM absensi\nWHERE tanggal >= '2026-03-01' AND tanggal < '2026-04-01'\nORDER BY tanggal, siswa\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE absensi (id INTEGER PRIMARY KEY, siswa TEXT, tanggal TEXT, status TEXT);\nCREATE INDEX idx_absensi_tanggal ON absensi (tanggal);\nINSERT INTO absensi (siswa, tanggal, status) VALUES\n  ('Andi', '2026-02-27', 'hadir'), ('Bunga', '2026-02-28', 'izin'),\n  ('Andi', '2026-03-02', 'hadir'), ('Bunga', '2026-03-02', 'sakit'),\n  ('Citra', '2026-03-15', 'hadir'), ('Andi', '2026-03-31', 'alpa'),\n  ('Citra', '2026-04-01', 'hadir');\n\"\"\")\n\ndef hasil():\n    return db.execute(QUERY).fetchall()\n\ndef rencana():\n    return \" \".join(r[3] for r in db.execute(\"EXPLAIN QUERY PLAN \" + QUERY))\n",
+          "tests": [
+            {
+              "name": "Hasil Maret 2026 benar dan berurutan",
+              "check": "hasil() == [('Andi', '2026-03-02', 'hadir'), ('Bunga', '2026-03-02', 'sakit'), ('Citra', '2026-03-15', 'hadir'), ('Andi', '2026-03-31', 'alpa')]"
+            },
+            {
+              "name": "Tanggal 1 April tidak ikut",
+              "check": "all(r[1] < '2026-04-01' for r in hasil())"
+            },
+            {
+              "name": "Index tanggal dipakai",
+              "check": "'idx_absensi_tanggal' in rencana()"
+            },
+            {
+              "name": "Kolom tanggal tidak dibungkus fungsi",
+              "check": "'substr' not in QUERY.lower()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "transaksi-dan-innodb",
+      "title": "Transaksi dan InnoDB",
+      "est_minutes": 30,
+      "slide_from": 23,
+      "slide_to": 25,
+      "body": "## Tujuan\n\n- Menjelaskan empat sifat ACID dengan contoh sehari-hari.\n- Memakai `START TRANSACTION`, `COMMIT`, dan `ROLLBACK`, serta memahami autocommit.\n- Mengenal isolation level di InnoDB dan masalah yang dicegahnya.\n- Memakai lock baris dengan `SELECT ... FOR UPDATE` dan mengenali deadlock.\n\n## Masalah: setengah pekerjaan\n\nKantin sekolahmu memakai kartu saldo. Saat Andi membeli nasi goreng Rp15.000, aplikasi melakukan dua langkah:\n\n1. Mencatat pembelian di tabel `pembelian`.\n2. Mengurangi saldo Andi di tabel `saldo`.\n\nBagaimana kalau listrik padam tepat di antara langkah 1 dan 2? Pembelian tercatat, tetapi saldo tidak berkurang. Atau sebaliknya, saldo terpotong tanpa catatan. Data jadi tidak bisa dipercaya. **Transaksi** menyelesaikan masalah ini: sekumpulan perintah diperlakukan sebagai satu kesatuan, semuanya berhasil atau semuanya batal.\n\nDi MySQL, transaksi disediakan oleh storage engine **InnoDB**, yang menjadi bawaan sejak MySQL 5.5. Engine lama MyISAM tidak mendukung transaksi sama sekali, jadi pastikan tabelmu memakai InnoDB (cek dengan `SHOW TABLE STATUS`).\n\n## ACID\n\nEmpat sifat yang dijamin transaksi:\n\n- **Atomicity**: semua atau tidak sama sekali. Pembelian dan potong saldo terjadi bersama atau batal bersama.\n- **Consistency**: aturan database (foreign key, `CHECK`, `UNIQUE`) tetap terpenuhi setelah transaksi selesai. Saldo tidak boleh minus.\n- **Isolation**: transaksi yang berjalan bersamaan tidak saling mengacaukan. Dua kasir yang melayani Andi di saat yang sama tidak boleh sama-sama melihat saldo lama.\n- **Durability**: begitu `COMMIT` berhasil, data aman walau server mati sesudahnya. InnoDB menulis redo log ke disk lebih dulu untuk menjamin ini.\n\n## START TRANSACTION, COMMIT, ROLLBACK\n\n![Alur COMMIT dan ROLLBACK](slide:24)\n\n```sql\nSTART TRANSACTION;\n\nINSERT INTO pembelian (siswa_id, menu, total) VALUES (7, 'Nasi goreng', 15000);\nUPDATE saldo SET saldo = saldo - 15000 WHERE siswa_id = 7;\n\nCOMMIT;\n```\n\nSebelum `COMMIT`, perubahan hanya terlihat oleh koneksimu sendiri. Bila di tengah jalan ada yang salah, misalnya saldo ternyata kurang, batalkan semuanya:\n\n```sql\nROLLBACK;\n```\n\nSemua perubahan sejak `START TRANSACTION` dibuang, seolah tidak pernah terjadi. `BEGIN` adalah nama lain `START TRANSACTION` di MySQL.\n\nKamu juga bisa membuat titik simpan di tengah transaksi:\n\n```sql\nSTART TRANSACTION;\nINSERT INTO pembelian (siswa_id, menu, total) VALUES (7, 'Es teh', 4000);\nSAVEPOINT sesudah_es_teh;\nINSERT INTO pembelian (siswa_id, menu, total) VALUES (7, 'Martabak', 25000);\nROLLBACK TO SAVEPOINT sesudah_es_teh;   -- martabak batal, es teh tetap\nCOMMIT;\n```\n\n## Autocommit\n\nSelama ini kamu menjalankan `INSERT` tanpa `START TRANSACTION`, dan datanya tetap tersimpan. Itu karena MySQL secara bawaan memakai **autocommit**: setiap perintah tunggal otomatis menjadi transaksi kecil yang langsung di-commit.\n\n```sql\nSELECT @@autocommit;   -- 1 artinya menyala\nSET autocommit = 0;    -- matikan untuk sesi ini\n```\n\nDengan autocommit mati, semua perintah menumpuk dalam satu transaksi sampai kamu menulis `COMMIT` atau `ROLLBACK`. Ini sering menjebak pemula: data tampak tersimpan di jendela sendiri, tetapi aplikasi lain tidak melihatnya karena belum di-commit. Cara yang lebih aman adalah membiarkan autocommit menyala dan memakai `START TRANSACTION` hanya ketika butuh beberapa perintah sekaligus.\n\nPerlu diingat, perintah DDL seperti `CREATE TABLE`, `ALTER TABLE`, dan `DROP TABLE` melakukan **commit implisit**. Perintah itu tidak bisa di-rollback dan juga ikut meng-commit transaksi yang sedang terbuka.\n\n## Isolation level\n\nSaat banyak transaksi berjalan bersamaan, ada beberapa gangguan yang bisa terjadi:\n\n- **Dirty read**: membaca data yang belum di-commit transaksi lain, lalu ternyata transaksi itu di-rollback.\n- **Non-repeatable read**: membaca baris yang sama dua kali dalam satu transaksi dan hasilnya berbeda karena transaksi lain sudah mengubahnya.\n- **Phantom read**: menjalankan query yang sama dua kali dan jumlah barisnya bertambah karena ada sisipan baru.\n\nSQL menyediakan empat isolation level, dari yang paling longgar: `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, dan `SERIALIZABLE`. Bawaan InnoDB adalah **REPEATABLE READ**: selama satu transaksi, kamu melihat potret data yang konsisten sejak pembacaan pertama.\n\n```sql\nSELECT @@transaction_isolation;\nSET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;\n```\n\nUntuk sebagian besar aplikasi, bawaan ini sudah cukup. Ubah hanya kalau kamu paham alasannya.\n\n## Lock dan SELECT ... FOR UPDATE\n\nPotret data yang konsisten belum mencegah satu masalah klasik. Bayangkan dua kasir membaca saldo Andi Rp20.000 secara bersamaan, lalu masing-masing menjual makanan Rp15.000. Keduanya merasa saldonya cukup, dan saldo akhirnya minus.\n\nSolusinya: kunci baris saat membacanya.\n\n```sql\nSTART TRANSACTION;\nSELECT saldo FROM saldo WHERE siswa_id = 7 FOR UPDATE;\n-- aplikasi memeriksa saldo cukup\nUPDATE saldo SET saldo = saldo - 15000 WHERE siswa_id = 7;\nCOMMIT;\n```\n\n`FOR UPDATE` memasang **lock baris** (row lock). Kasir kedua yang menjalankan query yang sama harus menunggu sampai kasir pertama selesai, lalu membaca saldo yang sudah berkurang. InnoDB hanya mengunci baris yang tersentuh, bukan seluruh tabel, sehingga transaksi lain untuk siswa lain tetap lancar. Supaya lock benar-benar hanya mengenai baris itu, kolom di `WHERE` sebaiknya ber-index.\n\nAda dua hal yang perlu kamu waspadai:\n\n- **Lock wait timeout**: bila menunggu lebih lama dari `innodb_lock_wait_timeout` (bawaan 50 detik), query gagal dengan error 1205.\n- **Deadlock**: transaksi A mengunci baris 1 lalu menunggu baris 2, sementara transaksi B mengunci baris 2 lalu menunggu baris 1. InnoDB mendeteksinya, membatalkan salah satu transaksi dengan error 1213, dan aplikasi cukup mengulang transaksi itu.\n\nTips mengurangi masalah lock: buat transaksi sesingkat mungkin, jangan menunggu input pengguna di tengah transaksi, dan akses tabel dengan urutan yang sama di seluruh aplikasi.\n\n## Contoh lengkap: saldo kantin yang aman\n\nGabungkan semuanya menjadi satu alur yang biasa dipakai aplikasi kasir:\n\n```sql\nSTART TRANSACTION;\nSELECT saldo FROM saldo WHERE siswa_id = 7 FOR UPDATE;\n-- bila saldo < 15000, aplikasi menjalankan ROLLBACK dan berhenti\nINSERT INTO pembelian (siswa_id, menu, total) VALUES (7, 'Nasi goreng', 15000);\nUPDATE saldo SET saldo = saldo - 15000 WHERE siswa_id = 7;\nCOMMIT;\n```\n\nUrutannya penting. Baris saldo dikunci lebih dulu, jadi tidak ada kasir lain yang bisa menyelinap di tengah. Pemeriksaan saldo dilakukan setelah lock didapat, sehingga angka yang diperiksa adalah angka terbaru. Terakhir, pencatatan dan pemotongan di-commit bersama.\n\nSebagai pengaman tambahan, beri tabel aturan `CHECK (saldo >= 0)`. MySQL 8 menegakkan `CHECK`, jadi bila logika aplikasi keliru, database tetap menolak saldo minus dan transaksi bisa di-rollback. Aturan di database dan pemeriksaan di aplikasi saling melengkapi.\n\n## Catatan untuk latihan\n\nLatihan berjalan di SQLite. Di sana perintah pembukanya `BEGIN`, bukan `START TRANSACTION`, sedangkan `COMMIT` dan `ROLLBACK` sama. Koneksi latihan dibuat dalam mode autocommit seperti MySQL, jadi kamu yang menentukan kapan transaksi dimulai dan diakhiri.\n\n## Rangkuman\n\n- Transaksi menyatukan beberapa perintah: semua berhasil dengan `COMMIT` atau semua batal dengan `ROLLBACK`.\n- ACID berarti atomic, consistent, isolated, dan durable. InnoDB menyediakannya, MyISAM tidak.\n- Autocommit menyala secara bawaan. DDL selalu melakukan commit implisit.\n- Isolation level bawaan InnoDB adalah REPEATABLE READ.\n- `SELECT ... FOR UPDATE` mengunci baris agar dua transaksi tidak memakai data lama. Deadlock dibatalkan otomatis dan perlu diulang oleh aplikasi.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Sifat ACID mana yang menjamin pembelian dan potong saldo terjadi bersama atau batal bersama?",
+          "code": "",
+          "options": [
+            "Durability",
+            "Isolation",
+            "Consistency",
+            "Atomicity"
+          ],
+          "answer": 3,
+          "explanation": "Atomicity berarti semua atau tidak sama sekali."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa isolation level bawaan InnoDB di MySQL 8?",
+          "code": "",
+          "options": [
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "SERIALIZABLE"
+          ],
+          "answer": 0,
+          "explanation": "InnoDB memakai REPEATABLE READ secara bawaan; nilainya bisa dicek dengan SELECT @@transaction_isolation."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa saldo siswa 7 setelah kode ini selesai, bila awalnya 20000?",
+          "code": "START TRANSACTION;\nUPDATE saldo SET saldo = saldo - 15000 WHERE siswa_id = 7;\nROLLBACK;\nUPDATE saldo SET saldo = saldo - 4000 WHERE siswa_id = 7;",
+          "options": [
+            "5000",
+            "20000",
+            "16000",
+            "1000"
+          ],
+          "answer": 2,
+          "explanation": "UPDATE pertama dibatalkan oleh ROLLBACK, lalu UPDATE kedua berjalan dengan autocommit sehingga saldo menjadi 16000."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Perintah `ALTER TABLE` di tengah transaksi bisa dibatalkan dengan `ROLLBACK`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "DDL seperti ALTER TABLE melakukan commit implisit, jadi tidak bisa di-rollback."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Bayar di kantin dalam satu transaksi",
+          "prompt": "Lengkapi `bayar(db, siswa_id, total)`: catat pembelian di tabel `pembelian`, lalu kurangi saldo siswa. Tabel `saldo` punya `CHECK (saldo >= 0)`, jadi pengurangan yang membuat saldo minus akan melempar `sqlite3.IntegrityError`.\n\nBungkus kedua langkah dalam transaksi: `BEGIN`, lalu `COMMIT` bila berhasil (kembalikan `True`), atau `ROLLBACK` bila gagal (kembalikan `False`) sehingga catatan pembelian ikut batal. Di MySQL, `BEGIN` ditulis `START TRANSACTION`.",
+          "starter": {
+            "code": "import sqlite3\n\n\ndef bayar(db, siswa_id, total):\n    # TODO: bungkus dua langkah ini dalam transaksi (BEGIN, COMMIT, ROLLBACK)\n    # dan kembalikan False bila saldo tidak cukup.\n    db.execute(\"INSERT INTO pembelian (siswa_id, total) VALUES (?, ?)\", (siswa_id, total))\n    db.execute(\"UPDATE saldo SET saldo = saldo - ? WHERE siswa_id = ?\", (total, siswa_id))\n    return True\n"
+          },
+          "solution": {
+            "code": "import sqlite3\n\n\ndef bayar(db, siswa_id, total):\n    db.execute(\"BEGIN\")\n    try:\n        db.execute(\"INSERT INTO pembelian (siswa_id, total) VALUES (?, ?)\", (siswa_id, total))\n        db.execute(\"UPDATE saldo SET saldo = saldo - ? WHERE siswa_id = ?\", (total, siswa_id))\n        db.execute(\"COMMIT\")\n        return True\n    except sqlite3.IntegrityError:\n        db.execute(\"ROLLBACK\")\n        return False\n"
+          },
+          "setup": "import sqlite3\n\ndef baru():\n    d = sqlite3.connect(\":memory:\", isolation_level=None)   # autocommit seperti MySQL\n    d.executescript(\"\"\"\n    CREATE TABLE saldo (siswa_id INTEGER PRIMARY KEY, nama TEXT, saldo INTEGER NOT NULL CHECK (saldo >= 0));\n    CREATE TABLE pembelian (id INTEGER PRIMARY KEY, siswa_id INTEGER, total INTEGER);\n    INSERT INTO saldo VALUES (1, 'Andi', 20000), (2, 'Bunga', 3000);\n    \"\"\")\n    return d\n\ndef uji(siswa_id, total):\n    d = baru()\n    try:\n        ok = bayar(d, siswa_id, total)\n    except Exception:\n        ok = \"error\"\n    s = d.execute(\"SELECT saldo FROM saldo WHERE siswa_id = ?\", (siswa_id,)).fetchone()[0]\n    n = d.execute(\"SELECT COUNT(*) FROM pembelian\").fetchone()[0]\n    return ok, s, n, d.in_transaction\n\ndef gagal_lalu_sukses():\n    d = baru()\n    try:\n        bayar(d, 2, 50000)\n    except Exception:\n        pass\n    ok = bayar(d, 1, 5000)\n    return ok, d.execute(\"SELECT COUNT(*) FROM pembelian\").fetchone()[0]\n",
+          "tests": [
+            {
+              "name": "Pembayaran dengan saldo cukup tersimpan",
+              "check": "uji(1, 5000) == (True, 15000, 1, False)"
+            },
+            {
+              "name": "Saldo kurang: dibatalkan dan mengembalikan False",
+              "check": "uji(2, 50000)[0] is False"
+            },
+            {
+              "name": "Saldo kurang: saldo dan catatan pembelian tidak berubah",
+              "check": "uji(2, 50000)[1:] == (3000, 0, False)"
+            },
+            {
+              "name": "Setelah gagal, pembayaran berikutnya tetap berjalan",
+              "check": "gagal_lalu_sukses() == (True, 1)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "user-hak-akses-dan-backup",
+      "title": "User, Hak Akses, dan Backup",
+      "est_minutes": 25,
+      "slide_from": 26,
+      "slide_to": 28,
+      "body": "## Tujuan\n\n- Membuat user MySQL dan memahami arti bagian `'nama'@'host'`.\n- Memberi dan mencabut hak akses dengan `GRANT` dan `REVOKE`.\n- Menerapkan prinsip hak minimum untuk aplikasi.\n- Membuat backup dengan `mysqldump` dan memulihkannya.\n\n## Jangan pakai root untuk semuanya\n\nSaat belajar, kamu biasa masuk sebagai `root`. User ini boleh melakukan apa saja: menghapus database, membuat user baru, mengubah konfigurasi server. Bila aplikasi kasir juga terhubung sebagai `root`, satu celah keamanan kecil (misalnya SQL injection) bisa berakhir dengan `DROP DATABASE toko`. Karena itu, di dunia kerja setiap aplikasi dan setiap orang punya user sendiri dengan hak secukupnya.\n\n## Membuat user\n\nUser MySQL selalu terdiri dari dua bagian: **nama** dan **host** asal koneksi.\n\n```sql\nCREATE USER 'kasir'@'localhost' IDENTIFIED BY 'Kas1r-Kantin-2026';\nCREATE USER 'laporan'@'192.168.1.%' IDENTIFIED BY 'Lap0ran-Sekolah-2026';\n```\n\n- `'kasir'@'localhost'` hanya boleh masuk dari komputer yang sama dengan server.\n- `'laporan'@'192.168.1.%'` boleh masuk dari komputer mana pun di jaringan 192.168.1.x. Tanda `%` artinya bebas.\n- `'kasir'@'%'` boleh masuk dari mana saja. Hindari ini untuk server yang terhubung ke internet.\n\n`'kasir'@'localhost'` dan `'kasir'@'%'` adalah dua user yang **berbeda**, masing-masing dengan password dan hak sendiri. Ini sering membingungkan saat login gagal padahal password benar.\n\nMySQL 8.4 memakai plugin autentikasi `caching_sha2_password` secara bawaan. Klien lama yang hanya mengenal `mysql_native_password` perlu diperbarui.\n\nPerintah lain yang sering dipakai:\n\n```sql\nALTER USER 'kasir'@'localhost' IDENTIFIED BY 'PasswordBaru-2026';\nDROP USER 'laporan'@'192.168.1.%';\nSELECT user, host FROM mysql.user;\n```\n\n## GRANT dan REVOKE\n\nUser baru belum boleh apa-apa selain masuk. Hak diberikan dengan `GRANT`:\n\n![Memberi hak dengan GRANT](slide:26)\n\n```sql\nGRANT SELECT ON toko.produk TO 'kasir'@'localhost';\nGRANT SELECT, INSERT ON toko.penjualan TO 'kasir'@'localhost';\nGRANT SELECT ON toko.* TO 'laporan'@'192.168.1.%';\n```\n\nBentuk targetnya:\n\n- `toko.penjualan`: satu tabel.\n- `toko.*`: semua tabel di database `toko`.\n- `*.*`: semua database di server. Simpan ini untuk admin saja.\n\nHak yang paling sering dipakai: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, lalu `CREATE`, `ALTER`, `DROP`, `INDEX` untuk mengubah struktur, dan `ALL PRIVILEGES` untuk semuanya. Cek hasilnya:\n\n```sql\nSHOW GRANTS FOR 'kasir'@'localhost';\n```\n\nHak dicabut dengan `REVOKE`:\n\n```sql\nREVOKE INSERT ON toko.penjualan FROM 'kasir'@'localhost';\n```\n\nPerubahan lewat `GRANT` dan `REVOKE` langsung berlaku untuk koneksi baru. Kamu tidak perlu `FLUSH PRIVILEGES`, perintah itu hanya dibutuhkan bila tabel di database `mysql` diubah langsung, yang sebaiknya tidak kamu lakukan.\n\n## Role: kelompok hak\n\nKalau ada sepuluh petugas kasir, memberi hak satu per satu cepat berantakan. MySQL 8 punya **role**, yaitu kumpulan hak yang diberi nama:\n\n```sql\nCREATE ROLE 'peran_kasir';\nGRANT SELECT ON toko.produk TO 'peran_kasir';\nGRANT SELECT, INSERT ON toko.penjualan TO 'peran_kasir';\n\nGRANT 'peran_kasir' TO 'kasir'@'localhost';\nSET DEFAULT ROLE 'peran_kasir' TO 'kasir'@'localhost';\n```\n\nBila aturan kasir berubah, cukup ubah role-nya.\n\n## Prinsip hak minimum\n\nPrinsip hak minimum (*least privilege*) artinya setiap user hanya mendapat hak yang **benar-benar dibutuhkan** untuk tugasnya, tidak lebih. Contoh untuk toko sekolah:\n\n| User | Kebutuhan | Hak |\n|---|---|---|\n| aplikasi kasir | lihat produk, catat penjualan | `SELECT` di `produk`, `SELECT, INSERT` di `penjualan` |\n| dashboard laporan | membaca saja | `SELECT` di `toko.*` |\n| skrip backup | membaca dan mengunci | `SELECT, LOCK TABLES, SHOW VIEW, TRIGGER` |\n| admin | mengelola semua | `ALL PRIVILEGES` di `toko.*` |\n\nDengan pembagian ini, bila aplikasi kasir dibobol, penyerang tetap tidak bisa menghapus tabel atau membaca data di database lain. Beberapa kebiasaan baik lainnya:\n\n- Jangan pernah menaruh password `root` di kode aplikasi.\n- Pakai host sesempit mungkin, `localhost` bila aplikasi dan database ada di server yang sama.\n- Hapus user yang sudah tidak dipakai, misalnya akun praktikan lama.\n- Simpan password di file `.env`, bukan di repositori Git.\n\n## Backup dengan mysqldump\n\nData bisa hilang karena disk rusak, salah `DELETE`, atau serangan. Backup rutin adalah asuransimu. Alat paling sederhana adalah `mysqldump`, yang menulis isi database menjadi file SQL berisi `CREATE TABLE` dan `INSERT`.\n\n```bash\nmysqldump -u root -p --single-transaction --routines --triggers toko > toko-2026-03-02.sql\n```\n\n- `-p` membuat mysqldump meminta password, jadi password tidak tercatat di riwayat terminal.\n- `--single-transaction` mengambil potret yang konsisten dari tabel InnoDB tanpa mengunci aplikasi yang sedang berjalan.\n- `--routines` dan `--triggers` ikut menyimpan stored procedure dan trigger.\n\nVariasi lain:\n\n```bash\n# beberapa database sekaligus\nmysqldump -u root -p --single-transaction --databases toko perpustakaan > sekolah.sql\n\n# langsung dikompres\nmysqldump -u root -p --single-transaction toko | gzip > toko.sql.gz\n```\n\nDi XAMPP dan Laragon, `mysqldump` ada di folder `bin` milik MySQL. phpMyAdmin juga punya menu Export yang menghasilkan file serupa.\n\n## Restore\n\nMemulihkan backup berarti menjalankan file SQL itu lewat klien `mysql`:\n\n```bash\nmysql -u root -p -e \"CREATE DATABASE toko_pulih CHARACTER SET utf8mb4\"\nmysql -u root -p toko_pulih < toko-2026-03-02.sql\n\n# dari file terkompres\ngunzip < toko.sql.gz | mysql -u root -p toko_pulih\n```\n\nMemulihkan ke database baru seperti `toko_pulih` lebih aman daripada langsung menimpa database yang sedang dipakai. Periksa dulu isinya, baru pindahkan.\n\nBackup yang belum pernah dicoba di-restore belum bisa disebut backup. Jadwalkan uji restore secara berkala, dan simpan salinan di tempat lain, bukan di disk yang sama dengan servernya.\n\n## Backup otomatis\n\nBackup yang bergantung pada ingatan manusia cepat terlupa. Di server Linux, jadwalkan dengan `cron`. Simpan kredensial di file opsi supaya password tidak tertulis di perintah:\n\n```bash\n# ~/.my.cnf (izin file: chmod 600 ~/.my.cnf)\n[mysqldump]\nuser=backup\npassword=Bckp-Sekolah-2026\n```\n\nLalu tambahkan baris berikut lewat `crontab -e` agar backup berjalan setiap pukul 01.00:\n\n```bash\n0 1 * * * mysqldump --single-transaction toko | gzip > /backup/toko-$(date +\\%F).sql.gz\n```\n\nUser `backup` di sini hanya diberi hak membaca yang dibutuhkan mysqldump, sesuai tabel hak minimum di atas. Jangan lupa menghapus file lama secara berkala agar disk tidak penuh, misalnya hanya menyimpan backup 14 hari terakhir. Untuk database yang sangat besar, tim biasanya beralih ke alat backup fisik seperti MySQL Enterprise Backup atau Percona XtraBackup, tetapi untuk sekolah dan toko kecil, mysqldump sudah lebih dari cukup.\n\n## Rangkuman\n\n- User MySQL berbentuk `'nama'@'host'`, dan kombinasi host berbeda berarti user berbeda.\n- `GRANT` memberi hak pada tabel, database, atau server; `REVOKE` mencabutnya; `SHOW GRANTS` memeriksanya.\n- Role mengelompokkan hak supaya mudah dikelola.\n- Prinsip hak minimum: aplikasi tidak pernah memakai `root` dan hanya mendapat hak yang dibutuhkan.\n- `mysqldump --single-transaction` membuat backup, `mysql < file.sql` memulihkannya. Uji restore secara rutin.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti `'laporan'@'192.168.1.%'`?",
+          "code": "",
+          "options": [
+            "User laporan yang hanya boleh masuk dari komputer server",
+            "User laporan yang boleh masuk dari alamat 192.168.1.x",
+            "User laporan yang boleh masuk dari internet mana pun",
+            "User laporan dengan password 192.168.1.%"
+          ],
+          "answer": 1,
+          "explanation": "Bagian setelah @ adalah host asal koneksi, dan % berarti bagian alamat itu bebas."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Aplikasi dashboard hanya menampilkan laporan dari database `toko`. Hak mana yang paling sesuai prinsip hak minimum?",
+          "code": "",
+          "options": [
+            "GRANT ALL PRIVILEGES ON *.* TO ...",
+            "GRANT SELECT, INSERT, UPDATE ON toko.* TO ...",
+            "GRANT ALL PRIVILEGES ON toko.* TO ...",
+            "GRANT SELECT ON toko.* TO ..."
+          ],
+          "answer": 3,
+          "explanation": "Dashboard hanya membaca, jadi cukup SELECT pada database toko."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Opsi `mysqldump` mana yang membuat potret konsisten tabel InnoDB tanpa mengunci aplikasi?",
+          "code": "",
+          "options": [
+            "--single-transaction",
+            "--routines",
+            "--databases",
+            "--triggers"
+          ],
+          "answer": 0,
+          "explanation": "--single-transaction membaca data di dalam satu transaksi sehingga hasilnya konsisten tanpa lock tabel."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Setelah menjalankan `GRANT`, kamu wajib menjalankan `FLUSH PRIVILEGES` agar hak baru berlaku.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "GRANT dan REVOKE langsung memperbarui hak di memori; FLUSH PRIVILEGES hanya perlu bila tabel mysql diubah langsung."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Simulasi pemeriksaan hak akses",
+          "prompt": "Latihan ini mensimulasikan cara MySQL memeriksa hak. Daftar `GRANTS` berisi tuple `(user, hak, target)`, misalnya `(\"laporan\", \"SELECT\", \"toko.*\")` setara dengan `GRANT SELECT ON toko.* TO laporan`.\n\nLengkapi `boleh(user, hak, tabel)` dengan `tabel` berbentuk `\"database.tabel\"`. Kembalikan `True` bila ada grant milik user itu yang:\n\n- haknya sama dengan `hak` atau bernilai `\"ALL\"`, dan\n- targetnya sama persis dengan `tabel`, berbentuk `\"database.*\"` untuk database yang sama, atau `\"*.*\"`.\n\nSelain itu kembalikan `False` (prinsip hak minimum: tidak ada grant berarti ditolak).",
+          "starter": {
+            "code": "def boleh(user, hak, tabel):\n    # TODO: dukung hak \"ALL\", target \"database.*\", dan \"*.*\"\n    return (user, hak, tabel) in GRANTS\n"
+          },
+          "solution": {
+            "code": "def boleh(user, hak, tabel):\n    db = tabel.split(\".\")[0]\n    for u, h, target in GRANTS:\n        if u != user or h not in (hak, \"ALL\"):\n            continue\n        if target in (tabel, db + \".*\", \"*.*\"):\n            return True\n    return False\n"
+          },
+          "setup": "GRANTS = [\n    (\"kasir\", \"SELECT\", \"toko.produk\"),\n    (\"kasir\", \"SELECT\", \"toko.penjualan\"),\n    (\"kasir\", \"INSERT\", \"toko.penjualan\"),\n    (\"laporan\", \"SELECT\", \"toko.*\"),\n    (\"admin\", \"ALL\", \"*.*\"),\n]\n",
+          "tests": [
+            {
+              "name": "Kasir boleh INSERT penjualan tetapi tidak DELETE",
+              "check": "boleh('kasir', 'INSERT', 'toko.penjualan') and not boleh('kasir', 'DELETE', 'toko.penjualan')"
+            },
+            {
+              "name": "Laporan boleh SELECT semua tabel toko",
+              "check": "boleh('laporan', 'SELECT', 'toko.produk') and boleh('laporan', 'SELECT', 'toko.pelanggan')"
+            },
+            {
+              "name": "Laporan tidak boleh menulis atau membaca database lain",
+              "check": "not boleh('laporan', 'INSERT', 'toko.produk') and not boleh('laporan', 'SELECT', 'sekolah.siswa')"
+            },
+            {
+              "name": "Admin dengan ALL di *.* boleh apa saja",
+              "check": "boleh('admin', 'DROP', 'sekolah.siswa') and boleh('admin', 'DELETE', 'toko.penjualan')"
+            },
+            {
+              "name": "User tanpa grant selalu ditolak",
+              "check": "boleh('tamu', 'SELECT', 'toko.produk') is False"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "mysql-dari-aplikasi",
+      "title": "MySQL dari Aplikasi",
+      "est_minutes": 30,
+      "slide_from": 29,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Menghubungkan PHP ke MySQL dengan PDO dan DSN `mysql:`.\n- Memakai prepared statement untuk mencegah SQL injection.\n- Menjalankan transaksi dari kode aplikasi.\n- Mengenal view dan stored procedure sebagai alat bantu di sisi database.\n\n## Dari terminal ke aplikasi\n\nSelama ini kamu mengetik query di klien `mysql` atau phpMyAdmin. Di dunia nyata, yang mengirim query adalah aplikasi: website toko, sistem absensi, atau aplikasi perpustakaan. Bahasa apa pun bisa berbicara dengan MySQL lewat *driver*. Kita pakai PHP karena paling banyak dipakai bersama MySQL di Indonesia, dari XAMPP sampai hosting murah.\n\n## Terhubung dengan PDO\n\nPDO (PHP Data Objects) adalah cara standar PHP untuk mengakses database. Alamat database ditulis sebagai **DSN**:\n\n```php\n<?php\n$dsn = 'mysql:host=127.0.0.1;port=3306;dbname=toko;charset=utf8mb4';\n$pdo = new PDO($dsn, 'kasir', 'Kas1r-Kantin-2026', [\n    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,\n    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,\n]);\n```\n\n- `mysql:` memberi tahu PDO untuk memakai driver MySQL.\n- `charset=utf8mb4` wajib supaya nama seperti \"Siti Nur'aini\" dan emoji di komentar tersimpan benar.\n- `ERRMODE_EXCEPTION` membuat error melempar exception, jadi kesalahan tidak diam-diam terlewat. Sejak PHP 8 ini sudah menjadi bawaan, tetapi menuliskannya membuat maksudmu jelas.\n- User yang dipakai adalah `kasir`, bukan `root`, sesuai prinsip hak minimum dari bab sebelumnya.\n\n## Bahaya menyambung string\n\nMisalkan ada form pencarian buku. Cara yang salah:\n\n```php\n$kata = $_GET['q'];\n$sql = \"SELECT judul FROM buku WHERE judul LIKE '%$kata%'\";\n$hasil = $pdo->query($sql)->fetchAll();\n```\n\nBila seseorang mengetik `' OR 1=1 -- `, query berubah menjadi `... LIKE '%' OR 1=1 -- %'` dan seluruh isi tabel bocor. Dengan input yang lebih jahat, data bisa dihapus. Inilah **SQL injection**, salah satu celah keamanan web paling terkenal. Judul biasa seperti `Kisah Jum'at` pun sudah cukup membuat query error karena tanda kutipnya.\n\n## Prepared statement\n\n![Prepared statement di PDO](slide:29)\n\nSolusinya adalah **prepared statement**: struktur query dikirim terpisah dari datanya. MySQL menganggap isi parameter murni sebagai nilai, tidak pernah sebagai bagian perintah SQL.\n\n```php\n$stmt = $pdo->prepare('SELECT judul FROM buku WHERE judul LIKE :kata');\n$stmt->execute(['kata' => '%' . $_GET['q'] . '%']);\n$hasil = $stmt->fetchAll();\n```\n\nParameter boleh bernama (`:kata`) atau berupa tanda tanya (`?`). Aturan praktisnya sederhana: **setiap nilai dari luar** (form, URL, cookie, file) masuk lewat parameter. Nama tabel dan kolom tidak bisa dijadikan parameter, jadi bila harus dinamis, cocokkan dengan daftar yang diizinkan.\n\nMenyisipkan data dan mengambil ID yang baru dibuat oleh `AUTO_INCREMENT`:\n\n```php\n$stmt = $pdo->prepare('INSERT INTO anggota (nama, kelas) VALUES (?, ?)');\n$stmt->execute(['Bunga Lestari', 'XI TKJ']);\n$id = $pdo->lastInsertId();\n```\n\n## Transaksi dari PHP\n\nTransaksi dari bab 7 bisa dijalankan dari kode:\n\n```php\ntry {\n    $pdo->beginTransaction();\n    $pdo->prepare('UPDATE buku SET stok = stok - 1 WHERE id = ? AND stok > 0')\n        ->execute([$bukuId]);\n    $pdo->prepare('INSERT INTO peminjaman (anggota_id, buku_id, tgl_pinjam) VALUES (?, ?, CURDATE())')\n        ->execute([$anggotaId, $bukuId]);\n    $pdo->commit();\n} catch (Throwable $e) {\n    $pdo->rollBack();\n    throw $e;\n}\n```\n\n`beginTransaction()` setara dengan `START TRANSACTION`, dan bila ada exception apa pun, `rollBack()` membatalkan semuanya.\n\n## Menangani error\n\nDengan `ERRMODE_EXCEPTION`, setiap kegagalan melempar `PDOException`. Tangkap error yang memang bisa kamu tangani, misalnya NIS ganda pada kolom `UNIQUE`:\n\n```php\ntry {\n    $stmt = $pdo->prepare('INSERT INTO siswa (nis, nama) VALUES (?, ?)');\n    $stmt->execute(['2026001', 'Citra Dewi']);\n} catch (PDOException $e) {\n    if ($e->errorInfo[1] === 1062) {   // duplicate entry\n        echo 'NIS sudah terdaftar';\n    } else {\n        throw $e;\n    }\n}\n```\n\nKode 1062 adalah nomor error MySQL untuk data kembar. Error lain sebaiknya dilempar ulang dan dicatat ke log, bukan ditampilkan apa adanya ke pengunjung, karena pesan error bisa membocorkan nama tabel, struktur query, bahkan nama user database. Di halaman publik, cukup tampilkan pesan umum seperti \"Terjadi kesalahan, coba lagi\" dan simpan detailnya di log server.\n\nSatu hal lagi: buat satu objek `$pdo` per permintaan dan pakai ulang untuk semua query. Membuka koneksi baru untuk setiap query memperlambat aplikasi dan bisa menghabiskan batas `max_connections` di server.\n\n## View: query yang diberi nama\n\nQuery laporan yang dipakai di banyak halaman bisa disimpan sebagai **view**, tabel virtual yang isinya dihitung ulang setiap kali dibaca:\n\n```sql\nCREATE VIEW stok_menipis AS\nSELECT nama, stok FROM produk WHERE stok < 5;\n\nSELECT * FROM stok_menipis;\n```\n\nView tidak menyimpan salinan data, jadi selalu mengikuti isi tabel terbaru. View juga berguna untuk keamanan: user laporan bisa diberi `GRANT SELECT` pada view saja tanpa akses ke tabel aslinya yang memuat kolom sensitif.\n\n## Stored procedure secara singkat\n\n**Stored procedure** adalah kumpulan perintah SQL yang disimpan di server dan dipanggil dengan `CALL`. Di klien `mysql`, kamu perlu mengganti delimiter sementara karena isi prosedur memakai titik koma:\n\n```sql\nDELIMITER //\nCREATE PROCEDURE pinjam_buku(IN p_anggota INT, IN p_buku INT)\nBEGIN\n  START TRANSACTION;\n  UPDATE buku SET stok = stok - 1 WHERE id = p_buku AND stok > 0;\n  INSERT INTO peminjaman (anggota_id, buku_id, tgl_pinjam)\n  VALUES (p_anggota, p_buku, CURDATE());\n  COMMIT;\nEND //\nDELIMITER ;\n\nCALL pinjam_buku(3, 12);\n```\n\nProsedur cocok untuk logika yang harus sama persis di beberapa aplikasi. Kekurangannya, kode jadi terbagi antara aplikasi dan database, lebih sulit dites dan dilacak di Git. Banyak tim memilih menaruh logika di aplikasi dan memakai prosedur seperlunya.\n\n## Langkah berikutnya\n\nKamu sudah memegang dasar MySQL yang dipakai di dunia kerja: merancang tabel, query, index, transaksi, user, dan backup. Langkah lanjutan yang disarankan:\n\n- **Kelas PHP** di Ruang Materi untuk membangun aplikasi lengkap dengan PDO.\n- **Laravel**, framework PHP yang membungkus PDO dengan Eloquent dan migration, sehingga skema database ikut tercatat di Git.\n- Latih membaca `EXPLAIN` pada data yang besar, karena di situlah perbedaan developer pemula dan berpengalaman paling terasa.\n- Kerjakan proyek akhir kelas ini, Database Perpustakaan Sekolah, yang menggabungkan skema, relasi, laporan, dan transaksi dalam satu modul. Setelah lolos, coba pindahkan skemanya ke MySQL sungguhan di XAMPP atau Laragon dan bandingkan hasilnya.\n\nCatatan latihan: modul `sqlite3` di Python bekerja sama seperti PDO. Tanda `?` adalah parameter, dan nilainya dikirim lewat argumen kedua `execute()`. Perintah `CREATE VIEW` juga sama di MySQL dan SQLite.\n\n## Rangkuman\n\n- PDO terhubung ke MySQL lewat DSN `mysql:host=...;dbname=...;charset=utf8mb4` dengan user yang haknya terbatas.\n- Jangan pernah menyambung input pengguna ke string SQL. Pakai prepared statement dengan parameter `:nama` atau `?`.\n- `beginTransaction()`, `commit()`, dan `rollBack()` menjalankan transaksi dari kode.\n- View menyimpan query sebagai tabel virtual, stored procedure menyimpan logika di server dan dipanggil dengan `CALL`.\n- Lanjutkan ke kelas PHP lalu Laravel untuk membangun aplikasi nyata di atas MySQL.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagian DSN mana yang memastikan teks seperti nama berapostrof dan emoji tersimpan benar?",
+          "code": "",
+          "options": [
+            "host=127.0.0.1",
+            "dbname=toko",
+            "charset=utf8mb4",
+            "port=3306"
+          ],
+          "answer": 2,
+          "explanation": "charset=utf8mb4 membuat koneksi memakai UTF-8 penuh, sama seperti charset tabelnya."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa masalah utama kode PHP berikut?",
+          "code": "$nis = $_GET['nis'];\n$sql = \"SELECT * FROM siswa WHERE nis = '$nis'\";\n$data = $pdo->query($sql)->fetchAll();",
+          "options": [
+            "Rawan SQL injection karena input disambung langsung ke SQL",
+            "fetchAll() tidak boleh dipakai dengan query()",
+            "LIKE tidak bisa dipakai di PDO",
+            "Variabel $nis harus berupa angka agar query bisa jalan tanpa error di MySQL 8"
+          ],
+          "answer": 0,
+          "explanation": "Input dari URL masuk ke string SQL tanpa parameter, jadi penyerang bisa mengubah arti query."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa yang disimpan oleh sebuah VIEW di MySQL?",
+          "code": "",
+          "options": [
+            "Salinan lengkap seluruh data tabel saat view pertama kali dibuat",
+            "Index tambahan untuk tabel asal",
+            "Hak akses user ke tabel",
+            "Definisi query yang dijalankan ulang saat view dibaca"
+          ],
+          "answer": 3,
+          "explanation": "View adalah query bernama; isinya dihitung dari tabel asli setiap kali dibaca."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan prepared statement, nama tabel juga bisa dikirim sebagai parameter `?`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Parameter hanya untuk nilai; nama tabel dan kolom yang dinamis harus dicocokkan dengan daftar yang diizinkan."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Pencarian buku dengan prepared statement",
+          "prompt": "Fungsi `cari_buku(db, kata)` di kode awal menyambung input ke string SQL, persis seperti contoh PHP yang rawan SQL injection.\n\nUbah supaya memakai **parameter** `?` (setara prepared statement PDO): query `SELECT judul FROM buku WHERE judul LIKE ? ORDER BY judul`, lalu kirim `'%' + kata + '%'` sebagai argumen kedua `execute()`. Kembalikan daftar judul (list of str).",
+          "starter": {
+            "code": "def cari_buku(db, kata):\n    # TODO: jangan sambung string; pakai parameter ? dan kirim nilainya terpisah\n    sql = f\"SELECT judul FROM buku WHERE judul LIKE '%{kata}%' ORDER BY judul\"\n    return [r[0] for r in db.execute(sql)]\n"
+          },
+          "solution": {
+            "code": "def cari_buku(db, kata):\n    sql = \"SELECT judul FROM buku WHERE judul LIKE ? ORDER BY judul\"\n    return [r[0] for r in db.execute(sql, ('%' + kata + '%',))]\n"
+          },
+          "setup": "import sqlite3\ndb = sqlite3.connect(\":memory:\")\ndb.executescript(\"\"\"\nCREATE TABLE buku (id INTEGER PRIMARY KEY, judul TEXT);\nINSERT INTO buku (judul) VALUES ('Laskar Pelangi'), ('Sang Pemimpi'), ('Bumi'), ('Kisah Jum''at'), ('Pulang');\n\"\"\")\n\ndef aman(kata):\n    try:\n        return cari_buku(db, kata)\n    except Exception as e:\n        return type(e).__name__\n",
+          "tests": [
+            {
+              "name": "Pencarian biasa berjalan",
+              "check": "aman('Pemimpi') == ['Sang Pemimpi']"
+            },
+            {
+              "name": "Tanda kutip di input tidak membuat error",
+              "check": "aman(\"Jum'at\") == [\"Kisah Jum'at\"]"
+            },
+            {
+              "name": "Input injection tidak membocorkan semua buku",
+              "check": "aman(\"' OR 1=1 --\") == []"
+            },
+            {
+              "name": "Hasil diurutkan menurut judul",
+              "check": "aman('an') == ['Laskar Pelangi', 'Pulang', 'Sang Pemimpi']"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "View stok menipis",
+          "prompt": "Isi `VIEW_SQL` dengan perintah `CREATE VIEW stok_menipis` yang menampilkan kolom `nama` dan `stok` dari tabel `produk` untuk produk yang stoknya **kurang dari 5**. Perintah `CREATE VIEW` ini sama di MySQL dan SQLite.",
+          "starter": {
+            "code": "# Buat view stok_menipis: nama dan stok produk yang stoknya kurang dari 5.\nVIEW_SQL = \"\"\"\nCREATE VIEW stok_menipis AS\nSELECT nama, stok FROM produk;   -- TODO: tambahkan syarat stok\n\"\"\"\n"
+          },
+          "solution": {
+            "code": "VIEW_SQL = \"\"\"\nCREATE VIEW stok_menipis AS\nSELECT nama, stok FROM produk WHERE stok < 5;\n\"\"\"\n"
+          },
+          "setup": "import sqlite3\n\ndef siapkan():\n    d = sqlite3.connect(\":memory:\")\n    d.executescript(\"\"\"\n    CREATE TABLE produk (id INTEGER PRIMARY KEY, nama TEXT, stok INTEGER);\n    INSERT INTO produk (nama, stok) VALUES ('Pensil', 12), ('Buku tulis', 3), ('Penghapus', 0), ('Pulpen', 7), ('Spidol', 4);\n    \"\"\")\n    d.executescript(VIEW_SQL)\n    return d\n\ndef isi_view(d=None):\n    d = d or siapkan()\n    return d.execute(\"SELECT nama, stok FROM stok_menipis ORDER BY stok, nama\").fetchall()\n\ndef setelah_update():\n    d = siapkan()\n    d.execute(\"UPDATE produk SET stok = 2 WHERE nama = 'Pulpen'\")\n    return isi_view(d)\n",
+          "tests": [
+            {
+              "name": "stok_menipis dibuat sebagai view",
+              "check": "siapkan().execute(\"SELECT type FROM sqlite_master WHERE name = 'stok_menipis'\").fetchone() == ('view',)"
+            },
+            {
+              "name": "Isi view hanya produk dengan stok di bawah 5",
+              "check": "isi_view() == [('Penghapus', 0), ('Buku tulis', 3), ('Spidol', 4)]"
+            },
+            {
+              "name": "View mengikuti perubahan data terbaru",
+              "check": "('Pulpen', 2) in setelah_update()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
