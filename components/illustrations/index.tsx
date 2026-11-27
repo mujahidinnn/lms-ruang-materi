@@ -1,16 +1,35 @@
+import type React from "react";
 import Badge from "./Badge";
 
 type Props = { label?: string; className?: string };
 
 // Ink drawings on matcha sticker badges (components/illustrations/Badge.tsx).
 
+// Empty states stay quiet: thin zinc line icons, no sticker badge.
+function Quiet({ label, className = "size-10", children }: Props & { children: React.ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`text-zinc-600 ${className}`}
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
+    >
+      {children}
+    </svg>
+  );
+}
+
 // Nothing due: one card filed away, checked.
 export function NothingDue(props: Props) {
   return (
-    <Badge tone="foam" {...props}>
-      <rect x="29" y="37" width="38" height="27" rx="6" className="fill-matcha-50 stroke-noir" strokeWidth="3" />
-      <path d="M39 50l6 6 12-12" className="stroke-noir" strokeWidth="4" />
-    </Badge>
+    <Quiet {...props}>
+      <rect x="10" y="12" width="28" height="24" rx="5" />
+      <path d="M18 24l4 4 8-8" />
+    </Quiet>
   );
 }
 
@@ -36,11 +55,10 @@ export function TryAgain(props: Props) {
 // 404: an empty, dashed card with a question mark.
 export function Missing(props: Props) {
   return (
-    <Badge tone="light" {...props}>
-      <rect x="27" y="35" width="42" height="30" rx="6" className="stroke-noir" strokeWidth="3" strokeDasharray="6 6" />
-      <path d="M44 45a4 4 0 1 1 6 3.5c-1.5.8-2 1.7-2 3.5" className="stroke-noir" strokeWidth="3.5" />
-      <circle cx="48" cy="58" r="2" className="fill-noir" />
-    </Badge>
+    <Quiet {...props}>
+      <circle cx="21" cy="21" r="10" />
+      <path d="M28.5 28.5L37 37" />
+    </Quiet>
   );
 }
 
@@ -58,9 +76,9 @@ export function Welcome(props: Props) {
 // Data kosong: an empty inbox tray.
 export function Empty(props: Props) {
   return (
-    <Badge tone="light" {...props}>
-      <path d="M28 47l8-12h24l8 12v15a4 4 0 0 1-4 4H32a4 4 0 0 1-4-4Z" className="fill-matcha-50 stroke-noir" strokeWidth="3" />
-      <path d="M28 47h12l3 6h10l3-6h12" className="stroke-noir" strokeWidth="3" />
-    </Badge>
+    <Quiet {...props}>
+      <path d="M8 26l5-12h22l5 12v8a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4Z" />
+      <path d="M8 26h9l2 4h10l2-4h9" />
+    </Quiet>
   );
 }
