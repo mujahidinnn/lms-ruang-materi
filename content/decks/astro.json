@@ -1,0 +1,347 @@
+{
+  "theme": "astro",
+  "deck": "Astro",
+  "kicker": "KELAS",
+  "subtitle": "Framework web untuk situs berisi konten: komponen .astro, routing, content collections, island, SSR, sampai deploy.",
+  "slides": [
+    {
+      "title": "Astro"
+    },
+    {
+      "title": "Apa itu Astro?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Framework web untuk situs berisi konten: blog, dokumentasi, toko",
+        "Halaman dirender jadi HTML di server atau saat build",
+        "Nol JavaScript ke browser secara bawaan",
+        "Bisa memakai React, Vue, atau Svelte bila perlu interaksi",
+        "Kelas ini memakai Astro 7; bekalmu HTML, CSS, dan JavaScript"
+      ],
+      "note": "Astro mengirim HTML dulu, JavaScript hanya di bagian yang butuh."
+    },
+    {
+      "title": "Arsitektur island",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Halaman adalah lautan HTML statis yang cepat dimuat",
+        "Island: komponen interaktif yang dihidrasi sendiri-sendiri",
+        "Island ditandai direktif client:*, misalnya client:load",
+        "Tanpa direktif, komponen hanya jadi HTML tanpa JS",
+        "Satu island lambat tidak menahan island lain"
+      ],
+      "code": "<Header />            <!-- HTML saja -->\n<ArtikelBerita />     <!-- HTML saja -->\n<Keranjang client:load />\n<Komentar client:visible />\n<Footer />            <!-- HTML saja -->"
+    },
+    {
+      "title": "Membuat proyek Astro",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Siapkan Node.js versi LTS terbaru",
+        "src/pages: halaman, src/components: komponen",
+        "src/layouts: kerangka halaman yang dipakai ulang",
+        "public/: file yang disalin apa adanya, mis. favicon",
+        "Buka http://localhost:4321 setelah npm run dev"
+      ],
+      "code": "npm create astro@latest kantin-sekolah\ncd kantin-sekolah\nnpm run dev    # menjalankan astro dev\n\nsrc/\n  pages/index.astro\n  components/  layouts/\npublic/\nastro.config.mjs"
+    },
+    {
+      "title": "Anatomi file .astro",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Bagian di antara pagar --- disebut frontmatter",
+        "Frontmatter berjalan di server atau saat build, bukan di browser",
+        "Di bawahnya template mirip HTML dengan ekspresi ala JSX",
+        "Variabel frontmatter bisa dipakai langsung di template",
+        "Tidak perlu return atau fungsi render"
+      ],
+      "code": "---\nconst toko = \"Kantin Bu Sri\";\nconst buka = 7;\n---\n<h1>{toko}</h1>\n<p>Buka jam {buka} pagi</p>"
+    },
+    {
+      "title": "Props komponen",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Data dari induk dibaca lewat Astro.props",
+        "Tulis interface Props agar props bertipe",
+        "Nilai bawaan diberi lewat destructuring",
+        "Props dikirim seperti atribut HTML"
+      ],
+      "code": "---\ninterface Props {\n  nama: string;\n  harga?: number;\n}\nconst { nama, harga = 5000 } = Astro.props;\n---\n<li>{nama}: Rp{harga}</li>\n\n<Menu nama=\"Bakso\" harga={12000} />"
+    },
+    {
+      "title": "Slot",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "<slot /> menjadi tempat isi anak komponen",
+        "Slot bernama: <slot name=\"judul\" />",
+        "Anak memilih slot lewat atribut slot=\"judul\"",
+        "Isi di dalam tag slot jadi fallback bila kosong"
+      ],
+      "code": "<!-- Kartu.astro -->\n<div class=\"kartu\">\n  <slot name=\"judul\">Tanpa judul</slot>\n  <slot />\n</div>\n\n<Kartu>\n  <h2 slot=\"judul\">Menu hari ini</h2>\n  <p>Nasi goreng dan es teh</p>\n</Kartu>"
+    },
+    {
+      "title": "Ekspresi di template",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Kurung kurawal {} untuk menyisipkan nilai",
+        "map() untuk menampilkan daftar",
+        "&& atau ternary untuk kondisi",
+        "Dijalankan sekali di server, bukan reaktif"
+      ],
+      "code": "---\nconst menu = [\"Bakso\", \"Soto\", \"Mie ayam\"];\nconst habis = false;\n---\n<ul>\n  {menu.map((m) => <li>{m}</li>)}\n</ul>\n{habis ? <p>Habis</p> : <p>Masih ada</p>}"
+    },
+    {
+      "title": "Folder pages",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Setiap file di src/pages menjadi satu route",
+        "File .astro, .md, dan .mdx bisa jadi halaman",
+        "index.astro menjadi URL akar folder itu",
+        "404.astro dipakai untuk halaman tidak ditemukan",
+        "Pindah halaman cukup dengan tag <a href>"
+      ],
+      "code": "src/pages/\n  index.astro        -> /\n  tentang.astro      -> /tentang\n  blog/index.astro   -> /blog\n  blog/[slug].astro  -> /blog/:slug\n  404.astro          -> halaman 404"
+    },
+    {
+      "title": "Route dinamis",
+      "kicker": "ROUTING",
+      "bullets": [
+        "[slug] mencocokkan satu segmen URL",
+        "[...path] mencocokkan banyak segmen sekaligus",
+        "Nilainya dibaca lewat Astro.params",
+        "Urutan prioritas: statis, lalu [x], lalu [...x]"
+      ],
+      "code": "src/pages/\n  buku/baru.astro     # /buku/baru\n  buku/[id].astro     # /buku/12\n  docs/[...path].astro\n                      # /docs/a/b/c\n---\nconst { id } = Astro.params;\n---"
+    },
+    {
+      "title": "getStaticPaths",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Wajib untuk route dinamis yang dibuat saat build",
+        "Mengembalikan daftar params, satu per halaman",
+        "props ikut dikirim ke halaman lewat Astro.props",
+        "Tidak dipakai untuk route yang dirender on demand"
+      ],
+      "code": "---\nexport function getStaticPaths() {\n  const buku = [{ id: \"1\", judul: \"Bumi\" },\n    { id: \"2\", judul: \"Laut\" }];\n  return buku.map((b) => ({\n    params: { id: b.id }, props: b }));\n}\nconst { judul } = Astro.props;\n---\n<h1>{judul}</h1>"
+    },
+    {
+      "title": "Layout",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Layout adalah komponen .astro biasa di src/layouts",
+        "Berisi <html>, <head>, navigasi, dan footer",
+        "Isi halaman masuk lewat <slot />",
+        "Judul halaman dikirim sebagai props"
+      ],
+      "code": "---\n// src/layouts/Dasar.astro\nconst { judul } = Astro.props;\n---\n<html lang=\"id\">\n  <head><title>{judul}</title></head>\n  <body><slot /></body>\n</html>"
+    },
+    {
+      "title": "Style yang terlingkup",
+      "kicker": "STYLING",
+      "bullets": [
+        "<style> di file .astro hanya berlaku di komponen itu",
+        "Astro menambah atribut unik agar selektor tidak bocor",
+        "is:global membuat style berlaku untuk seluruh halaman",
+        "CSS global bisa di-import dari src/styles",
+        "Tailwind dipasang lewat integrasi atau plugin Vite"
+      ],
+      "code": "<h2>Menu</h2>\n<style>\n  h2 { color: purple; }\n</style>\n\n<style is:global>\n  body { margin: 0; }\n</style>"
+    },
+    {
+      "title": "class:list dan define:vars",
+      "kicker": "STYLING",
+      "bullets": [
+        "class:list menggabung string, array, dan objek",
+        "Nilai falsy dibuang, nama yang sama ditulis sekali",
+        "define:vars mengirim variabel frontmatter ke CSS",
+        "Variabel itu dipakai sebagai var(--nama)"
+      ],
+      "code": "---\nconst aktif = true;\nconst warna = \"tomato\";\n---\n<a class:list={[\"tab\", { aktif }]}>Menu</a>\n\n<style define:vars={{ warna }}>\n  .aktif { color: var(--warna); }\n</style>"
+    },
+    {
+      "title": "Gambar dan aset",
+      "kicker": "STYLING",
+      "bullets": [
+        "public/: disalin apa adanya, tanpa diolah",
+        "src/assets/: gambar diimport dan dioptimalkan",
+        "<Image /> dari astro:assets mengatur ukuran dan format",
+        "width dan height diisi otomatis untuk gambar lokal",
+        "Atribut alt wajib diisi"
+      ],
+      "code": "---\nimport { Image } from \"astro:assets\";\nimport kantin from \"../assets/kantin.jpg\";\n---\n<Image src={kantin} alt=\"Kantin sekolah\" />\n<img src=\"/logo.svg\" alt=\"Logo\" />"
+    },
+    {
+      "title": "Content collections",
+      "kicker": "CONTENT COLLECTIONS",
+      "bullets": [
+        "Kumpulan konten sejenis: artikel, buku, menu",
+        "Didefinisikan di src/content.config.ts",
+        "Loader glob() membaca banyak file Markdown",
+        "Loader file() membaca satu file JSON",
+        "Astro memvalidasi dan memberi tipe tiap entri"
+      ],
+      "code": "import { defineCollection } from \"astro:content\";\nimport { glob } from \"astro/loaders\";\n\nconst blog = defineCollection({\n  loader: glob({\n    pattern: \"**/*.md\",\n    base: \"./src/content/blog\",\n  }),\n});\nexport const collections = { blog };"
+    },
+    {
+      "title": "Skema dengan Zod",
+      "kicker": "CONTENT COLLECTIONS",
+      "bullets": [
+        "schema memeriksa frontmatter setiap entri",
+        "Import z dari astro/zod",
+        "z.coerce.date() mengubah teks jadi Date",
+        "default() mengisi nilai yang tidak ditulis",
+        "Data salah membuat build gagal dengan pesan jelas"
+      ],
+      "code": "import { z } from \"astro/zod\";\nconst blog = defineCollection({\n  loader: glob({ pattern: \"**/*.md\",\n    base: \"./src/content/blog\" }),\n  schema: z.object({\n    judul: z.string(),\n    tanggal: z.coerce.date(),\n    draft: z.boolean().default(false),\n  }),\n});"
+    },
+    {
+      "title": "getCollection dan getEntry",
+      "kicker": "CONTENT COLLECTIONS",
+      "bullets": [
+        "getCollection(\"blog\") mengambil semua entri",
+        "Argumen kedua menyaring, misalnya membuang draft",
+        "getEntry(\"blog\", id) mengambil satu entri",
+        "Data frontmatter ada di entry.data"
+      ],
+      "code": "---\nimport { getCollection } from \"astro:content\";\n\nconst posts = (await getCollection(\"blog\",\n  ({ data }) => !data.draft))\n  .sort((a, b) =>\n    b.data.tanggal.valueOf() -\n    a.data.tanggal.valueOf());\n---"
+    },
+    {
+      "title": "Merender entri",
+      "kicker": "CONTENT COLLECTIONS",
+      "bullets": [
+        "render(entry) dari astro:content mengolah isi Markdown",
+        "Hasilnya komponen <Content /> dan daftar headings",
+        "Biasanya dipakai di halaman blog/[id].astro",
+        "Koleksi bisa saling merujuk dengan reference()"
+      ],
+      "code": "---\nimport { getEntry, render } from \"astro:content\";\nconst { id } = Astro.params;\nconst post = await getEntry(\"blog\", id);\nif (!post) return Astro.redirect(\"/404\");\nconst { Content } = await render(post);\n---\n<h1>{post.data.judul}</h1>\n<Content />"
+    },
+    {
+      "title": "Integrasi framework UI",
+      "kicker": "ISLAND",
+      "bullets": [
+        "npx astro add react memasang integrasi React",
+        "Tersedia juga untuk Vue, Svelte, Preact, dan Solid",
+        "Komponen framework dipakai seperti komponen Astro",
+        "Tanpa direktif client, hasilnya hanya HTML statis"
+      ],
+      "code": "npx astro add react\n\n---\nimport Hitung from \"../components/Hitung.jsx\";\n---\n<Hitung />              <!-- HTML saja -->\n<Hitung client:load />  <!-- interaktif -->"
+    },
+    {
+      "title": "Direktif client",
+      "kicker": "ISLAND",
+      "bullets": [
+        "client:load: hidrasi segera saat halaman dibuka",
+        "client:idle: setelah browser selesai sibuk",
+        "client:visible: ketika masuk ke layar",
+        "client:media: ketika media query cocok",
+        "client:only: dirender di browser saja, tanpa HTML server"
+      ],
+      "code": "<Keranjang client:load />\n<Chat client:idle />\n<Komentar client:visible />\n<MenuHP client:media=\"(max-width: 640px)\" />\n<Peta client:only=\"react\" />"
+    },
+    {
+      "title": "Server island",
+      "kicker": "ISLAND",
+      "bullets": [
+        "server:defer menunda render komponen di server",
+        "Halaman utama dikirim dulu, bagian itu menyusul",
+        "Cocok untuk data per pengguna: avatar, keranjang",
+        "slot=\"fallback\" tampil selama komponen dimuat",
+        "Butuh adapter karena dirender on demand"
+      ],
+      "code": "<Avatar server:defer>\n  <div slot=\"fallback\">Memuat...</div>\n</Avatar>"
+    },
+    {
+      "title": "Mode output dan adapter",
+      "kicker": "SSR DAN SERVER",
+      "bullets": [
+        "output: \"static\" (bawaan) membuat semua halaman saat build",
+        "output: \"server\" merender halaman saat diminta",
+        "Adapter Node, Vercel, atau Netlify menjalankan server",
+        "export const prerender mengatur per halaman",
+        "Mode \"hybrid\" lama sudah dihapus"
+      ],
+      "code": "// astro.config.mjs\nimport { defineConfig } from \"astro/config\";\nimport node from \"@astrojs/node\";\n\nexport default defineConfig({\n  output: \"server\",\n  adapter: node({ mode: \"standalone\" }),\n});"
+    },
+    {
+      "title": "Endpoint",
+      "kicker": "SSR DAN SERVER",
+      "bullets": [
+        "File .ts atau .js di src/pages menjadi endpoint",
+        "Ekspor fungsi GET, POST, dan metode lain",
+        "Fungsi menerima context dan mengembalikan Response",
+        "Cocok untuk JSON, RSS, atau sitemap"
+      ],
+      "code": "// src/pages/api/menu.json.ts\nimport type { APIRoute } from \"astro\";\n\nexport const GET: APIRoute = () => {\n  const menu = [\"Bakso\", \"Soto\"];\n  return Response.json(menu);\n};"
+    },
+    {
+      "title": "Middleware dan cookies",
+      "kicker": "SSR DAN SERVER",
+      "bullets": [
+        "src/middleware.ts berjalan sebelum setiap halaman",
+        "defineMiddleware dari astro:middleware",
+        "context.locals membawa data ke halaman",
+        "sequence() menggabung beberapa middleware",
+        "Astro.cookies dan Astro.redirect di halaman"
+      ],
+      "code": "import { defineMiddleware } from \"astro:middleware\";\n\nexport const onRequest = defineMiddleware(\n  (context, next) => {\n    const id = context.cookies.get(\"sesi\")?.value;\n    if (!id) return context.redirect(\"/masuk\");\n    context.locals.sesi = id;\n    return next();\n  });"
+    },
+    {
+      "title": "Actions",
+      "kicker": "SSR DAN SERVER",
+      "bullets": [
+        "Fungsi server yang dipanggil seperti fungsi biasa",
+        "Didefinisikan di src/actions/index.ts",
+        "input memakai skema Zod untuk validasi",
+        "Dipanggil dari browser lewat import actions"
+      ],
+      "code": "import { defineAction } from \"astro:actions\";\nimport { z } from \"astro/zod\";\n\nexport const server = {\n  pesan: defineAction({\n    input: z.object({ menu: z.string() }),\n    handler: async ({ menu }) => `Pesan ${menu}`,\n  }),\n};"
+    },
+    {
+      "title": "View transitions dan prefetch",
+      "kicker": "PERFORMA DAN SEO",
+      "bullets": [
+        "<ClientRouter /> dari astro:transitions di <head>",
+        "Pindah halaman terasa mulus tanpa muat ulang penuh",
+        "transition:name menautkan elemen antar halaman",
+        "prefetch memuat halaman sebelum link diklik",
+        "Atur di astro.config: prefetch dan defaultStrategy"
+      ],
+      "code": "---\nimport { ClientRouter } from \"astro:transitions\";\n---\n<head>\n  <ClientRouter />\n</head>\n\n<a href=\"/menu\" data-astro-prefetch>Menu</a>"
+    },
+    {
+      "title": "SEO dan sitemap",
+      "kicker": "PERFORMA DAN SEO",
+      "bullets": [
+        "Isi <title> dan meta description di layout",
+        "Tag Open Graph untuk pratinjau di media sosial",
+        "Set site di config agar URL canonical lengkap",
+        "@astrojs/sitemap membuat sitemap otomatis",
+        "@astrojs/rss membuat feed RSS untuk blog"
+      ],
+      "code": "---\nconst { judul, deskripsi } = Astro.props;\nconst url = new URL(Astro.url.pathname, Astro.site);\n---\n<title>{judul}</title>\n<meta name=\"description\" content={deskripsi} />\n<meta property=\"og:title\" content={judul} />\n<link rel=\"canonical\" href={url} />"
+    },
+    {
+      "title": "Build dan preview",
+      "kicker": "BUILD DAN DEPLOY",
+      "bullets": [
+        "astro build menghasilkan situs siap pakai",
+        "Mode statis: semua HTML ada di folder dist/",
+        "Mode server: dist/ berisi kode untuk adapter",
+        "astro preview menjalankan hasil build di lokal",
+        "Cek skor halaman dengan Lighthouse sebelum rilis"
+      ],
+      "code": "npm run build      # astro build\nnpm run preview    # astro preview\n\ndist/\n  index.html\n  blog/halo/index.html\n  _astro/          # CSS, JS, gambar"
+    },
+    {
+      "title": "Deploy dan langkah berikutnya",
+      "kicker": "BUILD DAN DEPLOY",
+      "bullets": [
+        "Statis: unggah dist/ ke hosting statis apa saja",
+        "Server: pakai adapter sesuai platform tujuan",
+        "Variabel publik diawali PUBLIC_, baca via import.meta.env",
+        "astro:env dan envField untuk variabel yang bertipe",
+        "Lanjut: Actions, Content Layer, dan integrasi lain"
+      ],
+      "note": "Mulai dari blog statis, tambah island dan server hanya saat perlu."
+    }
+  ]
+}

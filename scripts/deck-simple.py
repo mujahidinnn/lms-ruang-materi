@@ -1313,7 +1313,69 @@ class Audit(St):
         text(s, x + 0.35, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("F5E8D3"), gap=2, font=MONO)
 
 
-STYLES = {"dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 31. Astro: islands of JS in a sea of static HTML, frontmatter fences ----------
+class Island(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.3, 0.5
+    ORANGE = C("FF5D01")
+
+    def fence(self, s, x, y, code, size=12, dark=False):
+        text(s, x, y, 0.5, 0.3, "---", size, True, self.ORANGE, font=MONO, gap=0)
+        text(s, x + 0.55, y, 8, 0.3, code, size, color=SLATE if dark else T.grey, font=MONO, gap=0)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        sea = mix(T.ink, "FFFFFF", 0.08)
+        for bx, by, bw in ((7.9, 1.0, 2.4), (10.5, 1.0, 1.9), (7.9, 5.1, 1.5), (9.6, 5.1, 2.8), (7.9, 5.9, 4.5)):
+            rrect(s, bx, by, bw, 0.5, sea, adj=0.3)
+        for k in range(8):  # static HTML lines
+            rrect(s, 7.9, 1.8 + k * 0.4, 0.5 + (k * 37 % 5) * 0.2, 0.12, sea, adj=0.5)
+        oval(s, 9.3, 1.75, 3.1, 3.1, mix(T.ink, T.accent, 0.25), line=T.accent, lw=3)
+        logo(s, "white", 10.15, 2.55, 1.4)
+        oval(s, 12.1, 1.55, 0.42, 0.42, self.ORANGE)
+        oval(s, 9.05, 4.3, 0.3, 0.3, T.accent)
+        self.fence(s, 0.9, 1.0, 'const kelas = "Ruang Materi";', 15, True)
+        text(s, 0.9, 1.75, 6.6, 1.5, sl["title"], 80, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.35, 6.3, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 4.9, 1, 0.3, "---", 15, True, self.ORANGE, font=MONO, gap=0)
+        text(s, 0.9, 5.45, 6, 0.3, "<Island client:visible />", 14, True, T.accent, font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower()
+        self.fence(s, 0.6, 0.32, f'const bagian = "{k}";  ---')
+        self.title(s, 0.6, 0.72, 10.8, sl["title"])
+        logo(s, "accent", 12.1, 0.32, 0.6)
+        rect(s, 0, 6.88, W, 0.62, T.card)
+        for k2 in range(3): oval(s, 0.6 + k2 * 0.22, 7.11, 0.12, 0.12, self.ORANGE if k2 == 0 else T.line)
+        return (0.6, 1.7, 12.1, 4.95)
+
+    def foot(self, s, n, sl):
+        text(s, 1.4, 7.05, 8, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.05, 1.0, 0.25, f"{n} / {N}", 10, color=T.grey, gap=0, align=PP_ALIGN.RIGHT)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rrect(s, x, y + 0.06, w, h - 0.12, T.card, adj=0.25, line=T.line, lw=1)
+
+    def mark(self, s, x, cy, i):
+        oval(s, x - 0.04, cy - 0.12, 0.24, 0.24, T.light)
+        oval(s, x + 0.02, cy - 0.06, 0.12, 0.12, self.ORANGE if i % 2 == 0 else T.accent)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x + 0.3, y + 0.18, 0.4, 0.05, self.ORANGE)
+        rect(s, x + 0.78, y + 0.18, 0.2, 0.05, T.accent)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.4, w - 0.6, h - 0.5, lines, sz, color=C("EDE4FB"), gap=2, font=MONO)
+
+
+STYLES = {"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
