@@ -123,7 +123,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
 
     <p class="mt-auto text-xs text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain.</p>
   </main>
-  <template id="musik-kosong"><Empty className="size-8 shrink-0" /></template>
+  <template id="musik-kosong"><Empty className="size-14 shrink-0" /></template>
 </Base>
 
 <script>
@@ -320,8 +320,8 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   }
 
   const SERVICES = {
-    spotify: { connect: spotifyConnect, playlists: spotifyPlaylists, empty: "Belum ada playlist di Spotify-mu." },
-    youtube: { connect: youtubeConnect, playlists: youtubePlaylists, empty: "Belum ada playlist di YouTube-mu. Cari lagu di atas." },
+    spotify: { connect: spotifyConnect, playlists: spotifyPlaylists, empty: ["Belum ada playlist", "Playlist di Spotify-mu muncul di sini."] as [string, string] },
+    youtube: { connect: youtubeConnect, playlists: youtubePlaylists, empty: ["Belum ada playlist", "Belum ada playlist di YouTube-mu. Cari lagu di atas."] as [string, string] },
   };
 
   async function render(key: keyof typeof SERVICES) {
@@ -340,7 +340,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     fill(list, playlists, SERVICES[key].empty);
   }
 
-  function fill(list: HTMLElement, items: Playlist[] | null, empty: string, pick = (p: Playlist) => { play(p.src); remember(p); }) {
+  function fill(list: HTMLElement, items: Playlist[] | null, [heading, text]: [string, string], pick = (p: Playlist) => { play(p.src); remember(p); }) {
     list.replaceChildren(
       ...(items ?? []).map((p) => {
         const row = document.createElement("li");
@@ -371,8 +371,10 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     );
     if (items?.length === 0) {
       const note = document.createElement("li");
-      note.className = "flex items-center gap-4 text-sm text-zinc-400";
-      note.append(document.querySelector<HTMLTemplateElement>("#musik-kosong")!.content.cloneNode(true), empty);
+      note.className = "flex flex-col items-center gap-2 py-2 text-center";
+      const title = Object.assign(document.createElement("p"), { className: "text-sm font-semibold text-zinc-200", textContent: heading });
+      const desc = Object.assign(document.createElement("p"), { className: "text-sm text-zinc-500", textContent: text });
+      note.append(document.querySelector<HTMLTemplateElement>("#musik-kosong")!.content.cloneNode(true), title, desc);
       list.append(note);
     }
   }
@@ -390,11 +392,11 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   function renderHistory() {
     const items = played();
     document.querySelector<HTMLElement>("[data-history-section]")!.hidden = !items.length;
-    fill(document.querySelector<HTMLElement>("[data-history]")!, items, "");
+    fill(document.querySelector<HTMLElement>("[data-history]")!, items, ["Belum ada riwayat", "Lagu yang kamu putar muncul di sini."]);
   }
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
-  fill(picks, JSON.parse(picks.dataset.picks!), "");
+  fill(picks, JSON.parse(picks.dataset.picks!), ["Belum ada pilihan", "Pilihan lagu belum tersedia."]);
 
   // Local files: an <audio> player that moves on to the next file by itself.
   const localInput = document.querySelector<HTMLInputElement>("[data-local]")!;
@@ -422,7 +424,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     const files = [...(localInput.files ?? [])];
     if (!files.length) return;
     const items = files.map((f, i) => ({ name: f.name.replace(/\.[^.]+$/, ""), count: `${(f.size / 1048576).toFixed(1)} MB`, src: String(i) }));
-    fill(localList, items, "", (p) => playLocal(files, Number(p.src)));
+    fill(localList, items, ["Belum ada file", "Pilih file musik dari perangkatmu."], (p) => playLocal(files, Number(p.src)));
     (localList.querySelector("button") as HTMLButtonElement).click();
   });
 
@@ -436,7 +438,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     error.textContent = "";
     const results = await youtubeSearch(q);
     if (!results) return render("youtube");
-    fill(searchForm.closest("section")!.querySelector("[data-playlists]")!, results, "Tidak ada hasil. Coba kata lain.");
+    fill(searchForm.closest("section")!.querySelector("[data-playlists]")!, results, ["Tidak ada hasil", "Coba kata lain."]);
   });
   // A suggestion fills the box and searches it.
   document.querySelectorAll<HTMLButtonElement>("[data-suggest]").forEach((b) =>
