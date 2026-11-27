@@ -48,3 +48,10 @@ test("an empty alt falls back to the name and has no caption", () => {
 test("diagram images are not lazy, so they reach the offline cache with the page", () => {
   expect(html("![x](gambar:utp-t568a-t568b)")).not.toContain('loading="lazy"');
 });
+
+test("a picture served by the site embeds as a figure; outside or odd paths do not", () => {
+  expect(html("![Alur login](/studio/sistem-login-aman/alur.gif)")).toContain('src="/studio/sistem-login-aman/alur.gif"');
+  for (const bad of ["https://evil.test/x.png", "//evil.test/x.png", "/studio/../x.png", "/studio/x.html", "/Studio/x.png"]) {
+    expect(html(`![x](${bad})`), bad).not.toContain("<img");
+  }
+});

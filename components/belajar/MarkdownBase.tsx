@@ -50,6 +50,15 @@ export default function MarkdownBase({
                 </figure>
               );
             }
+            // Pictures in public/studio/ (no dots in folder names, so no ..): GIFs, screenshots, illustrations.
+            if (typeof src === "string" && /^\/studio\/(?:[a-z0-9][a-z0-9_-]*\/)*[a-z0-9][a-z0-9_-]*\.(webp|png|jpe?g|gif|svg)$/.test(src)) {
+              return (
+                <figure className="my-5 overflow-hidden rounded-xl shadow-soft">
+                  <img src={src} alt={alt ?? ""} loading="lazy" decoding="async" className="h-auto w-full bg-white" />
+                  {alt ? <figcaption className="bg-zinc-900 px-4 py-2 text-sm text-zinc-400">{alt}</figcaption> : null}
+                </figure>
+              );
+            }
             const slide = typeof src === "string" ? resolveSlideRef(src, slides) : null;
             if (!slide) return null;
             return (
