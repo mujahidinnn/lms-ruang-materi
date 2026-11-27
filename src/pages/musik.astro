@@ -75,13 +75,19 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     </header>
     <form role="search" data-filter>
       <label for="music-filter" class="sr-only">Cari musik</label>
-      <input id="music-filter" type="search" autocomplete="off" placeholder="Cari musik, misal piano atau lofi" class="min-h-11 w-full rounded-[18px] bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+      <input id="music-filter" type="search" autocomplete="off" aria-describedby="music-filter-hint" placeholder="Cari musik, misal piano atau lofi" class="min-h-11 w-full rounded-[18px] bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+      <p id="music-filter-hint" class="mt-2 px-1 text-xs text-zinc-500">
+        <span data-hint="local">Mencari di playlist pilihan dan riwayatmu.</span>
+        <span data-hint="connect" hidden>Mencari di playlist pilihan. Untuk lagu lain, <button type="button" data-filter-connect class="font-semibold text-zinc-300 underline hover:text-zinc-50">hubungkan YouTube Music</button>.</span>
+        <span data-hint="youtube" hidden>Tekan Enter untuk mencari semua lagu di YouTube.</span>
+      </p>
     </form>
     <div data-filter-empty hidden aria-live="polite" class="flex flex-col items-center gap-2 py-6 text-center">
       <NoMusic className="size-14" />
       <p class="text-sm font-semibold text-zinc-200">Tidak ada yang cocok dengan "<span data-filter-q></span>"</p>
       <p class="text-sm text-zinc-500">Coba kata lain, misal piano, jazz, atau hujan.</p>
       <button type="button" data-filter-youtube hidden class={`${secondaryButton} mt-1`}>Cari di YouTube</button>
+      <button type="button" data-filter-connect hidden class={`${secondaryButton} mt-1`}>Cari lewat YouTube Music</button>
     </div>
     <p data-music-error aria-live="polite" class="text-sm text-red-400 empty:hidden"></p>
 
@@ -392,6 +398,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     disconnect.hidden = !playlists;
     if (search) search.hidden = !playlists;
     fill(list, playlists, SERVICES[key].empty);
+    applyFilter();
   }
 
   function fill(list: HTMLElement, items: Playlist[] | null, [heading, text]: [string, string], pick = (p: Playlist) => { play(p.src); remember(p); }, limit = Infinity) {
@@ -491,15 +498,28 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     }
     filterEmpty.hidden = !q || hits > 0;
     filterEmpty.querySelector("[data-filter-q]")!.textContent = filter.value.trim();
-    filterEmpty.querySelector<HTMLElement>("[data-filter-youtube]")!.hidden = document.querySelector<HTMLElement>("[data-search]")?.hidden ?? true;
+    // Which way to find songs beyond the picks: none (no YouTube client),
+    // connect first, or search YouTube now.
+    const youtube = document.querySelector<HTMLElement>("[data-search]");
+    const mode = !youtube ? "local" : youtube.hidden ? "connect" : "youtube";
+    document.querySelectorAll<HTMLElement>("[data-hint]").forEach((h) => (h.hidden = h.dataset.hint !== mode));
+    filterEmpty.querySelector<HTMLElement>("[data-filter-youtube]")!.hidden = mode !== "youtube";
+    filterEmpty.querySelector<HTMLElement>("button[data-filter-connect]")!.hidden = mode !== "connect";
   }
-  filter.addEventListener("input", applyFilter);
-  document.querySelector("[data-filter]")!.addEventListener("submit", (e) => e.preventDefault());
-  filterEmpty.querySelector("[data-filter-youtube]")!.addEventListener("click", () => {
+  function searchYoutube() {
     searchForm!.q.value = filter.value.trim();
     searchForm!.requestSubmit();
     searchForm!.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.querySelectorAll("[data-filter-connect]").forEach((b) =>
+    b.addEventListener("click", () => document.querySelector<HTMLButtonElement>('[data-service="youtube"] [data-connect]')!.click()),
+  );
+  filter.addEventListener("input", applyFilter);
+  document.querySelector("[data-filter]")!.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (filter.value.trim() && document.querySelector<HTMLElement>("[data-search]")?.hidden === false) searchYoutube();
   });
+  filterEmpty.querySelector("[data-filter-youtube]")!.addEventListener("click", searchYoutube);
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
   const ytPicks = document.querySelector<HTMLElement>("[data-yt-picks]")!;
