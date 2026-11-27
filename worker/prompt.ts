@@ -35,7 +35,7 @@ const exercise = z.object({
         check: z
           .string()
           .min(1)
-          .describe("Satu ekspresi yang bernilai true bila benar, JavaScript (python: ekspresi Python). web: periksa document. express: boleh (await request('GET', '/path')).status"),
+          .describe("Satu ekspresi yang bernilai true bila benar, JavaScript (python: ekspresi Python, php: ekspresi PHP tanpa titik koma). web: periksa document. express: boleh (await request('GET', '/path')).status"),
       })
     )
     .min(1)

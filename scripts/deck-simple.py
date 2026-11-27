@@ -731,7 +731,62 @@ class Sky(St):
         text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, 15 if len(lines) <= 9 else 13, color=C("E2E8F0"), gap=2, font=MONO)
 
 
-STYLES = {"analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 14. PHP: browser window, address bar, page served by the server ----------
+class Browser(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.2, 0.6
+
+    @property
+    def bg(self): return mix(WHITE, T.accent, 0.07)
+
+    def bar(self, s, x, y, w, url, dark):
+        top = T.deep if dark else T.card
+        rrect(s, x, y, w, 0.62, top, adj=0.25)
+        rect(s, x, y + 0.31, w, 0.31, top)
+        for k, c in enumerate((C("F87171"), C("FBBF24"), C("4ADE80"))): oval(s, x + 0.25 + k * 0.27, y + 0.23, 0.16, 0.16, c)
+        rrect(s, x + 1.25, y + 0.13, w - 1.55, 0.36, T.ink if dark else WHITE, line=None if dark else T.line, lw=1, adj=0.5)
+        text(s, x + 1.45, y + 0.13, w - 2, 0.36, url, 12, color=SLATE if dark else T.grey, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        rrect(s, 0.8, 0.75, 11.7, 6.0, mix(T.ink, BLACK, 0.2), adj=0.03)
+        self.bar(s, 0.8, 0.75, 11.7, "localhost:8000/index.php", True)
+        text(s, 1.4, 1.85, 6, 0.3, "<?php echo", 15, color=T.amber, font=MONO, gap=0)
+        text(s, 1.4, 2.35, 7.2, 1.6, sl["title"], 72, True, WHITE, gap=0, font=self.head)
+        text(s, 1.4, 4.0, 6.6, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 1.4, 5.85, 6, 0.3, "?>", 15, color=T.amber, font=MONO, gap=0)
+        oval(s, 8.9, 2.0, 3.0, 3.0, T.accent)
+        logo(s, "white", 9.25, 2.35, 2.3)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower().replace(" ", "-")
+        self.bar(s, 0.45, 0.3, 12.43, f"localhost:8000/{k}.php", False)
+        rect(s, 0.45, 0.92, 12.43, 0.02, T.line)
+        self.title(s, 0.6, 1.15, 10.8, sl["title"])
+        logo(s, "accent", 12.05, 1.1, 0.65)
+        return (0.6, 2.1, 12.1, 4.7)
+
+    def mark(self, s, x, cy, i):
+        text(s, x - 0.05, cy - 0.2, 0.5, 0.4, "→", 18, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        lines = code.splitlines()
+        sz = 15 if len(lines) <= 9 and max(map(len, lines)) <= 48 else 13
+        text(s, x + 0.2, y + 0.25, 0.4, h - 0.4, [str(i + 1) for i in range(len(lines))], sz, color=T.mid, gap=2, font=MONO, align=PP_ALIGN.RIGHT)
+        text(s, x + 0.75, y + 0.25, w - 1.0, h - 0.4, lines, sz, color=C("E2E8F0"), gap=2, font=MONO)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.4
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+
+STYLES = {"php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
