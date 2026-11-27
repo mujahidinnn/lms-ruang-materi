@@ -1,0 +1,535 @@
+{
+  "slug": "prediksi-harga-rumah",
+  "title": "Prediksi Harga Rumah dengan Machine Learning",
+  "summary": "Bangun model prediksi harga rumah dari data rumah sintetis di delapan kota Indonesia: jelajahi data, bagi tanpa kebocoran, susun Pipeline scikit-learn, bandingkan baseline, regresi linear, dan model pohon dengan cross-validation, jelaskan hasilnya dalam rupiah, lalu sajikan lewat FastAPI yang teruji dan online di Render.",
+  "level": "menengah",
+  "est_hours": 14,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-pemakai-prediksi",
+      "title": "Tentukan siapa pemakai prediksinya",
+      "est_minutes": 20,
+      "body": "## Model yang baik menjawab keputusan yang jelas\n\nProyek machine learning sering gagal bukan karena modelnya jelek, tapi karena tidak ada yang tahu **keputusan apa** yang mau dibantu. \"Memprediksi harga rumah\" terdengar jelas, padahal pemakainya bisa sangat berbeda:\n\n- **Penjual** ingin tahu harga pasang yang wajar supaya rumahnya tidak terlalu lama tidak laku.\n- **Pembeli** ingin tahu apakah harga yang ditawarkan kemahalan.\n- **Agen properti** ingin perkiraan cepat sebelum survei ke lokasi.\n\nDi proyek ini kita membangun model untuk **agen properti kecil** yang ingin perkiraan awal dalam hitungan detik, lewat API yang bisa dipanggil dari aplikasi mereka. Perkiraan ini bukan pengganti penilai (appraiser), tapi titik awal percakapan dengan klien.\n\n## Satu hal yang perlu jujur sejak awal\n\nData harga rumah sungguhan sulit didapat dan sering berhak cipta. Karena itu kamu akan **membuat data sintetis** dengan skrip yang polanya meniru pasar rumah di kota-kota Indonesia: lokasi, luas, umur bangunan, ada nilai kosong, ada salah ketik, ada rumah mewah. Proses yang kamu latih di sini sama persis dengan proses di data sungguhan. Tulis keterangan \"data sintetis\" di README nanti.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template brief di bagian Bahan.\n2. Lengkapi **\"Model ini dipakai oleh ___ untuk memutuskan ___.\"** Boleh memakai contoh agen properti di atas, atau pemakaimu sendiri.\n3. Tulis masukan yang **benar-benar tersedia** saat prediksi. Agen tahu luas, kota, dan jumlah kamar, tapi tidak tahu harga jual akhirnya. Ini penting nanti.\n4. Tulis ukuran berhasil **sebelum** melatih model, termasuk batas MAE dalam rupiah yang menurutmu masih berguna bagi pemakai.\n5. Tulis hal yang tidak dikerjakan di versi pertama, misalnya antarmuka web, peta, atau data dari situs iklan.\n\n> Ukuran berhasil yang ditulis setelah melihat hasil model mudah sekali \"disesuaikan\" supaya terlihat bagus. Tulis sekarang.\n",
+      "materials": [
+        {
+          "id": "phr-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Prediksi Harga Rumah\n\nModel ini dipakai oleh: ___\nuntuk memutuskan: ___\n\nYang diprediksi: harga jual rumah tapak, dalam rupiah.\nMasukan yang tersedia saat prediksi: ___\n\nUkuran berhasil (ditulis SEBELUM melatih model):\n- Lebih baik dari tebakan median, dengan selisih yang jelas.\n- Rata-rata meleset (MAE) di bawah Rp___ untuk rumah biasa.\n- API menolak masukan yang tidak masuk akal.\n\nBukan bagian versi pertama:\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-brief-pemakai",
+          "text": "Aku sudah menulis siapa pemakai model dan keputusan apa yang dibantu."
+        },
+        {
+          "id": "phr-brief-masukan",
+          "text": "Aku menulis masukan yang tersedia saat prediksi."
+        },
+        {
+          "id": "phr-brief-ukuran",
+          "text": "Ukuran berhasil, termasuk batas MAE dalam rupiah, sudah kutulis sebelum melatih model."
+        },
+        {
+          "id": "phr-brief-sintetis",
+          "text": "Aku paham data proyek ini sintetis dan akan menyebutnya di README."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-fitur-dan-jebakan",
+      "title": "Petakan fitur, target, dan jebakannya",
+      "est_minutes": 35,
+      "body": "## Apa yang menentukan harga rumah?\n\nSebelum membuka data, tebak dulu dengan akal sehat. Tebakan ini nanti dibandingkan dengan hasil model. Kalau model berkata sesuatu yang aneh, kamu jadi cepat curiga.\n\n| Kolom | Jenis | Tebakan pengaruhnya |\n| --- | --- | --- |\n| `kota` | kategori | Sangat besar. Tanah di Jakarta Selatan berkali lipat lebih mahal dari Medan |\n| `luas_tanah` | angka (m²) | Besar |\n| `luas_bangunan` | angka (m²), kadang kosong | Besar |\n| `kamar_tidur`, `kamar_mandi` | angka | Sedang, karena sudah \"terwakili\" oleh luas bangunan |\n| `jarak_pusat_km` | angka, kadang kosong | Makin jauh makin murah |\n| `tahun_dibangun` | angka, kadang kosong | Bangunan tua lebih murah |\n| `harga` | **target** (rupiah) | Yang mau diprediksi |\n\n## Tiga jebakan yang perlu dicatat\n\n1. **Kebocoran data (data leakage).** Model diberi informasi yang tidak akan tersedia saat dipakai sungguhan, atau \"mengintip\" data uji saat dilatih. Contoh: kolom `harga_per_m2` (dihitung dari harga, jadi jawabannya bocor), atau mengisi nilai kosong dengan rata-rata **seluruh** data sebelum dibagi. Hasilnya: skor bagus di laptop, buruk di dunia nyata.\n2. **Outlier.** Ada dua macam. *Salah ketik* (harga 1.500 rupiah, maksudnya 1,5 miliar) harus dibuang. *Rumah mewah asli* (40 miliar) bukan kesalahan, jadi jangan dibuang hanya karena \"mengganggu\".\n3. **Metrik yang menyesatkan.** \"R² 0,84\" tidak berarti apa-apa bagi agen properti. \"Rata-rata meleset 325 juta\" langsung dimengerti. Karena itu metrik utama proyek ini dinyatakan dalam **rupiah**.\n\n## Yang perlu kamu kerjakan\n\n1. Salin tabel di atas ke catatanmu, lalu urutkan kolom dari yang menurutmu paling berpengaruh.\n2. Tulis satu contoh kebocoran data lain yang mungkin terjadi di kasus rumah. Petunjuk: pikirkan kolom yang baru diketahui **setelah** rumah terjual.\n3. Tulis aturanmu untuk membedakan salah ketik dari rumah mewah asli.\n4. Tulis tiga hal yang bisa salah di sisi API, misalnya luas negatif atau kota yang tidak dikenal model.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "phr-ide-urutan",
+          "text": "Aku mengurutkan fitur dari yang menurutku paling berpengaruh."
+        },
+        {
+          "id": "phr-ide-bocor",
+          "text": "Aku bisa menjelaskan apa itu kebocoran data dan memberi satu contoh di kasus rumah."
+        },
+        {
+          "id": "phr-ide-outlier",
+          "text": "Aku menulis aturan untuk membedakan salah ketik dari rumah mewah asli."
+        },
+        {
+          "id": "phr-ide-api",
+          "text": "Aku menulis tiga masukan salah yang harus ditolak API."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "siapkan-uv-dan-pustaka",
+      "title": "Siapkan Python dengan uv, pandas, dan scikit-learn",
+      "est_minutes": 30,
+      "body": "## Alat yang dipakai\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Pengelola proyek | **uv** | Satu alat untuk memasang Python, membuat virtual environment, dan mengunci versi pustaka di `uv.lock`. Jauh lebih cepat dari pip |\n| Data | **pandas** | Membaca CSV dan menjelajah tabel |\n| Model | **scikit-learn** | Pipeline, praproses, model, cross-validation, dan metrik dalam satu pustaka yang konsisten |\n| Grafik | **matplotlib** | Grafik EDA dan evaluasi disimpan sebagai berkas PNG |\n| API | **FastAPI** + Pydantic | Validasi masukan otomatis dan halaman dokumentasi `/docs` gratis |\n| Uji | **pytest** | Tes ringkas dengan `assert` biasa |\n\nKenapa bukan notebook? Notebook bagus untuk eksplorasi, tapi proyek ini berakhir sebagai **API yang di-deploy**. Skrip `.py` lebih mudah diuji, dijalankan ulang dari nol, dan dipakai ulang oleh API. Kalau suka, kamu tetap boleh bereksperimen di notebook lalu memindahkan hasilnya ke skrip.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan perintah di `setup.sh` satu per satu. Di Windows, cara memasang uv ada di dokumentasi uv (lihat Bahan).\n2. `--python 3.14` membuat uv memasang Python 3.14 kalau belum ada, lalu menulis versinya di berkas `.python-version`. Berkas ini dibaca uv di komputermu **dan** oleh Render saat deploy, jadi versinya sama di mana-mana.\n3. Buka `pyproject.toml`. Pustaka yang kamu pasang tercatat di `dependencies`, pytest di grup `dev`. Versi persis setiap pustaka (termasuk turunannya) ada di `uv.lock`. Keduanya ikut di-commit.\n4. Perintah terakhir harus mencetak dua nomor versi, misalnya `1.9.1 3.1.1`.\n5. `uv init` sudah membuat repositori Git dan `.gitignore` yang mengabaikan `.venv`. Commit dengan pesan `Siapkan proyek uv`.\n\n## Kebiasaan penting\n\nJalankan semua perintah Python lewat **`uv run ...`**. uv otomatis memakai `.venv` proyek ini, jadi kamu tidak perlu mengaktifkan virtual environment manual dan tidak tertukar dengan Python lain di komputermu.\n\n> Model yang disimpan scikit-learn hanya aman dimuat oleh **versi scikit-learn yang sama**. `uv.lock` memastikan versi di laptopmu, di tes, dan di server identik.\n",
+      "materials": [
+        {
+          "id": "phr-tek-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "# 1. Pasang uv (sekali saja per komputer). Windows: lihat dokumentasi uv.\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nuv --version\n\n# 2. Buat proyek dan kunci versi Python-nya\nuv init --no-package --python 3.14 prediksi-harga-rumah\ncd prediksi-harga-rumah\nrm main.py                      # contoh bawaan uv, tidak kita pakai\n\n# 3. Pasang pustaka. uv membuat .venv dan mencatat versi persisnya di uv.lock\nuv add pandas scikit-learn matplotlib \"fastapi[standard]\"\nuv add --dev pytest\n\n# 4. Cek\nuv run python -c \"import sklearn, pandas; print(sklearn.__version__, pandas.__version__)\"\n"
+        },
+        {
+          "id": "phr-tek-uv",
+          "kind": "tautan",
+          "name": "Dokumentasi uv: memasang dan mengelola proyek",
+          "url": "https://docs.astral.sh/uv/"
+        },
+        {
+          "id": "phr-tek-sklearn",
+          "kind": "tautan",
+          "name": "scikit-learn: panduan memulai",
+          "url": "https://scikit-learn.org/stable/getting_started.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-tek-uv-ok",
+          "text": "uv --version mencetak nomor versi."
+        },
+        {
+          "id": "phr-tek-pustaka",
+          "text": "uv run python -c ... mencetak versi scikit-learn dan pandas."
+        },
+        {
+          "id": "phr-tek-lock",
+          "text": "pyproject.toml, uv.lock, dan .python-version sudah di-commit."
+        },
+        {
+          "id": "phr-tek-alasan",
+          "text": "Aku bisa menjelaskan kenapa versi scikit-learn harus sama saat melatih dan memuat model."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-alur-eksperimen",
+      "title": "Rancang alur eksperimen dan kontrak API",
+      "est_minutes": 45,
+      "body": "## Rencana dulu, supaya tidak \"mengakali\" hasil\n\nEksperimen ML yang jujur punya urutan yang tetap. Bagian terpenting: **data uji dibagi di awal lalu dikunci.** Semua keputusan (model mana, praproses apa) diambil hanya dari data latih lewat cross-validation. Data uji dibuka sekali, di akhir, untuk melaporkan angka yang jujur.\n\n![Alur eksperimen: aturan domain sebelum split, data uji dikunci, semua perbandingan model lewat cross-validation di data latih, lalu evaluasi sekali di data uji sebelum model disimpan dan disajikan API](/studio/prediksi-harga-rumah/alur-eksperimen.svg)\n\n## Keputusan penting di rencana ini\n\n- **Pipeline, bukan langkah lepas.** Imputasi, scaling, dan one-hot dibungkus satu `Pipeline` bersama modelnya. Dengan begitu median pengisi nilai kosong dihitung ulang di setiap lipatan CV dari data latih saja, dan API nanti cukup memanggil `model.predict()` tanpa mengulang praproses.\n- **Target diambil log-nya.** Harga rumah tersebar sangat lebar, dari ratusan juta sampai puluhan miliar. Dengan log, meleset 10% di rumah 500 juta dan di rumah 5 miliar dianggap sama beratnya.\n- **Baseline wajib.** Model yang tidak jauh lebih baik dari \"tebak saja median harga\" tidak layak dipakai.\n- **Metrik utama MAE dalam rupiah**, karena pemakainya berpikir dalam rupiah.\n\n## Yang perlu kamu kerjakan\n\n1. Baca `rencana-eksperimen.md` di bagian Bahan dan sesuaikan dengan brief-mu.\n2. Simpan di folder proyek sebagai `rencana-eksperimen.md`.\n3. Untuk setiap baris di bagian **Kontrak API**, tulis satu contoh request yang harus berhasil dan satu yang harus ditolak.\n4. Baca halaman *Common pitfalls* scikit-learn di Bahan, bagian kebocoran data. Kamu akan melihat contoh yang persis sama dengan jebakan di langkah sebelumnya.\n",
+      "materials": [
+        {
+          "id": "phr-ran-rencana",
+          "kind": "kode",
+          "name": "rencana-eksperimen.md",
+          "lang": "markdown",
+          "content": "# Rencana eksperimen\n\n## Data\n- Sumber: data/rumah.csv (sintetis, seed 42)\n- Target: harga (rupiah)\n- Fitur: kota, luas_tanah, luas_bangunan, kamar_tidur, kamar_mandi,\n  jarak_pusat_km, tahun_dibangun\n- Dibuang sebelum split (aturan domain): harga < 50 juta\n\n## Pembagian\n- 80% latih, 20% uji, random_state=42\n- Data uji dikunci sampai evaluasi akhir\n\n## Praproses (di dalam Pipeline, fit hanya di data latih)\n- Luas: isi kosong dengan median, ambil log, skala\n- Angka lain: isi kosong dengan median, skala\n- Kota: one-hot, kota baru diabaikan\n\n## Model yang dibandingkan (5-fold CV di data latih)\n1. Baseline: median harga\n2. LinearRegression (target log)\n3. RandomForestRegressor (target log)\n4. HistGradientBoostingRegressor (target log)\n\n## Metrik\n- Utama: MAE dalam rupiah\n- Pendamping: RMSE, R2, persentase meleset\n\n## Kontrak API\nPOST /prediksi\n  masuk : kota, luas_tanah, kamar_tidur, kamar_mandi (wajib),\n          luas_bangunan, jarak_pusat_km, tahun_dibangun (boleh kosong)\n  keluar: harga, harga_bawah, harga_atas, catatan\n  salah : 422 dengan detail per kolom\nGET /health -> {\"status\": \"ok\", \"model\": \"...\"}\n"
+        },
+        {
+          "id": "phr-ran-pitfalls",
+          "kind": "tautan",
+          "name": "scikit-learn: kesalahan umum dan kebocoran data",
+          "url": "https://scikit-learn.org/stable/common_pitfalls.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-ran-simpan",
+          "text": "rencana-eksperimen.md tersimpan di folder proyek."
+        },
+        {
+          "id": "phr-ran-kunci",
+          "text": "Aku bisa menjelaskan kenapa data uji dikunci sampai evaluasi akhir."
+        },
+        {
+          "id": "phr-ran-kontrak",
+          "text": "Aku punya contoh request yang berhasil dan yang ditolak untuk API."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "buat-dan-jelajahi-data",
+      "title": "Buat data dan jelajahi isinya (EDA)",
+      "est_minutes": 90,
+      "body": "## Kenali data sebelum melatih apa pun\n\nEDA (*exploratory data analysis*) adalah kebiasaan melihat data dengan mata sendiri: berapa barisnya, kolom mana yang kosong, nilai mana yang aneh. Lima belas menit EDA sering menyelamatkan berjam-jam kebingungan saat model berperilaku aneh.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `buat_data.py` dari bagian Bahan, lalu jalankan:\n\n```bash\nuv run python buat_data.py\n```\n\nHasilnya `Tersimpan data/rumah.csv: 420 baris, 73 sel kosong`. Karena seed-nya tetap (`42`), datamu sama persis dengan data di panduan ini.\n\n2. Baca bagian \"rumus rahasia\" di skrip itu. Di data sungguhan kamu tidak pernah tahu rumusnya. Di sini kamu tahu, jadi kamu bisa memeriksa apakah model menemukan pola yang benar.\n3. Simpan `eda.py`, lalu jalankan `uv run python eda.py`. Perhatikan hasilnya:\n   - `info()` dan jumlah sel kosong: `luas_bangunan` 18, `jarak_pusat_km` 25, `tahun_dibangun` 30.\n   - **Empat harga di bawah 50 juta**, misalnya 1.558 rupiah untuk rumah 143 m² di Surabaya. Jelas salah ketik dalam satuan juta.\n   - **Tiga rumah di atas 30 miliar** di Jakarta Selatan dengan tanah 850 sampai 1.200 m². Mahal, tapi masuk akal. Ini outlier asli.\n4. Buka grafik di folder `gambar/`.\n\n![Sebaran harga: hampir semua rumah di bawah 5 miliar, tiga rumah mewah jauh di kanan. Ekor panjang ini alasan target diambil log-nya](/studio/prediksi-harga-rumah/sebaran-harga.webp)\n\n![Median harga per m² tanah per kota: Jakarta Selatan sekitar 22 juta, kota lain 7 sampai 11 juta. Kota akan jadi fitur penting](/studio/prediksi-harga-rumah/harga-per-kota.webp)\n\n5. Commit dengan pesan `Buat data dan EDA`. Data dan grafik ikut di-commit, karena ukurannya kecil dan membantu pembaca README.\n\n## Tulis tiga temuan\n\nTulis tiga kalimat temuan di `rencana-eksperimen.md`, misalnya \"harga per m² di Jakarta Selatan dua kali lipat kota lain\". Bandingkan dengan tebakanmu di langkah Brainstorming. Mana yang meleset?\n\n> Grafik ketiga, `luas-vs-harga.png`, memakai skala log di kedua sumbu. Titik-titiknya membentuk pita lurus. Itu petunjuk bahwa hubungan luas dan harga bersifat **berlipat**, dan akan dipakai di langkah berikutnya.\n",
+      "materials": [
+        {
+          "id": "phr-data-buat",
+          "kind": "kode",
+          "name": "buat_data.py",
+          "lang": "python",
+          "content": "\"\"\"Membuat data rumah sintetis yang realistis: data/rumah.csv.\n\nAngka di sini KARANGAN (bukan data pasar sungguhan), tapi polanya meniru\npasar rumah tapak di kota-kota Indonesia. Seed tetap, jadi hasilnya sama\ndi komputer siapa pun.\n\"\"\"\nfrom pathlib import Path\n\nimport numpy as np\nimport pandas as pd\n\nrng = np.random.default_rng(42)\nN = 420\n\n# Harga tanah kira-kira per m2 di pusat kota (rupiah), dan jarak terjauh (km)\nKOTA = {\n    \"Jakarta Selatan\": (22_000_000, 15),\n    \"Bandung\": (9_000_000, 20),\n    \"Surabaya\": (10_000_000, 22),\n    \"Depok\": (7_000_000, 18),\n    \"Bekasi\": (6_500_000, 25),\n    \"Yogyakarta\": (6_000_000, 18),\n    \"Semarang\": (5_500_000, 20),\n    \"Medan\": (5_000_000, 22),\n}\nnama_kota = list(KOTA)\n\nkota = rng.choice(nama_kota, size=N, p=[0.16, 0.14, 0.13, 0.12, 0.12, 0.12, 0.11, 0.10])\nluas_tanah = np.round(rng.lognormal(np.log(120), 0.45, N)).clip(36, 900)\nluas_bangunan = np.round(luas_tanah * rng.uniform(0.6, 1.6, N)).clip(21, 1200)\nkamar_tidur = np.clip(np.round(luas_bangunan / 35 + rng.normal(0, 0.7, N)), 1, 8).astype(int)\nkamar_mandi = np.clip(kamar_tidur - rng.integers(0, 2, N), 1, 6).astype(int)\njarak_maks = np.array([KOTA[k][1] for k in kota])\njarak_pusat_km = np.round(rng.uniform(0.5, 1, N) * jarak_maks * rng.uniform(0.1, 1, N), 1)\ntahun_dibangun = rng.integers(1985, 2026, N)\n\n# \"Rumus rahasia\" harga: tanah (turun menjauhi pusat) + bangunan (menyusut dengan umur)\nharga_tanah_m2 = np.array([KOTA[k][0] for k in kota]) * np.exp(-0.045 * jarak_pusat_km)\numur = 2026 - tahun_dibangun\nharga_bangunan_m2 = 4_500_000 * (1 - 0.012 * umur).clip(0.45, 1)\nharga = luas_tanah * harga_tanah_m2 + luas_bangunan * harga_bangunan_m2\nharga = harga * (1 + 0.02 * kamar_mandi) * rng.lognormal(0, 0.12, N)\nharga = (np.round(harga / 1_000_000) * 1_000_000).astype(\"int64\")  # bulat ke juta\n\ndf = pd.DataFrame({\n    \"id\": [f\"R{i:04d}\" for i in range(1, N + 1)],\n    \"kota\": kota,\n    \"luas_tanah\": luas_tanah,\n    \"luas_bangunan\": luas_bangunan,\n    \"kamar_tidur\": kamar_tidur,\n    \"kamar_mandi\": kamar_mandi,\n    \"jarak_pusat_km\": jarak_pusat_km,\n    \"tahun_dibangun\": tahun_dibangun.astype(float),\n    \"harga\": harga,\n})\n\n# Kekacauan dunia nyata 1: nilai kosong (penjual tidak mengisi)\nfor kolom, n in [(\"luas_bangunan\", 18), (\"jarak_pusat_km\", 25), (\"tahun_dibangun\", 30)]:\n    df.loc[rng.choice(N, n, replace=False), kolom] = np.nan\n\n# Kekacauan 2: harga salah ketik dalam \"juta\" (1500 maksudnya 1,5 miliar)\nsalah = rng.choice(N, 4, replace=False)\ndf.loc[salah, \"harga\"] = df.loc[salah, \"harga\"] // 1_000_000\n\n# Kekacauan 3: beberapa rumah mewah yang memang sangat mahal (outlier asli)\nmewah = rng.choice(np.where(df[\"kota\"] == \"Jakarta Selatan\")[0], 3, replace=False)\ndf.loc[mewah, [\"luas_tanah\", \"luas_bangunan\"]] = [[1200, 1500], [1000, 1100], [850, 1300]]\ndf.loc[mewah, [\"kamar_tidur\", \"kamar_mandi\"]] = [[7, 6], [6, 6], [8, 7]]\ndf.loc[mewah, \"harga\"] = [48_000_000_000, 39_500_000_000, 35_000_000_000]\n\nPath(\"data\").mkdir(exist_ok=True)\ndf.to_csv(\"data/rumah.csv\", index=False)\nprint(f\"Tersimpan data/rumah.csv: {len(df)} baris, {df.isna().sum().sum()} sel kosong\")\n"
+        },
+        {
+          "id": "phr-data-eda",
+          "kind": "kode",
+          "name": "eda.py",
+          "lang": "python",
+          "content": "\"\"\"Eksplorasi data (EDA): kenali data sebelum melatih apa pun.\"\"\"\nfrom pathlib import Path\n\nimport matplotlib\nmatplotlib.use(\"Agg\")  # simpan grafik ke berkas, tanpa jendela\nimport matplotlib.pyplot as plt\nimport pandas as pd\nfrom matplotlib.ticker import FuncFormatter\n\npd.set_option(\"display.width\", 160)\npd.set_option(\"display.max_columns\", 12)\n\ndf = pd.read_csv(\"data/rumah.csv\")\nPath(\"gambar\").mkdir(exist_ok=True)\nmiliar = FuncFormatter(lambda x, _: f\"{x / 1e9:.0f} M\")\n\nprint(df.shape)\ndf.info()\nprint(df.describe().round(1).T)\nprint(\"\\nSel kosong per kolom:\\n\", df.isna().sum())\nprint(\"\\nRumah per kota:\\n\", df[\"kota\"].value_counts())\n\n# Harga yang mustahil: rumah di bawah 50 juta hampir pasti salah ketik\nprint(\"\\nHarga di bawah 50 juta:\\n\", df[df[\"harga\"] < 50_000_000])\nprint(\"\\n5 rumah termahal:\\n\", df.nlargest(5, \"harga\"))\n\n# Grafik 1: sebaran harga. Ekor panjang ke kanan = beberapa rumah sangat mahal.\nfig, ax = plt.subplots(figsize=(8, 4))\nax.hist(df.loc[df[\"harga\"] >= 50_000_000, \"harga\"], bins=40, color=\"#4a7c59\")\nax.set_title(\"Kebanyakan rumah di bawah 5 miliar, segelintir jauh lebih mahal\")\nax.set_xlabel(\"Harga (miliar rupiah)\")\nax.set_ylabel(\"Jumlah rumah\")\nax.xaxis.set_major_formatter(miliar)\nfig.tight_layout()\nfig.savefig(\"gambar/sebaran-harga.png\", dpi=150)\n\n# Grafik 2: median harga per m2 tanah per kota (lokasi, lokasi, lokasi)\nbersih = df[df[\"harga\"] >= 50_000_000]\nper_m2 = (bersih[\"harga\"] / bersih[\"luas_tanah\"]).groupby(bersih[\"kota\"]).median().sort_values()\nfig, ax = plt.subplots(figsize=(8, 4))\nper_m2.div(1e6).plot.barh(ax=ax, color=\"#4a7c59\")\nax.set_title(\"Median harga per m² tanah: lokasi sangat menentukan\")\nax.set_xlabel(\"Juta rupiah per m² tanah\")\nax.set_ylabel(\"\")\nfig.tight_layout()\nfig.savefig(\"gambar/harga-per-kota.png\", dpi=150)\n\n# Grafik 3: luas tanah vs harga, skala log supaya rumah mewah tidak menelan grafik\nfig, ax = plt.subplots(figsize=(8, 4))\nax.scatter(bersih[\"luas_tanah\"], bersih[\"harga\"], s=12, alpha=0.6, color=\"#4a7c59\")\nax.set_xscale(\"log\")\nax.set_yscale(\"log\")\nax.set_title(\"Makin luas tanahnya, makin mahal (skala log)\")\nax.set_xlabel(\"Luas tanah (m²)\")\nax.set_ylabel(\"Harga (rupiah)\")\nfig.tight_layout()\nfig.savefig(\"gambar/luas-vs-harga.png\", dpi=150)\nprint(\"\\nGrafik tersimpan di folder gambar/\")\n"
+        },
+        {
+          "id": "phr-data-pandas",
+          "kind": "tautan",
+          "name": "pandas: panduan 10 menit",
+          "url": "https://pandas.pydata.org/docs/user_guide/10min.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-data-csv",
+          "text": "data/rumah.csv berisi 420 baris dan 73 sel kosong."
+        },
+        {
+          "id": "phr-data-grafik",
+          "text": "Tiga grafik EDA tersimpan di folder gambar/."
+        },
+        {
+          "id": "phr-data-outlier",
+          "text": "Aku menemukan empat harga salah ketik dan tiga rumah mewah asli."
+        },
+        {
+          "id": "phr-data-temuan",
+          "text": "Aku menulis tiga temuan dan membandingkannya dengan tebakanku."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "susun-pipeline-praproses",
+      "title": "Susun split data dan pipeline praproses",
+      "est_minutes": 75,
+      "body": "## Satu berkas untuk semua yang dipakai berulang\n\n`fitur.py` berisi tiga hal yang dipakai oleh skrip perbandingan, skrip latih, **dan** API: daftar kolom, cara memuat data, dan cara membangun praproses. Kalau daftar kolom ditulis ulang di tiga tempat, cepat atau lambat ketiganya tidak sama.\n\n## Urutan yang mencegah kebocoran\n\n1. **Aturan domain dulu.** Baris dengan harga di bawah 50 juta dibuang di `muat_data()`. Aman dilakukan sebelum split karena aturannya tidak memakai statistik dari baris lain.\n2. **Split.** `train_test_split(..., test_size=0.2, random_state=42)`: 332 rumah latih, 84 rumah uji.\n3. **Praproses di dalam Pipeline.** `SimpleImputer`, `StandardScaler`, dan `OneHotEncoder` baru \"belajar\" (`fit`) saat Pipeline di-`fit` dengan data latih.\n\n![ColumnTransformer membagi kolom ke tiga jalur: luas (isi median, log, skala), angka lain (isi median, skala), dan kota (one-hot), lalu menyatukan hasilnya jadi 14 kolom angka untuk model](/studio/prediksi-harga-rumah/pipeline-praproses.svg)\n\n## Kenapa luas diambil log-nya?\n\nDi grafik `luas-vs-harga.png`, hubungan luas dan harga lurus di skala log. Artinya tanah dua kali lebih luas membuat harga **berlipat** sekian kali, bukan bertambah sekian juta. Model linear hanya bisa menangkap pola lurus, jadi kita luruskan polanya dengan `np.log`. Model pohon tidak terpengaruh, jadi aman dipakai untuk semua model.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `fitur.py` dan `cek_praproses.py` dari bagian Bahan.\n2. Jalankan `uv run python cek_praproses.py`. Hasilnya:\n\n```text\nlatih: (332, 7)  uji: (84, 7)\nsetelah praproses: (332, 14)\nmedian luas (latih): [116. 120.]\nuji setelah transform: (84, 14)\n```\n\n3. Hitung sendiri kenapa jadi 14 kolom: 2 luas + 4 angka + 8 kota hasil one-hot.\n4. Perhatikan `median luas (latih)`. Nilai ini dihitung **hanya dari 332 rumah latih**. Data uji cukup di-`transform` memakai median yang sama, tidak di-`fit` ulang.\n5. `handle_unknown=\"ignore\"` membuat kota yang tidak dikenal tidak membuat error. API nanti tetap menolak kota asing lebih dulu lewat validasi, tapi lapisan kedua ini tidak ada ruginya.\n6. Commit dengan pesan `Tambah split dan pipeline praproses`.\n",
+      "materials": [
+        {
+          "id": "phr-pipa-fitur",
+          "kind": "kode",
+          "name": "fitur.py",
+          "lang": "python",
+          "content": "\"\"\"Satu tempat untuk daftar fitur, pemuatan data, dan praproses.\"\"\"\nimport numpy as np\nimport pandas as pd\nfrom sklearn.compose import ColumnTransformer\nfrom sklearn.impute import SimpleImputer\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler\n\nLUAS = [\"luas_tanah\", \"luas_bangunan\"]\nANGKA = [\"kamar_tidur\", \"kamar_mandi\", \"jarak_pusat_km\", \"tahun_dibangun\"]\nKATEGORI = [\"kota\"]\nFITUR = LUAS + ANGKA + KATEGORI\nTARGET = \"harga\"\n\n\ndef muat_data(path=\"data/rumah.csv\"):\n    df = pd.read_csv(path)\n    # Aturan domain, bukan statistik: harga < 50 juta pasti salah ketik.\n    # Aman dilakukan sebelum split karena tidak \"mengintip\" baris lain.\n    df = df[df[TARGET] >= 50_000_000]\n    return df[FITUR], df[TARGET]\n\n\ndef bagi_data(X, y):\n    # Split SEKALI, di awal. Data uji tidak disentuh sampai evaluasi akhir.\n    return train_test_split(X, y, test_size=0.2, random_state=42)\n\n\ndef buat_praproses():\n    # Luas diambil log-nya: harga naik \"berlipat\" mengikuti luas, bukan bertambah rata\n    luas = make_pipeline(SimpleImputer(strategy=\"median\"),\n                         FunctionTransformer(np.log, feature_names_out=\"one-to-one\"), StandardScaler())\n    angka = make_pipeline(SimpleImputer(strategy=\"median\"), StandardScaler())\n    kategori = OneHotEncoder(handle_unknown=\"ignore\")\n    return ColumnTransformer([\n        (\"luas\", luas, LUAS),\n        (\"angka\", angka, ANGKA),\n        (\"kategori\", kategori, KATEGORI),\n    ])\n"
+        },
+        {
+          "id": "phr-pipa-cek",
+          "kind": "kode",
+          "name": "cek_praproses.py",
+          "lang": "python",
+          "content": "\"\"\"Cek cepat: apakah praproses berjalan dan tidak bocor?\"\"\"\nfrom fitur import bagi_data, buat_praproses, muat_data\n\nX, y = muat_data()\nX_latih, X_uji, y_latih, y_uji = bagi_data(X, y)\nprint(\"latih:\", X_latih.shape, \" uji:\", X_uji.shape)\n\npraproses = buat_praproses()\nhasil = praproses.fit_transform(X_latih)  # fit HANYA di data latih\nprint(\"setelah praproses:\", hasil.shape)\nprint(praproses.get_feature_names_out())\n\n# Median pengisi nilai kosong dihitung dari data latih saja\nimputer = praproses.named_transformers_[\"luas\"].named_steps[\"simpleimputer\"]\nprint(\"median luas (latih):\", imputer.statistics_)\n\n# Data uji cukup di-transform, memakai median dan skala dari data latih\nprint(\"uji setelah transform:\", praproses.transform(X_uji).shape)\n"
+        },
+        {
+          "id": "phr-pipa-ct",
+          "kind": "tautan",
+          "name": "scikit-learn: ColumnTransformer untuk data campuran",
+          "url": "https://scikit-learn.org/stable/modules/compose.html#columntransformer-for-heterogeneous-data"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-pipa-jalan",
+          "text": "cek_praproses.py mencetak 332 baris latih, 84 baris uji, dan 14 kolom setelah praproses."
+        },
+        {
+          "id": "phr-pipa-14",
+          "text": "Aku bisa menjelaskan asal 14 kolom itu."
+        },
+        {
+          "id": "phr-pipa-fit",
+          "text": "Aku bisa menjelaskan kenapa praproses di-fit hanya di data latih."
+        },
+        {
+          "id": "phr-pipa-commit",
+          "text": "fitur.py sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "bandingkan-model-cross-validation",
+      "title": "Bandingkan model dengan cross-validation",
+      "est_minutes": 100,
+      "body": "## Adil membandingkan model\n\nKalau model dibandingkan di data uji, lalu yang terbaik dipilih, data uji sudah ikut \"melatih\" keputusanmu dan angkanya jadi terlalu optimis. Karena itu perbandingan dilakukan dengan **5-fold cross-validation** di data latih: data latih dibagi lima, model dilatih lima kali di empat bagian dan dinilai di bagian kelima yang bergantian.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `bandingkan.py` dari bagian Bahan.\n2. Jalankan `uv run python bandingkan.py`. Butuh sekitar sepuluh detik. Hasil dengan pustaka versi panduan ini:\n\n```text\nData latih: 332 rumah, 5-fold cross-validation\n\nmodel                                MAE            RMSE      R2\nbaseline (median)               Rp966 jt      Rp2.362 jt   -0.06\nlinear                          Rp296 jt        Rp903 jt    0.90\nrandom forest                   Rp470 jt      Rp1.582 jt    0.73\nhist gradient boosting          Rp491 jt      Rp1.725 jt    0.64\n```\n\nAngkamu boleh sedikit berbeda kalau versi pustakanya berbeda, tapi urutannya harus sama.\n\n## Membaca tabel itu dalam rupiah\n\n- **MAE** (*mean absolute error*): rata-rata meleset. Baseline meleset 966 juta per rumah, model linear 296 juta. Ini angka yang kamu sampaikan ke agen properti.\n- **RMSE**: mirip MAE, tapi kesalahan besar dihukum jauh lebih berat. RMSE yang jauh di atas MAE berarti ada beberapa rumah yang melesetnya sangat besar. Di sini pelakunya rumah-rumah mewah.\n- **R²**: seberapa banyak variasi harga yang dijelaskan model, dari 0 (sama dengan menebak rata-rata) sampai 1 (sempurna). Baseline sedikit di bawah 0, wajar untuk tebakan median.\n\n## Kenapa model paling sederhana menang?\n\nRandom forest dan gradient boosting biasanya unggul, tapi di sini kalah karena dua hal:\n\n1. Setelah harga dan luas diambil log-nya, polanya hampir lurus, persis bentuk yang paling cocok untuk regresi linear.\n2. Model pohon **tidak bisa memprediksi di luar rentang yang pernah dilihatnya**. Rumah 1.000 m² paling mahal di lipatan uji tidak bisa ditebak lebih mahal dari rumah termahal di lipatan latih.\n\nInilah alasan baseline dan perbandingan wajib dilakukan: kamu tidak tahu model mana yang menang sebelum mengujinya. Tulis pilihanmu dan alasannya di `rencana-eksperimen.md`.\n\n## Coba sendiri\n\nHapus `log_target(...)` dari model linear (jadi `\"linear\": LinearRegression()`) dan jalankan ulang. Lalu kembalikan. Catat apa yang terjadi pada MAE dan R². Kalau hasilnya lebih buruk dari baseline, kamu baru saja melihat sendiri kenapa target log itu penting. Percobaan kecil seperti ini adalah cara tercepat memahami **kenapa** suatu langkah praproses ada.\n\nCommit dengan pesan `Bandingkan model dengan cross-validation`.\n",
+      "materials": [
+        {
+          "id": "phr-cv-bandingkan",
+          "kind": "kode",
+          "name": "bandingkan.py",
+          "lang": "python",
+          "content": "\"\"\"Bandingkan beberapa model dengan cross-validation di data latih saja.\"\"\"\nimport numpy as np\nfrom sklearn.compose import TransformedTargetRegressor\nfrom sklearn.dummy import DummyRegressor\nfrom sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor\nfrom sklearn.linear_model import LinearRegression\nfrom sklearn.model_selection import KFold, cross_validate\nfrom sklearn.pipeline import make_pipeline\n\nfrom fitur import bagi_data, buat_praproses, muat_data\n\nX, y = muat_data()\nX_latih, X_uji, y_latih, y_uji = bagi_data(X, y)\n\n\ndef log_target(model):\n    # Latih pada log(harga): selisih 10% di rumah 500 juta dan 5 miliar dianggap setara\n    return TransformedTargetRegressor(model, func=np.log1p, inverse_func=np.expm1)\n\n\nMODEL = {\n    \"baseline (median)\": DummyRegressor(strategy=\"median\"),\n    \"linear\": log_target(LinearRegression()),\n    \"random forest\": log_target(RandomForestRegressor(n_estimators=200, min_samples_leaf=2, random_state=42, n_jobs=1)),\n    \"hist gradient boosting\": log_target(HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, random_state=42)),\n}\n\ncv = KFold(n_splits=5, shuffle=True, random_state=42)\nskor = [\"neg_mean_absolute_error\", \"neg_root_mean_squared_error\", \"r2\"]\n\n\ndef juta(x):\n    return f\"Rp{x / 1e6:,.0f} jt\".replace(\",\", \".\")\n\n\nprint(f\"Data latih: {len(X_latih)} rumah, 5-fold cross-validation\\n\")\nprint(f\"{'model':<24}{'MAE':>16}{'RMSE':>16}{'R2':>8}\")\nfor nama, model in MODEL.items():\n    pipa = make_pipeline(buat_praproses(), model)\n    hasil = cross_validate(pipa, X_latih, y_latih, cv=cv, scoring=skor, n_jobs=1)\n    mae = -hasil[\"test_neg_mean_absolute_error\"].mean()\n    rmse = -hasil[\"test_neg_root_mean_squared_error\"].mean()\n    r2 = hasil[\"test_r2\"].mean()\n    print(f\"{nama:<24}{juta(mae):>16}{juta(rmse):>16}{r2:>8.2f}\")\n"
+        },
+        {
+          "id": "phr-cv-docs",
+          "kind": "tautan",
+          "name": "scikit-learn: cross-validation",
+          "url": "https://scikit-learn.org/stable/modules/cross_validation.html"
+        },
+        {
+          "id": "phr-cv-metrik",
+          "kind": "tautan",
+          "name": "scikit-learn: metrik regresi",
+          "url": "https://scikit-learn.org/stable/modules/model_evaluation.html#regression-metrics"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-cv-jalan",
+          "text": "bandingkan.py menampilkan MAE, RMSE, dan R2 untuk empat model."
+        },
+        {
+          "id": "phr-cv-baseline",
+          "text": "Model pilihanku jauh lebih baik dari baseline median."
+        },
+        {
+          "id": "phr-cv-rupiah",
+          "text": "Aku bisa menjelaskan MAE dan RMSE dalam rupiah kepada orang awam."
+        },
+        {
+          "id": "phr-cv-alasan",
+          "text": "Aku menulis model pilihanku dan alasannya di rencana-eksperimen.md."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "evaluasi-akhir-dan-simpan-model",
+      "title": "Evaluasi akhir, cek fitur dan residu, simpan model",
+      "est_minutes": 110,
+      "body": "## Saatnya membuka data uji, sekali saja\n\n`latih.py` melatih model terpilih (regresi linear dengan target log) di **seluruh** data latih, menilainya sekali di 84 rumah uji, menjelaskan modelnya, lalu menyimpannya.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `latih.py` dari bagian Bahan dan jalankan `uv run python latih.py`. Bagian awal hasilnya:\n\n```text\nData uji: 84 rumah\nMAE  : Rp324.733.564\nRMSE : Rp1.667.765.790\nR2   : 0.842\nMedian selisih: 7.9% dari harga asli\n80% rumah uji melesetnya paling jauh 20.0%\n```\n\n2. Bandingkan dengan hasil CV (MAE 296 juta). Angka uji yang **mirip** dengan CV berarti perbandingan tadi bisa dipercaya. Kalau jauh lebih buruk, curigai kebocoran.\n3. Tulis kalimat untuk pemakai: *\"Separuh perkiraan meleset kurang dari 8%, dan 4 dari 5 perkiraan meleset paling jauh 20%.\"* Kalimat seperti ini lebih jujur daripada satu angka R².\n\n## Fitur mana yang penting?\n\n**Permutation importance** mengacak isi satu kolom di data uji, lalu melihat seberapa besar MAE memburuk. Kolom yang diacak tanpa membuat model memburuk berarti tidak dipakai.\n\n![Permutation importance di data uji: mengacak kota atau luas tanah menaikkan MAE lebih dari 500 juta, sedangkan kamar tidur hampir nol karena informasinya sudah terwakili luas bangunan](/studio/prediksi-harga-rumah/fitur-penting.webp)\n\nCocokkan dengan tebakanmu di langkah Brainstorming dan dengan \"rumus rahasia\" di `buat_data.py`. Kamar tidur tidak ada di rumus harga, dan model menemukannya sendiri.\n\n## Di mana model meleset?\n\n![Kiri: prediksi hampir selalu dekat garis diagonal. Kanan: residu dalam persen tersebar acak di sekitar nol, kecuali satu rumah mewah 39,5 miliar yang diprediksi terlalu murah sekitar 38 persen](/studio/prediksi-harga-rumah/residu.webp)\n\nResidu yang sehat terlihat seperti awan acak di sekitar nol. Pola yang perlu dicari:\n\n- **Rumah mewah diprediksi terlalu murah.** Harganya mengandung \"premi kemewahan\" yang tidak ada di rumah biasa, dan contohnya hanya tiga. Tulis ini di bagian Batasan README, jangan disembunyikan.\n- **Baris dengan nilai kosong.** Lihat tabel \"lima rumah dengan meleset terbesar\": dua di antaranya punya `luas_bangunan` atau `tahun_dibangun` kosong yang diisi median. Masukan yang lebih lengkap menghasilkan perkiraan yang lebih baik, dan itu saran yang berguna bagi pemakai API.\n\n## Menyimpan model\n\n`joblib.dump(model, \"model/model.joblib\")` menyimpan **seluruh Pipeline**: median pengisi, skala, daftar kota, dan koefisien model. `model/info.json` mencatat versi scikit-learn dan angka evaluasi, yang dipakai API untuk menghitung rentang harga.\n\n> joblib memakai pickle. Memuat berkas pickle bisa menjalankan kode apa pun di dalamnya, jadi **jangan pernah memuat berkas model dari sumber yang tidak kamu percaya**.\n\nCommit dengan pesan `Latih, evaluasi, dan simpan model`, termasuk folder `model/` dan grafik baru.\n",
+      "materials": [
+        {
+          "id": "phr-eval-latih",
+          "kind": "kode",
+          "name": "latih.py",
+          "lang": "python",
+          "content": "\"\"\"Latih model terpilih, evaluasi SEKALI di data uji, lalu simpan.\"\"\"\nimport json\nfrom pathlib import Path\n\nimport joblib\nimport matplotlib\nmatplotlib.use(\"Agg\")\nimport matplotlib.pyplot as plt\nimport numpy as np\nimport pandas as pd\nimport sklearn\nfrom sklearn.compose import TransformedTargetRegressor\nfrom sklearn.inspection import permutation_importance\nfrom sklearn.linear_model import LinearRegression\nfrom sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error\nfrom sklearn.pipeline import make_pipeline\n\nfrom fitur import FITUR, bagi_data, buat_praproses, muat_data\n\npd.set_option(\"display.width\", 160)\npd.set_option(\"display.max_columns\", 12)\n\nX, y = muat_data()\nX_latih, X_uji, y_latih, y_uji = bagi_data(X, y)\n\nmodel = make_pipeline(\n    buat_praproses(),\n    TransformedTargetRegressor(\n        LinearRegression(), func=np.log1p, inverse_func=np.expm1,\n    ),\n)\nmodel.fit(X_latih, y_latih)\nprediksi = model.predict(X_uji)\n\nmae = mean_absolute_error(y_uji, prediksi)\nrmse = root_mean_squared_error(y_uji, prediksi)\nr2 = r2_score(y_uji, prediksi)\nselisih = np.abs(prediksi - y_uji) / y_uji\nrentang = np.quantile(selisih, 0.8)  # 80% rumah uji melesetnya tidak lebih dari ini\nprint(f\"Data uji: {len(X_uji)} rumah\")\nprint(f\"MAE  : Rp{mae:,.0f}\".replace(\",\", \".\"))\nprint(f\"RMSE : Rp{rmse:,.0f}\".replace(\",\", \".\"))\nprint(f\"R2   : {r2:.3f}\")\nprint(f\"Median selisih: {np.median(selisih):.1%} dari harga asli\")\nprint(f\"80% rumah uji melesetnya paling jauh {rentang:.1%}\")\n\n# Fitur mana yang paling berpengaruh? Acak satu kolom, lihat seberapa rusak prediksinya.\npi = permutation_importance(model, X_uji, y_uji, scoring=\"neg_mean_absolute_error\",\n                            n_repeats=10, random_state=42, n_jobs=1)\npenting = pd.Series(pi.importances_mean, index=FITUR).sort_values()\nprint(\"\\nKenaikan MAE kalau kolom diacak:\")\nfor nama, nilai in penting[::-1].items():\n    print(f\"  {nama:<16} +Rp{nilai / 1e6:,.0f} jt\".replace(\",\", \".\"))\n\nPath(\"gambar\").mkdir(exist_ok=True)\nfig, ax = plt.subplots(figsize=(8, 4))\npenting.div(1e6).plot.barh(ax=ax, color=\"#4a7c59\")\nax.set_title(\"Lokasi dan luas tanah paling menentukan harga\")\nax.set_xlabel(\"Kenaikan MAE kalau kolom diacak (juta rupiah)\")\nfig.tight_layout()\nfig.savefig(\"gambar/fitur-penting.png\", dpi=150)\n\n# Analisis residual: di mana model meleset? Skala log dan persen, supaya\n# rumah 40 miliar tidak membuat rumah 500 juta jadi titik kecil di pojok.\nresidu = y_uji - prediksi\npersen = residu / y_uji * 100\nfig, (kiri, kanan) = plt.subplots(1, 2, figsize=(10, 4))\nkiri.scatter(y_uji, prediksi, s=14, alpha=0.7, color=\"#4a7c59\")\nbatas = [min(y_uji.min(), prediksi.min()), max(y_uji.max(), prediksi.max())]\nkiri.plot(batas, batas, color=\"#0f100d\", linewidth=1)\nkiri.set_xscale(\"log\")\nkiri.set_yscale(\"log\")\nkiri.set_title(\"Prediksi vs harga asli (log)\")\nkiri.set_xlabel(\"Harga asli (rupiah)\")\nkiri.set_ylabel(\"Prediksi (rupiah)\")\nkanan.scatter(prediksi, persen, s=14, alpha=0.7, color=\"#4a7c59\")\nkanan.axhline(0, color=\"#0f100d\", linewidth=1)\nkanan.set_xscale(\"log\")\nkanan.set_title(\"Residu dalam persen harga asli\")\nkanan.set_xlabel(\"Prediksi (rupiah)\")\nkanan.set_ylabel(\"(asli - prediksi) / asli, %\")\nfig.tight_layout()\nfig.savefig(\"gambar/residu.png\", dpi=150)\n\nuji = X_uji.assign(harga=y_uji, prediksi=prediksi.round(-6).astype(\"int64\"), selisih_persen=persen.round(1))\nprint(\"\\nLima rumah dengan meleset terbesar (persen):\")\nprint(uji.reindex(uji[\"selisih_persen\"].abs().sort_values(ascending=False).index).head())\n\n# Simpan model + catatan kecil tentang cara membuatnya\nPath(\"model\").mkdir(exist_ok=True)\njoblib.dump(model, \"model/model.joblib\")\ninfo = {\"model\": \"LinearRegression (log harga, log luas)\", \"sklearn\": sklearn.__version__,\n        \"baris_latih\": len(X_latih), \"mae_uji\": round(mae), \"r2_uji\": round(r2, 3), \"rentang_80\": round(rentang, 3)}\nPath(\"model/info.json\").write_text(json.dumps(info, indent=2))\nprint(\"\\nModel tersimpan di model/model.joblib\")\n"
+        },
+        {
+          "id": "phr-eval-permutasi",
+          "kind": "tautan",
+          "name": "scikit-learn: permutation feature importance",
+          "url": "https://scikit-learn.org/stable/modules/permutation_importance.html"
+        },
+        {
+          "id": "phr-eval-simpan",
+          "kind": "tautan",
+          "name": "scikit-learn: menyimpan model dan risikonya",
+          "url": "https://scikit-learn.org/stable/model_persistence.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-eval-uji",
+          "text": "latih.py mencetak MAE, RMSE, dan R2 di data uji, dan angkanya mirip hasil CV."
+        },
+        {
+          "id": "phr-eval-kalimat",
+          "text": "Aku menulis kalimat akurasi model yang dimengerti orang awam."
+        },
+        {
+          "id": "phr-eval-residu",
+          "text": "Aku menemukan minimal satu pola di grafik residu dan mencatatnya sebagai batasan."
+        },
+        {
+          "id": "phr-eval-simpan-ok",
+          "text": "model/model.joblib dan model/info.json sudah tersimpan dan di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "sajikan-lewat-fastapi",
+      "title": "Sajikan prediksi lewat FastAPI",
+      "est_minutes": 100,
+      "body": "## Dari berkas model ke layanan\n\nModel yang hanya bisa dijalankan dari terminalmu belum berguna bagi agen properti. API membungkusnya: aplikasi lain mengirim data rumah sebagai JSON, API menjawab perkiraan harga.\n\n## Tiga bagian di app.py\n\n1. **Skema Pydantic `Rumah`.** Setiap kolom punya tipe dan batas: luas tanah lebih dari 20 dan paling banyak 2.000 m², tahun dibangun 1950 sampai 2026, kota hanya salah satu dari delapan kota yang dikenal model (`Literal`). FastAPI menolak masukan yang melanggar dengan **422** dan menunjuk kolom yang salah, tanpa satu baris `if` pun di kodemu. `extra=\"forbid\"` menolak kolom asing, supaya salah ketik nama kolom (misalnya `luas_tanh`) tidak diam-diam diabaikan.\n2. **`lifespan`.** Model dimuat **sekali** saat server menyala, bukan di setiap request. Memuat model butuh waktu dan memori.\n3. **`POST /prediksi`.** Data diubah jadi DataFrame satu baris dengan nama kolom yang sama seperti saat latihan, lalu `model.predict()`. Praproses sudah ada di dalam Pipeline, jadi tidak perlu diulang. Hasilnya dibulatkan ke juta, ditambah rentang bawah dan atas dari `rentang_80` di `info.json`.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `app.py` dari bagian Bahan.\n2. Jalankan server pengembangan:\n\n```bash\nuv run fastapi dev app.py\n```\n\n3. Buka http://127.0.0.1:8000/docs. FastAPI membuat halaman dokumentasi interaktif ini dari skema Pydantic-mu.\n4. Buka `POST /prediksi`, klik **Try it out**, isi contoh rumah, lalu **Execute**.\n\n![Halaman /docs FastAPI: request rumah 120 m² di Bandung dijawab 200 dengan harga 1,2 miliar dan rentang 960 juta sampai 1,44 miliar](/studio/prediksi-harga-rumah/swagger-docs.webp)\n\n5. Coba kirim `luas_tanah` bernilai `-5` atau kota `Atlantis`. Jawabannya 422 dengan `detail` yang menjelaskan kolom mana yang salah.\n6. Commit dengan pesan `Sajikan model lewat FastAPI`.\n\n## Kenapa ada rentang harga?\n\nSatu angka seperti \"1,2 miliar\" terdengar lebih pasti daripada kenyataannya. Rentang dari data uji (80% rumah meleset paling jauh 20%) memberi tahu pemakai seberapa jauh perkiraan bisa meleset. Ini juga yang membedakan API yang jujur dari API yang sekadar \"bisa jalan\".\n",
+      "materials": [
+        {
+          "id": "phr-api-app",
+          "kind": "kode",
+          "name": "app.py",
+          "lang": "python",
+          "content": "\"\"\"API prediksi harga rumah.\"\"\"\nimport json\nimport os\nfrom contextlib import asynccontextmanager\nfrom pathlib import Path\nfrom typing import Literal\n\nimport joblib\nimport pandas as pd\nfrom fastapi import FastAPI\nfrom pydantic import BaseModel, ConfigDict, Field\n\nMODEL_PATH = Path(os.getenv(\"MODEL_PATH\", \"model/model.joblib\"))\nTAHUN_INI = 2026\nKota = Literal[\"Jakarta Selatan\", \"Bandung\", \"Surabaya\", \"Depok\", \"Bekasi\",\n               \"Yogyakarta\", \"Semarang\", \"Medan\"]\n\n\nclass Rumah(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\")  # kolom asing ditolak, bukan diam-diam diabaikan\n\n    kota: Kota\n    luas_tanah: float = Field(gt=20, le=2000, description=\"m2\")\n    luas_bangunan: float | None = Field(default=None, gt=15, le=2000, description=\"m2, boleh kosong\")\n    kamar_tidur: int = Field(ge=1, le=10)\n    kamar_mandi: int = Field(ge=1, le=10)\n    jarak_pusat_km: float | None = Field(default=None, ge=0, le=60)\n    tahun_dibangun: int | None = Field(default=None, ge=1950, le=TAHUN_INI)\n\n\nclass Prediksi(BaseModel):\n    harga: int\n    harga_bawah: int\n    harga_atas: int\n    catatan: str\n\n\nml = {}\n\n\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    # Muat model SEKALI saat server menyala, bukan di setiap request.\n    # joblib memakai pickle: muat hanya berkas model buatanmu sendiri.\n    ml[\"model\"] = joblib.load(MODEL_PATH)\n    ml[\"info\"] = json.loads(MODEL_PATH.with_name(\"info.json\").read_text())\n    yield\n    ml.clear()\n\n\napp = FastAPI(title=\"Prediksi Harga Rumah\", version=\"1.0.0\", lifespan=lifespan)\n\n\n@app.get(\"/health\")\ndef health():\n    return {\"status\": \"ok\", \"model\": ml[\"info\"][\"model\"]}\n\n\n@app.post(\"/prediksi\")\ndef prediksi(rumah: Rumah) -> Prediksi:\n    baris = pd.DataFrame([rumah.model_dump()]).astype({\"luas_bangunan\": float, \"jarak_pusat_km\": float, \"tahun_dibangun\": float})\n    harga = float(ml[\"model\"].predict(baris)[0])\n    r = ml[\"info\"][\"rentang_80\"]  # 80% rumah uji melesetnya tidak lebih dari r\n    juta = lambda x: int(round(x, -6))\n    return Prediksi(\n        harga=juta(harga),\n        harga_bawah=juta(harga * (1 - r)),\n        harga_atas=juta(harga * (1 + r)),\n        catatan=\"Perkiraan dari data sintetis untuk latihan, bukan penilaian properti.\",\n    )\n"
+        },
+        {
+          "id": "phr-api-body",
+          "kind": "tautan",
+          "name": "FastAPI: request body dengan Pydantic",
+          "url": "https://fastapi.tiangolo.com/tutorial/body/"
+        },
+        {
+          "id": "phr-api-lifespan",
+          "kind": "tautan",
+          "name": "FastAPI: lifespan events (memuat model saat start)",
+          "url": "https://fastapi.tiangolo.com/advanced/events/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-api-docs",
+          "text": "Halaman /docs terbuka dan POST /prediksi menjawab 200 dengan harga dan rentangnya."
+        },
+        {
+          "id": "phr-api-422",
+          "text": "Luas negatif dan kota asing dijawab 422 dengan detail per kolom."
+        },
+        {
+          "id": "phr-api-lifespan-paham",
+          "text": "Aku bisa menjelaskan kenapa model dimuat sekali di lifespan, bukan di setiap request."
+        },
+        {
+          "id": "phr-api-commit",
+          "text": "app.py sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-dengan-pytest-dan-curl",
+      "title": "Uji API dengan pytest dan curl",
+      "est_minutes": 80,
+      "body": "## Tes untuk model ML itu seperti apa?\n\nKamu tidak bisa menulis `assert harga == 1_200_000_000`, karena angka itu berubah setiap model dilatih ulang. Yang diuji adalah hal yang **harus selalu benar**:\n\n| Tes | Yang dijaga |\n| --- | --- |\n| Model termuat, `/health` 200 | Berkas model ada dan cocok dengan versi pustaka |\n| Prediksi masuk akal | Rumah 120 m² di Bandung harganya di antara 300 juta dan 10 miliar, dan rentangnya mengapit harga |\n| Lokasi berpengaruh | Rumah yang sama lebih mahal di Jakarta Selatan daripada di Medan |\n| Kolom opsional | Request tanpa kolom opsional tetap 200 |\n| Masukan salah | Luas negatif, kota asing, tahun 2099, kolom asing, kolom wajib hilang: semuanya 422 |\n\nTes \"lokasi berpengaruh\" disebut **tes perilaku**. Ia menangkap model yang secara angka terlihat bagus tapi belajar hal yang salah.\n\n## Yang perlu kamu kerjakan\n\n1. Tambahkan isi `pyproject-tambahan.toml` di bagian paling bawah `pyproject.toml`. Tanpa `pythonpath`, pytest tidak menemukan `app.py`.\n2. Buat folder `tests` dan simpan `tests/test_api.py` dari bagian Bahan.\n3. Jalankan `uv run pytest`. Hasilnya `5 passed`.\n4. `TestClient(app)` dipakai dengan `with`, supaya `lifespan` berjalan dan model dimuat. Coba hapus `with` di satu tes dan lihat error-nya.\n5. Rusak sesuatu dengan sengaja, misalnya ganti `le=TAHUN_INI` menjadi `le=2100` di `app.py`. Satu tes harus gagal. Kembalikan seperti semula.\n6. Jalankan server (`uv run fastapi dev app.py`) dan perintah di `uji-manual.sh` satu per satu. Cocokkan kode status dengan komentarnya.\n7. Commit dengan pesan `Tambah tes API`.\n\n## Jalankan ulang dari nol\n\nSatu tes terakhir yang paling jujur: hapus `data/`, `model/`, dan `gambar/`, lalu jalankan ulang semuanya.\n\n```bash\nuv run python buat_data.py && uv run python eda.py && uv run python bandingkan.py && uv run python latih.py && uv run pytest\n```\n\nKalau semuanya lulus dan angkanya sama, proyekmu **reproducible**: orang lain bisa mendapatkan hasil yang sama persis.\n",
+      "materials": [
+        {
+          "id": "phr-uji-pyproject",
+          "kind": "kode",
+          "name": "pyproject-tambahan.toml",
+          "lang": "toml",
+          "content": "# Tambahkan di bagian paling bawah pyproject.toml\n[tool.pytest.ini_options]\npythonpath = [\".\"]    # supaya tes bisa \"from app import app\"\ntestpaths = [\"tests\"]\n"
+        },
+        {
+          "id": "phr-uji-tes",
+          "kind": "kode",
+          "name": "tests/test_api.py",
+          "lang": "python",
+          "content": "from fastapi.testclient import TestClient\n\nfrom app import app\n\nCONTOH = {\n    \"kota\": \"Bandung\", \"luas_tanah\": 120, \"luas_bangunan\": 90, \"kamar_tidur\": 3,\n    \"kamar_mandi\": 2, \"jarak_pusat_km\": 6.5, \"tahun_dibangun\": 2015,\n}\n\n\ndef test_model_termuat_dan_health_ok():\n    with TestClient(app) as klien:  # \"with\" menjalankan lifespan, jadi model dimuat\n        r = klien.get(\"/health\")\n    assert r.status_code == 200\n    assert r.json()[\"status\"] == \"ok\"\n\n\ndef test_prediksi_masuk_akal():\n    with TestClient(app) as klien:\n        r = klien.post(\"/prediksi\", json=CONTOH)\n    assert r.status_code == 200\n    data = r.json()\n    # Rumah 120 m2 di Bandung: jelas di atas 300 juta dan di bawah 10 miliar\n    assert 300_000_000 < data[\"harga\"] < 10_000_000_000\n    assert data[\"harga_bawah\"] <= data[\"harga\"] <= data[\"harga_atas\"]\n\n\ndef test_lokasi_berpengaruh():\n    with TestClient(app) as klien:\n        jaksel = klien.post(\"/prediksi\", json=CONTOH | {\"kota\": \"Jakarta Selatan\"}).json()\n        medan = klien.post(\"/prediksi\", json=CONTOH | {\"kota\": \"Medan\"}).json()\n    assert jaksel[\"harga\"] > medan[\"harga\"]\n\n\ndef test_kolom_boleh_kosong():\n    with TestClient(app) as klien:\n        r = klien.post(\"/prediksi\", json={\"kota\": \"Medan\", \"luas_tanah\": 90, \"kamar_tidur\": 2, \"kamar_mandi\": 1})\n    assert r.status_code == 200\n\n\ndef test_masukan_salah_ditolak_422():\n    salah = [\n        CONTOH | {\"luas_tanah\": -5},          # luas negatif\n        CONTOH | {\"kota\": \"Atlantis\"},        # kota yang tidak dikenal model\n        CONTOH | {\"tahun_dibangun\": 2099},    # rumah dari masa depan\n        CONTOH | {\"harga\": 1},                # kolom asing\n        {\"kota\": \"Bandung\"},                  # kolom wajib hilang\n    ]\n    with TestClient(app) as klien:\n        for body in salah:\n            assert klien.post(\"/prediksi\", json=body).status_code == 422, body\n"
+        },
+        {
+          "id": "phr-uji-curl",
+          "kind": "kode",
+          "name": "uji-manual.sh",
+          "lang": "bash",
+          "content": "# Jalankan server dulu di terminal lain: uv run fastapi dev app.py\nBASE=http://127.0.0.1:8000\n\n# 1. Sehat? Harus 200 dan menyebut nama model\ncurl -i $BASE/health\n\n# 2. Prediksi normal: harus 200\ncurl -i -X POST $BASE/prediksi -H \"Content-Type: application/json\" \\\n  -d '{\"kota\":\"Bandung\",\"luas_tanah\":120,\"luas_bangunan\":90,\"kamar_tidur\":3,\"kamar_mandi\":2,\"jarak_pusat_km\":6.5,\"tahun_dibangun\":2015}'\n\n# 3. Kolom opsional dikosongkan: tetap 200 (model mengisi dengan median)\ncurl -i -X POST $BASE/prediksi -H \"Content-Type: application/json\" \\\n  -d '{\"kota\":\"Medan\",\"luas_tanah\":90,\"kamar_tidur\":2,\"kamar_mandi\":1}'\n\n# 4. Masukan salah: harus 422 dengan detail per kolom\ncurl -i -X POST $BASE/prediksi -H \"Content-Type: application/json\" \\\n  -d '{\"kota\":\"Atlantis\",\"luas_tanah\":-5,\"kamar_tidur\":3,\"kamar_mandi\":2}'\n\n# 5. Bukan JSON sama sekali: harus 422, bukan 500\ncurl -i -X POST $BASE/prediksi -H \"Content-Type: application/json\" -d 'rumah besar'\n"
+        },
+        {
+          "id": "phr-uji-fastapi-test",
+          "kind": "tautan",
+          "name": "FastAPI: testing dengan TestClient",
+          "url": "https://fastapi.tiangolo.com/tutorial/testing/"
+        },
+        {
+          "id": "phr-uji-pytest",
+          "kind": "tautan",
+          "name": "Dokumentasi pytest",
+          "url": "https://docs.pytest.org/en/stable/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-uji-lulus",
+          "text": "uv run pytest menampilkan 5 passed."
+        },
+        {
+          "id": "phr-uji-rusak",
+          "text": "Aku merusak kode dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "phr-uji-curl-ok",
+          "text": "Semua perintah di uji-manual.sh menjawab kode status sesuai komentarnya."
+        },
+        {
+          "id": "phr-uji-nol",
+          "text": "Proyek lulus saat dijalankan ulang dari nol dengan angka yang sama."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "online-kan-api-di-render",
+      "title": "Online-kan API di Render",
+      "est_minutes": 75,
+      "body": "## Kenapa Render\n\nRender punya paket **Free** untuk web service Python dan otomatis memasang uv kalau ada `uv.lock` di repositori. Batasannya perlu kamu tahu: 512 MB RAM, dan layanan **tidur setelah 15 menit tanpa request**, lalu butuh sekitar satu menit untuk bangun. Model linear kita kecil (sekitar 5 KB), jadi 512 MB lebih dari cukup. Tampilan dashboard bisa berubah, jadi kalau ada yang berbeda, ikuti dokumentasi resminya di bagian Bahan.\n\n## Model ikut di-commit atau dilatih di server?\n\nDi proyek ini `model/model.joblib` **ikut di-commit**. Model yang di-deploy adalah model yang sama persis dengan yang sudah kamu uji. Versi scikit-learn di server dijamin sama karena build memakai `uv sync --frozen`, yang memasang versi persis dari `uv.lock` dan gagal kalau lock-nya tidak cocok dengan `pyproject.toml`.\n\n## Langkah-langkah\n\n1. Pastikan semua berkas di daftar `render-pengaturan.txt` sudah di-commit, lalu `git push` ke GitHub.\n2. Di Render, buat **New > Web Service** dan hubungkan ke repositori `prediksi-harga-rumah`.\n3. Isi pengaturan persis seperti `render-pengaturan.txt`:\n   - **Build Command** `uv sync --frozen --no-dev`: pasang pustaka tanpa pytest.\n   - **Start Command** `uv run --no-sync uvicorn app:app --host 0.0.0.0 --port $PORT`: Render mengisi `PORT` sendiri, dan server harus mendengarkan di `0.0.0.0`. `--no-sync` mencegah uv memasang ulang pustaka setiap server menyala.\n4. Pilih Instance Type **Free**, lalu buat layanannya.\n5. Di **Settings**, bagian **Health Checks**, isi path `/health`.\n6. Tunggu status **Live**, lalu buka `https://NAMA-LAYANAN.onrender.com/docs` dan coba satu prediksi.\n7. Jalankan ulang `uji-manual.sh` dengan `BASE` diganti alamat Render-mu.\n\n## Kalau gagal\n\n- **Build gagal di `uv sync --frozen`**: `uv.lock` tidak ikut di-push atau tidak cocok dengan `pyproject.toml`. Jalankan `uv lock` di komputermu, commit, push.\n- **Versi Python berbeda dari yang kamu pakai**: pastikan `.python-version` ikut di-push. Tanpa berkas itu Render memakai versi bawaannya sendiri.\n- **`FileNotFoundError: model/model.joblib`**: folder `model/` belum di-commit. Periksa `.gitignore`.\n- **Peringatan `InconsistentVersionWarning` saat memuat model**: versi scikit-learn di server berbeda dari saat melatih. Latih ulang dengan versi dari `uv.lock`, lalu commit ulang modelnya.\n- **Request pertama lama sekali**: layanan sedang bangun dari tidur. Wajar di paket gratis, tulis di README.\n",
+      "materials": [
+        {
+          "id": "phr-dep-render",
+          "kind": "kode",
+          "name": "render-pengaturan.txt",
+          "lang": "text",
+          "content": "Language        : Python 3\nBuild Command   : uv sync --frozen --no-dev\nStart Command   : uv run --no-sync uvicorn app:app --host 0.0.0.0 --port $PORT\nInstance Type   : Free\nHealth Check    : /health\n\nBerkas yang WAJIB ikut di-push:\n  .python-version   (Render membaca versi Python dari sini)\n  pyproject.toml, uv.lock   (uv.lock membuat Render memasang uv)\n  app.py, fitur.py, model/model.joblib, model/info.json\n"
+        },
+        {
+          "id": "phr-dep-fastapi",
+          "kind": "tautan",
+          "name": "Render: deploy aplikasi FastAPI",
+          "url": "https://render.com/docs/deploy-fastapi"
+        },
+        {
+          "id": "phr-dep-uv",
+          "kind": "tautan",
+          "name": "Render: dukungan uv",
+          "url": "https://render.com/docs/uv-version"
+        },
+        {
+          "id": "phr-dep-python",
+          "kind": "tautan",
+          "name": "Render: memilih versi Python",
+          "url": "https://render.com/docs/python-version"
+        },
+        {
+          "id": "phr-dep-free",
+          "kind": "tautan",
+          "name": "Render: batasan paket gratis",
+          "url": "https://render.com/docs/free"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-dep-push",
+          "text": "pyproject.toml, uv.lock, .python-version, dan folder model/ sudah di-push."
+        },
+        {
+          "id": "phr-dep-live",
+          "text": "Layanan Render berstatus Live dan /health menjawab status ok."
+        },
+        {
+          "id": "phr-dep-prediksi",
+          "text": "POST /prediksi di alamat publik menjawab 200, dan masukan salah dijawab 422."
+        },
+        {
+          "id": "phr-dep-tidur",
+          "text": "Aku paham layanan gratis tidur setelah 15 menit dan menuliskannya di README."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "Tulis README dan kirim tautanmu",
+      "est_minutes": 50,
+      "body": "## README proyek ML menjawab tiga pertanyaan\n\nPerekrut yang membuka repositori ML ingin tahu: **seberapa bagus modelnya**, **bagaimana kamu tahu**, dan **apa batasannya**. Developer yang menyebut batasan modelnya sendiri jauh lebih meyakinkan daripada yang hanya memamerkan R².\n\n## Yang perlu kamu kerjakan\n\n1. Salin template README dari bagian Bahan ke `README.md`, lalu ganti semua `___`.\n2. Isi tabel hasil dengan angka dari `bandingkan.py` dan `latih.py`. Tulis angkanya apa adanya, termasuk baseline.\n3. Tampilkan `gambar/fitur-penting.png` (sudah ada di template) dan, kalau mau, `gambar/residu.png`.\n4. Isi **Keputusan desain** dengan dua keputusan nyata dan alasannya, misalnya target log, model linear yang mengalahkan model pohon, atau rentang harga di respons API.\n5. Isi **Batasan** dengan jujur: data sintetis, hanya delapan kota, rumah mewah diprediksi terlalu murah.\n6. Isi **Yang kupelajari** dengan tiga hal dan satu rencana berikutnya, misalnya mencoba data sungguhan, menambah fitur, atau membuat halaman web kecil yang memanggil API ini.\n7. Commit dan push, lalu isi deskripsi repositori GitHub dengan satu kalimat dan alamat `/docs` di Render.\n8. Kirim alamat API atau repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru menjalani siklus machine learning yang utuh: merumuskan pemakai, menjelajah data, membagi data tanpa bocor, membandingkan model dengan jujur, menjelaskan model, menyajikannya sebagai API yang tervalidasi dan teruji, lalu merilisnya ke internet. Sebagian besar pekerjaan ML sehari-hari ada di langkah-langkah ini, bukan di memilih algoritma tercanggih.\n",
+      "materials": [
+        {
+          "id": "phr-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Prediksi Harga Rumah\n\nAPI yang memperkirakan harga rumah tapak di delapan kota Indonesia dari luas,\njumlah kamar, lokasi, dan umur bangunan. Dibangun dengan scikit-learn dan FastAPI.\n\n**Demo API:** https://___.onrender.com/docs\n(paket gratis: request pertama setelah lama sepi butuh sekitar satu menit)\n\n> Data latihnya **sintetis** (dibuat oleh `buat_data.py`), jadi angkanya\n> bukan penilaian properti sungguhan. Yang ditunjukkan proyek ini adalah prosesnya.\n\n## Hasil\n\n| Model (5-fold CV, data latih) | MAE | R2 |\n| --- | --- | --- |\n| Baseline median | Rp___ | ___ |\n| LinearRegression (log) | Rp___ | ___ |\n| RandomForest | Rp___ | ___ |\n| HistGradientBoosting | Rp___ | ___ |\n\nModel terpilih di data uji: MAE Rp___, R2 ___, 80% rumah meleset paling jauh ___%.\n\n![Fitur paling berpengaruh](gambar/fitur-penting.png)\n\n## Contoh pemakaian\n\n```bash\ncurl -X POST https://___.onrender.com/prediksi -H \"Content-Type: application/json\" \\\n  -d '{\"kota\":\"Bandung\",\"luas_tanah\":120,\"luas_bangunan\":90,\"kamar_tidur\":3,\"kamar_mandi\":2,\"jarak_pusat_km\":6.5,\"tahun_dibangun\":2015}'\n```\n\n## Menjalankan sendiri\n\n```bash\nuv sync\nuv run python buat_data.py     # data/rumah.csv\nuv run python eda.py           # grafik EDA di gambar/\nuv run python bandingkan.py    # perbandingan model\nuv run python latih.py         # model/model.joblib + grafik\nuv run pytest\nuv run fastapi dev app.py      # http://127.0.0.1:8000/docs\n```\n\n## Keputusan desain\n\n- ___ (misalnya: kenapa target diambil log-nya)\n- ___ (misalnya: kenapa model linear dipilih, bukan yang paling rumit)\n\n## Batasan\n\n- ___ (misalnya: hanya 8 kota, rumah mewah diprediksi terlalu murah)\n\n## Yang kupelajari\n\n1. ___\n2. ___\n3. ___\n\nBerikutnya: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "phr-dok-hasil",
+          "text": "README berisi tabel hasil termasuk baseline, dan angka data uji."
+        },
+        {
+          "id": "phr-dok-batasan",
+          "text": "README menyebut data sintetis dan minimal satu batasan model."
+        },
+        {
+          "id": "phr-dok-jalankan",
+          "text": "README menjelaskan cara menjalankan, menguji, dan memanggil API."
+        },
+        {
+          "id": "phr-dok-kirim",
+          "text": "Alamat API atau repositoriku sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
