@@ -1,0 +1,674 @@
+{
+  "slug": "paket-npm-typescript",
+  "title": "Menerbitkan Paket npm dengan TypeScript",
+  "summary": "Bangun dan terbitkan idn-kit, paket npm untuk format dan parse Rupiah, terbilang, dan cek format NIK. TypeScript ketat, build ESM dan CommonJS dengan tsdown, tes properti fast-check, lint typescript-eslint, dokumentasi TypeDoc, diperiksa publint dan attw, lalu dirilis Changesets lewat GitHub Actions dengan trusted publishing dan provenance.",
+  "level": "lanjut",
+  "est_hours": 16,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-masalah-paket",
+      "title": "Tentukan masalah yang diselesaikan paketmu",
+      "est_minutes": 20,
+      "body": "## Paket kecil, pemakai sungguhan\n\nHampir setiap aplikasi Indonesia menulis ulang fungsi yang sama: menampilkan harga sebagai `Rp 1.500.000`, membaca kembali input harga dari form, mengeja angka di kuitansi (\"satu juta dua ratus lima puluh ribu rupiah\"), dan memeriksa apakah NIK yang diketik pengguna setidaknya berbentuk benar. Kodenya pendek, tapi kasus pinggirnya banyak, dan biasanya tanpa tes.\n\nDi proyek ini kamu membungkus ketiganya menjadi **satu paket npm** bernama `idn-kit` yang bisa dipasang siapa saja dengan `npm install`. Yang dinilai bukan banyaknya fungsi, melainkan **kualitas paketnya**: tipe TypeScript yang benar, jalan di ESM maupun CommonJS, teruji (termasuk tes properti), terdokumentasi, dan dirilis otomatis dengan jejak asal (provenance) yang bisa diverifikasi.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat: **\"Paket ini dipakai oleh ___ supaya ___.\"** Contoh: \"dipakai oleh developer toko online supaya harga dan kuitansi selalu benar tanpa menulis ulang fungsi format\".\n2. Tulis tiga hal yang **pasti** ada di versi pertama. Saran: format dan parse Rupiah, terbilang, cek format NIK.\n3. Tulis batas versi pertama. Saran kuat: **tanpa** NPWP, nomor HP, atau kode pos dulu. Tiap fitur tambahan adalah janji yang harus kamu rawat selamanya setelah terbit.\n4. Tulis tujuan pribadimu. Proyek ini cocok untuk posisi **frontend, backend, atau tooling** karena memperlihatkan hal yang jarang dikuasai junior: cara kerja `exports`, ESM vs CommonJS, dan rilis yang aman.\n\n> Ukuran keberhasilan: orang lain bisa memasang paketmu, memanggil fungsinya dari TypeScript dengan autocomplete lengkap, baik lewat `import` maupun `require`, tanpa membaca kodemu.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "pkt-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: idn-kit\n\nPaket ini dipakai oleh ___ supaya ___.\n\n## Pasti ada di versi pertama\n1. ___\n2. ___\n3. ___\n\n## Tidak dikerjakan di versi pertama\n- ___\n\n## Tujuan pribadiku\n___\n\n## Ukuran berhasil\nOrang lain bisa `npm install`, lalu memakai paketku dari ESM dan CommonJS\ndengan tipe TypeScript lengkap, hanya berbekal README.\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-brief-kalimat",
+          "text": "Aku sudah menulis kalimat \"Paket ini dipakai oleh ... supaya ...\"."
+        },
+        {
+          "id": "pkt-brief-tiga",
+          "text": "Aku punya tiga hal yang pasti ada di versi pertama."
+        },
+        {
+          "id": "pkt-brief-batas",
+          "text": "Aku menulis apa yang sengaja tidak dikerjakan dulu."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-api-publik",
+      "title": "Petakan API publik dan kasus pinggirnya",
+      "est_minutes": 40,
+      "body": "## API publik adalah janji\n\nSetelah paket terbit, setiap fungsi yang diekspor menjadi **kontrak**. Mengganti nama fungsi, mengubah tipe parameter, atau mengubah perilaku saat gagal berarti versi **major** baru menurut [Semantic Versioning](https://semver.org/lang/id/): `1.4.2` ke `2.0.0`. Karena itu, pikirkan API sebelum menulis kode, dan ekspor sesedikit mungkin.\n\n| Perubahan | Contoh | Versi naik |\n| --- | --- | --- |\n| Perbaikan bug, perilaku publik tetap | `terbilang(1001)` dulu salah, sekarang benar | patch: `0.1.0` ke `0.1.1` |\n| Fitur baru yang tidak merusak | menambah opsi `{ sen: true }` | minor: `0.1.1` ke `0.2.0` |\n| Merusak pemakai lama | `parseNik` sekarang melempar error | major: `1.x` ke `2.0.0` |\n\nSelama versi masih `0.x`, aturan semver lebih longgar: perubahan minor boleh merusak. Banyak paket memakai masa `0.x` untuk mencari bentuk API yang pas.\n\n## Dua cara gagal\n\nAda dua gaya yang umum di TypeScript, dan kita sengaja memakai keduanya di tempat yang tepat:\n\n- **Melempar error** cocok kalau masukan salah adalah kesalahan programmer. Contoh: `terbilang(1.5)`. Tidak ada yang berharap memanggilnya dengan pecahan, jadi lempar `RangeError`.\n- **Mengembalikan hasil** `{ ok: true, data } | { ok: false, alasan }` cocok kalau masukan salah adalah hal biasa. Contoh: NIK yang diketik pengguna di form. Pemakai dipaksa TypeScript untuk memeriksa `ok` dulu sebelum membaca `data`.\n\n## Yang perlu kamu kerjakan\n\n1. Untuk tiap fungsi (`formatRupiah`, `parseRupiah`, `terbilang`, `parseNik`, `validasiNik`), tulis: masukan, keluaran, dan apa yang terjadi kalau masukan salah.\n2. Tulis minimal lima **kasus pinggir** untuk tiap fungsi. Beberapa untuk memancing: `formatRupiah(-0)`, `parseRupiah(\"1.5\")` (satu koma lima atau seribu lima ratus?), `terbilang(1000)` (seribu, bukan satu ribu), `terbilang(21000)` (dua puluh **satu ribu**, di sini \"satu ribu\" justru benar), NIK perempuan yang tanggal lahirnya ditambah 40, NIK tanggal 29 Februari.\n3. Tulis satu **sifat** (properti) yang selalu benar untuk tiap fungsi, tanpa menyebut angka tertentu. Contoh: \"untuk setiap bilangan bulat `n`, `parseRupiah(formatRupiah(n))` sama dengan `n`\". Kalimat seperti ini nanti menjadi tes properti dengan fast-check.\n4. Putuskan: apa yang **tidak** diekspor? Fungsi pembantu seperti `ratusan()` di terbilang sebaiknya tetap privat supaya bebas diubah.\n\n> Data NIK adalah data pribadi. Di seluruh proyek ini, termasuk tes dan README, pakai NIK **palsu** yang kamu susun sendiri. Jangan pernah menyalin NIK milik orang sungguhan.\n",
+      "materials": [
+        {
+          "id": "pkt-m-semver",
+          "kind": "tautan",
+          "name": "Semantic Versioning 2.0.0 (bahasa Indonesia)",
+          "url": "https://semver.org/lang/id/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-ide-fungsi",
+          "text": "Tiap fungsi punya catatan masukan, keluaran, dan cara gagalnya."
+        },
+        {
+          "id": "pkt-ide-pinggir",
+          "text": "Aku menulis minimal lima kasus pinggir per fungsi."
+        },
+        {
+          "id": "pkt-ide-properti",
+          "text": "Aku menulis satu sifat yang selalu benar untuk tiap fungsi."
+        },
+        {
+          "id": "pkt-ide-semver",
+          "text": "Aku bisa menjelaskan kapan versi naik patch, minor, dan major."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-alat-paket",
+      "title": "Pilih alat: TypeScript, tsdown, Vitest, dan pemeriksa paket",
+      "est_minutes": 35,
+      "body": "## Alat yang dipakai\n\n| Kebutuhan | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Bahasa | TypeScript 6.0 | `typescript-eslint` dan TypeDoc saat ini baru mendukung sampai TypeScript 6.0 (cek dengan `npm view typescript-eslint peerDependencies`). TypeScript 7 (kompiler baru yang ditulis ulang di Go) belum menyediakan API yang mereka butuhkan |\n| Build | tsdown | Satu perintah menghasilkan ESM, CommonJS, dan berkas tipe `.d.ts` serta `.d.cts`. Dibangun di atas Rolldown dan Oxc |\n| Tes | Vitest + fast-check | Vitest cepat dan langsung paham TypeScript. fast-check membuat ratusan masukan acak untuk menguji sifat, bukan hanya contoh |\n| Lint | ESLint + typescript-eslint | Konfigurasi flat (`eslint.config.js`) dengan aturan yang membaca informasi tipe |\n| Dokumentasi | TSDoc + TypeDoc | Komentar `/** ... */` di kode menjadi situs dokumentasi |\n| Pemeriksa paket | publint + Are the Types Wrong (`attw`) | Memeriksa `package.json` dan tarball **sebelum** terbit: berkas yang hilang, tipe yang salah untuk CommonJS |\n| Versi dan rilis | Changesets + GitHub Actions | Catatan perubahan ditulis saat PR, versi dan CHANGELOG dibuat otomatis, terbit lewat trusted publishing |\n\n## Kenapa tsdown, bukan tsup atau tsc saja?\n\n- **tsup** dulu pilihan paling populer, tetapi README-nya sekarang menulis bahwa proyek itu tidak lagi dirawat aktif dan menyarankan pindah ke tsdown. tsdown punya panduan migrasi dari tsup dan opsinya mirip.\n- **tsc saja** bisa, tetapi untuk paket ganda (ESM + CJS) kamu butuh dua tsconfig, dua kali kompilasi, dan trik supaya berkas tipe untuk CommonJS berakhiran `.d.cts`. Itu sumber bug \"tipe benar di ESM, salah di CJS\" yang nanti dideteksi `attw`.\n- **tsdown** membaca `isolatedDeclarations` di tsconfig. Kalau opsi itu aktif, berkas `.d.ts` dibuat oleh Oxc tanpa menjalankan pemeriksa tipe, sehingga sangat cepat. Syaratnya, setiap fungsi yang diekspor harus menulis tipe kembaliannya secara eksplisit. Untuk library, itu memang kebiasaan baik: API publikmu tidak berubah diam-diam hanya karena isi fungsi berubah.\n\n## Perlukah CommonJS di tahun ini?\n\nNode 22 ke atas bisa `require()` modul ESM, jadi paket **hanya ESM** sudah cukup untuk banyak orang. Tetapi masih banyak proyek, alat, dan konfigurasi Jest lama yang berjalan sebagai CommonJS. Paket kecil tanpa dependensi seperti ini murah untuk dibuat ganda, dan kamu sekaligus belajar membaca `exports` dengan kondisi `import` dan `require`. Bahaya klasik paket ganda (*dual package hazard*: satu modul termuat dua kali dengan state berbeda) tidak berlaku di sini karena semua fungsi kita murni dan tanpa state.\n\n## Yang perlu kamu siapkan\n\n1. Node.js 22 atau lebih baru (`node -v`). Untuk rilis nanti dibutuhkan npm 11.5.1 ke atas, yang sudah ikut di Node 24.\n2. Akun **npmjs.com** dengan autentikasi dua faktor (2FA) aktif.\n3. Akun GitHub dan repositori kosong bernama `idn-kit`.\n4. Tentukan **nama paket**. Nama tanpa scope seperti `idn-kit` mungkin sudah dipakai orang. Lebih aman memakai scope akun npm-mu: `@namamu/idn-kit`. Di seluruh proyek ini, ganti `namamu` dengan nama pengguna npm-mu.\n",
+      "materials": [
+        {
+          "id": "pkt-m-tsdown-guide",
+          "kind": "tautan",
+          "name": "Dokumentasi tsdown",
+          "url": "https://tsdown.dev/guide/"
+        },
+        {
+          "id": "pkt-m-tsdown-dts",
+          "kind": "tautan",
+          "name": "tsdown: pembuatan .d.ts dan isolatedDeclarations",
+          "url": "https://tsdown.dev/options/dts"
+        },
+        {
+          "id": "pkt-m-tsup-migrasi",
+          "kind": "tautan",
+          "name": "tsdown: panduan pindah dari tsup",
+          "url": "https://tsdown.dev/guide/migrate-from-tsup"
+        },
+        {
+          "id": "pkt-m-node-esm",
+          "kind": "tautan",
+          "name": "Node.js: modul dan exports",
+          "url": "https://nodejs.org/api/packages.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-tek-node",
+          "text": "Node.js 22 atau lebih baru sudah terpasang."
+        },
+        {
+          "id": "pkt-tek-akun",
+          "text": "Aku punya akun npmjs.com dengan 2FA aktif dan akun GitHub."
+        },
+        {
+          "id": "pkt-tek-nama",
+          "text": "Aku sudah memilih nama paket ber-scope, misalnya @namamu/idn-kit."
+        },
+        {
+          "id": "pkt-tek-alasan",
+          "text": "Aku bisa menjelaskan kenapa memilih tsdown dan kenapa TypeScript 6.0."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-exports-dan-package-json",
+      "title": "Rancang exports, package.json, dan isi tarball",
+      "est_minutes": 75,
+      "body": "## package.json adalah antarmuka paket\n\nKode yang bagus tidak berguna kalau `package.json` salah. Kesalahan paling umum di paket TypeScript: tipe yang tidak ditemukan di CommonJS, berkas `dist/` yang lupa ikut terbit, atau rahasia yang ikut terbit. Semua itu diatur di sini, jadi rancang dulu sebelum ngoding.\n\n## Peta `exports`\n\nField `exports` adalah **daftar pintu resmi** paketmu. Node dan TypeScript hanya boleh masuk lewat kunci yang tertulis di sana. Di tiap kunci ada **kondisi**: `import` dipilih saat pemakai menulis `import`, `require` saat pemakai menulis `require()`. Di dalam tiap kondisi ada `types` (dibaca TypeScript) dan `default` (dijalankan Node).\n\n![Ikuti tiga baris dari kiri ke kanan: import ESM dan require CJS menemukan berkas berbeda di dist/, sedangkan impor langsung ke dist/ ditolak karena tidak ada di exports](/studio/paket-npm-typescript/resolusi-exports.svg)\n\nTiga aturan yang sering dilanggar:\n\n1. **`types` selalu ditulis paling atas** di dalam tiap kondisi. Urutan kunci di `exports` berarti prioritas.\n2. **Tipe untuk `require` harus `.d.cts`**, bukan `.d.ts`. Dengan `\"type\": \"module\"`, berkas `.d.ts` dianggap tipe untuk ESM. Kalau CommonJS diberi tipe ESM, TypeScript pemakai CJS memberi informasi yang salah. Inilah kesalahan \"Masquerading as ESM\" yang dideteksi `attw`.\n3. **`\"./package.json\"` ikut diekspor**, karena beberapa alat membaca versi paket lewat `require(\"nama/package.json\")`.\n\n## Field lain yang penting\n\n| Field | Nilai | Kenapa |\n| --- | --- | --- |\n| `type` | `\"module\"` | Berkas `.js` di paket ini adalah ESM. CJS memakai `.cjs` |\n| `files` | `[\"dist\"]` | Daftar putih. Hanya `dist/` (plus `package.json`, README, LICENSE yang selalu ikut) yang terbit. `src/`, tes, dan `.env` tidak ikut |\n| `sideEffects` | `false` | Memberi tahu bundler bahwa mengimpor modul ini tidak melakukan apa-apa selain mendefinisikan fungsi, jadi fungsi yang tidak dipakai boleh dibuang (*tree shaking*) |\n| `engines` | `{ \"node\": \">=22\" }` | Jujur tentang versi yang kamu uji di CI |\n| `main`, `module`, `types` | menunjuk ke `dist/index.*` | Cadangan untuk alat lama yang belum membaca `exports` |\n| `repository.url` | alamat GitHub-mu | **Wajib sama persis** dengan repositori yang menjalankan rilis. npm memeriksanya saat trusted publishing |\n| `publishConfig.access` | `\"public\"` | Paket ber-scope (`@namamu/...`) defaultnya privat dan berbayar. Ini membuatnya publik |\n| `prepack` | `npm run build` | `npm pack` dan `npm publish` selalu membangun ulang dulu, jadi tidak ada `dist/` basi yang terbit |\n\n## Yang perlu kamu kerjakan\n\n1. Baca `package.json` di bagian Bahan baris demi baris. Ganti `namamu`, nama, dan email dengan milikmu.\n2. Cocokkan tiap kunci `exports` dengan berkas sumber yang akan ada di `src/`: `index.ts`, `rupiah.ts`, `terbilang.ts`, `nik.ts`.\n3. Simpan `rancangan-api.md` dari bagian Bahan dan lengkapi dengan hasil Brainstorming-mu.\n4. Jawab di catatanmu: kenapa pemakai **tidak boleh** menulis `require(\"@namamu/idn-kit/dist/nik.cjs\")`? (Petunjuk: lihat baris ketiga diagram. Kalau suatu hari kamu memindahkan berkas di `dist/`, pemakai yang memakai jalan pintas itu akan rusak.)\n",
+      "materials": [
+        {
+          "id": "pkt-m-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"@namamu/idn-kit\",\n  \"version\": \"0.0.0\",\n  \"description\": \"Format dan parse Rupiah, terbilang, dan cek format NIK untuk developer Indonesia.\",\n  \"keywords\": [\n    \"rupiah\",\n    \"terbilang\",\n    \"nik\",\n    \"indonesia\",\n    \"idr\"\n  ],\n  \"license\": \"MIT\",\n  \"author\": \"Namamu <email@contoh.id>\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/namamu/idn-kit.git\"\n  },\n  \"homepage\": \"https://github.com/namamu/idn-kit#readme\",\n  \"bugs\": \"https://github.com/namamu/idn-kit/issues\",\n  \"type\": \"module\",\n  \"sideEffects\": false,\n  \"engines\": {\n    \"node\": \">=22\"\n  },\n  \"files\": [\n    \"dist\"\n  ],\n  \"main\": \"./dist/index.cjs\",\n  \"module\": \"./dist/index.js\",\n  \"types\": \"./dist/index.d.cts\",\n  \"exports\": {\n    \".\": {\n      \"import\": {\n        \"types\": \"./dist/index.d.ts\",\n        \"default\": \"./dist/index.js\"\n      },\n      \"require\": {\n        \"types\": \"./dist/index.d.cts\",\n        \"default\": \"./dist/index.cjs\"\n      }\n    },\n    \"./rupiah\": {\n      \"import\": {\n        \"types\": \"./dist/rupiah.d.ts\",\n        \"default\": \"./dist/rupiah.js\"\n      },\n      \"require\": {\n        \"types\": \"./dist/rupiah.d.cts\",\n        \"default\": \"./dist/rupiah.cjs\"\n      }\n    },\n    \"./terbilang\": {\n      \"import\": {\n        \"types\": \"./dist/terbilang.d.ts\",\n        \"default\": \"./dist/terbilang.js\"\n      },\n      \"require\": {\n        \"types\": \"./dist/terbilang.d.cts\",\n        \"default\": \"./dist/terbilang.cjs\"\n      }\n    },\n    \"./nik\": {\n      \"import\": {\n        \"types\": \"./dist/nik.d.ts\",\n        \"default\": \"./dist/nik.js\"\n      },\n      \"require\": {\n        \"types\": \"./dist/nik.d.cts\",\n        \"default\": \"./dist/nik.cjs\"\n      }\n    },\n    \"./package.json\": \"./package.json\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\"\n  },\n  \"scripts\": {\n    \"build\": \"tsdown\",\n    \"dev\": \"tsdown --watch\",\n    \"typecheck\": \"tsc\",\n    \"lint\": \"eslint .\",\n    \"test\": \"vitest run\",\n    \"test:watch\": \"vitest\",\n    \"coverage\": \"vitest run --coverage\",\n    \"docs\": \"typedoc\",\n    \"check:publint\": \"publint --strict\",\n    \"check:attw\": \"attw --pack . --profile node16\",\n    \"smoke\": \"bash scripts/smoke.sh\",\n    \"prepack\": \"npm run build\",\n    \"changeset\": \"changeset\"\n  }\n}\n"
+        },
+        {
+          "id": "pkt-m-rancangan",
+          "kind": "kode",
+          "name": "rancangan-api.md",
+          "lang": "markdown",
+          "content": "# Rancangan API idn-kit\n\n## Pintu masuk (exports)\n| Impor | Isi |\n| --- | --- |\n| `@namamu/idn-kit` | semua fungsi |\n| `@namamu/idn-kit/rupiah` | formatRupiah, parseRupiah, OpsiFormatRupiah |\n| `@namamu/idn-kit/terbilang` | terbilang, BATAS_TERBILANG |\n| `@namamu/idn-kit/nik` | parseNik, validasiNik, DataNik, HasilNik, JenisKelamin |\n\n## Fungsi\n| Fungsi | Tanda tangan | Kalau gagal |\n| --- | --- | --- |\n| formatRupiah | `(nilai: number, opsi?: { sen?: boolean }) => string` | RangeError (NaN, Infinity) |\n| parseRupiah | `(teks: string) => number` | SyntaxError (format asing) |\n| terbilang | `(n: number) => string` | RangeError (pecahan, >= 1e15) |\n| parseNik | `(nik: string) => HasilNik` | `{ ok: false, alasan }` |\n| validasiNik | `(nik: string) => boolean` | `false` |\n\n## Sifat yang selalu benar (untuk tes properti)\n- parseRupiah(formatRupiah(n)) === n untuk setiap bilangan bulat n\n- terbilang(-n) === \"minus \" + terbilang(n)\n- parseNik(susun(data)) mengembalikan data yang sama\n\n## Sengaja tidak diekspor\n- fungsi pembantu ratusan(), gabung()\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-ran-exports",
+          "text": "Aku bisa menunjuk berkas mana yang dipakai untuk import dan require tiap kunci exports."
+        },
+        {
+          "id": "pkt-ran-dcts",
+          "text": "Aku bisa menjelaskan kenapa require butuh .d.cts, bukan .d.ts."
+        },
+        {
+          "id": "pkt-ran-files",
+          "text": "files berisi daftar putih dan aku tahu berkas apa saja yang akan terbit."
+        },
+        {
+          "id": "pkt-ran-repo",
+          "text": "repository.url sudah menunjuk ke repositori GitHub-ku."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-tsdown",
+      "title": "Siapkan proyek TypeScript yang bisa di-build",
+      "est_minutes": 75,
+      "body": "## Target langkah ini\n\n`npm run build` menghasilkan folder `dist/` berisi versi ESM, CommonJS, dan berkas tipe untuk keempat pintu masuk, dan `npm run typecheck` lulus tanpa error.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu.\n2. Ganti isi `package.json` dengan versi dari langkah Merancang, tetapi **biarkan** bagian `devDependencies` yang ditulis npm. Perhatikan `npm init -y` menulis `\"type\": \"commonjs\"`. Versi kita memakai `\"type\": \"module\"`.\n3. Buat `tsconfig.json`, `tsdown.config.ts`, `.gitignore`, dan `src/index.ts` dari bagian Bahan.\n4. Jalankan `npm run typecheck`, lalu `npm run build`.\n5. Lihat isi `dist/` dengan `ls dist`. Harus ada 16 berkas: untuk tiap modul (`index`, `rupiah`, `terbilang`, `nik`) ada `.js`, `.cjs`, `.d.ts`, dan `.d.cts`. Cocokkan dengan `exports` di `package.json`.\n6. Commit dengan pesan `Siapkan proyek TypeScript dan tsdown`.\n\n## tsconfig yang ketat\n\nLibrary dipakai oleh orang lain, jadi kesalahan tipe di dalamnya menjadi masalah mereka. Beberapa opsi di atas `strict`:\n\n- **`noUncheckedIndexedAccess`**: `daftar[i]` bertipe `string | undefined`, karena memang bisa di luar batas.\n- **`exactOptionalPropertyTypes`**: `{ sen?: boolean }` artinya boleh tidak diisi, tetapi **tidak** boleh diisi `undefined` secara eksplisit.\n- **`verbatimModuleSyntax`**: impor yang hanya tipe wajib ditulis `import type` atau `import { type X }`, supaya bundler tahu baris mana yang boleh dihapus.\n- **`isolatedDeclarations`**: setiap ekspor wajib punya tipe eksplisit. Inilah yang membuat tsdown bisa membuat `.d.ts` dengan Oxc tanpa menjalankan pemeriksa tipe.\n- **`module` dan `moduleResolution`: `nodenext`**: TypeScript mengikuti aturan Node yang sebenarnya. Karena itu impor relatif ditulis dengan akhiran `.js` (`./rupiah.js`) walaupun berkasnya `rupiah.ts`.\n- **`noEmit`**: `tsc` hanya memeriksa. Yang membuat `dist/` adalah tsdown.\n\n## Kenapa `tsdown.config.ts` memakai `const config: UserConfig`?\n\nKarena `isolatedDeclarations` juga berlaku untuk berkas konfigurasi. `export default defineConfig({...})` langsung akan ditolak dengan error `TS9037: Default exports can't be inferred`. Menulis tipenya di variabel menyelesaikan itu.\n\n## Kalau gagal\n\n- `Cannot find module './rupiah.js'`: berkas `src/rupiah.ts` belum dibuat. Jalankan lagi baris terakhir `setup.sh`.\n- `dist/` hanya berisi `.js` tanpa `.cjs`: `format: [\"esm\", \"cjs\"]` belum ada di `tsdown.config.ts`.\n- Versi TypeScript 7.x terpasang: kamu menjalankan `npm install -D typescript` tanpa `@~6.0.3`. Pasang ulang dengan versi yang dikunci.\n- `npm install` melaporkan kerentanan *moderate* di `minimatch` milik TypeDoc: baca dulu rantainya dengan `npm audit`. Itu dependensi pengembangan, tidak ikut ke tarball paketmu. **Jangan** menjalankan `npm audit fix --force`, karena perintah itu menurunkan TypeDoc ke versi 0.23 yang jauh lebih lama. Tunggu TypeDoc merilis perbaikan, lalu `npm update typedoc`.\n",
+      "materials": [
+        {
+          "id": "pkt-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "mkdir idn-kit && cd idn-kit\ngit init\nnpm init -y\n\n# TypeScript dikunci di 6.0.x (lihat langkah Teknologi)\nnpm install --save-dev typescript@~6.0.3 tsdown\nnpm install --save-dev vitest @vitest/coverage-v8 fast-check\nnpm install --save-dev eslint @eslint/js typescript-eslint typedoc\nnpm install --save-dev publint @arethetypeswrong/cli @changesets/cli\n\nmkdir -p src test scripts smoke\n\n# Modul sementara supaya build pertama bisa jalan. Isinya diganti di langkah berikutnya.\nfor m in rupiah terbilang nik; do echo \"export {};\" > src/$m.ts; done\n"
+        },
+        {
+          "id": "pkt-m-tsconfig",
+          "kind": "kode",
+          "name": "tsconfig.json",
+          "lang": "json",
+          "content": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"lib\": [\"es2023\"],\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"types\": [],\n    \"strict\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"exactOptionalPropertyTypes\": true,\n    \"noImplicitOverride\": true,\n    \"noFallthroughCasesInSwitch\": true,\n    \"verbatimModuleSyntax\": true,\n    \"isolatedDeclarations\": true,\n    \"declaration\": true,\n    \"noEmit\": true,\n    \"skipLibCheck\": true\n  },\n  \"include\": [\"src\", \"test\", \"*.config.ts\"]\n}\n"
+        },
+        {
+          "id": "pkt-m-tsdown",
+          "kind": "kode",
+          "name": "tsdown.config.ts",
+          "lang": "typescript",
+          "content": "import { defineConfig, type UserConfig } from \"tsdown\";\n\n// Anotasi tipe dibutuhkan karena tsconfig memakai isolatedDeclarations.\nconst config: UserConfig = defineConfig({\n  entry: [\"src/index.ts\", \"src/rupiah.ts\", \"src/terbilang.ts\", \"src/nik.ts\"],\n  format: [\"esm\", \"cjs\"],\n  platform: \"neutral\",\n  dts: true,\n  clean: true,\n});\n\nexport default config;\n"
+        },
+        {
+          "id": "pkt-m-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules/\ndist/\ncoverage/\ndocs/\n.smoke/\n*.tgz\n"
+        },
+        {
+          "id": "pkt-m-index",
+          "kind": "kode",
+          "name": "src/index.ts",
+          "lang": "typescript",
+          "content": "/**\n * Utilitas kecil untuk data khas Indonesia: Rupiah, terbilang, dan format NIK.\n *\n * @packageDocumentation\n */\nexport * from \"./rupiah.js\";\nexport * from \"./terbilang.js\";\nexport * from \"./nik.js\";\n"
+        },
+        {
+          "id": "pkt-m-tsconfig-ref",
+          "kind": "tautan",
+          "name": "Referensi opsi tsconfig",
+          "url": "https://www.typescriptlang.org/tsconfig/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-setup-build",
+          "text": "npm run build menghasilkan .js, .cjs, .d.ts, dan .d.cts untuk keempat modul."
+        },
+        {
+          "id": "pkt-setup-tsc",
+          "text": "npm run typecheck lulus tanpa error."
+        },
+        {
+          "id": "pkt-setup-ts6",
+          "text": "TypeScript yang terpasang versi 6.0.x (npx tsc -v)."
+        },
+        {
+          "id": "pkt-setup-commit",
+          "text": "Kerangka proyek sudah di-commit tanpa node_modules dan dist."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "modul-rupiah-dan-tes-properti",
+      "title": "Tulis modul Rupiah dengan tes contoh dan tes properti",
+      "est_minutes": 120,
+      "body": "## Format dan parse, dua arah yang harus cocok\n\n`formatRupiah` memakai `Intl.NumberFormat` bawaan JavaScript dengan locale `id-ID`, jadi titik ribuan dan koma desimal sudah benar tanpa kode buatan sendiri. Ada satu kejutan: `Intl` menaruh **non-breaking space** (`\\u00a0`) antara `Rp` dan angka. Kelihatannya sama dengan spasi biasa, tetapi `\"Rp 1.000\" === \"Rp\\u00a01.000\"` bernilai `false`. Kita menggantinya dengan spasi biasa supaya hasilnya mudah dibandingkan pemakai.\n\n`parseRupiah` arah sebaliknya. Satu regex membaca tanda minus, awalan `Rp` atau `Rp.`, angka dengan titik ribuan **per tiga digit**, dan koma desimal. `\"Rp 1.5\"` ditolak dengan `SyntaxError`, bukan ditebak sebagai satu koma lima atau seribu lima ratus. Untuk uang, menolak lebih aman daripada menebak.\n\n## Tes contoh dan tes properti\n\n**Tes contoh** (`it.each`) memeriksa masukan tertentu: `1500000` menjadi `\"Rp 1.500.000\"`. Bagus untuk kasus yang kamu pikirkan.\n\n**Tes properti** dengan fast-check memeriksa **sifat**, lalu fast-check mencoba ratusan angka acak, termasuk angka yang tidak terpikirkan: nol, negatif, sangat besar. Sifat kita: *format lalu parse harus kembali ke angka semula* (*round-trip*). Kalau ada yang gagal, fast-check mencoba **mengecilkan** (*shrink*) contohnya ke masukan yang lebih sederhana yang masih gagal, lalu mencetaknya sebagai `Counterexample` beserta `seed` supaya bisa diulang persis.\n\nProperti kedua memakai sen: fast-check membuat bilangan bulat `senTotal`, lalu kita bagi 100. Dengan cara ini angka uji selalu punya paling banyak dua angka di belakang koma, sama seperti yang bisa ditampilkan `formatRupiah(..., { sen: true })`.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti isi `src/rupiah.ts` dengan versi di bagian Bahan. Baca komentar TSDoc-nya: komentar inilah yang nanti menjadi dokumentasi.\n2. Buat `vitest.config.ts` dan `test/rupiah.test.ts`.\n3. Jalankan `npm test`. Semua tes harus lulus.\n4. **Rusak dengan sengaja**: di `formatRupiah`, hapus `.replace(/\\u00a0/g, \" \")`. Jalankan tes. Tes contoh gagal karena spasinya berbeda. Kembalikan.\n5. Rusak lagi: ubah regex supaya titik boleh di mana saja, misalnya `(\\d[\\d.]*)`. Tes `\"Rp 1.5\"` dan `\"Rp 12.34.567\"` gagal. Kembalikan. Tes yang tidak pernah gagal belum tentu menguji sesuatu.\n6. Jalankan `npm run coverage`. Ambang di `vitest.config.ts` (baris 95%, cabang 90%, fungsi 100%) membuat perintah ini gagal kalau ada kode yang tidak tersentuh tes.\n7. Commit dengan pesan `Tambah formatRupiah dan parseRupiah`.\n\n## Kalau gagal\n\n- Tes `\"Rp 1.500.000\"` gagal padahal teksnya terlihat sama: bandingkan dengan `JSON.stringify`. Kalau muncul `\\u00a0`, penggantian spasi belum ada.\n- `Cannot find package 'fast-check'`: baris `npm install` untuk tes di `setup.sh` terlewat.\n",
+      "materials": [
+        {
+          "id": "pkt-m-rupiah",
+          "kind": "kode",
+          "name": "src/rupiah.ts",
+          "lang": "typescript",
+          "content": "/**\n * Pilihan untuk {@link formatRupiah}.\n */\nexport interface OpsiFormatRupiah {\n  /** Tampilkan dua angka sen di belakang koma. Bawaan: `false` (dibulatkan ke rupiah terdekat). */\n  readonly sen?: boolean;\n}\n\nconst tanpaSen = new Intl.NumberFormat(\"id-ID\", {\n  style: \"currency\",\n  currency: \"IDR\",\n  minimumFractionDigits: 0,\n  maximumFractionDigits: 0,\n});\nconst denganSen = new Intl.NumberFormat(\"id-ID\", {\n  style: \"currency\",\n  currency: \"IDR\",\n  minimumFractionDigits: 2,\n  maximumFractionDigits: 2,\n});\n\n/**\n * Mengubah angka menjadi teks Rupiah gaya Indonesia.\n *\n * @param nilai - Jumlah uang dalam rupiah. Harus bilangan terhingga.\n * @param opsi - Pilihan tampilan.\n * @returns Teks seperti `\"Rp 1.500.000\"` (spasi biasa, bukan non-breaking space).\n * @throws `RangeError` kalau `nilai` adalah `NaN` atau `Infinity`.\n *\n * @example\n * ```ts\n * formatRupiah(1500000); // \"Rp 1.500.000\"\n * formatRupiah(-2500.5, { sen: true }); // \"-Rp 2.500,50\"\n * ```\n */\nexport function formatRupiah(nilai: number, opsi: OpsiFormatRupiah = {}): string {\n  if (!Number.isFinite(nilai)) {\n    throw new RangeError(`formatRupiah: nilai harus bilangan terhingga, bukan ${String(nilai)}`);\n  }\n  const formatter = opsi.sen === true ? denganSen : tanpaSen;\n  return formatter.format(nilai).replace(/\\u00a0/g, \" \");\n}\n\n// Tanda minus boleh di depan atau sesudah \"Rp\", titik pemisah ribuan harus per 3 digit.\nconst POLA_RUPIAH = /^(-?)(?:rp\\.?)?(-?)(\\d{1,3}(?:\\.\\d{3})+|\\d+)(?:,(\\d+))?$/i;\n\n/**\n * Membaca teks Rupiah gaya Indonesia menjadi angka.\n *\n * Menerima `\"Rp 1.500.000\"`, `\"Rp1.500.000,50\"`, `\"-Rp 5.000\"`, `\"Rp -5.000\"`, dan `\"25000\"`.\n * Titik selalu dibaca sebagai pemisah ribuan dan koma sebagai pemisah desimal.\n *\n * @param teks - Teks yang akan dibaca.\n * @returns Nilai dalam rupiah.\n * @throws `SyntaxError` kalau teks tidak berbentuk Rupiah, misalnya `\"Rp 1.5\"` atau `\"satu juta\"`.\n *\n * @example\n * ```ts\n * parseRupiah(\"Rp 1.500.000\"); // 1500000\n * parseRupiah(formatRupiah(42000)); // 42000\n * ```\n */\nexport function parseRupiah(teks: string): number {\n  const cocok = POLA_RUPIAH.exec(teks.replace(/\\s/g, \"\"));\n  if (cocok === null || (cocok[1] === \"-\" && cocok[2] === \"-\")) {\n    throw new SyntaxError(`parseRupiah: format tidak dikenali: \"${teks}\"`);\n  }\n  const [, minusDepan, minusBelakang, bulat = \"\", pecahan] = cocok;\n  const nilai = Number(bulat.replaceAll(\".\", \"\") + (pecahan === undefined ? \"\" : `.${pecahan}`));\n  const negatif = minusDepan === \"-\" || minusBelakang === \"-\";\n  return negatif && nilai !== 0 ? -nilai : nilai;\n}\n"
+        },
+        {
+          "id": "pkt-m-vitest",
+          "kind": "kode",
+          "name": "vitest.config.ts",
+          "lang": "typescript",
+          "content": "import { defineConfig, type ViteUserConfig } from \"vitest/config\";\n\nconst config: ViteUserConfig = defineConfig({\n  test: {\n    include: [\"test/**/*.test.ts\"],\n    coverage: {\n      provider: \"v8\",\n      include: [\"src/**/*.ts\"],\n      reporter: [\"text\", \"html\"],\n      thresholds: { lines: 95, statements: 95, functions: 100, branches: 90 },\n    },\n  },\n});\n\nexport default config;\n"
+        },
+        {
+          "id": "pkt-m-rupiah-test",
+          "kind": "kode",
+          "name": "test/rupiah.test.ts",
+          "lang": "typescript",
+          "content": "import fc from \"fast-check\";\nimport { describe, expect, it } from \"vitest\";\nimport { formatRupiah, parseRupiah } from \"../src/rupiah.js\";\n\ndescribe(\"formatRupiah\", () => {\n  it.each([\n    [0, \"Rp 0\"],\n    [1500000, \"Rp 1.500.000\"],\n    [999, \"Rp 999\"],\n    [-5000, \"-Rp 5.000\"],\n    [2500.4, \"Rp 2.500\"],\n  ])(\"%d menjadi %s\", (nilai, harapan) => {\n    expect(formatRupiah(nilai)).toBe(harapan);\n  });\n\n  it(\"menampilkan sen kalau diminta\", () => {\n    expect(formatRupiah(1234.5, { sen: true })).toBe(\"Rp 1.234,50\");\n  });\n\n  it(\"menolak NaN dan Infinity\", () => {\n    expect(() => formatRupiah(Number.NaN)).toThrow(RangeError);\n    expect(() => formatRupiah(Infinity)).toThrow(RangeError);\n  });\n});\n\ndescribe(\"parseRupiah\", () => {\n  it.each([\n    [\"Rp 1.500.000\", 1500000],\n    [\"Rp1.500.000,50\", 1500000.5],\n    [\"rp. 25.000\", 25000],\n    [\"25000\", 25000],\n    [\"-Rp 5.000\", -5000],\n    [\"Rp -5.000\", -5000],\n    [\"-Rp 0\", 0],\n  ])(\"%s menjadi %d\", (teks, harapan) => {\n    expect(parseRupiah(teks)).toBe(harapan);\n  });\n\n  it.each([\"\", \"Rp\", \"Rp 1.5\", \"1,500,000\", \"--Rp 5\", \"-Rp -5\", \"satu juta\", \"Rp 12.34.567\"])(\n    \"menolak %j\",\n    (teks) => {\n      expect(() => parseRupiah(teks)).toThrow(SyntaxError);\n    },\n  );\n});\n\ndescribe(\"properti: format lalu parse kembali ke angka semula\", () => {\n  it(\"rupiah bulat\", () => {\n    fc.assert(\n      fc.property(fc.integer({ min: -1e15, max: 1e15 }), (n) => {\n        expect(parseRupiah(formatRupiah(n))).toBe(n);\n      }),\n    );\n  });\n\n  it(\"rupiah dengan sen\", () => {\n    fc.assert(\n      fc.property(fc.integer({ min: -1e13, max: 1e13 }), (senTotal) => {\n        const nilai = senTotal / 100;\n        expect(parseRupiah(formatRupiah(nilai, { sen: true }))).toBe(nilai);\n      }),\n    );\n  });\n});\n"
+        },
+        {
+          "id": "pkt-m-fastcheck",
+          "kind": "tautan",
+          "name": "fast-check: memulai tes properti",
+          "url": "https://fast-check.dev/docs/introduction/getting-started/"
+        },
+        {
+          "id": "pkt-m-intl",
+          "kind": "tautan",
+          "name": "MDN: Intl.NumberFormat",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-rp-tes",
+          "text": "npm test lulus untuk tes contoh dan tes properti Rupiah."
+        },
+        {
+          "id": "pkt-rp-rusak",
+          "text": "Aku sudah merusak kode dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "pkt-rp-nbsp",
+          "text": "Aku bisa menjelaskan kenapa non-breaking space dari Intl diganti."
+        },
+        {
+          "id": "pkt-rp-coverage",
+          "text": "npm run coverage lulus dengan ambang yang ditetapkan."
+        },
+        {
+          "id": "pkt-rp-commit",
+          "text": "Modul Rupiah sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "modul-terbilang",
+      "title": "Tulis modul terbilang",
+      "est_minutes": 90,
+      "body": "## Aturan bahasa yang jadi kode\n\nMengeja angka dalam bahasa Indonesia punya aturan yang tidak simetris, dan di situlah bug biasanya bersembunyi:\n\n| Angka | Ejaan | Aturan |\n| --- | --- | --- |\n| 11 | sebelas | bukan \"satu belas\" |\n| 100 | seratus | bukan \"satu ratus\" |\n| 1.000 | seribu | bukan \"satu ribu\" |\n| 21.000 | dua puluh satu ribu | di sini \"satu ribu\" justru benar |\n| 1.000.000 | satu juta | bukan \"sejuta\" (dalam ejaan resmi untuk kuitansi) |\n\nAlgoritmanya: pecah angka menjadi kelompok tiga digit dari kanan (satuan, ribu, juta, miliar, triliun), eja tiap kelompok dengan `ratusan()`, lalu tempelkan nama skalanya. Kelompok yang nol dilewati. Pengecualian \"seribu\" hanya berlaku kalau kelompok ribuan bernilai tepat 1.\n\n## noUncheckedIndexedAccess dalam praktik\n\nDengan opsi ini, `SATUAN[n]` bertipe `string | undefined`. Daripada menaburkan `?? \"\"` di setiap baris, kita membuat satu pembantu `satuan(i)`. Hasilnya: hanya ada satu tempat yang \"menenangkan\" TypeScript, dan laporan coverage hanya menandai satu cabang yang memang tidak mungkin terjadi.\n\n## Properti yang diuji\n\nTes contoh menangkap aturan di tabel atas. Tes properti menjaga sifat umum untuk **semua** bilangan sampai 999 triliun:\n\n- hasilnya selalu huruf kecil dengan tepat satu spasi antarkata (tidak ada spasi ganda dari kelompok yang kosong),\n- `terbilang(-n)` sama dengan `\"minus \" + terbilang(n)`,\n- tidak pernah muncul \"satu ratus\", \"satu puluh\", atau \"satu belas\". Perhatikan regex-nya memeriksa awal kata, supaya \"dua puluh **satu ribu**\" tidak dianggap salah.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti isi `src/terbilang.ts` dan buat `test/terbilang.test.ts` dari bagian Bahan.\n2. Jalankan `npm test`.\n3. Rusak dengan sengaja: hapus pengecualian `skala === 1 && kelompok === 1 ? \"seribu\" : ...`. Lihat tes contoh `1000` gagal. Kembalikan.\n4. Rusak lagi: di `ratusan()`, ganti cabang `n < 200` menjadi `n < 100` sehingga 100 sampai 199 dieja \"satu ratus ...\". Tes contoh `100` dan `111` gagal, dan tes properti mencetak `Counterexample: [...]`. Angkanya bisa masih besar, misalnya `61431071098100`, karena shrinking tidak selalu sampai ke contoh terkecil. Pecah angka itu per tiga digit dari kanan dan temukan kelompok 100 sampai 199 yang membuatnya gagal. Kembalikan.\n5. Tambahkan satu tes contoh milikmu sendiri, misalnya angka di kuitansi terakhir yang kamu terima.\n6. Commit dengan pesan `Tambah terbilang`.\n",
+      "materials": [
+        {
+          "id": "pkt-m-terbilang",
+          "kind": "kode",
+          "name": "src/terbilang.ts",
+          "lang": "typescript",
+          "content": "const SATUAN = [\n  \"\", \"satu\", \"dua\", \"tiga\", \"empat\", \"lima\", \"enam\", \"tujuh\", \"delapan\", \"sembilan\", \"sepuluh\", \"sebelas\",\n] as const;\nconst SKALA = [\"\", \"ribu\", \"juta\", \"miliar\", \"triliun\"] as const;\n\n/** Batas atas (eksklusif) yang bisa dieja: seribu triliun. */\nexport const BATAS_TERBILANG = 1e15;\n\nconst gabung = (...kata: string[]): string => kata.filter((k) => k !== \"\").join(\" \");\n\n// noUncheckedIndexedAccess membuat SATUAN[i] bertipe string | undefined.\n// Indeks kita selalu 0..11, jadi `?? \"\"` cukup ditulis sekali di sini.\nconst satuan = (i: number): string => SATUAN[i] ?? \"\";\n\n// n selalu 0..999.\nfunction ratusan(n: number): string {\n  if (n < 12) return satuan(n);\n  if (n < 20) return gabung(satuan(n - 10), \"belas\");\n  if (n < 100) return gabung(satuan(Math.floor(n / 10)), \"puluh\", satuan(n % 10));\n  if (n < 200) return gabung(\"seratus\", ratusan(n - 100));\n  return gabung(satuan(Math.floor(n / 100)), \"ratus\", ratusan(n % 100));\n}\n\n/**\n * Mengeja bilangan bulat dalam bahasa Indonesia, misalnya untuk kuitansi.\n *\n * @param n - Bilangan bulat, `-999.999.999.999.999` sampai `999.999.999.999.999`.\n * @returns Ejaan huruf kecil dengan satu spasi antarkata.\n * @throws `RangeError` kalau `n` bukan bilangan bulat atau di luar batas {@link BATAS_TERBILANG}.\n *\n * @example\n * ```ts\n * terbilang(1250000); // \"satu juta dua ratus lima puluh ribu\"\n * terbilang(1001); // \"seribu satu\"\n * ```\n */\nexport function terbilang(n: number): string {\n  if (!Number.isInteger(n) || Math.abs(n) >= BATAS_TERBILANG) {\n    throw new RangeError(`terbilang: butuh bilangan bulat di bawah seribu triliun, bukan ${String(n)}`);\n  }\n  if (n === 0) return \"nol\";\n  if (n < 0) return `minus ${terbilang(-n)}`;\n\n  const bagian: string[] = [];\n  for (let sisa = n, skala = 0; sisa > 0; sisa = Math.floor(sisa / 1000), skala++) {\n    const kelompok = sisa % 1000;\n    if (kelompok === 0) continue;\n    bagian.unshift(skala === 1 && kelompok === 1 ? \"seribu\" : gabung(ratusan(kelompok), SKALA[skala] ?? \"\"));\n  }\n  return bagian.join(\" \");\n}\n"
+        },
+        {
+          "id": "pkt-m-terbilang-test",
+          "kind": "kode",
+          "name": "test/terbilang.test.ts",
+          "lang": "typescript",
+          "content": "import fc from \"fast-check\";\nimport { describe, expect, it } from \"vitest\";\nimport { BATAS_TERBILANG, terbilang } from \"../src/terbilang.js\";\n\ndescribe(\"terbilang\", () => {\n  it.each([\n    [0, \"nol\"],\n    [1, \"satu\"],\n    [10, \"sepuluh\"],\n    [11, \"sebelas\"],\n    [12, \"dua belas\"],\n    [20, \"dua puluh\"],\n    [21, \"dua puluh satu\"],\n    [100, \"seratus\"],\n    [111, \"seratus sebelas\"],\n    [205, \"dua ratus lima\"],\n    [1000, \"seribu\"],\n    [1001, \"seribu satu\"],\n    [2000, \"dua ribu\"],\n    [21000, \"dua puluh satu ribu\"],\n    [1000000, \"satu juta\"],\n    [1250000, \"satu juta dua ratus lima puluh ribu\"],\n    [1000000000, \"satu miliar\"],\n    [1000000000000, \"satu triliun\"],\n    [-7, \"minus tujuh\"],\n  ])(\"%d dieja %s\", (n, harapan) => {\n    expect(terbilang(n)).toBe(harapan);\n  });\n\n  it(\"menolak pecahan, NaN, dan angka terlalu besar\", () => {\n    expect(() => terbilang(1.5)).toThrow(RangeError);\n    expect(() => terbilang(Number.NaN)).toThrow(RangeError);\n    expect(() => terbilang(BATAS_TERBILANG)).toThrow(RangeError);\n  });\n});\n\nconst bilangan = fc.integer({ min: -(BATAS_TERBILANG - 1), max: BATAS_TERBILANG - 1 });\n\ndescribe(\"properti terbilang\", () => {\n  it(\"selalu huruf kecil dengan tepat satu spasi antarkata\", () => {\n    fc.assert(\n      fc.property(bilangan, (n) => {\n        expect(terbilang(n)).toMatch(/^[a-z]+( [a-z]+)*$/);\n      }),\n    );\n  });\n\n  it(\"bilangan negatif = minus + ejaan positifnya\", () => {\n    fc.assert(\n      fc.property(fc.integer({ min: 1, max: BATAS_TERBILANG - 1 }), (n) => {\n        expect(terbilang(-n)).toBe(`minus ${terbilang(n)}`);\n      }),\n    );\n  });\n\n  it(\"tidak pernah menulis 'satu ratus', 'satu puluh', atau 'satu belas'\", () => {\n    fc.assert(\n      fc.property(bilangan, (n) => {\n        expect(terbilang(n)).not.toMatch(/(^| )satu (ratus|puluh|belas)/);\n      }),\n    );\n  });\n});\n"
+        },
+        {
+          "id": "pkt-m-fc-shrink",
+          "kind": "tautan",
+          "name": "fast-check: cara kerja shrinking",
+          "url": "https://fast-check.dev/docs/core-blocks/arbitraries/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-tb-tes",
+          "text": "Tes contoh dan tes properti terbilang lulus."
+        },
+        {
+          "id": "pkt-tb-seribu",
+          "text": "Aku melihat tes gagal saat pengecualian seribu dihapus."
+        },
+        {
+          "id": "pkt-tb-shrink",
+          "text": "Aku membaca Counterexample dari fast-check dan menemukan kelompok digit yang membuatnya gagal."
+        },
+        {
+          "id": "pkt-tb-commit",
+          "text": "Modul terbilang sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "modul-nik-tanpa-throw",
+      "title": "Tulis modul NIK dengan hasil bertipe, bukan exception",
+      "est_minutes": 90,
+      "body": "## Struktur NIK\n\nNIK terdiri dari 16 digit: `PP KK CC DDMMYY NNNN`.\n\n| Posisi | Arti | Contoh `3273015708950001` (palsu) |\n| --- | --- | --- |\n| 1-2 | kode provinsi | `32` |\n| 3-4 | kode kabupaten/kota | `73` |\n| 5-6 | kode kecamatan | `01` |\n| 7-8 | tanggal lahir, **ditambah 40 untuk perempuan** | `57` berarti tanggal 17, perempuan |\n| 9-10 | bulan lahir | `08` |\n| 11-12 | dua digit tahun lahir | `95` |\n| 13-16 | nomor urut, bukan `0000` | `0001` |\n\n`parseNik` memeriksa **bentuk** saja. Tanggal diperiksa terhadap kalender sungguhan dengan `Date.UTC(2000 + yy, bulan, 0)`, yaitu \"hari ke-0 bulan berikutnya\", alias hari terakhir bulan ini. Tahun `2000 + yy` dipilih karena tahun kabisatnya sama dengan `1900 + yy` (kecuali tahun 1900 sendiri, yang terlalu tua untuk pemegang NIK), sehingga 29 Februari diterima tepat di tahun yang benar.\n\n## Union diskriminan\n\n`HasilNik` adalah `{ ok: true; data } | { ok: false; alasan }`. TypeScript tidak mengizinkan pemakai membaca `hasil.data` sebelum memeriksa `hasil.ok`:\n\n```ts\nconst hasil = parseNik(input);\nhasil.data; // error: Property 'data' does not exist on type '{ ok: false; ... }'\nif (hasil.ok) hasil.data.jenisKelamin; // aman\n```\n\n![Pilih contoh discriminated union, lalu maju langkah demi langkah: tipe menyempit setelah pengecekan, sama seperti hasil.ok menyempitkan HasilNik](sim:ts-narrowing)\n\n## Tes properti round-trip dengan generator sendiri\n\nfast-check tidak tahu apa itu NIK yang sah, jadi kita merakit **generator**: provinsi 11-99, kabupaten dan kecamatan 01-99, tanggal sungguhan antara 1940 dan 2039, jenis kelamin acak, nomor urut 1-9999. Dari data itu, fungsi tes `susunNik` menyusun string 16 digit. Sifatnya: `parseNik(susunNik(data))` harus mengembalikan `data` yang sama persis. Satu tes ini sekaligus menguji aturan +40, tahun kabisat, dan setiap potongan posisi.\n\nProperti kedua lebih sederhana tapi penting: untuk teks **apa pun**, termasuk emoji dan string kosong, `validasiNik` tidak pernah melempar error.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti isi `src/nik.ts` dan buat `test/nik.test.ts` dari bagian Bahan.\n2. Jalankan `npm test`, lalu `npm run coverage`.\n3. Rusak dengan sengaja: ubah `tanggal > 40` menjadi `tanggal >= 40`. Apakah tes masih lulus? Pikirkan kenapa (petunjuk: tanggal 40 tidak pernah sah, jadi dua-duanya ditolak oleh pemeriksaan kalender). Lalu ubah `tanggal - 40` menjadi `tanggal - 41` dan lihat tes properti gagal.\n4. Di sebuah berkas coba-coba, tulis `parseNik(\"...\").data` tanpa memeriksa `ok` dan lihat error TypeScript-nya. Hapus berkas itu.\n5. Commit dengan pesan `Tambah parseNik dan validasiNik`.\n\n> Sekali lagi: semua NIK di tes dan contoh adalah susunan palsu. Kalau suatu saat kamu menemukan bug dengan NIK asli, ubah dulu digit wilayah dan nomor urutnya sebelum menjadikannya tes.\n",
+      "materials": [
+        {
+          "id": "pkt-m-nik",
+          "kind": "kode",
+          "name": "src/nik.ts",
+          "lang": "typescript",
+          "content": "/** Jenis kelamin yang tersirat di NIK. */\nexport type JenisKelamin = \"laki-laki\" | \"perempuan\";\n\n/** Bagian-bagian yang bisa dibaca dari NIK. */\nexport interface DataNik {\n  /** 2 digit kode provinsi, misalnya `\"32\"`. */\n  readonly kodeProvinsi: string;\n  /** 4 digit kode kabupaten/kota, misalnya `\"3273\"`. */\n  readonly kodeKabupatenKota: string;\n  /** 6 digit kode kecamatan, misalnya `\"327301\"`. */\n  readonly kodeKecamatan: string;\n  readonly jenisKelamin: JenisKelamin;\n  /** Tanggal lahir. NIK hanya menyimpan 2 digit tahun, jadi abadnya tidak bisa dipastikan. */\n  readonly tanggalLahir: {\n    readonly hari: number;\n    readonly bulan: number;\n    readonly tahunDuaDigit: number;\n  };\n  /** 4 digit nomor urut, `\"0001\"` sampai `\"9999\"`. */\n  readonly nomorUrut: string;\n}\n\n/** Hasil {@link parseNik}: berhasil dengan data, atau gagal dengan alasan. */\nexport type HasilNik =\n  | { readonly ok: true; readonly data: DataNik }\n  | { readonly ok: false; readonly alasan: string };\n\nconst gagal = (alasan: string): HasilNik => ({ ok: false, alasan });\n\n/**\n * Memeriksa **format** NIK (Nomor Induk Kependudukan) dan membaca bagian-bagiannya.\n *\n * Hanya bentuknya yang diperiksa: 16 digit, kode wilayah tidak nol, tanggal lahir masuk akal\n * (perempuan: tanggal + 40), dan nomor urut bukan `0000`. Fungsi ini **tidak** bisa memastikan\n * NIK itu benar-benar terdaftar di Dukcapil.\n *\n * @param nik - NIK, boleh mengandung spasi.\n * @returns `{ ok: true, data }` atau `{ ok: false, alasan }`. Tidak pernah melempar error.\n *\n * @example\n * ```ts\n * const hasil = parseNik(\"3273015708950001\"); // contoh palsu\n * if (hasil.ok) console.log(hasil.data.jenisKelamin); // \"perempuan\"\n * ```\n */\nexport function parseNik(nik: string): HasilNik {\n  const angka = nik.replace(/\\s/g, \"\");\n  if (!/^\\d{16}$/.test(angka)) return gagal(\"NIK harus 16 digit angka\");\n\n  const dua = (mulai: number): number => Number(angka.slice(mulai, mulai + 2));\n  if (dua(0) < 11) return gagal(\"kode provinsi tidak dikenal\");\n  if (dua(2) === 0 || dua(4) === 0) return gagal(\"kode kabupaten/kota atau kecamatan tidak boleh 00\");\n\n  const tanggal = dua(6);\n  const perempuan = tanggal > 40;\n  const hari = perempuan ? tanggal - 40 : tanggal;\n  const bulan = dua(8);\n  const tahunDuaDigit = dua(10);\n  if (bulan < 1 || bulan > 12) return gagal(\"bulan lahir harus 01 sampai 12\");\n  // Tahun 2000 + yy dipakai karena kabisatnya mencakup 19yy juga (kecuali 1900, yang terlalu tua untuk NIK).\n  const hariDalamBulan = new Date(Date.UTC(2000 + tahunDuaDigit, bulan, 0)).getUTCDate();\n  if (hari < 1 || hari > hariDalamBulan) return gagal(\"tanggal lahir tidak ada di kalender\");\n\n  const nomorUrut = angka.slice(12);\n  if (nomorUrut === \"0000\") return gagal(\"nomor urut tidak boleh 0000\");\n\n  return {\n    ok: true,\n    data: {\n      kodeProvinsi: angka.slice(0, 2),\n      kodeKabupatenKota: angka.slice(0, 4),\n      kodeKecamatan: angka.slice(0, 6),\n      jenisKelamin: perempuan ? \"perempuan\" : \"laki-laki\",\n      tanggalLahir: { hari, bulan, tahunDuaDigit },\n      nomorUrut,\n    },\n  };\n}\n\n/**\n * Versi singkat {@link parseNik} kalau kamu hanya butuh ya atau tidak.\n *\n * @param nik - NIK yang diperiksa.\n * @returns `true` kalau formatnya sah.\n */\nexport function validasiNik(nik: string): boolean {\n  return parseNik(nik).ok;\n}\n"
+        },
+        {
+          "id": "pkt-m-nik-test",
+          "kind": "kode",
+          "name": "test/nik.test.ts",
+          "lang": "typescript",
+          "content": "import fc from \"fast-check\";\nimport { describe, expect, it } from \"vitest\";\nimport { parseNik, validasiNik, type DataNik } from \"../src/nik.js\";\n\n// Semua NIK di sini palsu, disusun dari kode wilayah contoh. Jangan pernah memakai NIK asli di tes.\ndescribe(\"parseNik\", () => {\n  it(\"membaca NIK perempuan (tanggal + 40)\", () => {\n    expect(parseNik(\"3273015708950001\")).toEqual({\n      ok: true,\n      data: {\n        kodeProvinsi: \"32\",\n        kodeKabupatenKota: \"3273\",\n        kodeKecamatan: \"327301\",\n        jenisKelamin: \"perempuan\",\n        tanggalLahir: { hari: 17, bulan: 8, tahunDuaDigit: 95 },\n        nomorUrut: \"0001\",\n      },\n    });\n  });\n\n  it(\"menerima spasi dan membaca NIK laki-laki\", () => {\n    const hasil = parseNik(\"3273 0129 0200 0123\");\n    expect(hasil.ok && hasil.data.jenisKelamin).toBe(\"laki-laki\");\n    expect(hasil.ok && hasil.data.tanggalLahir).toEqual({ hari: 29, bulan: 2, tahunDuaDigit: 0 });\n  });\n\n  it.each([\n    [\"327301570895000\", \"NIK harus 16 digit angka\"],\n    [\"32730157089500a1\", \"NIK harus 16 digit angka\"],\n    [\"0973015708950001\", \"kode provinsi tidak dikenal\"],\n    [\"3200015708950001\", \"kode kabupaten/kota atau kecamatan tidak boleh 00\"],\n    [\"3273005708950001\", \"kode kabupaten/kota atau kecamatan tidak boleh 00\"],\n    [\"3273015713950001\", \"bulan lahir harus 01 sampai 12\"],\n    [\"3273013102950001\", \"tanggal lahir tidak ada di kalender\"],\n    [\"3273012902950001\", \"tanggal lahir tidak ada di kalender\"],\n    [\"3273013508950001\", \"tanggal lahir tidak ada di kalender\"],\n    [\"3273015708950000\", \"nomor urut tidak boleh 0000\"],\n  ])(\"menolak %s: %s\", (nik, alasan) => {\n    expect(parseNik(nik)).toEqual({ ok: false, alasan });\n    expect(validasiNik(nik)).toBe(false);\n  });\n});\n\n// Generator: bagian-bagian NIK yang sah, lalu disusun jadi string 16 digit.\nconst dataNik: fc.Arbitrary<DataNik> = fc\n  .record({\n    prov: fc.integer({ min: 11, max: 99 }),\n    kab: fc.integer({ min: 1, max: 99 }),\n    kec: fc.integer({ min: 1, max: 99 }),\n    tanggal: fc.date({ min: new Date(\"1940-01-01\"), max: new Date(\"2039-12-31\"), noInvalidDate: true }),\n    perempuan: fc.boolean(),\n    urut: fc.integer({ min: 1, max: 9999 }),\n  })\n  .map(({ prov, kab, kec, tanggal, perempuan, urut }) => {\n    const p = (n: number, panjang = 2): string => String(n).padStart(panjang, \"0\");\n    const wilayah = p(prov) + p(kab) + p(kec);\n    return {\n      kodeProvinsi: wilayah.slice(0, 2),\n      kodeKabupatenKota: wilayah.slice(0, 4),\n      kodeKecamatan: wilayah,\n      jenisKelamin: perempuan ? \"perempuan\" : \"laki-laki\",\n      tanggalLahir: {\n        hari: tanggal.getUTCDate(),\n        bulan: tanggal.getUTCMonth() + 1,\n        tahunDuaDigit: tanggal.getUTCFullYear() % 100,\n      },\n      nomorUrut: p(urut, 4),\n    };\n  });\n\nfunction susunNik(d: DataNik): string {\n  const p = (n: number): string => String(n).padStart(2, \"0\");\n  const { hari, bulan, tahunDuaDigit } = d.tanggalLahir;\n  const kodeHari = d.jenisKelamin === \"perempuan\" ? hari + 40 : hari;\n  return d.kodeKecamatan + p(kodeHari) + p(bulan) + p(tahunDuaDigit) + d.nomorUrut;\n}\n\ndescribe(\"properti NIK\", () => {\n  it(\"susun lalu parse mengembalikan data yang sama\", () => {\n    fc.assert(\n      fc.property(dataNik, (data) => {\n        expect(parseNik(susunNik(data))).toEqual({ ok: true, data });\n      }),\n    );\n  });\n\n  it(\"tidak pernah melempar error untuk teks apa pun\", () => {\n    fc.assert(\n      fc.property(fc.string(), (teks) => {\n        expect(typeof validasiNik(teks)).toBe(\"boolean\");\n      }),\n    );\n  });\n});\n"
+        },
+        {
+          "id": "pkt-m-ts-narrowing",
+          "kind": "tautan",
+          "name": "TypeScript Handbook: narrowing dan discriminated unions",
+          "url": "https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-nik-tes",
+          "text": "Tes contoh dan tes properti round-trip NIK lulus."
+        },
+        {
+          "id": "pkt-nik-union",
+          "text": "Aku melihat TypeScript menolak hasil.data sebelum hasil.ok diperiksa."
+        },
+        {
+          "id": "pkt-nik-palsu",
+          "text": "Semua NIK di tes dan contohku adalah susunan palsu."
+        },
+        {
+          "id": "pkt-nik-commit",
+          "text": "Modul NIK sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "lint-dan-dokumentasi-api",
+      "title": "Pasang lint ketat dan dokumentasi API dari TSDoc",
+      "est_minutes": 75,
+      "body": "## Lint yang memahami tipe\n\n`typescript-eslint` punya beberapa set aturan. Kita memakai yang paling ketat, **`strictTypeChecked`** dan **`stylisticTypeChecked`**. Aturan \"type-checked\" membaca informasi tipe dari TypeScript, sehingga bisa menangkap hal seperti `if (promise)` yang lupa `await`, template string berisi objek, atau perbandingan yang selalu `true`.\n\n`projectService: true` membuat ESLint memakai `tsconfig.json` yang sama dengan `tsc`, jadi tidak ada konfigurasi tipe kedua yang bisa berbeda. Berkas `.js` seperti `eslint.config.js` sendiri tidak masuk tsconfig, jadi untuk berkas itu aturan bertipe dimatikan dengan `disableTypeChecked`.\n\nKonfigurasi ini memakai `defineConfig` dari `eslint/config`, fungsi bawaan ESLint untuk konfigurasi flat. Contoh lama yang memakai `tseslint.config(...)` masih jalan, tetapi `defineConfig` sekarang cara yang disarankan.\n\n## Dokumentasi dari komentar\n\nKomentar `/** ... */` yang sudah kamu tulis memakai format **TSDoc**: `@param`, `@returns`, `@throws`, `@example`, dan `{@link ...}` untuk menautkan simbol lain. Editor sudah menampilkannya saat kursor diarahkan ke fungsi. **TypeDoc** mengubahnya menjadi situs HTML.\n\nDua opsi di `typedoc.json` membuat dokumentasi ikut diuji:\n\n- **`treatWarningsAsErrors`**: peringatan apa pun membuat perintah gagal, jadi CI menangkap dokumentasi yang rusak.\n- **`validation.invalidLink`**: `{@link namaSalah}` yang tidak menunjuk ke simbol mana pun dianggap error. Itu sebabnya `@throws` kita menulis `` `RangeError` `` dalam backtick, bukan `{@link RangeError}`: TypeDoc tidak bisa menautkan tipe bawaan JavaScript.\n- **`validation.notExported`**: memperingatkan kalau tipe yang muncul di API publik lupa diekspor.\n- **`disableGit` + `sourceLinkTemplate`**: setiap fungsi di dokumentasi diberi tautan \"Defined in\" ke baris kodenya di GitHub. Secara bawaan TypeDoc menebak alamat itu dari remote git, dan kalau repositori belum punya remote `origin` (seperti sekarang, sebelum push), ia memberi peringatan yang karena `treatWarningsAsErrors` membuat perintah gagal. Dengan template tetap, hasilnya sama di laptop maupun di CI. Ganti `namamu` di template dengan nama pengguna GitHub-mu.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `eslint.config.js` dan `typedoc.json` dari bagian Bahan.\n2. Jalankan `npm run lint`. Harus bersih. Kalau ada temuan, baca nama aturannya dan perbaiki kodenya, jangan matikan aturannya.\n3. Coba tulis `{@link Formatter}` di salah satu komentar, lalu jalankan `npm run docs`. Perintah gagal karena tautan tidak valid. Hapus lagi.\n4. Jalankan `npm run docs` sampai berhasil, lalu buka `docs/index.html` di browser. Periksa: apakah contoh di `@example` tampil sebagai blok kode? Apakah `parseNik` menampilkan tipe `HasilNik` yang bisa diklik?\n5. Commit dengan pesan `Tambah lint dan dokumentasi API`. Folder `docs/` tidak ikut karena sudah ada di `.gitignore`.\n",
+      "materials": [
+        {
+          "id": "pkt-m-eslint",
+          "kind": "kode",
+          "name": "eslint.config.js",
+          "lang": "javascript",
+          "content": "// @ts-check\nimport js from \"@eslint/js\";\nimport { defineConfig } from \"eslint/config\";\nimport tseslint from \"typescript-eslint\";\n\nexport default defineConfig(\n  { ignores: [\"dist/\", \"coverage/\", \"docs/\", \".smoke/\"] },\n  js.configs.recommended,\n  tseslint.configs.strictTypeChecked,\n  tseslint.configs.stylisticTypeChecked,\n  {\n    languageOptions: {\n      parserOptions: {\n        projectService: true,\n        tsconfigRootDir: import.meta.dirname,\n      },\n    },\n  },\n  {\n    // Berkas .js/.cjs/.mjs tidak masuk tsconfig, jadi aturan yang butuh info tipe dimatikan.\n    files: [\"**/*.{js,cjs,mjs}\"],\n    extends: [tseslint.configs.disableTypeChecked],\n  },\n  {\n    // Berkas uji asap dijalankan langsung oleh Node, jadi boleh memakai require dan console.\n    files: [\"smoke/**\"],\n    languageOptions: { globals: { require: \"readonly\", console: \"readonly\" } },\n    rules: { \"@typescript-eslint/no-require-imports\": \"off\" },\n  },\n);\n"
+        },
+        {
+          "id": "pkt-m-typedoc",
+          "kind": "kode",
+          "name": "typedoc.json",
+          "lang": "json",
+          "content": "{\n  \"$schema\": \"https://typedoc.org/schema.json\",\n  \"entryPoints\": [\"src/index.ts\"],\n  \"out\": \"docs\",\n  \"name\": \"idn-kit\",\n  \"includeVersion\": true,\n  \"treatWarningsAsErrors\": true,\n  \"validation\": { \"notExported\": true, \"invalidLink\": true },\n  \"disableGit\": true,\n  \"gitRevision\": \"main\",\n  \"sourceLinkTemplate\": \"https://github.com/namamu/idn-kit/blob/{gitRevision}/src/{path}#L{line}\"\n}\n"
+        },
+        {
+          "id": "pkt-m-tseslint",
+          "kind": "tautan",
+          "name": "typescript-eslint: konfigurasi bertipe",
+          "url": "https://typescript-eslint.io/getting-started/typed-linting"
+        },
+        {
+          "id": "pkt-m-tsdoc",
+          "kind": "tautan",
+          "name": "TSDoc: daftar tag",
+          "url": "https://tsdoc.org/"
+        },
+        {
+          "id": "pkt-m-typedoc-opt",
+          "kind": "tautan",
+          "name": "TypeDoc: opsi validation",
+          "url": "https://typedoc.org/documents/Options.Validation.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-lint-bersih",
+          "text": "npm run lint lulus tanpa temuan."
+        },
+        {
+          "id": "pkt-lint-docs",
+          "text": "npm run docs berhasil dan docs/index.html menampilkan semua fungsi."
+        },
+        {
+          "id": "pkt-lint-link",
+          "text": "Aku melihat npm run docs gagal karena tautan TSDoc yang salah."
+        },
+        {
+          "id": "pkt-lint-commit",
+          "text": "Konfigurasi lint dan dokumentasi sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "periksa-bentuk-paket",
+      "title": "Periksa bentuk paket: publint, attw, npm pack, dan uji asap",
+      "est_minutes": 90,
+      "body": "## Tes lulus belum berarti paketnya benar\n\nSemua tes Vitest menjalankan **kode sumber** di `src/`. Pemakai tidak pernah melihat `src/`. Mereka memasang **tarball** hasil `npm pack`, yang isinya ditentukan `files`, dan masuk lewat `exports`. Langkah ini menguji paket seperti yang akan diterima pemakai, dengan empat lapis pemeriksaan.\n\n## 1. publint: memeriksa package.json\n\n```bash\nnpm run check:publint\n```\n\npublint mengemas paketmu, lalu memeriksa hal seperti: berkas yang ditunjuk `exports` atau `main` benar-benar ada di tarball, `types` ditulis sebelum `default`, format berkas cocok dengan ekstensinya. Mode `--strict` menjadikan saran sebagai error. Hasil yang diharapkan: `All good!`.\n\n## 2. attw: memeriksa tipe dari sudut pandang pemakai\n\n```bash\nnpm run check:attw\n```\n\nAre the Types Wrong menyelesaikan setiap pintu masuk paket dengan beberapa cara resolusi TypeScript dan menampilkan tabel. Semua kolom `node16 (from CJS)`, `node16 (from ESM)`, dan `bundler` harus hijau, dengan keterangan `(CJS)` untuk `require` dan `(ESM)` untuk `import`.\n\nKenapa `--profile node16`? Kolom `node10` mewakili `moduleResolution: \"node\"` lama yang tidak mengenal `exports` sama sekali, jadi subpath seperti `@namamu/idn-kit/nik` memang tidak bisa ditemukan di sana. Mode itu sudah usang di TypeScript 6, dan kita mendukung Node 22 ke atas. Profil `node16` mengabaikan kolom itu dengan sengaja, dan keputusan ini tercatat di `package.json`, bukan disembunyikan.\n\nCoba sekali untuk melihat attw bekerja: di `package.json`, ubah `\"./dist/nik.d.cts\"` menjadi `\"./dist/nik.d.ts\"`, jalankan `npm run check:attw`. Baris `./nik` kolom `node16 (from CJS)` berubah menjadi **Masquerading as ESM**, dan perintahnya gagal. Kembalikan.\n\n## 3. npm pack --dry-run: apa yang terbit?\n\n```bash\nnpm pack --dry-run\n```\n\nPerintah ini menjalankan `prepack` (build), lalu mencetak daftar berkas tanpa membuat tarball. Pastikan hanya ada `dist/`, `package.json`, `README.md`, dan `LICENSE` (kalau sudah dibuat). Tidak boleh ada `src/`, `test/`, `coverage/`, `.env`, atau `node_modules/`. Ukuran paket seharusnya hanya beberapa kilobyte.\n\n## 4. Uji asap: pasang ke proyek kosong\n\n`scripts/smoke.sh` membuat tarball, memasangnya di folder `.smoke/` yang terpisah dari proyekmu, lalu menjalankan dua berkas: `esm.mjs` yang memakai `import` dan `cjs.cjs` yang memakai `require`. Keduanya juga mencoba subpath (`/rupiah` dan `/nik`). Kalau `exports` salah, di sinilah Node menolak.\n\n```bash\nnpm run smoke\n```\n\nHasil yang diharapkan di akhir:\n\n```text\nESM ok: Rp 75.000 = tujuh puluh lima ribu\nCJS ok: Rp 1.250.000 = satu juta dua ratus lima puluh ribu\nUji asap ESM dan CJS lulus.\n```\n\nTerakhir, buktikan diagram exports di langkah Merancang:\n\n```bash\ncd .smoke && node -e 'require(\"@namamu/idn-kit/dist/nik.cjs\")'; cd ..\n```\n\nNode menolak dengan `ERR_PACKAGE_PATH_NOT_EXPORTED`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `scripts/smoke.sh`, `smoke/esm.mjs`, dan `smoke/cjs.cjs` dari bagian Bahan. Ganti `@namamu` di kedua berkas smoke dengan scope-mu.\n2. Jalankan keempat pemeriksaan di atas berurutan, lalu `npm run coverage` sekali lagi.\n3. Lakukan percobaan merusak `.d.cts` dan lihat attw menangkapnya.\n4. Commit dengan pesan `Tambah pemeriksaan bentuk paket dan uji asap`.\n",
+      "materials": [
+        {
+          "id": "pkt-m-smoke",
+          "kind": "kode",
+          "name": "scripts/smoke.sh",
+          "lang": "bash",
+          "content": "#!/usr/bin/env bash\n# Uji asap: pasang tarball hasil npm pack ke proyek kosong, lalu impor lewat ESM dan CJS.\nset -euo pipefail\nrm -rf .smoke\nmkdir -p .smoke\nnpm pack --pack-destination .smoke\ncp smoke/esm.mjs smoke/cjs.cjs .smoke/\ncd .smoke\necho '{ \"name\": \"uji-asap\", \"private\": true }' > package.json\nnpm install --no-audit --no-fund ./*.tgz\nnode esm.mjs\nnode cjs.cjs\necho \"Uji asap ESM dan CJS lulus.\"\n"
+        },
+        {
+          "id": "pkt-m-smoke-esm",
+          "kind": "kode",
+          "name": "smoke/esm.mjs",
+          "lang": "javascript",
+          "content": "import assert from \"node:assert/strict\";\nimport { formatRupiah, parseNik, terbilang } from \"@namamu/idn-kit\";\nimport { parseRupiah } from \"@namamu/idn-kit/rupiah\";\n\nassert.equal(formatRupiah(1500000), \"Rp 1.500.000\");\nassert.equal(parseRupiah(\"Rp 1.500.000\"), 1500000);\nassert.equal(terbilang(2026), \"dua ribu dua puluh enam\");\nassert.equal(parseNik(\"3273015708950001\").ok, true);\nconsole.log(\"ESM ok:\", formatRupiah(75000), \"=\", terbilang(75000));\n"
+        },
+        {
+          "id": "pkt-m-smoke-cjs",
+          "kind": "kode",
+          "name": "smoke/cjs.cjs",
+          "lang": "javascript",
+          "content": "const assert = require(\"node:assert/strict\");\nconst { formatRupiah, terbilang } = require(\"@namamu/idn-kit\");\nconst { validasiNik } = require(\"@namamu/idn-kit/nik\");\n\nassert.equal(formatRupiah(-5000), \"-Rp 5.000\");\nassert.equal(terbilang(11), \"sebelas\");\nassert.equal(validasiNik(\"1234\"), false);\nconsole.log(\"CJS ok:\", formatRupiah(1250000), \"=\", terbilang(1250000));\n"
+        },
+        {
+          "id": "pkt-m-publint",
+          "kind": "tautan",
+          "name": "publint: daftar aturan",
+          "url": "https://publint.dev/rules"
+        },
+        {
+          "id": "pkt-m-attw",
+          "kind": "tautan",
+          "name": "Are the Types Wrong: penjelasan tiap masalah",
+          "url": "https://github.com/arethetypeswrong/arethetypeswrong.github.io/tree/main/docs/problems"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-uji-publint",
+          "text": "npm run check:publint menampilkan All good!"
+        },
+        {
+          "id": "pkt-uji-attw",
+          "text": "Tabel attw hijau untuk node16 dari CJS, node16 dari ESM, dan bundler."
+        },
+        {
+          "id": "pkt-uji-pack",
+          "text": "npm pack --dry-run hanya berisi dist, package.json, README, dan LICENSE."
+        },
+        {
+          "id": "pkt-uji-smoke",
+          "text": "npm run smoke lulus untuk ESM dan CJS."
+        },
+        {
+          "id": "pkt-uji-rusak",
+          "text": "Aku melihat attw menangkap tipe .d.ts yang salah dipasang untuk require."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "ci-matriks-dan-changesets",
+      "title": "Pasang CI matriks Node dan Changesets",
+      "est_minutes": 90,
+      "body": "## CI: semua pemeriksaan, di setiap versi Node yang didukung\n\nDi laptop kamu hanya punya satu versi Node. Pemakai paketmu bisa memakai versi LTS mana saja. Workflow `ci.yml` menjalankan **semua** pemeriksaan dari langkah sebelumnya di matriks Node **22, 24, dan 26** (tiga versi LTS yang masih dirawat saat ini). Kalau ada versi LTS baru, tambahkan ke matriks dan hapus yang sudah berakhir masa dukungannya. Sesuaikan juga `engines` di `package.json`.\n\n![Nyalakan matriks: job tes terpecah menjadi satu job per versi Node yang berjalan paralel. Buat satu versi gagal: versi lain tetap selesai, tetapi job yang needs ke tes dilewati. Angka versi di simulasi hanya contoh](sim:pipeline-actions)\n\nHal yang sengaja ditulis begitu di `ci.yml`:\n\n- **`permissions: contents: read`**: CI hanya butuh membaca kode. Token GitHub yang dibawa job tidak bisa menulis apa-apa.\n- **`persist-credentials: false`**: checkout tidak meninggalkan token git di disk, jadi skrip dari dependensi tidak bisa memakainya.\n- **`fail-fast: false`**: kalau Node 22 gagal, Node 24 dan 26 tetap selesai, jadi kamu tahu apakah masalahnya khusus satu versi.\n- **Action dipasang ke SHA commit**, bukan tag. Tag seperti `v7` bisa dipindah ke kode lain oleh siapa pun yang menguasai repositori action itu. SHA tidak bisa. Komentar `# v7.0.1` di sampingnya untuk manusia (dan untuk Dependabot, yang bisa memperbarui SHA sekaligus komentarnya).\n\n## Changesets: catatan perubahan ditulis saat PR\n\nChangesets memisahkan dua pekerjaan: **mencatat** perubahan (saat kamu membuat PR) dan **merilis** (nanti, sekaligus). Setiap PR yang mengubah perilaku paket menyertakan berkas kecil di `.changeset/` berisi jenis kenaikan versi (patch, minor, major) dan satu kalimat untuk CHANGELOG.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan `npx changeset init`. Jawab **No** untuk integrasi GitHub di changelog (bisa diaktifkan nanti), dan `main` untuk base branch. Lalu samakan `.changeset/config.json` dengan versi di bagian Bahan. Bedanya hanya satu: `\"access\": \"public\"`, supaya paket ber-scope terbit sebagai publik.\n2. Buat changeset pertama tanpa editor:\n\n```bash\nnpx changeset --minor @namamu/idn-kit -m \"Rilis pertama: formatRupiah, parseRupiah, terbilang, parseNik, validasiNik\"\n```\n\n   Lihat berkas baru di `.changeset/` dan baca isinya. Lalu `npx changeset status` harus menampilkan `@namamu/idn-kit` di bawah `minor`.\n3. Buat `.github/workflows/ci.yml` dari bagian Bahan.\n4. Periksa sintaks workflow dengan **actionlint** sebelum push. Unduh berkas rilis untuk sistem operasimu dari halaman rilis actionlint (misalnya `actionlint_1.7.12_linux_amd64.tar.gz`), cocokkan checksum-nya dengan `actionlint_1.7.12_checksums.txt`, ekstrak, lalu jalankan `./actionlint` di folder proyek. Tidak ada keluaran berarti tidak ada masalah.\n5. Buat repositori `idn-kit` di GitHub, pastikan `repository.url` di `package.json` cocok, lalu push. Buka tab **Actions**: tiga job `Node 22`, `Node 24`, `Node 26` harus hijau.\n6. Commit dengan pesan `Tambah CI dan Changesets`.\n\n## Kalau gagal\n\n- `npm ci` gagal dengan pesan lockfile: `package-lock.json` belum di-commit, atau dibuat dengan versi npm yang sangat berbeda. Jalankan `npm install` sekali, commit lockfile-nya.\n- Job Node 22 gagal dengan `Unsupported engine` dari alat build: versi patch Node 22 di runner terlalu lama untuk tsdown atau Vitest. Biasanya runner GitHub sudah memakai patch terbaru, kalau tidak tulis `node-version: 22.x`.\n",
+      "materials": [
+        {
+          "id": "pkt-m-changeset-config",
+          "kind": "kode",
+          "name": ".changeset/config.json",
+          "lang": "json",
+          "content": "{\n  \"$schema\": \"https://unpkg.com/@changesets/config@4.0.1/schema.json\",\n  \"baseBranch\": \"main\",\n  \"access\": \"public\",\n  \"format\": \"auto\",\n  \"changelog\": \"@changesets/cli/changelog\",\n  \"commit\": false,\n  \"ignore\": [],\n  \"fixed\": [],\n  \"linked\": [],\n  \"updateInternalDependencies\": \"patch\"\n}\n"
+        },
+        {
+          "id": "pkt-m-ci",
+          "kind": "kode",
+          "name": ".github/workflows/ci.yml",
+          "lang": "yaml",
+          "content": "name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n\njobs:\n  test:\n    name: Node ${{ matrix.node }}\n    runs-on: ubuntu-latest\n    strategy:\n      fail-fast: false\n      matrix:\n        node: [22, 24, 26]\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0\n        with:\n          node-version: ${{ matrix.node }}\n          cache: npm\n      - run: npm ci\n      - run: npm run typecheck\n      - run: npm run lint\n      - run: npm run coverage\n      - run: npm run build\n      - run: npm run check:publint\n      - run: npm run check:attw\n      - run: npm run docs\n      - run: npm run smoke\n"
+        },
+        {
+          "id": "pkt-m-actionlint",
+          "kind": "tautan",
+          "name": "actionlint: halaman rilis",
+          "url": "https://github.com/rhysd/actionlint/releases"
+        },
+        {
+          "id": "pkt-m-changesets",
+          "kind": "tautan",
+          "name": "Changesets: dokumentasi",
+          "url": "https://changesets.dev/"
+        },
+        {
+          "id": "pkt-m-node-rilis",
+          "kind": "tautan",
+          "name": "Node.js: jadwal rilis dan LTS",
+          "url": "https://nodejs.org/en/about/previous-releases"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-ci-changeset",
+          "text": "Ada changeset minor pertama dan changeset status menampilkannya."
+        },
+        {
+          "id": "pkt-ci-actionlint",
+          "text": "actionlint tidak menemukan masalah di workflow."
+        },
+        {
+          "id": "pkt-ci-hijau",
+          "text": "CI hijau di GitHub untuk Node 22, 24, dan 26."
+        },
+        {
+          "id": "pkt-ci-sha",
+          "text": "Semua action di workflow dipasang ke SHA commit lengkap dengan komentar versi."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "rilis-trusted-publishing",
+      "title": "Rilis ke npm dengan trusted publishing dan provenance",
+      "est_minutes": 120,
+      "body": "## Tanpa token npm di GitHub\n\nCara lama: buat token npm, simpan di secret `NPM_TOKEN`, dan berharap token itu tidak bocor. Cara yang sekarang disarankan npm adalah **trusted publishing**: kamu memberi tahu npm \"paket ini boleh diterbitkan oleh workflow `release.yml` di repositori `namamu/idn-kit`\". Saat workflow berjalan, GitHub memberinya token **OIDC** berumur pendek yang membuktikan identitas workflow itu, dan npm menukarnya dengan izin terbit. Tidak ada rahasia yang disimpan, jadi tidak ada yang bisa dicuri.\n\nBonusnya, npm otomatis membuat **provenance** untuk setiap rilis dari repositori publik: catatan bertanda tangan yang menghubungkan versi paket dengan commit dan workflow yang membangunnya. Di halaman npm muncul lencana yang bisa diperiksa siapa saja.\n\nSyarat dari dokumentasi npm: npm CLI 11.5.1 ke atas, Node 22.14.0 ke atas, runner yang dihosting GitHub (bukan self-hosted), izin `id-token: write`, dan `repository.url` di `package.json` yang sama persis dengan repositori GitHub-nya. Workflow kita memakai Node 24, yang sudah membawa npm 11.\n\n## Alur rilis\n\n![Ikuti nomornya: changeset ditulis saat ngoding, select-mode memilih membuat PR versi atau menerbitkan, dan hanya job publish yang memegang izin id-token](/studio/paket-npm-typescript/alur-rilis.svg)\n\n`release.yml` mengikuti pola yang disarankan dokumentasi Changesets untuk trusted publishing, dengan empat job:\n\n1. **select-mode** melihat keadaan repositori. Ada changeset? Mode `version`. Tidak ada changeset tetapi versi di `package.json` belum ada di npm? Mode `publish`. Selain itu, tidak ada yang dikerjakan.\n2. **version** membuka (atau memperbarui) PR berjudul **Version Packages**: versi dinaikkan, CHANGELOG ditulis, berkas changeset dihapus. Kamu me-review PR itu seperti PR biasa.\n3. Setelah PR itu di-merge, **pack** menjalankan tes lalu membuat tarball (`prepack` membangun `dist/`).\n4. **publish** menerbitkan tarball itu. Hanya job ini yang punya `id-token: write`, dan job ini tidak menjalankan build atau tes. Kalau suatu dependensi build berbuat jahat, ia berjalan di job yang tidak bisa meminta token terbit.\n\nJob publish juga memakai `environment: npm`. Di pengaturan repositori, environment ini bisa diberi **required reviewers**, sehingga setiap rilis menunggu persetujuanmu dulu.\n\n## Rilis pertama harus manual\n\nTrusted publisher hanya bisa dipasang pada paket yang **sudah ada** di npm. Jadi versi pertama diterbitkan dari laptopmu, setelah itu semua rilis lewat GitHub Actions.\n\n1. Buat `.github/workflows/release.yml` dari bagian Bahan, jalankan `./actionlint` lagi.\n2. Jalankan `npx changeset version`. Versi menjadi `0.1.0`, `CHANGELOG.md` dibuat, changeset dihapus. Commit dengan pesan `Rilis 0.1.0`.\n3. Pastikan semua pemeriksaan lulus: `npm run lint && npm run coverage && npm run check:publint && npm run check:attw && npm run smoke`.\n4. `npm login`, lalu `npm publish`. npm meminta kode 2FA. Versi ini belum punya provenance karena tidak diterbitkan dari CI, dan itu wajar.\n5. Hubungkan paket dengan workflow. Lewat situs: buka halaman paket di npmjs.com, **Settings**, bagian **Trusted Publisher**, pilih **GitHub Actions**, isi pemilik dan nama repositori, nama berkas workflow `release.yml` (nama berkas saja, bukan path), dan environment `npm`. Semua kolom peka huruf besar-kecil, dan npm baru memeriksanya saat terbit pertama. Atau lewat CLI (npm 11.15 ke atas):\n\n```bash\nnpm trust github @namamu/idn-kit --repo namamu/idn-kit --file release.yml --env npm --allow-publish\n```\n\n6. Masih di **Settings** paket npm: setelah rilis lewat CI pertama berhasil, ubah **Publishing access** menjadi wajib 2FA **dan** larang token. Sejak itu, satu-satunya jalan terbit adalah workflow-mu.\n7. Di repositori GitHub: **Settings, Actions, General**, nyalakan **Allow GitHub Actions to create and approve pull requests** (dibutuhkan job version). Buat environment `npm` di **Settings, Environments**.\n8. Push. Tunggu `release.yml` selesai. Karena versi `0.1.0` sudah ada di npm dan tidak ada changeset, select-mode memilih tidak melakukan apa-apa. Itu benar.\n\n## Rilis kedua, otomatis\n\n1. Buat branch, perbaiki atau tambah sesuatu yang kecil (misalnya contoh di TSDoc), lalu `npx changeset` dan pilih **patch**.\n2. Buka PR, tunggu CI hijau, merge.\n3. Workflow membuka PR **Version Packages**. Baca isinya, lalu merge.\n4. Workflow menerbitkan `0.1.1`. Buka halaman paket di npmjs.com: di bagian bawah ada **Provenance** yang menunjuk ke commit dan workflow-mu. Di GitHub muncul tag dan Release baru.\n\n## Kalau gagal\n\n- `404 Not Found` atau `ENEEDAUTH` saat publish: periksa nama repositori, nama berkas workflow, dan environment di pengaturan trusted publisher, termasuk huruf besar-kecil, serta `repository.url` di `package.json`.\n- Job version gagal membuat PR: izin **Allow GitHub Actions to create and approve pull requests** belum dinyalakan.\n- CI tidak berjalan di PR **Version Packages**: PR yang dibuat oleh `GITHUB_TOKEN` memang tidak memicu workflow lain. Dokumentasi Changesets menjelaskan cara memakai token GitHub App kalau kamu butuh CI di PR itu.\n",
+      "materials": [
+        {
+          "id": "pkt-m-release",
+          "kind": "kode",
+          "name": ".github/workflows/release.yml",
+          "lang": "yaml",
+          "content": "name: Release\n\non:\n  push:\n    branches: [main]\n\n# Mulai dari nol izin, lalu beri tiap job hanya yang ia butuhkan.\npermissions: {}\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n\njobs:\n  select-mode:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    outputs:\n      mode: ${{ steps.select-mode.outputs.mode }}\n      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0\n        with:\n          node-version: 24\n          package-manager-cache: false\n      - run: npm ci\n      - id: select-mode\n        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2\n\n  version:\n    needs: select-mode\n    if: needs.select-mode.outputs.mode == 'version'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: write\n      pull-requests: write\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0\n        with:\n          node-version: 24\n          package-manager-cache: false\n      - run: npm ci\n      - uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2\n\n  pack:\n    needs: select-mode\n    if: needs.select-mode.outputs.mode == 'publish'\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    outputs:\n      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0\n        with:\n          node-version: 24\n          package-manager-cache: false\n      - run: npm ci\n      - run: npm test\n      - id: pack\n        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2\n        with:\n          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}\n\n  publish:\n    needs: pack\n    runs-on: ubuntu-latest\n    environment: npm\n    permissions:\n      contents: write # membuat tag git dan GitHub Release\n      id-token: write # trusted publishing (OIDC) ke npm, provenance otomatis\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0\n        with:\n          node-version: 24\n          package-manager-cache: false\n      - run: npm ci\n      - uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2\n        with:\n          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}\n          create-github-releases: true\n"
+        },
+        {
+          "id": "pkt-m-npm-trusted",
+          "kind": "tautan",
+          "name": "npm: trusted publishing",
+          "url": "https://docs.npmjs.com/trusted-publishers"
+        },
+        {
+          "id": "pkt-m-npm-trust-cli",
+          "kind": "tautan",
+          "name": "npm: perintah npm trust",
+          "url": "https://docs.npmjs.com/cli/v11/commands/npm-trust"
+        },
+        {
+          "id": "pkt-m-changesets-auto",
+          "kind": "tautan",
+          "name": "Changesets: mengotomatiskan rilis",
+          "url": "https://changesets.dev/guide/automating"
+        },
+        {
+          "id": "pkt-m-npm-provenance",
+          "kind": "tautan",
+          "name": "npm: provenance",
+          "url": "https://docs.npmjs.com/generating-provenance-statements"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-rilis-pertama",
+          "text": "Versi 0.1.0 sudah terbit di npm dan bisa dipasang dengan npm install."
+        },
+        {
+          "id": "pkt-rilis-trusted",
+          "text": "Trusted publisher untuk release.yml sudah terpasang di paket npm."
+        },
+        {
+          "id": "pkt-rilis-otomatis",
+          "text": "Satu rilis patch berhasil terbit lewat GitHub Actions setelah PR Version Packages di-merge."
+        },
+        {
+          "id": "pkt-rilis-provenance",
+          "text": "Halaman npm paketku menampilkan provenance untuk rilis dari CI."
+        },
+        {
+          "id": "pkt-rilis-token",
+          "text": "Publishing access sudah wajib 2FA dan melarang token."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-paket-dan-kirim",
+      "title": "Tulis README paket dan kirim tautannya",
+      "est_minutes": 45,
+      "body": "## README adalah halaman toko\n\nREADME tampil di GitHub **dan** di halaman npm paketmu. Orang memutuskan mau memasang atau tidak dalam beberapa detik pertama, jadi urutannya penting: apa ini, cara pasang, contoh pakai, lalu detail.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template `README.md` di bagian Bahan dan ganti semua `___`.\n2. Pastikan setiap contoh di README benar-benar jalan. Cara cepat: salin blok \"Pakai\" ke `.smoke/coba.mjs` (setelah `npm run smoke`), ganti `@___` dengan scope-mu, lalu `node .smoke/coba.mjs`.\n3. Buat berkas `LICENSE` berisi teks lisensi MIT (salin dari choosealicense.com, isi tahun dan namamu). npm selalu menyertakan README dan LICENSE di tarball walaupun tidak tertulis di `files`. Cek dengan `npm pack --dry-run`.\n4. Isi **Keputusan desain** dengan dua keputusan nyata, misalnya kenapa `parseNik` mengembalikan hasil alih-alih melempar error, kenapa tsdown dan bukan tsc, kenapa attw memakai profil `node16`, atau kenapa paket ganda ESM dan CJS.\n5. Isi **Yang kupelajari** dengan tiga hal. Bagian yang menarik untuk pewawancara: bug apa yang ditemukan tes properti, apa yang attw tangkap, atau kenapa `types` harus ditulis sebelum `default`.\n6. Buat changeset **patch** untuk README baru (`npx changeset`), buka PR, dan biarkan alur rilis menerbitkannya. README di halaman npm baru diperbarui saat versi baru terbit.\n7. Isi deskripsi repositori GitHub dengan satu kalimat dan alamat halaman npm paketmu.\n8. Kirim alamat halaman npm atau repositori GitHub-mu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja menerbitkan paket yang dirawat dengan cara yang sama seperti library besar: API yang dirancang sebagai kontrak, tipe yang benar untuk ESM dan CommonJS, tes properti yang mencari bug yang tidak terpikirkan, dokumentasi yang dibuat dari kode, dan rilis tanpa token dengan jejak asal yang bisa diverifikasi. Langkah berikutnya yang menarik: menambah modul NPWP (16 digit sejak 2024, dengan aturan yang berbeda dari NIK), atau memasang dokumentasi TypeDoc ke GitHub Pages lewat workflow terpisah.\n",
+      "materials": [
+        {
+          "id": "pkt-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# @___/idn-kit\n\n[![CI](https://github.com/___/idn-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/___/idn-kit/actions/workflows/ci.yml)\n[![npm](https://img.shields.io/npm/v/@___/idn-kit)](https://www.npmjs.com/package/@___/idn-kit)\n\nFormat dan parse Rupiah, eja angka (terbilang), dan cek format NIK. Tanpa dependensi, bisa dipakai dari ESM maupun CommonJS, tipe TypeScript sudah ikut.\n\n## Pasang\n\n```bash\nnpm install @___/idn-kit\n```\n\nButuh Node.js 22 atau lebih baru. Di browser juga jalan lewat bundler (Vite, webpack, dan sejenisnya).\n\n## Pakai\n\n```ts\nimport { formatRupiah, parseRupiah, terbilang, parseNik } from \"@___/idn-kit\";\n\nformatRupiah(1500000); // \"Rp 1.500.000\"\nformatRupiah(2500.5, { sen: true }); // \"Rp 2.500,50\"\nparseRupiah(\"Rp 1.500.000\"); // 1500000\nterbilang(1250000); // \"satu juta dua ratus lima puluh ribu\"\n\nconst hasil = parseNik(\"3273015708950001\"); // NIK contoh, palsu\nif (hasil.ok) {\n  console.log(hasil.data.jenisKelamin); // \"perempuan\"\n} else {\n  console.log(hasil.alasan);\n}\n```\n\nCommonJS:\n\n```js\nconst { terbilang } = require(\"@___/idn-kit\");\n```\n\nButuh satu modul saja? Impor dari `@___/idn-kit/rupiah`, `@___/idn-kit/terbilang`, atau `@___/idn-kit/nik`.\n\n## API\n\n| Fungsi | Hasil | Kalau gagal |\n| --- | --- | --- |\n| `formatRupiah(nilai, { sen? })` | `\"Rp 1.500.000\"` | `RangeError` untuk `NaN`/`Infinity` |\n| `parseRupiah(teks)` | `1500000` | `SyntaxError` untuk format yang tidak dikenali |\n| `terbilang(n)` | `\"seribu satu\"` | `RangeError` untuk pecahan atau di atas 999 triliun |\n| `parseNik(nik)` | `{ ok: true, data }` | `{ ok: false, alasan }`, tidak pernah melempar |\n| `validasiNik(nik)` | `true` / `false` | tidak pernah melempar |\n\nDokumentasi lengkap: jalankan `npm run docs` lalu buka `docs/index.html`, atau ___ (alamat dokumentasi online kalau ada).\n\n## Batasan yang perlu kamu tahu\n\n- `parseNik` hanya memeriksa **bentuk** NIK. NIK yang lolos belum tentu terdaftar di Dukcapil.\n- NIK hanya menyimpan dua digit tahun, jadi abad kelahiran tidak bisa dipastikan.\n- `parseRupiah` selalu membaca titik sebagai pemisah ribuan dan koma sebagai desimal (gaya Indonesia). `\"1.5\"` ditolak, bukan ditebak.\n\n## Mengembangkan\n\n```bash\nnpm ci\nnpm test          # Vitest, termasuk tes properti fast-check\nnpm run lint\nnpm run build     # tsdown: dist/ berisi ESM, CJS, dan .d.ts\nnpm run check:publint && npm run check:attw\nnpm run smoke     # pasang tarball ke proyek kosong, impor lewat ESM dan CJS\nnpx changeset     # catat perubahan sebelum membuka pull request\n```\n\nRilis berjalan otomatis lewat GitHub Actions dengan trusted publishing npm, jadi setiap versi punya provenance.\n\n## Keputusan desain\n\n- ___\n- ___\n\n## Yang kupelajari\n\n- ___\n- ___\n- ___\n\n## Lisensi\n\nMIT\n"
+        },
+        {
+          "id": "pkt-m-license",
+          "kind": "tautan",
+          "name": "choosealicense.com: lisensi MIT",
+          "url": "https://choosealicense.com/licenses/mit/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pkt-dok-readme",
+          "text": "README berisi cara pasang, contoh ESM dan CJS, tabel API, dan batasan."
+        },
+        {
+          "id": "pkt-dok-contoh",
+          "text": "Setiap contoh di README sudah kujalankan dan hasilnya sesuai."
+        },
+        {
+          "id": "pkt-dok-license",
+          "text": "Berkas LICENSE ada dan ikut di npm pack --dry-run."
+        },
+        {
+          "id": "pkt-dok-tautan",
+          "text": "Tautan npm atau GitHub sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
