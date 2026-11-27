@@ -33,38 +33,73 @@ const LOAD_WORKER = `(src) => {
   try { importScripts(u); } catch (e) { return e; } finally { URL.revokeObjectURL(u); }
 }`;
 
-// Python runs on Pyodide in a Worker. It posts { ready } once loaded, so the
-// parent's time limit counts the learner's code, not the download.
-// ponytail: Pyodide loads afresh on every run (HTTP-cached); keep one iframe alive if runs feel slow.
+// Python runs on Pyodide in a Worker. A run posts { ready } once its packages
+// are in, so the parent's time limit counts the learner's code, not the
+// download. Each run gets fresh globals and builtins are restored after it,
+// so a host worker can serve many runs (buildPythonHostDoc).
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/";
-const PY_ENGINE = async (p: { setup: string; code: string; tests: Check[] }, base: string) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const g = globalThis as unknown as { importScripts(u: string): void; loadPyodide(o: object): Promise<any>; postMessage(m: unknown): void };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Py = any;
+const PY_LOAD = async (base: string): Promise<Py> => {
+  const g = globalThis as unknown as { importScripts(u: string): void; loadPyodide(o: object): Promise<Py> };
   g.importScripts(base + "pyodide.js");
   const py = await g.loadPyodide({ indexURL: base });
+  py.runPython("import builtins\n_awal = dict(builtins.__dict__)\ndef _tanpa_input(*a):\n    raise RuntimeError('input() tidak tersedia di latihan ini, pakai nilai langsung')\n_awal['input'] = _tanpa_input");
+  return py;
+};
+const PY_RUN = async (py: Py, p: { setup: string; code: string; tests: Check[] }, ready: () => void) => {
   await py.loadPackagesFromImports(p.setup + "\n" + p.code); // sqlite3 etc. are separate packages in Pyodide
-  g.postMessage({ ready: true });
+  ready();
   const logs: string[] = [];
   py.setStdout({ batched: (s: string) => logs.push(s) });
   py.setStderr({ batched: (s: string) => logs.push(s) });
   // The last traceback line, "NameError: name 'x' is not defined".
   const last = (e: unknown) => String((e as Error)?.message ?? e).trim().split("\n").filter(Boolean).pop();
+  // No clear(): an empty builtins breaks the very statement restoring it.
+  py.runPython("builtins.__dict__.update(_awal)\nfor _k in [k for k in builtins.__dict__ if k not in _awal]: del builtins.__dict__[_k]");
   const ns = py.globals.get("dict")();
   try {
-    py.runPython("import builtins\ndef _tanpa_input(*a):\n    raise RuntimeError('input() tidak tersedia di latihan ini, pakai nilai langsung')\nbuiltins.input = _tanpa_input", { globals: ns });
     py.runPython(p.setup + "\n" + p.code, { globals: ns });
   } catch (e) {
     return { logs, results: [], error: last(e) };
   }
-  const results = p.tests.map((t) => {
+  return {
+    logs,
+    results: p.tests.map((t) => {
+      try {
+        return { name: t.name, pass: py.runPython(t.check, { globals: ns }) === true };
+      } catch (e) {
+        return { name: t.name, pass: false, error: last(e) };
+      }
+    }),
+  };
+};
+const PY_FNS = `const PY_LOAD = ${PY_LOAD.toString()};\nconst PY_RUN = ${PY_RUN.toString()};\n`;
+
+// One page-lifetime Python sandbox: Pyodide loads once, then each
+// { nonce, setup, code, tests } posted to the iframe runs in turn and answers
+// with the same messages as a one-off run. useSandbox drops the frame after a
+// timeout, which also stops a runaway loop.
+export function buildPythonHostDoc(): string {
+  const worker = `${PY_FNS}const py = PY_LOAD(${JSON.stringify(PYODIDE)});
+let queue = Promise.resolve();
+onmessage = (e) => {
+  const p = e.data;
+  queue = queue.then(async () => {
     try {
-      return { name: t.name, pass: py.runPython(t.check, { globals: ns }) === true };
-    } catch (e) {
-      return { name: t.name, pass: false, error: last(e) };
+      postMessage({ nonce: p.nonce, ...(await PY_RUN(await py, p, () => postMessage({ nonce: p.nonce, ready: true }))) });
+    } catch (err) {
+      postMessage({ nonce: p.nonce, logs: [], results: [], error: "Python gagal dimuat: " + (err && err.message || err) });
     }
   });
-  return { logs, results };
-};
+};`;
+  return `<!doctype html><html><head><meta charset="utf-8"><script>
+const w = new Worker(URL.createObjectURL(new Blob([${embed(worker)}], { type: "text/javascript" })));
+w.onmessage = (e) => parent.postMessage(e.data, "*");
+w.onerror = (e) => { e.preventDefault(); parent.postMessage({ hostError: e.message }, "*"); };
+addEventListener("message", (e) => { if (e.source === parent) w.postMessage(e.data); });
+</script></head><body></body></html>`;
+}
 
 // PHP runs on php-wasm (WordPress Playground build) in a classic Worker: a
 // module worker does not load in the null-origin iframe. It posts raw
@@ -104,7 +139,7 @@ export function buildSandboxDoc(input: { kind: SandboxKind; files: ExerciseFiles
   if (kind === "python" || kind === "php") {
     const worker = kind === "php"
       ? `const SCRIPT = ${JSON.stringify(phpScript({ setup, code: files.code ?? "", tests }))};\n${PHP_ENGINE}`
-      : `(${PY_ENGINE.toString()})(${JSON.stringify({ setup, code: files.code ?? "", tests })}, ${JSON.stringify(PYODIDE)}).then((r) => postMessage(r), (e) => postMessage({ logs: [], results: [], error: "Python gagal dimuat: " + (e && e.message || e) }));`;
+      : `${PY_FNS}PY_LOAD(${JSON.stringify(PYODIDE)}).then((py) => PY_RUN(py, ${JSON.stringify({ setup, code: files.code ?? "", tests })}, () => postMessage({ ready: true }))).then((r) => postMessage(r), (e) => postMessage({ logs: [], results: [], error: "Python gagal dimuat: " + (e && e.message || e) }));`;
     return `${head}<script>${post}
 const w = new Worker(URL.createObjectURL(new Blob([${embed(worker)}], { type: "text/javascript" })));
 w.onmessage = (e) => post(e.data);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Check } from "../lib/code/check-node";
-import { buildSandboxDoc, type ExerciseFiles, type SandboxKind } from "../lib/code/sandbox-doc";
+import { buildPythonHostDoc, buildSandboxDoc, type ExerciseFiles, type SandboxKind } from "../lib/code/sandbox-doc";
 
 // The sandbox document on a blank page, run the way useSandbox runs it.
 async function run(page: Page, kind: SandboxKind, files: ExerciseFiles, tests: Check[], setup = "", ms = 3000) {
@@ -66,6 +66,37 @@ test("python runs on Pyodide: prints, checks, and the last traceback line as the
   expect(ok.results).toEqual([{ name: "4", pass: true }, { name: "salah", pass: false }]);
   const bad = await run(page, "python", { code: "print(belum_ada)" }, [], "", 60_000);
   expect(bad.error).toMatch(/^NameError/);
+});
+
+test("python host: Pyodide loads once, runs share nothing, builtins come back", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setContent("<p>tes</p>");
+  const r = await page.evaluate(async (doc) => {
+    const f = document.createElement("iframe");
+    f.setAttribute("sandbox", "allow-scripts");
+    document.body.append(f);
+    const loaded = new Promise((ok) => f.addEventListener("load", ok, { once: true }));
+    f.srcdoc = doc;
+    await loaded;
+    const job = (nonce: string, setup: string, code: string, tests: { name: string; check: string }[]) =>
+      new Promise<{ ms: number; logs: string[]; results: { pass: boolean }[]; error?: string }>((resolve) => {
+        const t0 = performance.now();
+        addEventListener("message", function on(e) {
+          if (e.data?.nonce !== nonce || e.data.ready) return;
+          removeEventListener("message", on);
+          resolve({ ms: performance.now() - t0, ...e.data });
+        });
+        f.contentWindow!.postMessage({ nonce, setup, code, tests }, "*");
+      });
+    const a = await job("a", "import builtins\nbuiltins.print = lambda *x: None", "x = 1\nprint('hilang')", [{ name: "x", check: "x == 1" }]);
+    const b = await job("b", "", "print('muncul')", [{ name: "x", check: "'x' not in globals()" }]);
+    return { a, b };
+  }, buildPythonHostDoc());
+  expect(r.a.results).toEqual([{ name: "x", pass: true }]);
+  expect(r.a.logs).toEqual([]);
+  expect(r.b.logs).toContain("muncul");
+  expect(r.b.results).toEqual([{ name: "x", pass: true }]);
+  expect(r.b.ms).toBeLessThan(2000);
 });
 
 test("mikrotik: a two-command script passes its checks and a bad command prints an error line", async ({ page }) => {
