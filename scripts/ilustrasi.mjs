@@ -72,6 +72,26 @@ const PEOPLE = {
   console.log("mulai");
 }
 
+// A group of empty-handed figures, overlapping a little, for the signup nudge.
+// Listed back to front: later ones are drawn on top.
+{
+  const CREW = [
+    { x: 0, body: "PoloSweater", face: "Smile", hair: "ShortCurly" },
+    { x: 1900, body: "Sweater", face: "Calm", hair: "Buns", accessory: "GlassRound" },
+    { x: 560, body: "ArmsCrossed", face: "Cute", hair: "Afro" },
+    { x: 1340, body: "Hoodie", face: "Driven", hair: "ShortVolumed" },
+    { x: 950, body: "Turtleneck", face: "SmileBig", hair: "Hijab" },
+  ];
+  const figs = CREW.map(({ x, ...p }) => {
+    const peep = renderToStaticMarkup(h(Peep, { ...p, strokeColor: INK, backgroundColor: "#ffffff" }))
+      .replace(/<svg[^>]*>/, "<g>")
+      .replace(/<\/svg>$/, "</g>");
+    return `<g transform="translate(${x} 0)">${peep}</g>`;
+  });
+  writeFileSync("public/ilustrasi/kelompok.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-20 -10 2790 1220">${figs.join("")}</svg>`);
+  console.log("kelompok");
+}
+
 // Poses wider than the default frame (laptop, raised hand) get a wider one.
 const VIEW = { masuk: "-20 -10 1080 1220", daftar: "-20 -10 1000 1220" };
 
