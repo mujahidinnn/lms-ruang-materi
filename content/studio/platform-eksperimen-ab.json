@@ -1,0 +1,744 @@
+{
+  "slug": "platform-eksperimen-ab",
+  "title": "Platform Eksperimen A/B",
+  "summary": "Bangun layanan feature flag dan eksperimen A/B untuk tim produk: assignment deterministik dengan hash, SDK TypeScript dengan cache lokal dan update lewat SSE, ingest event idempoten ke Postgres berpartisi, analisis SRM, uji z, Welch, dan CUPED, kill switch, audit log, serta simulasi yang membuktikan analisisnya benar dan bahaya mengintip hasil.",
+  "level": "pro",
+  "est_hours": 36,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "pahami-eksperimen-dan-target",
+      "title": "Pahami kenapa tim produk butuh platform eksperimen",
+      "est_minutes": 60,
+      "body": "## \"Angka naik\" belum tentu karena fiturmu\n\nTim produk merilis tombol checkout baru hari Senin. Hari Jumat, konversi naik 3%. Apakah tombolnya berhasil? Bisa jadi itu karena gajian, promo ongkir, atau pengunjung minggu ini memang lebih niat belanja. Satu-satunya cara memisahkan efek fitur dari semua kebetulan itu adalah **eksperimen terkontrol**: sebagian pengguna diacak mendapat versi baru, sisanya versi lama, pada waktu yang sama.\n\nKedengarannya sederhana, tetapi platform eksperimen yang salah sedikit saja menghasilkan keputusan yang salah dengan percaya diri. Pengguna bisa berpindah varian di tengah jalan, event bisa terhitung dua kali, pembagian 50/50 bisa diam-diam menjadi 48/52 karena bug, atau PM membuka dasbor tiap pagi dan berhenti begitu angkanya \"signifikan\". Semua kesalahan itu akan kamu bangun pertahanannya di proyek ini, lalu kamu buktikan dengan simulasi.\n\nProyek ini tingkat **pro**: langkah-langkahnya memberi batasan dan kriteria diterima, bukan resep baris demi baris. Kode kunci ada di bagian Bahan, tetapi kamu yang merakitnya, menjalankannya, dan membuktikan bahwa angkanya benar.\n\n## Yang akan kamu bangun\n\n- **Flag dan eksperimen**: varian, bobot, alokasi traffic, kill switch, dan audit log.\n- **Assignment deterministik**: hash `salt + unit` menjadi bucket. Tidak ada `Math.random()` dan tidak ada tabel assignment.\n- **SDK TypeScript** untuk layanan backend: evaluasi di memori, update lewat SSE atau polling, event dikirim per batch, tanpa PII.\n- **Ingest event** yang idempoten ke Postgres dengan tabel berpartisi.\n- **Analisis**: SRM, uji dua proporsi, Welch t-test, CUPED, guardrail, kalkulator sampel, dan simulasi yang membuktikan bahaya mengintip hasil.\n\n## Yang perlu kamu kerjakan\n\n1. Buat repo baru dan salin template di bagian Bahan ke `docs/brief.md`.\n2. Isi masalahnya dengan skenario konkret: produk apa, berapa pengguna per hari, perubahan apa yang mau diuji.\n3. Baca empat invarian di template. Tambahkan satu invarian lagi kalau produkmu punya kebutuhan khusus.\n4. Isi tabel target dengan angka. Untuk satu VM 2 vCPU, angka yang masuk akal: evaluasi < 50 mikrodetik, kill switch < 2 detik, laporan 1 juta event < 10 detik.\n5. Tulis apa yang **tidak** kamu bangun, misalnya dasbor UI, SDK browser, atau targeting per atribut.\n\n## Kriteria diterima\n\n- Setiap target punya angka dan satuan.\n- Setiap invarian bisa dibuktikan dengan tes otomatis. Kalau belum terbayang tesnya, tulis ulang invariannya.\n",
+      "materials": [
+        {
+          "id": "pea-m-brief",
+          "kind": "kode",
+          "name": "docs/brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Platform Eksperimen A/B\n\n## Masalah\nTim produk ___ (mis. toko online dengan ___ pengguna aktif per hari) ingin tahu\napakah perubahan ___ benar-benar menaikkan ___. Saat ini keputusan diambil dari\n\"angka minggu ini vs minggu lalu\", yang tercampur musim, promo, dan kebetulan.\n\n## Pengguna platform\n- Product manager: membuat eksperimen, membaca hasil, memutuskan rilis.\n- Engineer: memasang SDK di layanan backend, membungkus fitur dengan flag.\n- On-call: mematikan fitur yang bermasalah dalam hitungan detik (kill switch).\n\n## Yang harus benar (invarian)\n1. Unit yang sama selalu mendapat varian yang sama selama eksperimen berjalan.\n2. Event yang dikirim ulang tidak pernah terhitung dua kali.\n3. Laporan tidak pernah menampilkan \"menang\" tanpa CI, dan selalu memeriksa SRM lebih dulu.\n4. Server eksperimen tidak pernah menyimpan email, nama, atau user id asli.\n\n## Target terukur\n| Hal                                          | Target                 |\n|----------------------------------------------|------------------------|\n| Evaluasi flag di SDK (tanpa jaringan)        | < ___ mikrodetik       |\n| Kill switch sampai ke semua SDK              | < ___ detik            |\n| Ingest: event per detik di satu instance     | ___                    |\n| Laporan eksperimen 1 juta event              | < ___ detik            |\n| Positif palsu pada uji A/A (alpha nominal 5%) | 5% +- 1,5 poin        |\n\n## Di luar cakupan versi ini\n- ___ (mis. targeting berdasarkan atribut, SDK browser, multi-armed bandit, dashboard UI)\n\n## Asumsi\n- ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-brief-1",
+          "text": "docs/brief.md berisi skenario produk dengan angka pengguna per hari."
+        },
+        {
+          "id": "pea-c-brief-2",
+          "text": "Aku menulis minimal empat invarian yang masing-masing bisa diuji."
+        },
+        {
+          "id": "pea-c-brief-3",
+          "text": "Tabel target terisi angka dan satuan, termasuk waktu kill switch."
+        },
+        {
+          "id": "pea-c-brief-4",
+          "text": "Aku menulis daftar hal yang sengaja tidak dibangun."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "unit-metrik-dan-jebakan",
+      "title": "Tentukan unit, metrik, dan jebakan yang harus dicegah",
+      "est_minutes": 120,
+      "body": "## Tiga keputusan yang menentukan semua angka\n\n**1. Unit randomisasi.** Yang diacak adalah *pengguna*, bukan request atau sesi. Kalau yang diacak request, satu orang bisa melihat tombol hijau lalu biru dalam satu menit, dan pengalamannya tidak mewakili varian mana pun. Unit juga harus sama dengan unit analisis. Kalau kamu mengacak per pengguna tetapi menghitung konversi per sesi, sesi-sesi dari orang yang sama saling berkorelasi dan CI-mu jadi terlalu sempit.\n\n**2. Exposure, bukan assignment.** Pengguna baru dihitung masuk eksperimen ketika dia benar-benar *melihat* varian, yaitu saat kode memanggil `variant()`. Pengguna yang diacak tetapi tidak pernah membuka halaman checkout hanya menambah derau. SDK mencatat exposure sekali per unit per proses, dan analisis memakai exposure **pertama** sebagai awal pengamatan.\n\n**3. Metrik ditentukan sebelum eksperimen dimulai.** Satu metrik utama yang menentukan keputusan, beberapa metrik sekunder, dan **guardrail**, yaitu metrik yang tidak boleh memburuk walau metrik utama membaik. Contohnya tingkat error atau waktu muat halaman. Kalau metrik dipilih setelah melihat data, dari 20 metrik pasti ada satu yang \"signifikan\" secara kebetulan.\n\n## Jebakan yang akan dicegah platformmu\n\n| Jebakan | Gejala | Pertahanan di proyek ini |\n|---|---|---|\n| Pengguna pindah varian | Efek tercampur | Hash deterministik + varian dikunci selama eksperimen berjalan |\n| Event ganda saat retry | Konversi menggelembung | `event_id` + `ON CONFLICT DO NOTHING` |\n| Pembagian tidak sesuai bobot (SRM) | Hasil bias tanpa terlihat | Uji chi-square di setiap laporan |\n| Mengintip hasil tiap hari | Positif palsu 5% menjadi ~20% | Aturan berhenti tertulis + simulasi sebagai bukti |\n| PII di data eksperimen | Masalah privasi dan hukum | ID pseudonim HMAC dibuat di SDK |\n\n## Yang perlu kamu kerjakan\n\n1. Salin template di Bahan ke `docs/metrik.md`.\n2. Pilih eksperimen contoh (template memakai tombol checkout) dan definisikan metriknya per unit. Bedakan metrik **binomial** (apakah unit melakukan X setidaknya sekali) dan **mean** (rata-rata nilai X per unit, termasuk nol).\n3. Tulis aturan berhenti **sebelum** melihat data: berapa lama, berapa unit, dan siapa yang boleh menghentikan eksperimen lebih awal (jawabannya: hanya guardrail atau kill switch).\n4. Diskusikan dengan dirimu sendiri: apa yang terjadi kalau satu pengguna login dari dua perangkat? Tulis jawabannya di bagian asumsi brief.\n\n## Kriteria diterima\n\n- Setiap metrik punya event, tipe, peran, arah \"lebih baik\", dan definisi per unit.\n- Ada minimal satu guardrail.\n- Aturan berhenti tertulis sebelum kode analisis ditulis.\n",
+      "materials": [
+        {
+          "id": "pea-m-metrik",
+          "kind": "kode",
+          "name": "docs/metrik.md",
+          "lang": "markdown",
+          "content": "# Kamus metrik dan istilah\n\n## Istilah\n| Istilah   | Arti di platform ini |\n|-----------|----------------------|\n| Unit      | Yang diacak: satu pengguna (id pseudonim). Bukan sesi, bukan request. |\n| Exposure  | Momen unit benar-benar melihat varian. Dicatat SDK saat `variant()` dipanggil. |\n| Conversion| Event perilaku (checkout, error, ...) dengan `value` opsional. Tidak terikat flag. |\n| Varian    | Salah satu versi: `control` (default) dan satu atau lebih treatment. |\n| Guardrail | Metrik yang TIDAK boleh memburuk, walau metrik utama membaik. |\n\n## Metrik eksperimen ___\n| Key      | Event    | Tipe     | Peran     | Lebih baik | Definisi per unit                  |\n|----------|----------|----------|-----------|------------|------------------------------------|\n| checkout | checkout | binomial | primary   | higher     | 1 kalau >= 1 checkout setelah exposure |\n| revenue  | checkout | mean     | secondary | higher     | jumlah `value` checkout setelah exposure |\n| error    | error    | binomial | guardrail | lower      | 1 kalau >= 1 error setelah exposure |\n\n## Jendela\n- Pengamatan unit dimulai pada exposure PERTAMA-nya.\n- Kovariat CUPED: metrik yang sama dalam 14 hari sebelum exposure pertama.\n\n## Keputusan sebelum eksperimen dimulai (tulis di sini, jangan diubah di tengah jalan)\n- Metrik utama: ___\n- Efek minimum yang berarti (MDE): ___\n- Durasi / jumlah unit dari kalkulator power: ___\n- Aturan berhenti: ___ (mis. \"dibaca sekali setelah 14 hari\", atau batas sekuensial)\n"
+        },
+        {
+          "id": "pea-m-evanmiller-peek",
+          "kind": "tautan",
+          "name": "Evan Miller: How Not To Run an A/B Test",
+          "url": "https://www.evanmiller.org/how-not-to-run-an-ab-test.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-brain-1",
+          "text": "Aku memilih pengguna (id pseudonim) sebagai unit dan bisa menjelaskan kenapa bukan request atau sesi."
+        },
+        {
+          "id": "pea-c-brain-2",
+          "text": "docs/metrik.md mendefinisikan metrik utama, sekunder, dan minimal satu guardrail."
+        },
+        {
+          "id": "pea-c-brain-3",
+          "text": "Aku bisa menjelaskan beda assignment dan exposure."
+        },
+        {
+          "id": "pea-c-brain-4",
+          "text": "Aturan berhenti sudah tertulis sebelum melihat data apa pun."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "stack-dan-adr",
+      "title": "Putuskan stack dan cara assignment lewat ADR",
+      "est_minutes": 120,
+      "body": "## Keputusan besar ditulis, bukan diingat\n\nArchitecture Decision Record (ADR) adalah catatan pendek berisi konteks, pilihan, keputusan, dan konsekuensi. Enam bulan lagi, ADR menjawab \"kenapa dulu begini?\" tanpa perlu menebak.\n\n## Empat ADR yang wajib ada\n\n**0001 Stack.** Contoh di proyek ini memakai **Node.js 24 atau lebih baru dengan TypeScript tanpa build step** (Node menjalankan `.ts` langsung, `tsc` hanya untuk cek tipe), **PostgreSQL 19**, dan satu dependensi runtime saja: `pg`. Analisis dibagi dua. Postgres menjumlahkan jutaan baris menjadi *statistik cukup* per varian (n, jumlah y, jumlah y², dan seterusnya), lalu TypeScript menghitung uji statistik dari belasan angka itu. Kenapa bukan Python dengan scipy? Python pilihan yang sangat masuk akal, dan untuk analisis eksploratif memang lebih nyaman. Tetapi di sini uji yang dibutuhkan hanya lima. Fungsi distribusinya sekitar 80 baris dan bisa dicek terhadap tabel, sementara satu bahasa berarti satu toolchain, satu image Docker, dan SDK serta server bisa berbagi kode hash yang **sama persis**. Tulis kapan keputusan ini perlu ditinjau ulang, misalnya saat butuh regresi, bootstrap, atau model Bayesian.\n\n**0002 Assignment.** Bandingkan tiga cara:\n- `Math.random()` lalu simpan hasilnya. Butuh tulis ke DB atau cookie di jalur request, dan tiap instance harus membaca tempat yang sama.\n- Satu hash `sha256(salt:unit) % 10000`. Deterministik dan tanpa penyimpanan, tetapi kalau bucket yang sama dipakai untuk traffic dan varian, menaikkan traffic dari 10% ke 20% ikut menggeser batas varian.\n- **Dua hash independen**: satu memutuskan ikut atau tidak, satu memilih varian. Menaikkan traffic hanya menambah unit baru, dan unit lama tetap di variannya.\n\n**0003 Penyimpanan event.** Postgres dengan tabel `events` dipartisi per bulan, dibandingkan dengan ClickHouse atau BigQuery. Untuk puluhan juta event per bulan, Postgres cukup, dan partisi membuat retensi semurah `DROP TABLE` satu partisi. Tulis angka kapan kamu akan pindah ke database kolumnar.\n\n**0004 Penyebaran perubahan flag.** Polling tiap 30 detik, SSE, atau WebSocket. Contoh di sini memakai SSE + `LISTEN/NOTIFY` Postgres supaya semua instance server ikut tahu, dengan polling sebagai mode cadangan. SSE cukup karena arahnya hanya server ke SDK.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis keempat ADR di `docs/adr/`. Template 0001 dan 0002 ada di Bahan. 0003 dan 0004 kamu tulis sendiri dengan format yang sama.\n2. Isi bagian **Keputusan** dengan alasanmu sendiri. Kalau kamu memilih Python atau Go, tidak masalah: kode kunci di Bahan tetap jadi acuan logika.\n\n## Kriteria diterima\n\n- Empat ADR dengan format yang sama.\n- Setiap ADR menyebut minimal satu konsekuensi **negatif** dan kapan keputusan itu ditinjau ulang.\n",
+      "materials": [
+        {
+          "id": "pea-m-adr-stack",
+          "kind": "kode",
+          "name": "docs/adr/0001-stack.md",
+          "lang": "markdown",
+          "content": "# ADR 0001: Node.js + TypeScript, agregasi di SQL, statistik di TypeScript\n\n- Status: diterima\n- Tanggal: ____-__-__\n\n## Konteks\nPlatform terdiri dari API (admin, SDK, ingest), SDK untuk layanan backend, dan\npipeline analisis. Dikerjakan satu orang, dijalankan di satu VM kecil.\n\n## Pilihan yang dipertimbangkan\n1. Node.js + TypeScript untuk semuanya; Postgres menjumlah, TypeScript menghitung statistik\n2. Node.js untuk API dan SDK, Python (pandas + scipy) untuk analisis\n3. Go untuk API, Python untuk analisis\n4. Analisis sepenuhnya di SQL\n\n## Keputusan\nPilihan ___, karena ___.\n\n## Konsekuensi\n- Positif: ___\n- Negatif: ___ (mis. fungsi distribusi t dan chi-square ditulis dan diuji sendiri)\n- Kapan ditinjau ulang: ___ (mis. butuh model statistik yang lebih kaya: regresi, bootstrap, Bayesian)\n"
+        },
+        {
+          "id": "pea-m-adr-assign",
+          "kind": "kode",
+          "name": "docs/adr/0002-assignment.md",
+          "lang": "markdown",
+          "content": "# ADR 0002: Assignment varian dengan hash deterministik\n\n- Status: diterima\n- Tanggal: ____-__-__\n\n## Konteks\nUnit harus mendapat varian yang sama di setiap request, di setiap instance aplikasi,\ntanpa memanggil server per request. Traffic eksperimen kadang dinaikkan bertahap.\n\n## Pilihan yang dipertimbangkan\n1. `Math.random()` saat request pertama, simpan hasilnya di database atau cookie\n2. Hash deterministik `sha256(salt + unit)` -> bucket 0..9999, satu hash\n3. Dua hash independen: satu untuk ikut/tidak (traffic), satu untuk varian\n\n## Keputusan\nPilihan 3, karena ___.\n\n## Konsekuensi\n- Positif: tanpa penyimpanan dan tanpa I/O; analisis bisa menghitung ulang assignment dari salt.\n- Positif: menaikkan traffic 10% -> 20% tidak memindahkan unit yang sudah ada.\n- Negatif: mengubah BOBOT (50/50 -> 70/30) memindahkan unit antar varian. Solusinya flag baru, bukan edit.\n- Negatif: ___\n- Kapan ditinjau ulang: ___ (mis. butuh sticky assignment lintas perubahan bobot)\n"
+        },
+        {
+          "id": "pea-m-adr-gh",
+          "kind": "tautan",
+          "name": "ADR: kumpulan template dan panduan",
+          "url": "https://adr.github.io/"
+        },
+        {
+          "id": "pea-m-node-ts",
+          "kind": "tautan",
+          "name": "Node.js: menjalankan TypeScript",
+          "url": "https://nodejs.org/api/typescript.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-tek-1",
+          "text": "Ada empat ADR: stack, assignment, penyimpanan event, dan penyebaran perubahan flag."
+        },
+        {
+          "id": "pea-c-tek-2",
+          "text": "ADR assignment menjelaskan kenapa dua hash lebih baik daripada satu."
+        },
+        {
+          "id": "pea-c-tek-3",
+          "text": "Setiap ADR menyebut minimal satu konsekuensi negatif."
+        },
+        {
+          "id": "pea-c-tek-4",
+          "text": "Aku bisa menjelaskan kenapa statistik cukup membuat analisis tidak perlu menarik semua baris ke aplikasi."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "skema-data-dan-kontrak-api",
+      "title": "Rancang skema data dan kontrak API",
+      "est_minutes": 180,
+      "body": "## Tiga tabel, tiga tanggung jawab\n\n![Aplikasi memakai SDK yang mengevaluasi flag di memori. Perubahan flag mengalir lewat NOTIFY dan SSE, event mengalir per batch ke tabel berpartisi, lalu analisis menjumlah di Postgres](/studio/platform-eksperimen-ab/arsitektur.svg)\n\n**`flags`** menyimpan flag dan eksperimen dalam satu entitas. Flag biasa hanyalah eksperimen dengan satu varian berbobot 10000. Bobot memakai **basis poin** (10000 = 100%) supaya tidak ada pecahan. `salt` dibuat server sekali saja dan tidak pernah berubah. `version` diambil dari satu sequence global, jadi nilai maksimumnya bisa dipakai sebagai ETag untuk semua flag sekaligus.\n\n**`audit_log`** mencatat siapa mengubah apa, kapan, dan kenapa, lengkap dengan isi sebelum dan sesudah. Trigger menolak `UPDATE`, `DELETE`, dan `TRUNCATE`, jadi audit log tidak bisa dirapikan diam-diam.\n\n**`events`** menampung exposure dan conversion, **dipartisi per bulan**. Perhatikan kunci utamanya, `(event_id, ts)`. Postgres mewajibkan constraint unik di tabel berpartisi memuat kolom partisi. Karena SDK mengirim ulang batch yang sama persis termasuk `ts`, pasangan itu tetap menjadi kunci idempotensi yang sah. Kolom `unit` hanya menerima ID pseudonim.\n\nPartisi `DEFAULT` adalah jaring pengaman. Kalau partisi `DEFAULT` sudah berisi baris untuk bulan tertentu, Postgres akan menolak membuat partisi bulan itu. Karena itu fungsi `ensure_event_partitions()` membuat partisi jauh sebelum dibutuhkan, dan ingest menolak event yang lebih tua dari 30 hari.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `db/schema.sql` dari Bahan. Baca setiap `CHECK` dan tanyakan pada dirimu: bug apa yang dicegah baris ini?\n2. Salin `docs/api.md`. Ini kontrak antara server, SDK, dan alat admin. Kode di langkah berikutnya harus cocok dengan dokumen ini, bukan sebaliknya.\n3. Tambahkan diagram arsitekturmu sendiri (Mermaid atau gambar) ke `docs/`.\n\n## Batasan\n\n- Tidak ada `DELETE` atau `UPDATE` pada `events`. Koreksi data dilakukan di analisis, bukan dengan mengubah fakta.\n- Retensi dilakukan per partisi: `DROP TABLE events_2026_01;` hanya mengubah metadata dan selesai dalam milidetik. Jangan `DELETE ... WHERE ts < ...` di tabel besar. `DETACH PARTITION ... CONCURRENTLY` tidak bisa dipakai di sini, karena Postgres menolaknya selama partisi `DEFAULT` ada.\n\n## Kriteria diterima\n\n- Kamu bisa menjelaskan kenapa kunci utama `events` adalah `(event_id, ts)` dan bukan `event_id` saja.\n- Kamu bisa menyebut tiga hal yang ditolak database bahkan kalau kode aplikasinya salah.\n",
+      "materials": [
+        {
+          "id": "pea-m-schema",
+          "kind": "kode",
+          "name": "db/schema.sql",
+          "lang": "sql",
+          "content": "-- Skema Platform Eksperimen A/B. Dijalankan sekali saat volume Postgres masih kosong.\n\n-- Satu entitas untuk flag dan eksperimen: flag biasa = satu varian berbobot 10000.\nCREATE SEQUENCE config_version;\nCREATE TABLE flags (\n  key             text PRIMARY KEY CHECK (key ~ '^[a-z0-9][a-z0-9-]{1,62}$'),\n  description     text NOT NULL DEFAULT '',\n  status          text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'running', 'stopped')),\n  killed          boolean NOT NULL DEFAULT false,\n  salt            text NOT NULL,                 -- dibuat server, tidak pernah berubah\n  traffic_bp      int  NOT NULL CHECK (traffic_bp BETWEEN 0 AND 10000),  -- basis poin: 10000 = 100%\n  variants        jsonb NOT NULL,                -- [{\"key\":\"control\",\"weight\":5000}, ...], total 10000\n  default_variant text NOT NULL,\n  metrics         jsonb NOT NULL DEFAULT '[]',\n  version         bigint NOT NULL,               -- nextval('config_version') setiap berubah\n  updated_at      timestamptz NOT NULL DEFAULT now()\n);\n\n-- Jejak audit: siapa mengubah apa, kapan, dan kenapa. Hanya boleh bertambah.\nCREATE TABLE audit_log (\n  id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,\n  at       timestamptz NOT NULL DEFAULT now(),\n  actor    text NOT NULL,\n  action   text NOT NULL,\n  flag_key text NOT NULL,\n  reason   text NOT NULL DEFAULT '',\n  before   jsonb,\n  after    jsonb NOT NULL\n);\nCREATE INDEX audit_log_flag ON audit_log (flag_key, id);\nCREATE FUNCTION audit_append_only() RETURNS trigger LANGUAGE plpgsql AS $$\nBEGIN\n  RAISE EXCEPTION 'audit_log hanya boleh INSERT';\nEND $$;\nCREATE TRIGGER audit_append_only BEFORE UPDATE OR DELETE OR TRUNCATE ON audit_log\n  FOR EACH STATEMENT EXECUTE FUNCTION audit_append_only();\n\n-- Event exposure dan conversion, dipartisi per bulan.\n-- Kunci unik tabel berpartisi WAJIB memuat kolom partisi, jadi idempotensinya (event_id, ts):\n-- SDK mengirim ulang batch yang sama persis, termasuk ts, sehingga duplikat tertolak.\nCREATE TABLE events (\n  event_id    uuid NOT NULL,\n  ts          timestamptz NOT NULL,\n  received_at timestamptz NOT NULL DEFAULT now(),\n  kind        text NOT NULL CHECK (kind IN ('exposure', 'conversion')),\n  unit        text NOT NULL,          -- id pseudonim (HMAC), bukan email/user id asli\n  flag_key    text,\n  variant     text,\n  metric      text,\n  value       double precision NOT NULL DEFAULT 1,\n  CHECK ((kind = 'exposure') = (flag_key IS NOT NULL AND variant IS NOT NULL)),\n  CHECK ((kind = 'conversion') = (metric IS NOT NULL)),\n  PRIMARY KEY (event_id, ts)\n) PARTITION BY RANGE (ts);\nCREATE TABLE events_default PARTITION OF events DEFAULT;  -- jaring pengaman, harus tetap kosong\nCREATE INDEX events_exposure ON events (flag_key, unit) WHERE kind = 'exposure';\nCREATE INDEX events_conversion ON events (metric, unit, ts) WHERE kind = 'conversion';\n\n-- Buat partisi bulanan dari ~35 hari lalu sampai `months_ahead` bulan ke depan. Aman dipanggil berulang.\nCREATE FUNCTION ensure_event_partitions(months_ahead int DEFAULT 2) RETURNS void LANGUAGE plpgsql AS $$\nDECLARE\n  m date := date_trunc('month', now() - interval '35 days');\nBEGIN\n  WHILE m <= now() + make_interval(months => months_ahead) LOOP\n    EXECUTE format('CREATE TABLE IF NOT EXISTS %I PARTITION OF events FOR VALUES FROM (%L) TO (%L)',\n                   'events_' || to_char(m, 'YYYY_MM'), m, m + interval '1 month');\n    m := m + interval '1 month';\n  END LOOP;\nEND $$;\nSELECT ensure_event_partitions();\n"
+        },
+        {
+          "id": "pea-m-api",
+          "kind": "kode",
+          "name": "docs/api.md",
+          "lang": "markdown",
+          "content": "# Kontrak API eksperimen-ab\n\nSemua body JSON. Error selalu `{\"error\": \"pesan\"}` dengan status 400/401/404/409/413/422.\n\n## SDK (header `Authorization: Bearer <SDK_KEY>`)\n\n### GET /sdk/flags\n200 `{\"flags\": [{key, status, killed, salt, traffic_bp, variants, default_variant}]}`\ndengan header `ETag`. Kirim `If-None-Match: <etag>` -> 304 kalau tidak ada perubahan.\nMetrik dan deskripsi TIDAK dikirim ke SDK.\n\n### GET /sdk/stream\nServer-Sent Events. Setiap perubahan flag mengirim:\n```\nevent: flags\ndata: <versi>\n```\nSDK lalu memanggil GET /sdk/flags. Komentar `: ping` tiap 25 detik menjaga koneksi.\n\n### POST /events\n```json\n{\"events\": [\n  {\"event_id\": \"uuid\", \"ts\": \"ISO-8601\", \"kind\": \"exposure\", \"unit\": \"id-pseudonim\",\n   \"flag_key\": \"tombol-checkout\", \"variant\": \"treatment\"},\n  {\"event_id\": \"uuid\", \"ts\": \"ISO-8601\", \"kind\": \"conversion\", \"unit\": \"id-pseudonim\",\n   \"metric\": \"checkout\", \"value\": 125000}\n]}\n```\n- 1..500 event per batch; satu event tidak valid -> seluruh batch 422.\n- `ts`: maksimal 30 hari ke belakang, 5 menit ke depan.\n- `unit`: 8-64 karakter `[A-Za-z0-9_-]` (email otomatis ditolak).\n- 202 `{\"accepted\": n, \"duplicates\": m}`. Mengirim ulang batch yang sama -> `accepted: 0`.\n\n## Admin (header `Authorization: Bearer <token>`; nama pemilik token = actor di audit)\n\n| Method | Path                               | Body / catatan |\n|--------|------------------------------------|----------------|\n| GET    | /admin/flags                       | semua flag, lengkap |\n| PUT    | /admin/flags/:key                  | `{description, status, traffic_bp, variants, default_variant, metrics, reason}`; salt dibuat server |\n| POST   | /admin/flags/:key/kill             | `{\"killed\": true, \"reason\": \"...\"}`; reason wajib |\n| GET    | /admin/flags/:key/audit            | 100 perubahan terakhir, terbaru dulu |\n| GET    | /admin/experiments/:key/results    | `?level=0.95`; SRM, per metrik: mentah + CUPED |\n\nAturan PUT:\n- total `weight` = 10000, `default_variant` salah satu varian, `traffic_bp` 0..10000.\n- Eksperimen `running` tidak boleh diubah varian/bobotnya -> 409. Buat flag baru.\n- Menaikkan/menurunkan `traffic_bp` boleh.\n"
+        },
+        {
+          "id": "pea-m-pg-partition",
+          "kind": "tautan",
+          "name": "PostgreSQL: table partitioning",
+          "url": "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+        },
+        {
+          "id": "pea-m-pg-insert",
+          "kind": "tautan",
+          "name": "PostgreSQL: INSERT ... ON CONFLICT",
+          "url": "https://www.postgresql.org/docs/current/sql-insert.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-rancang-1",
+          "text": "db/schema.sql berisi flags, audit_log dengan trigger append-only, dan events berpartisi bulanan."
+        },
+        {
+          "id": "pea-c-rancang-2",
+          "text": "docs/api.md menjelaskan endpoint SDK, ingest, dan admin beserta kode statusnya."
+        },
+        {
+          "id": "pea-c-rancang-3",
+          "text": "Aku bisa menjelaskan kenapa kunci unik tabel berpartisi harus memuat ts."
+        },
+        {
+          "id": "pea-c-rancang-4",
+          "text": "Aku tahu cara membuang data lama per partisi tanpa DELETE massal."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "fondasi-dan-hash-assignment",
+      "title": "Fondasi repo dan assignment dengan hash",
+      "est_minutes": 210,
+      "body": "## Kenapa hash, bukan acak\n\n`Math.random()` memberi jawaban berbeda setiap kali dipanggil, jadi hasilnya harus disimpan dan dibaca ulang di setiap request oleh setiap instance. Hash memberi jawaban yang **sama** untuk input yang sama, di mesin mana pun, tanpa penyimpanan. Fungsi hash yang baik juga menyebar input secara seragam. `unit-1` dan `unit-2` jatuh ke bucket yang tidak berhubungan sama sekali, jadi pembagiannya berperilaku seperti acak.\n\n![Ubah satu karakter input dan lihat separuh bit SHA-256 berubah. Inilah yang membuat bucket unit yang mirip tetap tidak berkorelasi](sim:hash-avalanche)\n\n`salt` per eksperimen membuat setiap eksperimen punya pengacakan sendiri. Tanpa salt, pengguna yang kebetulan masuk treatment di eksperimen A juga selalu masuk treatment di eksperimen B, dan efek kedua eksperimen tercampur.\n\n![Hash pertama memutuskan ikut atau tidak, hash kedua memilih varian. Menaikkan traffic hanya menambah unit, sedangkan mengubah bobot memindahkan unit](/studio/platform-eksperimen-ab/hash-bucket.svg)\n\n## Yang perlu kamu kerjakan\n\n1. Siapkan `package.json`, `tsconfig.json`, dan `compose.yaml` dari Bahan, lalu jalankan `npm install`.\n2. Nyalakan Postgres: `docker compose up -d --wait`. Host port-nya **5433** supaya tidak bentrok dengan Postgres lokal. Container dibatasi `mem_limit: 384m`. Schema dijalankan otomatis dari `db/schema.sql` saat volume masih kosong.\n3. Tulis `src/db.ts`, `src/hash.ts`, dan `test/hash.test.ts`.\n4. Jalankan `npm run typecheck` dan `node --test test/hash.test.ts`.\n\n## Batasan\n\n- `assign()` adalah fungsi murni tanpa I/O. SDK dan analisis memakai fungsi yang sama.\n- Unit yang tidak ikut eksperimen, flag yang di-kill, atau status selain `running` selalu mendapat `default_variant` dan **tidak** dihitung sebagai exposure.\n- Bias modulo `2^32 % 10000` sekitar 0,0002%, jauh di bawah derau statistik. Tulis ini sebagai komentar, jangan diabaikan diam-diam.\n\n## Kriteria diterima\n\n- Enam tes hash hijau, termasuk \"naik traffic tidak memindahkan unit lama\" dan \"ubah bobot memindahkan sekitar 20% unit\".\n- Kamu bisa menjelaskan kenapa tes 70/30 memindahkan tepat sekitar 20%, bukan 50%: bucket 5000 sampai 6999 pindah dari treatment ke control.\n",
+      "materials": [
+        {
+          "id": "pea-m-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"eksperimen-ab\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": { \"node\": \">=24\" },\n  \"scripts\": {\n    \"start\": \"node src/main.ts\",\n    \"typecheck\": \"tsc\",\n    \"test\": \"node --test test/*.test.ts\",\n    \"simulate\": \"node scripts/simulate.ts\",\n    \"analyze\": \"node scripts/analyze.ts\",\n    \"peeking\": \"node scripts/peeking.ts\",\n    \"power\": \"node scripts/power.ts\"\n  },\n  \"dependencies\": {\n    \"pg\": \"^8.23.1\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^24.19.4\",\n    \"@types/pg\": \"^8.23.1\",\n    \"typescript\": \"^7.0.2\"\n  }\n}\n"
+        },
+        {
+          "id": "pea-m-tsconfig",
+          "kind": "kode",
+          "name": "tsconfig.json",
+          "lang": "json",
+          "content": "{\n  \"compilerOptions\": {\n    \"target\": \"es2024\",\n    \"lib\": [\"es2024\"],\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"allowImportingTsExtensions\": true,\n    \"erasableSyntaxOnly\": true,\n    \"verbatimModuleSyntax\": true,\n    \"noEmit\": true,\n    \"strict\": true,\n    \"skipLibCheck\": true,\n    \"types\": [\"node\"]\n  },\n  \"include\": [\"src\", \"sdk\", \"scripts\", \"test\"]\n}\n"
+        },
+        {
+          "id": "pea-m-compose",
+          "kind": "kode",
+          "name": "compose.yaml",
+          "lang": "yaml",
+          "content": "# Lokal: hanya Postgres. Aplikasi jalan langsung dengan `npm start`.\nservices:\n  postgres:\n    image: postgres:19-alpine\n    environment:\n      POSTGRES_PASSWORD: eksperimen\n      POSTGRES_DB: eksperimen\n    ports:\n      - \"5433:5432\"   # 5432 sering sudah dipakai Postgres lokal\n    volumes:\n      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro\n      - pgdata:/var/lib/postgresql\n    mem_limit: 384m\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U postgres -d eksperimen\"]\n      interval: 2s\n      timeout: 3s\n      retries: 30\nvolumes:\n  pgdata:\n"
+        },
+        {
+          "id": "pea-m-db",
+          "kind": "kode",
+          "name": "src/db.ts",
+          "lang": "typescript",
+          "content": "import pg from \"pg\";\n\nexport const DATABASE_URL =\n  process.env.DATABASE_URL ?? \"postgres://postgres:eksperimen@localhost:5433/eksperimen\";\nexport const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 10 });\n\nexport async function tx<T>(fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {\n  const c = await pool.connect();\n  try {\n    await c.query(\"BEGIN\");\n    const result = await fn(c);\n    await c.query(\"COMMIT\");\n    return result;\n  } catch (e) {\n    await c.query(\"ROLLBACK\");\n    throw e;\n  } finally {\n    c.release();\n  }\n}\n"
+        },
+        {
+          "id": "pea-m-hash",
+          "kind": "kode",
+          "name": "src/hash.ts",
+          "lang": "typescript",
+          "content": "import { createHash, createHmac } from \"node:crypto\";\n\nexport type Variant = { key: string; weight: number }; // bobot dalam basis poin, total 10000\nexport type FlagConfig = {\n  key: string;\n  status: \"draft\" | \"running\" | \"stopped\";\n  killed: boolean;\n  salt: string;\n  traffic_bp: number;\n  variants: Variant[];\n  default_variant: string;\n};\nexport type Assignment = { variant: string; inExperiment: boolean };\n\nexport const BUCKETS = 10_000;\n\n// Bucket 0..9999. Input sama -> bucket sama, di proses dan mesin mana pun.\n// ponytail: bias modulo 2^32 % 10000 sekitar 0,0002%, jauh di bawah derau statistik.\nexport function bucket(salt: string, unit: string): number {\n  return createHash(\"sha256\").update(`${salt}:${unit}`).digest().readUInt32BE(0) % BUCKETS;\n}\n\n// Id pseudonim: HMAC dari user id asli. Server eksperimen tidak pernah melihat id asli/email.\nexport function pseudonym(secret: string, userId: string): string {\n  return createHmac(\"sha256\", secret).update(userId).digest(\"base64url\").slice(0, 22);\n}\n\nexport function assign(flag: FlagConfig, unit: string): Assignment {\n  const off = { variant: flag.default_variant, inExperiment: false };\n  if (flag.killed || flag.status !== \"running\") return off;\n  // Hash 1: ikut eksperimen atau tidak. Menaikkan traffic hanya MENAMBAH unit baru.\n  if (bucket(`${flag.salt}:traffic`, unit) >= flag.traffic_bp) return off;\n  // Hash 2, independen dari hash 1: memilih varian. Tidak terpengaruh perubahan traffic.\n  let b = bucket(`${flag.salt}:variant`, unit);\n  for (const v of flag.variants) {\n    if (b < v.weight) return { variant: v.key, inExperiment: true };\n    b -= v.weight;\n  }\n  return off; // total bobot != 10000; validasi admin mencegah ini\n}\n"
+        },
+        {
+          "id": "pea-m-hash-test",
+          "kind": "kode",
+          "name": "test/hash.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport { test } from \"node:test\";\nimport { assign, type FlagConfig } from \"../src/hash.ts\";\n\nconst flag: FlagConfig = {\n  key: \"tombol-checkout\", status: \"running\", killed: false, salt: \"a1b2c3d4\", traffic_bp: 1000,\n  variants: [{ key: \"control\", weight: 5000 }, { key: \"treatment\", weight: 5000 }], default_variant: \"control\",\n};\nconst full = { ...flag, traffic_bp: 10_000 };\nconst units = Array.from({ length: 20_000 }, (_, i) => `unit-${i}`);\nconst share = (f: FlagConfig, v: string) => units.filter((u) => assign(f, u).variant === v).length / units.length;\n\ntest(\"deterministik: unit yang sama selalu mendapat varian yang sama\", () => {\n  for (const u of units.slice(0, 200)) assert.deepEqual(assign(flag, u), assign(flag, u));\n});\n\ntest(\"pembagian mengikuti bobot (50/50 +- 1,5 poin)\", () => {\n  assert.ok(Math.abs(share(full, \"treatment\") - 0.5) < 0.015);\n});\n\ntest(\"menaikkan traffic 10% -> 20% tidak memindahkan unit lama\", () => {\n  const wider = { ...flag, traffic_bp: 2000 };\n  let before = 0, after = 0;\n  for (const u of units) {\n    const a = assign(flag, u), b = assign(wider, u);\n    if (a.inExperiment) { before++; assert.deepEqual(b, a, `${u} pindah varian`); }\n    if (b.inExperiment) after++;\n  }\n  assert.ok(Math.abs(before / units.length - 0.1) < 0.01 && Math.abs(after / units.length - 0.2) < 0.01);\n});\n\ntest(\"mengubah bobot 50/50 -> 70/30 memindahkan sekitar 20% unit\", () => {\n  const skew = { ...full, variants: [{ key: \"control\", weight: 7000 }, { key: \"treatment\", weight: 3000 }] };\n  const moved = units.filter((u) => assign(full, u).variant !== assign(skew, u).variant).length / units.length;\n  assert.ok(Math.abs(moved - 0.2) < 0.015, `pindah ${moved}`);\n});\n\ntest(\"salt lain = pengacakan baru yang tidak berkorelasi\", () => {\n  const other = { ...full, salt: \"e5f6a7b8\" };\n  const same = units.filter((u) => assign(full, u).variant === assign(other, u).variant).length / units.length;\n  assert.ok(Math.abs(same - 0.5) < 0.02);\n});\n\ntest(\"kill switch atau status bukan running -> default dan tidak dihitung exposure\", () => {\n  for (const f of [{ ...full, killed: true }, { ...full, status: \"stopped\" as const }]) {\n    assert.deepEqual(assign(f, \"unit-1\"), { variant: \"control\", inExperiment: false });\n  }\n});\n"
+        },
+        {
+          "id": "pea-m-node-crypto",
+          "kind": "tautan",
+          "name": "Node.js: crypto (createHash, createHmac)",
+          "url": "https://nodejs.org/api/crypto.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-hash-1",
+          "text": "Postgres menyala di port 5433 dengan mem_limit dan schema terpasang."
+        },
+        {
+          "id": "pea-c-hash-2",
+          "text": "npm run typecheck lulus tanpa error."
+        },
+        {
+          "id": "pea-c-hash-3",
+          "text": "Enam tes di test/hash.test.ts hijau."
+        },
+        {
+          "id": "pea-c-hash-4",
+          "text": "Aku bisa menjelaskan kenapa traffic dan varian memakai dua hash terpisah."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "api-admin-audit-kill-switch",
+      "title": "Logika admin: validasi, audit log, dan kill switch",
+      "est_minutes": 210,
+      "body": "## Perubahan flag adalah perubahan produksi\n\nMengubah flag sama dampaknya dengan deploy: bisa menyalakan fitur untuk sejuta orang dalam sedetik. Karena itu setiap perubahan lewat satu jalur (`save()`) yang melakukan tiga hal dalam **satu transaksi**: menyimpan flag, menulis audit log, dan memanggil `pg_notify('flags', versi)`. NOTIFY di Postgres baru terkirim saat transaksi COMMIT. Kalau transaksinya gagal, SDK tidak pernah mendengar perubahan yang tidak pernah terjadi.\n\n## Aturan yang ditegakkan server\n\n- **Salt dibuat server** dengan `randomBytes` dan tidak bisa dikirim klien. Tes membuktikan salt kiriman klien diabaikan.\n- **Varian dan bobot dikunci** selama eksperimen `running`. Mengubahnya dijawab 409 dengan saran membuat flag baru, karena perubahan bobot memindahkan unit antar varian (tesmu di langkah sebelumnya membuktikan sekitar 20%). Data sebelum dan sesudah perubahan tidak bisa digabung.\n- **Traffic boleh naik atau turun.** Unit yang sudah di dalam tetap di variannya.\n- **Kill switch wajib punya alasan.** On-call yang mematikan fitur jam 3 pagi harus menulis kenapa, dan alasan itu masuk audit.\n- `SELECT ... FOR UPDATE` mengunci baris flag, jadi dua admin yang menyimpan bersamaan tidak saling menimpa tanpa jejak.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis `src/http.ts` (error HTTP, validasi, baca JSON dengan batas 1 MB), `src/flags.ts`, dan `test/flags.test.ts`.\n2. Jalankan `node --test test/flags.test.ts`. Tes ini memakai Postgres dari `docker compose`.\n3. Coba sendiri di `psql` (`docker compose exec postgres psql -U postgres -d eksperimen`): `UPDATE audit_log SET actor = 'x';` harus gagal.\n\n## Batasan\n\n- Validasi ada di server. Body yang tidak valid dijawab 422 dengan pesan yang menyebut field mana yang salah.\n- Tidak ada endpoint hapus flag. Flag yang selesai cukup diberi status `stopped`, dan riwayatnya tetap ada.\n\n## Kriteria diterima\n\n- Enam tes flags hijau: create, validasi bobot, naik traffic, 409 saat bobot diubah, kill switch dengan alasan, audit append-only.\n- Setiap perubahan menaikkan `version`, dan baris audit menyimpan isi `before` dan `after`.\n",
+      "materials": [
+        {
+          "id": "pea-m-http",
+          "kind": "kode",
+          "name": "src/http.ts",
+          "lang": "typescript",
+          "content": "import type { IncomingMessage, ServerResponse } from \"node:http\";\n\nexport class HttpError extends Error {\n  status: number;\n  constructor(status: number, message: string) {\n    super(message);\n    this.status = status;\n  }\n}\n\nexport function check(ok: unknown, message: string, status = 422): asserts ok {\n  if (!ok) throw new HttpError(status, message);\n}\n\nconst KEY = /^[a-z0-9][a-z0-9-]{1,62}$/;\nexport const isKey = (s: unknown): s is string => typeof s === \"string\" && KEY.test(s);\n\nexport async function readJson(req: IncomingMessage, limit = 1_000_000): Promise<any> {\n  const chunks: Buffer[] = [];\n  let size = 0;\n  for await (const c of req) {\n    size += c.length;\n    if (size > limit) throw new HttpError(413, \"body terlalu besar (maks 1 MB)\");\n    chunks.push(c);\n  }\n  try {\n    return JSON.parse(Buffer.concat(chunks).toString(\"utf8\") || \"null\");\n  } catch {\n    throw new HttpError(400, \"JSON tidak valid\");\n  }\n}\n\nexport function send(res: ServerResponse, status: number, body?: unknown, headers: Record<string, string> = {}): void {\n  res.writeHead(status, body === undefined ? headers : { \"content-type\": \"application/json\", ...headers });\n  res.end(body === undefined ? undefined : JSON.stringify(body));\n}\n"
+        },
+        {
+          "id": "pea-m-flags",
+          "kind": "kode",
+          "name": "src/flags.ts",
+          "lang": "typescript",
+          "content": "import { randomBytes } from \"node:crypto\";\nimport type pg from \"pg\";\nimport { pool, tx } from \"./db.ts\";\nimport type { FlagConfig, Variant } from \"./hash.ts\";\nimport { HttpError, check, isKey } from \"./http.ts\";\n\nexport type Metric = {\n  key: string;          // nama metrik di laporan\n  event: string;        // nama event conversion yang dihitung\n  type: \"binomial\" | \"mean\"; // binomial: unit punya >= 1 event; mean: jumlah value per unit\n  role: \"primary\" | \"secondary\" | \"guardrail\";\n  better: \"higher\" | \"lower\";\n};\nexport type Flag = FlagConfig & { description: string; metrics: Metric[]; version: string; updated_at: string };\n\nconst COLS = \"key, description, status, killed, salt, traffic_bp, variants, default_variant, metrics, version::text, updated_at\";\n\nconst isMetric = (m: any): m is Metric =>\n  isKey(m?.key) && isKey(m.event) && [\"binomial\", \"mean\"].includes(m.type) &&\n  [\"primary\", \"secondary\", \"guardrail\"].includes(m.role) && [\"higher\", \"lower\"].includes(m.better);\n\nexport function parseFlagInput(b: any) {\n  check(b && typeof b === \"object\", \"body harus objek JSON\");\n  const { description = \"\", status = \"draft\", traffic_bp, variants, default_variant, metrics = [] } = b;\n  check(typeof description === \"string\" && description.length <= 500, \"description maks 500 karakter\");\n  check([\"draft\", \"running\", \"stopped\"].includes(status), \"status: draft | running | stopped\");\n  check(Number.isInteger(traffic_bp) && traffic_bp >= 0 && traffic_bp <= 10_000, \"traffic_bp bilangan bulat 0..10000\");\n  check(Array.isArray(variants) && variants.length >= 1 && variants.length <= 10, \"variants berisi 1..10 varian\");\n  for (const v of variants) check(isKey(v?.key) && Number.isInteger(v.weight) && v.weight >= 0, \"setiap varian butuh key dan weight bulat\");\n  check(new Set(variants.map((v: Variant) => v.key)).size === variants.length, \"key varian harus unik\");\n  check(variants.reduce((s: number, v: Variant) => s + v.weight, 0) === 10_000, \"total weight harus 10000\");\n  check(variants.some((v: Variant) => v.key === default_variant), \"default_variant harus salah satu varian\");\n  check(Array.isArray(metrics) && metrics.length <= 20 && metrics.every(isMetric), \"metrics tidak valid\");\n  return {\n    description, status, traffic_bp, default_variant,\n    variants: variants.map(({ key, weight }: Variant) => ({ key, weight })),\n    metrics: metrics.map(({ key, event, type, role, better }: Metric) => ({ key, event, type, role, better })),\n  } as Pick<Flag, \"description\" | \"status\" | \"traffic_bp\" | \"variants\" | \"default_variant\" | \"metrics\">;\n}\n\nexport async function listFlags(): Promise<Flag[]> {\n  return (await pool.query(`SELECT ${COLS} FROM flags ORDER BY key`)).rows;\n}\n\nexport async function auditFor(key: string) {\n  const { rows } = await pool.query(\n    \"SELECT id::text, at, actor, action, reason, before, after FROM audit_log WHERE flag_key = $1 ORDER BY id DESC LIMIT 100\",\n    [key]);\n  return rows;\n}\n\nasync function locked(c: pg.PoolClient, key: string): Promise<Flag | undefined> {\n  return (await c.query(`SELECT ${COLS} FROM flags WHERE key = $1 FOR UPDATE`, [key])).rows[0];\n}\n\n// Satu transaksi: simpan flag, tulis audit, kabari SDK. NOTIFY baru terkirim saat COMMIT.\nasync function save(c: pg.PoolClient, actor: string, action: string, reason: string,\n                    before: Flag | undefined, f: Omit<Flag, \"version\" | \"updated_at\">): Promise<Flag> {\n  const { rows: [after] } = await c.query(\n    `INSERT INTO flags (key, description, status, killed, salt, traffic_bp, variants, default_variant, metrics, version)\n     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, nextval('config_version'))\n     ON CONFLICT (key) DO UPDATE SET description = $2, status = $3, killed = $4, traffic_bp = $6, variants = $7,\n       default_variant = $8, metrics = $9, version = EXCLUDED.version, updated_at = now()\n     RETURNING ${COLS}`,\n    [f.key, f.description, f.status, f.killed, f.salt, f.traffic_bp, JSON.stringify(f.variants),\n     f.default_variant, JSON.stringify(f.metrics)]);\n  await c.query(\n    \"INSERT INTO audit_log (actor, action, flag_key, reason, before, after) VALUES ($1, $2, $3, $4, $5, $6)\",\n    [actor, action, f.key, reason, before ? JSON.stringify(before) : null, JSON.stringify(after)]);\n  await c.query(\"SELECT pg_notify('flags', $1)\", [after.version]);\n  return after;\n}\n\nconst layout = (vs: Variant[]) => vs.map((v) => `${v.key}:${v.weight}`).join(\",\");\n\nexport async function putFlag(actor: string, key: string, body: any): Promise<Flag> {\n  check(isKey(key), \"key flag: huruf kecil, angka, dan tanda hubung (2-63 karakter)\");\n  const input = parseFlagInput(body);\n  const reason = typeof body.reason === \"string\" ? body.reason.slice(0, 500) : \"\";\n  return tx(async (c) => {\n    const before = await locked(c, key);\n    if (before?.status === \"running\" && layout(before.variants) !== layout(input.variants)) {\n      throw new HttpError(409, \"eksperimen sedang berjalan: mengubah varian atau bobot memindahkan unit antar varian. \" +\n        \"Hentikan, lalu buat flag baru (mis. \" + key + \"-v2).\");\n    }\n    return save(c, actor, before ? \"update\" : \"create\", reason, before, {\n      key, ...input, killed: before?.killed ?? false, salt: before?.salt ?? randomBytes(8).toString(\"hex\"),\n    });\n  });\n}\n\n// Kill switch: semua unit langsung mendapat default_variant, exposure berhenti dicatat.\nexport async function setKilled(actor: string, key: string, killed: boolean, reason: unknown): Promise<Flag> {\n  check(typeof reason === \"string\" && reason.trim().length >= 3, \"alasan (reason) wajib diisi\");\n  return tx(async (c) => {\n    const before = await locked(c, key);\n    if (!before) throw new HttpError(404, \"flag tidak ditemukan\");\n    return save(c, actor, killed ? \"kill\" : \"unkill\", reason, before, { ...before, killed });\n  });\n}\n"
+        },
+        {
+          "id": "pea-m-flags-test",
+          "kind": "kode",
+          "name": "test/flags.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport { after, test } from \"node:test\";\nimport { pool } from \"../src/db.ts\";\nimport { auditFor, putFlag, setKilled } from \"../src/flags.ts\";\n\nafter(() => pool.end());\nconst key = `tes-flags-${Date.now()}`;\nconst body = {\n  status: \"running\", traffic_bp: 1000, default_variant: \"control\", reason: \"uji\",\n  variants: [{ key: \"control\", weight: 5000 }, { key: \"treatment\", weight: 5000 }],\n};\n\ntest(\"membuat flag: salt dibuat server dan audit tercatat\", async () => {\n  const f = await putFlag(\"ani\", key, { ...body, salt: \"dari-klien\" });\n  assert.match(f.salt, /^[0-9a-f]{16}$/);\n  const [row] = await auditFor(key);\n  assert.equal(row.action, \"create\");\n  assert.equal(row.actor, \"ani\");\n  assert.equal(row.before, null);\n});\n\ntest(\"validasi: total bobot harus 10000\", async () => {\n  await assert.rejects(putFlag(\"ani\", `${key}-x`, { ...body, variants: [{ key: \"a\", weight: 5000 }] }), { status: 422 });\n});\n\ntest(\"menaikkan traffic boleh, salt dan varian tetap\", async () => {\n  const before = (await auditFor(key))[0].after;\n  const f = await putFlag(\"ani\", key, { ...body, traffic_bp: 2000 });\n  assert.equal(f.salt, before.salt);\n  assert.equal(f.traffic_bp, 2000);\n  assert.ok(Number(f.version) > Number(before.version));\n});\n\ntest(\"mengubah bobot eksperimen yang berjalan ditolak 409\", async () => {\n  const skew = [{ key: \"control\", weight: 7000 }, { key: \"treatment\", weight: 3000 }];\n  await assert.rejects(putFlag(\"ani\", key, { ...body, variants: skew }), { status: 409 });\n});\n\ntest(\"kill switch wajib alasan dan masuk audit\", async () => {\n  await assert.rejects(setKilled(\"budi\", key, true, \"\"), { status: 422 });\n  const f = await setKilled(\"budi\", key, true, \"error checkout naik\");\n  assert.equal(f.killed, true);\n  const [row] = await auditFor(key);\n  assert.deepEqual([row.action, row.actor, row.reason], [\"kill\", \"budi\", \"error checkout naik\"]);\n});\n\ntest(\"audit_log tidak bisa diubah atau dihapus\", async () => {\n  await assert.rejects(pool.query(\"UPDATE audit_log SET actor = 'x' WHERE flag_key = $1\", [key]), /hanya boleh INSERT/);\n  await assert.rejects(pool.query(\"DELETE FROM audit_log WHERE flag_key = $1\", [key]), /hanya boleh INSERT/);\n});\n"
+        },
+        {
+          "id": "pea-m-pg-notify",
+          "kind": "tautan",
+          "name": "PostgreSQL: NOTIFY",
+          "url": "https://www.postgresql.org/docs/current/sql-notify.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-admin-1",
+          "text": "Enam tes di test/flags.test.ts hijau."
+        },
+        {
+          "id": "pea-c-admin-2",
+          "text": "Mengubah bobot eksperimen yang sedang berjalan ditolak dengan 409."
+        },
+        {
+          "id": "pea-c-admin-3",
+          "text": "Kill switch tanpa alasan ditolak, dan kill switch dengan alasan tercatat di audit_log."
+        },
+        {
+          "id": "pea-c-admin-4",
+          "text": "UPDATE dan DELETE pada audit_log gagal karena trigger."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "ingest-event-idempoten",
+      "title": "Server HTTP dan ingest event yang idempoten",
+      "est_minutes": 180,
+      "body": "## At-least-once + idempoten = tepat sekali di data\n\nJaringan antara SDK dan server bisa putus *setelah* server menyimpan batch tetapi *sebelum* SDK menerima jawaban. SDK tidak bisa membedakan kasus itu dari \"batch tidak sampai\", jadi satu-satunya pilihan aman adalah mengirim ulang. Itulah **at-least-once**. Supaya kiriman ulang tidak menggandakan konversi, setiap event membawa `event_id` (UUID dari SDK) dan database membuang duplikat dengan `ON CONFLICT DO NOTHING`. Hasil akhirnya: setiap event tercatat tepat sekali.\n\nSatu batch disimpan dengan **satu** `INSERT ... SELECT FROM jsonb_to_recordset(...)`, bukan 500 INSERT. Batch ditolak seluruhnya kalau satu event salah, supaya klien tahu persis apa yang harus diperbaiki dan tidak ada batch setengah masuk.\n\n## Tanpa PII, ditegakkan di server\n\nSDK mengubah user ID asli menjadi ID pseudonim dengan HMAC sebelum mengirim apa pun. Server tidak percaya begitu saja: `unit` wajib cocok dengan `[A-Za-z0-9_-]{8,64}`, jadi email (yang berisi `@` dan `.`) otomatis ditolak. Tes membuktikan hal ini.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis `src/ingest.ts`, `src/server.ts`, `src/main.ts`, dan `test/ingest.test.ts`.\n2. Jalankan `npm start`, lalu coba di terminal lain:\n```bash\ncurl -s -X PUT localhost:3000/admin/flags/tombol-checkout \\\n  -H 'Authorization: Bearer admin-dev-token' -H 'Content-Type: application/json' \\\n  -d '{\"status\":\"running\",\"traffic_bp\":10000,\"default_variant\":\"control\",\"reason\":\"coba\",\n       \"variants\":[{\"key\":\"control\",\"weight\":5000},{\"key\":\"treatment\",\"weight\":5000}]}'\ncurl -s localhost:3000/sdk/flags -H 'Authorization: Bearer sdk-dev-key' -i | head -5\ncurl -s -N localhost:3000/sdk/stream -H 'Authorization: Bearer sdk-dev-key'   # biarkan terbuka\n```\n   Ubah `traffic_bp` dengan PUT lagi dan lihat `event: flags` muncul di terminal stream.\n3. Kirim batch yang sama dua kali dengan `curl -X POST localhost:3000/events` dan pastikan kiriman kedua menjawab `\"accepted\":0`.\n4. Jalankan `node --test test/ingest.test.ts`.\n\n## Batasan\n\n- Token default (`sdk-dev-key`, `admin-dev-token`) hanya untuk lokal. `main.ts` menolak jalan di `NODE_ENV=production` tanpa `SDK_KEY` dan `ADMIN_TOKENS`.\n- Token dibandingkan lewat hash SHA-256 dengan `timingSafeEqual`, bukan `===`.\n- Koneksi `LISTEN` yang putus membuat proses keluar dan Docker menyalakannya lagi (crash-only), karena lebih sederhana dan lebih bisa diuji daripada logika reconnect.\n- `main.ts` menjalankan `ANALYZE events` tiap 6 jam. Autovacuum hanya meng-ANALYZE partisi, tidak pernah tabel induk berpartisi.\n\n## Kriteria diterima\n\n- Empat tes ingest hijau: duplikat, partisi bulanan, email ditolak, serta validasi ts, batch kosong, dan key salah.\n- `GET /sdk/flags` dengan `If-None-Match` yang sama menjawab 304.\n",
+      "materials": [
+        {
+          "id": "pea-m-ingest",
+          "kind": "kode",
+          "name": "src/ingest.ts",
+          "lang": "typescript",
+          "content": "import { pool } from \"./db.ts\";\nimport { check, isKey } from \"./http.ts\";\n\nexport const MAX_BATCH = 500;\nconst MAX_AGE_MS = 30 * 86_400_000;  // event lebih tua dari 30 hari ditolak\nconst MAX_SKEW_MS = 5 * 60_000;      // jam klien boleh maju 5 menit\nconst UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;\nconst UNIT = /^[A-Za-z0-9_-]{8,64}$/; // bentuk id pseudonim; '@' dan '.' (email) otomatis ditolak\n\nexport type EventRow = {\n  event_id: string; ts: string; kind: \"exposure\" | \"conversion\"; unit: string;\n  flag_key: string | null; variant: string | null; metric: string | null; value: number;\n};\n\n// Seluruh batch ditolak kalau satu event salah: klien tahu persis apa yang harus diperbaiki.\nexport function validateBatch(body: any, now = Date.now()): EventRow[] {\n  check(body && Array.isArray(body.events), \"body harus {\\\"events\\\": [...]}\");\n  check(body.events.length >= 1 && body.events.length <= MAX_BATCH, `1..${MAX_BATCH} event per batch`);\n  return body.events.map((e: any, i: number): EventRow => {\n    const at = `events[${i}]`, t = Date.parse(e?.ts);\n    check(typeof e?.event_id === \"string\" && UUID.test(e.event_id), `${at}.event_id harus UUID`);\n    check(Number.isFinite(t) && t > now - MAX_AGE_MS && t < now + MAX_SKEW_MS, `${at}.ts di luar jendela (30 hari ke belakang, 5 menit ke depan)`);\n    check(typeof e.unit === \"string\" && UNIT.test(e.unit), `${at}.unit harus id pseudonim 8-64 karakter [A-Za-z0-9_-], bukan email atau data pribadi`);\n    check(e.value === undefined || Number.isFinite(e.value), `${at}.value harus angka`);\n    if (e.kind === \"exposure\") check(isKey(e.flag_key) && isKey(e.variant), `${at}: exposure butuh flag_key dan variant`);\n    else check(e.kind === \"conversion\" && isKey(e.metric), `${at}: kind harus exposure atau conversion (conversion butuh metric)`);\n    const exp = e.kind === \"exposure\";\n    return {\n      event_id: e.event_id.toLowerCase(), ts: new Date(t).toISOString(), kind: e.kind, unit: e.unit,\n      flag_key: exp ? e.flag_key : null, variant: exp ? e.variant : null, metric: exp ? null : e.metric, value: e.value ?? 1,\n    };\n  });\n}\n\n// Satu INSERT untuk seluruh batch. Duplikat (event_id, ts) dilewati: kirim ulang aman.\nexport async function insertEvents(events: EventRow[]): Promise<number> {\n  const { rowCount } = await pool.query(\n    `INSERT INTO events (event_id, ts, kind, unit, flag_key, variant, metric, value)\n     SELECT event_id, ts, kind, unit, flag_key, variant, metric, value\n     FROM jsonb_to_recordset($1::jsonb) AS x(event_id uuid, ts timestamptz, kind text, unit text,\n                                              flag_key text, variant text, metric text, value float8)\n     ON CONFLICT DO NOTHING`,\n    [JSON.stringify(events)]);\n  return rowCount ?? 0;\n}\n"
+        },
+        {
+          "id": "pea-m-server",
+          "kind": "kode",
+          "name": "src/server.ts",
+          "lang": "typescript",
+          "content": "import { createHash, timingSafeEqual } from \"node:crypto\";\nimport { createServer, type IncomingMessage, type ServerResponse } from \"node:http\";\nimport pg from \"pg\";\nimport { DATABASE_URL } from \"./db.ts\";\nimport { auditFor, listFlags, putFlag, setKilled } from \"./flags.ts\";\nimport { HttpError, readJson, send } from \"./http.ts\";\nimport { insertEvents, validateBatch } from \"./ingest.ts\";\n\nconst sha = (s: string) => createHash(\"sha256\").update(s).digest();\nconst SDK_KEY = sha(process.env.SDK_KEY ?? \"sdk-dev-key\");\n// ADMIN_TOKENS=\"ani=token-panjang-1,budi=token-panjang-2\": nama dipakai sebagai actor di audit log.\nconst ADMINS = (process.env.ADMIN_TOKENS ?? \"dev=admin-dev-token\").split(\",\").map((pair) => {\n  const [name, token] = pair.split(\"=\");\n  return { name, digest: sha(token ?? \"\") };\n});\n\nconst bearer = (req: IncomingMessage) => sha((req.headers.authorization ?? \"\").replace(/^Bearer /, \"\"));\nfunction adminActor(req: IncomingMessage): string {\n  const d = bearer(req);\n  const admin = ADMINS.find((a) => timingSafeEqual(a.digest, d));\n  if (!admin) throw new HttpError(401, \"token admin tidak valid\");\n  return admin.name;\n}\nfunction requireSdk(req: IncomingMessage): void {\n  if (!timingSafeEqual(bearer(req), SDK_KEY)) throw new HttpError(401, \"SDK key tidak valid\");\n}\n\n// Hanya kolom yang dibutuhkan SDK untuk evaluasi. Metrik dan deskripsi tetap di server.\nconst forSdk = (f: Awaited<ReturnType<typeof listFlags>>[number]) => ({\n  key: f.key, status: f.status, killed: f.killed, salt: f.salt, traffic_bp: f.traffic_bp,\n  variants: f.variants, default_variant: f.default_variant,\n});\n\nconst streams = new Set<ServerResponse>();\n\n// LISTEN di koneksi khusus. Setiap instance server menerima NOTIFY lalu meneruskannya ke SDK via SSE.\nexport async function listenForChanges(): Promise<pg.Client> {\n  const client = new pg.Client({ connectionString: DATABASE_URL });\n  client.on(\"error\", (e) => { console.error(\"koneksi LISTEN putus, keluar:\", e.message); process.exit(1); });\n  client.on(\"notification\", (n) => {\n    for (const res of streams) res.write(`event: flags\\ndata: ${n.payload}\\n\\n`);\n  });\n  await client.connect();\n  await client.query(\"LISTEN flags\");\n  return client;\n}\nsetInterval(() => { for (const res of streams) res.write(\": ping\\n\\n\"); }, 25_000).unref();\n\nexport function createApp() {\n  return createServer(async (req, res) => {\n    const url = new URL(req.url ?? \"/\", \"http://localhost\");\n    const p = url.pathname, m = req.method;\n    try {\n      if (m === \"GET\" && p === \"/healthz\") return send(res, 200, { ok: true });\n\n      if (p.startsWith(\"/sdk/\") || p === \"/events\") requireSdk(req);\n      if (m === \"GET\" && p === \"/sdk/flags\") {\n        const flags = await listFlags();\n        const etag = `\"${Math.max(0, ...flags.map((f) => Number(f.version)))}\"`;\n        if (req.headers[\"if-none-match\"] === etag) return send(res, 304, undefined, { etag });\n        return send(res, 200, { flags: flags.map(forSdk) }, { etag });\n      }\n      if (m === \"GET\" && p === \"/sdk/stream\") {\n        res.writeHead(200, { \"content-type\": \"text/event-stream\", \"cache-control\": \"no-cache\" });\n        res.write(\": terhubung\\n\\n\");\n        streams.add(res);\n        req.on(\"close\", () => streams.delete(res));\n        return;\n      }\n      if (m === \"POST\" && p === \"/events\") {\n        const events = validateBatch(await readJson(req));\n        const accepted = await insertEvents(events);\n        return send(res, 202, { accepted, duplicates: events.length - accepted });\n      }\n\n      const f = p.match(/^\\/admin\\/flags\\/([^/]+)(\\/kill|\\/audit)?$/);\n      if (p === \"/admin/flags\" || f) {\n        const actor = adminActor(req);\n        if (m === \"GET\" && !f) return send(res, 200, await listFlags());\n        if (f && m === \"PUT\" && !f[2]) return send(res, 200, await putFlag(actor, f[1], await readJson(req)));\n        if (f && m === \"POST\" && f[2] === \"/kill\") {\n          const b = await readJson(req);\n          return send(res, 200, await setKilled(actor, f[1], b?.killed !== false, b?.reason));\n        }\n        if (f && m === \"GET\" && f[2] === \"/audit\") return send(res, 200, await auditFor(f[1]));\n      }\n      send(res, 404, { error: \"tidak ditemukan\" });\n    } catch (e) {\n      if (e instanceof HttpError) return send(res, e.status, { error: e.message });\n      console.error(e);\n      send(res, 500, { error: \"kesalahan server\" });\n    }\n  });\n}\n"
+        },
+        {
+          "id": "pea-m-main",
+          "kind": "kode",
+          "name": "src/main.ts",
+          "lang": "typescript",
+          "content": "import { pool } from \"./db.ts\";\nimport { createApp, listenForChanges } from \"./server.ts\";\n\nif (process.env.NODE_ENV === \"production\" && (!process.env.SDK_KEY || !process.env.ADMIN_TOKENS)) {\n  console.error(\"SDK_KEY dan ADMIN_TOKENS wajib diisi di production\");\n  process.exit(1);\n}\n// Tiap 6 jam: siapkan partisi bulan depan jauh sebelum dibutuhkan, dan segarkan statistik tabel\n// induk (autovacuum hanya meng-ANALYZE partisi, tidak pernah induknya).\nconst maintenance = () => pool.query(\"SELECT ensure_event_partitions(); ANALYZE events;\");\nawait maintenance();\nsetInterval(() => maintenance().catch(console.error), 6 * 3_600_000).unref();\nawait listenForChanges();\n\nconst port = Number(process.env.PORT ?? 3000);\ncreateApp().listen(port, () => console.log(`eksperimen-ab siap di http://localhost:${port}`));\n"
+        },
+        {
+          "id": "pea-m-ingest-test",
+          "kind": "kode",
+          "name": "test/ingest.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport { randomUUID } from \"node:crypto\";\nimport type { AddressInfo } from \"node:net\";\nimport { after, before, test } from \"node:test\";\nimport { pool } from \"../src/db.ts\";\nimport { createApp } from \"../src/server.ts\";\n\nconst server = createApp();\nlet base = \"\";\nbefore(() => new Promise<void>((ok) => server.listen(0, () => {\n  base = `http://localhost:${(server.address() as AddressInfo).port}`;\n  ok();\n})));\nafter(async () => { server.close(); await pool.end(); });\n\nconst post = (events: unknown[], key = \"sdk-dev-key\") => fetch(`${base}/events`, {\n  method: \"POST\", body: JSON.stringify({ events }),\n  headers: { authorization: `Bearer ${key}`, \"content-type\": \"application/json\" },\n});\nconst conv = (unit = \"u_tes_ingest_1\") => ({\n  event_id: randomUUID(), ts: new Date().toISOString(), kind: \"conversion\", unit, metric: \"checkout\", value: 1,\n});\n\ntest(\"batch yang sama dikirim dua kali: kiriman kedua semuanya duplikat\", async () => {\n  const batch = [conv(), conv(), conv()];\n  const first = await post(batch);\n  assert.equal(first.status, 202);\n  assert.deepEqual(await first.json(), { accepted: 3, duplicates: 0 });\n  assert.deepEqual(await (await post(batch)).json(), { accepted: 0, duplicates: 3 });\n  const { rows } = await pool.query(\"SELECT count(*)::int AS n FROM events WHERE event_id = ANY($1)\", [batch.map((e) => e.event_id)]);\n  assert.equal(rows[0].n, 3);\n});\n\ntest(\"event masuk ke partisi bulanan, bukan partisi default\", async () => {\n  const e = conv();\n  await post([e]);\n  const { rows } = await pool.query(\"SELECT tableoid::regclass::text AS part FROM events WHERE event_id = $1\", [e.event_id]);\n  assert.match(rows[0].part, /^events_\\d{4}_\\d{2}$/);\n});\n\ntest(\"email sebagai unit ditolak (tanpa PII)\", async () => {\n  const r = await post([conv(\"budi@contoh.id\")]);\n  assert.equal(r.status, 422);\n  assert.match(((await r.json()) as { error: string }).error, /pseudonim/);\n});\n\ntest(\"ts lebih dari 30 hari lalu ditolak, batch kosong ditolak, key salah 401\", async () => {\n  assert.equal((await post([{ ...conv(), ts: new Date(Date.now() - 40 * 86_400_000).toISOString() }])).status, 422);\n  assert.equal((await post([])).status, 422);\n  assert.equal((await post([conv()], \"salah\")).status, 401);\n});\n"
+        },
+        {
+          "id": "pea-m-pg-autovac",
+          "kind": "tautan",
+          "name": "PostgreSQL: autovacuum dan statistik tabel berpartisi",
+          "url": "https://www.postgresql.org/docs/current/routine-vacuuming.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-ingest-1",
+          "text": "Batch yang sama dikirim dua kali menghasilkan accepted 0 pada kiriman kedua."
+        },
+        {
+          "id": "pea-c-ingest-2",
+          "text": "Event dengan unit berupa email ditolak 422."
+        },
+        {
+          "id": "pea-c-ingest-3",
+          "text": "Mengubah flag lewat PUT memunculkan event: flags di koneksi /sdk/stream."
+        },
+        {
+          "id": "pea-c-ingest-4",
+          "text": "Empat tes di test/ingest.test.ts hijau."
+        },
+        {
+          "id": "pea-c-ingest-5",
+          "text": "Aku bisa menjelaskan kenapa at-least-once ditambah idempotensi memberi hasil tepat sekali."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "sdk-typescript",
+      "title": "SDK TypeScript: evaluasi lokal, streaming, dan batching",
+      "est_minutes": 240,
+      "body": "## SDK yang baik tidak terasa\n\nKode produk memanggil `client.variant(\"tombol-checkout\", user.id)` di jalur request. Panggilan itu harus **sinkron dan tanpa jaringan**: flag sudah ada di memori, assignment dihitung dengan `assign()` yang sama dengan server. Kalau server eksperimen mati, aplikasi tetap jalan dengan konfigurasi terakhir, atau dengan `fallback` kalau belum pernah berhasil memuat.\n\n## Empat tanggung jawab SDK\n\n1. **Cache lokal.** `refresh()` memakai ETag, jadi polling yang tidak menemukan perubahan cukup dijawab 304 tanpa body.\n2. **Update cepat.** Mode `stream` membaca SSE dengan `fetch` + `TextDecoderStream`, tanpa library. Setiap kali (re)connect, SDK memanggil `refresh()` sekali untuk menutup celah perubahan yang terjadi saat terputus. Putus berarti backoff 1 sampai 30 detik. Mode `poll` adalah cadangan untuk lingkungan yang memblokir koneksi panjang.\n3. **Exposure sekali per unit.** Set `exposed` mencegah satu request ramai mengirim ribuan exposure yang sama. Analisis tetap aman kalau ada duplikat lintas proses, karena yang dipakai adalah exposure pertama.\n4. **Batching dan retry.** Event diantrekan dan dikirim tiap `flushMs` atau saat antrean mencapai `maxBatch`. Gagal jaringan berarti batch tetap di depan antrean dan dikirim ulang dengan `event_id` yang **sama**. Antrean dibatasi `maxQueue`, karena lebih baik membuang event (dan menghitungnya di `dropped`) daripada membuat aplikasi kehabisan memori.\n\n**Tanpa PII:** `pseudonym(unitSecret, userId)` adalah HMAC-SHA256. Tanpa `unitSecret`, server tidak bisa membalik ID ke email, bahkan dengan menebak daftar email. Hash biasa tanpa kunci bisa dibalik dengan cara menebak seperti itu.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis `sdk/client.ts` dan `test/sdk.test.ts`.\n2. Jalankan `node --test test/sdk.test.ts`. Tes kill switch mencetak berapa milidetik sampai SDK berpindah ke `control`. Catat angkanya untuk laporan.\n3. Uji ketahanan secara manual: jalankan aplikasi kecil yang memanggil `variant()` dalam loop, matikan `npm start` selama 20 detik, lalu nyalakan lagi. Evaluasi harus tetap jalan, dan event yang tertahan harus terkirim setelah server kembali.\n\n## Batasan\n\n- Tidak ada I/O di `variant()` dan `track()`.\n- `close()` mencoba mengirim sisa antrean, tetapi tidak menggantung kalau server tidak bisa dihubungi.\n\n## Kriteria diterima\n\n- Tiga tes SDK hijau. Kill switch sampai ke SDK dalam kurang dari 2 detik (biasanya puluhan milidetik).\n- Tabel `events` tidak berisi email atau user ID asli.\n",
+      "materials": [
+        {
+          "id": "pea-m-sdk",
+          "kind": "kode",
+          "name": "sdk/client.ts",
+          "lang": "typescript",
+          "content": "// SDK server-side: evaluasi flag di memori (tanpa jaringan per request),\n// update lewat SSE atau polling, event dikirim per batch dengan event_id tetap.\nimport { randomUUID } from \"node:crypto\";\nimport { assign, pseudonym, type FlagConfig } from \"../src/hash.ts\";\n\nexport type ClientOptions = {\n  baseUrl: string;\n  sdkKey: string;\n  unitSecret: string;           // rahasia HMAC untuk id pseudonim; sama di semua instance aplikasi\n  mode?: \"stream\" | \"poll\";\n  pollMs?: number;\n  flushMs?: number;\n  maxBatch?: number;\n  maxQueue?: number;\n};\ntype OutEvent = {\n  event_id: string; ts: string; kind: \"exposure\" | \"conversion\"; unit: string;\n  flag_key?: string; variant?: string; metric?: string; value?: number;\n};\n\nexport class AbClient {\n  private o: Required<ClientOptions>;\n  private flags = new Map<string, FlagConfig>();\n  private etag = \"\";\n  private queue: OutEvent[] = [];\n  private exposed = new Set<string>(); // ponytail: Set tanpa batas; ganti LRU kalau satu proses melihat jutaan unit\n  private flushing = false;\n  private timers: NodeJS.Timeout[] = [];\n  private stop = new AbortController();\n  dropped = 0;\n\n  constructor(options: ClientOptions) {\n    this.o = { mode: \"stream\", pollMs: 30_000, flushMs: 2_000, maxBatch: 200, maxQueue: 10_000, ...options };\n  }\n\n  async start(): Promise<void> {\n    // Server mati saat start bukan alasan aplikasi ikut mati: semua flag jatuh ke fallback.\n    await this.refresh().catch((e) => console.warn(`[ab] gagal memuat flag, pakai fallback: ${e.message}`));\n    if (this.o.mode === \"stream\") void this.stream();\n    else this.timers.push(setInterval(() => void this.refresh().catch(() => {}), this.o.pollMs));\n    this.timers.push(setInterval(() => void this.flush(), this.o.flushMs));\n  }\n\n  /** Varian untuk user ini. Sinkron, tanpa I/O, aman dipanggil di jalur request. */\n  variant(flagKey: string, userId: string, fallback = \"control\"): string {\n    const flag = this.flags.get(flagKey);\n    if (!flag) return fallback;\n    const unit = pseudonym(this.o.unitSecret, userId);\n    const a = assign(flag, unit);\n    const seen = `${flagKey}:${unit}`;\n    if (a.inExperiment && !this.exposed.has(seen)) {\n      this.exposed.add(seen);\n      this.push({ kind: \"exposure\", unit, flag_key: flagKey, variant: a.variant });\n    }\n    return a.variant;\n  }\n\n  /** Catat conversion, mis. track(\"checkout\", userId, 125000). */\n  track(metric: string, userId: string, value = 1): void {\n    this.push({ kind: \"conversion\", unit: pseudonym(this.o.unitSecret, userId), metric, value });\n  }\n\n  async flush(): Promise<void> {\n    if (this.flushing || this.queue.length === 0) return;\n    this.flushing = true;\n    const batch = this.queue.slice(0, this.o.maxBatch);\n    try {\n      const r = await fetch(`${this.o.baseUrl}/events`, {\n        method: \"POST\",\n        headers: { authorization: `Bearer ${this.o.sdkKey}`, \"content-type\": \"application/json\" },\n        body: JSON.stringify({ events: batch }),\n        signal: AbortSignal.timeout(10_000),\n      });\n      // 2xx: terkirim. 4xx selain 429: data rusak, mengulang tidak akan menolong.\n      if (r.ok || (r.status >= 400 && r.status < 500 && r.status !== 429)) {\n        if (!r.ok) console.warn(`[ab] batch ditolak ${r.status}: ${await r.text()}`);\n        this.queue.splice(0, batch.length);\n      }\n    } catch {\n      // Jaringan putus atau timeout: batch tetap di depan antrean dan dikirim ulang\n      // dengan event_id yang SAMA. Server membuang duplikat, jadi at-least-once tetap benar.\n    } finally {\n      this.flushing = false;\n    }\n  }\n\n  async close(): Promise<void> {\n    this.stop.abort();\n    this.timers.forEach(clearInterval);\n    while (this.queue.length > 0) {\n      const before = this.queue.length;\n      await this.flush();\n      if (this.queue.length >= before) break; // server tidak bisa dihubungi: jangan menggantung saat shutdown\n    }\n  }\n\n  private push(e: Omit<OutEvent, \"event_id\" | \"ts\">): void {\n    if (this.queue.length >= this.o.maxQueue) { this.dropped++; return; } // lindungi memori aplikasi\n    this.queue.push({ event_id: randomUUID(), ts: new Date().toISOString(), ...e });\n    if (this.queue.length >= this.o.maxBatch) void this.flush();\n  }\n\n  private async refresh(): Promise<void> {\n    const r = await fetch(`${this.o.baseUrl}/sdk/flags`, {\n      headers: { authorization: `Bearer ${this.o.sdkKey}`, \"if-none-match\": this.etag },\n      signal: AbortSignal.timeout(5_000),\n    });\n    if (r.status === 304) return;\n    if (!r.ok) throw new Error(`GET /sdk/flags ${r.status}`);\n    const body = (await r.json()) as { flags: FlagConfig[] };\n    this.flags = new Map(body.flags.map((f) => [f.key, f]));\n    this.etag = r.headers.get(\"etag\") ?? \"\";\n  }\n\n  private async stream(): Promise<void> {\n    let wait = 1_000;\n    while (!this.stop.signal.aborted) {\n      try {\n        const r = await fetch(`${this.o.baseUrl}/sdk/stream`, {\n          headers: { authorization: `Bearer ${this.o.sdkKey}` }, signal: this.stop.signal,\n        });\n        if (!r.ok || !r.body) throw new Error(`stream ${r.status}`);\n        await this.refresh(); // tutup celah: perubahan selama terputus tidak terlewat\n        wait = 1_000;\n        let buf = \"\";\n        for await (const chunk of r.body.pipeThrough(new TextDecoderStream())) {\n          buf += chunk;\n          for (let i = buf.indexOf(\"\\n\\n\"); i >= 0; i = buf.indexOf(\"\\n\\n\")) {\n            const message = buf.slice(0, i);\n            buf = buf.slice(i + 2);\n            if (message.startsWith(\"event: flags\")) await this.refresh().catch(() => {});\n          }\n        }\n      } catch {\n        if (this.stop.signal.aborted) return;\n      }\n      await new Promise((ok) => setTimeout(ok, wait));\n      wait = Math.min(wait * 2, 30_000); // backoff saat server tidak bisa dihubungi\n    }\n  }\n}\n"
+        },
+        {
+          "id": "pea-m-sdk-test",
+          "kind": "kode",
+          "name": "test/sdk.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport type { AddressInfo } from \"node:net\";\nimport { after, before, test } from \"node:test\";\nimport { AbClient } from \"../sdk/client.ts\";\nimport { pool } from \"../src/db.ts\";\nimport { putFlag, setKilled } from \"../src/flags.ts\";\nimport { assign, pseudonym } from \"../src/hash.ts\";\nimport { createApp, listenForChanges } from \"../src/server.ts\";\n\nconst server = createApp();\nconst key = `tes-sdk-${Date.now()}`;\nlet client: AbClient;\nlet listener: Awaited<ReturnType<typeof listenForChanges>>;\n\nbefore(async () => {\n  listener = await listenForChanges();\n  await new Promise<void>((ok) => server.listen(0, () => ok()));\n  await putFlag(\"tes\", key, {\n    status: \"running\", traffic_bp: 10_000, default_variant: \"control\",\n    variants: [{ key: \"control\", weight: 5000 }, { key: \"treatment\", weight: 5000 }],\n  });\n  client = new AbClient({\n    baseUrl: `http://localhost:${(server.address() as AddressInfo).port}`,\n    sdkKey: \"sdk-dev-key\", unitSecret: \"rahasia-tes\", flushMs: 200,\n  });\n  await client.start();\n});\nafter(async () => {\n  await client.close();\n  server.closeAllConnections();\n  server.close();\n  await listener.end();\n  await pool.end();\n});\n\nconst waitFor = async (ok: () => boolean | Promise<boolean>, ms = 3_000) => {\n  const t0 = Date.now();\n  while (!(await ok())) {\n    if (Date.now() - t0 > ms) throw new Error(\"timeout\");\n    await new Promise((r) => setTimeout(r, 20));\n  }\n  return Date.now() - t0;\n};\n\ntest(\"evaluasi lokal sama dengan assign(), exposure dikirim sekali, tanpa PII\", async () => {\n  const email = \"budi@contoh.id\";\n  const unit = pseudonym(\"rahasia-tes\", email);\n  const flag = (await pool.query(\"SELECT * FROM flags WHERE key = $1\", [key])).rows[0];\n  for (let i = 0; i < 5; i++) assert.equal(client.variant(key, email), assign(flag, unit).variant);\n  client.track(\"checkout\", email, 125_000);\n  const q = () => pool.query(\"SELECT kind FROM events WHERE unit = $1 ORDER BY kind\", [unit]);\n  await waitFor(async () => (await q()).rows.length === 2);\n  assert.deepEqual((await q()).rows.map((r) => r.kind), [\"conversion\", \"exposure\"]);\n  const leak = await pool.query(\"SELECT count(*)::int AS n FROM events WHERE unit LIKE '%budi%'\");\n  assert.equal(leak.rows[0].n, 0);\n});\n\ntest(\"kill switch sampai ke SDK lewat SSE dalam < 2 detik\", async () => {\n  const users = Array.from({ length: 50 }, (_, i) => `user-${i}`);\n  assert.ok(users.some((u) => client.variant(key, u) === \"treatment\"));\n  await setKilled(\"tes\", key, true, \"uji kill switch\");\n  const ms = await waitFor(() => users.every((u) => client.variant(key, u) === \"control\"));\n  console.log(`kill switch diterima SDK dalam ${ms} ms`);\n  assert.ok(ms < 2_000);\n});\n\ntest(\"flag tak dikenal memakai fallback\", () => {\n  assert.equal(client.variant(\"tidak-ada\", \"user-1\", \"lama\"), \"lama\");\n});\n"
+        },
+        {
+          "id": "pea-m-sse-mdn",
+          "kind": "tautan",
+          "name": "MDN: Using server-sent events",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-sdk-1",
+          "text": "variant() mengembalikan hasil yang sama dengan assign() tanpa memanggil jaringan."
+        },
+        {
+          "id": "pea-c-sdk-2",
+          "text": "Kill switch sampai ke SDK lewat SSE dalam kurang dari 2 detik, dan aku mencatat angkanya."
+        },
+        {
+          "id": "pea-c-sdk-3",
+          "text": "Event yang gagal terkirim dikirim ulang dengan event_id yang sama."
+        },
+        {
+          "id": "pea-c-sdk-4",
+          "text": "Tabel events hanya berisi id pseudonim, tidak ada email."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "pipeline-analisis-statistik",
+      "title": "Pipeline analisis: SRM, uji z, Welch, CUPED, dan power",
+      "est_minutes": 300,
+      "body": "## Urutan membaca hasil eksperimen\n\n**1. SRM dulu, selalu.** Kalau bobotnya 50/50 tetapi yang ter-expose 20.000 lawan 19.000, ada yang rusak. Mungkin halaman treatment crash sebelum exposure tercatat, atau bot hanya masuk ke satu varian. Uji chi-square goodness of fit membandingkan jumlah unit dengan bobot. Ambangnya ketat (p < 0,001) karena diperiksa di setiap eksperimen. Kalau SRM gagal, **jangan baca angka lain**: hasilnya bias ke arah yang tidak bisa ditebak.\n\n**2. Metrik binomial: uji dua proporsi.** Uji H0 memakai SE gabungan (pooled) karena di bawah H0 kedua proporsi sama. CI untuk selisih memakai SE tak gabungan.\n\n**3. Metrik rata-rata: Welch t-test.** Varians treatment dan control tidak diasumsikan sama. Derajat bebasnya memakai rumus Welch-Satterthwaite.\n\n**4. CUPED.** Banyak variasi antar pengguna sudah ada *sebelum* eksperimen: pembeli rajin tetap rajin. CUPED mengurangi bagian yang bisa diprediksi dari data pra-eksperimen: `y' = y - θ(x - mean(x))` dengan `θ = cov(x, y) / var(x)`. Karena `x` diukur sebelum unit melihat varian, `x` tidak dipengaruhi treatment, rata-rata selisihnya tetap sama (tak bias), dan variansnya turun sebesar korelasi². Varians turun 30% berarti eksperimen butuh 30% lebih sedikit unit untuk presisi yang sama.\n\n**5. Guardrail.** Metrik yang memburuk signifikan (CI seluruhnya di sisi buruk) memunculkan peringatan, walau metrik utama menang.\n\n## Statistik cukup: Postgres menjumlah, Node menghitung\n\nQuery di `report.ts` mengubah jutaan event menjadi enam angka per varian: `n, Σy, Σy², Σx, Σx², Σxy`. Dari enam angka itu semua rata-rata, varians, kovarians, θ, dan CI bisa dihitung, sehingga yang dikirim ke Node hanya beberapa baris.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis `src/analysis/stats.ts`, `tests.ts`, `power.ts`, `report.ts`, `scripts/power.ts`, dan `test/stats.test.ts`.\n2. Tambahkan route hasil ke `src/server.ts` sesuai potongan di Bahan.\n3. Jalankan `node --test test/stats.test.ts`. Nilai rujukannya berasal dari tabel distribusi, dan uji Welch dicek dengan integrasi numerik densitas t.\n4. Kalkulator sampel: `npm run power -- 0.10 0.01 8000`. Baseline 10% dan MDE 1 poin butuh sekitar 14.750 unit per varian.\n\n## Batasan\n\n- Laporan selalu menampilkan CI, bukan hanya p-value, dan memakai label \"belum jelas\" kalau CI memuat nol.\n- Unit yang ter-expose ke lebih dari satu varian dibuang dan **dihitung**. Kalau jumlahnya bukan nol, ada bug.\n\n## Kriteria diterima\n\n- Enam tes statistik hijau.\n- `npm run typecheck` lulus setelah route hasil ditambahkan.\n- Kamu bisa menjelaskan kenapa kovariat CUPED harus diukur sebelum exposure.\n",
+      "materials": [
+        {
+          "id": "pea-m-stats",
+          "kind": "kode",
+          "name": "src/analysis/stats.ts",
+          "lang": "typescript",
+          "content": "// Fungsi distribusi untuk uji statistik, tanpa dependensi.\n// Rumus dari Numerical Recipes; nilainya dicek terhadap tabel di test/stats.test.ts.\n\n// Distribusi normal baku. erfc pendekatan Chebyshev, galat < 1.2e-7.\nexport function normalCdf(z: number): number {\n  const x = Math.abs(z) / Math.SQRT2, t = 1 / (1 + 0.5 * x);\n  const erfc = t * Math.exp(-x * x - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 +\n    t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));\n  return z >= 0 ? 1 - erfc / 2 : erfc / 2;\n}\n\n// Cari x dengan bisection: cukup cepat untuk laporan, dan mustahil salah arah.\nfunction invert(f: (x: number) => number, target: number, lo: number, hi: number): number {\n  for (let i = 0; i < 100; i++) {\n    const mid = (lo + hi) / 2;\n    if (f(mid) < target) lo = mid; else hi = mid;\n  }\n  return (lo + hi) / 2;\n}\nexport const normalQuantile = (p: number) => invert(normalCdf, p, -12, 12);\n\nfunction lnGamma(x: number): number {\n  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];\n  let y = x, tmp = x + 5.5, ser = 1.000000000190015;\n  tmp -= (x + 0.5) * Math.log(tmp);\n  for (const ci of c) ser += ci / ++y;\n  return -tmp + Math.log((2.5066282746310005 * ser) / x);\n}\n\nconst TINY = 1e-300;\n// Fungsi gamma tak lengkap atas teregularisasi Q(a, x).\nfunction gammaQ(a: number, x: number): number {\n  if (x <= 0) return 1;\n  const front = Math.exp(-x + a * Math.log(x) - lnGamma(a));\n  if (x < a + 1) { // deret\n    let ap = a, sum = 1 / a, del = sum;\n    for (let n = 0; n < 1000 && Math.abs(del) > Math.abs(sum) * 1e-15; n++) { del *= x / ++ap; sum += del; }\n    return 1 - sum * front;\n  }\n  let b = x + 1 - a, c = 1 / TINY, d = 1 / b, h = d; // pecahan berlanjut (Lentz)\n  for (let i = 1; i < 1000; i++) {\n    const an = -i * (i - a);\n    b += 2;\n    d = an * d + b; if (Math.abs(d) < TINY) d = TINY;\n    c = b + an / c; if (Math.abs(c) < TINY) c = TINY;\n    d = 1 / d;\n    h *= d * c;\n    if (Math.abs(d * c - 1) < 1e-15) break;\n  }\n  return front * h;\n}\nexport const chiSquareP = (x: number, df: number) => gammaQ(df / 2, x / 2);\n\nfunction betaCf(a: number, b: number, x: number): number {\n  const qab = a + b, qap = a + 1, qam = a - 1;\n  let c = 1, d = 1 - (qab * x) / qap;\n  if (Math.abs(d) < TINY) d = TINY;\n  d = 1 / d;\n  let h = d;\n  for (let m = 1; m <= 1000; m++) {\n    const m2 = 2 * m;\n    for (const aa of [(m * (b - m) * x) / ((qam + m2) * (a + m2)), (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2))]) {\n      d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;\n      c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;\n      d = 1 / d;\n      h *= d * c;\n    }\n    if (Math.abs(d * c - 1) < 1e-15) break;\n  }\n  return h;\n}\n// Fungsi beta tak lengkap teregularisasi I_x(a, b).\nfunction betaI(a: number, b: number, x: number): number {\n  if (x <= 0) return 0;\n  if (x >= 1) return 1;\n  const bt = Math.exp(lnGamma(a + b) - lnGamma(a) - lnGamma(b) + a * Math.log(x) + b * Math.log(1 - x));\n  return x < (a + 1) / (a + b + 2) ? (bt * betaCf(a, b, x)) / a : 1 - (bt * betaCf(b, a, 1 - x)) / b;\n}\n// p-value dua sisi distribusi t Student.\nexport const tTwoSidedP = (t: number, df: number) => betaI(df / 2, 0.5, df / (df + t * t));\n// Nilai kritis t untuk CI dengan tingkat `level` (mis. 0.95).\nexport const tCritical = (level: number, df: number) => invert((t) => 1 - tTwoSidedP(t, df), level, 0, 1e4);\n"
+        },
+        {
+          "id": "pea-m-tests",
+          "kind": "kode",
+          "name": "src/analysis/tests.ts",
+          "lang": "typescript",
+          "content": "import { chiSquareP, normalCdf, normalQuantile, tCritical, tTwoSidedP } from \"./stats.ts\";\n\n// Statistik cukup per varian: semua uji di bawah hanya butuh jumlah-jumlah ini,\n// jadi Postgres yang menjumlah jutaan baris, Node hanya menghitung belasan angka.\n// y = metrik selama eksperimen, x = metrik yang sama sebelum unit ter-expose (kovariat CUPED).\nexport type Sums = { n: number; sy: number; syy: number; sx: number; sxx: number; sxy: number };\nexport type Estimate = { control: number; treatment: number; diff: number; lo: number; hi: number; p: number; rel: number };\n\nconst cov = (sab: number, sa: number, sb: number, n: number) => (sab - (sa * sb) / n) / (n - 1);\n\n// Sample Ratio Mismatch: apakah jumlah unit per varian cocok dengan bobot? Chi-square goodness of fit.\nexport function srm(observed: number[], weights: number[]): { chi2: number; p: number; ok: boolean } {\n  const total = observed.reduce((a, b) => a + b, 0), wsum = weights.reduce((a, b) => a + b, 0);\n  const chi2 = observed.reduce((s, o, i) => {\n    const e = (total * weights[i]) / wsum;\n    return s + (o - e) ** 2 / e;\n  }, 0);\n  const p = chiSquareP(chi2, observed.length - 1);\n  return { chi2, p, ok: p >= 0.001 }; // ambang ketat: SRM diperiksa di setiap eksperimen\n}\n\n// Uji dua proporsi. Uji H0 memakai SE gabungan (pooled); CI memakai SE tak gabungan.\nexport function twoProportion(x1: number, n1: number, x2: number, n2: number, level = 0.95): Estimate {\n  const p1 = x1 / n1, p2 = x2 / n2, pooled = (x1 + x2) / (n1 + n2), diff = p2 - p1;\n  const seH0 = Math.sqrt(pooled * (1 - pooled) * (1 / n1 + 1 / n2));\n  const se = Math.sqrt((p1 * (1 - p1)) / n1 + (p2 * (1 - p2)) / n2);\n  const q = normalQuantile(1 - (1 - level) / 2);\n  const p = seH0 > 0 ? 2 * (1 - normalCdf(Math.abs(diff / seH0))) : 1;\n  return { control: p1, treatment: p2, diff, lo: diff - q * se, hi: diff + q * se, p, rel: diff / p1 };\n}\n\n// Welch t-test: tidak mengasumsikan varians kedua grup sama.\nexport function welch(m1: number, v1: number, n1: number, m2: number, v2: number, n2: number, level = 0.95): Estimate {\n  const a = v1 / n1, b = v2 / n2, se = Math.sqrt(a + b), diff = m2 - m1;\n  const df = (a + b) ** 2 / ((a * a) / (n1 - 1) + (b * b) / (n2 - 1));\n  const q = tCritical(level, df);\n  return { control: m1, treatment: m2, diff, lo: diff - q * se, hi: diff + q * se, p: se > 0 ? tTwoSidedP(diff / se, df) : 1, rel: diff / m1 };\n}\n\nexport const welchFromSums = (c: Sums, t: Sums, level = 0.95) =>\n  welch(c.sy / c.n, cov(c.syy, c.sy, c.sy, c.n), c.n, t.sy / t.n, cov(t.syy, t.sy, t.sy, t.n), t.n, level);\n\n// CUPED: y' = y - theta * (x - mean(x)), theta = cov(x, y) / var(x) dari data gabungan.\n// Rata-rata y' sama dengan y (estimasi tetap tak bias), tetapi variansnya turun sebesar korelasi^2.\nexport function cuped(c: Sums, t: Sums, level = 0.95): Estimate & { theta: number; varianceReduction: number } {\n  const all = { n: c.n + t.n, sy: c.sy + t.sy, sx: c.sx + t.sx, sxx: c.sxx + t.sxx, sxy: c.sxy + t.sxy };\n  const vxAll = cov(all.sxx, all.sx, all.sx, all.n);\n  const theta = vxAll > 0 ? cov(all.sxy, all.sx, all.sy, all.n) / vxAll : 0;\n  const mx = all.sx / all.n;\n  const adjust = (s: Sums) => {\n    const vy = cov(s.syy, s.sy, s.sy, s.n), vx = cov(s.sxx, s.sx, s.sx, s.n), cxy = cov(s.sxy, s.sx, s.sy, s.n);\n    return { mean: s.sy / s.n - theta * (s.sx / s.n - mx), v: vy - 2 * theta * cxy + theta * theta * vx, raw: vy };\n  };\n  const a = adjust(c), b = adjust(t);\n  const est = welch(a.mean, a.v, c.n, b.mean, b.v, t.n, level);\n  return { ...est, rel: est.diff / (c.sy / c.n), theta, varianceReduction: 1 - (a.v + b.v) / (a.raw + b.raw) };\n}\n"
+        },
+        {
+          "id": "pea-m-power",
+          "kind": "kode",
+          "name": "src/analysis/power.ts",
+          "lang": "typescript",
+          "content": "import { normalQuantile } from \"./stats.ts\";\n\nconst z = (alpha: number, power: number) => normalQuantile(1 - alpha / 2) + normalQuantile(power);\n\n// Unit per varian untuk mendeteksi selisih absolut `mde` dari baseline proporsi `base`.\nexport function sampleSizeProportion(base: number, mde: number, alpha = 0.05, power = 0.8): number {\n  const p2 = base + mde;\n  return Math.ceil((z(alpha, power) ** 2 * (base * (1 - base) + p2 * (1 - p2))) / mde ** 2);\n}\n\n// Unit per varian untuk metrik rata-rata dengan simpangan baku `sd`.\n// CUPED yang mengurangi varians sebesar r membuat kebutuhan unit turun dengan faktor (1 - r).\nexport function sampleSizeMean(sd: number, mde: number, alpha = 0.05, power = 0.8, varianceReduction = 0): number {\n  return Math.ceil((2 * z(alpha, power) ** 2 * sd ** 2 * (1 - varianceReduction)) / mde ** 2);\n}\n"
+        },
+        {
+          "id": "pea-m-report",
+          "kind": "kode",
+          "name": "src/analysis/report.ts",
+          "lang": "typescript",
+          "content": "import { pool } from \"../db.ts\";\nimport type { Metric } from \"../flags.ts\";\nimport { HttpError } from \"../http.ts\";\nimport { cuped, srm, twoProportion, welchFromSums, type Sums } from \"./tests.ts\";\n\n// Unit pertama kali ter-expose = awal pengamatannya. Unit yang melihat >1 varian dibuang (dan dihitung).\nconst EXPOSED = `\n  SELECT unit, min(variant) AS variant, count(DISTINCT variant) AS nv, min(ts) AS first_ts\n  FROM events WHERE kind = 'exposure' AND flag_key = $1 GROUP BY unit`;\n\n// Per unit: y = metrik setelah exposure, x = metrik 14 hari sebelum exposure. Lalu dijumlah per varian.\nconst SUMS = `\n  WITH e AS (${EXPOSED}),\n  u AS (\n    SELECT e.variant,\n      count(c.event_id) FILTER (WHERE c.ts >= e.first_ts) AS y_cnt,\n      coalesce(sum(c.value) FILTER (WHERE c.ts >= e.first_ts), 0) AS y_sum,\n      count(c.event_id) FILTER (WHERE c.ts < e.first_ts) AS x_cnt,\n      coalesce(sum(c.value) FILTER (WHERE c.ts < e.first_ts), 0) AS x_sum\n    FROM e LEFT JOIN events c\n      ON c.kind = 'conversion' AND c.metric = $2 AND c.unit = e.unit AND c.ts >= e.first_ts - interval '14 days'\n    WHERE e.nv = 1\n    GROUP BY e.unit, e.variant\n  ),\n  m AS (\n    SELECT variant,\n      CASE WHEN $3 = 'binomial' THEN (y_cnt > 0)::int ELSE y_sum END::float8 AS y,\n      CASE WHEN $3 = 'binomial' THEN (x_cnt > 0)::int ELSE x_sum END::float8 AS x\n    FROM u\n  )\n  SELECT variant, count(*)::float8 AS n, sum(y) AS sy, sum(y * y) AS syy,\n         sum(x) AS sx, sum(x * x) AS sxx, sum(x * y) AS sxy\n  FROM m GROUP BY variant`;\n\nexport async function analyze(flagKey: string, level = 0.95) {\n  const { rows: [flag] } = await pool.query(\n    \"SELECT key, status, killed, variants, default_variant, metrics FROM flags WHERE key = $1\", [flagKey]);\n  if (!flag) throw new HttpError(404, \"flag tidak ditemukan\");\n\n  const { rows: units } = await pool.query(\n    `SELECT variant, count(*) FILTER (WHERE nv = 1)::int AS n, count(*) FILTER (WHERE nv > 1)::int AS multi\n     FROM (${EXPOSED}) e GROUP BY variant`, [flagKey]);\n  const variants: { key: string; weight: number }[] = flag.variants;\n  const counts = variants.map((v) => units.find((r) => r.variant === v.key)?.n ?? 0);\n  const ratio = srm(counts, variants.map((v) => v.weight));\n  const control = flag.default_variant as string;\n\n  const metrics = [];\n  for (const metric of flag.metrics as Metric[]) {\n    const { rows } = await pool.query(SUMS, [flagKey, metric.event, metric.type]);\n    const sums = new Map<string, Sums>(rows.map((r) => [r.variant, r]));\n    const c = sums.get(control);\n    const comparisons = [];\n    for (const v of variants.filter((v) => v.key !== control)) {\n      const t = sums.get(v.key);\n      if (!c || !t || c.n < 2 || t.n < 2) continue;\n      const raw = metric.type === \"binomial\" ? twoProportion(c.sy, c.n, t.sy, t.n, level) : welchFromSums(c, t, level);\n      const adj = cuped(c, t, level);\n      // Keputusan memakai CI CUPED: \"lebih baik\" / \"lebih buruk\" hanya kalau CI tidak memuat 0.\n      const good = metric.better === \"higher\" ? adj.lo > 0 : adj.hi < 0;\n      const bad = metric.better === \"higher\" ? adj.hi < 0 : adj.lo > 0;\n      const verdict = good ? \"lebih baik\" : bad ? \"lebih buruk\" : \"belum jelas\";\n      comparisons.push({ variant: v.key, raw, cuped: adj, verdict });\n    }\n    metrics.push({ ...metric, comparisons });\n  }\n\n  const harmed = metrics.filter((m) => m.role === \"guardrail\" && m.comparisons.some((x) => x.verdict === \"lebih buruk\"));\n  return {\n    flag: flag.key, status: flag.status, killed: flag.killed, level,\n    units: Object.fromEntries(variants.map((v, i) => [v.key, counts[i]])),\n    multi_variant_units: units.reduce((s, r) => s + r.multi, 0),\n    srm: ratio,\n    metrics,\n    warnings: [\n      ...(ratio.ok ? [] : [\"SRM: pembagian unit tidak sesuai bobot. Cari bug sebelum membaca hasil apa pun.\"]),\n      ...harmed.map((m) => `Guardrail ${m.key} memburuk secara signifikan.`),\n    ],\n  };\n}\n"
+        },
+        {
+          "id": "pea-m-route",
+          "kind": "kode",
+          "name": "src/server.ts (tambahan route hasil)",
+          "lang": "typescript",
+          "content": "// (1) Tambahkan di bagian import src/server.ts:\nimport { analyze } from \"./analysis/report.ts\";\n\n// (2) Di dalam createApp(), tepat SEBELUM baris `send(res, 404, { error: \"tidak ditemukan\" });`:\n      const r = p.match(/^\\/admin\\/experiments\\/([^/]+)\\/results$/);\n      if (r && m === \"GET\") {\n        adminActor(req);\n        const level = Number(url.searchParams.get(\"level\") ?? 0.95);\n        return send(res, 200, await analyze(r[1], level > 0.5 && level < 1 ? level : 0.95));\n      }\n"
+        },
+        {
+          "id": "pea-m-power-cli",
+          "kind": "kode",
+          "name": "scripts/power.ts",
+          "lang": "typescript",
+          "content": "// node scripts/power.ts <baseline> <mde-absolut> [unit-per-hari]\n//   contoh: node scripts/power.ts 0.10 0.01 8000\nimport { sampleSizeProportion } from \"../src/analysis/power.ts\";\n\nconst [base, mde, daily] = process.argv.slice(2).map(Number);\nif (!(base > 0 && base < 1 && mde > 0)) throw new Error(\"pakai: node scripts/power.ts 0.10 0.01 [unit-per-hari]\");\nconst n = sampleSizeProportion(base, mde);\nconsole.log(`alpha 0.05, power 0.8: ${n.toLocaleString(\"id-ID\")} unit per varian (${(2 * n).toLocaleString(\"id-ID\")} total)`);\nif (daily > 0) console.log(`dengan ${daily.toLocaleString(\"id-ID\")} unit/hari: minimal ${Math.ceil((2 * n) / daily)} hari, bulatkan ke minggu penuh`);\n"
+        },
+        {
+          "id": "pea-m-stats-test",
+          "kind": "kode",
+          "name": "test/stats.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport { test } from \"node:test\";\nimport { sampleSizeProportion } from \"../src/analysis/power.ts\";\nimport { chiSquareP, normalCdf, normalQuantile, tCritical, tTwoSidedP } from \"../src/analysis/stats.ts\";\nimport { cuped, srm, twoProportion, welch, type Sums } from \"../src/analysis/tests.ts\";\n\nconst near = (a: number, b: number, tol: number) => assert.ok(Math.abs(a - b) < tol, `${a} != ${b}`);\n\ntest(\"nilai distribusi cocok dengan tabel\", () => {\n  near(normalCdf(1.959964), 0.975, 1e-6);\n  near(normalQuantile(0.975), 1.959964, 1e-5);\n  near(chiSquareP(3.841459, 1), 0.05, 1e-6);\n  near(chiSquareP(5.991465, 2), 0.05, 1e-6);\n  near(tTwoSidedP(2.228139, 10), 0.05, 1e-6);\n  near(tCritical(0.95, 10), 2.228139, 1e-5);\n  near(tCritical(0.95, 1e6), 1.959966, 1e-4);\n});\n\ntest(\"SRM: 5000 vs 5000 lolos, 5000 vs 4600 gagal\", () => {\n  assert.ok(srm([5000, 5000], [5000, 5000]).ok);\n  const bad = srm([5000, 4600], [5000, 5000]);\n  near(bad.chi2, 16.667, 1e-3);\n  assert.ok(bad.p < 0.001 && !bad.ok);\n});\n\ntest(\"uji dua proporsi: 10% vs 12% dengan n=5000 per grup\", () => {\n  const r = twoProportion(500, 5000, 600, 5000);\n  near(r.diff, 0.02, 1e-12);\n  near(r.p, 0.001393, 1e-5); // z = 3,196 dengan SE gabungan\n  assert.ok(r.lo > 0 && r.hi < 0.04);\n});\n\ntest(\"Welch: varians berbeda\", () => {\n  const r = welch(10, 4, 50, 11, 16, 30);\n  near(r.p, 0.20942, 1e-4); // t = 1,277, df = 37,8; sama dengan scipy ttest_ind_from_stats(equal_var=False)\n});\n\ntest(\"CUPED: kovariat sempurna menghapus hampir semua varians, rata-rata tetap\", () => {\n  const sums = (pairs: [number, number][]): Sums => pairs.reduce((s, [x, y]) => ({\n    n: s.n + 1, sy: s.sy + y, syy: s.syy + y * y, sx: s.sx + x, sxx: s.sxx + x * x, sxy: s.sxy + x * y,\n  }), { n: 0, sy: 0, syy: 0, sx: 0, sxx: 0, sxy: 0 });\n  const xs = Array.from({ length: 200 }, (_, i) => i % 50);\n  const c = sums(xs.map((x) => [x, 2 * x + 10]));\n  const t = sums(xs.map((x) => [x, 2 * x + 13]));\n  const r = cuped(c, t);\n  near(r.diff, 3, 1e-9);\n  assert.ok(r.varianceReduction > 0.99);\n});\n\ntest(\"kalkulator sampel: baseline 10%, MDE 1 poin -> ~14.750 per varian\", () => {\n  near(sampleSizeProportion(0.1, 0.01), 14_750, 5);\n});\n"
+        },
+        {
+          "id": "pea-m-cuped",
+          "kind": "tautan",
+          "name": "Deng dkk. (2013): CUPED, makalah asli",
+          "url": "https://exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf"
+        },
+        {
+          "id": "pea-m-srm",
+          "kind": "tautan",
+          "name": "Fabijan dkk. (2019): Diagnosing Sample Ratio Mismatch",
+          "url": "https://exp-platform.com/Documents/2019_KDDFabijanGupchupFuptaOmhoverVermeerDmitriev.pdf"
+        },
+        {
+          "id": "pea-m-samplesize",
+          "kind": "tautan",
+          "name": "Evan Miller: kalkulator ukuran sampel",
+          "url": "https://www.evanmiller.org/ab-testing/sample-size.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-analisis-1",
+          "text": "Enam tes di test/stats.test.ts hijau."
+        },
+        {
+          "id": "pea-c-analisis-2",
+          "text": "GET /admin/experiments/:key/results menjawab dengan SRM, CI mentah, dan CI CUPED."
+        },
+        {
+          "id": "pea-c-analisis-3",
+          "text": "Kalkulator sampel menghasilkan sekitar 14.750 unit per varian untuk baseline 10% dan MDE 1 poin."
+        },
+        {
+          "id": "pea-c-analisis-4",
+          "text": "Aku bisa menjelaskan kenapa SRM diperiksa sebelum metrik apa pun."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "bukti-efek-srm-dan-peeking",
+      "title": "Buktikan: efek yang ditanam ditemukan, SRM menangkap bug, mengintip itu berbahaya",
+      "est_minutes": 240,
+      "body": "## Uji platform statistik dengan jawaban yang sudah diketahui\n\nKamu tidak bisa menguji analisis dengan data sungguhan, karena tidak ada yang tahu efek sebenarnya. Solusinya: buat dunia sintetis yang efeknya **kamu tanam sendiri**, kirim lewat API yang sungguhan, lalu periksa apakah analisis menemukannya.\n\n`scripts/simulate.ts` membuat 40.000 pengguna. Setiap pengguna punya kecenderungan beli `p` dan nilai belanja khas. Dalam 14 hari sebelum exposure mereka belanja sesuai kebiasaan (ini bahan CUPED). Setelah exposure, treatment menaikkan peluang setiap kesempatan checkout sebesar 0,01. Dari model itu nilai benarnya bisa dihitung, bukan ditebak: konversi naik **+0,0249** dan pendapatan per unit naik **+4.000**.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis `scripts/rng.ts`, `simulate.ts`, `analyze.ts`, `peeking.ts`, `test/pipeline.test.ts`, dan `test/peeking.test.ts`.\n2. Dengan `npm start` berjalan: `npm run simulate -- tombol-hijau 40000` lalu `npm run analyze -- tombol-hijau`. Cek bahwa nilai benar ada di dalam CI 95% dan bahwa CUPED mempersempit CI.\n3. Buat bug dengan sengaja: `npm run simulate -- tombol-rusak 40000 --broken` membuang 5% exposure treatment. Selisih 20.000 lawan 19.000 tidak terlihat aneh kalau dilihat sekilas. Jalankan analisis dan pastikan SRM gagal dengan peringatan.\n4. Jalankan `npm run peeking`, lalu `npm test` untuk seluruh suite.\n\n![Hasil verifikasi nyata: nilai benar (garis putus-putus) ada di dalam CI 95%, dan CUPED membuat CI lebih sempit](/studio/platform-eksperimen-ab/hasil-ci.svg)\n\n## Kenapa mengintip itu berbahaya\n\np-value 0,05 berarti \"kalau sebenarnya tidak ada efek, hasil seekstrem ini muncul 5% dari waktu\" **untuk satu kali melihat**. Kalau kamu melihat setiap hari dan berhenti begitu p < 0,05, kamu memberi kebetulan sepuluh kesempatan. `peeking.ts` mensimulasikan 2.000 eksperimen A/A (tanpa efek sama sekali) yang masing-masing diintip sepuluh kali:\n\n![Simulasi 2.000 eksperimen A/A: berhenti saat p < 0,05 di salah satu dari 10 intipan menghasilkan positif palsu 4 kali lipat](/studio/platform-eksperimen-ab/peeking.svg)\n\nAda tiga jalan keluar yang jujur:\n- **Fixed horizon.** Tentukan ukuran sampel dengan kalkulator power, lalu baca hasil sekali saja. Paling sederhana.\n- **Desain sekuensial dengan batas yang dikoreksi.** Batas Pocock (p < 0,0106 untuk 10 intipan) atau O'Brien-Fleming (sangat ketat di awal, longgar di akhir) menjaga total alpha tetap 5%. Simulasinya membuktikan ini.\n- **Always-valid inference** (mSPRT, confidence sequence), yaitu p-value yang sah dibaca kapan saja. Ini yang dipakai platform besar. Baca makalah Johari dkk. di Bahan kalau ingin membangunnya.\n\n## Kriteria diterima\n\n- `npm test` hijau seluruhnya.\n- Hasil analisis, SRM rusak, dan tabel peeking disalin ke `docs/writeup.md` dengan angka dari mesinmu.\n",
+      "materials": [
+        {
+          "id": "pea-m-rng",
+          "kind": "kode",
+          "name": "scripts/rng.ts",
+          "lang": "typescript",
+          "content": "// mulberry32: PRNG kecil yang bisa diberi seed, supaya simulasi bisa diulang persis.\nexport function rng(seed: number): () => number {\n  let a = seed >>> 0;\n  return () => {\n    a = (a + 0x6d2b79f5) >>> 0;\n    let t = Math.imul(a ^ (a >>> 15), a | 1);\n    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);\n    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;\n  };\n}\n"
+        },
+        {
+          "id": "pea-m-simulate",
+          "kind": "kode",
+          "name": "scripts/simulate.ts",
+          "lang": "typescript",
+          "content": "// Eksperimen sintetis dengan efek BENAR yang diketahui, dikirim lewat API sungguhan.\n//   node scripts/simulate.ts <flag-key> [jumlah-unit] [--broken]\nimport { randomUUID } from \"node:crypto\";\nimport { pool } from \"../src/db.ts\";\nimport { assign, pseudonym, type FlagConfig } from \"../src/hash.ts\";\nimport { rng } from \"./rng.ts\";\n\n// Model perilaku: tiap unit punya kecenderungan beli p = 0,5 x u^2 (u acak 0..1) dan nilai belanja khas\n// 50.000-150.000. Selama eksperimen ada K kesempatan checkout; treatment menaikkan peluang tiap kesempatan\n// sebesar LIFT. Itulah efek yang ditanam, jadi nilai benarnya bisa dihitung, bukan ditebak:\nconst K = 4, LIFT = 0.01, PRE = 8;\nconst propensity = (u: number) => 0.5 * u * u;\nexport const TRUTH = {\n  // P(>= 1 checkout) treatment - control, dirata-rata atas u (integral numerik): sekitar +0,0249\n  checkout: Array.from({ length: 10_000 }, (_, j) => {\n    const p = propensity((j + 0.5) / 10_000);\n    return (1 - p) ** K - (1 - p - LIFT) ** K;\n  }).reduce((a, b) => a + b) / 10_000,\n  // Pendapatan per unit: K x LIFT x rata-rata nilai belanja = 4 x 0,01 x 100.000\n  revenue: K * LIFT * 100_000,\n};\n\ntype Options = { baseUrl: string; flagKey: string; n: number; broken?: number; seed?: number; adminToken?: string; sdkKey?: string };\n\nexport async function simulate(o: Options): Promise<{ events: number }> {\n  const admin = o.adminToken ?? process.env.ADMIN_TOKEN ?? \"admin-dev-token\";\n  const sdk = o.sdkKey ?? process.env.SDK_KEY ?? \"sdk-dev-key\";\n  const r = await fetch(`${o.baseUrl}/admin/flags/${o.flagKey}`, {\n    method: \"PUT\",\n    headers: { authorization: `Bearer ${admin}`, \"content-type\": \"application/json\" },\n    body: JSON.stringify({\n      description: \"Simulasi: tombol checkout hijau\", status: \"running\", traffic_bp: 10_000, default_variant: \"control\",\n      variants: [{ key: \"control\", weight: 5000 }, { key: \"treatment\", weight: 5000 }],\n      metrics: [\n        { key: \"checkout\", event: \"checkout\", type: \"binomial\", role: \"primary\", better: \"higher\" },\n        { key: \"revenue\", event: \"checkout\", type: \"mean\", role: \"secondary\", better: \"higher\" },\n        { key: \"error\", event: \"error\", type: \"binomial\", role: \"guardrail\", better: \"lower\" },\n      ],\n      reason: \"simulasi efek yang diketahui\",\n    }),\n  });\n  if (!r.ok) throw new Error(`PUT flag ${r.status}: ${await r.text()}`);\n  const flag = (await r.json()) as FlagConfig;\n\n  const rand = rng(o.seed ?? 42), H = 3_600_000, D = 24 * H, now = Date.now();\n  const events: object[] = [];\n  const ev = (ts: number, e: object) => events.push({ event_id: randomUUID(), ts: new Date(ts).toISOString(), ...e });\n  for (let i = 0; i < o.n; i++) {\n    // Tiap simulasi = dunia sendiri dengan user sendiri. Kalau user dipakai ulang, checkout dari\n    // simulasi lain ikut terhitung (conversion tidak terikat flag) dan efeknya tercampur.\n    const unit = pseudonym(\"simulasi\", `${o.flagKey}/user-${i}`);\n    const { variant } = assign(flag, unit);\n    const p = propensity(rand()), basket = 50_000 + 100_000 * rand();\n    const checkout = (ts: number) => ev(ts, { kind: \"conversion\", unit, metric: \"checkout\", value: basket * (0.8 + 0.4 * rand()) });\n    const exposedAt = now - 5 * D + 2 * D * rand();\n    // Riwayat 14 hari sebelum exposure: bahan kovariat CUPED. Tidak dipengaruhi varian.\n    for (let k = 0; k < PRE; k++) if (rand() < p) checkout(exposedAt - (1 + 12 * rand()) * D);\n    // Bug yang disengaja: sebagian exposure treatment hilang (mis. halaman baru crash sebelum SDK mencatat).\n    if (o.broken && variant === \"treatment\" && rand() < o.broken) continue;\n    ev(exposedAt, { kind: \"exposure\", unit, flag_key: o.flagKey, variant });\n    const lift = variant === \"treatment\" ? LIFT : 0;\n    for (let k = 0; k < K; k++) if (rand() < p + lift) checkout(exposedAt + 2 * D * rand());\n    if (rand() < 0.01) ev(exposedAt + H * rand(), { kind: \"conversion\", unit, metric: \"error\", value: 1 });\n  }\n\n  for (let i = 0; i < events.length; i += 500) {\n    const res = await fetch(`${o.baseUrl}/events`, {\n      method: \"POST\",\n      headers: { authorization: `Bearer ${sdk}`, \"content-type\": \"application/json\" },\n      body: JSON.stringify({ events: events.slice(i, i + 500) }),\n    });\n    if (res.status !== 202) throw new Error(`POST /events ${res.status}: ${await res.text()}`);\n  }\n  // Setelah muat massal, segarkan statistik planner. Autovacuum tidak pernah meng-ANALYZE\n  // tabel induk berpartisi, jadi tanpa ini rencana query analisis bisa buruk.\n  await pool.query(\"ANALYZE events\");\n  return { events: events.length };\n}\n\nif (import.meta.main) {\n  const [flagKey, n = \"40000\"] = process.argv.slice(2).filter((a) => !a.startsWith(\"--\"));\n  if (!flagKey) throw new Error(\"pakai: node scripts/simulate.ts <flag-key> [jumlah-unit] [--broken]\");\n  const out = await simulate({\n    baseUrl: process.env.BASE_URL ?? \"http://localhost:3000\", flagKey, n: Number(n),\n    broken: process.argv.includes(\"--broken\") ? 0.05 : 0,\n  });\n  console.log(`${out.events} event terkirim untuk ${flagKey}`);\n  await pool.end();\n}\n"
+        },
+        {
+          "id": "pea-m-analyze-cli",
+          "kind": "kode",
+          "name": "scripts/analyze.ts",
+          "lang": "typescript",
+          "content": "// node scripts/analyze.ts <flag-key> [level]   (level default 0.95)\nimport { analyze } from \"../src/analysis/report.ts\";\nimport { pool } from \"../src/db.ts\";\n\nconst [key, level = \"0.95\"] = process.argv.slice(2);\nconst r = await analyze(key, Number(level));\nawait pool.end();\n\nconst f = (x: number) => (Math.abs(x) >= 100 ? x.toFixed(0) : x.toFixed(4));\nconsole.log(`\\n${r.flag}  unit per varian: ${JSON.stringify(r.units)}  unit >1 varian: ${r.multi_variant_units}`);\nconsole.log(`SRM: chi2=${r.srm.chi2.toFixed(2)} p=${r.srm.p.toExponential(2)} -> ${r.srm.ok ? \"OK\" : \"GAGAL\"}`);\nconsole.table(r.metrics.flatMap((m) => m.comparisons.map((c) => ({\n  metrik: `${m.key} (${m.role})`, varian: c.variant,\n  control: f(c.raw.control), treatment: f(c.raw.treatment),\n  [`selisih [CI ${r.level * 100}%]`]: `${f(c.raw.diff)} [${f(c.raw.lo)}, ${f(c.raw.hi)}]`,\n  p: c.raw.p.toExponential(2),\n  [`CUPED [CI ${r.level * 100}%]`]: `${f(c.cuped.diff)} [${f(c.cuped.lo)}, ${f(c.cuped.hi)}]`,\n  \"varians turun\": `${(c.cuped.varianceReduction * 100).toFixed(1)}%`,\n  keputusan: c.verdict,\n}))));\nfor (const w of r.warnings) console.log(`PERINGATAN: ${w}`);\n"
+        },
+        {
+          "id": "pea-m-peeking",
+          "kind": "kode",
+          "name": "scripts/peeking.ts",
+          "lang": "typescript",
+          "content": "// Simulasi A/A (tidak ada efek sama sekali): seberapa sering kita \"menemukan\" efek?\n//   node scripts/peeking.ts [jumlah-eksperimen]\nimport { twoProportion } from \"../src/analysis/tests.ts\";\nimport { rng } from \"./rng.ts\";\n\n// Batas Pocock untuk 10 kali intip, alpha total 0,05 dua sisi: |z| > 2,555 (p < 0,0106).\nexport const POCOCK_P_10 = 0.0106;\n\nexport function peekingSim(sims = 2000, looks = 10, perLook = 1000, base = 0.1, seed = 1) {\n  const rand = rng(seed);\n  let fixed = 0, peek = 0, pocock = 0;\n  for (let s = 0; s < sims; s++) {\n    let x1 = 0, x2 = 0, n = 0, peekHit = false, pocockHit = false;\n    for (let k = 1; k <= looks; k++) {\n      for (let i = 0; i < perLook; i++) {\n        if (rand() < base) x1++;\n        if (rand() < base) x2++;\n      }\n      n += perLook;\n      const { p } = twoProportion(x1, n, x2, n);\n      if (p < 0.05) peekHit = true;         // berhenti di intipan pertama yang \"signifikan\"\n      if (p < POCOCK_P_10) pocockHit = true; // ambang yang sudah dikoreksi untuk 10 intipan\n      if (k === looks && p < 0.05) fixed++;  // hanya melihat sekali, di akhir\n    }\n    if (peekHit) peek++;\n    if (pocockHit) pocock++;\n  }\n  return { sims, looks, fixed: fixed / sims, peek: peek / sims, pocock: pocock / sims };\n}\n\nif (import.meta.main) {\n  const r = peekingSim(Number(process.argv[2] ?? 2000));\n  const pct = (x: number) => `${(x * 100).toFixed(1)}%`;\n  console.log(`${r.sims} eksperimen A/A, ${r.looks} kali intip, alpha nominal 5%`);\n  console.table({\n    \"sekali di akhir (fixed horizon)\": { \"positif palsu\": pct(r.fixed) },\n    \"intip tiap hari, stop saat p<0,05\": { \"positif palsu\": pct(r.peek) },\n    \"intip tiap hari, batas Pocock\": { \"positif palsu\": pct(r.pocock) },\n  });\n}\n"
+        },
+        {
+          "id": "pea-m-pipeline-test",
+          "kind": "kode",
+          "name": "test/pipeline.test.ts",
+          "lang": "typescript",
+          "content": "// Ujung ke ujung: event sintetis -> POST /events -> Postgres -> analisis.\nimport assert from \"node:assert/strict\";\nimport type { AddressInfo } from \"node:net\";\nimport { after, before, test } from \"node:test\";\nimport { simulate, TRUTH } from \"../scripts/simulate.ts\";\nimport { analyze } from \"../src/analysis/report.ts\";\nimport { pool } from \"../src/db.ts\";\nimport { createApp } from \"../src/server.ts\";\n\nconst server = createApp();\nlet baseUrl = \"\";\nbefore(() => new Promise<void>((ok) => server.listen(0, () => {\n  baseUrl = `http://localhost:${(server.address() as AddressInfo).port}`;\n  ok();\n})));\nafter(async () => { server.close(); await pool.end(); });\n\nconst comparison = (r: Awaited<ReturnType<typeof analyze>>, key: string) =>\n  r.metrics.find((m) => m.key === key)!.comparisons[0];\n\ntest(\"analisis menemukan efek yang ditanam, di dalam CI\", async () => {\n  const flagKey = `sim-efek-${Date.now()}`;\n  await simulate({ baseUrl, flagKey, n: 40_000, seed: 7 });\n  // CI 99,9% dipakai di tes supaya tes tidak gagal acak 1 dari 20 kali; laporan harian memakai 95%.\n  const r = await analyze(flagKey, 0.999);\n  assert.ok(r.srm.ok, `SRM p=${r.srm.p}`);\n  assert.equal(r.multi_variant_units, 0);\n  for (const [key, truth] of Object.entries(TRUTH)) {\n    const c = comparison(r, key);\n    console.log(key, { truth, raw: [c.raw.lo, c.raw.hi], cuped: [c.cuped.lo, c.cuped.hi], reduksi: c.cuped.varianceReduction });\n    assert.ok(c.raw.lo <= truth && truth <= c.raw.hi, `${key}: efek benar di luar CI mentah`);\n    assert.ok(c.cuped.lo <= truth && truth <= c.cuped.hi, `${key}: efek benar di luar CI CUPED`);\n    assert.ok(c.cuped.hi - c.cuped.lo < c.raw.hi - c.raw.lo, `${key}: CUPED harus mempersempit CI`);\n  }\n  assert.notEqual(comparison(r, \"error\").verdict, \"lebih buruk\");\n  assert.deepEqual(r.warnings, []);\n});\n\ntest(\"SRM menangkap split rusak (5% exposure treatment hilang)\", async () => {\n  const flagKey = `sim-rusak-${Date.now()}`;\n  await simulate({ baseUrl, flagKey, n: 40_000, seed: 8, broken: 0.05 });\n  const r = await analyze(flagKey);\n  console.log(\"unit:\", r.units, \"SRM:\", r.srm);\n  assert.ok(r.srm.p < 0.001);\n  assert.match(r.warnings[0], /^SRM/);\n});\n"
+        },
+        {
+          "id": "pea-m-peeking-test",
+          "kind": "kode",
+          "name": "test/peeking.test.ts",
+          "lang": "typescript",
+          "content": "import assert from \"node:assert/strict\";\nimport { test } from \"node:test\";\nimport { peekingSim } from \"../scripts/peeking.ts\";\n\ntest(\"mengintip menggelembungkan positif palsu, batas Pocock mengembalikannya ke ~5%\", () => {\n  const r = peekingSim(2000);\n  console.log(r);\n  assert.ok(r.fixed > 0.035 && r.fixed < 0.065, `fixed ${r.fixed}`);\n  assert.ok(r.peek > 0.12, `peek ${r.peek}`);\n  assert.ok(r.pocock < 0.065, `pocock ${r.pocock}`);\n});\n"
+        },
+        {
+          "id": "pea-m-johari",
+          "kind": "tautan",
+          "name": "Johari dkk.: Always Valid Inference (arXiv)",
+          "url": "https://arxiv.org/abs/1512.04922"
+        },
+        {
+          "id": "pea-m-node-test",
+          "kind": "tautan",
+          "name": "Node.js: test runner",
+          "url": "https://nodejs.org/api/test.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-uji-1",
+          "text": "Nilai benar +0,0249 (konversi) dan +4.000 (pendapatan) berada di dalam CI hasil analisisku."
+        },
+        {
+          "id": "pea-c-uji-2",
+          "text": "CUPED mempersempit CI, dan aku mencatat persen penurunan variansnya."
+        },
+        {
+          "id": "pea-c-uji-3",
+          "text": "Simulasi --broken membuat SRM gagal dengan p < 0,001."
+        },
+        {
+          "id": "pea-c-uji-4",
+          "text": "Simulasi peeking menunjukkan positif palsu sekitar 20% saat mengintip, dan sekitar 5% dengan fixed horizon dan batas Pocock."
+        },
+        {
+          "id": "pea-c-uji-5",
+          "text": "npm test hijau seluruhnya."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-ke-vm-compose",
+      "title": "Deploy ke VM dengan Docker Compose dan Caddy",
+      "est_minutes": 150,
+      "body": "## Satu VM sudah cukup\n\nUntuk puluhan instance SDK dan jutaan event per hari, satu VM 2 vCPU / 2 GB dengan Docker Compose sudah cukup. Isinya tiga container: Postgres, aplikasi, dan Caddy untuk HTTPS otomatis. Semua container punya `mem_limit`, jadi kalau satu bocor memori, yang lain tidak ikut mati.\n\n## Yang perlu kamu kerjakan\n\n1. Siapkan VM (Ubuntu LTS) dan pasang Docker Engine sesuai dokumentasi resmi. Arahkan record DNS A domainmu ke IP VM.\n2. Salin `Dockerfile`, `.dockerignore`, `compose.prod.yaml`, dan `Caddyfile`. Buat `.env` dari `.env.example` dengan nilai acak, misalnya `openssl rand -hex 32` untuk `SDK_KEY` dan setiap token admin. Jangan commit `.env`.\n3. Di VM: `docker compose -f compose.prod.yaml up -d --build`. Caddy otomatis meminta sertifikat untuk `DOMAIN`.\n4. Uji dari laptopmu:\n```bash\ncurl https://DOMAINMU/healthz\ncurl -N https://DOMAINMU/sdk/stream -H \"Authorization: Bearer $SDK_KEY\"   # harus tetap terbuka\n```\n   Ubah satu flag lewat API admin dan pastikan `event: flags` sampai lewat HTTPS. Caddy meneruskan respons `text/event-stream` tanpa menahannya di buffer.\n5. Jadwalkan dua pekerjaan operasional di crontab VM:\n   - Backup harian: `docker compose -f compose.prod.yaml exec -T postgres pg_dump -U postgres -Fc eksperimen > backup-$(date +%F).dump`\n   - Retensi bulanan: hapus partisi yang lebih tua dari kebijakan retensimu (misalnya 13 bulan) dengan `DROP TABLE events_YYYY_MM;`. Backup dulu kalau datanya masih mungkin dibutuhkan.\n\n## Batasan\n\n- Port Postgres tidak dibuka ke internet. Hanya Caddy yang mendengarkan port 80 dan 443.\n- Aplikasi berjalan sebagai user `node`, bukan root.\n- Schema hanya dijalankan otomatis saat volume kosong. Perubahan schema berikutnya butuh file migrasi. Tulis ini di \"Yang tidak dibuat\".\n\n## Kriteria diterima\n\n- `/healthz` menjawab lewat HTTPS dengan sertifikat yang valid.\n- Kill switch yang dipicu lewat API produksi sampai ke SDK di laptopmu dalam hitungan detik.\n- Backup pertama sudah ada, dan kamu sudah mencoba me-restore-nya ke database kosong.\n",
+      "materials": [
+        {
+          "id": "pea-m-dockerfile",
+          "kind": "kode",
+          "name": "Dockerfile",
+          "lang": "dockerfile",
+          "content": "FROM node:26-alpine\nWORKDIR /app\nENV NODE_ENV=production\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev && npm cache clean --force\nCOPY src ./src\nUSER node\nEXPOSE 3000\nHEALTHCHECK --interval=10s --timeout=3s CMD wget -qO- http://127.0.0.1:3000/healthz || exit 1\nCMD [\"node\", \"src/main.ts\"]\n"
+        },
+        {
+          "id": "pea-m-dockerignore",
+          "kind": "kode",
+          "name": ".dockerignore",
+          "lang": "",
+          "content": "node_modules\n.git\n.env\n"
+        },
+        {
+          "id": "pea-m-compose-prod",
+          "kind": "kode",
+          "name": "compose.prod.yaml",
+          "lang": "yaml",
+          "content": "# Produksi di satu VM: docker compose -f compose.prod.yaml up -d --build\n# Isi .env: POSTGRES_PASSWORD, SDK_KEY, ADMIN_TOKENS, DOMAIN\nservices:\n  postgres:\n    image: postgres:19-alpine\n    restart: unless-stopped\n    environment:\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di .env}\n      POSTGRES_DB: eksperimen\n    volumes:\n      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro\n      - pgdata:/var/lib/postgresql\n    mem_limit: 384m\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U postgres -d eksperimen\"]\n      interval: 5s\n      retries: 20\n  app:\n    build: .\n    restart: unless-stopped\n    environment:\n      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/eksperimen\n      SDK_KEY: ${SDK_KEY:?isi SDK_KEY di .env}\n      ADMIN_TOKENS: ${ADMIN_TOKENS:?isi ADMIN_TOKENS di .env}\n    depends_on:\n      postgres:\n        condition: service_healthy\n    mem_limit: 256m\n  caddy:\n    image: caddy:2-alpine\n    restart: unless-stopped\n    ports: [\"80:80\", \"443:443\"]\n    environment:\n      DOMAIN: ${DOMAIN:?isi DOMAIN di .env}\n    volumes:\n      - ./Caddyfile:/etc/caddy/Caddyfile:ro\n      - caddy_data:/data\n    depends_on: [app]\n    mem_limit: 128m\nvolumes:\n  pgdata:\n  caddy_data:\n"
+        },
+        {
+          "id": "pea-m-caddyfile",
+          "kind": "kode",
+          "name": "Caddyfile",
+          "lang": "",
+          "content": "{$DOMAIN} {\n\treverse_proxy app:3000\n}\n"
+        },
+        {
+          "id": "pea-m-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "",
+          "content": "POSTGRES_PASSWORD=ganti-dengan-password-panjang\nSDK_KEY=ganti-dengan-openssl-rand-hex-32\nADMIN_TOKENS=ani=ganti-token-ani,budi=ganti-token-budi\nDOMAIN=eksperimen.domainmu.id\n"
+        },
+        {
+          "id": "pea-m-docker-install",
+          "kind": "tautan",
+          "name": "Docker Engine: instalasi",
+          "url": "https://docs.docker.com/engine/install/"
+        },
+        {
+          "id": "pea-m-caddy-rp",
+          "kind": "tautan",
+          "name": "Caddy: reverse_proxy",
+          "url": "https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+        },
+        {
+          "id": "pea-m-pg-image",
+          "kind": "tautan",
+          "name": "Docker Hub: image resmi postgres",
+          "url": "https://hub.docker.com/_/postgres"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-deploy-1",
+          "text": "Tiga container berjalan di VM, masing-masing dengan mem_limit."
+        },
+        {
+          "id": "pea-c-deploy-2",
+          "text": "/healthz menjawab lewat HTTPS dengan sertifikat valid dari Caddy."
+        },
+        {
+          "id": "pea-c-deploy-3",
+          "text": "Stream SSE tetap terbuka lewat HTTPS, dan perubahan flag sampai ke SDK."
+        },
+        {
+          "id": "pea-c-deploy-4",
+          "text": "Backup harian terjadwal, dan aku sudah menguji restore sekali."
+        },
+        {
+          "id": "pea-c-deploy-5",
+          "text": "Port Postgres tidak terbuka ke internet."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "adr-readme-dan-laporan",
+      "title": "Rapikan ADR, README, dan laporan teknis",
+      "est_minutes": 150,
+      "body": "## Bukti lebih kuat daripada klaim\n\nPembaca laporanmu, entah perekrut, tech lead, atau dirimu enam bulan lagi, ingin tahu tiga hal: apa yang dijamin platform ini, bagaimana kamu membuktikannya, dan apa yang belum selesai. Di proyek statistik ini kamu punya bukti yang jarang dimiliki proyek lain: efek yang ditanam lalu ditemukan kembali, bug yang sengaja dibuat lalu tertangkap, dan simulasi yang menunjukkan kenapa aturan berhenti itu penting.\n\n## Yang perlu kamu kerjakan\n\n1. Tinjau ulang keempat ADR. Kalau ada keputusan yang berubah selama pengerjaan, tambahkan ADR baru berstatus \"menggantikan 000X\". ADR lama jangan diedit.\n2. Tulis `docs/writeup.md` mengikuti kerangka di Bahan. Bagian 5 (\"Kenapa tidak boleh mengintip\") adalah bagian yang paling sering dibaca PM, jadi tulis dengan bahasa yang bisa dipahami orang non-statistik dan sertakan tabel dari `npm run peeking`.\n3. Perbarui `README.md` supaya orang lain bisa menjalankan Postgres, server, simulasi, dan semua tes dalam sepuluh menit.\n4. Tulis bagian \"Yang tidak dibuat dan kenapa\". Contohnya: targeting per atribut, SDK browser, migrasi schema, dasbor UI, batas sekuensial di laporan (baru sebatas simulasi), koreksi perbandingan berganda untuk banyak varian, serta Set exposure tanpa batas di SDK.\n5. Kirim tautan repo dan demo API di kolom pengumpulan pada halaman ringkasan proyek ini.\n\n## Kriteria diterima\n\n- Setiap jaminan di tulisan teknis punya kolom bukti yang menunjuk ke tes atau angka.\n- Seseorang yang belum pernah melihat repo ini bisa menjalankan `npm test` sampai hijau hanya dengan membaca README.\n- Tautan repo dan demo sudah dikirim di halaman ringkasan proyek.\n",
+      "materials": [
+        {
+          "id": "pea-m-writeup",
+          "kind": "kode",
+          "name": "docs/writeup.md",
+          "lang": "markdown",
+          "content": "# Platform Eksperimen A/B: tulisan teknis\n\n## 1. Ringkasan (5 kalimat)\nMasalah, pendekatan, bukti terpenting (efek yang ditanam ditemukan, SRM, peeking),\nsatu keputusan paling berpengaruh, satu batasan yang masih ada.\n\n## 2. Arsitektur\nDiagram: aplikasi + SDK, API, Postgres (flags, audit_log, events berpartisi), analisis.\n\n## 3. Jaminan dan buktinya\n| Jaminan                                   | Mekanisme                              | Bukti                     |\n|-------------------------------------------|----------------------------------------|---------------------------|\n| Varian stabil per unit                    | dua hash sha256 + salt tetap           | hash.test.ts              |\n| Naik traffic tidak memindahkan unit       | hash traffic terpisah dari hash varian | hash.test.ts              |\n| Event tidak terhitung dua kali            | PK (event_id, ts) + ON CONFLICT        | ingest.test.ts            |\n| Tanpa PII                                 | HMAC di SDK + validasi format unit     | ingest.test.ts, sdk.test.ts |\n| Kill switch cepat                         | NOTIFY -> SSE -> refresh               | sdk.test.ts (___ ms)      |\n| Analisis menemukan efek benar             | uji z / Welch + CUPED                  | pipeline.test.ts          |\n| Split rusak terdeteksi                    | SRM chi-square, ambang p < 0,001       | pipeline.test.ts          |\n\n## 4. Hasil simulasi\nTabel dari `npm run analyze`: efek benar, CI mentah, CI CUPED, reduksi varians.\n\n## 5. Kenapa tidak boleh mengintip\nTabel dari `npm run peeking` + penjelasan + pilihan solusi (fixed horizon,\nbatas Pocock / O'Brien-Fleming, always-valid inference).\n\n## 6. Keputusan (tautan ke ADR)\n## 7. Yang tidak dibuat dan kenapa\n## 8. Kalau dikerjakan ulang\n"
+        },
+        {
+          "id": "pea-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# eksperimen-ab\n\nLayanan feature flag dan eksperimen A/B: assignment deterministik dengan hash,\nSDK TypeScript dengan cache lokal dan update lewat SSE, ingest event idempoten\nke Postgres berpartisi, dan analisis statistik (SRM, uji z, Welch, CUPED).\n\nDemo API: https://___ · Tulisan teknis: docs/writeup.md · ADR: docs/adr/\n\n## Menjalankan\n```bash\nnpm install\ndocker compose up -d --wait\nnpm start\n# terminal lain:\nnpm run simulate -- tombol-checkout 40000\nnpm run analyze -- tombol-checkout\n```\n\n## Tes\n```bash\nnpm run typecheck\nnpm test            # butuh Postgres dari docker compose\nnpm run peeking     # simulasi A/A: kenapa tidak boleh mengintip\nnpm run power -- 0.10 0.01 8000\n```\n\n## API singkat\n| Method | Path                                  | Auth        |\n|--------|---------------------------------------|-------------|\n| GET    | /sdk/flags, /sdk/stream               | SDK key     |\n| POST   | /events                               | SDK key     |\n| GET    | /admin/flags                          | token admin |\n| PUT    | /admin/flags/:key                     | token admin |\n| POST   | /admin/flags/:key/kill                | token admin |\n| GET    | /admin/flags/:key/audit               | token admin |\n| GET    | /admin/experiments/:key/results       | token admin |\n\n## Hasil\nEfek yang ditanam +___ ditemukan dengan CI [___, ___] · CUPED memangkas varians ___% ·\nmengintip 10 kali menaikkan positif palsu dari ___% ke ___% · kill switch ___ ms\n"
+        },
+        {
+          "id": "pea-m-mermaid",
+          "kind": "tautan",
+          "name": "Mermaid: flowchart",
+          "url": "https://mermaid.js.org/syntax/flowchart.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "pea-c-dok-1",
+          "text": "Semua ADR final, dan keputusan yang berubah dicatat sebagai ADR baru."
+        },
+        {
+          "id": "pea-c-dok-2",
+          "text": "docs/writeup.md punya tabel jaminan dengan bukti untuk setiap baris."
+        },
+        {
+          "id": "pea-c-dok-3",
+          "text": "Bagian peeking di tulisan teknis memuat angka dari simulasiku sendiri."
+        },
+        {
+          "id": "pea-c-dok-4",
+          "text": "README cukup untuk menjalankan semua tes dari nol."
+        },
+        {
+          "id": "pea-c-dok-5",
+          "text": "Tautan repo dan demo sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
