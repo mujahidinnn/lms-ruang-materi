@@ -1,0 +1,2025 @@
+{
+  "title": "Desain REST API",
+  "description": "Belajar merancang REST API yang mudah ditebak dan konsisten: URL dan resource, method, status code, format error, paginasi, versioning, caching, rate limit, sampai dokumentasi OpenAPI. Ditutup proyek API Perpustakaan Sekolah dengan Express.",
+  "summary": "Membuat route Express yang jalan itu mudah; merancang API yang enak dipakai orang lain butuh kebiasaan. Kelas ini mulai dari prinsip REST: resource dengan URL sendiri, representasi JSON, dan request yang stateless. Lalu kamu belajar menamai URL dengan kata benda, memakai method GET, POST, PUT, PATCH, dan DELETE sesuai sifat aman dan idempotennya, serta memilih status code yang jujur.\n\nBagian tengah membahas kontrak data: bentuk respons yang konsisten, format error dengan code, message, dan details atau Problem Details (RFC 9457), tanggal ISO 8601, serta filter, sort, dan paginasi offset maupun cursor lewat query string.\n\nBagian akhir menyiapkan API untuk dipakai lama: versioning /v1 dan masa deprecation, keamanan dasar dan CORS, Cache-Control, ETag dengan 304, rate limit dengan 429 dan Retry-After, idempotency key, lalu dokumentasi dengan OpenAPI 3.1 dan Swagger UI. Kelas ditutup proyek API Perpustakaan Sekolah.",
+  "tips": [
+    "Tulis daftar endpoint di atas kertas dulu, lalu cek apakah orang lain bisa menebak URL-nya tanpa dokumentasi.",
+    "Biarkan method yang menjadi kata kerja; URL cukup berisi kata benda.",
+    "Status code harus jujur: jangan pernah membalas 200 untuk error.",
+    "Buat satu fungsi pembantu untuk semua error supaya bentuknya selalu sama.",
+    "Tulis spesifikasi OpenAPI di repository yang sama dengan kode supaya dokumentasi tidak tertinggal."
+  ],
+  "flashcards": [
+    {
+      "front": "API",
+      "back": "Kontrak antara klien dan server: URL, method, header, status code, dan JSON."
+    },
+    {
+      "front": "REST",
+      "back": "Gaya arsitektur (Roy Fielding, 2000) yang memodelkan data sebagai resource ber-URL dan memakai fitur HTTP."
+    },
+    {
+      "front": "Resource",
+      "back": "Apa saja yang bisa diberi nama, seperti buku atau anggota, dengan URL sendiri."
+    },
+    {
+      "front": "Stateless",
+      "back": "Setiap request membawa semua informasinya; server tidak menyimpan keadaan percakapan di memori."
+    },
+    {
+      "front": "Koleksi vs item",
+      "back": "Koleksi /buku, item /buku/7."
+    },
+    {
+      "front": "Aturan nama URL",
+      "back": "Kata benda jamak, huruf kecil, tanda hubung, tanpa ekstensi dan tanpa garis miring di akhir."
+    },
+    {
+      "front": "Aksi khusus",
+      "back": "Ubah menjadi kata benda: POST /buku/7/peminjaman."
+    },
+    {
+      "front": "Path vs query",
+      "back": "Path untuk identitas resource; query untuk filter, sort, dan paginasi."
+    },
+    {
+      "front": "Method aman",
+      "back": "Tidak dimaksudkan mengubah data, misalnya GET dan HEAD."
+    },
+    {
+      "front": "Idempoten",
+      "back": "Diulang berapa kali pun keadaan server sama: GET, PUT, DELETE. POST tidak, PATCH tidak dijamin."
+    },
+    {
+      "front": "PUT vs PATCH",
+      "back": "PUT mengganti seluruh isi item; PATCH hanya mengubah field yang dikirim."
+    },
+    {
+      "front": "201 Created",
+      "back": "Resource baru berhasil dibuat; sertakan header Location berisi URL-nya."
+    },
+    {
+      "front": "204 No Content",
+      "back": "Berhasil tanpa body, cocok untuk DELETE."
+    },
+    {
+      "front": "401 vs 403",
+      "back": "401 belum terautentikasi; 403 sudah dikenali tetapi tidak berhak."
+    },
+    {
+      "front": "409 vs 422",
+      "back": "409 bentrok dengan keadaan data (stok habis); 422 isi tidak lolos validasi."
+    },
+    {
+      "front": "Format error",
+      "back": "{ error: { code, message, details } }: code untuk program, message untuk manusia, details per field."
+    },
+    {
+      "front": "Problem Details",
+      "back": "RFC 9457, media type application/problem+json, field type, title, status, detail."
+    },
+    {
+      "front": "ISO 8601",
+      "back": "Format tanggal 2026-07-17T08:30:00+07:00; Z berarti UTC."
+    },
+    {
+      "front": "sort=-harga",
+      "back": "Urut turun menurut harga; tanpa minus berarti urut naik."
+    },
+    {
+      "front": "Offset vs cursor",
+      "back": "Offset memakai nomor halaman; cursor memakai penanda posisi dan tetap cepat di data besar."
+    },
+    {
+      "front": "Breaking change",
+      "back": "Menghapus, mengganti nama, atau mengubah tipe field, atau menambah field wajib; butuh versi baru seperti /v2."
+    },
+    {
+      "front": "CORS",
+      "back": "Izin browser membaca respons dari origin lain; bukan pengganti autentikasi."
+    },
+    {
+      "front": "no-cache vs no-store",
+      "back": "no-cache boleh disimpan asal dicek ulang; no-store dilarang disimpan."
+    },
+    {
+      "front": "ETag dan 304",
+      "back": "Klien mengirim ETag di If-None-Match; bila belum berubah server membalas 304 tanpa body."
+    },
+    {
+      "front": "429 Too Many Requests",
+      "back": "Klien melewati rate limit; header Retry-After menyebut lama tunggu."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam REST, apa yang disebut resource?",
+      "code": "",
+      "options": [
+        "Data yang bisa diberi nama dan punya URL sendiri",
+        "Fungsi server yang dipanggil lewat namanya di URL",
+        "File JavaScript yang berisi semua route aplikasi",
+        "Tabel database yang dibuka langsung oleh klien"
+      ],
+      "answer": 0,
+      "explanation": "Resource adalah apa saja yang bisa diberi nama, seperti buku atau anggota, dan masing-masing punya alamat URL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "URL mana yang paling sesuai aturan penamaan resource?",
+      "code": "",
+      "options": [
+        "/KategoriBuku",
+        "/kategori-buku",
+        "/kategori_buku.json",
+        "/getKategoriBuku/"
+      ],
+      "answer": 1,
+      "explanation": "URL ditulis huruf kecil, kata dipisah tanda hubung, tanpa ekstensi, tanpa kata kerja, dan tanpa garis miring di akhir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan sebuah nilai sebaiknya ditaruh di path, bukan di query string?",
+      "code": "",
+      "options": [
+        "Saat nilai itu dipakai untuk mengurutkan daftar",
+        "Saat nilai itu opsional dan boleh tidak dikirim",
+        "Saat nilai itu menunjuk identitas resource",
+        "Saat nilai itu menyaring koleksi menurut kategori"
+      ],
+      "answer": 2,
+      "explanation": "Path menunjuk identitas, misalnya /buku/7. Filter, sort, dan paginasi masuk query."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Method apa yang dipakai untuk mengubah sebagian field sebuah buku?",
+      "code": "",
+      "options": [
+        "PUT",
+        "POST",
+        "DELETE",
+        "PATCH"
+      ],
+      "answer": 3,
+      "explanation": "PATCH hanya menyentuh field yang dikirim, sedangkan PUT mengganti seluruh isi item."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Method mana yang termasuk aman (safe) menurut spesifikasi HTTP?",
+      "code": "",
+      "options": [
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "answer": 0,
+      "explanation": "GET dan HEAD aman karena tidak dimaksudkan mengubah data di server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status apa yang tepat setelah POST berhasil membuat buku baru?",
+      "code": "",
+      "options": [
+        "200 OK",
+        "201 Created",
+        "204 No Content",
+        "202 Accepted"
+      ],
+      "answer": 1,
+      "explanation": "201 Created menandakan resource baru dibuat, sebaiknya disertai header Location."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien mengirim body yang bukan JSON sah. Status yang paling tepat adalah",
+      "code": "",
+      "options": [
+        "422 Unprocessable Content",
+        "500 Internal Server Error",
+        "400 Bad Request",
+        "404 Not Found"
+      ],
+      "answer": 2,
+      "explanation": "Request yang rusak atau tidak bisa dibaca dijawab 400. 422 dipakai bila JSON sah tetapi isinya tidak lolos validasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam format error { error: { code, message, details } }, bagian mana yang ditujukan untuk dibaca program?",
+      "code": "",
+      "options": [
+        "message",
+        "details",
+        "status",
+        "code"
+      ],
+      "answer": 3,
+      "explanation": "code bernilai tetap seperti STOK_HABIS sehingga bisa diperiksa program; message untuk manusia."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Format tanggal dan waktu mana yang dianjurkan untuk API?",
+      "code": "",
+      "options": [
+        "2026-07-17T08:30:00+07:00",
+        "17/07/2026 08.30",
+        "Jumat, 17 Juli 2026 pukul 08.30 WIB",
+        "07-17-2026 8:30 AM"
+      ],
+      "answer": 0,
+      "explanation": "ISO 8601 beserta zona waktu tidak ambigu dan bisa dibaca hampir semua bahasa pemrograman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti ?sort=-harga pada daftar produk?",
+      "code": "",
+      "options": [
+        "Urutkan menurut harga dari yang paling murah",
+        "Urutkan harga turun, dari yang termahal",
+        "Buang produk yang tidak punya harga",
+        "Tampilkan produk dengan harga negatif"
+      ],
+      "answer": 1,
+      "explanation": "Tanda minus di depan nama field berarti urut turun."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perubahan mana yang aman dilakukan tanpa membuat versi API baru?",
+      "code": "",
+      "options": [
+        "Mengganti nama field nama menjadi namaLengkap",
+        "Mengubah tipe field kelas dari string ke objek",
+        "Menambah field baru di respons",
+        "Menambah field body baru yang wajib diisi"
+      ],
+      "answer": 2,
+      "explanation": "Menambah field tidak merusak klien yang mengabaikan field tak dikenal. Mengganti nama, mengubah tipe, atau menambah field wajib merusak klien lama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti header Cache-Control: no-store?",
+      "code": "",
+      "options": [
+        "Respons boleh disimpan tetapi wajib dicek ulang",
+        "Respons hanya boleh disimpan oleh CDN",
+        "Respons dianggap segar selama satu jam penuh",
+        "Respons tidak boleh disimpan di cache mana pun"
+      ],
+      "answer": 3,
+      "explanation": "no-store melarang penyimpanan sama sekali, berbeda dengan no-cache yang boleh menyimpan asal dicek ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Di OpenAPI, bagian mana yang menyimpan schema yang dipakai berulang?",
+      "code": "",
+      "options": [
+        "components/schemas",
+        "paths",
+        "info",
+        "servers/{url}/shared-schemas"
+      ],
+      "answer": 0,
+      "explanation": "Schema disimpan sekali di components/schemas lalu dirujuk dengan $ref."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "POST termasuk method yang idempoten.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "POST yang dikirim tiga kali membuat tiga item baru, jadi tidak idempoten."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Server boleh membalas 304 Not Modified tanpa body bila ETag di If-None-Match masih cocok.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "304 berarti klien boleh memakai salinan yang sudah ia simpan, jadi tidak perlu body."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Siapa yang merumuskan REST sebagai gaya arsitektur?",
+      "code": "",
+      "options": [
+        "Roy Fielding, dalam disertasinya tahun 2000",
+        "Tim Berners-Lee, saat menulis halaman HTML pertama",
+        "Tim Express, sebagai fitur bawaan framework",
+        "IETF, lewat RFC yang wajib dipatuhi semua API"
+      ],
+      "answer": 0,
+      "explanation": "REST dirumuskan Roy Fielding dalam disertasinya pada tahun 2000. REST adalah kumpulan prinsip, bukan library."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa yang dikirim server REST ke klien saat klien meminta data sebuah buku?",
+      "code": "",
+      "options": [
+        "Baris tabel MySQL apa adanya",
+        "Representasi buku, biasanya dalam JSON",
+        "Objek JavaScript yang masih hidup di memori server",
+        "Salinan seluruh file database perpustakaan"
+      ],
+      "answer": 1,
+      "explanation": "Server mengirim representasi resource, hampir selalu JSON, bukan data mentah di penyimpanannya."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kode ini menyimpan halaman terakhir di variabel global. Prinsip REST mana yang dilanggar?",
+      "code": "let halamanTerakhir = 1;\n\napp.get(\"/buku/berikutnya\", (req, res) => {\n  halamanTerakhir++;\n  res.json(ambilHalaman(halamanTerakhir));\n});",
+      "options": [
+        "Client-server",
+        "Antarmuka seragam",
+        "Stateless",
+        "Cacheable"
+      ],
+      "answer": 2,
+      "explanation": "Server menyimpan keadaan percakapan di memori. Versi stateless meminta klien mengirim ?halaman sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Ciri utama GraphQL dibanding REST adalah",
+      "code": "",
+      "options": [
+        "Setiap fungsi server punya URL kata kerja sendiri",
+        "Setiap resource punya URL sendiri dan memakai method standar",
+        "Server menyimpan keadaan percakapan untuk setiap klien yang masuk",
+        "Satu endpoint, klien menyebut field yang diminta lewat query"
+      ],
+      "answer": 3,
+      "explanation": "GraphQL biasanya hanya punya POST /graphql, dan klien menulis query berisi field yang ia butuhkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa API yang stateless mudah ditambah servernya saat pengguna bertambah?",
+      "code": "",
+      "options": [
+        "Request mana pun bisa dilayani server mana pun",
+        "Server stateless tidak perlu database sama sekali",
+        "Klien hanya boleh terhubung ke satu server tetap",
+        "Setiap server menyimpan salinan sesi semua klien di memori"
+      ],
+      "answer": 0,
+      "explanation": "Karena setiap request membawa semua informasinya, server mana pun bisa menjawabnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dalam prinsip client-server, apa tugas klien?",
+      "code": "",
+      "options": [
+        "Menyimpan data dan aturan bisnis",
+        "Mengurus tampilan untuk pengguna",
+        "Menentukan ID untuk setiap resource baru",
+        "Menyimpan keadaan percakapan milik server"
+      ],
+      "answer": 1,
+      "explanation": "Klien mengurus tampilan, server mengurus data dan aturan bisnis, keduanya terhubung lewat kontrak API."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Stateless berarti server sama sekali tidak boleh menyimpan data di database.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Database tetap menyimpan data. Yang dilarang adalah menyimpan keadaan percakapan klien di memori server."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "URL mana yang paling tepat untuk daftar siswa di kelas xi-rpl-1?",
+      "code": "",
+      "options": [
+        "/siswa/getByKelas?kode=xi-rpl-1",
+        "/sekolah/1/jurusan/2/kelas/xi-rpl-1/siswa",
+        "/kelas/xi-rpl-1/siswa",
+        "/ambilSiswaKelas/xi-rpl-1"
+      ],
+      "answer": 2,
+      "explanation": "Siswa dimiliki kelas, jadi sarang satu tingkat /kelas/:kode/siswa sudah cukup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa GET /hapusBuku?id=7 berbahaya?",
+      "code": "",
+      "options": [
+        "GET tidak bisa membawa query string sehingga id selalu hilang di jalan",
+        "Express menolak semua URL yang mengandung huruf besar di tengah kata",
+        "Server pasti membalas 201 Created alih-alih 204 No Content untuk penghapusan",
+        "GET dianggap aman, jadi bot atau prefetch bisa memicu penghapusan"
+      ],
+      "answer": 3,
+      "explanation": "Browser, crawler, dan fitur prefetch boleh memanggil GET kapan saja karena dianggap tidak mengubah data."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana bentuk REST untuk aksi menyetujui pendaftaran anggota 12?",
+      "code": "",
+      "options": [
+        "POST /anggota/12/persetujuan",
+        "POST /setujuiAnggota/12",
+        "GET /anggota/12?setujui=true",
+        "PATCH /anggota/setujui/semua/12"
+      ],
+      "answer": 0,
+      "explanation": "Aksi khusus diubah menjadi kata benda (persetujuan) yang bisa dibuat dengan POST."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa kekurangan handler ini bila kelas yang diminta tidak ada?",
+      "code": "app.get(\"/kelas/:kode/siswa\", (req, res) => {\n  const isi = siswa.filter(\n    (s) => s.kelas === req.params.kode\n  );\n  res.json({ data: isi });\n});",
+      "options": [
+        "Daftar kosong seharusnya dijawab 204 No Content tanpa body",
+        "Kelas yang tidak ada seharusnya dijawab 404, bukan daftar kosong",
+        "Parameter kode seharusnya dibaca dari req.query, bukan req.params",
+        "Handler seharusnya membalas 500 karena data kelas tidak lengkap"
+      ],
+      "answer": 1,
+      "explanation": "Daftar kosong berarti kelasnya ada tetapi belum punya siswa. Induk yang tidak ada harus 404."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hubungan longgar seperti buku dan penulisnya sebaiknya ditulis bagaimana?",
+      "code": "",
+      "options": [
+        "Sebagai sarang dalam: /penulis/tere-liye/buku/7/bab",
+        "Sebagai kata kerja: /cariBukuPenulis",
+        "Sebagai filter: /buku?penulis=tere-liye",
+        "Sebagai ekstensi: /buku/penulis.json"
+      ],
+      "answer": 2,
+      "explanation": "Sarang hanya untuk kepemilikan kuat. Hubungan longgar cukup memakai filter di query."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa GET /buku?id=7 kurang tepat untuk mengambil satu buku?",
+      "code": "",
+      "options": [
+        "Query string tidak boleh berisi angka",
+        "Express tidak bisa membaca req.query.id",
+        "Mesin pencari akan menolak URL itu",
+        "Item terlihat seperti hasil filter, klien bingung balasannya objek atau array"
+      ],
+      "answer": 3,
+      "explanation": "Satu item punya alamat sendiri di path, yaitu /buku/7."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengapa URL API sebaiknya tidak memakai ekstensi seperti /buku.json?",
+      "code": "",
+      "options": [
+        "Format diatur header Content-Type dan Accept",
+        "Ekstensi membuat URL tidak bisa dibuka di browser",
+        "Express tidak mendukung titik di dalam path",
+        "JSON wajib ditulis sebagai /json/buku di depan URL"
+      ],
+      "answer": 0,
+      "explanation": "Format dikomunikasikan lewat header, sehingga teknologi server bisa berganti tanpa mengubah URL."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Method mana yang aman sekaligus idempoten?",
+      "code": "",
+      "options": [
+        "POST",
+        "GET",
+        "PATCH",
+        "DELETE"
+      ],
+      "answer": 1,
+      "explanation": "GET aman dan idempoten. DELETE idempoten tetapi tidak aman, POST dan PATCH tidak dijamin idempoten."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "PUT /buku/7 dikirim tiga kali dengan body lengkap yang sama. Bagaimana keadaan akhir server?",
+      "code": "",
+      "options": [
+        "Ada tiga buku baru dengan ID berbeda",
+        "Buku 7 terhapus pada kiriman kedua",
+        "Sama seperti setelah kiriman pertama",
+        "Stok buku 7 bertambah tiga kali lipat dari semula"
+      ],
+      "answer": 2,
+      "explanation": "PUT idempoten: mengganti isi dengan data yang sama berulang kali tidak mengubah hasil akhir."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Kenapa handler PATCH ini membuang field id dari body sebelum digabung?",
+      "code": "app.patch(\"/buku/:id\", (req, res) => {\n  const b = buku.find((x) => x.id === Number(req.params.id));\n  if (!b) return res.status(404).json({ error: \"tidak ada\" });\n  const { id, ...ubah } = req.body;\n  Object.assign(b, ubah);\n  res.json(b);\n});",
+      "options": [
+        "Supaya Express tidak membaca body dua kali",
+        "Karena Object.assign menolak field bernama id",
+        "Supaya respons menjadi 204 No Content tanpa body",
+        "Supaya klien tidak bisa mengganti ID lewat body"
+      ],
+      "answer": 3,
+      "explanation": "ID selalu diambil dari URL. Field id kiriman klien dibuang agar tidak menimpa ID asli."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "POST /peminjaman dikirim ulang karena sinyal putus. Risiko apa yang muncul?",
+      "code": "",
+      "options": [
+        "Peminjaman tercatat dua kali",
+        "Server membalas 304 Not Modified",
+        "Data peminjaman lama tertimpa oleh yang baru",
+        "Request kedua ditolak dengan 405 Method Not Allowed"
+      ],
+      "answer": 0,
+      "explanation": "POST tidak idempoten, jadi kiriman ulang bisa membuat data ganda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status apa yang tepat bila klien memakai method yang tidak disediakan untuk sebuah URL?",
+      "code": "",
+      "options": [
+        "400 Bad Request",
+        "405 Method Not Allowed",
+        "409 Conflict",
+        "403 Forbidden"
+      ],
+      "answer": 1,
+      "explanation": "405 menandakan method tidak didukung untuk resource itu, idealnya disertai header Allow."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa PATCH tidak dijamin idempoten?",
+      "code": "",
+      "options": [
+        "PATCH selalu membuat item baru dengan ID dari server",
+        "PATCH tidak boleh membawa body sama sekali",
+        "PATCH bisa berisi instruksi seperti tambah stok 1",
+        "PATCH hanya dipakai untuk menghapus field yang ada"
+      ],
+      "answer": 2,
+      "explanation": "Instruksi seperti tambah stok 1 mengubah hasil setiap kali dikirim, walau PATCH dengan nilai tetap kebetulan idempoten."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "PUT yang hanya mengirim { \"stok\": 5 } akan membuat field judul dan penulis ikut hilang.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "PUT mengganti seluruh isi item, jadi field yang tidak dikirim ikut hilang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Status code berawalan 5 menunjukkan",
+      "code": "",
+      "options": [
+        "Kesalahan dari klien",
+        "Pengalihan atau pemakaian salinan cache",
+        "Request berhasil diproses",
+        "Kesalahan di server"
+      ],
+      "answer": 3,
+      "explanation": "5xx berarti masalah ada di server dan klien tidak bisa memperbaikinya dengan mengubah request."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa fungsi header yang dipasang pada respons ini?",
+      "code": "app.post(\"/buku\", (req, res) => {\n  const baru = { id: buku.length + 1, ...req.body };\n  buku.push(baru);\n  res.set(\"Location\", `/buku/${baru.id}`);\n  res.status(201).json(baru);\n});",
+      "options": [
+        "Memberi tahu URL buku yang baru dibuat",
+        "Mengarahkan browser ke halaman login",
+        "Menyimpan buku baru di cache klien",
+        "Menandakan buku itu sudah dipindahkan permanen"
+      ],
+      "answer": 0,
+      "explanation": "Header Location pada 201 berisi alamat resource baru, sehingga klien tidak perlu menyusun URL sendiri."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien tanpa token mencoba membaca /nilai. Status yang tepat adalah",
+      "code": "",
+      "options": [
+        "403 Forbidden",
+        "401 Unauthorized",
+        "404 Not Found",
+        "400 Bad Request"
+      ],
+      "answer": 1,
+      "explanation": "401 berarti belum terautentikasi. 403 untuk klien yang sudah dikenali tetapi tidak berhak."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "JSON yang dikirim sah, tetapi judul buku kosong. Status yang dipakai di kelas ini adalah",
+      "code": "",
+      "options": [
+        "400 Bad Request",
+        "409 Conflict",
+        "422 Unprocessable Content",
+        "500 Internal Server Error"
+      ],
+      "answer": 2,
+      "explanation": "Kelas ini memakai 400 untuk request rusak dan 422 untuk isi yang tidak lolos validasi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "GET /buku?kategori=komik tidak menemukan buku apa pun. Respons yang tepat adalah",
+      "code": "",
+      "options": [
+        "404 karena tidak ada buku yang cocok",
+        "204 tanpa body karena hasilnya kosong",
+        "500 karena query ke database gagal",
+        "200 dengan data array kosong"
+      ],
+      "answer": 3,
+      "explanation": "Koleksinya ada, hanya hasil saringannya kosong, jadi tetap 200."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa masalah middleware error ini?",
+      "code": "app.use((err, req, res, next) => {\n  res.status(500).json({\n    error: err.message,\n    stack: err.stack,\n  });\n});",
+      "options": [
+        "Stack trace bocor ke klien",
+        "Middleware error harus punya tiga parameter",
+        "Status 500 tidak boleh dikirim lewat res.status",
+        "Respons error tidak boleh berbentuk JSON"
+      ],
+      "answer": 0,
+      "explanation": "Detail internal dicatat di log server. Klien cukup menerima pesan umum."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Menurut bab Status Code, mengirim body bersama respons 204 No Content tidak dianjurkan karena klien akan mengabaikannya.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "204 berarti tidak ada body, jadi kirim dengan res.status(204).end() atau res.sendStatus(204)."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Content type apa yang dipakai respons Problem Details (RFC 9457)?",
+      "code": "",
+      "options": [
+        "application/error+json",
+        "application/problem+json",
+        "text/problem",
+        "application/json; error=true"
+      ],
+      "answer": 1,
+      "explanation": "RFC 9457 memakai media type application/problem+json."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kelompok field mana yang dimiliki Problem Details menurut RFC 9457?",
+      "code": "",
+      "options": [
+        "code, message, details",
+        "error, msg, stack, line",
+        "type, title, status, detail",
+        "ok, data, errors"
+      ],
+      "answer": 2,
+      "explanation": "Problem Details memakai type, title, status, detail, dan boleh ditambah field sendiri."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Respons ini mencampur gaya nama field. Perbaikan mana yang tepat?",
+      "code": "{\n  \"id\": 31,\n  \"tanggalPinjam\": \"2026-07-10\",\n  \"batas_kembali\": \"2026-07-17\"\n}",
+      "options": [
+        "Ubah semua nama field menjadi huruf besar",
+        "Hapus field tanggal dari respons",
+        "Kirim kedua versi nama untuk setiap field",
+        "Pilih satu gaya, misalnya batasKembali"
+      ],
+      "answer": 3,
+      "explanation": "camelCase dan snake_case sama baiknya, yang buruk adalah mencampurnya di respons yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bagaimana sebaiknya denda Rp2.000 dikirim di JSON?",
+      "code": "",
+      "options": [
+        "\"denda\": 2000",
+        "\"denda\": \"Rp2.000\"",
+        "\"denda\": \"2000\"",
+        "\"denda\": \"dua ribu\""
+      ],
+      "answer": 0,
+      "explanation": "Angka dikirim sebagai number. Format rupiah urusan tampilan di klien."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa semua kesalahan validasi sebaiknya dikirim sekaligus?",
+      "code": "",
+      "options": [
+        "Supaya status code bisa berubah menjadi 200",
+        "Pengguna bisa membetulkan semua kolom sekali jalan",
+        "Karena format JSON hanya boleh berisi satu error",
+        "Supaya server tidak perlu memeriksa field berikutnya"
+      ],
+      "answer": 1,
+      "explanation": "Mengirim error satu per satu memaksa pengguna mengirim form berulang kali."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Akhiran Z pada waktu 2026-07-17T01:30:00Z berarti",
+      "code": "",
+      "options": [
+        "Waktu Indonesia Barat",
+        "Zona waktu tidak diketahui",
+        "Waktu dalam UTC",
+        "Waktu lokal di komputer server"
+      ],
+      "answer": 2,
+      "explanation": "Z berarti UTC. Untuk WIB, tulis selisihnya seperti +07:00."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa koleksi dibungkus objek seperti { data, meta } sejak awal?",
+      "code": "",
+      "options": [
+        "Array JSON tidak bisa diproses oleh fetch di browser",
+        "Express hanya bisa mengirim objek, bukan array",
+        "Supaya respons koleksi lebih kecil daripada array biasa",
+        "Field seperti total bisa ditambah tanpa merusak klien lama"
+      ],
+      "answer": 3,
+      "explanation": "Bila respons sejak awal objek, metadata cukup ditambah di meta tanpa mengubah bentuk respons."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Request GET /buku?halaman=2&per=10 diproses kode ini. Baris ke berapa yang dikembalikan (dihitung dari 1)?",
+      "code": "const halaman = Number(req.query.halaman) || 1;\nconst per = Number(req.query.per) || 20;\nconst isi = hasil.slice((halaman - 1) * per, halaman * per);",
+      "options": [
+        "11 sampai 20",
+        "10 sampai 20",
+        "1 sampai 10",
+        "20 sampai 30"
+      ],
+      "answer": 0,
+      "explanation": "slice(10, 20) mengambil indeks 10 sampai 19, yaitu baris ke-11 sampai ke-20."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa kelemahan paginasi offset di halaman yang sangat jauh?",
+      "code": "",
+      "options": [
+        "Klien tidak bisa lompat ke nomor halaman tertentu",
+        "Database tetap melewati semua baris sebelumnya",
+        "Metadata total tidak bisa dikirim sama sekali",
+        "Query string tidak bisa memuat angka sebesar itu"
+      ],
+      "answer": 1,
+      "explanation": "OFFSET 100000 membuat database melewati seratus ribu baris sebelum mengambil hasil."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan proses yang benar untuk sebuah daftar adalah",
+      "code": "",
+      "options": [
+        "Paginasi, filter, lalu sort",
+        "Sort, paginasi, lalu filter",
+        "Filter, sort, lalu paginasi",
+        "Paginasi, sort, lalu filter"
+      ],
+      "answer": 2,
+      "explanation": "Bila dipotong per halaman dulu, halaman bisa berisi lebih sedikit data dari seharusnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada paginasi cursor, apa arti next bernilai null?",
+      "code": "",
+      "options": [
+        "Cursor rusak dan harus dibuat ulang",
+        "Klien harus kembali ke halaman 1",
+        "Server gagal menghitung total",
+        "Data sudah habis"
+      ],
+      "answer": 3,
+      "explanation": "next null menandakan tidak ada data sesudah posisi terakhir."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klien mengirim ?sort=warna, padahal field itu tidak boleh dipakai. Respons yang dianjurkan adalah",
+      "code": "",
+      "options": [
+        "400 dengan pesan yang jelas",
+        "200 lalu abaikan diam-diam",
+        "404 karena field tidak ditemukan",
+        "500 karena proses sort gagal"
+      ],
+      "answer": 0,
+      "explanation": "Balasan 400 yang jelas membuat klien langsung tahu kesalahan ketiknya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Paginasi cursor memungkinkan klien lompat langsung ke halaman 37.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Cursor hanya tahu posisi sesudah penanda terakhir, jadi tidak bisa lompat ke nomor halaman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara menulis versi yang dipakai di kelas ini adalah",
+      "code": "",
+      "options": [
+        "Versi lengkap di path, seperti /v1.2.3",
+        "Versi utama di path, seperti /v1",
+        "Versi di query, seperti ?versi=1",
+        "Versi di nama field, seperti judulV1"
+      ],
+      "answer": 1,
+      "explanation": "Cukup nomor versi utama di path, karena perubahan kecil yang tidak merusak tidak butuh URL baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Perubahan mana yang merusak klien lama?",
+      "code": "",
+      "options": [
+        "Menambah field fotoUrl di respons",
+        "Menambah endpoint baru untuk kategori",
+        "Menjadikan parameter halaman wajib",
+        "Menambah parameter query yang opsional"
+      ],
+      "answer": 2,
+      "explanation": "Menambah parameter atau field body yang wajib membuat request klien lama gagal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Setelah tenggat deprecation lewat, /v1 sebaiknya dibalas status apa?",
+      "code": "",
+      "options": [
+        "404 Not Found",
+        "301 Moved Permanently",
+        "503 Service Unavailable",
+        "410 Gone"
+      ],
+      "answer": 3,
+      "explanation": "410 Gone menandakan resource sengaja dihapus permanen, disertai pesan yang menunjuk ke /v2."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Masalah keamanan apa yang ada pada kode ini?",
+      "code": "app.post(\"/v1/anggota\", (req, res) => {\n  const baru = { ...req.body, id: anggota.length + 1 };\n  anggota.push(baru);\n  res.status(201).json(baru);\n});",
+      "options": [
+        "Mass assignment lewat req.body",
+        "Token login dikirim lewat URL",
+        "Respons 201 tidak boleh berisi JSON",
+        "ID dibuat oleh server, bukan oleh klien"
+      ],
+      "answer": 0,
+      "explanation": "Menyalin req.body utuh membuat klien bisa menyelipkan field seperti role: \"admin\". Ambil hanya field yang diizinkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pernyataan mana yang benar tentang CORS?",
+      "code": "",
+      "options": [
+        "CORS menggantikan kebutuhan autentikasi di API",
+        "Hanya dipatuhi browser, curl tetap bisa memanggil API",
+        "Allow-Origin: * paling aman untuk data pribadi",
+        "CORS mengenkripsi data seperti HTTPS"
+      ],
+      "answer": 1,
+      "explanation": "CORS hanya mengatur izin browser membaca respons lintas origin, bukan pengaman API."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Request apa yang dikirim browser sebagai preflight CORS?",
+      "code": "",
+      "options": [
+        "HEAD",
+        "GET",
+        "OPTIONS",
+        "PATCH dengan header Origin"
+      ],
+      "answer": 2,
+      "explanation": "Sebelum request yang bukan request sederhana, browser mengirim OPTIONS untuk menanyakan izin."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Header Sunset berisi tanggal endpoint akan dimatikan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Sunset (RFC 8594) memberi tahu klien kapan endpoint berhenti melayani."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa arti Cache-Control: no-cache?",
+      "code": "",
+      "options": [
+        "Respons tidak boleh disimpan di mana pun, termasuk perangkat",
+        "Respons hanya boleh disimpan cache bersama seperti CDN",
+        "Respons dianggap segar selamanya dan tidak pernah dicek ulang",
+        "Boleh disimpan, tetapi dicek ulang ke server dulu"
+      ],
+      "answer": 3,
+      "explanation": "no-cache bukan larangan menyimpan. Yang melarang penyimpanan adalah no-store."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Header apa yang cocok untuk daftar kategori buku yang jarang berubah?",
+      "code": "",
+      "options": [
+        "Cache-Control: public, max-age=3600",
+        "Cache-Control: no-store",
+        "Cache-Control: private, no-store",
+        "Cache-Control: no-cache, no-store, must-revalidate"
+      ],
+      "answer": 0,
+      "explanation": "Data publik yang jarang berubah boleh disimpan cache bersama selama waktu tertentu."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "ETag data menu saat ini di server adalah \"v9\". Apa balasan server untuk request ini?",
+      "code": "GET /v1/menu HTTP/1.1\nIf-None-Match: \"v8\"",
+      "options": [
+        "304 Not Modified tanpa body",
+        "200 dengan menu baru dan ETag \"v9\"",
+        "412 Precondition Failed",
+        "404 karena ETag \"v8\" tidak ada"
+      ],
+      "answer": 1,
+      "explanation": "ETag yang dikirim klien berbeda dari ETag saat ini, jadi server mengirim data baru beserta ETag baru."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa isi header Retry-After pada respons 429?",
+      "code": "",
+      "options": [
+        "Jumlah request yang masih tersisa",
+        "Token baru untuk klien",
+        "Lama tunggu dalam detik atau tanggal HTTP",
+        "Alamat server cadangan"
+      ],
+      "answer": 2,
+      "explanation": "Retry-After berisi jumlah detik atau tanggal HTTP sebelum klien boleh mencoba lagi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "POST /v1/pesanan kedua datang dengan Idempotency-Key dan body yang sama. Apa yang dilakukan server?",
+      "code": "",
+      "options": [
+        "Membuat pesanan kedua dengan ID baru",
+        "Membalas 429 Too Many Requests",
+        "Membalas 304 Not Modified tanpa body",
+        "Mengembalikan respons tersimpan, tanpa pesanan baru"
+      ],
+      "answer": 3,
+      "explanation": "Server menyimpan kunci beserta respons pertama, lalu mengembalikannya untuk kiriman ulang."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Respons 304 Not Modified membawa body berisi data terbaru.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "304 tidak membawa body; klien memakai salinan yang sudah ia simpan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa nama lama OpenAPI Specification?",
+      "code": "",
+      "options": [
+        "Swagger Specification",
+        "RAML",
+        "JSON:API",
+        "Postman Collection Format"
+      ],
+      "answer": 0,
+      "explanation": "Swagger Specification disumbangkan ke OpenAPI Initiative lalu berganti nama. Swagger kini nama perangkatnya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa perbedaan penting OpenAPI 3.1 dibanding 3.0?",
+      "code": "",
+      "options": [
+        "Hanya bisa ditulis dalam format YAML",
+        "Schema selaras dengan JSON Schema",
+        "Tidak lagi memiliki bagian paths",
+        "Wajib dipakai bersama framework Express"
+      ],
+      "answer": 1,
+      "explanation": "Di 3.1, aturan schema seperti type, required, dan enum sama dengan JSON Schema."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang salah dari potongan spesifikasi ini?",
+      "code": "/buku:\n  post:\n    requestBody:\n      content:\n        application/json:\n          schema:\n            $ref: \"#/components/schemas/Buku\"\n    responses:\n      \"201\":\n        content:\n          application/json:\n            schema:\n              $ref: \"#/components/schemas/Buku\"",
+      "options": [
+        "Operasi post tidak boleh punya requestBody",
+        "Kunci 201 harus ditulis sebagai angka",
+        "Respons 201 tidak punya description",
+        "Media type harus ditulis text/json"
+      ],
+      "answer": 2,
+      "explanation": "Setiap respons di OpenAPI wajib punya description."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Nilai in mana yang tidak sah untuk parameter OpenAPI?",
+      "code": "",
+      "options": [
+        "query",
+        "header",
+        "cookie",
+        "body"
+      ],
+      "answer": 3,
+      "explanation": "Nilai in hanya path, query, header, atau cookie. Body dijelaskan di requestBody."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pendekatan design first berarti",
+      "code": "",
+      "options": [
+        "Spesifikasi ditulis dan didiskusikan sebelum kode",
+        "Kode ditulis dulu, spesifikasi dibuat dari anotasi",
+        "Tampilan Swagger UI didesain sebelum spesifikasi",
+        "Desain database dibuat sebelum menulis URL"
+      ],
+      "answer": 0,
+      "explanation": "Design first cocok untuk API yang dipakai banyak pihak karena rancangan disepakati dulu."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Swagger UI membaca file spesifikasi lalu membuat halaman dokumentasi yang bisa langsung mencoba request.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Tombol Try it out di Swagger UI mengirim request sungguhan ke API."
+    }
+  ],
+  "prerequisites": [
+    "expressjs"
+  ],
+  "project": {
+    "kind": "express",
+    "title": "API Perpustakaan Sekolah",
+    "brief": "Perpustakaan sekolahmu ingin aplikasi peminjaman buku di ponsel siswa. Tim aplikasi sudah siap, tinggal menunggu API. Tugasmu adalah membangun **API Perpustakaan Sekolah versi 1** yang rapi dan konsisten, menggabungkan isi kelas ini: URL resource, method, status code, format error, filter, sort, paginasi, versioning, dan header `Location`.\n\nData disimpan di larik `BUKU` (12 buku) dan `PEMINJAMAN` (awalnya kosong) yang sudah tersedia. Daftar kategori yang sah ada di `KATEGORI`: `novel`, `pelajaran`, `teknologi`. Helper `kirimError` dan `cariBuku` sudah ada di kode awal.\n\n## Bentuk data\n\n```js\n// buku\n{ id: 1, judul: \"Laskar Pelangi\", penulis: \"Andrea Hirata\", kategori: \"novel\", tahun: 2005, stok: 3 }\n// peminjaman\n{ id: 1, bukuId: 5, nis: \"2024017\" }\n```\n\n## Format error\n\nSemua error memakai bentuk yang sama:\n\n```json\n{ \"error\": { \"code\": \"VALIDASI_GAGAL\", \"message\": \"Data buku tidak valid\",\n  \"details\": [{ \"field\": \"tahun\", \"message\": \"tahun harus bilangan bulat 1450 sampai 2100\" }] } }\n```\n\n`details` hanya ada untuk error validasi. Kode error yang dipakai: `SORT_TIDAK_VALID`, `BUKU_TIDAK_DITEMUKAN`, `VALIDASI_GAGAL`, `STOK_HABIS`.\n\n## Endpoint wajib\n\n| Method dan path | Sukses | Error |\n| --- | --- | --- |\n| `GET /v1/buku` | `200` `{ data, meta }` | `400 SORT_TIDAK_VALID` |\n| `GET /v1/buku/:id` | `200` objek buku | `404 BUKU_TIDAK_DITEMUKAN` |\n| `POST /v1/buku` | `201` buku baru + header `Location` | `422 VALIDASI_GAGAL` |\n| `PATCH /v1/buku/:id` | `200` buku setelah diubah | `404`, `422` |\n| `DELETE /v1/buku/:id` | `204` tanpa body | `404` |\n| `POST /v1/buku/:id/peminjaman` | `201` data peminjaman | `404`, `422`, `409 STOK_HABIS` |\n\n## Aturan daftar buku\n\n- `?kategori=novel` memfilter tepat sesuai kategori.\n- `?sort=` menerima `judul`, `-judul`, `tahun`, atau `-tahun`. Nilai lain dibalas `400`. Jangan mengubah urutan larik `BUKU` aslinya.\n- `?halaman=` bawaan 1 dan `?per=` bawaan 10, maksimal 50. Nilai yang bukan angka memakai nilai bawaan.\n- Urutan proses: filter, sort, lalu paginasi.\n- `meta` berisi `{ total, halaman, per, totalHalaman }`, dengan `total` dihitung setelah filter dan `totalHalaman = Math.ceil(total / per)`.\n\n## Aturan validasi buku\n\n- `judul` dan `penulis`: string yang tidak kosong setelah `trim()`, disimpan dalam keadaan sudah di-trim.\n- `kategori`: salah satu isi `KATEGORI`.\n- `tahun`: bilangan bulat 1450 sampai 2100 (string `\"2020\"` ditolak).\n- `stok`: opsional, bilangan bulat 0 atau lebih, bawaan 1.\n\n`POST` memeriksa semua field wajib. `PATCH` hanya memeriksa field yang dikirim dan hanya mengubah field itu. Kumpulkan **semua** kesalahan ke `details`, jangan berhenti di kesalahan pertama. `id` buku baru adalah id terbesar ditambah 1, dan header `Location` berisi `/v1/buku/<id>`.\n\n## Aturan peminjaman\n\nBody berisi `{ nis }`. Periksa berurutan: buku tidak ada `404`, `nis` kosong atau tidak ada `422` dengan details field `nis`, stok 0 `409 STOK_HABIS`. Bila lolos, kurangi stok satu, simpan ke `PEMINJAMAN` dengan `id` berurutan, lalu balas `201`.\n\n## Contoh\n\n```http\nGET /v1/buku?kategori=teknologi&sort=-tahun&halaman=1&per=2\n\n200 OK\n{ \"data\": [{ \"id\": 9, \"judul\": \"Belajar JavaScript\", ... }, { \"id\": 3, ... }],\n  \"meta\": { \"total\": 4, \"halaman\": 1, \"per\": 2, \"totalHalaman\": 2 } }\n```\n\nTes berjalan berurutan pada data yang sama, jadi buku yang kamu tambah di satu tes masih ada di tes berikutnya. Setelah semua tes lolos, coba tulis spesifikasi OpenAPI 3.1 untuk API ini sebagai latihan tambahan.",
+    "prompt": "Lengkapi API `/v1/buku` untuk perpustakaan sekolah: daftar dengan filter `?kategori`, sort `?sort=judul|-judul|tahun|-tahun`, paginasi `?halaman&per` plus metadata, detail dengan 404 berformat error, POST dengan validasi 422 dan header Location, PATCH, DELETE 204, serta POST `/v1/buku/:id/peminjaman` yang membalas 409 bila stok habis.",
+    "starter": {
+      "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\n// Format error untuk semua endpoint: { error: { code, message, details? } }\nfunction kirimError(res, status, code, message, details) {\n  const error = { code, message };\n  if (details) error.details = details;\n  return res.status(status).json({ error });\n}\n\nfunction cariBuku(id) {\n  return BUKU.find((b) => b.id === Number(id));\n}\n\napp.get(\"/v1/buku\", (req, res) => {\n  // TODO: filter ?kategori, sort ?sort=judul|-judul|tahun|-tahun (lainnya 400),\n  // paginasi ?halaman (bawaan 1) dan ?per (bawaan 10, maks 50), lalu meta\n  res.json({ data: BUKU });\n});\n\napp.get(\"/v1/buku/:id\", (req, res) => {\n  // TODO: 404 BUKU_TIDAK_DITEMUKAN bila tidak ada\n  res.json(cariBuku(req.params.id));\n});\n\napp.post(\"/v1/buku\", (req, res) => {\n  // TODO: validasi -> 422 VALIDASI_GAGAL dengan details [{ field, message }]\n  // TODO: id baru, stok bawaan 1, header Location, status 201\n  BUKU.push(req.body);\n  res.json(req.body);\n});\n\n// TODO: PATCH /v1/buku/:id (404, 422, ubah hanya field yang dikirim)\n\n// TODO: DELETE /v1/buku/:id (404 atau 204 tanpa body)\n\n// TODO: POST /v1/buku/:id/peminjaman (404, 422 tanpa nis, 409 STOK_HABIS, 201)\n"
+    },
+    "solution": {
+      "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction kirimError(res, status, code, message, details) {\n  const error = { code, message };\n  if (details) error.details = details;\n  return res.status(status).json({ error });\n}\n\nfunction cariBuku(id) {\n  return BUKU.find((b) => b.id === Number(id));\n}\n\nfunction bukuTidakAda(res, id) {\n  return kirimError(res, 404, \"BUKU_TIDAK_DITEMUKAN\", \"Buku dengan id \" + id + \" tidak ditemukan\");\n}\n\nfunction teksWajib(nilai) {\n  return typeof nilai === \"string\" && nilai.trim() !== \"\";\n}\n\n// parsial: true untuk PATCH, hanya field yang dikirim yang diperiksa\nfunction validasiBuku(data, parsial) {\n  const details = [];\n  const ada = (f) => !parsial || data[f] !== undefined;\n  if (ada(\"judul\") && !teksWajib(data.judul)) details.push({ field: \"judul\", message: \"judul wajib diisi\" });\n  if (ada(\"penulis\") && !teksWajib(data.penulis)) details.push({ field: \"penulis\", message: \"penulis wajib diisi\" });\n  if (ada(\"kategori\") && !KATEGORI.includes(data.kategori)) {\n    details.push({ field: \"kategori\", message: \"kategori harus salah satu dari \" + KATEGORI.join(\", \") });\n  }\n  if (ada(\"tahun\") && !(Number.isInteger(data.tahun) && data.tahun >= 1450 && data.tahun <= 2100)) {\n    details.push({ field: \"tahun\", message: \"tahun harus bilangan bulat 1450 sampai 2100\" });\n  }\n  if (data.stok !== undefined && !(Number.isInteger(data.stok) && data.stok >= 0)) {\n    details.push({ field: \"stok\", message: \"stok harus bilangan bulat 0 atau lebih\" });\n  }\n  return details;\n}\n\nconst BOLEH_SORT = [\"judul\", \"tahun\"];\n\napp.get(\"/v1/buku\", (req, res) => {\n  let hasil = BUKU;\n  if (req.query.kategori) hasil = hasil.filter((b) => b.kategori === req.query.kategori);\n\n  if (req.query.sort) {\n    const turun = req.query.sort.startsWith(\"-\");\n    const field = turun ? req.query.sort.slice(1) : req.query.sort;\n    if (!BOLEH_SORT.includes(field)) {\n      return kirimError(res, 400, \"SORT_TIDAK_VALID\", \"sort hanya boleh judul, -judul, tahun, atau -tahun\");\n    }\n    const arah = turun ? -1 : 1;\n    hasil = [...hasil].sort((a, b) => (a[field] > b[field] ? 1 : a[field] < b[field] ? -1 : 0) * arah);\n  }\n\n  const per = Math.min(50, Math.max(1, parseInt(req.query.per, 10) || 10));\n  const halaman = Math.max(1, parseInt(req.query.halaman, 10) || 1);\n  const total = hasil.length;\n  res.json({\n    data: hasil.slice((halaman - 1) * per, halaman * per),\n    meta: { total, halaman, per, totalHalaman: Math.ceil(total / per) },\n  });\n});\n\napp.get(\"/v1/buku/:id\", (req, res) => {\n  const buku = cariBuku(req.params.id);\n  if (!buku) return bukuTidakAda(res, req.params.id);\n  res.json(buku);\n});\n\napp.post(\"/v1/buku\", (req, res) => {\n  const details = validasiBuku(req.body, false);\n  if (details.length) return kirimError(res, 422, \"VALIDASI_GAGAL\", \"Data buku tidak valid\", details);\n  const { judul, penulis, kategori, tahun, stok } = req.body;\n  const id = BUKU.reduce((maks, b) => Math.max(maks, b.id), 0) + 1;\n  const baru = { id, judul: judul.trim(), penulis: penulis.trim(), kategori, tahun, stok: stok === undefined ? 1 : stok };\n  BUKU.push(baru);\n  res.set(\"Location\", \"/v1/buku/\" + id);\n  res.status(201).json(baru);\n});\n\napp.patch(\"/v1/buku/:id\", (req, res) => {\n  const buku = cariBuku(req.params.id);\n  if (!buku) return bukuTidakAda(res, req.params.id);\n  const details = validasiBuku(req.body, true);\n  if (details.length) return kirimError(res, 422, \"VALIDASI_GAGAL\", \"Data buku tidak valid\", details);\n  for (const f of [\"judul\", \"penulis\", \"kategori\", \"tahun\", \"stok\"]) {\n    if (req.body[f] !== undefined) buku[f] = typeof req.body[f] === \"string\" ? req.body[f].trim() : req.body[f];\n  }\n  res.json(buku);\n});\n\napp.delete(\"/v1/buku/:id\", (req, res) => {\n  const i = BUKU.findIndex((b) => b.id === Number(req.params.id));\n  if (i === -1) return bukuTidakAda(res, req.params.id);\n  BUKU.splice(i, 1);\n  res.status(204).end();\n});\n\napp.post(\"/v1/buku/:id/peminjaman\", (req, res) => {\n  const buku = cariBuku(req.params.id);\n  if (!buku) return bukuTidakAda(res, req.params.id);\n  if (!teksWajib(req.body.nis)) {\n    return kirimError(res, 422, \"VALIDASI_GAGAL\", \"Data peminjaman tidak valid\", [{ field: \"nis\", message: \"nis wajib diisi\" }]);\n  }\n  if (buku.stok < 1) return kirimError(res, 409, \"STOK_HABIS\", \"Stok buku \" + buku.judul + \" sedang habis\");\n  buku.stok -= 1;\n  const pinjam = { id: PEMINJAMAN.length + 1, bukuId: buku.id, nis: req.body.nis };\n  PEMINJAMAN.push(pinjam);\n  res.status(201).json(pinjam);\n});\n"
+    },
+    "setup": "const KATEGORI = [\"novel\", \"pelajaran\", \"teknologi\"];\nconst BUKU = [\n  { id: 1, judul: \"Laskar Pelangi\", penulis: \"Andrea Hirata\", kategori: \"novel\", tahun: 2005, stok: 3 },\n  { id: 2, judul: \"Bumi Manusia\", penulis: \"Pramoedya Ananta Toer\", kategori: \"novel\", tahun: 1980, stok: 2 },\n  { id: 3, judul: \"Pemrograman Web Dasar\", penulis: \"Tim Guru RPL\", kategori: \"teknologi\", tahun: 2022, stok: 4 },\n  { id: 4, judul: \"Matematika Kelas XI\", penulis: \"Tim Kurikulum\", kategori: \"pelajaran\", tahun: 2021, stok: 10 },\n  { id: 5, judul: \"Negeri 5 Menara\", penulis: \"Ahmad Fuadi\", kategori: \"novel\", tahun: 2009, stok: 1 },\n  { id: 6, judul: \"Jaringan Komputer untuk Pemula\", penulis: \"Tim Guru TKJ\", kategori: \"teknologi\", tahun: 2019, stok: 2 },\n  { id: 7, judul: \"Sejarah Indonesia\", penulis: \"Tim Kurikulum\", kategori: \"pelajaran\", tahun: 2018, stok: 5 },\n  { id: 8, judul: \"Ronggeng Dukuh Paruk\", penulis: \"Ahmad Tohari\", kategori: \"novel\", tahun: 1982, stok: 0 },\n  { id: 9, judul: \"Belajar JavaScript\", penulis: \"Tim Guru RPL\", kategori: \"teknologi\", tahun: 2023, stok: 3 },\n  { id: 10, judul: \"Bahasa Inggris Kelas X\", penulis: \"Tim Kurikulum\", kategori: \"pelajaran\", tahun: 2020, stok: 8 },\n  { id: 11, judul: \"Cantik Itu Luka\", penulis: \"Eka Kurniawan\", kategori: \"novel\", tahun: 2002, stok: 1 },\n  { id: 12, judul: \"Dasar Desain Grafis\", penulis: \"Tim Guru DKV\", kategori: \"teknologi\", tahun: 2017, stok: 2 },\n];\nconst PEMINJAMAN = [];\nconst ids = (r) => r.body.data.map((b) => b.id).join(\",\");\n",
+    "tests": [
+      {
+        "name": "Daftar bawaan: 10 buku pertama dan meta",
+        "check": "(async () => { const r = await request(\"GET\", \"/v1/buku\"); return r.status === 200 && r.body.data.length === 10 && JSON.stringify(r.body.meta) === JSON.stringify({ total: 12, halaman: 1, per: 10, totalHalaman: 2 }); })()"
+      },
+      {
+        "name": "Filter kategori dengan total setelah filter",
+        "check": "(async () => { const r = await request(\"GET\", \"/v1/buku?kategori=novel\"); return ids(r) === \"1,2,5,8,11\" && r.body.meta.total === 5 && r.body.meta.totalHalaman === 1; })()"
+      },
+      {
+        "name": "Sort judul dan -tahun tanpa mengubah BUKU",
+        "check": "(async () => { const a = await request(\"GET\", \"/v1/buku?sort=judul&per=3\"); const b = await request(\"GET\", \"/v1/buku?sort=-tahun&per=3\"); return ids(a) === \"10,9,2\" && ids(b) === \"9,3,4\" && BUKU[0].id === 1; })()"
+      },
+      {
+        "name": "Filter, sort, dan paginasi digabung",
+        "check": "(async () => { const a = await request(\"GET\", \"/v1/buku?halaman=2&per=3\"); const b = await request(\"GET\", \"/v1/buku?kategori=teknologi&sort=-tahun&halaman=2&per=2\"); return ids(a) === \"4,5,6\" && a.body.meta.totalHalaman === 4 && ids(b) === \"6,12\" && b.body.meta.total === 4; })()"
+      },
+      {
+        "name": "Sort tidak valid 400 dan per maksimal 50",
+        "check": "(async () => { const a = await request(\"GET\", \"/v1/buku?sort=harga\"); const b = await request(\"GET\", \"/v1/buku?per=500\"); return a.status === 400 && a.body.error.code === \"SORT_TIDAK_VALID\" && typeof a.body.error.message === \"string\" && b.body.meta.per === 50; })()"
+      },
+      {
+        "name": "Detail buku dan 404 berformat error",
+        "check": "(async () => { const a = await request(\"GET\", \"/v1/buku/2\"); const b = await request(\"GET\", \"/v1/buku/99\"); return a.status === 200 && a.body.judul === \"Bumi Manusia\" && b.status === 404 && b.body.error.code === \"BUKU_TIDAK_DITEMUKAN\" && typeof b.body.error.message === \"string\"; })()"
+      },
+      {
+        "name": "POST tidak valid: 422 dengan details per field",
+        "check": "(async () => { const r = await request(\"POST\", \"/v1/buku\", { judul: \"  \", penulis: \"Tere Liye\", kategori: \"komik\", tahun: \"2020\" }); const f = (r.body.error?.details || []).map((d) => d.field).sort().join(); return r.status === 422 && r.body.error.code === \"VALIDASI_GAGAL\" && f === \"judul,kategori,tahun\" && BUKU.length === 12; })()"
+      },
+      {
+        "name": "POST valid: 201, Location, id baru, stok bawaan 1",
+        "check": "(async () => { const r = await request(\"POST\", \"/v1/buku\", { judul: \"Hujan\", penulis: \"Tere Liye\", kategori: \"novel\", tahun: 2016 }); return r.status === 201 && r.headers?.location === \"/v1/buku/13\" && r.body.id === 13 && r.body.stok === 1 && (await request(\"GET\", \"/v1/buku/13\")).body.judul === \"Hujan\"; })()"
+      },
+      {
+        "name": "PATCH mengubah sebagian, 422 dan 404 tetap berlaku",
+        "check": "(async () => { const a = await request(\"PATCH\", \"/v1/buku/13\", { stok: 4 }); const b = await request(\"PATCH\", \"/v1/buku/13\", { stok: -1 }); const c = await request(\"PATCH\", \"/v1/buku/99\", { stok: 1 }); return a.status === 200 && a.body.stok === 4 && a.body.judul === \"Hujan\" && b.status === 422 && b.body.error.details[0].field === \"stok\" && c.status === 404; })()"
+      },
+      {
+        "name": "DELETE membalas 204 lalu buku hilang",
+        "check": "(async () => { const a = await request(\"DELETE\", \"/v1/buku/13\"); const b = await request(\"GET\", \"/v1/buku/13\"); const c = await request(\"DELETE\", \"/v1/buku/13\"); return a.status === 204 && a.body === undefined && b.status === 404 && c.status === 404; })()"
+      },
+      {
+        "name": "Peminjaman: 201 dan stok berkurang",
+        "check": "(async () => { const r = await request(\"POST\", \"/v1/buku/5/peminjaman\", { nis: \"2024017\" }); return r.status === 201 && r.body.bukuId === 5 && r.body.nis === \"2024017\" && (await request(\"GET\", \"/v1/buku/5\")).body.stok === 0; })()"
+      },
+      {
+        "name": "Peminjaman: 409 stok habis, 422 tanpa nis, 404 buku",
+        "check": "(async () => { const a = await request(\"POST\", \"/v1/buku/5/peminjaman\", { nis: \"2024018\" }); const b = await request(\"POST\", \"/v1/buku/1/peminjaman\", {}); const c = await request(\"POST\", \"/v1/buku/99/peminjaman\", { nis: \"2024018\" }); return a.status === 409 && a.body.error.code === \"STOK_HABIS\" && b.status === 422 && c.status === 404 && BUKU.find((x) => x.id === 1).stok === 3; })()"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "apa-itu-rest",
+      "title": "Apa Itu REST",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu API dan peran klien serta server.\n- Memahami prinsip utama REST: resource, representasi, stateless, dan client-server.\n- Membedakan REST dengan gaya RPC dan GraphQL secara singkat.\n- Menulis dua route Express pertama yang mengikuti gaya REST.\n\n## API itu kontrak\n\nKamu sudah bisa membuat route di Express. Route `app.get(\"/buku\", ...)` yang kamu tulis sebenarnya adalah bagian dari sebuah API. API (Application Programming Interface) adalah kontrak yang menjelaskan cara satu program meminta sesuatu ke program lain. Di dunia web, kontrak itu berbentuk URL, method HTTP, header, dan body JSON.\n\nBayangkan aplikasi perpustakaan sekolah. Ada aplikasi web untuk petugas, aplikasi HP untuk siswa, dan mungkin papan informasi di lobi yang menampilkan buku terbaru. Ketiganya disebut **klien**. Mereka semua mengambil data dari satu **server** yang sama. Supaya ketiga klien bisa bekerja, server harus menjanjikan hal yang jelas: \"kalau kamu meminta `GET /buku/7`, kamu akan mendapat data buku nomor 7 dalam bentuk JSON\".\n\nKalau janji itu berubah sembarangan, misalnya hari ini field-nya `judul` lalu besok jadi `title`, semua klien rusak. Karena itu kelas ini tidak membahas cara membuat route supaya jalan (itu sudah kamu bisa), melainkan cara **merancang** API supaya mudah ditebak, konsisten, dan tahan lama.\n\nContoh satu pertukaran request dan respons terlihat seperti ini:\n\n```http\nGET /buku/7 HTTP/1.1\nHost: api.perpus.sch.id\nAccept: application/json\n\nHTTP/1.1 200 OK\nContent-Type: application/json\n\n{ \"id\": 7, \"judul\": \"Laskar Pelangi\", \"penulis\": \"Andrea Hirata\" }\n```\n\nBaris pertama request berisi method (`GET`) dan path (`/buku/7`). Respons diawali status code (`200 OK`), lalu header, lalu body. Seluruh kelas ini sebenarnya membahas cara memilih isi setiap bagian itu dengan baik.\n\n## Apa itu REST\n\nREST (Representational State Transfer) adalah gaya arsitektur yang dirumuskan Roy Fielding dalam disertasinya pada tahun 2000. REST bukan library dan bukan aturan resmi yang dicek oleh mesin. Ia adalah kumpulan prinsip. API yang mengikuti prinsip itu disebut RESTful.\n\n![Empat prinsip REST yang paling sering dipakai](slide:3)\n\nAda beberapa prinsip yang perlu kamu pegang.\n\n**Resource.** Semua yang bisa diberi nama adalah resource: buku, anggota, peminjaman, kelas, nilai rapor. Setiap resource punya alamat sendiri berupa URL. Koleksi buku ada di `/buku`, satu buku ada di `/buku/7`.\n\n**Representasi.** Server tidak mengirim \"buku\" itu sendiri, melainkan gambarannya dalam format tertentu. Hampir semua API modern memakai JSON. Data yang sama bisa saja disimpan sebagai baris tabel MySQL di server, tetapi yang dikirim ke klien adalah representasi JSON-nya.\n\n**Stateless.** Server tidak mengingat percakapan sebelumnya dengan klien. Setiap request harus membawa semua informasi yang dibutuhkan, termasuk siapa pengirimnya (biasanya lewat token di header). Keuntungannya, request mana pun bisa dilayani server mana pun, sehingga mudah menambah server saat pengguna bertambah.\n\n**Client-server.** Klien mengurus tampilan, server mengurus data dan aturan bisnis. Keduanya boleh berkembang terpisah selama kontraknya tetap. Tim aplikasi HP bisa mengganti desain tanpa menunggu tim server.\n\n**Antarmuka seragam.** Semua resource diperlakukan dengan cara yang sama: method HTTP standar (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) dan status code standar (`200`, `404`, dan teman-temannya). Programmer yang sudah kenal satu API REST bisa langsung menebak cara memakai API REST lain.\n\nPrinsip lain seperti respons yang bisa di-cache akan kamu temui lagi di bab caching.\n\n## Stateless dalam praktik\n\nMari lihat contoh yang melanggar prinsip stateless. Misalkan server menyimpan \"halaman terakhir yang dilihat\" di variabel global:\n\n```js\nlet halamanTerakhir = 1;\n\napp.get(\"/buku/berikutnya\", (req, res) => {\n  halamanTerakhir++;\n  res.json(ambilHalaman(halamanTerakhir));\n});\n```\n\nKalau dua siswa membuka aplikasi bersamaan, mereka saling menggeser halaman satu sama lain. Kalau server di-restart, posisinya hilang. Versi stateless meminta klien menyebutkan halamannya sendiri:\n\n```js\napp.get(\"/buku\", (req, res) => {\n  const halaman = Number(req.query.halaman) || 1;\n  res.json(ambilHalaman(halaman));\n});\n```\n\nSekarang setiap request berdiri sendiri. Request `GET /buku?halaman=3` selalu berarti hal yang sama, siapa pun pengirimnya dan server mana pun yang menjawab.\n\nPerlu dicatat, stateless bukan berarti server tidak boleh menyimpan data. Database tetap menyimpan buku dan anggota. Yang dilarang adalah menyimpan **keadaan percakapan** dengan klien tertentu di memori server.\n\n## REST dan alternatifnya\n\nREST bukan satu-satunya gaya. Ada dua alternatif yang sering kamu dengar.\n\n**RPC (Remote Procedure Call).** Gaya ini memperlakukan API sebagai kumpulan fungsi. URL-nya berupa kata kerja, misalnya `POST /ambilNilaiSiswa` atau `POST /hitungRataRata`. Gaya ini terasa alami bagi programmer karena mirip memanggil fungsi, tetapi setiap API punya nama fungsi sendiri yang harus dihafal. gRPC adalah contoh RPC modern yang populer untuk komunikasi antarserver.\n\n**GraphQL.** Hanya ada satu endpoint, biasanya `POST /graphql`. Klien mengirim query yang menyebut field apa saja yang ia mau. Cocok untuk aplikasi dengan tampilan rumit yang butuh data dari banyak resource sekaligus, tetapi lebih sulit di-cache dan butuh library khusus di server.\n\n```text\n# REST\nGET  /siswa/12/nilai\n\n# RPC\nPOST /ambilNilaiSiswa   { \"id\": 12 }\n\n# GraphQL\nPOST /graphql\n{ siswa(id: 12) { nama nilai { mapel angka } } }\n```\n\nKetiganya sah dipakai. REST paling umum untuk API publik dan aplikasi web biasa karena memanfaatkan fitur HTTP yang sudah ada: method, status code, dan cache. Itulah alasan kelas ini fokus ke REST.\n\n## Route pertama yang RESTful\n\nDengan prinsip di atas, dua route paling dasar untuk koleksi buku terlihat seperti ini:\n\n```js\nconst express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst BUKU = [\n  { id: 1, judul: \"Laskar Pelangi\", penulis: \"Andrea Hirata\" },\n  { id: 2, judul: \"Bumi\", penulis: \"Tere Liye\" },\n];\n\napp.get(\"/buku\", (req, res) => {\n  res.json({ data: BUKU });\n});\n\napp.get(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  res.json(buku);\n});\n```\n\nPerhatikan tiga hal. Pertama, URL hanya berisi kata benda (`buku`), aksinya ditentukan method `GET`. Kedua, `req.params.id` selalu berupa string, jadi perlu `Number()` sebelum dibandingkan dengan id angka. Ketiga, buku yang tidak ada dijawab dengan status `404`, bukan `200` dengan pesan \"tidak ada\". Ketiga kebiasaan ini akan dibahas lebih dalam di bab-bab berikutnya.\n\n## Melihat API dari sisi klien\n\nDesain API paling mudah dinilai dari sisi orang yang memakainya. Coba bayangkan kamu adalah programmer aplikasi web perpustakaan yang memanggil route di atas dengan `fetch`:\n\n```js\nconst res = await fetch(\"https://api.perpus.sch.id/buku/7\");\nif (res.status === 404) {\n  tampilkanPesan(\"Buku tidak ditemukan\");\n} else {\n  const buku = await res.json();\n  tampilkanBuku(buku);\n}\n```\n\nKode klien ini pendek karena API-nya bisa ditebak: URL jelas, status code jujur, dan bentuk JSON-nya tetap. Sekarang bayangkan API yang selalu membalas 200 lalu menaruh keterangan berhasil atau gagal di field yang namanya berubah-ubah antarendpoint. Klien harus menulis pemeriksaan khusus untuk setiap endpoint, dan setiap perubahan kecil di server berisiko merusak aplikasi.\n\nSelama kelas ini, biasakan bertanya dua hal setiap kali merancang endpoint: \"Bisakah orang lain menebak URL ini tanpa dokumentasi?\" dan \"Bisakah klien menangani responsnya tanpa membaca kode server?\" Kalau jawabannya ya, desainmu sudah di jalur yang benar.\n\n## Rangkuman\n\n- API adalah kontrak antara klien dan server; di web kontraknya berupa URL, method, header, status code, dan JSON.\n- REST adalah gaya arsitektur, bukan library: data dimodelkan sebagai resource dengan URL sendiri dan dikirim sebagai representasi JSON.\n- Stateless berarti setiap request membawa semua informasi yang dibutuhkan; server tidak menyimpan keadaan percakapan di memori.\n- RPC memakai nama fungsi sebagai URL, GraphQL memakai satu endpoint dengan query; REST paling umum karena memanfaatkan fitur HTTP.\n- Kebiasaan dasar: URL kata benda, method sebagai aksi, dan status code yang jujur.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa arti stateless dalam REST?",
+          "code": "",
+          "options": [
+            "Server tidak boleh menyimpan data apa pun di database",
+            "Setiap request membawa semua informasi yang dibutuhkan server",
+            "Klien wajib menyimpan seluruh isi database di perangkatnya",
+            "Server menyimpan sesi tiap klien di variabel global agar cepat"
+          ],
+          "answer": 1,
+          "explanation": "Stateless melarang server mengingat keadaan percakapan, bukan melarang database."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Endpoint mana yang bergaya RPC, bukan REST?",
+          "code": "",
+          "options": [
+            "GET /siswa/12/nilai",
+            "DELETE /buku/7",
+            "POST /ambilNilaiSiswa",
+            "POST /anggota"
+          ],
+          "answer": 2,
+          "explanation": "URL berupa kata kerja seperti ambilNilaiSiswa adalah ciri gaya RPC."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "REST adalah library JavaScript yang harus dipasang lewat npm sebelum membuat API.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "REST adalah gaya arsitektur, bukan library; Express pun bisa dipakai untuk API yang tidak RESTful."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Prinsip REST mana yang dilanggar kode ini?",
+          "code": "let halamanTerakhir = 1;\napp.get(\"/buku/berikutnya\", (req, res) => {\n  halamanTerakhir++;\n  res.json(ambilHalaman(halamanTerakhir));\n});",
+          "options": [
+            "Representasi, karena hasilnya tidak dikirim dalam format XML",
+            "Stateless",
+            "Client-server, karena klien ikut mengatur tampilan halaman",
+            "Antarmuka seragam, karena memakai method GET untuk membaca data"
+          ],
+          "answer": 1,
+          "explanation": "Posisi halaman disimpan di memori server, sehingga hasil request bergantung pada request sebelumnya."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Dua route buku pertama",
+          "prompt": "Array `BUKU` sudah tersedia. Lengkapi dua route:\n\n- `GET /buku` membalas `{ data: BUKU }`\n- `GET /buku/:id` membalas objek buku dengan id itu (ingat `req.params.id` berupa string)\n- bila buku tidak ada, balas status `404` dengan `{ error: { message: \"Buku tidak ditemukan\" } }`",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/buku\", (req, res) => {\n  // TODO: kirim { data: BUKU }\n  res.json({});\n});\n\napp.get(\"/buku/:id\", (req, res) => {\n  // TODO: cari buku, 404 bila tidak ada\n  res.json({});\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/buku\", (req, res) => {\n  res.json({ data: BUKU });\n});\n\napp.get(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  res.json(buku);\n});\n"
+          },
+          "setup": "const BUKU = [\n  { id: 1, judul: \"Laskar Pelangi\", penulis: \"Andrea Hirata\" },\n  { id: 2, judul: \"Bumi\", penulis: \"Tere Liye\" },\n  { id: 3, judul: \"Negeri 5 Menara\", penulis: \"Ahmad Fuadi\" },\n];",
+          "tests": [
+            {
+              "name": "GET /buku membalas data berisi 3 buku",
+              "check": "(await request(\"GET\", \"/buku\")).body.data.length === 3"
+            },
+            {
+              "name": "GET /buku/2 membalas buku Bumi",
+              "check": "(await request(\"GET\", \"/buku/2\")).body.judul === \"Bumi\""
+            },
+            {
+              "name": "Buku yang tidak ada: status 404",
+              "check": "(await request(\"GET\", \"/buku/99\")).status === 404"
+            },
+            {
+              "name": "Pesan 404 ada di error.message",
+              "check": "(await request(\"GET\", \"/buku/99\")).body.error.message === \"Buku tidak ditemukan\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "url-dan-resource",
+      "title": "URL dan Resource",
+      "est_minutes": 30,
+      "slide_from": 5,
+      "slide_to": 8,
+      "body": "## Tujuan\n\n- Menamai resource dengan kata benda jamak, huruf kecil, dan tanda hubung.\n- Menghindari kata kerja di URL dan mengubah aksi khusus menjadi resource.\n- Merancang resource bersarang seperti `/kelas/:kode/siswa` tanpa berlebihan.\n- Memutuskan kapan sebuah nilai masuk ke path dan kapan ke query string.\n\n## URL adalah nama resource\n\nDi bab sebelumnya kamu belajar bahwa setiap resource punya alamat sendiri. Bab ini membahas cara memberi nama alamat itu. Kedengarannya sepele, tetapi URL adalah bagian API yang paling sering dilihat orang. Programmer yang memakai API kamu akan menebak URL sebelum membaca dokumentasi. Kalau tebakannya sering benar, API kamu dianggap enak dipakai.\n\nAda dua jenis URL dasar:\n\n- **Koleksi**: kumpulan resource sejenis, misalnya `/buku` atau `/anggota`.\n- **Item**: satu resource di dalam koleksi, ditulis sebagai koleksi diikuti ID, misalnya `/buku/7`.\n\n```text\n/buku              koleksi buku\n/buku/7            satu buku\n/anggota           koleksi anggota perpustakaan\n/anggota/21        satu anggota\n/kategori-buku     nama dua kata memakai tanda hubung\n```\n\n## Aturan penamaan\n\nTidak ada standar resmi yang mewajibkan aturan berikut, tetapi hampir semua panduan desain API besar menyepakatinya.\n\n**Pakai kata benda jamak untuk koleksi.** Tulis `/buku`, `/siswa`, `/pesanan`. Dalam bahasa Indonesia, kata jamak sering sama dengan tunggal, jadi `/buku` sudah cukup. Untuk API berbahasa Inggris, pakai `/books`, bukan `/book`. Yang penting: konsisten. Jangan campur `/buku` dengan `/daftar-anggota`.\n\n**Huruf kecil semua.** Bagian path pada URL bersifat peka huruf besar kecil, sehingga `/Buku` dan `/buku` bisa dianggap berbeda. Huruf kecil menghindari kebingungan.\n\n**Pisahkan kata dengan tanda hubung.** Tulis `/kategori-buku`, bukan `/kategori_buku` atau `/kategoriBuku`. Tanda hubung paling mudah dibaca di address bar dan tidak tertutup garis bawah saat URL ditampilkan sebagai tautan.\n\n**Tanpa ekstensi file.** Jangan `/buku.json` atau `/buku.php`. Format dikomunikasikan lewat header `Content-Type` dan `Accept`, dan teknologi server bisa berganti tanpa mengubah URL.\n\n**Tanpa garis miring di akhir.** Pilih `/buku`, bukan `/buku/`. Beberapa framework memperlakukan keduanya berbeda, jadi lebih aman konsisten tanpa garis miring penutup.\n\n## Kata benda, bukan kata kerja\n\nKesalahan paling umum programmer pemula adalah menaruh aksi di URL:\n\n```text\n# Hindari\nPOST /buatBuku\nGET  /ambilSemuaBuku\nGET  /hapusBuku?id=7\nPOST /updateStokBuku\n\n# Lebih baik\nPOST   /buku\nGET    /buku\nDELETE /buku/7\nPATCH  /buku/7\n```\n\nAksi sudah diwakili oleh method HTTP. URL `/buku/7` cukup menyebut \"buku nomor 7\"; `GET` berarti baca, `PATCH` berarti ubah sebagian, `DELETE` berarti hapus. Dengan begitu, satu URL melayani banyak aksi dan daftar endpoint jadi pendek dan mudah ditebak.\n\n![Contoh URL berkata kerja dan versi RESTful-nya](slide:6)\n\nContoh `GET /hapusBuku?id=7` bahkan berbahaya. Method `GET` dianggap aman oleh browser, crawler mesin pencari, dan fitur prefetch. Kalau ada tautan ke URL itu, sebuah bot bisa menghapus buku hanya dengan \"membaca\" halaman.\n\n### Bagaimana dengan aksi khusus?\n\nKadang ada aksi yang tidak pas sebagai CRUD biasa, misalnya meminjam buku, mengembalikan buku, atau menyetujui pendaftaran anggota. Triknya: ubah aksi menjadi kata benda. Meminjam menjadi **peminjaman**, menyetujui menjadi **persetujuan**.\n\n```text\nPOST /buku/7/peminjaman        meminjam buku 7\nGET  /anggota/21/peminjaman    daftar pinjaman anggota 21\nPOST /pendaftaran/5/persetujuan\n```\n\nSekarang \"peminjaman\" adalah resource yang bisa dibuat, dibaca, bahkan dihapus. Kamu juga mendapat bonus: data peminjaman bisa punya ID, tanggal pinjam, dan batas kembali.\n\n## Resource bersarang\n\nBeberapa resource selalu menjadi milik resource lain. Siswa berada di dalam kelas, nilai milik seorang siswa, item milik sebuah pesanan kantin. Hubungan ini bisa ditulis sebagai URL bersarang:\n\n```text\nGET  /kelas/xi-rpl-1/siswa     siswa di kelas XI RPL 1\nPOST /kelas/xi-rpl-1/siswa     menambah siswa ke kelas itu\nGET  /siswa/88                 satu siswa, alamat sendiri\nGET  /siswa/88/nilai           nilai rapor siswa 88\n```\n\nDi Express, URL bersarang ditulis dengan dua parameter atau lebih:\n\n```js\napp.get(\"/kelas/:kode/siswa\", (req, res) => {\n  const kelas = KELAS.find((k) => k.kode === req.params.kode);\n  if (!kelas) return res.status(404).json({ error: { message: \"Kelas tidak ditemukan\" } });\n  const anggota = SISWA.filter((s) => s.kelas === kelas.kode);\n  res.json({ data: anggota });\n});\n```\n\nPerhatikan bahwa handler memeriksa induknya dulu. Kelas yang tidak ada dijawab `404`, bukan daftar kosong. Daftar kosong berarti \"kelasnya ada, tetapi belum punya siswa\", dan itu informasi yang berbeda.\n\nAda dua batasan yang perlu kamu jaga:\n\n1. **Cukup satu tingkat.** URL seperti `/sekolah/1/kelas/3/siswa/88/nilai/2` sulit dibaca dan memaksa klien mengetahui seluruh rantai ID. Bila siswa sudah punya ID unik, beri alamat sendiri `/siswa/88` lalu sarangkan satu tingkat saja: `/siswa/88/nilai`.\n2. **Sarang hanya untuk hubungan kepemilikan yang kuat.** Buku tidak \"dimiliki\" penulis dengan cara yang sama seperti nilai dimiliki siswa. Untuk hubungan longgar, lebih baik pakai filter: `/buku?penulis=tere-liye`.\n\n## Path atau query?\n\nPertanyaan yang sering muncul: kapan sebuah nilai masuk ke path, kapan ke query string?\n\n**Path** menunjuk **identitas** resource. Tanpa bagian itu, kamu menunjuk benda lain. `/buku/7` dan `/buku/8` adalah dua resource berbeda.\n\n**Query** mengatur **cara menampilkan** koleksi: menyaring, mengurutkan, dan memotong. Query bersifat opsional; tanpa query pun URL tetap sah dan menampilkan koleksi lengkap.\n\n```text\nGET /buku/7                              identitas: path\nGET /buku?kategori=novel                 filter: query\nGET /buku?sort=-tahun&halaman=2          urutan dan halaman: query\nGET /kelas/xi-rpl-1/siswa?aktif=true     path untuk induk, query untuk filter\n```\n\nHindari `GET /buku?id=7` untuk mengambil satu buku. Bentuk itu membuat satu item terlihat seperti hasil filter koleksi, sehingga klien bingung apakah balasannya objek atau array.\n\nDi Express, nilai path dibaca dari `req.params` dan nilai query dari `req.query`. Keduanya selalu berupa string, jadi `req.query.aktif` bernilai `\"true\"` (string), bukan boolean `true`. Bandingkan dengan string atau ubah dulu tipenya.\n\n## Contoh rancangan lengkap\n\nMari gabungkan semua aturan tadi untuk API perpustakaan sekolah. Sebelum menulis satu baris kode pun, tulis dulu daftar endpoint-nya:\n\n| Method | URL | Fungsi |\n|---|---|---|\n| GET | `/buku` | daftar buku, bisa disaring `?kategori=` |\n| POST | `/buku` | menambah buku |\n| GET | `/buku/:id` | detail satu buku |\n| PATCH | `/buku/:id` | mengubah data buku |\n| DELETE | `/buku/:id` | menghapus buku |\n| POST | `/buku/:id/peminjaman` | meminjam buku |\n| GET | `/anggota/:id/peminjaman` | riwayat pinjam anggota |\n| GET | `/kategori-buku` | daftar kategori |\n\nPerhatikan bahwa tidak ada satu pun kata kerja di kolom URL. Semua nama huruf kecil, jamak sesuai bahasa Indonesia, dan sarang hanya satu tingkat. Daftar seperti ini enak didiskusikan bersama tim aplikasi HP dan web sebelum coding dimulai, karena mengubah rancangan di atas kertas jauh lebih murah daripada mengubah API yang sudah dipakai banyak klien.\n\n## Rangkuman\n\n- Koleksi memakai kata benda jamak (`/buku`), item memakai koleksi diikuti ID (`/buku/7`).\n- Tulis URL dengan huruf kecil, tanda hubung, tanpa ekstensi file, dan tanpa garis miring di akhir.\n- Aksi diwakili method HTTP; aksi khusus diubah menjadi kata benda, misalnya `POST /buku/7/peminjaman`.\n- Sarangkan resource hanya satu tingkat dan hanya untuk hubungan kepemilikan; induk yang tidak ada dijawab `404`.\n- Path untuk identitas, query untuk filter, urutan, dan paginasi; nilai dari keduanya selalu string.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "URL mana yang paling sesuai gaya REST untuk menghapus buku nomor 7?",
+          "code": "",
+          "options": [
+            "GET /hapusBuku?id=7",
+            "DELETE /buku/7",
+            "POST /buku/hapus/7",
+            "DELETE /hapus-buku?id=7"
+          ],
+          "answer": 1,
+          "explanation": "Aksi hapus diwakili method DELETE, URL cukup menyebut resourcenya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana desain REST yang baik untuk aksi meminjam buku 7?",
+          "code": "",
+          "options": [
+            "GET /pinjamBuku/7 supaya bisa dibuka langsung dari tautan",
+            "POST /buku/7/pinjam-sekarang dengan body kosong saja",
+            "POST /buku/7/peminjaman",
+            "PATCH /buku/7?aksi=pinjam&status=dipinjam-sekarang"
+          ],
+          "answer": 2,
+          "explanation": "Aksi diubah menjadi resource peminjaman yang dibuat dengan POST."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Pada `GET /kelas/:kode/siswa?aktif=true`, nilai `req.query.aktif` di Express bertipe boolean `true`.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Nilai dari query string selalu string, jadi isinya \"true\"."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Daftar endpoint mana yang paling konsisten?",
+          "code": "A: /buku, /Anggota, /kategori_buku\nB: /buku, /anggota, /kategori-buku\nC: /buku.json, /anggota.json, /kategori-buku.json\nD: /getBuku, /getAnggota, /getKategoriBuku",
+          "options": [
+            "A, karena memakai garis bawah dan huruf kapital campuran",
+            "C, karena ekstensi .json menjelaskan format datanya",
+            "D, karena awalan get menjelaskan aksi yang dilakukan",
+            "B"
+          ],
+          "answer": 3,
+          "explanation": "B memakai kata benda, huruf kecil, dan tanda hubung secara konsisten tanpa ekstensi."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Siswa di dalam kelas",
+          "prompt": "Array `KELAS` dan `SISWA` sudah tersedia. Lengkapi:\n\n- `GET /kelas/:kode/siswa` membalas `{ data: [...] }` berisi siswa di kelas itu\n- bila query `aktif=true`, hanya siswa dengan `aktif: true`\n- bila kelas tidak ada, balas `404`\n- `GET /siswa/:id` membalas satu siswa, atau `404` bila tidak ada",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/kelas/:kode/siswa\", (req, res) => {\n  // TODO: cek kelas, saring siswa, dukung ?aktif=true\n  res.json({ data: SISWA });\n});\n\n// TODO: GET /siswa/:id\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/kelas/:kode/siswa\", (req, res) => {\n  const kelas = KELAS.find((k) => k.kode === req.params.kode);\n  if (!kelas) return res.status(404).json({ error: { message: \"Kelas tidak ditemukan\" } });\n  let hasil = SISWA.filter((s) => s.kelas === kelas.kode);\n  if (req.query.aktif === \"true\") hasil = hasil.filter((s) => s.aktif);\n  res.json({ data: hasil });\n});\n\napp.get(\"/siswa/:id\", (req, res) => {\n  const siswa = SISWA.find((s) => s.id === Number(req.params.id));\n  if (!siswa) return res.status(404).json({ error: { message: \"Siswa tidak ditemukan\" } });\n  res.json(siswa);\n});\n"
+          },
+          "setup": "const KELAS = [\n  { kode: \"xi-rpl-1\", nama: \"XI RPL 1\" },\n  { kode: \"xi-tkj-2\", nama: \"XI TKJ 2\" },\n  { kode: \"xii-rpl-1\", nama: \"XII RPL 1\" },\n];\nconst SISWA = [\n  { id: 1, nama: \"Ani\", kelas: \"xi-rpl-1\", aktif: true },\n  { id: 2, nama: \"Budi\", kelas: \"xi-rpl-1\", aktif: false },\n  { id: 3, nama: \"Citra\", kelas: \"xi-rpl-1\", aktif: true },\n  { id: 4, nama: \"Dodi\", kelas: \"xi-tkj-2\", aktif: true },\n];",
+          "tests": [
+            {
+              "name": "Kelas XI RPL 1 punya 3 siswa",
+              "check": "(await request(\"GET\", \"/kelas/xi-rpl-1/siswa\")).body.data.length === 3"
+            },
+            {
+              "name": "?aktif=true menyisakan 2 siswa",
+              "check": "(await request(\"GET\", \"/kelas/xi-rpl-1/siswa?aktif=true\")).body.data.length === 2"
+            },
+            {
+              "name": "Kelas tanpa siswa: daftar kosong, status 200",
+              "check": "(await (async () => { const r = await request(\"GET\", \"/kelas/xii-rpl-1/siswa\"); return r.status === 200 && r.body.data.length === 0; })())"
+            },
+            {
+              "name": "Kelas yang tidak ada: 404",
+              "check": "(await request(\"GET\", \"/kelas/x-akl-9/siswa\")).status === 404"
+            },
+            {
+              "name": "GET /siswa/4 membalas Dodi, /siswa/99 404",
+              "check": "(await request(\"GET\", \"/siswa/4\")).body.nama === \"Dodi\" && (await request(\"GET\", \"/siswa/99\")).status === 404"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "method-http",
+      "title": "Method HTTP",
+      "est_minutes": 30,
+      "slide_from": 9,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Memakai lima method utama `GET`, `POST`, `PUT`, `PATCH`, dan `DELETE` sesuai fungsinya.\n- Membedakan method yang aman dan method yang idempoten.\n- Memilih antara `PUT` dan `PATCH` untuk mengubah data.\n- Menulis handler `PUT` dan `PATCH` yang benar di Express.\n\n## Lima method utama\n\nDi bab sebelumnya kamu belajar bahwa URL menyebut resource dan method menyebut aksinya. Sekarang kita bahas method satu per satu. HTTP punya beberapa method lain seperti `HEAD` dan `OPTIONS`, tetapi lima method berikut yang akan kamu pakai setiap hari.\n\n```text\nGET    /buku       daftar buku\nGET    /buku/7     detail buku 7\nPOST   /buku       tambah buku baru\nPUT    /buku/7     ganti buku 7 secara utuh\nPATCH  /buku/7     ubah sebagian field buku 7\nDELETE /buku/7     hapus buku 7\n```\n\n**GET** membaca data. Dipakai untuk koleksi maupun item. Request `GET` tidak punya body; semua yang dibutuhkan ada di URL, termasuk filter di query string.\n\n**POST** membuat item baru di dalam koleksi. Klien mengirim datanya di body, server yang menentukan ID-nya. Karena itu `POST` dikirim ke koleksi (`/buku`), bukan ke item (`/buku/7`), sebab ID belum ada.\n\n**PUT** mengganti seluruh isi sebuah item dengan data yang dikirim. Klien mengirim versi lengkap item itu.\n\n**PATCH** mengubah sebagian field saja. Klien hanya mengirim field yang berubah.\n\n**DELETE** menghapus item. Biasanya tanpa body di request maupun di respons.\n\n![Lima method HTTP dan pasangan URL-nya](slide:9)\n\nDengan pola ini, resource buku cukup punya dua URL (`/buku` dan `/buku/:id`) tetapi melayani lima operasi. Di Express, polanya terlihat seperti ini:\n\n```js\napp.get(\"/buku\", daftarBuku);\napp.post(\"/buku\", tambahBuku);\napp.get(\"/buku/:id\", detailBuku);\napp.put(\"/buku/:id\", gantiBuku);\napp.patch(\"/buku/:id\", ubahBuku);\napp.delete(\"/buku/:id\", hapusBuku);\n```\n\n## Aman dan idempoten\n\nSpesifikasi HTTP memberi dua sifat penting pada method. Keduanya bukan sekadar teori: browser, proxy, dan library HTTP bertingkah berdasarkan sifat ini.\n\n**Aman (safe)** berarti request tidak dimaksudkan mengubah data di server. `GET` dan `HEAD` termasuk aman. Karena dianggap aman, browser boleh memuat tautan `GET` lebih awal (prefetch), mesin pencari boleh merayapinya, dan cache boleh menyimpan hasilnya. Inilah alasan kamu tidak boleh membuat `GET /hapusBuku/7`.\n\n**Idempoten** berarti mengirim request yang sama satu kali atau sepuluh kali menghasilkan keadaan akhir yang sama di server.\n\n| Method | Aman | Idempoten |\n|---|---|---|\n| GET | ya | ya |\n| PUT | tidak | ya |\n| DELETE | tidak | ya |\n| POST | tidak | tidak |\n| PATCH | tidak | tidak dijamin |\n\nMari cek satu per satu dengan contoh perpustakaan:\n\n- `PUT /buku/7` dengan body `{ \"judul\": \"Bumi\", \"penulis\": \"Tere Liye\", \"stok\": 5 }`. Dikirim sekali atau tiga kali, hasil akhirnya tetap buku 7 dengan stok 5. Idempoten.\n- `DELETE /buku/7`. Kiriman pertama menghapus buku. Kiriman kedua mungkin dibalas `404`, tetapi keadaan server sama saja: buku 7 tidak ada. Idempoten. Perhatikan bahwa idempoten membicarakan keadaan server, bukan status code yang diterima.\n- `POST /buku` dengan body buku baru. Dikirim tiga kali, terbentuk tiga buku dengan ID berbeda. Tidak idempoten.\n- `PATCH /buku/7` dengan `{ \"stok\": 5 }` kebetulan idempoten. Tetapi PATCH juga bisa berbentuk instruksi seperti \"tambah stok 1\", yang setiap kiriman mengubah hasilnya. Karena itu PATCH tidak dijamin idempoten.\n\nKenapa ini penting? Jaringan tidak sempurna. Sinyal HP siswa bisa putus tepat setelah request terkirim tetapi sebelum respons diterima. Klien tidak tahu apakah server sudah memprosesnya. Untuk request idempoten, klien aman mengulang. Untuk `POST`, mengulang bisa membuat data ganda, misalnya peminjaman tercatat dua kali. Solusinya, idempotency key, akan dibahas di bab caching dan rate limit.\n\n## PUT atau PATCH?\n\nPerbedaan keduanya paling mudah dilihat dengan contoh. Misalkan buku 7 saat ini:\n\n```json\n{ \"id\": 7, \"judul\": \"Bumi\", \"penulis\": \"Tere Liye\", \"stok\": 3 }\n```\n\nPetugas ingin mengubah stok menjadi 5. Dengan `PATCH`, cukup kirim field yang berubah:\n\n```http\nPATCH /buku/7\nContent-Type: application/json\n\n{ \"stok\": 5 }\n```\n\nHasilnya `{ \"id\": 7, \"judul\": \"Bumi\", \"penulis\": \"Tere Liye\", \"stok\": 5 }`. Field lain tidak tersentuh.\n\nKalau body yang sama dikirim dengan `PUT`, artinya \"ganti seluruh buku 7 dengan `{ stok: 5 }`\". Judul dan penulis ikut hilang. Supaya benar, `PUT` harus mengirim semua field:\n\n```http\nPUT /buku/7\nContent-Type: application/json\n\n{ \"judul\": \"Bumi\", \"penulis\": \"Tere Liye\", \"stok\": 5 }\n```\n\nImplementasinya di Express:\n\n```js\napp.put(\"/buku/:id\", (req, res) => {\n  const i = BUKU.findIndex((b) => b.id === Number(req.params.id));\n  if (i === -1) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  BUKU[i] = { ...req.body, id: BUKU[i].id };\n  res.json(BUKU[i]);\n});\n\napp.patch(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  const { id, ...perubahan } = req.body;\n  Object.assign(buku, perubahan);\n  res.json(buku);\n});\n```\n\nDua detail yang sering terlewat. Pertama, ID diambil dari URL, bukan dari body; klien tidak boleh mengganti ID lewat body. Pada `PUT`, `id` ditulis setelah `...req.body` sehingga nilai `id` kiriman klien selalu tertimpa. Pada `PATCH`, field `id` dibuang dulu dengan destructuring sebelum digabung. Kedua, kedua handler membalas item terbaru supaya klien tidak perlu melakukan `GET` lagi.\n\nJadi kapan memakai yang mana? Panduan praktisnya:\n\n- Pakai **PATCH** untuk form edit biasa, tombol \"ubah status\", atau aplikasi HP yang hanya mengubah satu dua field. Ini yang paling sering.\n- Pakai **PUT** saat klien memang memegang seluruh isi resource, misalnya halaman pengaturan profil yang selalu mengirim semua field sekaligus.\n- Banyak API hanya menyediakan `PATCH`. Itu sah. Yang tidak boleh adalah memberi nama `PUT` tetapi berperilaku seperti `PATCH`, karena klien yang tahu aturan HTTP akan salah menebak.\n\nPUT juga kadang dipakai untuk membuat item dengan ID yang ditentukan klien, misalnya `PUT /pengaturan/tema`. Untuk API sekolah dan toko biasa, membuat data baru tetap lewat `POST` ke koleksi.\n\n## Method yang tidak didukung\n\nBagaimana kalau klien mengirim method yang tidak kamu sediakan, misalnya `DELETE /kategori-buku` padahal kategori tidak boleh dihapus? Status yang tepat adalah **405 Method Not Allowed**, idealnya disertai header `Allow` yang menyebut method yang tersedia, misalnya `Allow: GET, POST`. Express sendiri akan membalas 404 untuk route yang tidak terdaftar, dan itu masih bisa diterima untuk API kecil. Yang penting jangan membalas 200 seolah-olah aksi berhasil.\n\nAda dua method lain yang sesekali kamu temui. **HEAD** sama seperti `GET` tetapi tanpa body; berguna untuk mengecek apakah resource ada atau berapa ukurannya. **OPTIONS** menanyakan kemampuan server dan dipakai browser untuk pemeriksaan CORS sebelum request lintas domain. Kamu jarang menulis handler untuk keduanya secara manual, karena framework dan middleware biasanya sudah mengurusnya.\n\n## Rangkuman\n\n- `GET` membaca, `POST` membuat di koleksi, `PUT` mengganti utuh, `PATCH` mengubah sebagian, `DELETE` menghapus.\n- Method aman (`GET`, `HEAD`) tidak boleh mengubah data, karena browser dan bot boleh memanggilnya kapan saja.\n- Idempoten berarti diulang berkali-kali keadaan server tetap sama: `GET`, `PUT`, `DELETE` idempoten, `POST` tidak, `PATCH` tidak dijamin.\n- `PUT` tanpa field tertentu membuat field itu hilang; `PATCH` hanya menyentuh field yang dikirim.\n- ID selalu diambil dari URL, dan handler ubah sebaiknya membalas item terbaru.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Method mana yang tidak idempoten?",
+          "code": "",
+          "options": [
+            "PUT /buku/7",
+            "DELETE /buku/7",
+            "POST /buku",
+            "GET /buku/7"
+          ],
+          "answer": 2,
+          "explanation": "Setiap POST /buku membuat buku baru, jadi mengulangnya mengubah keadaan server."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Buku 7 berisi judul, penulis, dan stok 3. Apa isi buku 7 setelah request ini, bila server mengikuti aturan PUT?",
+          "code": "PUT /buku/7\nContent-Type: application/json\n\n{ \"stok\": 5 }",
+          "options": [
+            "Judul dan penulis tetap, stok berubah menjadi 5",
+            "Hanya id dan stok 5, judul dan penulis hilang",
+            "Server menambah stok sehingga stok menjadi 8 buah",
+            "Tidak berubah sama sekali karena PUT hanya membaca"
+          ],
+          "answer": 1,
+          "explanation": "PUT mengganti seluruh isi item; field yang tidak dikirim ikut hilang."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "DELETE /buku/7 tetap disebut idempoten walaupun kiriman kedua dibalas 404.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Idempoten membicarakan keadaan server, dan setelah kiriman berapa pun buku 7 tetap tidak ada."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa GET tidak boleh dipakai untuk menghapus data?",
+          "code": "",
+          "options": [
+            "GET dianggap aman, jadi bot atau browser bisa memanggilnya",
+            "Express melarang handler GET mengakses array atau database",
+            "GET tidak bisa membawa parameter di URL sehingga ID tidak terkirim",
+            "Status code untuk GET hanya boleh 200, tidak bisa 204"
+          ],
+          "answer": 0,
+          "explanation": "Prefetch browser dan crawler memanggil URL GET tanpa niat mengubah data."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "PUT dan PATCH buku",
+          "prompt": "Array `BUKU` sudah tersedia. Lengkapi:\n\n- `PUT /buku/:id` mengganti seluruh isi buku dengan body, tetapi `id` tetap dari URL\n- `PATCH /buku/:id` hanya mengubah field yang dikirim (abaikan `id` di body)\n- keduanya membalas buku terbaru, atau `404` bila buku tidak ada",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.sendStatus(404);\n  res.json(buku);\n});\n\napp.put(\"/buku/:id\", (req, res) => {\n  // TODO: ganti utuh, id tetap dari URL\n  res.sendStatus(501);\n});\n\napp.patch(\"/buku/:id\", (req, res) => {\n  // TODO: ubah sebagian\n  res.sendStatus(501);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.sendStatus(404);\n  res.json(buku);\n});\n\napp.put(\"/buku/:id\", (req, res) => {\n  const i = BUKU.findIndex((b) => b.id === Number(req.params.id));\n  if (i === -1) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  BUKU[i] = { ...req.body, id: BUKU[i].id };\n  res.json(BUKU[i]);\n});\n\napp.patch(\"/buku/:id\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { message: \"Buku tidak ditemukan\" } });\n  const { id, ...perubahan } = req.body;\n  Object.assign(buku, perubahan);\n  res.json(buku);\n});\n"
+          },
+          "setup": "const BUKU = [\n  { id: 1, judul: \"Laskar Pelangi\", penulis: \"Andrea Hirata\", stok: 2 },\n  { id: 2, judul: \"Bumi\", penulis: \"Tere Liye\", stok: 3 },\n];",
+          "tests": [
+            {
+              "name": "PATCH stok tidak menghapus judul",
+              "check": "(await (async () => { const r = await request(\"PATCH\", \"/buku/2\", { stok: 5 }); return r.status === 200 && r.body.stok === 5 && r.body.judul === \"Bumi\"; })())"
+            },
+            {
+              "name": "PATCH mengabaikan id di body",
+              "check": "(await request(\"PATCH\", \"/buku/2\", { id: 50, stok: 6 })).body.id === 2 && (await request(\"GET\", \"/buku/2\")).status === 200"
+            },
+            {
+              "name": "PUT mengganti utuh: field yang tidak dikirim hilang",
+              "check": "(await (async () => { const r = await request(\"PUT\", \"/buku/1\", { judul: \"Sang Pemimpi\", stok: 4 }); return r.body.judul === \"Sang Pemimpi\" && r.body.penulis === undefined && r.body.id === 1; })())"
+            },
+            {
+              "name": "PUT tidak bisa mengganti id",
+              "check": "(await request(\"PUT\", \"/buku/1\", { id: 9, judul: \"X\" })).body.id === 1"
+            },
+            {
+              "name": "Buku tidak ada: 404 untuk PUT dan PATCH",
+              "check": "(await request(\"PUT\", \"/buku/99\", { judul: \"X\" })).status === 404 && (await request(\"PATCH\", \"/buku/99\", { stok: 1 })).status === 404"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "status-code",
+      "title": "Status Code",
+      "est_minutes": 30,
+      "slide_from": 12,
+      "slide_to": 15,
+      "body": "## Tujuan\n\n- Mengenali lima kelompok status code dan arti masing-masing.\n- Memakai `200`, `201` dengan header `Location`, dan `204` untuk respons sukses.\n- Membedakan `400`, `401`, `403`, `404`, `409`, `422`, dan `429` untuk error dari klien.\n- Menghindari kesalahan umum seperti membalas `200` untuk sebuah error.\n\n## Status code adalah jawaban pertama\n\nSaat klien menerima respons, hal pertama yang ia baca adalah status code, angka tiga digit di baris pertama respons. Library seperti `fetch` di browser, axios, atau aplikasi HP memutuskan alur programnya dari angka ini: tampilkan data, tampilkan pesan error, atau minta pengguna login ulang. Body baru dibaca setelahnya.\n\nKarena itu status code harus jujur. Status yang tepat membuat klien bisa menangani respons tanpa menebak isi body.\n\nStatus code dikelompokkan berdasarkan digit pertamanya:\n\n| Kelompok | Arti | Contoh |\n|---|---|---|\n| 1xx | informasi sementara | jarang kamu tulis sendiri |\n| 2xx | berhasil | 200, 201, 204 |\n| 3xx | pengalihan atau pakai salinan cache | 301, 304 |\n| 4xx | kesalahan dari klien | 400, 404, 422 |\n| 5xx | kesalahan di server | 500, 503 |\n\nAturan praktisnya: kalau klien bisa memperbaiki request-nya lalu mencoba lagi, itu 4xx. Kalau masalahnya ada di server dan klien tidak bisa berbuat apa-apa, itu 5xx.\n\n## Sukses: 200, 201, 204\n\n**200 OK** adalah status sukses umum dengan body. Dipakai untuk `GET`, juga untuk `PUT` dan `PATCH` yang membalas item terbaru. Express memakai 200 secara default, jadi `res.json(data)` sudah otomatis 200.\n\n**201 Created** dipakai ketika request berhasil membuat resource baru, biasanya hasil `POST`. Respons 201 sebaiknya disertai header `Location` yang berisi URL resource baru itu, plus body berisi item lengkap termasuk ID dari server.\n\n```js\napp.post(\"/buku\", (req, res) => {\n  const buku = { id: berikutnya++, ...req.body };\n  BUKU.push(buku);\n  res.set(\"Location\", `/buku/${buku.id}`);\n  res.status(201).json(buku);\n});\n```\n\nDengan header `Location`, klien langsung tahu alamat buku baru tanpa menyusun URL sendiri.\n\n**204 No Content** berarti berhasil, tetapi tidak ada body. Cocok untuk `DELETE`, karena setelah dihapus tidak ada lagi yang perlu dikirim. Di Express, pakai `res.status(204).end()` atau `res.sendStatus(204)`. Jangan kirim body bersama 204; klien akan mengabaikannya.\n\n![Tiga status sukses yang paling sering dipakai](slide:13)\n\n## Error dari klien\n\nKelompok 4xx paling banyak anggotanya. Ini yang perlu kamu kuasai.\n\n**400 Bad Request.** Request rusak atau formatnya tidak bisa dipahami, misalnya body bukan JSON yang sah, atau parameter `?halaman=abc` padahal harus angka.\n\n**401 Unauthorized.** Namanya menyesatkan: artinya **belum terautentikasi**. Klien tidak mengirim token, atau tokennya salah dan kedaluwarsa. Solusinya login (lagi).\n\n**403 Forbidden.** Klien sudah dikenali, tetapi tidak berhak. Misalnya siswa yang sudah login mencoba menghapus buku, padahal hanya petugas yang boleh. Login ulang tidak akan membantu. Cara mudah mengingat: 401 \"kamu siapa?\", 403 \"aku tahu kamu siapa, tapi tidak boleh\".\n\n**404 Not Found.** Resource tidak ada: `GET /buku/999` atau URL yang salah ketik. Beberapa API juga membalas 404 (bukan 403) untuk resource milik orang lain supaya tidak membocorkan keberadaannya.\n\n**409 Conflict.** Request bentrok dengan keadaan data saat ini. Contoh: meminjam buku yang stoknya habis, mendaftarkan NIS yang sudah dipakai, atau mengubah data yang sudah diubah orang lain lebih dulu.\n\n**422 Unprocessable Content.** Format request benar (JSON-nya sah), tetapi isinya tidak lolos aturan: judul kosong, tahun berupa teks, email tanpa `@`. Sebagian API memakai 400 untuk semua kesalahan validasi. Itu juga diterima, asalkan konsisten. Di kelas ini kita memakai 400 untuk request rusak dan 422 untuk validasi isi.\n\n**429 Too Many Requests.** Klien mengirim terlalu banyak request dalam waktu singkat. Dibahas di bab rate limit.\n\nContoh peminjaman buku yang memakai beberapa status sekaligus:\n\n```js\napp.post(\"/buku/:id/peminjaman\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { code: \"BUKU_TIDAK_ADA\" } });\n  if (buku.stok === 0) return res.status(409).json({ error: { code: \"STOK_HABIS\" } });\n  buku.stok--;\n  const pinjam = { id: PINJAM.length + 1, bukuId: buku.id };\n  PINJAM.push(pinjam);\n  res.status(201).json(pinjam);\n});\n```\n\nUrutan pemeriksaan penting: pastikan resource ada dulu (404), baru periksa aturan bisnis (409), baru proses.\n\n## Error dari server\n\n**500 Internal Server Error** berarti ada yang tidak beres di server: bug, database mati, atau kejadian yang tidak terduga. Klien tidak bisa memperbaikinya dengan mengubah request.\n\n**503 Service Unavailable** berarti server sementara tidak bisa melayani, misalnya sedang perawatan atau kelebihan beban. Boleh disertai header `Retry-After`.\n\nDua hal yang wajib dijaga saat membalas 5xx:\n\n- Jangan kirim stack trace, query SQL, atau pesan error mentah ke klien. Itu membocorkan struktur internal dan berguna bagi penyerang.\n- Catat detail error di log server, lalu kirim pesan umum ke klien. Di Express, middleware error dengan empat parameter bisa menangkap error yang tidak tertangani:\n\n```js\napp.use((err, req, res, next) => {\n  console.error(err);\n  res.status(500).json({ error: { code: \"KESALAHAN_SERVER\", message: \"Terjadi kesalahan, coba lagi nanti\" } });\n});\n```\n\n## Kesalahan yang sering terjadi\n\n**Membalas 200 untuk error.** Ini kesalahan paling umum:\n\n```js\n// Salah\nres.status(200).json({ sukses: false, pesan: \"Buku tidak ditemukan\" });\n\n// Benar\nres.status(404).json({ error: { code: \"BUKU_TIDAK_ADA\", message: \"Buku tidak ditemukan\" } });\n```\n\nVersi salah memaksa setiap klien memeriksa `sukses` di body. Cache dan alat monitoring juga mengira request itu berhasil, sehingga grafik error di dashboard tetap hijau padahal aplikasi bermasalah.\n\n**Memakai 500 untuk input yang salah.** Kalau siswa mengirim tahun berupa huruf lalu kode kamu crash dan membalas 500, artinya validasinya kurang. Input salah dari klien harus dijawab 4xx.\n\n**Tertukar 401 dan 403.** Klien yang menerima 401 biasanya diarahkan ke halaman login. Kalau kamu membalas 401 untuk pengguna yang sudah login tetapi tidak berhak, ia akan terlempar ke halaman login berulang-ulang.\n\n**Membalas 404 untuk daftar kosong.** `GET /buku?kategori=komik` yang tidak menemukan apa pun tetap 200 dengan `data: []`. Koleksinya ada, hanya hasil saringannya kosong.\n\n## Memilih status dengan cepat\n\nSaat menulis handler, kamu bisa memakai urutan pertanyaan berikut untuk menentukan status:\n\n1. Apakah request-nya rusak atau tidak bisa dibaca? Balas **400**.\n2. Apakah klien belum login? Balas **401**. Sudah login tetapi tidak berhak? Balas **403**.\n3. Apakah resource yang diminta tidak ada? Balas **404**.\n4. Apakah isi data tidak lolos validasi? Balas **422** (atau 400 bila API kamu memilih itu).\n5. Apakah bentrok dengan keadaan data, seperti stok habis atau NIS ganda? Balas **409**.\n6. Berhasil membuat resource? Balas **201** plus `Location`. Berhasil tanpa body? **204**. Selain itu **200**.\n\nUrutan ini juga membantu menulis kode yang rapi: pemeriksaan murah dan umum di atas, aturan bisnis di bawah, lalu proses utama di paling akhir. Banyak tim menulis tabel status code yang dipakai API mereka di dokumentasi, sehingga programmer klien tahu persis status apa yang perlu ditangani untuk setiap endpoint.\n\n## Rangkuman\n\n- Digit pertama status code menunjukkan kelompok: 2xx berhasil, 3xx pengalihan atau cache, 4xx salah klien, 5xx salah server.\n- `201` untuk resource baru beserta header `Location`, `204` untuk sukses tanpa body seperti `DELETE`.\n- `401` berarti belum terautentikasi, `403` berarti sudah dikenali tetapi tidak berhak.\n- `404` untuk resource yang tidak ada, `409` untuk bentrok dengan keadaan data, `422` untuk isi yang tidak lolos validasi.\n- Jangan pernah membalas 200 untuk error, dan jangan kirim stack trace pada respons 500.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Siswa yang sudah login mencoba menghapus buku, padahal hanya petugas yang boleh. Status yang tepat adalah",
+          "code": "",
+          "options": [
+            "401 Unauthorized",
+            "403 Forbidden",
+            "404 Not Found tanpa body",
+            "500 Internal Server Error"
+          ],
+          "answer": 1,
+          "explanation": "Pengguna sudah dikenali tetapi tidak berhak, jadi 403; 401 untuk yang belum terautentikasi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa masalah utama handler ini?",
+          "code": "app.get(\"/buku/:id\", (req, res) => {\n  const b = BUKU.find((x) => x.id === Number(req.params.id));\n  if (!b) return res.json({ sukses: false });\n  res.json(b);\n});",
+          "options": [
+            "Buku yang tidak ada dibalas status 200, seharusnya 404",
+            "req.params.id seharusnya tidak diubah dengan Number terlebih dahulu",
+            "res.json tidak boleh dipanggil dua kali di dalam satu handler GET",
+            "Method GET tidak boleh dipakai untuk mengambil satu item buku"
+          ],
+          "answer": 0,
+          "explanation": "Error disamarkan sebagai sukses; klien, cache, dan monitoring akan salah membaca hasilnya."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Respons 201 Created sebaiknya disertai header Location yang berisi URL resource baru.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Header Location memberi tahu klien alamat resource yang baru dibuat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Anggota meminjam buku yang stoknya sudah 0. Status yang paling tepat adalah",
+          "code": "",
+          "options": [
+            "200 OK dengan pesan bahwa stok sedang habis",
+            "201 Created dengan catatan masuk daftar tunggu",
+            "500 karena server tidak bisa memproses",
+            "409 Conflict"
+          ],
+          "answer": 3,
+          "explanation": "Request sah tetapi bentrok dengan keadaan data saat ini, yaitu stok habis."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Status code yang jujur",
+          "prompt": "Array `BUKU` dan `PINJAM` serta variabel `berikutnya` sudah tersedia. Lengkapi:\n\n- `POST /buku`: tambah buku dengan id `berikutnya++`, balas `201`, header `Location: /buku/<id>`, dan body buku\n- `DELETE /buku/:id`: hapus lalu balas `204` tanpa body, atau `404` bila tidak ada\n- `POST /buku/:id/peminjaman`: `404` bila buku tidak ada, `409` bila `stok` 0, selain itu kurangi stok dan balas `201` dengan `{ id, bukuId }`",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/buku\", (req, res) => {\n  const buku = { id: berikutnya++, ...req.body };\n  BUKU.push(buku);\n  // TODO: status 201 dan header Location\n  res.json(buku);\n});\n\napp.delete(\"/buku/:id\", (req, res) => {\n  // TODO: 404 atau hapus lalu 204\n  res.json({ sukses: true });\n});\n\napp.post(\"/buku/:id/peminjaman\", (req, res) => {\n  // TODO: 404, 409, atau 201\n  res.json({ sukses: false });\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.post(\"/buku\", (req, res) => {\n  const buku = { id: berikutnya++, ...req.body };\n  BUKU.push(buku);\n  res.set(\"Location\", `/buku/${buku.id}`);\n  res.status(201).json(buku);\n});\n\napp.delete(\"/buku/:id\", (req, res) => {\n  const i = BUKU.findIndex((b) => b.id === Number(req.params.id));\n  if (i === -1) return res.status(404).json({ error: { code: \"BUKU_TIDAK_ADA\" } });\n  BUKU.splice(i, 1);\n  res.status(204).end();\n});\n\napp.post(\"/buku/:id/peminjaman\", (req, res) => {\n  const buku = BUKU.find((b) => b.id === Number(req.params.id));\n  if (!buku) return res.status(404).json({ error: { code: \"BUKU_TIDAK_ADA\" } });\n  if (buku.stok === 0) return res.status(409).json({ error: { code: \"STOK_HABIS\" } });\n  buku.stok--;\n  const pinjam = { id: PINJAM.length + 1, bukuId: buku.id };\n  PINJAM.push(pinjam);\n  res.status(201).json(pinjam);\n});\n"
+          },
+          "setup": "const BUKU = [\n  { id: 1, judul: \"Laskar Pelangi\", stok: 1 },\n  { id: 2, judul: \"Bumi\", stok: 0 },\n];\nconst PINJAM = [];\nlet berikutnya = 3;",
+          "tests": [
+            {
+              "name": "POST /buku: 201 dengan Location /buku/3",
+              "check": "(await (async () => { const r = await request(\"POST\", \"/buku\", { judul: \"Hujan\", stok: 2 }); return r.status === 201 && r.headers && r.headers.location === \"/buku/3\" && r.body.id === 3; })())"
+            },
+            {
+              "name": "Pinjam buku berstok: 201 dan stok berkurang",
+              "check": "(await request(\"POST\", \"/buku/1/peminjaman\")).status === 201 && BUKU[0].stok === 0"
+            },
+            {
+              "name": "Pinjam buku stok habis: 409",
+              "check": "(await request(\"POST\", \"/buku/2/peminjaman\")).status === 409"
+            },
+            {
+              "name": "Pinjam buku yang tidak ada: 404",
+              "check": "(await request(\"POST\", \"/buku/99/peminjaman\")).status === 404"
+            },
+            {
+              "name": "DELETE: 204 lalu 404 saat diulang",
+              "check": "(await request(\"DELETE\", \"/buku/3\")).status === 204 && (await request(\"DELETE\", \"/buku/3\")).status === 404"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "format-respons-dan-error",
+      "title": "Format Respons dan Error",
+      "est_minutes": 30,
+      "slide_from": 16,
+      "slide_to": 18,
+      "body": "## Tujuan\n\n- Merancang bentuk respons JSON yang sama untuk semua endpoint.\n- Menulis format error `{ error: { code, message, details } }` dan mengenal Problem Details (RFC 9457).\n- Memilih satu gaya nama field dan menulis tanggal dengan ISO 8601.\n- Membuat fungsi pembantu agar semua error di Express berbentuk seragam.\n\n## Kenapa bentuk respons harus konsisten\n\nBayangkan aplikasi HP perpustakaan memanggil tiga endpoint. `GET /buku` membalas array langsung, `GET /anggota` membalas `{ hasil: [...] }`, dan `GET /peminjaman` membalas `{ data: [...], jumlah: 10 }`. Programmer aplikasi HP harus menulis tiga cara membaca data. Lebih buruk lagi, error di satu endpoint berbentuk `{ pesan: \"...\" }`, di endpoint lain `{ error: \"...\" }`, dan di tempat lain `{ msg: \"...\" }`.\n\nMasing-masing pilihan itu tidak salah, tetapi campurannya melelahkan. API yang baik terasa seperti ditulis oleh satu orang, walaupun sebenarnya dikerjakan satu tim. Klien cukup mempelajari satu pola, lalu bisa memakai seluruh endpoint.\n\n## Bentuk respons sukses\n\nUntuk **koleksi**, bungkus array di dalam objek:\n\n```json\n{\n  \"data\": [\n    { \"id\": 7, \"judul\": \"Bumi\" },\n    { \"id\": 8, \"judul\": \"Hujan\" }\n  ],\n  \"meta\": { \"total\": 42, \"halaman\": 1, \"per\": 2 }\n}\n```\n\nKenapa tidak langsung mengirim array? Karena suatu hari kamu pasti butuh informasi tambahan, misalnya total data untuk paginasi. Kalau dari awal respons berupa array, menambah `total` berarti mengubah bentuk respons dan merusak klien lama. Dengan objek pembungkus, kamu cukup menambah field di `meta`.\n\nUntuk **satu item**, ada dua aliran yang sama-sama umum: kirim objeknya langsung (`{ \"id\": 7, \"judul\": \"Bumi\" }`), atau bungkus juga (`{ \"data\": { \"id\": 7, ... } }`). Pilih salah satu dan pakai di semua endpoint. Di kelas ini, item dikirim langsung dan koleksi dibungkus `data` plus `meta`.\n\n## Format error\n\nError juga harus punya satu bentuk. Bentuk yang banyak dipakai:\n\n```json\n{\n  \"error\": {\n    \"code\": \"VALIDASI_GAGAL\",\n    \"message\": \"Data buku tidak valid\",\n    \"details\": [\n      { \"field\": \"judul\", \"message\": \"wajib diisi\" },\n      { \"field\": \"tahun\", \"message\": \"harus angka\" }\n    ]\n  }\n}\n```\n\n![Satu format error untuk semua endpoint](slide:17)\n\nSetiap bagian punya pembaca yang berbeda:\n\n- **code** dibaca program. Nilainya tetap dan tidak berubah walau pesan diterjemahkan, misalnya `BUKU_TIDAK_ADA` atau `STOK_HABIS`. Aplikasi HP bisa menulis `if (err.code === \"STOK_HABIS\")` lalu menampilkan tombol \"ingatkan saya saat tersedia\".\n- **message** dibaca manusia, terutama programmer yang sedang debugging. Boleh berubah kapan saja.\n- **details** opsional, berisi rincian per field untuk error validasi. Klien bisa menampilkan pesan merah tepat di bawah kolom form yang salah.\n\nKirim **semua** kesalahan validasi sekaligus, bukan satu per satu. Siswa yang mengisi form pendaftaran tidak mau memperbaiki judul, mengirim, lalu baru diberi tahu bahwa tahunnya juga salah.\n\n### Problem Details (RFC 9457)\n\nSelain bentuk buatan sendiri, ada standar resmi bernama Problem Details for HTTP APIs, RFC 9457 (pengganti RFC 7807). Responsnya memakai content type `application/problem+json`:\n\n```json\n{\n  \"type\": \"https://api.perpus.sch.id/masalah/stok-habis\",\n  \"title\": \"Stok buku habis\",\n  \"status\": 409,\n  \"detail\": \"Buku Bumi sedang dipinjam semua\",\n  \"instance\": \"/v1/buku/8/peminjaman\"\n}\n```\n\nField `type` adalah URI yang mengidentifikasi jenis masalah (fungsinya mirip `code`), `title` ringkasan singkat, `status` salinan status code, dan `detail` penjelasan untuk kasus ini. Kamu boleh menambah field sendiri, misalnya `errors` untuk detail validasi. Beberapa framework sudah mendukung format ini. Mana yang kamu pilih tidak terlalu penting; yang penting satu API memakai satu format.\n\n## Nama field, angka, dan tanggal\n\n**Pilih satu gaya nama.** Ada dua gaya populer: `camelCase` (`tanggalPinjam`) yang umum di dunia JavaScript, dan `snake_case` (`tanggal_pinjam`) yang umum di Python, Ruby, dan banyak database. Keduanya baik. Yang buruk adalah mencampur `tanggalPinjam` dan `batas_kembali` di respons yang sama. Kelas ini memakai camelCase.\n\n**Angka sebagai number.** Kirim `\"denda\": 2000`, bukan `\"denda\": \"2000\"` atau `\"denda\": \"Rp2.000\"`. Format rupiah adalah urusan tampilan di klien. ID boleh string kalau memang berupa kode, seperti `\"kode\": \"xi-rpl-1\"`.\n\n**Boolean asli.** Tulis `\"sudahKembali\": false`, bukan `\"ya\"`, `\"tidak\"`, `0`, atau `1`.\n\n**Tanggal dengan ISO 8601.** Format ini bisa diurutkan sebagai teks, tidak ambigu, dan dibaca hampir semua bahasa pemrograman:\n\n```json\n{\n  \"id\": 31,\n  \"tanggalPinjam\": \"2026-07-17T08:00:00Z\",\n  \"batasKembali\": \"2026-07-24\",\n  \"denda\": 0,\n  \"sudahKembali\": false\n}\n```\n\nFormat `17/07/2026` berbahaya karena di Amerika dibaca bulan dulu, sehingga `03/04/2026` bisa berarti 3 April atau 4 Maret. Untuk waktu, sertakan zona waktu: akhiran `Z` berarti UTC, atau tulis selisihnya seperti `+07:00` untuk WIB. Di JavaScript, `new Date().toISOString()` menghasilkan format UTC dengan akhiran `Z`. Untuk tanggal tanpa jam, seperti tanggal lahir atau batas kembali, cukup `YYYY-MM-DD`.\n\n**Field kosong.** Putuskan juga apakah field tanpa nilai dikirim sebagai `null` atau dihilangkan. Mengirim `null` biasanya lebih jelas karena klien tahu field itu memang ada.\n\n## Fungsi pembantu di Express\n\nSupaya semua error seragam, jangan tulis bentuk error dengan tangan di setiap handler. Buat satu fungsi pembantu:\n\n```js\nfunction kirimError(res, status, code, message, details) {\n  const error = { code, message };\n  if (details) error.details = details;\n  return res.status(status).json({ error });\n}\n\napp.post(\"/anggota\", (req, res) => {\n  const { nama, kelas } = req.body;\n  const salah = [];\n  if (!nama) salah.push({ field: \"nama\", message: \"wajib diisi\" });\n  if (!kelas) salah.push({ field: \"kelas\", message: \"wajib diisi\" });\n  if (salah.length) return kirimError(res, 422, \"VALIDASI_GAGAL\", \"Data anggota tidak valid\", salah);\n  // simpan lalu balas 201\n});\n```\n\nKalau suatu hari tim memutuskan pindah ke Problem Details, kamu cukup mengubah satu fungsi.\n\n## Membaca error dari sisi klien\n\nKeuntungan format yang seragam paling terasa di sisi klien. Aplikasi web perpustakaan cukup punya satu fungsi untuk semua panggilan API:\n\n```js\nasync function panggilApi(url, opsi) {\n  const res = await fetch(url, opsi);\n  if (res.status === 204) return null;\n  const isi = await res.json();\n  if (!res.ok) {\n    const err = new Error(isi.error.message);\n    err.code = isi.error.code;\n    err.details = isi.error.details || [];\n    throw err;\n  }\n  return isi;\n}\n```\n\nSetelah itu, halaman form pendaftaran anggota tinggal menangkap error dan menampilkan `err.details` di bawah kolom yang sesuai, sementara halaman detail buku memeriksa `err.code === \"BUKU_TIDAK_ADA\"` untuk menampilkan halaman kosong yang ramah. Semua itu hanya mungkin karena server selalu memakai bentuk error yang sama. Satu endpoint yang \"beda sendiri\" sudah cukup untuk membuat fungsi pembantu ini gagal.\n\n## Rangkuman\n\n- Satu API memakai satu bentuk respons: koleksi dibungkus `{ data, meta }`, item dikirim dengan pola yang sama di semua endpoint.\n- Format error `{ error: { code, message, details } }`: `code` untuk program, `message` untuk manusia, `details` untuk kesalahan per field.\n- Problem Details (RFC 9457) adalah alternatif standar dengan field `type`, `title`, `status`, dan `detail`.\n- Pilih camelCase atau snake_case dan jangan mencampurnya; kirim angka sebagai number dan boolean sebagai `true`/`false`.\n- Tanggal ditulis dengan ISO 8601 beserta zona waktu, dan semua error dibuat lewat satu fungsi pembantu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa koleksi sebaiknya dibungkus `{ data: [...] }` dan tidak dikirim sebagai array langsung?",
+          "code": "",
+          "options": [
+            "Agar bisa menambah meta seperti total tanpa merusak klien",
+            "Karena JSON tidak mengizinkan array berada di tingkat paling atas",
+            "Karena Express tidak bisa mengirim array lewat res.json sama sekali",
+            "Agar ukuran respons lebih kecil daripada array yang dikirim polos"
+          ],
+          "answer": 0,
+          "explanation": "Objek pembungkus memberi tempat untuk field tambahan tanpa mengubah bentuk respons."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Format tanggal mana yang paling tepat untuk API?",
+          "code": "",
+          "options": [
+            "17/07/2026 08.00 WIB",
+            "Kamis, 17 Juli 2026 pukul delapan pagi",
+            "2026-07-17T08:00:00+07:00",
+            "1784250000 dalam bentuk string teks"
+          ],
+          "answer": 2,
+          "explanation": "ISO 8601 dengan zona waktu tidak ambigu dan dibaca hampir semua bahasa pemrograman."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dalam format error, field `code` sebaiknya tetap sama walaupun `message` diterjemahkan ke bahasa lain.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Program membaca code, jadi nilainya harus stabil; message boleh berubah."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang paling bermasalah dari respons ini?",
+          "code": "{\n  \"id\": 31,\n  \"tanggalPinjam\": \"2026-07-17\",\n  \"batas_kembali\": \"2026-07-24\",\n  \"denda\": \"2000\"\n}",
+          "options": [
+            "Tanggal seharusnya ditulis dengan format 17/07/2026 agar mudah dibaca",
+            "Gaya nama campur dan denda berupa string",
+            "Field id seharusnya selalu bertipe string, tidak boleh angka biasa",
+            "Respons satu item wajib dibungkus di dalam array data supaya konsisten"
+          ],
+          "answer": 1,
+          "explanation": "camelCase dan snake_case tercampur, dan angka dikirim sebagai string."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Error yang seragam",
+          "prompt": "Array `SISWA` sudah tersedia. Lengkapi:\n\n- fungsi `kirimError(res, status, code, message, details)` yang membalas `{ error: { code, message, details } }` (`details` hanya bila diberikan)\n- `GET /siswa/:id`: `404` dengan code `SISWA_TIDAK_ADA` bila tidak ada\n- `POST /siswa`: validasi `nama` wajib diisi dan `tanggalLahir` berformat `YYYY-MM-DD`. Bila ada yang salah, balas `422` dengan code `VALIDASI_GAGAL` dan `details` berisi **semua** field yang salah (`{ field, message }`). Bila benar, simpan dengan id baru dan balas `201`.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction kirimError(res, status, code, message, details) {\n  // TODO: bentuk { error: { code, message, details } }\n  return res.status(status).json({ pesan: message });\n}\n\napp.get(\"/siswa/:id\", (req, res) => {\n  const s = SISWA.find((x) => x.id === Number(req.params.id));\n  if (!s) return kirimError(res, 404, \"SISWA_TIDAK_ADA\", \"Siswa tidak ditemukan\");\n  res.json(s);\n});\n\napp.post(\"/siswa\", (req, res) => {\n  const { nama, tanggalLahir } = req.body;\n  // TODO: kumpulkan semua kesalahan, 422 bila ada\n  const siswa = { id: SISWA.length + 1, nama, tanggalLahir };\n  SISWA.push(siswa);\n  res.status(201).json(siswa);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction kirimError(res, status, code, message, details) {\n  const error = { code, message };\n  if (details) error.details = details;\n  return res.status(status).json({ error });\n}\n\napp.get(\"/siswa/:id\", (req, res) => {\n  const s = SISWA.find((x) => x.id === Number(req.params.id));\n  if (!s) return kirimError(res, 404, \"SISWA_TIDAK_ADA\", \"Siswa tidak ditemukan\");\n  res.json(s);\n});\n\napp.post(\"/siswa\", (req, res) => {\n  const { nama, tanggalLahir } = req.body;\n  const salah = [];\n  if (!nama) salah.push({ field: \"nama\", message: \"wajib diisi\" });\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(tanggalLahir || \"\")) salah.push({ field: \"tanggalLahir\", message: \"format YYYY-MM-DD\" });\n  if (salah.length) return kirimError(res, 422, \"VALIDASI_GAGAL\", \"Data siswa tidak valid\", salah);\n  const siswa = { id: SISWA.length + 1, nama, tanggalLahir };\n  SISWA.push(siswa);\n  res.status(201).json(siswa);\n});\n"
+          },
+          "setup": "const SISWA = [\n  { id: 1, nama: \"Ani\", tanggalLahir: \"2009-03-14\" },\n  { id: 2, nama: \"Budi\", tanggalLahir: \"2008-11-02\" },\n];",
+          "tests": [
+            {
+              "name": "404 berformat error dengan code",
+              "check": "(await (async () => { const r = await request(\"GET\", \"/siswa/99\"); return r.status === 404 && r.body.error.code === \"SISWA_TIDAK_ADA\" && r.body.error.details === undefined; })())"
+            },
+            {
+              "name": "Body kosong: 422 dengan dua details",
+              "check": "(await (async () => { const r = await request(\"POST\", \"/siswa\", {}); return r.status === 422 && r.body.error.code === \"VALIDASI_GAGAL\" && r.body.error.details.length === 2; })())"
+            },
+            {
+              "name": "Tanggal 14/03/2009 ditolak di field tanggalLahir",
+              "check": "(await (async () => { const r = await request(\"POST\", \"/siswa\", { nama: \"Citra\", tanggalLahir: \"14/03/2009\" }); return r.status === 422 && r.body.error.details.length === 1 && r.body.error.details[0].field === \"tanggalLahir\"; })())"
+            },
+            {
+              "name": "Data benar: 201 dan tersimpan",
+              "check": "(await request(\"POST\", \"/siswa\", { nama: \"Citra\", tanggalLahir: \"2009-05-20\" })).status === 201 && SISWA.length === 3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "filter-sort-dan-paginasi",
+      "title": "Filter, Sort, dan Paginasi",
+      "est_minutes": 30,
+      "slide_from": 19,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Merancang filter dan sort lewat query string yang mudah ditebak, seperti `?kategori=novel&sort=-harga`.\n- Membatasi field yang boleh dipakai untuk filter dan sort supaya API tetap aman dan cepat.\n- Membedakan paginasi offset dan paginasi cursor beserta kelebihan dan kekurangannya.\n- Menyertakan metadata paginasi seperti `total` dan `next` di dalam respons.\n\n## Daftar yang terus tumbuh\n\nTahun pertama, katalog perpustakaan sekolahmu baru berisi 200 buku. Endpoint `GET /buku` yang mengembalikan semua buku sekaligus masih terasa cepat. Tiga tahun kemudian isinya 8.000 buku, ditambah riwayat peminjaman puluhan ribu baris. Kalau endpoint tetap mengembalikan semuanya, respons bisa berukuran beberapa megabyte, ponsel siswa jadi lambat, dan server ikut terbebani.\n\nKlien juga jarang butuh semua data. Aplikasi perpustakaan biasanya ingin \"novel saja\", \"yang terbaru dulu\", atau \"20 buku pertama\". Tiga kebutuhan ini dijawab oleh tiga fitur: **filter**, **sort**, dan **paginasi**. Ketiganya ditulis di query string, karena semuanya mengatur cara melihat koleksi yang sama, bukan menunjuk resource yang berbeda. Ini sejalan dengan aturan di bab URL: ID di path, pilihan tampilan di query.\n\n## Filter lewat query string\n\nBentuk filter paling sederhana adalah nama field sebagai parameter:\n\n```http\nGET /buku?kategori=novel\nGET /buku?kategori=novel&penulis=Andrea%20Hirata\nGET /siswa?kelas=XI-RPL-1&aktif=true\n```\n\nBeberapa parameter dibaca sebagai \"dan\": `kategori=novel&penulis=...` berarti novel yang penulisnya Andrea Hirata. Spasi dan karakter khusus di nilai harus di-encode, misalnya spasi menjadi `%20`. Di Express, nilai ini muncul di `req.query`, selalu sebagai string. Artinya `aktif=true` tiba sebagai teks `\"true\"`, bukan boolean, dan `tahun=2020` tiba sebagai `\"2020\"`. Ubah tipenya sendiri sebelum membandingkan.\n\nUntuk rentang, ada beberapa gaya yang umum. Pilih satu dan pakai di seluruh API:\n\n```http\nGET /produk?harga_min=5000&harga_maks=20000\nGET /produk?harga[gte]=5000&harga[lte]=20000\n```\n\nGaya pertama paling mudah dibaca pemula. Gaya kedua lebih rapi bila banyak field butuh rentang, tapi butuh parser query yang mendukung kurung siku. Untuk pencarian teks bebas, banyak API memakai satu parameter khusus seperti `?q=laskar`.\n\nSatu hal penting: **jangan biarkan klien memfilter field apa saja**. Tentukan daftar field yang boleh, misalnya `kategori`, `penulis`, dan `tahun`. Field yang tidak ada indexnya bisa membuat query database lambat, dan field seperti `password_hash` jelas tidak boleh bisa dicari. Parameter yang tidak dikenal boleh diabaikan atau ditolak dengan `400`, asal perilakunya konsisten dan ditulis di dokumentasi.\n\n## Sort dengan tanda minus\n\nKonvensi yang banyak dipakai (termasuk oleh spesifikasi JSON:API) adalah parameter `sort` berisi nama field. Tanda minus di depan berarti urut turun:\n\n```http\nGET /produk?sort=harga        # termurah dulu\nGET /produk?sort=-harga       # termahal dulu\nGET /buku?sort=-tahun,judul   # terbaru dulu, lalu judul A-Z\n```\n\nPola ini singkat, mudah diketik, dan bisa digabung beberapa field dengan koma. Sama seperti filter, field sort harus dibatasi. Kalau klien mengirim `?sort=warna` padahal field itu tidak ada, balas `400` dengan pesan yang jelas daripada diam-diam mengabaikannya. Klien yang salah ketik `sort=-tahn` akan langsung tahu kesalahannya.\n\nBerikut contoh di Express untuk daftar produk kantin:\n\n```js\nconst BOLEH_SORT = [\"nama\", \"harga\"];\n\napp.get(\"/produk\", (req, res) => {\n  let hasil = PRODUK;\n  if (req.query.kategori) {\n    hasil = hasil.filter((p) => p.kategori === req.query.kategori);\n  }\n  if (req.query.sort) {\n    const turun = req.query.sort.startsWith(\"-\");\n    const field = turun ? req.query.sort.slice(1) : req.query.sort;\n    if (!BOLEH_SORT.includes(field)) {\n      return res.status(400).json({ error: { code: \"SORT_TIDAK_VALID\", message: \"sort hanya boleh nama atau harga\" } });\n    }\n    hasil = [...hasil].sort((a, b) => (a[field] > b[field] ? 1 : a[field] < b[field] ? -1 : 0) * (turun ? -1 : 1));\n  }\n  res.json({ data: hasil });\n});\n```\n\nPerhatikan `[...hasil]`: data disalin dulu sebelum diurutkan, karena `sort()` mengubah array aslinya.\n\n## Paginasi offset\n\nPaginasi offset membagi hasil menjadi halaman bernomor. Klien mengirim nomor halaman dan ukuran halaman:\n\n```http\nGET /buku?halaman=2&per=20\nGET /buku?limit=20&offset=20\n```\n\nKedua bentuk itu sama artinya: lewati 20 baris pertama, ambil 20 berikutnya. Di SQL, rumusnya `LIMIT per OFFSET (halaman - 1) * per`. Di JavaScript cukup `hasil.slice((halaman - 1) * per, halaman * per)`.\n\nRespons sebaiknya membawa metadata supaya klien bisa membuat tombol halaman:\n\n```json\n{\n  \"data\": [{ \"id\": 21, \"judul\": \"Laskar Pelangi\" }],\n  \"meta\": { \"total\": 8000, \"halaman\": 2, \"per\": 20, \"totalHalaman\": 400 }\n}\n```\n\n![Paginasi offset dengan halaman dan per](slide:20)\n\nJangan lupa memberi **batas maksimal** untuk `per`, misalnya 50 atau 100. Tanpa batas, seseorang bisa mengirim `?per=1000000` dan membuat server mengambil seluruh tabel. Nilai yang tidak masuk akal, seperti `per=0` atau `halaman=abc`, juga perlu ditangani: pakai nilai bawaan atau tolak dengan `400`.\n\nPaginasi offset mudah dipahami dan memungkinkan lompat ke halaman mana saja. Tapi ada dua kelemahan:\n\n- **Lambat di halaman jauh.** Untuk `OFFSET 100000`, database tetap harus melewati seratus ribu baris satu per satu sebelum mengambil 20 baris.\n- **Data bisa bergeser.** Kalau ada buku baru masuk saat siswa membuka halaman 2, semua baris bergeser satu posisi. Satu buku bisa muncul dua kali di halaman 2 dan 3, atau malah terlewat.\n\n## Paginasi cursor\n\nPaginasi cursor (sering juga disebut *keyset pagination*) tidak memakai nomor halaman. Klien mengirim penanda posisi terakhir yang sudah dilihat, lalu server mengambil data **sesudah** penanda itu:\n\n```http\nGET /peminjaman?limit=20\nGET /peminjaman?limit=20&after=1040\n```\n\nDi SQL, query-nya kira-kira `WHERE id > 1040 ORDER BY id LIMIT 20`. Karena kolom `id` punya index, database langsung melompat ke posisi itu tanpa menghitung baris yang dilewati. Kecepatannya hampir sama di halaman pertama maupun halaman ke seribu. Data baru yang masuk juga tidak membuat baris bergeser, karena posisinya ditentukan oleh nilai, bukan urutan ke berapa.\n\nRespons cursor biasanya membawa penanda untuk halaman berikutnya:\n\n```json\n{\n  \"data\": [{ \"id\": 1041, \"nis\": \"2024017\" }],\n  \"meta\": { \"next\": \"/peminjaman?limit=20&after=1060\" }\n}\n```\n\nBila `next` bernilai `null`, artinya data sudah habis. Banyak API membungkus penanda menjadi string acak seperti `eyJpZCI6MTA2MH0`, yang sebenarnya hanya hasil base64 dari `{\"id\":1060}`. Tujuannya supaya klien memperlakukan cursor sebagai nilai buram dan tidak mencoba merakitnya sendiri, sehingga server bebas mengubah isinya nanti.\n\nKelemahan cursor: klien tidak bisa lompat langsung ke halaman 37, dan menghitung `total` tetap mahal untuk tabel besar. Cursor cocok untuk daftar yang terus bertambah dan dibaca berurutan, seperti riwayat peminjaman, notifikasi, atau linimasa. Offset cocok untuk tabel admin yang butuh nomor halaman dan datanya tidak terlalu besar.\n\n| Aspek | Offset | Cursor |\n| --- | --- | --- |\n| Lompat ke halaman tertentu | Bisa | Tidak bisa |\n| Kecepatan halaman jauh | Makin lambat | Tetap cepat |\n| Data baru saat membaca | Bisa dobel atau terlewat | Aman |\n| Cocok untuk | Tabel admin, katalog kecil | Riwayat, feed, log |\n\n## Menggabungkan semuanya\n\nKetiga fitur bisa dipakai bersamaan, dan urutan prosesnya selalu sama: **filter dulu, lalu sort, baru paginasi**. Kalau urutannya terbalik, misalnya dipotong per halaman dulu baru difilter, halaman 1 bisa berisi 3 buku padahal seharusnya 20.\n\n```http\nGET /buku?kategori=teknologi&sort=-tahun&halaman=1&per=10\n```\n\nNilai `total` di metadata dihitung setelah filter, bukan dari seluruh koleksi. Klien yang memfilter novel ingin tahu ada berapa novel, bukan berapa semua buku.\n\n## Rangkuman\n\n- Filter, sort, dan paginasi ditulis di query string karena hanya mengubah cara melihat koleksi yang sama.\n- Nilai di `req.query` selalu string, jadi ubah tipenya sendiri dan batasi field yang boleh dipakai.\n- Konvensi `sort=-harga` berarti urut turun, dan field yang tidak dikenal sebaiknya dibalas `400`.\n- Paginasi offset mudah dan mendukung nomor halaman, tapi lambat di halaman jauh dan bisa dobel saat data berubah.\n- Paginasi cursor memakai penanda posisi seperti `after=1040` dan tetap cepat, tapi tidak bisa lompat halaman.\n- Sertakan metadata seperti `total`, `halaman`, atau `next`, dan proses selalu dengan urutan filter, sort, lalu paginasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Klien ingin daftar produk dari yang termahal. Request mana yang mengikuti konvensi bab ini?",
+          "code": "",
+          "options": [
+            "GET /produk?sort=-harga",
+            "GET /produk/urut-harga-termahal",
+            "GET /produk?harga=desc&urutkan=ya",
+            "POST /produk/sort dengan body { harga: -1 }"
+          ],
+          "answer": 0,
+          "explanation": "Tanda minus di depan nama field berarti urut turun, dan sort ditulis di query string karena hanya mengubah cara melihat koleksi."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Request `GET /buku?halaman=3&per=20` diproses kode ini. Baris ke berapa saja yang dikembalikan (dihitung dari 1)?",
+          "code": "const per = Number(req.query.per);\nconst halaman = Number(req.query.halaman);\nconst data = hasil.slice((halaman - 1) * per, halaman * per);",
+          "options": [
+            "Baris 60 sampai 80",
+            "Baris 40 sampai 60",
+            "Baris 41 sampai 60",
+            "Baris 21 sampai 40"
+          ],
+          "answer": 2,
+          "explanation": "Halaman 3 melewati (3 - 1) x 20 = 40 baris, lalu mengambil 20 baris berikutnya, yaitu baris 41 sampai 60."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Riwayat peminjaman bertambah ratusan baris setiap hari dan dibaca berurutan di aplikasi. Kenapa paginasi cursor lebih cocok daripada offset?",
+          "code": "",
+          "options": [
+            "Cursor bisa lompat langsung ke halaman mana saja",
+            "Cursor tetap cepat dan tidak dobel saat data baru masuk",
+            "Cursor membuat nilai total jauh lebih murah dihitung",
+            "Cursor tidak membutuhkan index apa pun di database"
+          ],
+          "answer": 1,
+          "explanation": "Cursor memakai nilai posisi seperti id terakhir, jadi database langsung melompat lewat index dan baris baru tidak menggeser hasil."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Nilai `total` di metadata paginasi sebaiknya dihitung dari seluruh koleksi, sebelum filter diterapkan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "total dihitung setelah filter. Klien yang memfilter novel ingin tahu ada berapa novel, bukan berapa seluruh buku."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Katalog kantin: filter, sort, paginasi",
+          "prompt": "Larik `PRODUK` (8 menu kantin dengan `id`, `nama`, `kategori`, `harga`) sudah tersedia. Lengkapi `GET /produk`:\n\n- `?kategori=minuman` hanya mengambil produk dengan kategori itu.\n- `?sort=` menerima `nama`, `-nama`, `harga`, atau `-harga` (minus berarti urut turun). Nilai lain dibalas `400` dengan `{ error: { code: \"SORT_TIDAK_VALID\", message } }`.\n- `?halaman=` (bawaan 1) dan `?per=` (bawaan 5, maksimal 20).\n- Respons `{ data, meta: { total, halaman, per } }` dengan `total` dihitung **setelah** filter.\n\nUrutan proses: filter, sort, lalu paginasi. Jangan mengubah urutan larik `PRODUK` aslinya.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst BOLEH_SORT = [\"nama\", \"harga\"];\n\napp.get(\"/produk\", (req, res) => {\n  let hasil = PRODUK;\n  // TODO: filter kategori\n  // TODO: sort dengan tanda minus, 400 bila field tidak boleh\n  // TODO: paginasi halaman dan per, lalu meta\n  res.json({ data: hasil });\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst BOLEH_SORT = [\"nama\", \"harga\"];\n\napp.get(\"/produk\", (req, res) => {\n  let hasil = PRODUK;\n  if (req.query.kategori) hasil = hasil.filter((p) => p.kategori === req.query.kategori);\n\n  if (req.query.sort) {\n    const turun = req.query.sort.startsWith(\"-\");\n    const field = turun ? req.query.sort.slice(1) : req.query.sort;\n    if (!BOLEH_SORT.includes(field)) {\n      return res.status(400).json({ error: { code: \"SORT_TIDAK_VALID\", message: \"sort hanya boleh nama atau harga\" } });\n    }\n    const arah = turun ? -1 : 1;\n    hasil = [...hasil].sort((a, b) => (a[field] > b[field] ? 1 : a[field] < b[field] ? -1 : 0) * arah);\n  }\n\n  const per = Math.min(20, Math.max(1, parseInt(req.query.per, 10) || 5));\n  const halaman = Math.max(1, parseInt(req.query.halaman, 10) || 1);\n  res.json({\n    data: hasil.slice((halaman - 1) * per, halaman * per),\n    meta: { total: hasil.length, halaman, per },\n  });\n});\n"
+          },
+          "setup": "const PRODUK = [\n  { id: 1, nama: \"Nasi Goreng\", kategori: \"makanan\", harga: 12000 },\n  { id: 2, nama: \"Mie Ayam\", kategori: \"makanan\", harga: 10000 },\n  { id: 3, nama: \"Es Teh\", kategori: \"minuman\", harga: 3000 },\n  { id: 4, nama: \"Jus Alpukat\", kategori: \"minuman\", harga: 8000 },\n  { id: 5, nama: \"Gorengan\", kategori: \"camilan\", harga: 1000 },\n  { id: 6, nama: \"Soto Ayam\", kategori: \"makanan\", harga: 13000 },\n  { id: 7, nama: \"Air Mineral\", kategori: \"minuman\", harga: 4000 },\n  { id: 8, nama: \"Roti Bakar\", kategori: \"camilan\", harga: 7000 },\n];\n",
+          "tests": [
+            {
+              "name": "Tanpa parameter: 5 produk pertama dan meta",
+              "check": "(async () => { const r = await request(\"GET\", \"/produk\"); return r.status === 200 && r.body.data.length === 5 && r.body.meta.total === 8 && r.body.meta.halaman === 1 && r.body.meta.per === 5; })()"
+            },
+            {
+              "name": "Filter kategori dan total setelah filter",
+              "check": "(async () => { const r = await request(\"GET\", \"/produk?kategori=minuman\"); return r.body.meta.total === 3 && r.body.data.every((p) => p.kategori === \"minuman\"); })()"
+            },
+            {
+              "name": "Sort -harga dan sort nama",
+              "check": "(async () => { const a = await request(\"GET\", \"/produk?sort=-harga\"); const b = await request(\"GET\", \"/produk?sort=nama\"); return a.body.data[0].nama === \"Soto Ayam\" && b.body.data[0].nama === \"Air Mineral\" && PRODUK[0].id === 1; })()"
+            },
+            {
+              "name": "Filter, sort, lalu paginasi",
+              "check": "(async () => { const r = await request(\"GET\", \"/produk?kategori=makanan&sort=harga&halaman=2&per=2\"); return r.body.data.length === 1 && r.body.data[0].nama === \"Soto Ayam\" && r.body.meta.total === 3; })()"
+            },
+            {
+              "name": "Sort tidak dikenal 400 dan per dibatasi 20",
+              "check": "(async () => { const a = await request(\"GET\", \"/produk?sort=warna\"); const b = await request(\"GET\", \"/produk?per=100\"); return a.status === 400 && a.body.error.code === \"SORT_TIDAK_VALID\" && b.body.meta.per === 20; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "versioning-dan-keamanan",
+      "title": "Versioning dan Keamanan",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Memilih cara versioning API dan menulis versi di URL seperti `/v1`.\n- Membedakan perubahan yang merusak klien dan perubahan yang aman.\n- Menjalankan masa deprecation sebelum mematikan versi lama.\n- Menerapkan keamanan dasar API: HTTPS, validasi input, autentikasi, dan CORS.\n\n## API itu janji\n\nBegitu aplikasi Android absensi sekolahmu memakai `GET /siswa/:nis`, bentuk respons endpoint itu menjadi janji. Aplikasi yang sudah terpasang di ratusan ponsel siswa membaca field `nama` dan `kelas`. Kalau besok kamu mengganti `nama` menjadi `namaLengkap`, aplikasi lama langsung menampilkan kolom kosong atau malah crash. Kamu tidak bisa memaksa semua siswa memperbarui aplikasi hari itu juga.\n\nWebsite bisa diperbarui sekaligus karena kodenya ada di server. Klien API tidak: aplikasi seluler, skrip milik sekolah lain, atau integrasi dengan sistem dinas pendidikan berjalan dengan jadwal mereka sendiri. Karena itu API butuh **versi**, supaya perubahan besar bisa dikeluarkan tanpa merusak klien yang belum siap.\n\n## Tiga cara menulis versi\n\nAda tiga gaya yang umum:\n\n```http\nGET /v1/siswa/2024017                       # versi di path URL\nGET /siswa/2024017?versi=1                  # versi di query string\nGET /siswa/2024017\nAccept: application/vnd.sekolah.v1+json     # versi di header\n```\n\n**Versi di path** seperti `/v1` adalah yang paling banyak dipakai. Versinya langsung terlihat di log, mudah dicoba di browser, dan mudah dipisah di kode maupun di load balancer. Versi di header terlihat lebih \"murni\" karena URL resource tidak berubah, tapi lebih sulit dicoba dan sering terlupa. Versi di query jarang dipakai karena tercampur dengan parameter filter.\n\nUntuk kelas ini, pakai versi di path. Cukup nomor versi utama: `/v1`, `/v2`. Jangan menulis `/v1.2.3`, karena versi kecil yang tidak merusak tidak perlu URL baru.\n\n![Versi API ditulis di awal path](slide:22)\n\nDi Express, versi bisa dipisah dengan awalan path yang berbeda:\n\n```js\napp.get(\"/v1/siswa/:nis\", (req, res) => {\n  const s = cariSiswa(req.params.nis);\n  res.json({ nis: s.nis, nama: s.nama, kelas: s.kelas });\n});\n\napp.get(\"/v2/siswa/:nis\", (req, res) => {\n  const s = cariSiswa(req.params.nis);\n  res.json({ nis: s.nis, nama: s.nama, kelas: { tingkat: s.tingkat, jurusan: s.jurusan } });\n});\n```\n\nDi proyek nyata, tiap versi biasanya punya `express.Router()` sendiri yang dipasang dengan `app.use(\"/v1\", routerV1)`. Logika bisnis dan akses database tetap dipakai bersama, yang berbeda hanya bentuk masukan dan keluarannya.\n\n## Perubahan yang merusak dan yang aman\n\nTidak semua perubahan butuh versi baru. Kuncinya: apakah klien lama yang tidak diubah sama sekali tetap berjalan benar?\n\n**Perubahan yang merusak** (*breaking change*), butuh versi baru:\n\n- Menghapus atau mengganti nama field, misalnya `nama` menjadi `namaLengkap`.\n- Mengubah tipe field, misalnya `kelas` dari string `\"XI RPL 1\"` menjadi objek.\n- Menambah parameter atau field body yang **wajib**.\n- Mengubah arti status code, misalnya dari `404` menjadi `200` dengan data kosong.\n- Menghapus endpoint atau mengubah URL-nya.\n\n**Perubahan yang aman**, boleh langsung di versi yang sama:\n\n- Menambah field baru di respons, misalnya `fotoUrl`.\n- Menambah endpoint baru.\n- Menambah parameter query yang **opsional**.\n- Memperbaiki bug yang membuat API tidak sesuai dokumentasinya.\n\nPerubahan aman hanya aman bila klien ditulis dengan sopan: membaca field yang dikenal dan mengabaikan field lain. Tulis aturan ini di dokumentasi, misalnya \"klien wajib mengabaikan field yang tidak dikenal\", supaya kamu bebas menambah field kapan saja.\n\n## Deprecation: pensiun dengan sopan\n\nVersi lama tidak boleh dimatikan mendadak. Prosesnya biasanya begini:\n\n1. Rilis `/v2` dan umumkan bahwa `/v1` sudah *deprecated*: masih jalan, tapi tidak dikembangkan lagi.\n2. Beri tenggat yang jelas, misalnya enam bulan. Tulis di dokumentasi dan kirim kabar ke pengembang yang memakai API.\n3. Tandai respons `/v1` dengan header yang bisa dibaca mesin. Header `Sunset` (RFC 8594) berisi tanggal endpoint akan dimatikan, dan ada juga header `Deprecation` yang menandai endpoint sudah usang.\n4. Pantau log. Kalau masih ada klien besar yang memanggil `/v1` menjelang tenggat, hubungi mereka.\n5. Setelah tenggat, `/v1` boleh dibalas `410 Gone` dengan pesan yang menunjuk ke `/v2`.\n\n```js\napp.get(\"/v1/siswa/:nis\", (req, res) => {\n  res.set(\"Sunset\", \"Sun, 31 Jan 2027 23:59:59 GMT\");\n  // ... sama seperti sebelumnya\n});\n```\n\nFormat tanggal di `Sunset` adalah format tanggal HTTP, bukan ISO 8601, karena header ini mengikuti aturan HTTP.\n\n## Keamanan dasar API\n\nAPI yang terbuka ke internet akan dicoba orang iseng, bot, dan penyerang. Berikut lapisan dasar yang wajib ada. Detail lengkapnya dibahas di kelas **Autentikasi dan Keamanan API**.\n\n**HTTPS saja.** Semua lalu lintas API harus lewat HTTPS. Lewat HTTP biasa, token login dan data nilai siswa bisa dibaca siapa saja yang satu jaringan Wi-Fi. Jangan sekadar membelokkan HTTP ke HTTPS untuk API, karena token sudah telanjur terkirim di request pertama. Lebih baik tolak request HTTP.\n\n**Validasi semua input.** Anggap semua yang datang dari klien bisa salah atau jahat: `req.params`, `req.query`, `req.body`, dan header. Periksa tipe, panjang, dan rentang nilai. Ambil hanya field yang kamu izinkan dari body, jangan menyalin `req.body` utuh ke database, karena klien bisa menyelipkan field seperti `role: \"admin\"` (masalah ini disebut *mass assignment*). Kirim `400` atau `422` dengan pesan yang menjelaskan field mana yang salah.\n\n**Autentikasi dan otorisasi.** Endpoint yang mengubah data atau membuka data pribadi butuh login. Pola yang umum adalah token di header:\n\n```http\nGET /v1/nilai/saya\nAuthorization: Bearer eyJhbGciOi...\n```\n\nTanpa token yang valid, balas `401`. Token valid tapi tidak berhak, misalnya siswa mencoba membuka nilai siswa lain, balas `403`. Selalu periksa kepemilikan data di server, jangan percaya `nis` yang dikirim klien. Cara membuat token, menyimpan password, dan mengelola sesi ada di kelas Autentikasi dan Keamanan API.\n\n**Jangan bocorkan detail internal.** Pesan error `500` untuk klien cukup \"Terjadi kesalahan di server\". Stack trace dan pesan error database disimpan di log server saja.\n\n## CORS\n\nBrowser punya aturan *same-origin*: JavaScript di `https://rapor.sekolah.sch.id` tidak boleh membaca respons dari `https://api.sekolah.sch.id` kecuali API mengizinkannya. Izin itu diberikan lewat header CORS (*Cross-Origin Resource Sharing*):\n\n```http\nAccess-Control-Allow-Origin: https://rapor.sekolah.sch.id\n```\n\nUntuk request yang bukan request sederhana, misalnya memakai method `PATCH` atau header `Authorization`, browser lebih dulu mengirim request `OPTIONS` yang disebut *preflight*. API harus menjawabnya dengan header seperti `Access-Control-Allow-Methods` dan `Access-Control-Allow-Headers`. Di Express biasanya dipakai paket `cors` supaya tidak menulis semuanya sendiri.\n\nDua hal yang sering disalahpahami. Pertama, CORS bukan pengaman API: aturan ini hanya dipatuhi browser, sedangkan curl, Postman, atau skrip server tetap bisa memanggil API-mu. Autentikasi tetap wajib. Kedua, hindari `Access-Control-Allow-Origin: *` untuk API yang memakai cookie atau data pribadi. Tulis daftar origin yang memang kamu percaya.\n\n## Rangkuman\n\n- Versi API melindungi klien lama, dan versi di path seperti `/v1` paling mudah dibaca dan dipisah.\n- Menghapus, mengganti nama, atau mengubah tipe field adalah perubahan yang merusak dan butuh versi baru.\n- Menambah field atau parameter opsional itu aman, asal klien mengabaikan field yang tidak dikenal.\n- Pensiunkan versi lama lewat masa deprecation dengan tenggat, header `Sunset`, dan pemantauan log.\n- Keamanan dasar: HTTPS saja, validasi semua input, autentikasi dengan `401` dan `403`, dan pesan error yang tidak membocorkan detail.\n- CORS mengatur izin browser membaca respons dari origin lain, bukan pengganti autentikasi.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Perubahan mana yang termasuk perubahan yang merusak (breaking change) dan butuh versi baru?",
+          "code": "",
+          "options": [
+            "Menambah field fotoUrl baru di respons detail siswa",
+            "Menambah parameter query opsional ?aktif=true",
+            "Mengganti nama field nama menjadi namaLengkap",
+            "Menambah endpoint baru GET /v1/siswa/:nis/absensi"
+          ],
+          "answer": 2,
+          "explanation": "Klien lama masih membaca field nama, jadi mengganti namanya membuat aplikasi lama rusak. Tiga perubahan lain hanya menambah."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa maksud header pada respons ini?",
+          "code": "HTTP/1.1 200 OK\nSunset: Sun, 31 Jan 2027 23:59:59 GMT\nContent-Type: application/json",
+          "options": [
+            "Endpoint ini akan dimatikan setelah tanggal tersebut",
+            "Respons ini boleh di-cache sampai tanggal tersebut",
+            "Server sedang dalam perawatan sampai tanggal tersebut",
+            "Token login klien kedaluwarsa pada tanggal tersebut"
+          ],
+          "answer": 0,
+          "explanation": "Header Sunset memberi tahu klien tanggal endpoint akan dipensiunkan, sehingga mereka sempat pindah ke versi baru."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Karena API sudah memasang CORS yang hanya mengizinkan origin sekolah, endpoint ubah nilai tidak perlu autentikasi lagi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "CORS hanya dipatuhi browser. curl, Postman, atau skrip server tetap bisa memanggil API, jadi autentikasi tetap wajib."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Siswa yang sudah login dengan token valid mencoba membuka nilai milik siswa lain. Status apa yang tepat?",
+          "code": "",
+          "options": [
+            "401 Unauthorized karena dia belum login",
+            "403 Forbidden",
+            "404 Not Found karena datanya disembunyikan",
+            "422 Unprocessable Content karena NIS-nya salah"
+          ],
+          "answer": 1,
+          "explanation": "Identitasnya sudah diketahui tapi tidak berhak atas data itu, jadi 403. Status 401 dipakai bila belum login atau token tidak valid."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "Dua versi API siswa",
+          "prompt": "Larik `SISWA` berisi `{ nis, nama, tingkat, jurusan, rombel }`. Versi 2 mengubah bentuk `kelas`, jadi versi 1 harus tetap ada untuk aplikasi lama.\n\n- `GET /v1/siswa/:nis` membalas `{ nis, nama, kelas }` dengan `kelas` berupa string seperti `\"XI RPL 1\"`, dan memasang header `Sunset: Sun, 31 Jan 2027 23:59:59 GMT` karena v1 akan dipensiunkan.\n- `GET /v2/siswa/:nis` membalas `{ nis, nama, kelas: { tingkat, jurusan, rombel } }` tanpa header `Sunset`.\n- Kedua versi membalas `404` dengan `{ error: { code: \"SISWA_TIDAK_DITEMUKAN\", message } }` bila NIS tidak ada. Helper `tidakAda` sudah disediakan.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction cariSiswa(nis) {\n  return SISWA.find((s) => s.nis === nis);\n}\n\nfunction tidakAda(res, nis) {\n  return res.status(404).json({ error: { code: \"SISWA_TIDAK_DITEMUKAN\", message: \"Siswa \" + nis + \" tidak ditemukan\" } });\n}\n\napp.get(\"/v1/siswa/:nis\", (req, res) => {\n  const s = cariSiswa(req.params.nis);\n  // TODO: 404 bila tidak ada, header Sunset\n  res.json({ nis: s.nis, nama: s.nama, kelas: s.tingkat + \" \" + s.jurusan + \" \" + s.rombel });\n});\n\n// TODO: GET /v2/siswa/:nis dengan kelas berupa objek\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nfunction cariSiswa(nis) {\n  return SISWA.find((s) => s.nis === nis);\n}\n\nfunction tidakAda(res, nis) {\n  return res.status(404).json({ error: { code: \"SISWA_TIDAK_DITEMUKAN\", message: \"Siswa \" + nis + \" tidak ditemukan\" } });\n}\n\napp.get(\"/v1/siswa/:nis\", (req, res) => {\n  const s = cariSiswa(req.params.nis);\n  if (!s) return tidakAda(res, req.params.nis);\n  res.set(\"Sunset\", \"Sun, 31 Jan 2027 23:59:59 GMT\");\n  res.json({ nis: s.nis, nama: s.nama, kelas: s.tingkat + \" \" + s.jurusan + \" \" + s.rombel });\n});\n\napp.get(\"/v2/siswa/:nis\", (req, res) => {\n  const s = cariSiswa(req.params.nis);\n  if (!s) return tidakAda(res, req.params.nis);\n  res.json({ nis: s.nis, nama: s.nama, kelas: { tingkat: s.tingkat, jurusan: s.jurusan, rombel: s.rombel } });\n});\n"
+          },
+          "setup": "const SISWA = [\n  { nis: \"2024001\", nama: \"Ani Lestari\", tingkat: \"XI\", jurusan: \"RPL\", rombel: 1 },\n  { nis: \"2024002\", nama: \"Budi Santoso\", tingkat: \"X\", jurusan: \"TKJ\", rombel: 2 },\n  { nis: \"2024003\", nama: \"Citra Dewi\", tingkat: \"XII\", jurusan: \"DKV\", rombel: 1 },\n];\n",
+          "tests": [
+            {
+              "name": "v1 tetap mengirim kelas sebagai string",
+              "check": "(async () => { const r = await request(\"GET\", \"/v1/siswa/2024001\"); return r.status === 200 && JSON.stringify(r.body) === JSON.stringify({ nis: \"2024001\", nama: \"Ani Lestari\", kelas: \"XI RPL 1\" }); })()"
+            },
+            {
+              "name": "v1 memasang header Sunset",
+              "check": "(await request(\"GET\", \"/v1/siswa/2024002\")).headers?.sunset === \"Sun, 31 Jan 2027 23:59:59 GMT\""
+            },
+            {
+              "name": "v2 mengirim kelas sebagai objek",
+              "check": "(async () => { const r = await request(\"GET\", \"/v2/siswa/2024002\"); return r.status === 200 && JSON.stringify(r.body.kelas) === JSON.stringify({ tingkat: \"X\", jurusan: \"TKJ\", rombel: 2 }); })()"
+            },
+            {
+              "name": "v2 tanpa header Sunset",
+              "check": "!(await request(\"GET\", \"/v2/siswa/2024001\")).headers?.sunset"
+            },
+            {
+              "name": "NIS tidak ada: 404 berformat error di kedua versi",
+              "check": "(async () => { const a = await request(\"GET\", \"/v1/siswa/999\"); const b = await request(\"GET\", \"/v2/siswa/999\"); return a.status === 404 && b.status === 404 && a.body.error.code === \"SISWA_TIDAK_DITEMUKAN\" && b.body.error.code === \"SISWA_TIDAK_DITEMUKAN\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "caching-dan-rate-limit",
+      "title": "Caching dan Rate Limit",
+      "est_minutes": 30,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Mengatur cache respons dengan header `Cache-Control`.\n- Memakai ETag dan `If-None-Match` supaya server bisa membalas `304 Not Modified`.\n- Menerapkan rate limit dengan status `429` dan header `Retry-After`.\n- Mencegah pesanan dobel dengan idempotency key pada request `POST`.\n\n## Request yang sebenarnya tidak perlu\n\nSetiap pagi jam 06.50, enam ratus siswa membuka aplikasi kantin untuk melihat menu hari ini. Menu itu hanya berubah sekali sehari, tapi server menerima enam ratus request yang jawabannya persis sama. Di jam istirahat, aplikasi juga memeriksa ulang menu setiap beberapa detik, dan ada satu skrip iseng yang memanggil API ratusan kali per menit.\n\nBab ini membahas dua cara menjaga API tetap ringan. **Caching** membuat klien tidak perlu mengambil data yang belum berubah. **Rate limit** membatasi klien yang memanggil terlalu sering. Di akhir bab ada satu masalah lain yang sering muncul bersama keduanya: request yang dikirim ulang lalu membuat data dobel.\n\n## Cache-Control\n\nHeader `Cache-Control` di respons memberi tahu browser, aplikasi, dan proxy di tengah jalan apakah respons boleh disimpan dan berapa lama.\n\n```http\nHTTP/1.1 200 OK\nContent-Type: application/json\nCache-Control: public, max-age=300\n```\n\nArtinya: respons ini boleh disimpan siapa saja selama 300 detik. Selama lima menit itu, klien memakai salinan simpanan tanpa menghubungi server sama sekali. Beberapa nilai yang paling sering dipakai:\n\n| Nilai | Arti |\n| --- | --- |\n| `max-age=300` | Segar selama 300 detik |\n| `public` | Boleh disimpan cache bersama, misalnya CDN |\n| `private` | Hanya boleh disimpan di perangkat pengguna |\n| `no-cache` | Boleh disimpan, tapi wajib dicek ulang ke server sebelum dipakai |\n| `no-store` | Jangan disimpan sama sekali |\n\nNama `no-cache` sering menjebak. Artinya bukan \"jangan simpan\", tapi \"simpan boleh, asal selalu ditanyakan dulu ke server\". Yang benar-benar melarang penyimpanan adalah `no-store`.\n\nCara memilihnya: data publik yang jarang berubah, seperti daftar kategori buku atau menu kantin, cocok memakai `public, max-age=...`. Data pribadi seperti nilai rapor siswa memakai `private` atau `no-store`, supaya tidak pernah tersimpan di CDN dan muncul untuk orang lain. Respons dari `POST`, `PATCH`, dan `DELETE` umumnya tidak di-cache.\n\n```js\napp.get(\"/v1/kategori\", (req, res) => {\n  res.set(\"Cache-Control\", \"public, max-age=3600\");\n  res.json({ data: KATEGORI });\n});\n\napp.get(\"/v1/nilai/saya\", auth, (req, res) => {\n  res.set(\"Cache-Control\", \"no-store\");\n  res.json({ data: nilaiMilik(req.user.nis) });\n});\n```\n\n## ETag dan 304\n\nSetelah `max-age` habis, klien harus bertanya lagi ke server. Kalau datanya ternyata belum berubah, mengirim ulang seluruh isi respons adalah pemborosan. Di sinilah **ETag** dipakai.\n\nETag adalah label versi untuk sebuah respons, biasanya hasil hash dari isinya atau nomor revisi data. Server mengirimkannya di header:\n\n```http\nHTTP/1.1 200 OK\nETag: \"a1b2c3\"\nCache-Control: no-cache\n\n{ \"data\": [ ... menu hari ini ... ] }\n```\n\nSaat meminta lagi, klien menyertakan ETag yang ia simpan di header `If-None-Match`:\n\n```http\nGET /v1/menu\nIf-None-Match: \"a1b2c3\"\n```\n\nServer menghitung ETag data saat ini. Kalau sama, server membalas `304 Not Modified` **tanpa body**, dan klien memakai salinan lamanya. Kalau berbeda, server membalas `200` dengan data baru dan ETag baru.\n\n![ETag dan If-None-Match menghasilkan 304](slide:26)\n\n```js\napp.get(\"/v1/menu\", (req, res) => {\n  const etag = '\"' + hash(JSON.stringify(MENU)) + '\"';\n  res.set(\"ETag\", etag);\n  if (req.headers[\"if-none-match\"] === etag) {\n    return res.status(304).end();\n  }\n  res.json({ data: MENU });\n});\n```\n\nPerhatikan bahwa nilai ETag ditulis di dalam tanda kutip ganda, sesuai aturan HTTP. Kalau kamu melihat awalan `W/`, seperti `W/\"a1b2c3\"`, itu disebut ETag lemah: artinya isinya setara, walaupun belum tentu identik byte per byte. Express sebenarnya membuat ETag lemah otomatis untuk `res.json`, tapi memahami cara kerjanya membuatmu bisa memakai ETag dari nomor revisi di database, yang lebih murah daripada menghitung hash seluruh isi.\n\nDengan pola `Cache-Control: no-cache` ditambah ETag, klien selalu mendapat data terbaru, tapi transfer data hanya terjadi saat memang ada perubahan. Pemeriksaan ulang menu tiap beberapa detik jadi sangat ringan.\n\n## Rate limit dan 429\n\nRate limit membatasi jumlah request dari satu klien dalam jendela waktu tertentu, misalnya 60 request per menit per token. Klien dikenali dari token, API key, atau alamat IP. Klien yang melewati batas dibalas `429 Too Many Requests`:\n\n```http\nHTTP/1.1 429 Too Many Requests\nRetry-After: 30\nContent-Type: application/json\n\n{ \"error\": { \"code\": \"TERLALU_BANYAK_REQUEST\", \"message\": \"Coba lagi dalam 30 detik\" } }\n```\n\nHeader `Retry-After` berisi jumlah detik yang harus ditunggu (atau tanggal HTTP). Klien yang baik membaca header ini dan menunggu, bukan langsung mengulang. Banyak API juga mengirim header informasi sisa kuota pada setiap respons, misalnya `X-RateLimit-Limit` dan `X-RateLimit-Remaining`. Nama header ini belum seragam antar penyedia, jadi tulis di dokumentasi mana yang kamu pakai.\n\nBentuk paling sederhana di Express adalah middleware yang menghitung request per klien:\n\n```js\nconst hitungan = new Map();\n\nfunction batasi(req, res, next) {\n  const kunci = req.headers[\"x-api-key\"] || \"anonim\";\n  const n = (hitungan.get(kunci) || 0) + 1;\n  hitungan.set(kunci, n);\n  if (n > 60) {\n    res.set(\"Retry-After\", \"60\");\n    return res.status(429).json({ error: { code: \"TERLALU_BANYAK_REQUEST\", message: \"Batas 60 request per menit\" } });\n  }\n  next();\n}\n```\n\nPenghitung ini perlu di-reset setiap menit, misalnya dengan menyimpan waktu mulai jendela. Di produksi, penghitung disimpan di Redis supaya beberapa server berbagi angka yang sama, atau dipakai paket seperti `express-rate-limit`. Batasi lebih ketat untuk endpoint sensitif seperti login, karena di sanalah orang mencoba menebak password.\n\n## Idempotency key untuk POST\n\nBayangkan siswa memesan nasi goreng, sinyal Wi-Fi sekolah putus tepat setelah request terkirim, dan aplikasi mengirim ulang. Server menerima dua `POST /v1/pesanan` dan membuat dua pesanan. `GET`, `PUT`, dan `DELETE` aman diulang karena idempoten, tapi `POST` tidak.\n\nSolusinya adalah **idempotency key**. Klien membuat ID unik untuk setiap aksi dan mengirimkannya di header:\n\n```http\nPOST /v1/pesanan\nIdempotency-Key: 7f3c9a10-5b2e-4d8a-9e61-0c2b7d4e1a55\n\n{ \"menu\": \"nasi-goreng\", \"jumlah\": 1 }\n```\n\nServer menyimpan kunci beserta respons pertamanya. Kalau request dengan kunci yang sama datang lagi, server tidak membuat pesanan baru, tapi mengembalikan respons yang tersimpan. Pola ini dipopulerkan oleh API pembayaran seperti Stripe dan sedang dibakukan sebagai header `Idempotency-Key` oleh IETF. Kunci biasanya disimpan sementara, misalnya 24 jam, lalu dihapus.\n\nAda dua detail yang perlu dijaga. Kunci yang sama tapi isi body berbeda adalah tanda kesalahan di klien, jadi server sebaiknya menolaknya, misalnya dengan `422`. Lalu kunci selalu dibuat oleh klien sebelum request pertama, bukan setiap kali mengirim ulang. Kalau aplikasi membuat kunci baru di setiap percobaan, server tetap akan menganggapnya pesanan yang berbeda.\n\n## Rangkuman\n\n- `Cache-Control` menentukan apakah respons boleh disimpan dan berapa lama, misalnya `public, max-age=300`.\n- `no-cache` berarti simpan tapi cek ulang, sedangkan `no-store` berarti jangan disimpan sama sekali.\n- Data pribadi memakai `private` atau `no-store` supaya tidak tersimpan di cache bersama.\n- ETag adalah label versi respons; klien mengirimnya di `If-None-Match` dan server membalas `304` tanpa body bila belum berubah.\n- Rate limit membalas `429` dengan header `Retry-After` dan sebaiknya lebih ketat di endpoint login.\n- Idempotency key membuat `POST` yang dikirim ulang tidak menghasilkan data dobel.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Endpoint nilai rapor siswa tidak boleh tersimpan di cache mana pun. Header apa yang tepat?",
+          "code": "",
+          "options": [
+            "Cache-Control: public, max-age=60",
+            "Cache-Control: no-store",
+            "Cache-Control: no-cache, max-age=3600",
+            "Cache-Control: public, must-revalidate"
+          ],
+          "answer": 1,
+          "explanation": "no-store melarang respons disimpan sama sekali. no-cache masih boleh menyimpan, asal dicek ulang ke server."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "ETag menu saat ini di server adalah \"a1b2c3\". Apa balasan server yang benar untuk request ini?",
+          "code": "GET /v1/menu HTTP/1.1\nHost: api.kantin.sch.id\nIf-None-Match: \"a1b2c3\"",
+          "options": [
+            "200 OK dengan seluruh isi menu dan ETag baru",
+            "412 Precondition Failed karena ETag sudah dipakai",
+            "304 Not Modified tanpa body",
+            "204 No Content dengan header ETag kosong"
+          ],
+          "answer": 2,
+          "explanation": "If-None-Match sama dengan ETag sekarang, artinya data belum berubah, jadi server cukup membalas 304 tanpa body."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Klien menerima 429 dengan header Retry-After: 30. Apa yang sebaiknya dilakukan klien?",
+          "code": "",
+          "options": [
+            "Mengulang request saat itu juga sampai berhasil",
+            "Menunggu 30 detik sebelum mencoba lagi",
+            "Mengganti method GET menjadi POST lalu mencoba lagi",
+            "Menghapus token login lalu meminta pengguna masuk ulang"
+          ],
+          "answer": 1,
+          "explanation": "Retry-After memberi tahu berapa detik klien harus menunggu. Mengulang langsung hanya menambah beban dan tetap ditolak."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Idempotency key dibuat ulang oleh klien setiap kali request POST yang sama dikirim ulang.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Kunci dibuat sekali untuk satu aksi lalu dipakai lagi saat mengirim ulang. Kunci baru akan dianggap pesanan baru."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "express",
+          "title": "ETag untuk menu kantin",
+          "prompt": "Larik `MENU` dan fungsi `hash(teks)` sudah tersedia. Lengkapi `GET /menu`:\n\n- Hitung ETag dari `'\"' + hash(JSON.stringify(MENU)) + '\"'` (nilai ETag ditulis di dalam tanda kutip ganda).\n- Selalu pasang header `ETag` dan `Cache-Control: no-cache`.\n- Bila header `if-none-match` dari klien sama dengan ETag sekarang, balas `304` tanpa body (`res.status(304).end()`).\n- Selain itu balas `200` dengan `{ data: MENU }`.\n\nRoute `PATCH /menu/:id` untuk mengubah harga sudah jadi. Setelah harga berubah, ETag lama tidak boleh menghasilkan 304 lagi.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/menu\", (req, res) => {\n  // TODO: hitung ETag, pasang ETag dan Cache-Control, 304 bila If-None-Match cocok\n  res.json({ data: MENU });\n});\n\napp.patch(\"/menu/:id\", (req, res) => {\n  const m = MENU.find((x) => x.id === Number(req.params.id));\n  if (!m) return res.status(404).json({ error: { code: \"MENU_TIDAK_DITEMUKAN\", message: \"Menu tidak ditemukan\" } });\n  if (req.body.harga !== undefined) m.harga = req.body.harga;\n  res.json(m);\n});\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\napp.get(\"/menu\", (req, res) => {\n  const etag = '\"' + hash(JSON.stringify(MENU)) + '\"';\n  res.set(\"ETag\", etag);\n  res.set(\"Cache-Control\", \"no-cache\");\n  if (req.headers[\"if-none-match\"] === etag) return res.status(304).end();\n  res.json({ data: MENU });\n});\n\napp.patch(\"/menu/:id\", (req, res) => {\n  const m = MENU.find((x) => x.id === Number(req.params.id));\n  if (!m) return res.status(404).json({ error: { code: \"MENU_TIDAK_DITEMUKAN\", message: \"Menu tidak ditemukan\" } });\n  if (req.body.harga !== undefined) m.harga = req.body.harga;\n  res.json(m);\n});\n"
+          },
+          "setup": "// Pengganti hash untuk latihan (FNV-1a)\nfunction hash(teks) {\n  let h = 2166136261;\n  for (let i = 0; i < teks.length; i++) {\n    h ^= teks.charCodeAt(i);\n    h = Math.imul(h, 16777619) >>> 0;\n  }\n  return h.toString(16);\n}\nconst MENU = [\n  { id: 1, nama: \"Nasi Goreng\", harga: 12000 },\n  { id: 2, nama: \"Mie Ayam\", harga: 10000 },\n  { id: 3, nama: \"Es Teh\", harga: 3000 },\n];\n",
+          "tests": [
+            {
+              "name": "200 dengan ETag berkutip dan Cache-Control",
+              "check": "(async () => { const r = await request(\"GET\", \"/menu\"); return r.status === 200 && r.body.data.length === 3 && /^\"[0-9a-f]+\"$/.test(r.headers?.etag) && r.headers[\"cache-control\"] === \"no-cache\"; })()"
+            },
+            {
+              "name": "ETag sama menghasilkan 304 tanpa body",
+              "check": "(async () => { const a = await request(\"GET\", \"/menu\"); const b = await request(\"GET\", \"/menu\", undefined, { \"If-None-Match\": a.headers.etag }); return b.status === 304 && b.body === undefined; })()"
+            },
+            {
+              "name": "ETag lain tetap 200 dengan data",
+              "check": "(async () => { const r = await request(\"GET\", \"/menu\", undefined, { \"If-None-Match\": \"\\\"lama\\\"\" }); return r.status === 200 && Array.isArray(r.body.data); })()"
+            },
+            {
+              "name": "Setelah harga berubah, ETag lama tidak berlaku",
+              "check": "(async () => { const a = await request(\"GET\", \"/menu\"); await request(\"PATCH\", \"/menu/2\", { harga: 11000 }); const b = await request(\"GET\", \"/menu\", undefined, { \"if-none-match\": a.headers.etag }); return b.status === 200 && b.headers.etag !== a.headers.etag && b.body.data[1].harga === 11000; })()"
+            }
+          ]
+        },
+        {
+          "kind": "express",
+          "title": "Rate limit sederhana",
+          "prompt": "Lengkapi middleware `batasi` yang dipasang untuk semua route:\n\n- Kenali klien dari header `x-api-key`. Tanpa header, pakai kunci `\"anonim\"`.\n- Hitung request per kunci di `hitungan` (sebuah `Map`). Batasnya `BATAS` = 3 request.\n- Pada setiap respons, pasang header `X-RateLimit-Remaining` berisi sisa kuota (tidak pernah di bawah 0), misalnya `\"2\"` setelah request pertama.\n- Request yang melewati batas dibalas `429` dengan header `Retry-After: 60` dan body `{ error: { code: \"TERLALU_BANYAK_REQUEST\", message } }`, tanpa menjalankan route.\n\nSupaya latihan sederhana, penghitung tidak di-reset per menit.",
+          "starter": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst BATAS = 3;\nconst hitungan = new Map();\n\nfunction batasi(req, res, next) {\n  // TODO: kunci dari x-api-key, tambah hitungan, pasang X-RateLimit-Remaining\n  // TODO: 429 dengan Retry-After bila lewat batas\n  next();\n}\n\napp.use(batasi);\napp.get(\"/menu-hari-ini\", (req, res) => res.json({ data: [\"Nasi Goreng\", \"Soto Ayam\"] }));\n"
+          },
+          "solution": {
+            "code": "const express = require(\"express\");\nconst app = express();\napp.use(express.json());\n\nconst BATAS = 3;\nconst hitungan = new Map();\n\nfunction batasi(req, res, next) {\n  const kunci = req.headers[\"x-api-key\"] || \"anonim\";\n  const n = (hitungan.get(kunci) || 0) + 1;\n  hitungan.set(kunci, n);\n  res.set(\"X-RateLimit-Remaining\", String(Math.max(0, BATAS - n)));\n  if (n > BATAS) {\n    res.set(\"Retry-After\", \"60\");\n    return res.status(429).json({ error: { code: \"TERLALU_BANYAK_REQUEST\", message: \"Batas \" + BATAS + \" request, coba lagi nanti\" } });\n  }\n  next();\n}\n\napp.use(batasi);\napp.get(\"/menu-hari-ini\", (req, res) => res.json({ data: [\"Nasi Goreng\", \"Soto Ayam\"] }));\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "Tiga request pertama lolos dengan sisa kuota menurun",
+              "check": "(async () => { const k = { \"x-api-key\": \"kelas-a\" }; const s = []; for (let i = 0; i < 3; i++) { const r = await request(\"GET\", \"/menu-hari-ini\", undefined, k); if (r.status !== 200) return false; s.push(r.headers?.[\"x-ratelimit-remaining\"]); } return s.join() === \"2,1,0\"; })()"
+            },
+            {
+              "name": "Request keempat dibalas 429 dengan Retry-After",
+              "check": "(async () => { const r = await request(\"GET\", \"/menu-hari-ini\", undefined, { \"x-api-key\": \"kelas-a\" }); return r.status === 429 && r.headers[\"retry-after\"] === \"60\" && r.body.error.code === \"TERLALU_BANYAK_REQUEST\" && r.headers[\"x-ratelimit-remaining\"] === \"0\"; })()"
+            },
+            {
+              "name": "Kunci lain punya hitungan sendiri",
+              "check": "(async () => { const r = await request(\"GET\", \"/menu-hari-ini\", undefined, { \"x-api-key\": \"kelas-b\" }); return r.status === 200 && r.headers[\"x-ratelimit-remaining\"] === \"2\"; })()"
+            },
+            {
+              "name": "Tanpa kunci dihitung sebagai anonim",
+              "check": "(async () => { const st = []; for (let i = 0; i < 4; i++) st.push((await request(\"GET\", \"/menu-hari-ini\")).status); return st.join() === \"200,200,200,429\"; })()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "dokumentasi-dengan-openapi",
+      "title": "Dokumentasi dengan OpenAPI",
+      "est_minutes": 30,
+      "slide_from": 28,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu OpenAPI dan kenapa dokumentasi API sebaiknya ditulis sebagai spesifikasi.\n- Membaca dan menulis bagian utama dokumen OpenAPI 3.1: `info`, `paths`, `parameters`, `requestBody`, `responses`, dan `components`.\n- Memakai `$ref` untuk schema yang dipakai berulang.\n- Menampilkan spesifikasi dengan Swagger UI dan mengetahui langkah belajar berikutnya.\n\n## Dokumentasi yang selalu ketinggalan\n\nKamu sudah merancang API perpustakaan sekolah dengan rapi: URL jamak, status code tepat, format error konsisten, paginasi, dan versi. Sekarang adik kelas yang membuat aplikasi Android ingin memakainya. Ia bertanya: field apa saja yang wajib saat menambah buku? Kalau buku tidak ada, error-nya seperti apa? Parameter `sort` menerima nilai apa?\n\nKalau jawabannya hanya ada di kepalamu atau di file Word yang ditulis tiga bulan lalu, cepat atau lambat dokumentasi itu berbeda dengan kode. Solusi yang dipakai industri adalah menulis dokumentasi sebagai **spesifikasi yang bisa dibaca mesin**. Standar paling populer untuk API REST adalah **OpenAPI**.\n\n## Apa itu OpenAPI\n\nOpenAPI Specification adalah format standar untuk mendeskripsikan API HTTP dalam file YAML atau JSON. Dulu namanya Swagger Specification, lalu disumbangkan ke OpenAPI Initiative di bawah Linux Foundation dan berganti nama. Nama Swagger sekarang dipakai untuk perangkatnya, seperti Swagger UI dan Swagger Editor.\n\nVersi yang dipakai di kelas ini adalah **OpenAPI 3.1**. Perbedaan penting dari 3.0 adalah schema di dalamnya sudah selaras dengan JSON Schema, jadi aturan seperti `type`, `required`, `minimum`, dan `enum` sama persis dengan yang dipakai alat validasi JSON Schema.\n\nSatu file spesifikasi bisa dipakai untuk banyak hal sekaligus:\n\n- Menampilkan dokumentasi interaktif yang bisa langsung mencoba request.\n- Membuat kode klien otomatis untuk JavaScript, Kotlin, Python, dan bahasa lain.\n- Memvalidasi request yang masuk ke server.\n- Menjalankan mock server sebelum backend selesai, supaya tim frontend bisa mulai bekerja.\n- Menjadi bahan diskusi rancangan API sebelum satu baris kode ditulis.\n\n## Kerangka dokumen\n\nDokumen OpenAPI paling kecil berisi tiga bagian di level atas:\n\n```yaml\nopenapi: 3.1.0\ninfo:\n  title: API Perpustakaan Sekolah\n  version: 1.0.0\npaths: {}\n```\n\n`openapi` adalah versi spesifikasi yang dipakai, bukan versi API-mu. `info.version` adalah versi dokumen API-mu sendiri. Bagian `servers` biasanya ditambahkan untuk menunjuk alamat API, misalnya `https://api.perpus.sch.id/v1`.\n\n## paths dan operasi\n\n`paths` berisi daftar URL. Setiap URL punya satu atau lebih **operasi**, yaitu method HTTP dalam huruf kecil. Parameter path ditulis dengan kurung kurawal `{id}`, bukan titik dua seperti di Express.\n\n```yaml\npaths:\n  /buku:\n    get:\n      summary: Daftar buku\n      parameters:\n        - name: kategori\n          in: query\n          schema: { type: string }\n        - name: sort\n          in: query\n          schema: { type: string, enum: [judul, -judul, tahun, -tahun] }\n      responses:\n        \"200\":\n          description: Daftar buku dengan metadata paginasi\n  /buku/{id}:\n    get:\n      summary: Detail satu buku\n      parameters:\n        - name: id\n          in: path\n          required: true\n          schema: { type: integer }\n      responses:\n        \"200\":\n          description: Buku ditemukan\n        \"404\":\n          description: Buku tidak ditemukan\n```\n\nBeberapa aturan yang perlu diingat:\n\n- Nilai `in` bisa `path`, `query`, `header`, atau `cookie`.\n- Parameter dengan `in: path` **wajib** memakai `required: true`, dan namanya harus sama dengan yang ditulis di kurung kurawal URL.\n- Setiap operasi wajib punya `responses`, dan kunci status code ditulis sebagai string seperti `\"200\"`, karena YAML akan membaca angka polos sebagai bilangan.\n- Setiap respons wajib punya `description`.\n\n## requestBody dan schema\n\nUntuk `POST`, `PUT`, dan `PATCH`, isi body dijelaskan di `requestBody`. Bentuk data dijelaskan dengan schema:\n\n```yaml\n    post:\n      summary: Tambah buku\n      requestBody:\n        required: true\n        content:\n          application/json:\n            schema:\n              type: object\n              required: [judul, penulis, tahun]\n              properties:\n                judul: { type: string, minLength: 1 }\n                penulis: { type: string }\n                tahun: { type: integer, minimum: 1450 }\n      responses:\n        \"201\":\n          description: Buku dibuat\n          headers:\n            Location:\n              schema: { type: string }\n        \"422\":\n          description: Data tidak valid\n```\n\nPerhatikan `content` yang dikelompokkan per media type. API JSON hampir selalu memakai `application/json`. Header seperti `Location` juga bisa didokumentasikan di dalam respons.\n\n## components dan $ref\n\nBentuk buku dipakai di banyak tempat: respons detail, respons daftar, body `POST`. Daripada menyalinnya berulang, simpan sekali di `components/schemas`, lalu rujuk dengan `$ref`:\n\n```yaml\ncomponents:\n  schemas:\n    Buku:\n      type: object\n      properties:\n        id: { type: integer }\n        judul: { type: string }\n        tahun: { type: integer }\n    Error:\n      type: object\n      properties:\n        error:\n          type: object\n          properties:\n            code: { type: string }\n            message: { type: string }\n```\n\n```yaml\n        \"404\":\n          description: Buku tidak ditemukan\n          content:\n            application/json:\n              schema:\n                $ref: \"#/components/schemas/Error\"\n```\n\n`#/components/schemas/Error` dibaca sebagai alamat di dalam dokumen yang sama: mulai dari akar (`#`), masuk ke `components`, lalu `schemas`, lalu `Error`. Dengan cara ini format error dari bab sebelumnya cukup ditulis sekali dan dipakai di semua endpoint. Selain `schemas`, `components` juga bisa menyimpan `parameters`, `responses`, dan `securitySchemes` untuk cara autentikasi seperti Bearer token.\n\n![Contoh spesifikasi OpenAPI untuk endpoint buku](slide:29)\n\n## Swagger UI dan perangkat lain\n\nFile YAML enak dibaca mesin, tapi manusia lebih suka halaman web. **Swagger UI** membaca file spesifikasi dan membuat halaman dokumentasi interaktif: setiap endpoint bisa dibuka, dibaca parameternya, lalu dicoba dengan tombol \"Try it out\". Alternatif lain yang populer adalah Redoc, yang tampilannya lebih mirip buku panduan.\n\nAda dua pendekatan menulis spesifikasi:\n\n- **Design first**: tulis spesifikasi dulu, diskusikan dengan tim, baru tulis kode. Cocok untuk API yang dipakai banyak pihak.\n- **Code first**: tulis kode dulu, lalu spesifikasi dibuat dari anotasi atau schema validasi di kode. Lebih cepat untuk proyek kecil, asal spesifikasinya tetap dicek.\n\nApa pun pendekatannya, simpan file spesifikasi di repository yang sama dengan kode, lalu periksa dengan linter OpenAPI di CI. Dengan begitu, dokumentasi yang tidak cocok dengan kode ketahuan sebelum sampai ke pengguna.\n\n## Langkah berikutnya\n\nSelamat, kamu sudah menyelesaikan seluruh materi kelas ini. Kamu sudah bisa merancang API REST dari URL sampai dokumentasinya. Beberapa arah belajar selanjutnya:\n\n- Kerjakan proyek akhir **API Perpustakaan Sekolah** untuk menggabungkan semua bab, lalu tulis spesifikasi OpenAPI untuk proyek itu.\n- Pelajari kelas **Autentikasi dan Keamanan API** untuk token, hash password, dan otorisasi yang lebih dalam.\n- Coba ganti data array di proyek dengan database sungguhan, misalnya PostgreSQL atau MongoDB.\n- Kenali alternatif REST seperti GraphQL dan gRPC, supaya kamu tahu kapan REST paling cocok dan kapan tidak.\n\n## Rangkuman\n\n- OpenAPI adalah format standar untuk mendeskripsikan API HTTP dalam YAML atau JSON, dan Swagger kini nama perangkatnya.\n- Dokumen OpenAPI 3.1 berisi `openapi`, `info`, `paths`, dan biasanya `components`, dengan schema yang selaras dengan JSON Schema.\n- Parameter punya `in` berupa path, query, header, atau cookie, dan parameter path wajib `required: true`.\n- Body dijelaskan di `requestBody.content`, dan setiap operasi wajib punya `responses` dengan `description`.\n- Schema yang dipakai berulang disimpan di `components/schemas` lalu dirujuk dengan `$ref`.\n- Swagger UI atau Redoc mengubah spesifikasi menjadi dokumentasi interaktif yang bisa langsung dicoba.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Bagaimana parameter path `:id` di Express ditulis di bagian paths OpenAPI?",
+          "code": "",
+          "options": [
+            "/buku/:id",
+            "/buku/{id}",
+            "/buku/<id>",
+            "/buku/$id"
+          ],
+          "answer": 1,
+          "explanation": "OpenAPI menulis parameter path dengan kurung kurawal, lalu mendeklarasikannya di parameters dengan in: path."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang salah dari potongan spesifikasi ini?",
+          "code": "/buku/{id}:\n  get:\n    parameters:\n      - name: id\n        in: path\n        schema: { type: integer }\n    responses:\n      \"200\":\n        description: Detail buku",
+          "options": [
+            "Parameter path id wajib memakai required: true",
+            "Nilai in harus ditulis \"params\" untuk parameter URL",
+            "Operasi get tidak boleh memiliki parameters sama sekali",
+            "Schema integer tidak boleh dipakai di parameter path"
+          ],
+          "answer": 0,
+          "explanation": "Parameter dengan in: path selalu wajib, jadi spesifikasi mengharuskan required: true."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa fungsi `$ref: \"#/components/schemas/Error\"` di sebuah respons?",
+          "code": "",
+          "options": [
+            "Mengunduh schema Error dari situs resmi OpenAPI",
+            "Membuat endpoint baru bernama Error secara otomatis",
+            "Merujuk schema Error yang ditulis sekali di components",
+            "Menandai bahwa respons ini selalu berstatus 500"
+          ],
+          "answer": 2,
+          "explanation": "$ref menunjuk ke schema di dokumen yang sama, sehingga bentuk error cukup ditulis sekali dan dipakai di banyak endpoint."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Versi API perpustakaanmu sendiri ditulis di `info.version`, bukan di field `openapi` di awal dokumen.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Field openapi menyatakan versi spesifikasi OpenAPI yang dipakai, sedangkan versi API-mu ditulis di info.version."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "js",
+          "title": "Pemeriksa spesifikasi OpenAPI mini",
+          "prompt": "Tulis `cekSpesifikasi(spec)` yang memeriksa objek spesifikasi OpenAPI (sudah dalam bentuk objek JavaScript, bukan YAML) dan mengembalikan **larik kode masalah** sesuai urutan berikut:\n\n1. `\"VERSI\"` bila `spec.openapi` bukan string yang diawali `\"3.1.\"`.\n2. `\"INFO\"` bila `spec.info` tidak punya `title` atau `version`.\n3. Untuk setiap path di `spec.paths` (urut sesuai `Object.keys`), lalu setiap method `get`, `post`, `put`, `patch`, `delete` yang ada (urutan itu):\n   - `\"RESPONS GET /buku\"` bila operasi tidak punya `responses` atau `responses` kosong.\n   - `\"PARAM id GET /buku/{id}\"` untuk setiap `{nama}` di path yang tidak dideklarasikan di `parameters` dengan `in: \"path\"` dan `required: true`.\n\nMethod ditulis huruf besar di kode masalah. Spesifikasi yang benar menghasilkan `[]`. Fungsi `contoh()` mengembalikan spesifikasi yang benar, dan `sama(a, b)` membandingkan dua nilai.",
+          "starter": {
+            "code": "function cekSpesifikasi(spec) {\n  const masalah = [];\n  // TODO: periksa openapi dan info\n  // TODO: periksa setiap operasi: responses dan parameter path\n  return masalah;\n}\n"
+          },
+          "solution": {
+            "code": "const METHOD = [\"get\", \"post\", \"put\", \"patch\", \"delete\"];\n\nfunction cekSpesifikasi(spec) {\n  const masalah = [];\n  if (typeof spec.openapi !== \"string\" || !spec.openapi.startsWith(\"3.1.\")) masalah.push(\"VERSI\");\n  if (!spec.info || !spec.info.title || !spec.info.version) masalah.push(\"INFO\");\n\n  for (const path of Object.keys(spec.paths || {})) {\n    const nama = (path.match(/\\{[^}]+\\}/g) || []).map((x) => x.slice(1, -1));\n    for (const m of METHOD) {\n      const op = spec.paths[path][m];\n      if (!op) continue;\n      const label = m.toUpperCase() + \" \" + path;\n      if (!op.responses || Object.keys(op.responses).length === 0) masalah.push(\"RESPONS \" + label);\n      for (const n of nama) {\n        const p = (op.parameters || []).find((x) => x.in === \"path\" && x.name === n);\n        if (!p || p.required !== true) masalah.push(\"PARAM \" + n + \" \" + label);\n      }\n    }\n  }\n  return masalah;\n}\n"
+          },
+          "setup": "function sama(a, b) {\n  return JSON.stringify(a) === JSON.stringify(b);\n}\n\nfunction contoh() {\n  const id = () => [{ name: \"id\", in: \"path\", required: true, schema: { type: \"integer\" } }];\n  return {\n    openapi: \"3.1.0\",\n    info: { title: \"API Perpustakaan Sekolah\", version: \"1.0.0\" },\n    paths: {\n      \"/buku\": {\n        get: { responses: { \"200\": { description: \"Daftar buku\" } } },\n        post: { responses: { \"201\": { description: \"Buku dibuat\" } } },\n      },\n      \"/buku/{id}\": {\n        get: { parameters: id(), responses: { \"200\": { description: \"Detail\" }, \"404\": { description: \"Tidak ada\" } } },\n        delete: { parameters: id(), responses: { \"204\": { description: \"Dihapus\" } } },\n      },\n    },\n  };\n}\n",
+          "tests": [
+            {
+              "name": "Spesifikasi yang benar tidak punya masalah",
+              "check": "sama(cekSpesifikasi(contoh()), [])"
+            },
+            {
+              "name": "Versi 3.0 dan info tanpa title",
+              "check": "(() => { const s = contoh(); s.openapi = \"3.0.3\"; delete s.info.title; return sama(cekSpesifikasi(s), [\"VERSI\", \"INFO\"]); })()"
+            },
+            {
+              "name": "Operasi tanpa responses",
+              "check": "(() => { const s = contoh(); s.paths[\"/buku\"].post.responses = {}; return sama(cekSpesifikasi(s), [\"RESPONS POST /buku\"]); })()"
+            },
+            {
+              "name": "Parameter path hilang atau tidak required",
+              "check": "(() => { const s = contoh(); s.paths[\"/buku/{id}\"].get.parameters = []; s.paths[\"/buku/{id}\"].delete.parameters[0].required = false; return sama(cekSpesifikasi(s), [\"PARAM id GET /buku/{id}\", \"PARAM id DELETE /buku/{id}\"]); })()"
+            },
+            {
+              "name": "Parameter query bernama sama tidak dihitung",
+              "check": "(() => { const s = contoh(); s.paths[\"/buku/{id}\"].get.parameters[0].in = \"query\"; return sama(cekSpesifikasi(s), [\"PARAM id GET /buku/{id}\"]); })()"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
