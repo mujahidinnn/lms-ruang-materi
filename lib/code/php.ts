@@ -11,17 +11,19 @@ const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(
 // the sandboxed php-wasm worker, the CLI sees trusted authoring input only.
 // Setup + code run through eval at the top level, so
 // their functions and variables are global, then each check is a PHP
-// expression that must be exactly true. Warnings print as log lines.
+// expression that must be exactly true. Warnings print as log lines. The
+// leading <?php tag is stripped and the rest evaluated raw, so
+// declare(strict_types=1) can stay the first statement.
 export function phpScript(input: { setup: string; code: string; tests: Check[] }): string {
   const src = (s: string) => `base64_decode('${b64(s)}')`;
   return `<?php
 ini_set('display_errors', 'stderr');
 set_error_handler(function ($no, $msg, $file, $line) { echo "Peringatan: $msg (baris $line)\\n"; return true; });
-$__rm_tag = fn ($s) => preg_match('/^\\s*<\\?php/', $s) ? $s : "<?php\\n" . $s;
+$__rm_tag = fn ($s) => preg_replace('/^\\s*<\\?php\\b/', '', $s, 1);
 $__rm_err = fn ($e) => (new \\ReflectionClass($e))->getShortName() . ': ' . $e->getMessage();
 try {
-  eval('?>' . $__rm_tag(${src(input.setup)}));
-  eval('?>' . $__rm_tag(${src(input.code)}));
+  eval($__rm_tag(${src(input.setup)}));
+  eval($__rm_tag(${src(input.code)}));
 } catch (\\Throwable $__rm_e) {
   echo '${MARK}' . json_encode(['error' => $__rm_err($__rm_e)]);
   return;
