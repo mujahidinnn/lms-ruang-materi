@@ -1,0 +1,332 @@
+{
+  "theme": "redis",
+  "deck": "Redis",
+  "kicker": "KELAS",
+  "subtitle": "Penyimpanan data super cepat di memori: dari string, hash, list, dan sorted set sampai cache, sesi, rate limit, pub/sub, dan Redis yang aman di produksi.",
+  "slides": [
+    {
+      "title": "Redis"
+    },
+    {
+      "title": "Apa itu Redis?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Penyimpanan key-value yang datanya ada di memori (RAM)",
+        "Nilai punya tipe: string, hash, list, set, sorted set",
+        "Sangat cepat: kebanyakan perintah selesai di bawah 1 milidetik",
+        "Bisa menyimpan ke disk, tapi tetap bukan pengganti database utama",
+        "Versi di kelas ini: Redis 8 dengan klien node-redis"
+      ],
+      "note": "Anggap Redis sebagai papan tulis super cepat di samping database utamamu."
+    },
+    {
+      "title": "Kapan memakai Redis",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Cache: simpan hasil query mahal supaya tidak diulang",
+        "Sesi login: cek token di setiap request dengan cepat",
+        "Antrean: tugas latar seperti kirim email atau notifikasi",
+        "Leaderboard dan counter: poin, jumlah kunjungan, peringkat",
+        "Rate limit: batasi berapa kali seseorang boleh mengirim"
+      ]
+    },
+    {
+      "title": "Memasang dan mencoba redis-cli",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Docker: satu perintah, server jalan di port 6379",
+        "Redis Cloud: ada paket gratis kecil untuk belajar",
+        "redis-cli adalah terminal untuk mengetik perintah",
+        "PING dijawab PONG tandanya server hidup"
+      ],
+      "code": "docker run -d --name redis -p 6379:6379 redis:8\n\nredis-cli\n127.0.0.1:6379> PING\nPONG\n127.0.0.1:6379> SET sapa \"halo\"\nOK\n127.0.0.1:6379> GET sapa\n\"halo\""
+    },
+    {
+      "title": "SET dan GET",
+      "kicker": "STRING",
+      "bullets": [
+        "SET menyimpan nilai, GET membacanya kembali",
+        "Nilai selalu disimpan sebagai teks, angka juga",
+        "GET pada key yang tidak ada menghasilkan nil",
+        "DEL menghapus key, EXISTS mengecek keberadaannya"
+      ],
+      "code": "SET menu:1:nama \"Nasi Goreng\"\nGET menu:1:nama\nSET menu:1:harga 12000\nEXISTS menu:1:harga\nDEL menu:1:harga"
+    },
+    {
+      "title": "Masa berlaku dengan TTL",
+      "kicker": "STRING",
+      "bullets": [
+        "EX dalam detik, PX dalam milidetik",
+        "EXPIRE memasang masa berlaku pada key yang sudah ada",
+        "TTL: sisa detik, -1 tanpa batas, -2 key tidak ada",
+        "NX hanya set bila belum ada, XX hanya bila sudah ada"
+      ],
+      "code": "SET otp:0812 \"4821\" EX 300\nTTL otp:0812        # 300\nEXPIRE promo:kantin 3600\nPERSIST promo:kantin\nSET kunci:a 1 NX     # nil bila sudah ada"
+    },
+    {
+      "title": "Counter dengan INCR",
+      "kicker": "STRING",
+      "bullets": [
+        "INCR menambah 1 dan mengembalikan nilai baru",
+        "INCRBY dan DECR untuk langkah lain",
+        "Atomik: dua request bersamaan tidak saling menimpa",
+        "Key yang belum ada dianggap bernilai 0"
+      ],
+      "code": "INCR kunjungan:beranda      # 1\nINCR kunjungan:beranda      # 2\nINCRBY stok:es-teh -3\nDECR antrean:sisa"
+    },
+    {
+      "title": "Menamai key",
+      "kicker": "STRING",
+      "bullets": [
+        "Pola umum: objek:id:field, dipisah titik dua",
+        "Contoh: siswa:1001:nama, kantin:menu:7",
+        "Nama yang rapi memudahkan cari dan hapus massal",
+        "Hindari KEYS * di produksi, perintah ini memblokir",
+        "Pakai SCAN untuk menelusuri key secara bertahap"
+      ]
+    },
+    {
+      "title": "Hash untuk objek",
+      "kicker": "HASH DAN LIST",
+      "bullets": [
+        "Hash menyimpan banyak field dalam satu key",
+        "Cocok untuk objek: siswa, menu, keranjang",
+        "HGET satu field, HGETALL semua field",
+        "HINCRBY menambah angka di satu field"
+      ],
+      "code": "HSET siswa:1001 nama \"Sari\" kelas \"XI RPL 1\"\nHGET siswa:1001 nama\nHINCRBY siswa:1001 poin 10\nHGETALL siswa:1001\nHDEL siswa:1001 kelas"
+    },
+    {
+      "title": "List untuk antrean",
+      "kicker": "HASH DAN LIST",
+      "bullets": [
+        "List adalah urutan nilai, boleh ada yang sama",
+        "LPUSH masuk dari kiri, RPOP keluar dari kanan",
+        "Pasangan LPUSH + RPOP membentuk antrean FIFO",
+        "LRANGE 0 -1 menampilkan seluruh isi"
+      ],
+      "code": "LPUSH pesanan \"bakso\"\nLPUSH pesanan \"seblak\"\nRPOP pesanan          # \"bakso\"\nLLEN pesanan          # 1\nLRANGE pesanan 0 -1"
+    },
+    {
+      "title": "Memotong list",
+      "kicker": "HASH DAN LIST",
+      "bullets": [
+        "LTRIM membuang elemen di luar rentang",
+        "Pola riwayat: LPUSH lalu LTRIM 0 9 = 10 terbaru",
+        "Indeks negatif dihitung dari belakang",
+        "List kosong otomatis terhapus"
+      ],
+      "code": "LPUSH riwayat:sari \"buka menu\"\nLTRIM riwayat:sari 0 9\nLRANGE riwayat:sari 0 4   # 5 terbaru"
+    },
+    {
+      "title": "Set",
+      "kicker": "SET",
+      "bullets": [
+        "Kumpulan nilai unik tanpa urutan",
+        "SADD dua kali dengan nilai sama tetap tersimpan sekali",
+        "SISMEMBER mengecek keanggotaan dengan cepat",
+        "SCARD menghitung jumlah anggota"
+      ],
+      "code": "SADD hadir:2026-03-02 \"1001\" \"1002\"\nSADD hadir:2026-03-02 \"1001\"   # 0\nSISMEMBER hadir:2026-03-02 \"1003\"\nSCARD hadir:2026-03-02"
+    },
+    {
+      "title": "Operasi antar set",
+      "kicker": "SET",
+      "bullets": [
+        "SINTER: anggota yang ada di semua set",
+        "SUNION: gabungan semua anggota",
+        "SDIFF: ada di set pertama, tidak di set lain",
+        "Contoh: siswa yang ikut dua ekskul sekaligus"
+      ],
+      "code": "SADD ekskul:futsal \"sari\" \"budi\" \"dewi\"\nSADD ekskul:pramuka \"budi\" \"rina\"\nSINTER ekskul:futsal ekskul:pramuka\n# \"budi\""
+    },
+    {
+      "title": "Sorted set",
+      "kicker": "SET",
+      "bullets": [
+        "Seperti set, tapi setiap anggota punya skor angka",
+        "Anggota selalu terurut berdasarkan skor",
+        "ZADD menambah atau mengubah skor",
+        "ZSCORE membaca skor satu anggota"
+      ],
+      "code": "ZADD poin 120 \"sari\" 95 \"budi\" 150 \"dewi\"\nZSCORE poin \"budi\"\nZRANGE poin 0 -1 WITHSCORES"
+    },
+    {
+      "title": "Leaderboard",
+      "kicker": "SET",
+      "bullets": [
+        "ZINCRBY menambah poin tanpa baca-tulis manual",
+        "ZRANGE ... REV untuk skor tertinggi dulu",
+        "ZREVRANK: peringkat dari atas, mulai 0",
+        "Top 3 cukup ZRANGE 0 2 REV"
+      ],
+      "code": "ZINCRBY poin 30 \"budi\"\nZRANGE poin 0 2 REV WITHSCORES\nZREVRANK poin \"sari\"    # 1"
+    },
+    {
+      "title": "Klien node-redis",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Pasang paket redis dari npm",
+        "createClient membaca URL, lalu connect",
+        "Nama method camelCase: hSet, lPush, zAdd",
+        "Semua method mengembalikan Promise, pakai await"
+      ],
+      "code": "import { createClient } from \"redis\";\n\nconst client = createClient({\n  url: process.env.REDIS_URL,\n});\nawait client.connect();\nawait client.set(\"sapa\", \"halo\", { EX: 60 });\nconsole.log(await client.get(\"sapa\"));"
+    },
+    {
+      "title": "Menyimpan objek",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Redis hanya menyimpan teks, bukan objek JavaScript",
+        "Objek utuh: JSON.stringify lalu JSON.parse",
+        "Objek datar yang sering diubah per field: pakai hash",
+        "Nilai dari hGetAll selalu string, ubah ke Number"
+      ],
+      "code": "const menu = { nama: \"Bakso\", harga: 10000 };\nawait client.set(\"menu:3\", JSON.stringify(menu));\nconst m = JSON.parse(await client.get(\"menu:3\"));\n\nawait client.hSet(\"menu:4\", { nama: \"Soto\" });\nconst h = await client.hGetAll(\"menu:4\");"
+    },
+    {
+      "title": "Koneksi dan error",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Selalu pasang client.on('error') supaya app tidak crash",
+        "Simpan alamat di REDIS_URL, jangan ditulis di kode",
+        "Satu klien dipakai bersama seluruh aplikasi",
+        "Tutup koneksi saat aplikasi berhenti"
+      ],
+      "code": "client.on(\"error\", (err) => {\n  console.error(\"Redis error\", err);\n});\n\n// REDIS_URL=redis://user:pass@host:6379\nprocess.on(\"SIGTERM\", async () => {\n  await client.close();\n});"
+    },
+    {
+      "title": "Cache-aside",
+      "kicker": "CACHE",
+      "bullets": [
+        "Cek cache dulu, kalau ada langsung kembalikan",
+        "Kalau tidak ada: ambil dari database, simpan ke cache",
+        "Selalu beri TTL supaya data basi hilang sendiri",
+        "Aplikasi yang mengatur cache, bukan database"
+      ],
+      "code": "async function ambilMenu() {\n  const ada = await client.get(\"cache:menu\");\n  if (ada) return JSON.parse(ada);\n  const menu = await db.semuaMenu();\n  await client.set(\"cache:menu\",\n    JSON.stringify(menu), { EX: 300 });\n  return menu;\n}"
+    },
+    {
+      "title": "Invalidasi cache",
+      "kicker": "CACHE",
+      "bullets": [
+        "Saat data berubah, hapus key cache yang terkait",
+        "Request berikutnya akan mengisi ulang dari database",
+        "Hapus setelah database berhasil diubah",
+        "Alternatif: key versi, naikkan versi agar key lama ditinggal"
+      ],
+      "code": "async function ubahHarga(id, harga) {\n  await db.ubahHarga(id, harga);\n  await client.del(\"cache:menu\");\n}\n\n// key versi\nconst v = await client.get(\"menu:versi\");\nconst key = `cache:menu:v${v}`;"
+    },
+    {
+      "title": "Cache stampede",
+      "kicker": "CACHE",
+      "bullets": [
+        "Cache populer kedaluwarsa, ratusan request serentak ke DB",
+        "Database tiba-tiba kebanjiran query yang sama",
+        "Cara 1: kunci, hanya satu request yang mengisi ulang",
+        "Cara 2: TTL diberi sedikit acak supaya tidak serentak",
+        "Cara 3: isi ulang cache di latar sebelum habis"
+      ]
+    },
+    {
+      "title": "Sesi login",
+      "kicker": "SESI DAN LIMIT",
+      "bullets": [
+        "Buat token acak, simpan sesi:token berisi id pengguna",
+        "TTL = lama sesi, misalnya 2 jam",
+        "Setiap request: GET sesi:token, null berarti harus login",
+        "Logout cukup DEL key sesinya"
+      ],
+      "code": "import { randomUUID } from \"node:crypto\";\n\nconst token = randomUUID();\nawait client.set(`sesi:${token}`, \"1001\",\n  { EX: 7200 });\nconst id = await client.get(`sesi:${token}`);\nawait client.del(`sesi:${token}`); // logout"
+    },
+    {
+      "title": "Rate limit",
+      "kicker": "SESI DAN LIMIT",
+      "bullets": [
+        "Fixed window: hitung request per orang per menit",
+        "INCR key berisi id dan menit sekarang",
+        "Request pertama memasang EXPIRE 60 detik",
+        "Lewat batas: tolak dengan status 429"
+      ],
+      "code": "const menit = Math.floor(Date.now() / 60000);\nconst key = `limit:${nis}:${menit}`;\nconst n = await client.incr(key);\nif (n === 1) await client.expire(key, 60);\nif (n > 5) return tolak(429);"
+    },
+    {
+      "title": "Kunci dengan SET NX",
+      "kicker": "SESI DAN LIMIT",
+      "bullets": [
+        "SET NX EX: berhasil hanya bila key belum ada",
+        "Dipakai agar satu tugas tidak jalan dua kali",
+        "EX wajib supaya kunci lepas kalau proses mati",
+        "Lepaskan kunci dengan DEL setelah selesai"
+      ],
+      "code": "const ok = await client.set(\"kunci:rekap\", \"1\",\n  { NX: true, EX: 30 });\nif (ok === null) return; // sedang dikerjakan\ntry {\n  await buatRekap();\n} finally {\n  await client.del(\"kunci:rekap\");\n}"
+    },
+    {
+      "title": "MULTI dan EXEC",
+      "kicker": "TRANSAKSI",
+      "bullets": [
+        "MULTI mengantrekan perintah, EXEC menjalankan semuanya",
+        "Perintah berjalan berurutan tanpa disela klien lain",
+        "Tidak ada rollback: perintah yang gagal tidak membatalkan lainnya",
+        "WATCH untuk membatalkan bila key berubah sebelum EXEC"
+      ],
+      "code": "const [stok, terjual] = await client.multi()\n  .decr(\"stok:bakso\")\n  .incr(\"terjual:bakso\")\n  .exec();"
+    },
+    {
+      "title": "Pub/Sub",
+      "kicker": "TRANSAKSI",
+      "bullets": [
+        "PUBLISH mengirim pesan ke sebuah channel",
+        "SUBSCRIBE mendengarkan channel tertentu",
+        "Pesan tidak disimpan: yang offline tidak menerima",
+        "Di node-redis, subscriber butuh koneksi terpisah"
+      ],
+      "code": "const sub = client.duplicate();\nawait sub.connect();\nawait sub.subscribe(\"pesanan\", (pesan) => {\n  console.log(\"baru:\", pesan);\n});\nawait client.publish(\"pesanan\", \"bakso 2\");"
+    },
+    {
+      "title": "Sekilas Streams",
+      "kicker": "TRANSAKSI",
+      "bullets": [
+        "Stream adalah log pesan yang tersimpan, tidak hilang",
+        "XADD menambah entri, XREAD membaca dari posisi tertentu",
+        "Consumer group membagi pekerjaan ke beberapa worker",
+        "Pilih Streams bila pesan tidak boleh hilang"
+      ],
+      "code": "XADD pesanan * menu bakso jumlah 2\nXREAD COUNT 10 STREAMS pesanan 0"
+    },
+    {
+      "title": "RDB dan AOF",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "RDB: snapshot seluruh data secara berkala",
+        "AOF: mencatat setiap perintah tulis ke file",
+        "RDB ringkas dan cepat dipulihkan, bisa hilang beberapa menit",
+        "AOF everysec: paling banyak hilang sekitar 1 detik",
+        "Bisa dipakai berdua sekaligus"
+      ]
+    },
+    {
+      "title": "Memori dan eviction",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "maxmemory membatasi RAM yang boleh dipakai",
+        "noeviction: tulis baru ditolak saat penuh",
+        "allkeys-lru: buang key yang paling lama tak dipakai",
+        "volatile-lru: hanya buang key yang punya TTL",
+        "Untuk cache, allkeys-lru atau allkeys-lfu paling umum"
+      ],
+      "code": "maxmemory 256mb\nmaxmemory-policy allkeys-lru"
+    },
+    {
+      "title": "Keamanan dan langkah berikutnya",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "Wajib password atau ACL, jangan biarkan tanpa login",
+        "Jangan buka port 6379 ke internet",
+        "Managed Redis: backup dan update diurus penyedia",
+        "Berikutnya: Streams, Redis Query Engine, JSON"
+      ],
+      "code": "ACL SETUSER app on >rahasia-panjang ~app:* +@all\nAUTH app rahasia-panjang"
+    }
+  ]
+}
