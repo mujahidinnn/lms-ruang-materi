@@ -69,7 +69,7 @@ function wireframe() {
   const W = 300, H = 560, Y = 110;
   const ph = (x, t) => box(x, Y, W, H, { r: 30 }) + text(x + 24, Y + 60, "‹", { size: 28, weight: 800 }) + text(x + W / 2, Y + 60, t, { size: 21, weight: 800, anchor: "middle" }) + line(x, Y + 84, x + W, Y + 84, { sw: 2 });
   const thumb = (x) => `<rect x="${x + 8}" y="${Y + H - 170}" width="${W - 16}" height="160" rx="22" fill="${M1}"/>`;
-  const btn = (x, y, t, primary = true) => `<rect x="${x + 24}" y="${y}" width="${W - 48}" height="54" rx="10" fill="${primary ? "#8a8c85" : "#ffffff"}" stroke="${INK}" stroke-width="3"/>` + text(x + W / 2, y + 35, t, { size: 19, weight: 800, anchor: "middle", fill: primary ? "#ffffff" : INK });
+  const btn = (x, y, t, primary = true) => `<rect x="${x + 24}" y="${y}" width="${W - 48}" height="54" rx="10" fill="${primary ? "#5f6159" : "#ffffff"}" stroke="${INK}" stroke-width="3"/>` + text(x + W / 2, y + 35, t, { size: 19, weight: 800, anchor: "middle", fill: primary ? "#ffffff" : INK });
   const grey = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${GREY}" stroke="${GREY2}" stroke-width="2"/>`;
   // 1 pilih poli
   let x = 60;
@@ -83,7 +83,7 @@ function wireframe() {
   // 2 konfirmasi
   x = 450;
   b += ph(x, "Konfirmasi") + thumb(x);
-  [["Poli", "Gigi"], ["Hari", "Kamis, 3 Des"], ["Pasien", "Rina Wulandari"], ["No. BPJS", "0001 2345 6789"]].forEach(([k, v], i) => {
+  [["Poli", "Gigi"], ["Hari", "Kamis, 3 Des"], ["Pasien", "Rina Wulandari"], ["No. BPJS", "0001234567890"]].forEach(([k, v], i) => {
     const y = Y + 128 + i * 66;
     b += text(x + 24, y, k, S({ size: 16 })) + text(x + 24, y + 28, v, { size: 19, weight: 800 }) + line(x + 24, y + 44, x + W - 24, y + 44, { sw: 1, stroke: GREY2 });
   });
@@ -115,7 +115,7 @@ function designSystem() {
   b += box(60, 446, 520, 60, { fill: PINK, r: 12, sw: 3 }) + text(80, 484, "Putih di atas aksen hanya 1.9:1 → pakai teks gelap", S({ size: 18, weight: 700 }));
   // type scale
   b += text(60, 566, "Skala huruf (text styles)", { size: 24, weight: 800 });
-  [["judul/besar", 28, 800], ["judul/sedang", 22, 800], ["isi", 16, 500], ["keterangan", 14, 500]].forEach(([n, sz, w], i) => {
+  [["judul/besar", 28, 800], ["judul/sedang", 22, 800], ["isi", 16, 500], ["isi/kecil", 14, 500]].forEach(([n, sz, w], i) => {
     const y = 616 + i * 50;
     b += mono(60, y, n, { size: 16, weight: 700 }) + text(240, y, `${sz} px  Nomor antrean A-012`, { size: sz, weight: w });
   });
@@ -142,7 +142,7 @@ function komponen() {
   b += line(ax + 280, ay + 44, ax + 280, ay + 56, { sw: 2 }) + text(ax + 290, ay + 56, "12", S({ size: 15, weight: 800 }));
   b += `<rect x="${ax}" y="${ay + 100}" width="380" height="56" rx="28" fill="#1f6f5c" stroke="${INK}" stroke-width="3"/>` + text(ax + 190, ay + 136, "Ambil nomor Poli Gigi", { size: 20, weight: 800, anchor: "middle", fill: "#ffffff" });
   b += text(ax, ay + 186, "teks lebih panjang → tombol ikut melebar", S({ size: 17, weight: 700 }));
-  b += mono(560, 180, "padding: jarak/12, jarak/24", { size: 17 }) + mono(560, 210, "isi: warna/utama", { size: 17 }) + mono(560, 240, "radius: radius/penuh", { size: 17 }) + mono(560, 270, "teks: judul/sedang", { size: 17 });
+  b += mono(560, 180, "padding: jarak/12, jarak/24", { size: 17 }) + mono(560, 210, "isi: warna/utama", { size: 17 }) + mono(560, 240, "radius: radius/penuh", { size: 17 }) + mono(560, 270, "teks: judul/kecil", { size: 17 });
   b += mono(560, 300, "nama layer: Tombol/Utama", { size: 17 });
   // variant grid
   const gy = 400;
