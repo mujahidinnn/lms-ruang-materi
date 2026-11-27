@@ -1029,7 +1029,157 @@ class Plot(St):
         text(s, x + 0.35, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=T.ink, gap=2, font=MONO)
 
 
-STYLES = {"nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 20. Nuxt: Vue single-file component tags ----------
+class Sfc(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.1, 0.5
+
+    def tag(self, s, x, y, t, col, size=14):
+        text(s, x, y, 8, 0.35, t, size, True, col, font=MONO, gap=0)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        self.tag(s, 0.9, 0.9, "<template>", T.accent, 16)
+        text(s, 1.4, 1.6, 7.3, 1.6, sl["title"], 72, True, WHITE, gap=0, font=self.head)
+        text(s, 1.4, 3.3, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        self.tag(s, 1.4, 4.7, "<NuxtPage />", T.amber, 15)
+        self.tag(s, 0.9, 5.4, "</template>", T.accent, 16)
+        oval(s, 8.9, 1.6, 3.4, 3.4, mix(T.ink, T.accent, 0.2))
+        logo(s, "accent", 9.45, 2.15, 2.3)
+
+    def chrome(self, s, n, sl):
+        k = re.sub(r"[^a-z0-9]+", "-", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("-")
+        self.tag(s, 0.6, 0.38, f'<template>  <!-- pages/{k}.vue -->', T.accent, 12)
+        self.title(s, 0.6, 0.8, 11, sl["title"])
+        logo(s, "accent", 12.05, 0.35, 0.65)
+        self.tag(s, 0.6, 6.62, "</template>", T.accent, 12)
+        rect(s, 0.68, 1.75, 0.03, 4.8, T.light)
+        return (0.95, 1.85, 11.75, 4.7)
+
+    def foot(self, s, n, sl):
+        text(s, 3.0, 7.03, 7, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.03, 1.0, 0.25, f"{n} / {N}", 10, color=T.grey, gap=0, align=PP_ALIGN.RIGHT)
+
+    def mark(self, s, x, cy, i): poly(s, [(x, cy + 0.1), (x + 0.11, cy - 0.1), (x + 0.22, cy + 0.1)], T.accent, 2.5, close=True)
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("DCFCE7"), gap=2, font=MONO)
+
+
+# ---------- 21. Redis: redis-cli prompt and numbered replies ----------
+class Cli(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.7
+    dark = True
+
+    @property
+    def bg(self): return T.ink
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        rect(s, 0, H - 0.25, W, 0.25, T.accent)
+        text(s, 0.9, 0.9, 9, 0.4, "127.0.0.1:6379> PING", 16, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.35, 9, 0.4, "PONG", 16, color=SLATE, font=MONO, gap=0)
+        text(s, 0.9, 2.1, 7.5, 1.6, sl["title"], 76, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.8, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 5.4, 9, 0.4, '127.0.0.1:6379> GET kelas:redis', 15, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 5.85, 9, 0.4, '"siap dipelajari"', 15, color=SLATE, font=MONO, gap=0)
+        rrect(s, 8.9, 1.6, 3.4, 3.4, T.accent, adj=0.15)
+        logo(s, "white", 9.5, 2.2, 2.2)
+
+    def chrome(self, s, n, sl):
+        k = re.sub(r"[^a-z0-9]+", "_", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("_")
+        text(s, 0.6, 0.4, 10, 0.35, f"127.0.0.1:6379> HGETALL slide:{n}:{k}", 13, color=T.amber, font=MONO, gap=0)
+        self.title(s, 0.6, 0.85, 11, sl["title"], color=WHITE)
+        logo(s, "white", 12.1, 0.4, 0.6)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.accent, adj=0.12)
+        text(s, x + 0.3, y, w - 0.6, h, note, 14, color=WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+    def mark(self, s, x, cy, i):
+        text(s, x, cy - 0.2, 0.7, 0.4, f"{i + 1})", 15, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.deep)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, mix(T.ink, BLACK, 0.35), line=T.deep, adj=0.04)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("FDE2DF"), gap=2, font=MONO)
+
+
+# ---------- 22. REST: HTTP response line, status-code chips ----------
+class Http(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.95
+    CODES = ("200", "201", "204", "400", "404", "422", "429")
+
+    def chip(self, s, x, y, code, w=0.75, h=0.36, size=12):
+        ok = code.startswith("2")
+        rrect(s, x, y, w, h, T.light if ok else T.card, line=None if ok else T.line, lw=1, adj=0.35)
+        text(s, x, y, w, h, code, size, True, T.accent if ok else T.grey, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 0.9, 9, 0.4, "GET /v1/kelas/desain-rest-api HTTP/1.1", 15, color=SLATE, font=MONO, gap=0)
+        text(s, 0.9, 1.35, 9, 0.4, "HTTP/1.1 200 OK", 15, True, T.amber, font=MONO, gap=0)
+        text(s, 0.9, 2.0, 7.6, 2.4, sl["title"], 60, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.25, 6.6, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        for k, code in enumerate(self.CODES[:5]):
+            x = 0.9 + k * 0.95
+            rrect(s, x, 5.6, 0.8, 0.4, T.accent if code.startswith("2") else T.deep, adj=0.35)
+            text(s, x, 5.6, 0.8, 0.4, code, 13, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+        oval(s, 8.9, 1.6, 3.4, 3.4, mix(T.ink, T.accent, 0.3))
+        logo(s, "white", 9.5, 2.2, 2.2)
+
+    def chrome(self, s, n, sl):
+        text(s, 0.6, 0.4, 9, 0.35, f"HTTP/1.1 200 OK  ·  slide {n}", 12, True, T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.8, 11, sl["title"])
+        logo(s, "accent", 12.05, 0.35, 0.65)
+        rect(s, 0.6, 1.72, 12.1, 0.02, T.line)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def mark(self, s, x, cy, i): self.chip(s, x, cy - 0.18, self.CODES[i % len(self.CODES)])
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x, y, w, 0.45, T.deep)
+        text(s, x + 0.3, y, w - 0.6, 0.45, "application/json", 11, color=SLATE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.65, w - 0.6, h - 0.8, lines, sz, color=C("EDE9FE"), gap=2, font=MONO)
+
+
+STYLES = {"nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
