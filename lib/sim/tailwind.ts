@@ -2,7 +2,7 @@
 export const SPACE = [2, 4, 6, 8] as const;
 export const MARGIN = [0, 2, 4, 8] as const;
 export const WIDTHS = { "w-32": 128, "w-48": 192, "w-64": 256, "w-full": "100%" } as const;
-export const RADIUS = { "rounded-none": 0, "rounded-lg": 6, "rounded-lg": 8, "rounded-2xl": 16, "rounded-full": 9999 } as const;
+export const RADIUS = { "rounded-none": 0, "rounded-md": 6, "rounded-lg": 8, "rounded-2xl": 16, "rounded-full": 9999 } as const;
 export const STEPS = [100, 300, 500, 700, 900] as const;
 export const HUES = { blue: ["#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8", "#1e3a8a"], rose: ["#ffe4e6", "#fda4af", "#f43f5e", "#be123c", "#881337"], emerald: ["#d1fae5", "#6ee7b7", "#10b981", "#047857", "#064e3b"] } as const;
 export type Hue = keyof typeof HUES;
