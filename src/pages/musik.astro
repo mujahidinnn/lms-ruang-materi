@@ -73,6 +73,16 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
       <h1 class="font-(family-name:--font-bricolage) text-2xl font-extrabold tracking-tight">Musik belajar</h1>
       <p class="mt-1 text-sm text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain.</p>
     </header>
+    <form role="search" data-filter>
+      <label for="music-filter" class="sr-only">Cari musik</label>
+      <input id="music-filter" type="search" autocomplete="off" placeholder="Cari musik, misal piano atau lofi" class="min-h-11 w-full rounded-[18px] bg-zinc-900 px-4 text-sm shadow-soft focus-visible:outline-2 focus-visible:outline-accent" />
+    </form>
+    <div data-filter-empty hidden aria-live="polite" class="flex flex-col items-center gap-2 py-6 text-center">
+      <NoMusic className="size-14" />
+      <p class="text-sm font-semibold text-zinc-200">Tidak ada yang cocok dengan "<span data-filter-q></span>"</p>
+      <p class="text-sm text-zinc-500">Coba kata lain, misal piano, jazz, atau hujan.</p>
+      <button type="button" data-filter-youtube hidden class={`${secondaryButton} mt-1`}>Cari di YouTube</button>
+    </div>
     <p data-music-error aria-live="polite" class="text-sm text-red-400 empty:hidden"></p>
 
     <section data-history-section hidden class="flex flex-col gap-3">
@@ -417,16 +427,18 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
           pick(p);
         });
         row.append(button);
+        if (i >= limit) row.dataset.extra = "";
         row.hidden = i >= limit;
         return row;
       }),
     );
     if (items && items.length > limit) {
       const more = document.createElement("li");
+      more.dataset.more = "";
             const button = Object.assign(document.createElement("button"), { type: "button", textContent: `Tampilkan ${items.length - limit} lagi` });
       button.className = "min-h-12 w-full text-sm font-semibold text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent";
       button.addEventListener("click", () => {
-        list.querySelectorAll<HTMLElement>(":scope > li[hidden]").forEach((li) => (li.hidden = false));
+        list.querySelectorAll<HTMLElement>(":scope > li[data-extra]").forEach((li) => { delete li.dataset.extra; li.hidden = false; });
         more.remove();
       });
       more.append(button);
@@ -456,7 +468,38 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     const items = played();
     document.querySelector<HTMLElement>("[data-history-section]")!.hidden = !items.length;
     fill(document.querySelector<HTMLElement>("[data-history]")!, items, ["Belum ada riwayat", "Lagu yang kamu putar muncul di sini."]);
+    applyFilter();
   }
+
+  // Cari musik filters the picks and history in place: no login, no quota.
+  // With nothing found and YouTube connected, it hands the words to YouTube.
+  const filter = document.querySelector<HTMLInputElement>("[data-filter] input")!;
+  const filterEmpty = document.querySelector<HTMLElement>("[data-filter-empty]")!;
+  function applyFilter() {
+    const q = filter.value.trim().toLowerCase();
+    let hits = 0;
+    for (const list of document.querySelectorAll<HTMLElement>("[data-history], [data-picks], [data-yt-picks]")) {
+      let found = 0;
+      for (const li of list.querySelectorAll<HTMLElement>(":scope > li")) {
+        if ("more" in li.dataset) { li.hidden = !!q; continue; }
+        const match = !q || (li.textContent ?? "").toLowerCase().includes(q);
+        li.hidden = q ? !match : "extra" in li.dataset;
+        if (q && match) found++;
+      }
+      list.closest("section")!.classList.toggle("hidden", !!q && !found);
+      hits += found;
+    }
+    filterEmpty.hidden = !q || hits > 0;
+    filterEmpty.querySelector("[data-filter-q]")!.textContent = filter.value.trim();
+    filterEmpty.querySelector<HTMLElement>("[data-filter-youtube]")!.hidden = document.querySelector<HTMLElement>("[data-search]")?.hidden ?? true;
+  }
+  filter.addEventListener("input", applyFilter);
+  document.querySelector("[data-filter]")!.addEventListener("submit", (e) => e.preventDefault());
+  filterEmpty.querySelector("[data-filter-youtube]")!.addEventListener("click", () => {
+    searchForm!.q.value = filter.value.trim();
+    searchForm!.requestSubmit();
+    searchForm!.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
   const ytPicks = document.querySelector<HTMLElement>("[data-yt-picks]")!;
