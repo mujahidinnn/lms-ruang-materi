@@ -77,10 +77,10 @@ const PEOPLE = {
 {
   const CREW = [
     { x: 0, body: "PoloSweater", face: "Smile", hair: "ShortCurly" },
-    { x: 1900, body: "Sweater", face: "Calm", hair: "Buns", accessory: "GlassRound" },
-    { x: 560, body: "ArmsCrossed", face: "Cute", hair: "Afro" },
-    { x: 1340, body: "Hoodie", face: "Driven", hair: "ShortVolumed" },
-    { x: 950, body: "Turtleneck", face: "SmileBig", hair: "Hijab" },
+    { x: 1900, body: "Sweater", face: "Calm", hair: "LongBangs" },
+    { x: 560, body: "ArmsCrossed", face: "Smile", hair: "ShortWavy" },
+    { x: 1340, body: "Hoodie", face: "Calm", hair: "ShortVolumed" },
+    { x: 950, body: "Turtleneck", face: "Calm", hair: "Hijab" },
   ];
   const figs = CREW.map(({ x, ...p }) => {
     const peep = renderToStaticMarkup(h(Peep, { ...p, strokeColor: INK, backgroundColor: "#ffffff" }))
