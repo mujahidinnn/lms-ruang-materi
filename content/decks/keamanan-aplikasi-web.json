@@ -1,0 +1,331 @@
+{
+  "theme": "websec",
+  "deck": "Keamanan Aplikasi Web",
+  "kicker": "KELAS",
+  "subtitle": "Mengamankan kodemu sendiri dengan panduan OWASP Top 10:2025: dari access control dan injection sampai rantai pasok dan respons insiden.",
+  "slides": [
+    {
+      "title": "Keamanan Aplikasi Web"
+    },
+    {
+      "title": "Kenapa keamanan urusan pengembang?",
+      "kicker": "PENGANTAR",
+      "bullets": [
+        "Celah paling sering lahir dari kode, bukan dari server",
+        "Aset: data murid, saldo kantin, akun admin, reputasi sekolah",
+        "Least privilege: beri hak sekecil yang dibutuhkan",
+        "Defense in depth: beberapa lapis, satu jebol masih ada lainnya",
+        "Lebih murah dicegah saat menulis kode daripada setelah bocor"
+      ]
+    },
+    {
+      "title": "OWASP Top 10:2025",
+      "kicker": "PENGANTAR",
+      "bullets": [
+        "Sepuluh kategori risiko aplikasi web terpenting",
+        "SSRF kini masuk A01, XSS bagian dari A05"
+      ],
+      "code": "A01 Broken Access Control\nA02 Security Misconfiguration\nA03 Software Supply Chain Failures\nA04 Cryptographic Failures\nA05 Injection\nA06 Insecure Design\nA07 Authentication Failures\nA08 Software or Data Integrity Failures\nA09 Security Logging and Alerting Failures\nA10 Mishandling of Exceptional Conditions",
+      "note": "Daftar resmi dari owasp.org, versi 2025."
+    },
+    {
+      "title": "Etika dan hukum",
+      "kicker": "PENGANTAR",
+      "bullets": [
+        "Uji hanya aplikasi milikmu atau yang memberi izin tertulis",
+        "Akses sistem orang lain tanpa izin melanggar UU ITE",
+        "Temukan celah di situs orang? Laporkan, jangan dieksploitasi",
+        "Banyak instansi punya kanal pelaporan atau program bug bounty",
+        "Latihan aman: aplikasi lokal dan lab yang memang disediakan"
+      ]
+    },
+    {
+      "title": "Access control",
+      "kicker": "ACCESS CONTROL",
+      "bullets": [
+        "Autentikasi: siapa kamu. Otorisasi: kamu boleh apa",
+        "A01, kategori nomor satu di OWASP Top 10:2025",
+        "Cek hak akses selalu di server, bukan di tombol UI",
+        "Menyembunyikan menu admin bukan pengamanan",
+        "Setiap route butuh aturan: siapa boleh membaca dan mengubah"
+      ]
+    },
+    {
+      "title": "IDOR",
+      "kicker": "ACCESS CONTROL",
+      "bullets": [
+        "Insecure Direct Object Reference: id ditebak, data orang terbaca",
+        "Ganti /pesanan/12 jadi /pesanan/13, dapat pesanan teman",
+        "Perbaikan: bandingkan pemilik data dengan pengguna login",
+        "Bukan milikmu? Balas 404 agar keberadaan data tidak bocor"
+      ],
+      "code": "app.get(\"/pesanan/:id\", auth, (req, res) => {\n  const p = cariPesanan(req.params.id);\n  if (!p || p.userId !== req.user.id) {\n    return res.sendStatus(404);\n  }\n  res.json(p);\n});"
+    },
+    {
+      "title": "Deny by default",
+      "kicker": "ACCESS CONTROL",
+      "bullets": [
+        "Default-nya ditolak, izinkan hanya yang tertulis jelas",
+        "Role yang tidak dikenal berarti tidak punya akses",
+        "Satu middleware dipasang di semua route sensitif",
+        "Jangan percaya role atau userId yang dikirim klien"
+      ],
+      "code": "const IZIN = {\n  admin: [\"hapus\", \"ubah\"],\n  kasir: [\"ubah\"],\n};\nfunction boleh(role, aksi) {\n  return (IZIN[role] || []).includes(aksi);\n}"
+    },
+    {
+      "title": "Path traversal dan SSRF",
+      "kicker": "ACCESS CONTROL",
+      "bullets": [
+        "Path traversal: nama file berisi ../ keluar dari folder",
+        "Perbaikan: izinkan nama sederhana saja, tolak / dan ..",
+        "SSRF: server disuruh mengambil URL ke jaringan internal",
+        "Perbaikan: daftar host yang diizinkan dan wajib https",
+        "Di OWASP 2025, SSRF digabung ke A01"
+      ]
+    },
+    {
+      "title": "SQL injection",
+      "kicker": "INJECTION",
+      "bullets": [
+        "A05: input pengguna dianggap bagian dari perintah",
+        "Terjadi saat SQL dirangkai dengan string input",
+        "Akibatnya data bisa terbaca, diubah, atau dihapus",
+        "Escape manual mudah terlewat, jangan diandalkan"
+      ],
+      "code": "// Rentan: input masuk ke teks SQL\nconst sql = \"SELECT * FROM menu WHERE nama = '\"\n  + req.query.nama + \"'\";\ndb.query(sql);"
+    },
+    {
+      "title": "Prepared statement",
+      "kicker": "INJECTION",
+      "bullets": [
+        "Teks SQL tetap, nilai dikirim terpisah lewat parameter",
+        "Database tidak pernah menafsirkan nilai sebagai perintah",
+        "mysql2 memakai ?, PostgreSQL memakai $1, $2",
+        "ORM dan query builder umumnya sudah memakai parameter",
+        "Nama kolom untuk ORDER BY? Pakai daftar yang diizinkan"
+      ],
+      "code": "const sql = \"SELECT * FROM menu WHERE nama = ?\";\nconst nama = req.query.nama;\nconst [rows] = await db.query(sql, [nama]);"
+    },
+    {
+      "title": "Command injection",
+      "kicker": "INJECTION",
+      "bullets": [
+        "Input masuk ke perintah shell lewat exec",
+        "Hindari shell: pakai execFile dengan argumen array",
+        "Validasi input dengan daftar karakter yang diizinkan",
+        "NoSQL injection: objek seperti { $ne: null } dari body",
+        "Pastikan tipe input: string harus benar-benar string"
+      ]
+    },
+    {
+      "title": "Apa itu XSS?",
+      "kicker": "XSS",
+      "bullets": [
+        "Script penyerang ikut berjalan di halaman korban",
+        "Tersimpan: komentar jahat disimpan lalu tampil ke semua",
+        "Terpantul: input di URL langsung dipantulkan ke halaman",
+        "DOM: kode front-end menaruh input ke innerHTML",
+        "Akibat: aksi atas nama korban, data halaman dicuri"
+      ]
+    },
+    {
+      "title": "Escape keluaran",
+      "kicker": "XSS",
+      "bullets": [
+        "Escape saat ditampilkan, sesuai konteks HTML-nya",
+        "Lima karakter penting: & < > \" '",
+        "Pakai textContent, bukan innerHTML, untuk teks biasa",
+        "React dan template engine sudah escape secara bawaan",
+        "Hati-hati dangerouslySetInnerHTML dan v-html"
+      ],
+      "code": "// Rentan\nel.innerHTML = komentar.isi;\n// Aman: ditampilkan sebagai teks biasa\nel.textContent = komentar.isi;"
+    },
+    {
+      "title": "Content Security Policy",
+      "kicker": "XSS",
+      "bullets": [
+        "Header yang membatasi sumber script, gaya, dan gambar",
+        "Lapisan kedua bila escape ada yang terlewat",
+        "Hindari 'unsafe-inline' untuk script-src",
+        "Mulai dengan Report-Only untuk melihat dampaknya"
+      ],
+      "code": "Content-Security-Policy:\n  default-src 'self';\n  script-src 'self';\n  object-src 'none';\n  frame-ancestors 'none'"
+    },
+    {
+      "title": "Cara kerja CSRF",
+      "kicker": "CSRF DAN COOKIE",
+      "bullets": [
+        "Browser otomatis mengirim cookie ke situs asalnya",
+        "Situs jahat memicu form POST ke aplikasimu",
+        "Server mengira korban sendiri yang mengirim",
+        "Contoh: transfer saldo kantin tanpa disadari",
+        "Rentan bila login memakai cookie sesi"
+      ]
+    },
+    {
+      "title": "Token CSRF dan SameSite",
+      "kicker": "CSRF DAN COOKIE",
+      "bullets": [
+        "Token acak per sesi disisipkan di form atau header",
+        "Server menolak request yang tokennya tidak cocok",
+        "SameSite=Lax: cookie tidak ikut di POST lintas situs",
+        "GET tidak boleh mengubah data",
+        "Pakai keduanya: token dan SameSite"
+      ]
+    },
+    {
+      "title": "Atribut cookie",
+      "kicker": "CSRF DAN COOKIE",
+      "bullets": [
+        "HttpOnly: JavaScript tidak bisa membaca cookie",
+        "Secure: cookie hanya dikirim lewat HTTPS",
+        "SameSite: Lax atau Strict untuk cookie sesi",
+        "Max-Age: sesi tidak hidup selamanya",
+        "Isi cookie sesi: id acak, bukan data pengguna"
+      ],
+      "code": "res.cookie(\"sid\", idAcak, {\n  httpOnly: true,\n  secure: true,\n  sameSite: \"lax\",\n  maxAge: 2 * 60 * 60 * 1000,\n});"
+    },
+    {
+      "title": "Header keamanan",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "A02: pengaturan bawaan yang terlalu longgar",
+        "X-Content-Type-Options: nosniff",
+        "Strict-Transport-Security memaksa HTTPS",
+        "frame-ancestors atau X-Frame-Options cegah clickjacking",
+        "Helmet memasang header-header ini di Express"
+      ],
+      "code": "app.use((req, res, next) => {\n  res.set(\"X-Content-Type-Options\", \"nosniff\");\n  res.set(\"X-Frame-Options\", \"DENY\");\n  res.set(\"Strict-Transport-Security\",\n    \"max-age=31536000; includeSubDomains\");\n  next();\n});"
+    },
+    {
+      "title": "CORS yang benar",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "CORS melonggarkan same-origin policy, bukan pengaman",
+        "Sebut origin yang diizinkan satu per satu",
+        "Jangan pantulkan header Origin apa adanya",
+        "Wildcard * tidak boleh dipakai bersama credentials",
+        "CORS tidak menggantikan autentikasi di server"
+      ]
+    },
+    {
+      "title": "Error yang aman",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "Stack trace dan pesan SQL jangan sampai ke klien",
+        "Klien dapat pesan umum, detail masuk log server",
+        "A10: tangani kondisi luar biasa, jangan gagal terbuka",
+        "Error saat cek izin berarti ditolak, bukan diloloskan",
+        "Matikan mode debug di produksi"
+      ],
+      "code": "app.use((err, req, res, next) => {\n  log.error(err);\n  res.status(500).json({ error: \"Server error\" });\n});"
+    },
+    {
+      "title": "HTTPS",
+      "kicker": "KRIPTOGRAFI",
+      "bullets": [
+        "A04: data sensitif tanpa perlindungan kriptografi yang tepat",
+        "HTTPS mengenkripsi lalu lintas antara browser dan server",
+        "Sertifikat gratis dari Let's Encrypt atau penyedia hosting",
+        "Alihkan HTTP ke HTTPS, lalu pasang HSTS",
+        "Jangan bikin algoritma enkripsi sendiri"
+      ]
+    },
+    {
+      "title": "Menyimpan kata sandi",
+      "kicker": "KRIPTOGRAFI",
+      "bullets": [
+        "Simpan hash, bukan kata sandi asli",
+        "Pakai bcrypt atau Argon2: lambat dan memakai salt",
+        "MD5 dan SHA-256 polos terlalu cepat untuk kata sandi",
+        "Detailnya di kelas Autentikasi dan Keamanan API"
+      ]
+    },
+    {
+      "title": "Rahasia di luar kode",
+      "kicker": "KRIPTOGRAFI",
+      "bullets": [
+        "Kunci API dan password database jangan masuk repo",
+        "Simpan di environment variable, .env masuk .gitignore",
+        "Rahasia terlanjur ter-commit? Ganti kuncinya",
+        "Bandingkan token dengan fungsi waktu konstan"
+      ],
+      "code": "const kunci = process.env.KUNCI_API;\nif (!kunci) throw new Error(\"KUNCI_API kosong\");\n\n// .gitignore\n// .env"
+    },
+    {
+      "title": "Dependensi rentan",
+      "kicker": "RANTAI PASOK",
+      "bullets": [
+        "A03: celah datang dari paket yang kamu pasang",
+        "npm audit membaca lockfile dan mencari celah yang dikenal",
+        "Perbarui paket secara rutin, baca catatan rilisnya",
+        "Sedikit dependensi berarti sedikit permukaan serangan"
+      ],
+      "code": "npm audit\nnpm audit fix\nnpm outdated"
+    },
+    {
+      "title": "Lockfile dan typosquatting",
+      "kicker": "RANTAI PASOK",
+      "bullets": [
+        "package-lock.json mengunci versi persis setiap paket",
+        "Commit lockfile, pakai npm ci di server dan CI",
+        "Typosquatting: nama paket mirip yang asli, isinya jahat",
+        "Cek nama, pengunduh mingguan, dan repo sebelum memasang",
+        "Waspadai skrip postinstall yang tidak jelas"
+      ]
+    },
+    {
+      "title": "Integritas build",
+      "kicker": "RANTAI PASOK",
+      "bullets": [
+        "A08: kode atau data berubah tanpa diperiksa",
+        "Subresource Integrity untuk script dari CDN",
+        "CI: batasi izin token dan kunci versi action",
+        "Jangan deserialisasi data tak tepercaya jadi objek"
+      ],
+      "code": "<script\n  src=\"https://cdn.example.com/lib.js\"\n  integrity=\"sha384-...\"\n  crossorigin=\"anonymous\"></script>"
+    },
+    {
+      "title": "Logging yang berguna",
+      "kicker": "LOGGING",
+      "bullets": [
+        "A09: serangan terjadi, tidak ada yang tahu",
+        "Catat login gagal, akses ditolak, perubahan hak akses",
+        "Sertakan waktu, id pengguna, IP, dan aksi",
+        "Jangan catat kata sandi, token, atau data pribadi lengkap",
+        "Simpan log di tempat yang tidak bisa diubah penyerang"
+      ]
+    },
+    {
+      "title": "Rate limit dan alert",
+      "kicker": "LOGGING",
+      "bullets": [
+        "Batasi percobaan login per akun dan per IP",
+        "Balas 429 Too Many Requests saat melewati batas",
+        "Log tanpa alert hanya jadi arsip",
+        "Kirim alert saat ada lonjakan login gagal"
+      ]
+    },
+    {
+      "title": "Saat insiden terjadi",
+      "kicker": "LOGGING",
+      "bullets": [
+        "Tenang, catat waktu dan apa yang terlihat",
+        "Batasi kerusakan: cabut sesi dan ganti kunci",
+        "Perbaiki celahnya, lalu pulihkan dari backup bersih",
+        "UU PDP: kebocoran data pribadi wajib diberitahukan",
+        "Tulis evaluasi agar celah yang sama tidak terulang"
+      ]
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "LOGGING",
+      "bullets": [
+        "Pakai daftar OWASP Top 10 sebagai checklist review kode",
+        "Pelajari OWASP ASVS dan Cheat Sheet Series",
+        "Latihan legal di lab seperti OWASP Juice Shop",
+        "Lanjut ke kelas Autentikasi dan Keamanan API"
+      ]
+    }
+  ]
+}
