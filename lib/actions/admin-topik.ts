@@ -125,8 +125,8 @@ export async function tarik(slug: string): Promise<TopikState> {
   return { ok: "Topik ditarik, tidak tampil di publik." };
 }
 
-// ponytail: slide files stay in Storage after delete. Add a cleanup when
-// storage cost matters.
+// Slide files stay in Storage; scripts/sweep-slides.mjs removes folders no
+// slides row points at.
 export async function hapusTopik(slug: string): Promise<TopikState> {
   const admin = await requireAdmin();
   const meta = await topicMeta(slug);
