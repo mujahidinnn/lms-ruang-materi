@@ -17,30 +17,51 @@ publicPage(Astro);
 const spotify = import.meta.env.SPOTIFY_CLIENT_ID ?? "";
 const google = import.meta.env.GOOGLE_CLIENT_ID ?? "";
 const SERVICES = [
-  { key: "spotify", name: "Spotify", dot: "bg-[#1DB954]", on: !!spotify },
-  { key: "youtube", name: "YouTube Music", dot: "bg-[#FF0033]", on: !!google },
+  { key: "spotify", name: "Spotify", on: !!spotify },
+  { key: "youtube", name: "YouTube Music", on: !!google },
 ];
+// Length as the row shows it: "4j 15m", or "58m" under an hour.
+const length = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}j ${String(min % 60).padStart(2, "0")}m` : `${min}m`);
 // Spotify's own study playlists, played in its embed: no Web API, so no
 // Premium developer account or user allowlist. Logged in to spotify.com in
 // this browser, the embed plays whole songs; otherwise 30-second previews.
-const PICKS = [
-  ["37i9dQZF1DX8NTLI2TtZa6", "Intense Studying"],
-  ["37i9dQZF1DWZeKCadgRdKQ", "Deep Focus"],
-  ["37i9dQZF1DWWQRwui0ExPn", "lofi beats"],
-  ["37i9dQZF1DX4sWSpwq3LiO", "Peaceful Piano"],
-  ["37i9dQZF1DX9sIqqvKsjG8", "Instrumental Study"],
-  ["37i9dQZF1DX3PFzdbtx1Us", "Music for Concentration"],
-].map(([id, name]) => ({ name, count: "Playlist Spotify", src: `https://open.spotify.com/embed/playlist/${id}` }));
-// Long YouTube mixes and 24/7 streams, played in the privacy embed with no
-// login or search quota. IDs checked against YouTube oEmbed on 2026-11-27.
-const YT_PICKS = [
-  ["lTRiuFIWV54", "1 A.M Study Session", "Lofi Girl"],
-  ["7NOSDKb0HlU", "lofi hip hop radio", "Chillhop Music"],
-  ["1fueZCTYkpA", "Morning Coffee", "Lofi Girl"],
-  ["n61ULEU7CO0", "Best of lofi hip hop", "Lofi Girl"],
-  ["Dx5qFachd3A", "Relaxing Jazz Piano", "Cafe Music BGM"],
-  ["mPZkdNFkNps", "Suara hujan", "Relaxing Ambience"],
-].map(([id, name, channel]) => ({ name, count: channel, cover: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1` }));
+// Song counts and minutes read from each embed page on 2026-11-27 (the embed
+// lists at most 100 songs); editors change them now and then.
+const PICKS = ([
+  ["37i9dQZF1DX8NTLI2TtZa6", "Intense Studying", 100, 255],
+  ["37i9dQZF1DWZeKCadgRdKQ", "Deep Focus", 100, 240],
+  ["37i9dQZF1DWWQRwui0ExPn", "lofi beats", 100, 228],
+  ["37i9dQZF1DX4sWSpwq3LiO", "Peaceful Piano", 100, 255],
+  ["37i9dQZF1DX9sIqqvKsjG8", "Instrumental Study", 100, 253],
+  ["37i9dQZF1DX3PFzdbtx1Us", "Music for Concentration", 100, 258],
+  ["37i9dQZF1DX0SM0LYsmbMT", "Jazz Vibes", 100, 205],
+  ["37i9dQZF1DX5trt9i14X7j", "Coding Mode", 100, 370],
+  ["37i9dQZF1DWXLeA8Omikj7", "Brain Food", 100, 453],
+  ["37i9dQZF1DX1s9knjP51Oa", "calm vibes", 100, 261],
+  ["37i9dQZF1DWV0gynK7G6pD", "New Classical", 71, 336],
+  ["37i9dQZF1DWUZ5bk6qqDSy", "White Noise 10 Hours", 100, 325],
+] as const).map(([id, name, songs, min]) => ({ name, count: `${songs} lagu`, length: length(min), src: `https://open.spotify.com/embed/playlist/${id}` }));
+// Long YouTube mixes and 24/7 streams (minutes 0 = live), played in the
+// privacy embed with no login or search quota. Checked on 2026-11-27.
+const YT_PICKS = ([
+  ["lTRiuFIWV54", "1 A.M Study Session", "Lofi Girl", 61],
+  ["7NOSDKb0HlU", "lofi hip hop radio", "Chillhop Music", 0],
+  ["1fueZCTYkpA", "Morning Coffee", "Lofi Girl", 64],
+  ["n61ULEU7CO0", "Best of lofi hip hop", "Lofi Girl", 371],
+  ["Dx5qFachd3A", "Relaxing Jazz Piano", "Cafe Music BGM", 0],
+  ["mPZkdNFkNps", "Suara hujan", "Relaxing Ambience", 480],
+  ["4xDzrJKXOOY", "synthwave radio", "Lofi Girl", 0],
+  ["5yx6BWlEVcY", "Chillhop Radio", "Chillhop Music", 0],
+  ["TURbeWK2wwg", "4 A.M Study Session", "Lofi Girl", 62],
+  ["jgpJVI3tDbY", "The Best of Classical Music", "Just Instrumental Music", 208],
+  ["CfPxlb8-ZQ0", "Work & Study Lofi Jazz", "Musictag", 203],
+  ["sjkrrmBnpGE", "Ambient Study Music", "Quiet Quest", 238],
+] as const).map(([id, name, channel, min]) => ({ name, count: channel, length: min ? length(min) : "Live", cover: `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1` }));
+const LOGO = {
+  spotify: { color: "fill-[#1DB954]", d: "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" },
+  youtube: { color: "fill-[#FF0033]", d: "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" },
+};
+const h2 = "font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight";
 // One tap searches YouTube for these (each still spends search quota).
 const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan", "musik klasik fokus", "akustik indonesia"];
 ---
@@ -48,17 +69,21 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
 <Base title="Musik belajar" noindex>
   <main data-music data-spotify={spotify} data-google={google} class="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 sm:max-w-3xl sm:gap-7 sm:p-8">
     <div data-music-player class="sticky top-0 z-10 -mx-4 -mt-4 bg-zinc-950 px-4 pt-4 empty:hidden sm:-mx-8 sm:-mt-8 sm:px-8 sm:pt-8"></div>
+    <header>
+      <h1 class="font-(family-name:--font-bricolage) text-2xl font-extrabold tracking-tight">Musik belajar</h1>
+      <p class="mt-1 text-sm text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain.</p>
+    </header>
     <p data-music-error aria-live="polite" class="text-sm text-red-400 empty:hidden"></p>
 
     <section data-history-section hidden class="flex flex-col gap-3">
-      <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Terakhir diputar</h2>
+      <h2 class={h2}>Terakhir diputar</h2>
       <ul data-playlists data-history class="grid gap-1 sm:grid-cols-2"></ul>
     </section>
 
     <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <span aria-hidden="true" class="size-3 rounded-full border-2 border-noir bg-[#1DB954]"></span>
-        <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Playlist belajar Spotify</h2>
+      <div class="flex items-center gap-2.5">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class:list={["size-5 shrink-0", LOGO.spotify.color]}><path d={LOGO.spotify.d} /></svg>
+        <h2 class={h2}>Pilihan Spotify</h2>
       </div>
       {/* We cannot see whether the browser is logged in to Spotify, so this
           asks until the learner logs in here or says they already are. */}
@@ -86,18 +111,18 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     </section>
 
     <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <span aria-hidden="true" class="size-3 rounded-full border-2 border-noir bg-[#FF0033]"></span>
-        <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Playlist belajar YouTube</h2>
+      <div class="flex items-center gap-2.5">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class:list={["size-5 shrink-0", LOGO.youtube.color]}><path d={LOGO.youtube.d} /></svg>
+        <h2 class={h2}>Pilihan YouTube</h2>
       </div>
       <ul data-playlists data-yt-picks={JSON.stringify(YT_PICKS)} class="grid gap-1 sm:grid-cols-2"></ul>
     </section>
 
     {SERVICES.filter((s) => s.on).map((s) => (
       <section data-service={s.key} class="flex flex-col gap-3">
-        <div class="flex items-center gap-2">
-          <span aria-hidden="true" class:list={["size-3 rounded-full border-2 border-noir", s.dot]}></span>
-          <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">{s.name}</h2>
+        <div class="flex items-center gap-2.5">
+          <svg aria-hidden="true" viewBox="0 0 24 24" class:list={["size-5 shrink-0", LOGO[s.key as keyof typeof LOGO].color]}><path d={LOGO[s.key as keyof typeof LOGO].d} /></svg>
+          <h2 class={h2}>Playlist {s.name}-mu</h2>
           <button type="button" data-disconnect hidden class="ml-auto min-h-11 px-2 text-sm text-zinc-400 hover:text-zinc-50">Putuskan</button>
         </div>
         <button type="button" data-connect class={`${secondaryButton} sm:self-start`}>Hubungkan {s.name}</button>
@@ -122,7 +147,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     {/* Files from this device play from memory and never leave it. They are
         gone when the window closes, so they stay out of Terakhir diputar. */}
     <section class="flex flex-col gap-3">
-      <h2 class="font-(family-name:--font-bricolage) text-lg font-extrabold tracking-tight">Dari perangkatmu</h2>
+      <h2 class={h2}>Dari perangkatmu</h2>
       <label class={`${secondaryButton} cursor-pointer sm:self-start has-focus-visible:outline-2 has-focus-visible:outline-accent`}>
         Pilih file musik
         <input data-local type="file" accept="audio/*" multiple class="sr-only" />
@@ -139,7 +164,6 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
       </form>
     </details>
 
-    <p class="mt-auto text-xs text-zinc-400">Biarkan jendela ini terbuka, musik tetap jalan selagi kamu belajar di tab lain.</p>
   </main>
   <template id="musik-kosong"><NoMusic className="size-14 shrink-0" /></template>
 </Base>
@@ -149,7 +173,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   import { musicEmbed } from "@/lib/music";
 
   type Token = { access: string; refresh?: string; expires: number };
-  type Playlist = { name: string; cover?: string; count: string; src: string };
+  type Playlist = { name: string; cover?: string; count: string; length?: string; src: string };
 
   const LINK = "ruang-materi:musik";
   const TOKENS = "ruang-materi:musik-token";
@@ -173,7 +197,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     frame.src = src;
     frame.title = "Pemutar musik";
     frame.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-    frame.className = `w-full rounded-xl border-0 ${src.includes("spotify") ? "h-[152px]" : "aspect-video"}`;
+    frame.className = `w-full rounded-xl border-0 ${src.includes("spotify") ? "h-[152px]" : "aspect-video max-h-[40vh] sm:max-h-80"}`;
     player.replaceChildren(frame);
     if (src.includes("spotify")) {
       const again = document.createElement("button");
@@ -358,9 +382,9 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     fill(list, playlists, SERVICES[key].empty);
   }
 
-  function fill(list: HTMLElement, items: Playlist[] | null, [heading, text]: [string, string], pick = (p: Playlist) => { play(p.src); remember(p); }) {
+  function fill(list: HTMLElement, items: Playlist[] | null, [heading, text]: [string, string], pick = (p: Playlist) => { play(p.src); remember(p); }, limit = Infinity) {
     list.replaceChildren(
-      ...(items ?? []).map((p) => {
+      ...(items ?? []).map((p, i) => {
         const row = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
@@ -369,7 +393,7 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
         cover.className = "size-11 shrink-0 rounded-xl border-2 border-noir bg-matcha-200 object-cover";
         if (p.cover) Object.assign(cover, { src: p.cover, alt: "", loading: "lazy", referrerPolicy: "no-referrer" });
         const text = document.createElement("span");
-        text.className = "min-w-0";
+        text.className = "min-w-0 flex-1";
         const name = document.createElement("span");
         name.className = "block truncate text-sm font-semibold";
         name.textContent = p.name;
@@ -378,15 +402,35 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
         count.textContent = p.count;
         text.append(name, count);
         button.append(cover, text);
+        if (p.length) {
+          const length = document.createElement("span");
+          length.className = "flex shrink-0 items-center gap-1.5 pr-2 text-xs tabular-nums opacity-70";
+          if (p.length === "Live") length.innerHTML = '<span aria-hidden="true" class="size-1.5 rounded-full bg-[#FF0033]"></span>';
+          length.append(p.length);
+          button.append(length);
+        }
         button.addEventListener("click", () => {
           document.querySelectorAll("[data-playlists] button").forEach((b) => b.removeAttribute("aria-pressed"));
           button.setAttribute("aria-pressed", "true");
           pick(p);
         });
         row.append(button);
+        row.hidden = i >= limit;
         return row;
       }),
     );
+    if (items && items.length > limit) {
+      const more = document.createElement("li");
+      more.className = "sm:col-span-2";
+      const button = Object.assign(document.createElement("button"), { type: "button", textContent: `Tampilkan ${items.length - limit} lagi` });
+      button.className = "min-h-11 w-full rounded-[18px] text-sm font-semibold text-zinc-400 hover:bg-zinc-900 hover:text-zinc-50 focus-visible:outline-2 focus-visible:outline-accent";
+      button.addEventListener("click", () => {
+        list.querySelectorAll<HTMLElement>(":scope > li[hidden]").forEach((li) => (li.hidden = false));
+        more.remove();
+      });
+      more.append(button);
+      list.append(more);
+    }
     if (items?.length === 0) {
       const note = document.createElement("li");
       note.className = "flex flex-col items-center gap-2 py-2 text-center sm:col-span-2";
@@ -415,9 +459,10 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
   renderHistory();
   const picks = document.querySelector<HTMLElement>("[data-picks]")!;
   const ytPicks = document.querySelector<HTMLElement>("[data-yt-picks]")!;
-  fill(ytPicks, JSON.parse(ytPicks.dataset.ytPicks!), ["Belum ada pilihan", "Pilihan lagu belum tersedia."]);
+  const ytList: Playlist[] = JSON.parse(ytPicks.dataset.ytPicks!);
+  fill(ytPicks, ytList, ["Belum ada pilihan", "Pilihan lagu belum tersedia."], undefined, 6);
   const pickList: Playlist[] = JSON.parse(picks.dataset.picks!);
-  fill(picks, pickList, ["Belum ada pilihan", "Pilihan lagu belum tersedia."]);
+  fill(picks, pickList, ["Belum ada pilihan", "Pilihan lagu belum tersedia."], undefined, 6);
   // Covers come from Spotify's oEmbed (no login, CORS open); a row keeps its
   // plain tile if that fails. Old history entries pick the cover up too.
   Promise.all(pickList.map(async (p, i) => {
@@ -431,8 +476,9 @@ const SUGGESTIONS = ["lofi belajar", "piano tenang", "jazz cafe", "suara hujan",
     picks.querySelectorAll("li > button")[i]?.firstElementChild?.replaceWith(img);
   })).then(() => {
     const old = played();
-    const fixed = old.map((h) => h.cover ? h : { ...h, cover: pickList.find((p) => p.src === h.src)?.cover });
-    if (fixed.some((h, i) => h.cover !== old[i].cover)) {
+    // Saved entries take the picks' current cover, song count, and length.
+    const fixed = old.map((h) => ({ ...h, ...[...pickList, ...ytList].find((p) => p.src === h.src) }));
+    if (JSON.stringify(fixed) !== JSON.stringify(old)) {
       try { localStorage.setItem(HISTORY, JSON.stringify(fixed)); } catch {}
       renderHistory();
     }
