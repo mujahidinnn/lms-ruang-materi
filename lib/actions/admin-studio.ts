@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { audit } from "@/lib/audit";
+import { accountMeta, audit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/dal";
 import { redirect, refresh } from "@/lib/request";
 import { defInput, stepInput } from "@/lib/studio/schema";
@@ -15,9 +15,10 @@ export async function aturKarya(_: State, form: FormData): Promise<State> {
   const parsed = z.object({ user: z.uuid(), project: z.string().regex(/^[a-z-]{3,40}$/), hidden: z.enum(["1", "0"]) }).safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "Data tidak valid." };
   const { user, project, hidden } = parsed.data;
+  const who = await accountMeta(user);
   const { error } = await (await createClient()).rpc("admin_hide_studio_project", { p_user: user, p_project: project, p_hidden: hidden === "1" });
   if (error) return { error: "Gagal menyimpan." };
-  await audit(admin, hidden === "1" ? "Sembunyikan karya" : "Tampilkan karya", `${project} (${user})`);
+  await audit(admin, hidden === "1" ? "Sembunyikan karya" : "Tampilkan karya", `${project} (${who.email})`, [["Proyek", project], ...who.meta, ["Profil publik", hidden === "1" ? "Karya tidak tampil" : "Karya tampil"]]);
   refresh();
   return { ok: hidden === "1" ? "Disembunyikan." : "Ditampilkan." };
 }
@@ -32,7 +33,7 @@ export async function buatProyekStudio(_: State, form: FormData): Promise<State>
   const { error } = await (await createClient()).from("studio_defs").insert({ ...parsed.data, summary: "" });
   if (error?.code === "23505") return { error: "Slug itu sudah dipakai proyek lain." };
   if (error) return { error: "Gagal membuat proyek." };
-  await audit(admin, "Buat proyek Studio", parsed.data.slug);
+  await audit(admin, "Buat proyek Studio", parsed.data.title, [["Judul", parsed.data.title], ["Slug", parsed.data.slug], ["Halaman admin", `/admin/studio/${parsed.data.slug}`]]);
   redirect(`/admin/studio/${parsed.data.slug}`);
 }
 
@@ -49,9 +50,18 @@ export async function simpanProyekStudio(_: State, form: FormData): Promise<Stat
     const { count } = await db.from("studio_steps").select("id", { count: "exact", head: true }).eq("def_id", id.data);
     if (!count) return { error: "Tambahkan minimal satu langkah sebelum menerbitkan." };
   }
+  const { data: def } = await db.from("studio_defs").select("slug, status").eq("id", id.data).maybeSingle();
   const { error } = await db.from("studio_defs").update({ ...parsed.data, status: status.data, updated_at: new Date().toISOString() }).eq("id", id.data);
   if (error) return { error: "Gagal menyimpan." };
-  await audit(admin, status.data === "published" ? "Terbitkan proyek Studio" : "Simpan proyek Studio", parsed.data.title);
+  await audit(admin, status.data === "published" ? "Terbitkan proyek Studio" : "Simpan proyek Studio", parsed.data.title, [
+    ["Judul", parsed.data.title],
+    ["Slug", def?.slug ?? ""],
+    ["Tingkat", parsed.data.level],
+    ["Perkiraan", parsed.data.est_hours ? `${parsed.data.est_hours} jam` : ""],
+    ["Status", `${def?.status ?? "?"} -> ${status.data}`],
+    ["Ringkasan", parsed.data.summary],
+    ["Halaman admin", def ? `/admin/studio/${def.slug}` : ""],
+  ]);
   refresh();
   return { ok: status.data === "published" ? "Tersimpan dan terbit." : "Tersimpan sebagai draf." };
 }
@@ -60,10 +70,10 @@ export async function hapusProyekStudio(form: FormData) {
   const admin = await requireAdmin();
   const id = z.uuid().parse(form.get("id"));
   const db = await createClient();
-  const { data } = await db.from("studio_defs").select("slug").eq("id", id).maybeSingle();
+  const { data } = await db.from("studio_defs").select("slug, title, status, studio_steps(id)").eq("id", id).maybeSingle();
   const { error } = await db.from("studio_defs").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  await audit(admin, "Hapus proyek Studio", data?.slug ?? id);
+  await audit(admin, "Hapus proyek Studio", data?.title ?? id, [["Judul", data?.title ?? ""], ["Slug", data?.slug ?? ""], ["Status", data?.status ?? ""], ["Jumlah langkah", String(data?.studio_steps?.length ?? 0)], ["ID proyek", id]]);
   redirect("/admin/studio");
 }
 
@@ -91,7 +101,7 @@ export async function simpanLangkahStudio(_: State, form: FormData): Promise<Sta
   const parsed = stepInput.safeParse({ ...f, est_minutes: f.est_minutes === "" ? null : f.est_minutes, materials: json(f.materials), checks: json(f.checks) });
   if (!parsed.success) return { error: nameOf(parsed.error) };
   const db = await createClient();
-  const { data: mine } = await db.from("studio_steps").select("def_id").eq("id", id.data).single();
+  const { data: mine } = await db.from("studio_steps").select("def_id, studio_defs(title, slug)").eq("id", id.data).single();
   if (!mine) return { error: "Langkah tidak ditemukan." };
   // Item ids are what learners' ticks point to, so they must be unique across the whole project.
   const { data: others } = await db.from("studio_steps").select("checks, materials").eq("def_id", mine.def_id).neq("id", id.data);
@@ -101,7 +111,17 @@ export async function simpanLangkahStudio(_: State, form: FormData): Promise<Sta
   const { error } = await db.from("studio_steps").update(parsed.data).eq("id", id.data);
   if (error?.code === "23505") return { error: "Slug itu sudah dipakai langkah lain di proyek ini." };
   if (error) return { error: "Gagal menyimpan." };
-  await audit(admin, "Simpan langkah Studio", parsed.data.title);
+  const proj = mine.studio_defs as unknown as { title: string; slug: string } | null;
+  await audit(admin, "Simpan langkah Studio", parsed.data.title, [
+    ["Proyek", proj?.title ?? ""],
+    ["Langkah", parsed.data.title],
+    ["Tahap", parsed.data.stage],
+    ["Slug", parsed.data.slug],
+    ["Perkiraan", parsed.data.est_minutes ? `${parsed.data.est_minutes} menit` : ""],
+    ["Bahan", String(parsed.data.materials.length)],
+    ["Butir periksa", String(parsed.data.checks.length)],
+    ["Halaman admin", proj ? `/admin/studio/${proj.slug}` : ""],
+  ]);
   return { ok: "Tersimpan." }; // no refresh: the page keeps other steps' unsaved edits
 }
 
@@ -123,9 +143,11 @@ export async function geserLangkahStudio(form: FormData) {
 export async function hapusLangkahStudio(form: FormData) {
   const admin = await requireAdmin();
   const id = z.uuid().parse(form.get("id"));
-  const { error } = await (await createClient()).from("studio_steps").delete().eq("id", id);
+  const db = await createClient();
+  const { data: step } = await db.from("studio_steps").select("title, stage, studio_defs(title)").eq("id", id).maybeSingle();
+  const { error } = await db.from("studio_steps").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  await audit(admin, "Hapus langkah Studio", id);
+  await audit(admin, "Hapus langkah Studio", step?.title ?? id, [["Proyek", (step?.studio_defs as unknown as { title: string } | null)?.title ?? ""], ["Langkah", step?.title ?? ""], ["Tahap", step?.stage ?? ""], ["ID langkah", id]]);
   refresh();
 }
 
@@ -133,18 +155,20 @@ export async function hapusLangkahStudio(form: FormData) {
 export async function berikanAksesStudio(form: FormData) {
   const admin = await requireAdmin();
   const user = z.uuid().parse(form.get("user"));
+  const who = await accountMeta(user);
   const { error } = await (await createClient()).rpc("admin_grant_feature", { p_user: user, p_feature: STUDIO_FEATURE });
   if (error) throw new Error(error.message);
-  await audit(admin, "Beri akses Studio Proyek", user);
+  await audit(admin, "Beri akses Studio Proyek", who.email, who.meta);
   refresh();
 }
 
 export async function cabutAksesStudio(form: FormData) {
   const admin = await requireAdmin();
   const user = z.uuid().parse(form.get("user"));
+  const who = await accountMeta(user);
   const { error } = await (await createClient()).rpc("admin_revoke_feature", { p_user: user, p_feature: STUDIO_FEATURE });
   if (error) throw new Error(error.message);
-  await audit(admin, "Cabut akses Studio Proyek", user);
+  await audit(admin, "Cabut akses Studio Proyek", who.email, who.meta);
   refresh();
 }
 
@@ -153,6 +177,6 @@ export async function bukaStudioUntukSemua(form: FormData) {
   const open = z.enum(["1", "0"]).parse(form.get("open")) === "1";
   const { error } = await (await createClient()).rpc("admin_set_feature_open", { p_feature: STUDIO_FEATURE, p_open: open });
   if (error) throw new Error(error.message);
-  await audit(admin, open ? "Buka Studio Proyek untuk semua" : "Tutup Studio Proyek (akses terbatas)", "");
+  await audit(admin, open ? "Buka Studio Proyek untuk semua" : "Tutup Studio Proyek (akses terbatas)", "", [["Akses", open ? "Semua pengguna yang masuk bisa membuka Studio Proyek" : "Hanya akun yang diberi akses"], ["Halaman admin", "/admin/studio"]]);
   refresh();
 }
