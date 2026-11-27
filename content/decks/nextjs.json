@@ -1,0 +1,328 @@
+{
+  "theme": "nextjs",
+  "deck": "Next.js",
+  "kicker": "KELAS",
+  "subtitle": "Framework React full-stack: routing App Router, server dan client component, data fetching, server action, autentikasi, sampai deploy ke Vercel.",
+  "slides": [
+    {
+      "title": "Next.js"
+    },
+    {
+      "title": "Apa itu Next.js?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Framework React full-stack buatan Vercel",
+        "Routing, render di server, dan API dalam satu proyek",
+        "Kelas ini memakai Next.js 16 dengan App Router",
+        "Kamu sudah paham React: komponen, props, dan state"
+      ],
+      "note": "Next.js menambah server di sekitar React yang sudah kamu kenal."
+    },
+    {
+      "title": "Cara halaman dirender",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "CSR: HTML kosong, browser merakit halaman dengan JS",
+        "SSR: server membuat HTML baru di setiap request",
+        "SSG: HTML dibuat sekali saat build, lalu dipakai ulang",
+        "Next.js bisa mencampur ketiganya per halaman"
+      ]
+    },
+    {
+      "title": "Membuat proyek",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Butuh Node.js 20.9 atau lebih baru",
+        "Pilih TypeScript, Tailwind, dan App Router",
+        "Turbopack jadi bundler bawaan, dev server cepat",
+        "Buka http://localhost:3000 setelah npm run dev"
+      ],
+      "code": "npx create-next-app@latest kantin-sekolah\ncd kantin-sekolah\nnpm run dev\n\napp/\n  layout.tsx\n  page.tsx\n  globals.css\npublic/\nnext.config.ts"
+    },
+    {
+      "title": "Folder adalah route",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Setiap folder di app/ menjadi satu segmen URL",
+        "Segmen baru bisa dibuka setelah ada file page.tsx",
+        "app/page.tsx adalah halaman beranda /",
+        "File lain di folder yang sama tidak jadi halaman"
+      ],
+      "code": "app/page.tsx            ->  /\napp/menu/page.tsx       ->  /menu\napp/menu/promo/page.tsx ->  /menu/promo\napp/menu/Kartu.tsx      ->  (bukan halaman)"
+    },
+    {
+      "title": "Layout bertingkat",
+      "kicker": "ROUTING",
+      "bullets": [
+        "layout.tsx membungkus semua halaman di bawahnya",
+        "Root layout wajib punya tag html dan body",
+        "Layout tetap hidup saat pindah halaman",
+        "Route group (admin) mengelompokkan tanpa ubah URL"
+      ],
+      "code": "export default function Layout({\n  children,\n}: { children: React.ReactNode }) {\n  return (\n    <section>\n      <nav>Menu Kantin</nav>\n      {children}\n    </section>\n  );\n}"
+    },
+    {
+      "title": "Route dinamis",
+      "kicker": "ROUTING",
+      "bullets": [
+        "[id] menangkap satu segmen, misalnya /menu/12",
+        "[...slug] menangkap banyak segmen sekaligus",
+        "params berupa Promise, jadi perlu di-await",
+        "Segmen statis menang atas segmen dinamis"
+      ],
+      "code": "// app/menu/[id]/page.tsx\nexport default async function Page({\n  params,\n}: { params: Promise<{ id: string }> }) {\n  const { id } = await params;\n  return <h1>Menu nomor {id}</h1>;\n}"
+    },
+    {
+      "title": "Link dan halaman 404",
+      "kicker": "ROUTING",
+      "bullets": [
+        "<Link> dari next/link pindah halaman tanpa reload",
+        "Link yang terlihat di layar di-prefetch otomatis",
+        "notFound() menampilkan not-found.tsx terdekat",
+        "not-found.tsx di app/ jadi halaman 404 umum"
+      ],
+      "code": "import Link from \"next/link\";\nimport { notFound } from \"next/navigation\";\n\n<Link href=\"/menu/12\">Nasi goreng</Link>\n\nif (!menu) notFound();"
+    },
+    {
+      "title": "Server component",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Semua komponen di app/ adalah server component",
+        "Boleh async dan langsung mengambil data",
+        "Kodenya tidak dikirim ke browser, bundle kecil",
+        "Tidak bisa memakai useState, useEffect, atau onClick"
+      ],
+      "code": "export default async function Page() {\n  const res = await fetch(\"https://kantin.id/menu\");\n  const menu = await res.json();\n  return <p>{menu.length} menu tersedia</p>;\n}"
+    },
+    {
+      "title": "Client component",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Tulis \"use client\" di baris paling atas file",
+        "Butuh client untuk state, event, dan API browser",
+        "Tetap dirender jadi HTML dulu di server",
+        "Semua yang diimpor file itu ikut ke browser"
+      ],
+      "code": "\"use client\";\nimport { useState } from \"react\";\n\nexport function TombolSuka() {\n  const [suka, setSuka] = useState(0);\n  return (\n    <button onClick={() => setSuka(suka + 1)}>\n      Suka {suka}</button>\n  );\n}"
+    },
+    {
+      "title": "Menggabungkan keduanya",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Server component boleh merender client component",
+        "Props ke client harus bisa diserialisasi",
+        "Boleh: teks, angka, array, objek biasa, Date",
+        "Tidak boleh: fungsi biasa dan instance class",
+        "Taruh \"use client\" sedalam mungkin di pohon"
+      ]
+    },
+    {
+      "title": "Mengambil data di server",
+      "kicker": "DATA",
+      "bullets": [
+        "Server component async memanggil fetch atau DB",
+        "Tidak perlu useEffect dan state loading manual",
+        "Rahasia seperti API key tetap di server",
+        "Jalankan request yang tidak saling tunggu paralel"
+      ],
+      "code": "const [menu, promo] = await Promise.all([\n  getMenu(),\n  getPromo(),\n]);"
+    },
+    {
+      "title": "Caching dan revalidate",
+      "kicker": "DATA",
+      "bullets": [
+        "Next.js 16: data tidak di-cache kecuali kamu minta",
+        "\"use cache\" menyimpan hasil fungsi atau komponen",
+        "cacheLife mengatur berapa lama cache dipakai",
+        "revalidatePath dan revalidateTag membuang cache"
+      ],
+      "code": "export async function getMenu() {\n  \"use cache\";\n  cacheLife(\"hours\");\n  return db.menu.findMany();\n}",
+      "note": "Aktifkan dengan cacheComponents: true di next.config.ts."
+    },
+    {
+      "title": "Loading dan error",
+      "kicker": "DATA",
+      "bullets": [
+        "loading.tsx tampil selagi halaman menunggu data",
+        "error.tsx menangkap error di segmen itu",
+        "error.tsx wajib client component",
+        "Tombol reset mencoba render ulang segmen"
+      ],
+      "code": "// app/menu/loading.tsx\nexport default function Loading() {\n  return <p>Memuat menu...</p>;\n}"
+    },
+    {
+      "title": "Streaming dengan Suspense",
+      "kicker": "DATA",
+      "bullets": [
+        "Bagian cepat dikirim dulu, bagian lambat menyusul",
+        "Bungkus komponen lambat dengan <Suspense>",
+        "fallback tampil sampai datanya siap",
+        "Pengguna tidak menatap layar putih"
+      ],
+      "code": "<h1>Kantin Sekolah</h1>\n<Suspense fallback={<p>Memuat ulasan...</p>}>\n  <DaftarUlasan />\n</Suspense>"
+    },
+    {
+      "title": "Route handler",
+      "kicker": "SERVER",
+      "bullets": [
+        "File route.ts membuat endpoint API",
+        "Ekspor fungsi bernama GET, POST, PUT, DELETE",
+        "Memakai Request dan Response standar web",
+        "Satu folder tidak boleh punya page dan route sekaligus"
+      ],
+      "code": "// app/api/menu/route.ts\nexport async function GET() {\n  const menu = await getMenu();\n  return Response.json(menu);\n}"
+    },
+    {
+      "title": "Server action",
+      "kicker": "SERVER",
+      "bullets": [
+        "Fungsi async bertanda \"use server\"",
+        "Dipasang langsung di <form action={...}>",
+        "Menerima FormData tanpa membuat endpoint manual",
+        "Form tetap jalan walau JavaScript belum dimuat"
+      ],
+      "code": "async function tambahMenu(data: FormData) {\n  \"use server\";\n  const nama = String(data.get(\"nama\"));\n  await db.menu.create({ data: { nama } });\n}\n\n<form action={tambahMenu}>...</form>"
+    },
+    {
+      "title": "Validasi dan revalidatePath",
+      "kicker": "SERVER",
+      "bullets": [
+        "Jangan percaya input: validasi lagi di server",
+        "Zod memeriksa bentuk dan tipe data",
+        "Cek juga siapa yang login sebelum menulis data",
+        "revalidatePath menyegarkan halaman yang berubah"
+      ],
+      "code": "const hasil = Skema.safeParse({\n  nama: data.get(\"nama\"),\n  harga: Number(data.get(\"harga\")),\n});\nif (!hasil.success) return { error: \"Isian salah\" };\nawait simpanMenu(hasil.data);\nrevalidatePath(\"/menu\");"
+    },
+    {
+      "title": "Styling",
+      "kicker": "TAMPILAN",
+      "bullets": [
+        "globals.css diimpor sekali di root layout",
+        "CSS Modules: nama class otomatis unik per file",
+        "Tailwind CSS sudah siap dari create-next-app",
+        "Pilih satu cara utama agar proyek konsisten"
+      ],
+      "code": "import gaya from \"./kartu.module.css\";\n\n<div className={gaya.kartu}>Es teh</div>"
+    },
+    {
+      "title": "Gambar dan font",
+      "kicker": "TAMPILAN",
+      "bullets": [
+        "next/image mengecilkan dan mengubah format gambar",
+        "width dan height mencegah tata letak bergeser",
+        "Gambar di luar layar dimuat belakangan (lazy)",
+        "next/font menyimpan font di server sendiri"
+      ],
+      "code": "import Image from \"next/image\";\n\n<Image\n  src=\"/menu/nasi-goreng.jpg\"\n  alt=\"Nasi goreng kantin\"\n  width={400}\n  height={300}\n/>"
+    },
+    {
+      "title": "Metadata dan SEO",
+      "kicker": "TAMPILAN",
+      "bullets": [
+        "Ekspor metadata untuk judul dan deskripsi tetap",
+        "generateMetadata untuk halaman dinamis",
+        "openGraph mengatur pratinjau saat link dibagikan",
+        "Judul unik per halaman membantu mesin pencari"
+      ],
+      "code": "export async function generateMetadata({ params }) {\n  const { id } = await params;\n  const menu = await getMenuById(id);\n  return {\n    title: `${menu.nama} | Kantin`,\n    description: menu.deskripsi,\n  };\n}"
+    },
+    {
+      "title": "Proxy",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "proxy.ts di akar proyek, dulu bernama middleware",
+        "Berjalan sebelum request sampai ke halaman",
+        "Cocok untuk redirect cepat dan cek cookie ringan",
+        "matcher membatasi path yang diperiksa"
+      ],
+      "code": "export function proxy(request: NextRequest) {\n  if (!request.cookies.has(\"sesi\")) {\n    const url = new URL(\"/masuk\", request.url);\n    return NextResponse.redirect(url);\n  }\n}\nexport const config = { matcher: \"/admin/:path*\" };"
+    },
+    {
+      "title": "Cookie dan sesi",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "cookies() dari next/headers, di-await dulu",
+        "Membaca bisa di server component",
+        "Menulis hanya di server action atau route handler",
+        "Pakai httpOnly dan secure untuk cookie sesi"
+      ],
+      "code": "const toko = await cookies();\nconst sesi = toko.get(\"sesi\")?.value;\n\ntoko.set(\"sesi\", token, {\n  httpOnly: true,\n  secure: true,\n  maxAge: 60 * 60 * 24,\n});"
+    },
+    {
+      "title": "Melindungi halaman",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "Proxy hanya penyaring awal, bukan satu-satunya",
+        "Cek sesi lagi di halaman dan di server action",
+        "redirect(\"/masuk\") bila belum login",
+        "Library seperti Auth.js mengurus login dan sesi"
+      ],
+      "code": "export default async function Admin() {\n  const user = await getUser();\n  if (!user) redirect(\"/masuk\");\n  return <h1>Halo, {user.nama}</h1>;\n}"
+    },
+    {
+      "title": "Data hanya di server",
+      "kicker": "DATABASE",
+      "bullets": [
+        "Kueri database hanya di kode server",
+        "import \"server-only\" mencegah file bocor ke client",
+        "Kumpulkan akses data di satu folder: data layer",
+        "Kirim ke client hanya kolom yang dibutuhkan"
+      ],
+      "code": "// lib/data/siswa.ts\nimport \"server-only\";\n\nexport async function getSiswa(id: string) {\n  const s = await db.siswa.findUnique({\n    where: { id },\n  });\n  return { nama: s.nama, kelas: s.kelas };\n}"
+    },
+    {
+      "title": "Memakai ORM",
+      "kicker": "DATABASE",
+      "bullets": [
+        "ORM: tabel jadi objek, kueri jadi pemanggilan fungsi",
+        "Prisma: skema di file schema.prisma",
+        "Drizzle: skema ditulis langsung di TypeScript",
+        "Keduanya membuat migration dan tipe otomatis"
+      ],
+      "code": "const daftar = await db.siswa.findMany({\n  where: { kelas: \"XI RPL 1\" },\n  orderBy: { nama: \"asc\" },\n});"
+    },
+    {
+      "title": "Environment variable",
+      "kicker": "DATABASE",
+      "bullets": [
+        "Simpan rahasia di .env.local, jangan di-commit",
+        "Tanpa awalan: hanya terbaca di server",
+        "NEXT_PUBLIC_ ikut ke browser, jangan isi rahasia",
+        "Nilai NEXT_PUBLIC_ ditanam saat build"
+      ],
+      "code": "# .env.local\nDATABASE_URL=postgres://...\nNEXT_PUBLIC_NAMA_SEKOLAH=SMK Nusantara"
+    },
+    {
+      "title": "Build dan deploy",
+      "kicker": "DEPLOY",
+      "bullets": [
+        "next build membuat versi produksi dan cek tipe",
+        "Hasil build menandai halaman statis dan dinamis",
+        "Vercel: hubungkan repo GitHub, deploy otomatis",
+        "Isi env produksi di dashboard, bukan di repo"
+      ],
+      "code": "npm run build\nnpm run start"
+    },
+    {
+      "title": "Core Web Vitals",
+      "kicker": "DEPLOY",
+      "bullets": [
+        "LCP: elemen terbesar tampil, baik di bawah 2,5 detik",
+        "INP: respons terhadap klik, baik di bawah 200 ms",
+        "CLS: pergeseran tata letak, baik di bawah 0,1",
+        "Ukur dengan Lighthouse dan PageSpeed Insights"
+      ]
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "DEPLOY",
+      "bullets": [
+        "Bangun proyek nyata: kantin, absensi, atau toko",
+        "Dalami autentikasi dan database di aplikasi itu",
+        "Pelajari testing dan CI/CD untuk deploy aman",
+        "Rajin baca dokumentasi resmi nextjs.org"
+      ]
+    }
+  ]
+}

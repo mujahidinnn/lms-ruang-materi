@@ -1,0 +1,332 @@
+{
+  "theme": "mongodb",
+  "deck": "MongoDB",
+  "kicker": "KELAS",
+  "subtitle": "Database dokumen untuk aplikasi modern: dari CRUD dan query sampai desain skema, aggregation pipeline, index, Node.js, Mongoose, dan deploy aman.",
+  "slides": [
+    {
+      "title": "MongoDB"
+    },
+    {
+      "title": "Apa itu MongoDB?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Database NoSQL yang menyimpan data sebagai dokumen",
+        "Dokumen mirip objek JSON, bisa bersarang dan berisi array",
+        "Tidak ada skema kaku: tiap dokumen boleh sedikit berbeda",
+        "Versi di kelas ini: MongoDB 8 dengan driver Node.js"
+      ],
+      "note": "Kalau kamu sudah kenal SQL, anggap dokumen sebagai baris yang lebih kaya."
+    },
+    {
+      "title": "Dokumen dan collection",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Database berisi collection, collection berisi dokumen",
+        "Collection mirip tabel, dokumen mirip baris",
+        "Disimpan sebagai BSON: JSON biner dengan tipe tambahan",
+        "Setiap dokumen wajib punya _id yang unik",
+        "Ukuran satu dokumen paling besar 16 MB"
+      ],
+      "code": "{\n  _id: ObjectId(\"665f1c...\"),\n  nis: \"1001\",\n  nama: \"Sari\",\n  hobi: [\"futsal\", \"musik\"],\n  alamat: { kota: \"Bandung\" }\n}"
+    },
+    {
+      "title": "Alat kerja: Atlas, Compass, mongosh",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Atlas: MongoDB di cloud, ada cluster gratis untuk belajar",
+        "Compass: aplikasi desktop untuk melihat dan mengedit data",
+        "mongosh: shell di terminal untuk mengetik perintah",
+        "Database dan collection dibuat saat data pertama masuk"
+      ],
+      "code": "use sekolah\ndb.siswa.insertOne({ nama: \"Sari\" })\ndb.siswa.find()\nshow collections"
+    },
+    {
+      "title": "Menambah dokumen",
+      "kicker": "CRUD",
+      "bullets": [
+        "insertOne untuk satu dokumen, insertMany untuk banyak",
+        "_id dibuat otomatis bila tidak kamu isi",
+        "Hasilnya memuat insertedId atau insertedIds",
+        "Collection dibuat otomatis saat insert pertama"
+      ],
+      "code": "const buku = db.collection(\"buku\");\nawait buku.insertOne({\n  judul: \"Laskar Pelangi\", stok: 3\n});\nawait buku.insertMany([\n  { judul: \"Bumi\", stok: 0 },\n  { judul: \"Negeri 5 Menara\", stok: 2 }\n]);"
+    },
+    {
+      "title": "Membaca dokumen",
+      "kicker": "CRUD",
+      "bullets": [
+        "find(filter) mengembalikan cursor, ubah dengan toArray()",
+        "findOne(filter) mengembalikan satu dokumen atau null",
+        "Filter kosong {} artinya semua dokumen",
+        "Projection memilih field: 1 tampil, 0 disembunyikan"
+      ],
+      "code": "await buku.find({ stok: 0 }).toArray();\nawait buku.findOne({ judul: \"Bumi\" });\nawait buku.find({}, {\n  projection: { _id: 0, judul: 1 }\n}).toArray();"
+    },
+    {
+      "title": "Mengubah dokumen",
+      "kicker": "CRUD",
+      "bullets": [
+        "updateOne mengubah dokumen pertama yang cocok",
+        "updateMany mengubah semua dokumen yang cocok",
+        "$set mengganti nilai, $inc menambah angka",
+        "$push menambah item ke array",
+        "Tanpa operator $, isi dokumen bisa tertimpa"
+      ],
+      "code": "await buku.updateOne(\n  { judul: \"Laskar Pelangi\" },\n  {\n    $inc: { stok: -1 },\n    $push: { peminjam: \"Budi\" }\n  }\n);"
+    },
+    {
+      "title": "Menghapus dokumen",
+      "kicker": "CRUD",
+      "bullets": [
+        "deleteOne menghapus dokumen pertama yang cocok",
+        "deleteMany menghapus semua yang cocok",
+        "deleteMany({}) menghapus isi collection, hati-hati",
+        "Cek dulu dengan find memakai filter yang sama"
+      ],
+      "code": "await buku.deleteOne({ judul: \"Bumi\" });\nconst r = await buku.deleteMany({ stok: 0 });\nr.deletedCount; // jumlah yang terhapus"
+    },
+    {
+      "title": "Operator perbandingan dan logika",
+      "kicker": "OPERATOR QUERY",
+      "bullets": [
+        "$gt $gte $lt $lte untuk lebih dari dan kurang dari",
+        "$ne tidak sama, $in salah satu dari daftar",
+        "Beberapa field dalam satu filter berarti AND",
+        "$or untuk salah satu syarat terpenuhi"
+      ],
+      "code": "await menu.find({\n  harga: { $lte: 10000 },\n  stok: { $gt: 0 },\n  $or: [\n    { kategori: \"minuman\" },\n    { tag: \"pedas\" }\n  ]\n}).toArray();"
+    },
+    {
+      "title": "Dokumen bersarang dan array",
+      "kicker": "OPERATOR QUERY",
+      "bullets": [
+        "Dot notation: \"penjual.lantai\" masuk ke field dalam",
+        "{ tag: \"pedas\" } cocok bila array berisi pedas",
+        "$all: array berisi semua nilai yang disebut",
+        "$size: panjang array tepat sekian",
+        "$elemMatch: satu elemen memenuhi beberapa syarat"
+      ],
+      "code": "{ \"penjual.lantai\": 2 }\n{ tag: { $all: [\"dingin\", \"manis\"] } }\n{ tag: { $size: 1 } }\n{ nilai: { $elemMatch: {\n    mapel: \"MTK\", skor: { $gte: 80 } } } }"
+    },
+    {
+      "title": "Urutkan, lewati, batasi",
+      "kicker": "OPERATOR QUERY",
+      "bullets": [
+        "sort({ harga: 1 }) naik, sort({ harga: -1 }) turun",
+        "skip(n) melewati n dokumen pertama",
+        "limit(n) mengambil paling banyak n dokumen",
+        "Paginasi: skip((halaman - 1) * per).limit(per)"
+      ],
+      "code": "const per = 10, hal = 3;\nawait menu.find({})\n  .sort({ nama: 1 })\n  .skip((hal - 1) * per)\n  .limit(per)\n  .toArray();"
+    },
+    {
+      "title": "Embed atau reference?",
+      "kicker": "DESAIN SKEMA",
+      "bullets": [
+        "Embed: data anak disimpan di dalam dokumen induk",
+        "Reference: dokumen terpisah, disambung lewat _id",
+        "Embed cepat dibaca karena cukup satu query",
+        "Reference cocok untuk data besar atau dipakai bersama"
+      ],
+      "code": "// embed\n{ _id: 1, siswa: \"Sari\",\n  item: [{ menu: \"Es Teh\", jumlah: 2 }] }\n// reference\n{ _id: 7, pesanan_id: 1, menu: \"Es Teh\" }"
+    },
+    {
+      "title": "Pola satu ke banyak",
+      "kicker": "DESAIN SKEMA",
+      "bullets": [
+        "Satu ke sedikit: embed array, misal alamat siswa",
+        "Satu ke banyak: simpan array _id atau rujuk balik",
+        "Satu ke sangat banyak: anak menyimpan _id induk",
+        "Array yang terus tumbuh tanpa batas adalah tanda bahaya"
+      ]
+    },
+    {
+      "title": "Merancang dari pola baca",
+      "kicker": "DESAIN SKEMA",
+      "bullets": [
+        "Mulai dari pertanyaan: halaman apa yang paling sering dibuka?",
+        "Data yang selalu dibaca bersama, simpan bersama",
+        "Denormalisasi: salin field kecil agar tak perlu join",
+        "Salinan harus ikut diperbarui saat aslinya berubah",
+        "Ingat batas 16 MB per dokumen"
+      ]
+    },
+    {
+      "title": "Apa itu pipeline?",
+      "kicker": "AGREGASI",
+      "bullets": [
+        "aggregate menerima array tahap yang dijalankan berurutan",
+        "Keluaran satu tahap menjadi masukan tahap berikutnya",
+        "Mirip GROUP BY, ORDER BY, dan JOIN di SQL",
+        "Hasil berupa cursor, ambil dengan toArray()"
+      ],
+      "code": "await transaksi.aggregate([\n  { $match: { kasir: \"Sari\" } },\n  { $group: { _id: \"$tanggal\",\n      n: { $sum: 1 } } },\n  { $sort: { _id: 1 } }\n]).toArray();"
+    },
+    {
+      "title": "$group dan $sort",
+      "kicker": "AGREGASI",
+      "bullets": [
+        "_id di $group menentukan kunci pengelompokan",
+        "Akumulator: $sum $avg $min $max $push",
+        "{ $sum: 1 } menghitung jumlah dokumen per grup",
+        "_id: null mengelompokkan semua jadi satu"
+      ],
+      "code": "{ $group: {\n    _id: \"$kasir\",\n    jumlah: { $sum: 1 },\n    rata: { $avg: \"$total\" }\n} },\n{ $sort: { jumlah: -1 } }"
+    },
+    {
+      "title": "$unwind dan $project",
+      "kicker": "AGREGASI",
+      "bullets": [
+        "$unwind memecah array: satu elemen jadi satu dokumen",
+        "$project memilih, mengganti nama, atau menghitung field",
+        "Ekspresi: $multiply, $add, $concat, dan lainnya",
+        "Pakai $project di akhir untuk merapikan hasil"
+      ],
+      "code": "{ $unwind: \"$item\" },\n{ $group: {\n    _id: \"$item.kategori\",\n    total: { $sum: { $multiply:\n      [\"$item.harga\", \"$item.jumlah\"] } }\n} },\n{ $project: { _id: 0,\n    kategori: \"$_id\", total: 1 } }"
+    },
+    {
+      "title": "$lookup",
+      "kicker": "AGREGASI",
+      "bullets": [
+        "Menyambung dokumen dari collection lain",
+        "Hasil masuk ke field array yang kamu beri nama",
+        "Mirip LEFT JOIN: tanpa pasangan, array kosong",
+        "Taruh $match dan $limit sebelum $lookup agar hemat"
+      ],
+      "code": "{ $lookup: {\n    from: \"transaksi\",\n    localField: \"nama\",\n    foreignField: \"kasir\",\n    as: \"riwayat\"\n} }"
+    },
+    {
+      "title": "Index",
+      "kicker": "INDEX DAN PERFORMA",
+      "bullets": [
+        "Tanpa index, MongoDB memeriksa semua dokumen",
+        "Index menyimpan nilai field secara terurut",
+        "_id selalu punya index bawaan",
+        "unique: true menolak nilai kembar"
+      ],
+      "code": "await siswa.createIndex({ nis: 1 },\n  { unique: true });\nawait menu.createIndex({ kategori: 1 });"
+    },
+    {
+      "title": "Index gabungan",
+      "kicker": "INDEX DAN PERFORMA",
+      "bullets": [
+        "Satu index untuk beberapa field sekaligus",
+        "Urutan field penting, gunakan aturan ESR",
+        "Equality dulu, lalu Sort, lalu Range",
+        "Index { a: 1, b: 1 } juga melayani query a saja"
+      ],
+      "code": "// find({ kategori: \"minuman\",\n//   harga: { $lt: 10000 } })\n//   .sort({ nama: 1 })\nawait menu.createIndex({\n  kategori: 1, nama: 1, harga: 1\n});"
+    },
+    {
+      "title": "Membaca explain()",
+      "kicker": "INDEX DAN PERFORMA",
+      "bullets": [
+        "explain(\"executionStats\") menunjukkan cara query berjalan",
+        "COLLSCAN: memindai seluruh collection",
+        "IXSCAN: memakai index",
+        "Bandingkan totalDocsExamined dengan nReturned",
+        "Setiap index menambah biaya tulis dan ruang simpan"
+      ],
+      "code": "db.menu.find({ kategori: \"minuman\" })\n  .explain(\"executionStats\")"
+    },
+    {
+      "title": "Driver Node.js",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Pasang dengan npm install mongodb",
+        "MongoClient terhubung lewat connection string",
+        "Simpan URI di env var, jangan di kode",
+        "Semua operasi async, pakai await"
+      ],
+      "code": "import { MongoClient } from \"mongodb\";\n\nconst client = new MongoClient(\n  process.env.MONGODB_URI\n);\nconst db = client.db(\"kantin\");"
+    },
+    {
+      "title": "CRUD dari aplikasi",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Nama method sama dengan di mongosh",
+        "Projection ditulis di opsi { projection: ... }",
+        "find mengembalikan cursor, akhiri dengan toArray()",
+        "_id dari URL perlu new ObjectId(id)"
+      ],
+      "code": "import { ObjectId } from \"mongodb\";\n\nconst menu = db.collection(\"menu\");\nconst satu = await menu.findOne({\n  _id: new ObjectId(req.params.id)\n});"
+    },
+    {
+      "title": "Koneksi dan error",
+      "kicker": "NODE.JS",
+      "bullets": [
+        "Buat satu MongoClient dan pakai ulang di seluruh app",
+        "Bungkus operasi dengan try/catch",
+        "Kode 11000 berarti nilai kembar di index unique",
+        "Tutup dengan client.close() saat skrip selesai"
+      ],
+      "code": "try {\n  await siswa.insertOne({ nis: \"1001\" });\n} catch (e) {\n  if (e.code === 11000) {\n    console.log(\"NIS sudah dipakai\");\n  } else throw e;\n} finally {\n  await client.close();\n}"
+    },
+    {
+      "title": "Schema Mongoose",
+      "kicker": "MONGOOSE",
+      "bullets": [
+        "Mongoose menambah skema di atas MongoDB",
+        "Schema menentukan field, tipe, dan aturan",
+        "Tipe: String, Number, Date, Boolean, ObjectId, array",
+        "timestamps: true mengisi createdAt dan updatedAt"
+      ],
+      "code": "import mongoose from \"mongoose\";\n\nconst siswaSchema = new mongoose.Schema({\n  nis: { type: String, required: true },\n  nama: String,\n  kelas: String\n}, { timestamps: true });"
+    },
+    {
+      "title": "Validasi dan model",
+      "kicker": "MONGOOSE",
+      "bullets": [
+        "required, min, max, enum, match untuk validasi",
+        "Model dibuat dari schema: mongoose.model()",
+        "Data salah ditolak sebelum masuk database",
+        "Middleware pre('save') jalan sebelum menyimpan"
+      ],
+      "code": "const Siswa = mongoose.model(\n  \"Siswa\", siswaSchema\n);\nawait Siswa.create({\n  nis: \"1001\", nama: \"Sari\"\n});\nconst daftar = await Siswa.find({\n  kelas: \"XI RPL 1\" });"
+    },
+    {
+      "title": "populate",
+      "kicker": "MONGOOSE",
+      "bullets": [
+        "Field ref menyimpan _id dokumen dari model lain",
+        "populate() mengganti _id dengan dokumennya",
+        "Praktis, tapi menambah query di belakang layar",
+        "Populate hanya field yang memang dibutuhkan"
+      ],
+      "code": "const pinjamSchema = new mongoose.Schema({\n  siswa: { type: mongoose.Schema.Types.ObjectId,\n    ref: \"Siswa\" },\n  judul: String\n});\nawait Pinjam.find().populate(\"siswa\");"
+    },
+    {
+      "title": "Transaksi",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "Operasi satu dokumen sudah atomic tanpa transaksi",
+        "Transaksi multi-dokumen: semua berhasil atau batal",
+        "Butuh replica set atau sharded cluster",
+        "Cluster Atlas sudah berupa replica set"
+      ],
+      "code": "const sesi = client.startSession();\nawait sesi.withTransaction(async () => {\n  await stok.updateOne(f1, u1,\n    { session: sesi });\n  await pesanan.insertOne(doc,\n    { session: sesi });\n});\nawait sesi.endSession();"
+    },
+    {
+      "title": "User, role, dan akses jaringan",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "Buat user khusus aplikasi, jangan pakai akun admin",
+        "Beri role secukupnya, misal readWrite di satu database",
+        "Atlas: daftarkan IP server di Network Access",
+        "Hindari 0.0.0.0/0 kecuali benar-benar terpaksa",
+        "Aktifkan backup dan uji proses restore"
+      ]
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "PRODUKSI",
+      "bullets": [
+        "Kerjakan proyek akhir: Laporan Toko Online",
+        "Pelajari schema validation bawaan MongoDB",
+        "Coba Atlas Search untuk pencarian teks",
+        "Pantau query lambat lewat profiler dan explain()"
+      ]
+    }
+  ]
+}
