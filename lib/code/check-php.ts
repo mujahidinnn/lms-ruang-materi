@@ -3,9 +3,16 @@ import type { Check, CheckResult } from "./check-node.ts";
 import { parsePhp, phpScript } from "./php.ts";
 
 // Shell, process, network and file access off: drafts may come from an LLM.
+// -n skips the host php.ini and its extensions (FFI, posix, sockets...); only
+// what the lessons use is loaded back (pdo_sqlite when installed).
 const HARDEN = [
+  "-n",
+  "-d", "display_startup_errors=0",
+  ...["mbstring", "ctype", "pdo", "pdo_sqlite"].flatMap((x) => ["-d", `extension=${x}`]),
   "-d", "display_errors=stderr",
-  "-d", "disable_functions=exec,system,passthru,shell_exec,proc_open,popen,pcntl_exec,pcntl_fork,mail,putenv,dl,curl_init,curl_exec,fsockopen,pfsockopen,stream_socket_client,stream_socket_server,socket_create,symlink,link,chmod,chown",
+  "-d", "ffi.enable=0",
+  "-d", "enable_dl=0",
+  "-d", "disable_functions=exec,system,passthru,shell_exec,proc_open,popen,proc_nice,proc_get_status,proc_terminate,pcntl_exec,pcntl_fork,pcntl_signal,pcntl_alarm,mail,mb_send_mail,imap_open,error_log,putenv,dl,curl_init,curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,stream_socket_server,stream_socket_pair,socket_create,symlink,link,chmod,chown,set_include_path,parse_ini_file,show_source,highlight_file",
   "-d", "open_basedir=/nonexistent",
   "-d", "allow_url_fopen=0",
   "-d", "allow_url_include=0",
