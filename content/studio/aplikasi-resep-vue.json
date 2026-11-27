@@ -1,0 +1,668 @@
+{
+  "slug": "aplikasi-resep-vue",
+  "title": "Aplikasi Resep dengan Vue",
+  "summary": "Bangun aplikasi resep dengan Vue 3, TypeScript, Vue Router, dan Pinia yang membaca API gratis TheMealDB: pencarian dengan debounce, filter kategori dan asal yang tersimpan di URL, detail bahan, favorit yang bertahan di browser, serta keadaan memuat, gagal, dan kosong yang jelas. Kamu juga menulis tes komponen dengan Vitest lalu men-deploy-nya ke Netlify dengan SPA fallback.",
+  "level": "menengah",
+  "est_hours": 14,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-pengguna-resep",
+      "title": "Tentukan untuk siapa aplikasi resep ini",
+      "est_minutes": 20,
+      "body": "## Aplikasi kecil yang dipakai setiap hari\n\nBanyak orang membuka aplikasi resep dengan pertanyaan sederhana: *\"Hari ini masak apa?\"* Mereka mengetik satu kata, melihat foto, membuka satu resep, lalu menyimpannya untuk nanti. Proyek ini membangun persis alur itu dengan **Vue 3**, memakai data gratis dari **TheMealDB**.\n\n![Hasil akhir yang akan kamu bangun: kotak pencarian, filter kategori dan asal masakan, kartu resep dengan tombol favorit, dan hitungan favorit di header](/studio/aplikasi-resep-vue/hasil-beranda.webp)\n\nKenapa proyek ini bagus untuk portofolio? Karena di dalamnya ada hampir semua hal yang ditanyakan saat wawancara frontend: memanggil API, keadaan loading dan error, state global, routing, URL yang bisa dibagikan, dan tes komponen.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi kalimat ini: **\"Aplikasi ini membantu ___ untuk ___.\"** Contoh: \"membantu anak kos mencari ide masakan dari bahan yang ada\".\n2. Tulis tiga hal yang **pasti** bisa dilakukan di versi pertama. Saran: mencari resep, menyaring berdasarkan kategori atau asal masakan, dan menyimpan favorit.\n3. Tulis batas versi pertama. Saran kuat: **tanpa login, tanpa backend sendiri, tanpa menulis resep sendiri**. Favorit cukup disimpan di browser.\n4. Tulis satu kalimat ukuran keberhasilan, misalnya: \"Tautan hasil pencarian yang kubagikan ke teman membuka hasil yang sama persis.\"\n\n> Data TheMealDB berbahasa Inggris dan diisi komunitas. Antarmuka aplikasimu tetap boleh berbahasa Indonesia. Itu juga keputusan desain yang layak ditulis di README.\n\nSalin template di bagian Bahan ke catatanmu.\n",
+      "materials": [
+        {
+          "id": "rv-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Aplikasi Resep\n\nAplikasi ini membantu ___ untuk ___.\n\n## Pasti ada di versi pertama\n1. ___\n2. ___\n3. ___\n\n## Tidak dikerjakan sekarang\n- Login dan akun pengguna\n- Backend sendiri (data dari TheMealDB)\n- ___\n\n## Tujuan pribadiku\n___ (misalnya: portofolio untuk melamar frontend developer junior)\n\n## Ukuran keberhasilan\n___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-brief-kalimat",
+          "text": "Aku sudah menulis kalimat \"Aplikasi ini membantu ... untuk ...\"."
+        },
+        {
+          "id": "rv-brief-fitur",
+          "text": "Aku punya tiga fitur yang pasti ada di versi pertama."
+        },
+        {
+          "id": "rv-brief-batas",
+          "text": "Aku menulis batas versi pertama: tanpa login dan tanpa backend sendiri."
+        },
+        {
+          "id": "rv-brief-ukuran",
+          "text": "Aku menulis satu ukuran keberhasilan yang bisa diperiksa."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "alur-cari-sampai-masak",
+      "title": "Petakan alur dari mencari sampai memasak",
+      "est_minutes": 30,
+      "body": "## Bayangkan pemakainya, bukan kodenya\n\nSebelum memikirkan komponen, jalani aplikasinya di kepala seperti pemakai sungguhan. Alur utama aplikasi resep pendek sekali:\n\n1. Buka aplikasi, langsung terlihat beberapa resep.\n2. Ketik \"chicken\", hasil berubah tanpa menekan Enter.\n3. Pilih kategori **Seafood** atau asal **Japanese** untuk mempersempit.\n4. Buka satu resep, baca bahan dan cara membuatnya.\n5. Tekan tombol hati, lalu kembali ke daftar **dengan filter yang sama**.\n6. Besok, buka halaman Favorit. Resepnya masih ada.\n\n## Kasus tepi yang sering dilupakan\n\nBagian ini yang membedakan aplikasi latihan dari aplikasi yang enak dipakai. Untuk tiap kasus, tulis apa yang **seharusnya** terlihat:\n\n| Kejadian | Yang seharusnya terlihat |\n| --- | --- |\n| Internet lambat | Kerangka kartu abu-abu (skeleton), bukan layar kosong |\n| Internet putus | Pesan gagal dan tombol **Coba lagi** |\n| Kata kunci tidak cocok | Pesan \"tidak ada resep\" dan tombol hapus filter |\n| Mengetik cepat \"c-h-i-c-k-e-n\" | Hanya satu request setelah berhenti mengetik |\n| Jawaban request lama datang belakangan | Hasil lama tidak boleh menimpa hasil baru |\n| Tautan resep salah ketik, misalnya `/resep/abc` | Pesan \"resep tidak ditemukan\" |\n| Halaman di-refresh | Kata kunci dan filter tetap sama |\n| Isi localStorage rusak | Aplikasi tetap jalan, favorit kosong |\n\n## Yang perlu kamu kerjakan\n\n1. Tulis alur utama versimu sendiri dalam 5 sampai 7 langkah.\n2. Salin tabel kasus tepi di atas, lalu tambahkan minimal dua kasus milikmu.\n3. Tandai fitur **wajib** dan **nanti**. Contoh fitur nanti: mode gelap, daftar belanja dari bahan, resep acak.\n\nTabel ini akan kamu pakai lagi di langkah Uji sebagai daftar periksa.\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "rv-ide-alur",
+          "text": "Aku menulis alur utama pemakai dalam 5 sampai 7 langkah."
+        },
+        {
+          "id": "rv-ide-tepi",
+          "text": "Tabel kasus tepi sudah kusalin dan kutambah minimal dua kasus milikku."
+        },
+        {
+          "id": "rv-ide-prioritas",
+          "text": "Fitur sudah kutandai wajib atau nanti."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-vue-dan-kenali-api",
+      "title": "Pilih Vue dan kenali API TheMealDB",
+      "est_minutes": 35,
+      "body": "## Alat yang dipakai\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Runtime | Node.js 24 LTS (npm 11) | Dibutuhkan Vite dan alat build |\n| Framework | Vue 3.5 dengan `<script setup>` | Reaktivitas yang mudah dibaca, satu berkas per komponen |\n| Bahasa | TypeScript | Salah ketik nama field API ketahuan sebelum aplikasi jalan |\n| Build | Vite 8 | Server dev cepat, build siap deploy |\n| Routing | Vue Router 5 | Halaman detail punya alamat sendiri, query URL untuk filter |\n| State | Pinia 4 | Favorit dipakai di header, kartu, dan halaman detail sekaligus |\n| Tes | Vitest 4 + Vue Test Utils | Satu konfigurasi dengan Vite, tes komponen di jsdom |\n\nSemuanya dipasang sekaligus oleh `create-vue`, alat resmi pembuat proyek Vue.\n\n## Kenali API sebelum menulis kode\n\nJangan percaya dokumentasi saja. Panggil API-nya sendiri dan lihat jawabannya. Jalankan perintah di `cek-api.sh` satu per satu, lalu perhatikan:\n\n- `search.php?s=` mencari berdasarkan **nama** resep dan mengembalikan resep lengkap.\n- `filter.php?c=` dan `filter.php?a=` hanya mengembalikan `idMeal`, `strMeal`, dan `strMealThumb`. Versi gratis hanya bisa **satu filter per request**.\n- `lookup.php?i=` mengembalikan satu resep lengkap. Bahan tidak berbentuk array, melainkan `strIngredient1` sampai `strIngredient20` dan pasangannya `strMeasure1` sampai `strMeasure20`.\n- Tidak ada hasil dijawab `{\"meals\": null}`, **bukan** array kosong. Id yang bukan angka bahkan dijawab `{\"meals\": \"Invalid ID\"}`.\n- Daftar asal masakan (`list.php?a=list`) berisi hampir 200 nama, banyak yang belum punya resep. Kadang namanya juga tidak konsisten, misalnya resep India tercatat sebagai `India`, sedangkan daftarnya berisi `Indian`. Data komunitas memang begitu, jadi keadaan \"tidak ada hasil\" wajib dirancang dengan baik.\n\nKunci API `1` adalah kunci uji publik dari TheMealDB untuk belajar dan pengembangan. Tidak ada rahasia yang perlu disembunyikan.\n\n## Yang perlu kamu siapkan\n\n1. Pasang Node.js 24 LTS. Cek dengan `node -v` dan `npm -v`. npm harus versi 11.\n2. Pasang VS Code dan ekstensi resmi **Vue (Official)**.\n3. Jalankan `cek-api.sh` dan simpan satu jawaban `lookup.php` ke catatanmu. Kamu akan membutuhkannya saat menulis tipe data.\n4. Tulis dua alasan memilih Vue dan Pinia dengan kata-katamu sendiri.\n",
+      "materials": [
+        {
+          "id": "rv-m-cek-api",
+          "kind": "kode",
+          "name": "cek-api.sh",
+          "lang": "bash",
+          "content": "B=https://www.themealdb.com/api/json/v1/1\n\n# Cari berdasarkan nama (resep lengkap)\ncurl -s \"$B/search.php?s=chicken\" | head -c 600; echo\n\n# Tidak ada hasil: perhatikan meals bernilai null\ncurl -s \"$B/search.php?s=zzzz\"; echo\n\n# Filter kategori dan asal (hanya id, nama, gambar)\ncurl -s \"$B/filter.php?c=Seafood\" | head -c 400; echo\ncurl -s \"$B/filter.php?a=Japanese\" | head -c 400; echo\n\n# Daftar kategori dan asal untuk dropdown\ncurl -s \"$B/list.php?c=list\"; echo\ncurl -s \"$B/list.php?a=list\" | head -c 400; echo\n\n# Satu resep lengkap: lihat strIngredient1..20 dan strMeasure1..20\ncurl -s \"$B/lookup.php?i=52772\"; echo\n\n# Id yang bukan angka\ncurl -s \"$B/lookup.php?i=abc\"; echo\n"
+        },
+        {
+          "id": "rv-m-mealdb",
+          "kind": "tautan",
+          "name": "TheMealDB: dokumentasi API gratis",
+          "url": "https://www.themealdb.com/api.php"
+        },
+        {
+          "id": "rv-m-vue-start",
+          "kind": "tautan",
+          "name": "Vue: Quick Start",
+          "url": "https://vuejs.org/guide/quick-start.html"
+        },
+        {
+          "id": "rv-m-node",
+          "kind": "tautan",
+          "name": "Unduh Node.js LTS",
+          "url": "https://nodejs.org/en/download"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-tek-node",
+          "text": "node -v menampilkan v24 dan npm -v menampilkan 11."
+        },
+        {
+          "id": "rv-tek-api",
+          "text": "Aku sudah menjalankan cek-api.sh dan melihat meals: null serta \"Invalid ID\"."
+        },
+        {
+          "id": "rv-tek-bahan",
+          "text": "Aku menyimpan satu jawaban lookup.php untuk dijadikan tipe data."
+        },
+        {
+          "id": "rv-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memakai Vue dan Pinia."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-rute-data-dan-state",
+      "title": "Rancang rute, data, dan tempat state",
+      "est_minutes": 50,
+      "body": "## Rancang tiga hal: rute, data, dan siapa yang memegang state\n\n### 1. Rute\n\n| Alamat | Halaman | Catatan |\n| --- | --- | --- |\n| `/` | Beranda: cari dan filter | `?q=chicken&c=Seafood&a=Japanese` |\n| `/resep/:id` | Detail resep | id dari TheMealDB, dimuat saat halaman dibuka |\n| `/favorit` | Daftar favorit | dari Pinia, tanpa request ke API |\n| lainnya | Halaman tidak ditemukan | rute *catch-all* |\n\n### 2. URL sebagai sumber kebenaran\n\nKeputusan paling penting proyek ini: **kata kunci dan filter disimpan di query URL, bukan di variabel komponen**. Komponen hanya *membaca* URL lewat `computed`, dan *mengubah* URL lewat `router.replace`. Hasilnya, tiga hal langsung beres tanpa kode tambahan: refresh tidak menghapus filter, tombol Kembali dari halaman detail membawa filter yang sama, dan tautan hasil pencarian bisa dibagikan.\n\nKotak pencarian adalah satu-satunya pengecualian. Ia punya `ref` sendiri supaya mengetik terasa lancar, lalu baru menulis ke URL 400 ms setelah kamu berhenti mengetik (*debounce*).\n\n![Geser nilai dan lihat siapa yang ikut terhitung ulang. Filter di beranda bekerja dengan cara yang sama: route.query berubah, computed filters terhitung ulang, lalu data dimuat ulang](sim:vue-reaktif)\n\n### 3. Siapa memegang state\n\n| State | Tempat | Alasan |\n| --- | --- | --- |\n| Kata kunci, kategori, asal | URL | Bisa dibagikan dan bertahan saat refresh |\n| Hasil pencarian, loading, error | Komposabel `useFetch` di halaman | Hanya dipakai satu halaman |\n| Favorit | Store Pinia + localStorage | Dipakai header, kartu, dan detail; harus bertahan besok |\n\n## Yang perlu kamu kerjakan\n\n1. Salin `rancangan.md` dari bagian Bahan dan sesuaikan dengan hasil brainstorming-mu.\n2. Gambar sketsa kasar dua layar (beranda dan detail) versi HP dan laptop. Kertas sudah cukup.\n3. Tulis tipe `MealSummary` dan `Meal` dari jawaban `lookup.php` yang kamu simpan di langkah sebelumnya.\n4. Untuk setiap kasus tepi dari langkah Brainstorming, tulis di komponen mana ia akan ditangani.\n",
+      "materials": [
+        {
+          "id": "rv-m-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan Aplikasi Resep\n\n## Rute\n| Alamat | Komponen | Data |\n| --- | --- | --- |\n| / | HomeView | findMeals(q, c, a) dari query URL |\n| /resep/:id | RecipeView (props: id) | getMeal(id) |\n| /favorit | FavoritesView | store favorites (tanpa API) |\n| /:pathMatch(.*)* | NotFoundView | - |\n\n## Query URL beranda\n- q: kata kunci (search.php?s=)\n- c: kategori (filter.php?c=)\n- a: asal masakan (filter.php?a=)\nLebih dari satu terisi: kirim semua request, ambil irisan idMeal.\n\n## Tipe data\n- MealSummary: idMeal, strMeal, strMealThumb\n- Meal: MealSummary + strCategory, strArea, strInstructions, strYoutube, strSource,\n  strIngredient1..20, strMeasure1..20 (string atau null)\n- Ingredient: { name, measure }\n\n## Komponen\n- App: header (brand, Cari, Favorit (n)) + RouterView\n- RecipeCard: gambar, nama, tombol hati (aria-pressed)\n- HomeView: kotak cari (debounce 400 ms), 2 dropdown, grid kartu\n- RecipeView: gambar, kategori dan asal, tombol favorit, bahan, langkah\n\n## Keadaan per halaman\n| Keadaan | Beranda | Detail |\n| --- | --- | --- |\n| memuat | skeleton 8 kartu | \"Memuat resep...\" |\n| gagal | pesan + Coba lagi | pesan + Coba lagi |\n| kosong | pesan + Hapus filter | \"Resep tidak ditemukan\" |\n\n## State\n- Filter: URL\n- Hasil, loading, error: useFetch di halaman\n- Favorit: Pinia + localStorage (kunci \"resep-favorit\")\n"
+        },
+        {
+          "id": "rv-m-router-query",
+          "kind": "tautan",
+          "name": "Vue Router: navigasi dengan query",
+          "url": "https://router.vuejs.org/guide/essentials/navigation.html"
+        },
+        {
+          "id": "rv-m-pinia-why",
+          "kind": "tautan",
+          "name": "Pinia: kenapa memakai store",
+          "url": "https://pinia.vuejs.org/introduction.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-ran-rute",
+          "text": "Aku punya tabel rute dengan alamat, komponen, dan datanya."
+        },
+        {
+          "id": "rv-ran-url",
+          "text": "Aku bisa menjelaskan kenapa filter disimpan di URL, bukan di variabel komponen."
+        },
+        {
+          "id": "rv-ran-sketsa",
+          "text": "Sketsa beranda dan detail versi HP dan laptop sudah ada."
+        },
+        {
+          "id": "rv-ran-keadaan",
+          "text": "Setiap kasus tepi sudah kutentukan komponen penanganannya."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-create-vue",
+      "title": "Siapkan proyek dengan create-vue",
+      "est_minutes": 60,
+      "body": "## Mulai dari kerangka resmi\n\n`create-vue` membuat proyek Vue lengkap dengan TypeScript, Vue Router, Pinia, dan Vitest dalam satu perintah. Proyek itu berisi contoh yang tidak kita butuhkan, jadi langkah ini juga membersihkannya.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu. Opsi `--ts --router --pinia --vitest` menjawab pertanyaan pemasangan sekaligus.\n2. Ganti isi `index.html`, `src/assets/main.css`, `src/App.vue`, dan `src/router/index.ts` dengan versi di bagian Bahan.\n3. Buat `src/views/NotFoundView.vue`.\n4. Jalankan `npm run dev`, buka alamat yang muncul (biasanya http://localhost:5173), lalu coba `/`, `/favorit`, `/resep/52772`, dan `/ngawur`. Setiap alamat harus menampilkan halaman yang benar walaupun isinya masih sementara.\n5. Jalankan `npm run build`. Perintah ini memeriksa tipe dengan `vue-tsc` lalu membuat folder `dist`.\n6. Commit dengan pesan `Siapkan kerangka Vue`.\n\n## Yang perlu diperhatikan\n\n- `src/main.ts` dari create-vue tidak perlu diubah. Ia sudah memasang Pinia dan router.\n- Rute detail dan favorit memakai `() => import(...)`. Vite memecahnya menjadi berkas JavaScript terpisah yang baru diunduh saat halaman itu dibuka.\n- `props: true` di rute detail membuat parameter `:id` masuk sebagai prop komponen, sehingga komponennya bisa diuji tanpa router sungguhan.\n- `scrollBehavior` mengembalikan posisi gulir saat menekan Kembali, dan naik ke atas saat membuka halaman baru.\n\n## Kalau gagal\n\n- `npm error Cannot read properties of null (reading 'edgesOut')` saat `npm install`: ini bug npm 10 pada dependensi Vitest. Pakai Node.js 24 yang membawa npm 11, atau jalankan `npm install -g npm@11`, lalu ulangi `npm install`.\n- `Failed to resolve import \"../components/TheWelcome.vue\"`: `HomeView.vue` contoh belum diganti. Jalankan ulang baris `for v in ...` di `setup.sh`.\n- Halaman putih tanpa pesan: buka Console di DevTools. Biasanya ada nama berkas yang salah ketik di router.\n- `npm install` melaporkan beberapa kerentanan *moderate*: saat proyek ini ditulis, asalnya dari `js-beautify` yang dibawa `@vue/test-utils`, yaitu alat tes yang tidak ikut ke `dist`. Jangan jalankan `npm audit fix --force`, karena perintah itu bisa mengganti paket ke versi lain yang merusak proyek. Cukup `npm update` sesekali.\n",
+      "materials": [
+        {
+          "id": "rv-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "node -v   # harus v24.x\nnpm -v    # harus 11.x\n\nnpm create vue@latest aplikasi-resep-vue -- --ts --router --pinia --vitest\ncd aplikasi-resep-vue\nnpm install\n\n# Buang contoh bawaan create-vue\nrm -r src/components/icons\nrm src/components/HelloWorld.vue src/components/TheWelcome.vue src/components/WelcomeItem.vue\nrm src/components/__tests__/HelloWorld.spec.ts src/views/AboutView.vue src/stores/counter.ts\nrm src/assets/logo.svg src/assets/base.css\nmkdir -p src/api src/composables src/__tests__\n\n# Halaman sementara, diganti di langkah-langkah berikutnya\nfor v in HomeView RecipeView FavoritesView; do\n  printf '<template>\\n  <p>%s segera hadir.</p>\\n</template>\\n' \"$v\" > \"src/views/$v.vue\"\ndone\n\ngit init\n"
+        },
+        {
+          "id": "rv-m-index-html",
+          "kind": "kode",
+          "name": "index.html",
+          "lang": "html",
+          "content": "<!DOCTYPE html>\n<html lang=\"id\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <link rel=\"icon\" href=\"/favicon.ico\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Resepku: cari resep masakan</title>\n  </head>\n  <body>\n    <div id=\"app\"></div>\n    <script type=\"module\" src=\"/src/main.ts\"></script>\n  </body>\n</html>\n"
+        },
+        {
+          "id": "rv-m-css",
+          "kind": "kode",
+          "name": "src/assets/main.css",
+          "lang": "css",
+          "content": ":root {\n  --bg: #fbf7f0;\n  --surface: #ffffff;\n  --ink: #1f1a14;\n  --muted: #6b6256;\n  --line: #ece4d8;\n  --line-strong: #cfc4b4;\n  --accent: #c2410c;\n  color-scheme: light;\n}\n\n* {\n  box-sizing: border-box;\n}\n\nbody {\n  margin: 0;\n  background: var(--bg);\n  color: var(--ink);\n  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;\n  line-height: 1.5;\n}\n\na {\n  color: var(--accent);\n}\n\n:focus-visible {\n  outline: 3px solid var(--accent);\n  outline-offset: 2px;\n}\n\n.site-header {\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 1rem;\n  padding: 1rem clamp(1rem, 4vw, 2.5rem);\n  border-bottom: 1px solid var(--line);\n  background: var(--surface);\n}\n\n.brand {\n  font-weight: 800;\n  font-size: 1.35rem;\n  color: var(--ink);\n  text-decoration: none;\n}\n\n.site-header nav {\n  display: flex;\n  gap: 1rem;\n}\n\n.site-header nav a {\n  color: var(--muted);\n  text-decoration: none;\n  font-weight: 600;\n}\n\n.site-header nav a.router-link-exact-active {\n  color: var(--accent);\n}\n\n.container {\n  max-width: 1120px;\n  margin: 0 auto;\n  padding: 1.5rem clamp(1rem, 4vw, 2.5rem) 3rem;\n}\n\n.page-title {\n  margin: 0 0 1.25rem;\n}\n\n.grid {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n  display: grid;\n  gap: 1rem;\n  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));\n}\n\n.state {\n  padding: 2rem 1.25rem;\n  border: 1px dashed var(--line-strong);\n  border-radius: 16px;\n  text-align: center;\n  background: var(--surface);\n}\n\n.btn {\n  display: inline-block;\n  font: inherit;\n  font-weight: 600;\n  padding: 0.6rem 1rem;\n  border-radius: 999px;\n  border: 1px solid var(--ink);\n  background: var(--ink);\n  color: #fff;\n  text-decoration: none;\n  cursor: pointer;\n}\n\n.btn[aria-pressed='true'] {\n  background: var(--accent);\n  border-color: var(--accent);\n}\n"
+        },
+        {
+          "id": "rv-m-app-awal",
+          "kind": "kode",
+          "name": "src/App.vue",
+          "lang": "vue",
+          "content": "<template>\n  <header class=\"site-header\">\n    <RouterLink to=\"/\" class=\"brand\">Resepku</RouterLink>\n    <nav aria-label=\"Menu utama\">\n      <RouterLink to=\"/\">Cari</RouterLink>\n      <RouterLink to=\"/favorit\">Favorit</RouterLink>\n    </nav>\n  </header>\n  <main class=\"container\">\n    <RouterView />\n  </main>\n</template>\n"
+        },
+        {
+          "id": "rv-m-router",
+          "kind": "kode",
+          "name": "src/router/index.ts",
+          "lang": "ts",
+          "content": "import { createRouter, createWebHistory } from 'vue-router'\nimport HomeView from '../views/HomeView.vue'\n\nconst router = createRouter({\n  history: createWebHistory(import.meta.env.BASE_URL),\n  routes: [\n    { path: '/', name: 'home', component: HomeView },\n    { path: '/resep/:id', name: 'recipe', component: () => import('../views/RecipeView.vue'), props: true },\n    { path: '/favorit', name: 'favorites', component: () => import('../views/FavoritesView.vue') },\n    { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('../views/NotFoundView.vue') },\n  ],\n  scrollBehavior: (_to, _from, saved) => saved ?? { top: 0 },\n})\n\nexport default router\n"
+        },
+        {
+          "id": "rv-m-notfound",
+          "kind": "kode",
+          "name": "src/views/NotFoundView.vue",
+          "lang": "vue",
+          "content": "<template>\n  <div class=\"state\">\n    <p><strong>Halaman tidak ditemukan.</strong></p>\n    <RouterLink to=\"/\" class=\"btn\">Kembali ke beranda</RouterLink>\n  </div>\n</template>\n"
+        },
+        {
+          "id": "rv-m-create-vue",
+          "kind": "tautan",
+          "name": "create-vue di GitHub",
+          "url": "https://github.com/vuejs/create-vue"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-kod-dev",
+          "text": "npm run dev berjalan dan keempat alamat menampilkan halaman yang benar."
+        },
+        {
+          "id": "rv-kod-build",
+          "text": "npm run build lulus tanpa error tipe."
+        },
+        {
+          "id": "rv-kod-bersih",
+          "text": "Berkas contoh create-vue sudah terhapus."
+        },
+        {
+          "id": "rv-kod-commit",
+          "text": "Kerangka proyek sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "lapisan-api-mealdb",
+      "title": "Tulis lapisan API dan parser bahan",
+      "est_minutes": 75,
+      "body": "## Satu berkas yang tahu cara bicara dengan TheMealDB\n\nKomponen tidak boleh tahu detail seperti `strIngredient7` atau `{\"meals\": null}`. Semua itu dikumpulkan di `src/api/mealdb.ts`. Kalau suatu hari kamu pindah API, hanya berkas ini yang berubah.\n\n![Bentuk mentah dari API (bahan tersebar di 40 field, sebagian kosong atau null) diubah parseIngredients menjadi daftar rapi berisi nama dan takaran](/studio/aplikasi-resep-vue/bahan-dari-api.svg)\n\n## Isi berkasnya\n\n- **`getMeals`** membungkus semua jawaban. Apa pun yang bukan array, termasuk `null` dan `\"Invalid ID\"`, dianggap daftar kosong. Satu penjaga di sini melindungi semua fungsi di bawahnya.\n- **`findMeals`** menggabungkan pencarian dan filter. API gratis hanya menerima satu filter per request, jadi fungsi ini mengirim beberapa request sekaligus dengan `Promise.all`, lalu menyisakan resep yang id-nya muncul di **semua** daftar (irisan).\n- **`parseIngredients`** mengubah 40 field bahan dan takaran menjadi array `{ name, measure }` dan membuang yang kosong.\n- Setiap fungsi menerima `signal` opsional. Itu `AbortSignal` yang akan dipakai komposabel di langkah berikutnya untuk membatalkan request.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/api/mealdb.ts` dari bagian Bahan.\n2. Buat `src/__tests__/helpers.ts` dan `src/__tests__/mealdb.spec.ts`. `mockApi` mengganti `fetch` global dengan fungsi palsu, jadi tes tidak pernah menyentuh internet dan hasilnya selalu sama.\n3. Jalankan `npm run test:unit -- --run`. Tanpa `--run`, Vitest masuk mode pantau dan menunggu perubahan berkas.\n4. Rusak kodenya dengan sengaja: hapus `.trim()` pada nama bahan. Tes harus gagal. Kembalikan seperti semula.\n5. Commit dengan pesan `Tambah lapisan API TheMealDB`.\n\n## Kenapa `encodeURIComponent`?\n\nKata kunci datang dari pemakai. Tanpa `encodeURIComponent`, kata seperti `mac & cheese` memotong URL di tanda `&`, sehingga API hanya menerima `mac `. Biasakan membungkus setiap nilai dari luar yang masuk ke URL.\n",
+      "materials": [
+        {
+          "id": "rv-m-api",
+          "kind": "kode",
+          "name": "src/api/mealdb.ts",
+          "lang": "ts",
+          "content": "const BASE = 'https://www.themealdb.com/api/json/v1/1'\n\nexport interface MealSummary {\n  idMeal: string\n  strMeal: string\n  strMealThumb: string\n}\n\nexport interface Meal extends MealSummary {\n  strCategory: string | null\n  strArea: string | null\n  strInstructions: string | null\n  strYoutube: string | null\n  strSource: string | null\n  [key: string]: string | null\n}\n\nexport interface Ingredient {\n  name: string\n  measure: string\n}\n\nexport interface Filters {\n  q: string\n  c: string\n  a: string\n}\n\nasync function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {\n  const res = await fetch(`${BASE}/${path}`, { signal })\n  if (!res.ok) throw new Error(`Server resep menjawab ${res.status}`)\n  return (await res.json()) as T\n}\n\n// Tidak ada hasil dijawab {\"meals\": null}, id yang bukan angka dijawab\n// {\"meals\": \"Invalid ID\"}. Apa pun selain array kita anggap kosong.\nasync function getMeals<T>(path: string, signal?: AbortSignal): Promise<T[]> {\n  const data = await getJson<{ meals: unknown }>(path, signal)\n  return Array.isArray(data.meals) ? data.meals : []\n}\n\n// API gratis hanya bisa satu filter per request. Kalau ada beberapa,\n// ambil semuanya bersamaan lalu sisakan resep yang muncul di setiap daftar.\nexport async function findMeals(f: Filters, signal?: AbortSignal): Promise<MealSummary[]> {\n  const q = f.q.trim()\n  const requests: Promise<MealSummary[]>[] = []\n  if (q || (!f.c && !f.a)) requests.push(getMeals(`search.php?s=${encodeURIComponent(q)}`, signal))\n  if (f.c) requests.push(getMeals(`filter.php?c=${encodeURIComponent(f.c)}`, signal))\n  if (f.a) requests.push(getMeals(`filter.php?a=${encodeURIComponent(f.a)}`, signal))\n  const [first = [], ...rest] = await Promise.all(requests)\n  return first.filter((m) => rest.every((list) => list.some((x) => x.idMeal === m.idMeal)))\n}\n\nexport async function getMeal(id: string, signal?: AbortSignal): Promise<Meal | null> {\n  const meals = await getMeals<Meal>(`lookup.php?i=${encodeURIComponent(id)}`, signal)\n  return meals[0] ?? null\n}\n\nexport async function getCategories(signal?: AbortSignal): Promise<string[]> {\n  const rows = await getMeals<{ strCategory: string }>('list.php?c=list', signal)\n  return rows.map((r) => r.strCategory).sort()\n}\n\nexport async function getAreas(signal?: AbortSignal): Promise<string[]> {\n  const rows = await getMeals<{ strArea: string }>('list.php?a=list', signal)\n  // Daftar aslinya berisi nama ganda, padahal key di v-for harus unik.\n  return [...new Set(rows.map((r) => r.strArea))].sort()\n}\n\nexport function parseIngredients(meal: Meal): Ingredient[] {\n  const list: Ingredient[] = []\n  for (let i = 1; i <= 20; i++) {\n    const name = meal[`strIngredient${i}`]?.trim()\n    if (!name) continue\n    list.push({ name, measure: meal[`strMeasure${i}`]?.trim() ?? '' })\n  }\n  return list\n}\n"
+        },
+        {
+          "id": "rv-m-helpers",
+          "kind": "kode",
+          "name": "src/__tests__/helpers.ts",
+          "lang": "ts",
+          "content": "import { vi } from 'vitest'\nimport { createMemoryHistory, createRouter } from 'vue-router'\nimport HomeView from '@/views/HomeView.vue'\nimport RecipeView from '@/views/RecipeView.vue'\n\n// fetch palsu: jawab berdasarkan path setelah /api/json/v1/1/\nexport function mockApi(routes: Record<string, unknown>, status = 200) {\n  const fn = vi.fn(async (url: string) => {\n    const path = url.split('/api/json/v1/1/')[1] ?? ''\n    const body = path in routes ? routes[path] : { meals: null }\n    return new Response(JSON.stringify(body), { status })\n  })\n  vi.stubGlobal('fetch', fn)\n  return fn\n}\n\nexport function makeRouter() {\n  return createRouter({\n    history: createMemoryHistory(),\n    routes: [\n      { path: '/', name: 'home', component: HomeView },\n      { path: '/resep/:id', name: 'recipe', component: RecipeView, props: true },\n    ],\n  })\n}\n\nexport const meal = (id: string, name: string) => ({\n  idMeal: id,\n  strMeal: name,\n  strMealThumb: `https://img.test/${id}.jpg`,\n})\n"
+        },
+        {
+          "id": "rv-m-api-test",
+          "kind": "kode",
+          "name": "src/__tests__/mealdb.spec.ts",
+          "lang": "ts",
+          "content": "import { afterEach, describe, expect, it, vi } from 'vitest'\nimport { findMeals, parseIngredients, type Meal } from '@/api/mealdb'\nimport { meal, mockApi } from './helpers'\n\nafterEach(() => vi.unstubAllGlobals())\n\ndescribe('parseIngredients', () => {\n  it('mengambil bahan yang terisi saja dan merapikan spasi', () => {\n    const m = {\n      ...meal('1', 'Nasi Goreng'),\n      strIngredient1: 'Rice ',\n      strMeasure1: ' 2 cups',\n      strIngredient2: 'Egg',\n      strMeasure2: null,\n      strIngredient3: '',\n      strMeasure3: ' ',\n      strIngredient4: null,\n    } as unknown as Meal\n    expect(parseIngredients(m)).toEqual([\n      { name: 'Rice', measure: '2 cups' },\n      { name: 'Egg', measure: '' },\n    ])\n  })\n})\n\ndescribe('findMeals', () => {\n  it('menggabungkan filter kategori dan asal dengan irisan id', async () => {\n    const fetch = mockApi({\n      'filter.php?c=Seafood': { meals: [meal('1', 'Sushi'), meal('2', 'Tempura')] },\n      'filter.php?a=Japanese': { meals: [meal('2', 'Tempura'), meal('3', 'Ramen')] },\n    })\n    const result = await findMeals({ q: '', c: 'Seafood', a: 'Japanese' })\n    expect(result.map((m) => m.strMeal)).toEqual(['Tempura'])\n    expect(fetch).toHaveBeenCalledTimes(2) // tanpa kata kunci, search.php tidak dipanggil\n  })\n\n  it('melempar error kalau server tidak menjawab 200', async () => {\n    mockApi({}, 503)\n    await expect(findMeals({ q: 'soup', c: '', a: '' })).rejects.toThrow('503')\n  })\n})\n"
+        },
+        {
+          "id": "rv-m-mdn-encode",
+          "kind": "tautan",
+          "name": "MDN: encodeURIComponent",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent"
+        },
+        {
+          "id": "rv-m-vitest-mock",
+          "kind": "tautan",
+          "name": "Vitest: mocking global",
+          "url": "https://vitest.dev/guide/mocking/globals"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-api-tes",
+          "text": "npm run test:unit -- --run meluluskan tes mealdb."
+        },
+        {
+          "id": "rv-api-null",
+          "text": "Aku bisa menjelaskan kenapa getMeals memeriksa Array.isArray, bukan hanya null."
+        },
+        {
+          "id": "rv-api-irisan",
+          "text": "Aku paham cara findMeals menggabungkan beberapa filter."
+        },
+        {
+          "id": "rv-api-commit",
+          "text": "Lapisan API sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "store-favorit-pinia",
+      "title": "Simpan favorit dengan Pinia dan localStorage",
+      "est_minutes": 60,
+      "body": "## Satu sumber untuk favorit\n\nFavorit dipakai di tiga tempat: hitungan di header, tombol hati di setiap kartu, dan tombol di halaman detail. Kalau masing-masing menyimpan datanya sendiri, angkanya cepat tidak sinkron. Store Pinia menjadi satu-satunya sumber, dan semua komponen membacanya.\n\n## Setup store\n\nPinia punya dua gaya penulisan store. Proyek ini memakai *setup store*: isinya sama seperti `<script setup>`. `ref` menjadi state, `computed` menjadi getter, dan fungsi biasa menjadi action.\n\n## Menyimpan ke localStorage tanpa plugin\n\n- Saat store dibuat, `load()` membaca localStorage. `JSON.parse` dibungkus `try/catch`, karena isi localStorage bisa rusak atau diubah orang lewat DevTools.\n- `watch(items, ...)` menulis ulang setiap kali daftar berubah. `toggle` selalu **mengganti** array (`items.value = [...]`), bukan `push`, sehingga `watch` tanpa `deep` sudah cukup.\n- Yang disimpan hanya `idMeal`, `strMeal`, dan `strMealThumb`. Satu resep lengkap berisi lebih dari 50 field, dan halaman detail toh memuat ulang datanya dari API.\n- `localStorage.setItem` bisa gagal saat penyimpanan penuh atau diblokir. Kegagalan itu ditangkap supaya aplikasi tidak berhenti.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/stores/favorites.ts` dan `src/__tests__/favorites.spec.ts`.\n2. Ganti `src/App.vue` dengan versi yang menampilkan hitungan favorit.\n3. Jalankan `npm run test:unit -- --run`. Kedua tes favorit harus lulus.\n4. Buka aplikasi, lalu di Console DevTools jalankan `localStorage.setItem('resep-favorit', '{rusak')` dan refresh. Aplikasi harus tetap tampil dengan `Favorit (0)`.\n5. Commit dengan pesan `Tambah store favorit dengan Pinia`.\n\n> Ada plugin seperti `pinia-plugin-persistedstate` yang melakukan ini otomatis. Untuk satu store kecil, sepuluh baris kode sendiri lebih mudah dipahami dan diuji. Tulis keputusan ini di README.\n",
+      "materials": [
+        {
+          "id": "rv-m-store",
+          "kind": "kode",
+          "name": "src/stores/favorites.ts",
+          "lang": "ts",
+          "content": "import { computed, ref, watch } from 'vue'\nimport { defineStore } from 'pinia'\nimport type { MealSummary } from '@/api/mealdb'\n\nconst KEY = 'resep-favorit'\n\nfunction load(): MealSummary[] {\n  try {\n    const saved: unknown = JSON.parse(localStorage.getItem(KEY) ?? '[]')\n    return Array.isArray(saved) ? saved : []\n  } catch {\n    return [] // isi localStorage rusak: mulai dari kosong, jangan bikin aplikasi mati\n  }\n}\n\nexport const useFavoritesStore = defineStore('favorites', () => {\n  const items = ref<MealSummary[]>(load())\n  const ids = computed(() => new Set(items.value.map((m) => m.idMeal)))\n  const count = computed(() => items.value.length)\n\n  function isFavorite(id: string) {\n    return ids.value.has(id)\n  }\n\n  function toggle(meal: MealSummary) {\n    if (isFavorite(meal.idMeal)) {\n      items.value = items.value.filter((m) => m.idMeal !== meal.idMeal)\n    } else {\n      // Simpan seperlunya saja, bukan seluruh resep yang berisi 50-an field.\n      const { idMeal, strMeal, strMealThumb } = meal\n      items.value = [...items.value, { idMeal, strMeal, strMealThumb }]\n    }\n  }\n\n  watch(items, (v) => {\n    try {\n      localStorage.setItem(KEY, JSON.stringify(v))\n    } catch {\n      // penyimpanan penuh atau diblokir: favorit tetap jalan selama tab terbuka\n    }\n  })\n\n  return { items, count, isFavorite, toggle }\n})\n"
+        },
+        {
+          "id": "rv-m-store-test",
+          "kind": "kode",
+          "name": "src/__tests__/favorites.spec.ts",
+          "lang": "ts",
+          "content": "import { beforeEach, describe, expect, it } from 'vitest'\nimport { nextTick } from 'vue'\nimport { createPinia, setActivePinia } from 'pinia'\nimport { useFavoritesStore } from '@/stores/favorites'\nimport { meal } from './helpers'\n\nbeforeEach(() => {\n  localStorage.clear()\n  setActivePinia(createPinia())\n})\n\ndescribe('favorites store', () => {\n  it('menyimpan dan menghapus favorit di localStorage', async () => {\n    const store = useFavoritesStore()\n    store.toggle({ ...meal('7', 'Rendang'), strCategory: 'Beef' } as never)\n    await nextTick()\n    expect(store.isFavorite('7')).toBe(true)\n    expect(JSON.parse(localStorage.getItem('resep-favorit')!)).toEqual([meal('7', 'Rendang')])\n\n    store.toggle(meal('7', 'Rendang'))\n    await nextTick()\n    expect(store.count).toBe(0)\n    expect(localStorage.getItem('resep-favorit')).toBe('[]')\n  })\n\n  it('membaca favorit yang tersimpan dan tahan terhadap isi rusak', () => {\n    localStorage.setItem('resep-favorit', JSON.stringify([meal('9', 'Soto')]))\n    expect(useFavoritesStore().count).toBe(1)\n\n    localStorage.setItem('resep-favorit', '{rusak')\n    setActivePinia(createPinia())\n    expect(useFavoritesStore().count).toBe(0)\n  })\n})\n"
+        },
+        {
+          "id": "rv-m-app",
+          "kind": "kode",
+          "name": "src/App.vue",
+          "lang": "vue",
+          "content": "<script setup lang=\"ts\">\nimport { useFavoritesStore } from '@/stores/favorites'\n\nconst favorites = useFavoritesStore()\n</script>\n\n<template>\n  <header class=\"site-header\">\n    <RouterLink to=\"/\" class=\"brand\">Resepku</RouterLink>\n    <nav aria-label=\"Menu utama\">\n      <RouterLink to=\"/\">Cari</RouterLink>\n      <RouterLink to=\"/favorit\">Favorit ({{ favorites.count }})</RouterLink>\n    </nav>\n  </header>\n  <main class=\"container\">\n    <RouterView />\n  </main>\n</template>\n"
+        },
+        {
+          "id": "rv-m-pinia-setup",
+          "kind": "tautan",
+          "name": "Pinia: setup store",
+          "url": "https://pinia.vuejs.org/core-concepts/#Setup-Stores"
+        },
+        {
+          "id": "rv-m-mdn-storage",
+          "kind": "tautan",
+          "name": "MDN: Window.localStorage",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-fav-tes",
+          "text": "Tes store favorit lulus."
+        },
+        {
+          "id": "rv-fav-rusak",
+          "text": "Isi localStorage yang rusak tidak membuat aplikasi berhenti."
+        },
+        {
+          "id": "rv-fav-header",
+          "text": "Header menampilkan Favorit (0)."
+        },
+        {
+          "id": "rv-fav-commit",
+          "text": "Store favorit sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "beranda-cari-dan-filter",
+      "title": "Beranda: pencarian, filter di URL, dan useFetch",
+      "est_minutes": 180,
+      "body": "## Inti aplikasi\n\nLangkah ini paling panjang. Kerjakan pelan-pelan, satu berkas lalu coba, baru berkas berikutnya.\n\n![Dari ketikan sampai kartu tampil: debounce menahan request, URL menjadi sumber kebenaran, useFetch membatalkan request lama, findMeals mengirim beberapa request lalu mengambil irisannya](/studio/aplikasi-resep-vue/alur-pencarian.svg)\n\n## 1. Komposabel `useFetch`\n\nKomposabel adalah fungsi biasa yang memakai API reaktivitas Vue, sehingga logikanya bisa dipakai ulang di banyak komponen. `useFetch` menerima dua hal: **kunci** (nilai yang dipantau) dan fungsi **load**. Setiap kali kunci berubah:\n\n1. Request sebelumnya dibatalkan lewat `onCleanup` dan `AbortController`.\n2. `loading` menjadi `true`.\n3. `load` dijalankan dengan `signal` yang baru.\n4. Kalau selama menunggu sudah ada request yang lebih baru, hasilnya dibuang. Inilah yang mencegah hasil \"chick\" yang datang telat menimpa hasil \"chicken\".\n\n`watch` otomatis berhenti saat komponen dilepas, dan `onCleanup` ikut dijalankan. Jadi request yang masih berjalan saat kamu pindah halaman juga dibatalkan. `reload()` menaikkan angka `attempt` supaya tombol **Coba lagi** bisa memicu muat ulang dengan kunci yang sama.\n\n## 2. Debounce\n\n`debounce.ts` menunda pemanggilan fungsi sampai tidak ada panggilan baru selama 400 ms. Tanpa ini, mengetik \"chicken\" mengirim tujuh request.\n\n## 3. `HomeView.vue`\n\n- `filters` adalah `computed` dari `route.query`. Nilai query bisa berupa array kalau URL berisi `?q=a&q=b`, jadi fungsi `one` hanya menerima string.\n- Dropdown memakai `computed` dengan `get` dan `set`, sehingga `v-model` langsung membaca dan menulis URL.\n- `router.replace` dipakai, bukan `push`, supaya setiap ketikan tidak menambah riwayat. Tombol Kembali tetap membawa pemakai ke halaman sebelumnya, bukan ke huruf sebelumnya.\n- Urutan `v-if` di template adalah urutan prioritas: loading, error, kosong, lalu hasil.\n- `role=\"status\"` membuat pembaca layar mengumumkan \"Memuat resep...\" dan jumlah hasil tanpa memindahkan fokus.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/composables/useFetch.ts`, `src/composables/debounce.ts`, dan `src/__tests__/useFetch.spec.ts`, lalu jalankan `npm run test:unit -- --run`.\n2. Buat `src/components/RecipeCard.vue` dan ganti `src/views/HomeView.vue`.\n3. Jalankan `npm run dev`. Ketik \"chicken\", pilih kategori **Chicken**, lalu asal **Japanese**. Perhatikan URL berubah, lalu refresh. Semua pilihan harus tetap.\n4. Buka tab Network di DevTools dan ketik cepat. Hanya satu request `search.php` yang terkirim setelah kamu berhenti.\n5. Di tab Network, ubah **No throttling** menjadi **Offline**, lalu ketik kata baru. Pesan gagal dan tombol **Coba lagi** harus muncul. Kembalikan ke online, tekan **Coba lagi**.\n6. Pilih asal yang tidak punya resep, misalnya **Indonesian**. Keadaan kosong harus muncul dengan tombol hapus filter.\n7. Commit dengan pesan `Tambah pencarian dan filter di beranda`.\n\n## Kalau gagal\n\n- Hasil selalu sama walau URL berubah: `useFetch` menerima `filters` (ref), bukan `filters.value` (nilai yang dibekukan saat itu).\n- Ketikan di kotak pencarian kembali sendiri ke kata lama: pastikan `watch` kedua hanya mengubah `text` kalau isinya berbeda dari URL.\n- Gambar tidak muncul: TheMealDB menyediakan ukuran kecil dengan akhiran `/small`. Periksa tidak ada spasi di template string `src`.\n",
+      "materials": [
+        {
+          "id": "rv-m-usefetch",
+          "kind": "kode",
+          "name": "src/composables/useFetch.ts",
+          "lang": "ts",
+          "content": "import { ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue'\n\n// Jalankan load() setiap kali key berubah. Request lama dibatalkan\n// supaya jawaban yang telat tidak menimpa hasil yang lebih baru.\nexport function useFetch<K, T>(key: MaybeRefOrGetter<K>, load: (key: K, signal: AbortSignal) => Promise<T>) {\n  const data = shallowRef<T | null>(null)\n  const error = ref<string | null>(null)\n  const loading = ref(false)\n  const attempt = ref(0) // dinaikkan oleh reload() untuk tombol \"Coba lagi\"\n\n  watch(\n    () => [toValue(key), attempt.value] as const,\n    async ([k], _old, onCleanup) => {\n      const controller = new AbortController()\n      onCleanup(() => controller.abort())\n      loading.value = true\n      let result: T | null = null\n      let message: string | null = null\n      try {\n        result = await load(k, controller.signal)\n      } catch (e) {\n        message = e instanceof Error ? e.message : String(e)\n      }\n      if (controller.signal.aborted) return // sudah ada request yang lebih baru\n      data.value = result\n      error.value = message\n      loading.value = false\n    },\n    { immediate: true },\n  )\n\n  return { data, error, loading, reload: () => attempt.value++ }\n}\n"
+        },
+        {
+          "id": "rv-m-debounce",
+          "kind": "kode",
+          "name": "src/composables/debounce.ts",
+          "lang": "ts",
+          "content": "export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number) {\n  let timer: ReturnType<typeof setTimeout> | undefined\n  const run = (...args: A) => {\n    clearTimeout(timer)\n    timer = setTimeout(() => fn(...args), ms)\n  }\n  run.cancel = () => clearTimeout(timer)\n  return run\n}\n"
+        },
+        {
+          "id": "rv-m-usefetch-test",
+          "kind": "kode",
+          "name": "src/__tests__/useFetch.spec.ts",
+          "lang": "ts",
+          "content": "import { describe, expect, it } from 'vitest'\nimport { effectScope, nextTick, ref } from 'vue'\nimport { flushPromises } from '@vue/test-utils'\nimport { useFetch } from '@/composables/useFetch'\n\ndescribe('useFetch', () => {\n  it('membatalkan request lama dan mengabaikan jawabannya yang telat', async () => {\n    const key = ref('a')\n    const calls: { signal: AbortSignal; finish: () => void }[] = []\n    const scope = effectScope()\n    const { data, loading } = scope.run(() =>\n      useFetch(key, (k, signal) => new Promise<string>((resolve) => calls.push({ signal, finish: () => resolve(k) }))),\n    )!\n\n    expect(loading.value).toBe(true)\n    key.value = 'b'\n    await nextTick()\n    expect(calls[0]!.signal.aborted).toBe(true)\n\n    calls[1]!.finish()\n    await flushPromises()\n    expect(data.value).toBe('b')\n\n    calls[0]!.finish() // jawaban \"a\" datang terlambat\n    await flushPromises()\n    expect(data.value).toBe('b')\n    expect(loading.value).toBe(false)\n\n    key.value = 'c'\n    await nextTick()\n    scope.stop() // komponen dilepas: request yang masih jalan ikut dibatalkan\n    expect(calls[2]!.signal.aborted).toBe(true)\n  })\n})\n"
+        },
+        {
+          "id": "rv-m-card",
+          "kind": "kode",
+          "name": "src/components/RecipeCard.vue",
+          "lang": "vue",
+          "content": "<script setup lang=\"ts\">\nimport type { MealSummary } from '@/api/mealdb'\nimport { useFavoritesStore } from '@/stores/favorites'\n\ndefineProps<{ meal: MealSummary }>()\nconst favorites = useFavoritesStore()\n</script>\n\n<template>\n  <article class=\"card\">\n    <RouterLink :to=\"{ name: 'recipe', params: { id: meal.idMeal } }\" class=\"card-link\">\n      <img :src=\"`${meal.strMealThumb}/small`\" :alt=\"meal.strMeal\" width=\"250\" height=\"250\" loading=\"lazy\" />\n      <h3>{{ meal.strMeal }}</h3>\n    </RouterLink>\n    <button\n      type=\"button\"\n      class=\"fav\"\n      :aria-pressed=\"favorites.isFavorite(meal.idMeal)\"\n      :aria-label=\"`Simpan ${meal.strMeal} ke favorit`\"\n      @click=\"favorites.toggle(meal)\"\n    >\n      {{ favorites.isFavorite(meal.idMeal) ? '♥' : '♡' }}\n    </button>\n  </article>\n</template>\n\n<style scoped>\n.card {\n  position: relative;\n  background: var(--surface);\n  border: 1px solid var(--line);\n  border-radius: 16px;\n  overflow: hidden;\n  transition: transform 0.15s, box-shadow 0.15s;\n}\n.card:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 8px 24px rgb(60 40 20 / 0.12);\n}\n.card-link {\n  display: block;\n  color: inherit;\n  text-decoration: none;\n}\nimg {\n  display: block;\n  width: 100%;\n  height: auto;\n  aspect-ratio: 1;\n  object-fit: cover;\n  background: var(--line);\n}\nh3 {\n  margin: 0;\n  padding: 0.75rem 0.9rem 1rem;\n  font-size: 1rem;\n  line-height: 1.3;\n}\n.fav {\n  position: absolute;\n  top: 0.6rem;\n  right: 0.6rem;\n  width: 2.5rem;\n  height: 2.5rem;\n  border: 0;\n  border-radius: 50%;\n  background: rgb(255 255 255 / 0.92);\n  color: var(--accent);\n  font-size: 1.3rem;\n  cursor: pointer;\n}\n</style>\n"
+        },
+        {
+          "id": "rv-m-home",
+          "kind": "kode",
+          "name": "src/views/HomeView.vue",
+          "lang": "vue",
+          "content": "<script setup lang=\"ts\">\nimport { computed, onBeforeUnmount, ref, watch } from 'vue'\nimport { useRoute, useRouter } from 'vue-router'\nimport { findMeals, getAreas, getCategories, type Filters } from '@/api/mealdb'\nimport { useFetch } from '@/composables/useFetch'\nimport { debounce } from '@/composables/debounce'\nimport RecipeCard from '@/components/RecipeCard.vue'\n\nconst route = useRoute()\nconst router = useRouter()\n\n// URL adalah sumber kebenaran: ?q=chicken&c=Seafood&a=Japanese\nconst one = (v: unknown) => (typeof v === 'string' ? v : '')\nconst filters = computed<Filters>(() => ({\n  q: one(route.query.q),\n  c: one(route.query.c),\n  a: one(route.query.a),\n}))\n\nfunction setQuery(patch: Partial<Filters>) {\n  const next = { ...filters.value, ...patch }\n  router.replace({ query: { q: next.q || undefined, c: next.c || undefined, a: next.a || undefined } })\n}\n\nconst category = computed({ get: () => filters.value.c, set: (c: string) => setQuery({ c }) })\nconst area = computed({ get: () => filters.value.a, set: (a: string) => setQuery({ a }) })\n\n// Kotak pencarian punya state sendiri; URL baru diubah 400 ms setelah berhenti mengetik.\nconst text = ref(filters.value.q)\nconst pushSearch = debounce((q: string) => setQuery({ q: q.trim() }), 400)\nwatch(text, (v) => pushSearch(v))\nwatch(\n  () => filters.value.q,\n  (q) => {\n    if (q !== text.value.trim()) text.value = q // tombol Back atau link yang dibagikan\n  },\n)\nonBeforeUnmount(pushSearch.cancel)\n\nconst { data: meals, error, loading, reload } = useFetch(filters, (f, signal) => findMeals(f, signal))\nconst { data: categories } = useFetch('kategori', (_k, signal) => getCategories(signal))\nconst { data: areas } = useFetch('asal', (_k, signal) => getAreas(signal))\n\nconst hasFilter = computed(() => Boolean(filters.value.q || filters.value.c || filters.value.a))\nfunction resetFilters() {\n  text.value = ''\n  router.replace({ query: {} })\n}\n</script>\n\n<template>\n  <section class=\"toolbar\" aria-label=\"Cari dan saring resep\">\n    <label class=\"field search\">\n      <span>Cari resep</span>\n      <input v-model=\"text\" type=\"search\" placeholder=\"mis. chicken, pasta, soup\" autocomplete=\"off\" />\n    </label>\n    <label class=\"field\">\n      <span>Kategori</span>\n      <select v-model=\"category\">\n        <option value=\"\">Semua kategori</option>\n        <option v-for=\"c in categories ?? []\" :key=\"c\" :value=\"c\">{{ c }}</option>\n      </select>\n    </label>\n    <label class=\"field\">\n      <span>Asal masakan</span>\n      <select v-model=\"area\">\n        <option value=\"\">Semua asal</option>\n        <option v-for=\"a in areas ?? []\" :key=\"a\" :value=\"a\">{{ a }}</option>\n      </select>\n    </label>\n  </section>\n\n  <p class=\"status\" role=\"status\">\n    <template v-if=\"loading\">Memuat resep...</template>\n    <template v-else-if=\"meals\">{{ meals.length }} resep{{ hasFilter ? ' cocok' : ' pilihan' }}</template>\n  </p>\n\n  <ul v-if=\"loading\" class=\"grid\" aria-hidden=\"true\">\n    <li v-for=\"n in 8\" :key=\"n\" class=\"skeleton\"></li>\n  </ul>\n\n  <div v-else-if=\"error\" class=\"state\">\n    <p><strong>Resep gagal dimuat.</strong> {{ error }}. Periksa koneksi internetmu.</p>\n    <button type=\"button\" class=\"btn\" @click=\"reload\">Coba lagi</button>\n  </div>\n\n  <div v-else-if=\"meals && meals.length === 0\" class=\"state\">\n    <p><strong>Tidak ada resep yang cocok.</strong> Coba kata lain atau longgarkan filternya.</p>\n    <button type=\"button\" class=\"btn\" @click=\"resetFilters\">Hapus semua filter</button>\n  </div>\n\n  <ul v-else class=\"grid\">\n    <li v-for=\"meal in meals\" :key=\"meal.idMeal\">\n      <RecipeCard :meal=\"meal\" />\n    </li>\n  </ul>\n</template>\n\n<style scoped>\n.toolbar {\n  display: grid;\n  gap: 0.75rem;\n  grid-template-columns: 1fr;\n  margin-bottom: 1rem;\n}\n@media (min-width: 720px) {\n  .toolbar {\n    grid-template-columns: 2fr 1fr 1fr;\n  }\n}\n.field {\n  display: grid;\n  gap: 0.3rem;\n  font-size: 0.85rem;\n  font-weight: 600;\n}\n.field input,\n.field select {\n  font: inherit;\n  font-size: 1rem;\n  font-weight: 400;\n  padding: 0.65rem 0.8rem;\n  border: 1px solid var(--line-strong);\n  border-radius: 10px;\n  background: var(--surface);\n  color: var(--ink);\n  min-width: 0;\n}\n.status {\n  min-height: 1.5em;\n  color: var(--muted);\n  margin: 0 0 0.75rem;\n}\n.skeleton {\n  aspect-ratio: 0.8;\n  border-radius: 16px;\n  background: linear-gradient(90deg, var(--line) 0%, var(--surface) 50%, var(--line) 100%);\n  background-size: 200% 100%;\n  animation: shimmer 1.2s infinite linear;\n}\n@keyframes shimmer {\n  to {\n    background-position: -200% 0;\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .skeleton {\n    animation: none;\n  }\n}\n</style>\n"
+        },
+        {
+          "id": "rv-m-vue-composable",
+          "kind": "tautan",
+          "name": "Vue: Composables",
+          "url": "https://vuejs.org/guide/reusability/composables.html"
+        },
+        {
+          "id": "rv-m-vue-watch-cleanup",
+          "kind": "tautan",
+          "name": "Vue: side effect cleanup pada watch",
+          "url": "https://vuejs.org/guide/essentials/watchers.html#side-effect-cleanup"
+        },
+        {
+          "id": "rv-m-mdn-abort",
+          "kind": "tautan",
+          "name": "MDN: AbortController",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/AbortController"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-cari-url",
+          "text": "Kata kunci, kategori, dan asal tersimpan di URL dan bertahan setelah refresh."
+        },
+        {
+          "id": "rv-cari-debounce",
+          "text": "Mengetik cepat hanya mengirim satu request search.php."
+        },
+        {
+          "id": "rv-cari-keadaan",
+          "text": "Keadaan memuat, gagal dengan Coba lagi, dan kosong sudah kulihat sendiri."
+        },
+        {
+          "id": "rv-cari-abort",
+          "text": "Tes useFetch membuktikan request lama dibatalkan dan hasilnya diabaikan."
+        },
+        {
+          "id": "rv-cari-commit",
+          "text": "Beranda sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "halaman-detail-dan-favorit",
+      "title": "Halaman detail resep dan daftar favorit",
+      "est_minutes": 90,
+      "body": "## Halaman yang dibuka dari tautan\n\nHalaman detail harus bekerja dalam dua keadaan: dibuka dari kartu di beranda, **dan** dibuka langsung dari tautan yang dikirim teman. Karena itu datanya selalu dimuat dari `id` di URL, bukan dioper dari beranda.\n\n![Alur lengkap di aplikasi yang sudah jadi: mengetik pasta, hasil muncul setelah debounce, membuka resep, lalu menyimpannya sehingga hitungan Favorit di header bertambah](/studio/aplikasi-resep-vue/cari-sampai-favorit.gif)\n\n## `RecipeView.vue`\n\n- Komponen menerima `id` sebagai prop (berkat `props: true` di router) dan memakai `useFetch(() => props.id, ...)`. Kalau kamu membuka resep lain tanpa meninggalkan halaman, request lama otomatis dibatalkan.\n- Ada tiga keadaan selain sukses: memuat, gagal (dengan **Coba lagi**), dan **tidak ditemukan** saat API menjawab tanpa resep.\n- Langkah memasak dipecah per baris dari `strInstructions`. Baris seperti `STEP 1` dibuang karena nomornya sudah diberikan oleh `<ol>`.\n- Tombol **Kembali** memakai `router.back()` hanya kalau ada halaman sebelumnya di aplikasi ini (`history.state.back`). Kalau halaman dibuka langsung dari tautan, tombol itu membawa ke beranda, bukan keluar dari aplikasi.\n- Tombol favorit memakai `aria-pressed`, sehingga pembaca layar mengumumkan \"ditekan\" atau \"tidak ditekan\". CSS yang sama dipakai untuk mewarnainya.\n\n## `FavoritesView.vue`\n\nHalaman ini tidak memanggil API sama sekali. Ia hanya membaca store dan memakai ulang `RecipeCard`. Menekan hati di sini langsung menghapus kartu dari daftar.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti `src/views/RecipeView.vue` dan `src/views/FavoritesView.vue` dengan versi di bagian Bahan.\n2. Buka satu resep dari beranda, simpan ke favorit, lalu tekan **Kembali**. Filter di beranda harus sama seperti sebelumnya.\n3. Salin alamat halaman detail, buka di tab baru. Resepnya harus tampil, dan **Kembali** membawa ke beranda.\n4. Buka `/resep/abc` dan `/resep/99999999`. Keduanya harus menampilkan \"Resep tidak ditemukan\".\n5. Perkecil jendela browser selebar HP (atau pakai mode perangkat di DevTools). Gambar, judul, dan daftar bahan harus tersusun ke bawah tanpa gulir menyamping.\n6. Commit dengan pesan `Tambah halaman detail dan favorit`.\n",
+      "materials": [
+        {
+          "id": "rv-m-recipe",
+          "kind": "kode",
+          "name": "src/views/RecipeView.vue",
+          "lang": "vue",
+          "content": "<script setup lang=\"ts\">\nimport { computed } from 'vue'\nimport { useRouter } from 'vue-router'\nimport { getMeal, parseIngredients } from '@/api/mealdb'\nimport { useFetch } from '@/composables/useFetch'\nimport { useFavoritesStore } from '@/stores/favorites'\n\nconst props = defineProps<{ id: string }>()\nconst router = useRouter()\nconst favorites = useFavoritesStore()\n\nconst { data: meal, error, loading, reload } = useFetch(() => props.id, (id, signal) => getMeal(id, signal))\nconst ingredients = computed(() => (meal.value ? parseIngredients(meal.value) : []))\nconst steps = computed(() =>\n  (meal.value?.strInstructions ?? '')\n    .split(/\\r?\\n/)\n    .map((s) => s.trim())\n    .filter((s) => s && !/^step \\d+$/i.test(s)),\n)\n\n// Kembali ke daftar dengan filter yang sama; kalau halaman dibuka langsung, ke beranda.\nfunction back() {\n  if (window.history.state?.back) router.back()\n  else router.push({ name: 'home' })\n}\n</script>\n\n<template>\n  <button type=\"button\" class=\"link-back\" @click=\"back\">← Kembali</button>\n\n  <p v-if=\"loading\" class=\"status\" role=\"status\">Memuat resep...</p>\n\n  <div v-else-if=\"error\" class=\"state\">\n    <p><strong>Resep gagal dimuat.</strong> {{ error }}.</p>\n    <button type=\"button\" class=\"btn\" @click=\"reload\">Coba lagi</button>\n  </div>\n\n  <div v-else-if=\"!meal\" class=\"state\">\n    <p><strong>Resep tidak ditemukan.</strong> Mungkin tautannya salah ketik.</p>\n    <RouterLink to=\"/\" class=\"btn\">Cari resep lain</RouterLink>\n  </div>\n\n  <article v-else class=\"recipe\">\n    <img :src=\"`${meal.strMealThumb}/medium`\" :alt=\"meal.strMeal\" width=\"500\" height=\"500\" />\n    <div class=\"info\">\n      <p class=\"meta\">{{ [meal.strCategory, meal.strArea].filter(Boolean).join(' · ') }}</p>\n      <h1>{{ meal.strMeal }}</h1>\n      <button type=\"button\" class=\"btn\" :aria-pressed=\"favorites.isFavorite(meal.idMeal)\" @click=\"favorites.toggle(meal)\">\n        {{ favorites.isFavorite(meal.idMeal) ? '♥ Tersimpan di favorit' : '♡ Simpan ke favorit' }}\n      </button>\n\n      <h2>Bahan ({{ ingredients.length }})</h2>\n      <ul class=\"ingredients\">\n        <li v-for=\"item in ingredients\" :key=\"item.name\">\n          <span>{{ item.name }}</span>\n          <span class=\"measure\">{{ item.measure }}</span>\n        </li>\n      </ul>\n    </div>\n\n    <section class=\"steps\">\n      <h2>Cara membuat</h2>\n      <ol>\n        <li v-for=\"(s, i) in steps\" :key=\"i\">{{ s }}</li>\n      </ol>\n      <p v-if=\"meal.strYoutube\">\n        <a :href=\"meal.strYoutube\" target=\"_blank\" rel=\"noopener\">Tonton videonya di YouTube</a>\n      </p>\n    </section>\n  </article>\n</template>\n\n<style scoped>\n.link-back {\n  border: 0;\n  background: none;\n  font: inherit;\n  color: var(--muted);\n  padding: 0.25rem 0;\n  margin-bottom: 1rem;\n  cursor: pointer;\n}\n.recipe {\n  display: grid;\n  gap: 1.5rem;\n}\n@media (min-width: 800px) {\n  .recipe {\n    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);\n    align-items: start;\n  }\n  .steps {\n    grid-column: 1 / -1;\n  }\n}\nimg {\n  width: 100%;\n  height: auto;\n  border-radius: 20px;\n}\n.meta {\n  margin: 0;\n  color: var(--accent);\n  font-weight: 700;\n  text-transform: uppercase;\n  letter-spacing: 0.06em;\n  font-size: 0.8rem;\n}\nh1 {\n  margin: 0.25rem 0 1rem;\n  font-size: clamp(1.6rem, 4vw, 2.4rem);\n  line-height: 1.15;\n}\nh2 {\n  font-size: 1.15rem;\n  margin: 1.5rem 0 0.75rem;\n}\n.ingredients {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n  border-top: 1px solid var(--line);\n}\n.ingredients li {\n  display: flex;\n  justify-content: space-between;\n  gap: 1rem;\n  padding: 0.5rem 0;\n  border-bottom: 1px solid var(--line);\n}\n.measure {\n  color: var(--muted);\n  text-align: right;\n}\n.steps ol {\n  padding-left: 1.25rem;\n  max-width: 70ch;\n}\n.steps li {\n  margin-bottom: 0.75rem;\n  line-height: 1.6;\n}\n</style>\n"
+        },
+        {
+          "id": "rv-m-favview",
+          "kind": "kode",
+          "name": "src/views/FavoritesView.vue",
+          "lang": "vue",
+          "content": "<script setup lang=\"ts\">\nimport { useFavoritesStore } from '@/stores/favorites'\nimport RecipeCard from '@/components/RecipeCard.vue'\n\nconst favorites = useFavoritesStore()\n</script>\n\n<template>\n  <h1 class=\"page-title\">Resep favoritmu</h1>\n  <div v-if=\"favorites.count === 0\" class=\"state\">\n    <p><strong>Belum ada favorit.</strong> Tekan ♡ di kartu resep untuk menyimpannya di sini.</p>\n    <RouterLink to=\"/\" class=\"btn\">Cari resep</RouterLink>\n  </div>\n  <ul v-else class=\"grid\">\n    <li v-for=\"meal in favorites.items\" :key=\"meal.idMeal\">\n      <RecipeCard :meal=\"meal\" />\n    </li>\n  </ul>\n</template>\n"
+        },
+        {
+          "id": "rv-m-router-props",
+          "kind": "tautan",
+          "name": "Vue Router: passing props ke komponen rute",
+          "url": "https://router.vuejs.org/guide/essentials/passing-props.html"
+        },
+        {
+          "id": "rv-m-aria-pressed",
+          "kind": "tautan",
+          "name": "MDN: aria-pressed",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-pressed"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-det-bahan",
+          "text": "Halaman detail menampilkan bahan dengan takarannya dan langkah memasak."
+        },
+        {
+          "id": "rv-det-tautan",
+          "text": "Alamat detail yang dibuka di tab baru tetap menampilkan resep."
+        },
+        {
+          "id": "rv-det-salah",
+          "text": "/resep/abc menampilkan \"Resep tidak ditemukan\"."
+        },
+        {
+          "id": "rv-det-hp",
+          "text": "Di lebar HP tidak ada gulir menyamping."
+        },
+        {
+          "id": "rv-det-commit",
+          "text": "Halaman detail dan favorit sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-komponen-dan-cek-browser",
+      "title": "Tes komponen dan cek di browser",
+      "est_minutes": 120,
+      "body": "## Dua lapis pengujian\n\nTes unit untuk API, store, dan komposabel sudah ada. Sekarang giliran **tes komponen**: memasang komponen sungguhan di jsdom, dengan router dan Pinia sungguhan, tetapi `fetch` palsu. Setelah itu, periksa aplikasi hasil build di browser sungguhan.\n\n![Kebanyakan tes ada di lapis bawah karena cepat dan murah. Tes komponen di tengah, pemeriksaan manual di browser hanya untuk hal yang tidak bisa diotomatiskan](sim:piramida-tes)\n\n## Cara membaca tes komponen\n\n- `mountAt('/?q=chicken')` membuat router dengan `createMemoryHistory`, membuka alamat itu, lalu memasang `App`. Jadi URL, `RouterView`, dan header ikut diuji.\n- `flushPromises()` menunggu semua promise selesai, termasuk `fetch` palsu dan render ulang Vue.\n- Tes debounce memakai `vi.useFakeTimers` hanya untuk `setTimeout` dan `clearTimeout`, sehingga waktu bisa dimajukan 399 ms lalu 1 ms tanpa menunggu sungguhan.\n- Tes memeriksa apa yang **dilihat pemakai** (teks, jumlah kartu, atribut `aria-pressed`, URL), bukan isi variabel di dalam komponen. Tes seperti ini tidak rusak saat kamu merapikan kode.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/__tests__/HomeView.spec.ts` dan `src/__tests__/RecipeView.spec.ts`.\n2. Jalankan `npm run test:unit -- --run`. Harus ada 13 tes di 5 berkas, semuanya lulus.\n3. Rusak kodenya dengan sengaja: ubah `400` di `HomeView.vue` menjadi `0`. Tes debounce harus gagal. Kembalikan.\n4. Jalankan `npm run build`, lalu `npm run preview`. Ini menjalankan hasil build yang sama persis dengan yang akan di-deploy.\n5. Jalani daftar periksa di `cek-manual.md` di http://localhost:4173. Pakai tabel kasus tepi dari langkah Brainstorming.\n6. Jalankan **Lighthouse** di DevTools pada mode Mobile. Catat skor Accessibility dan satu perbaikan yang kamu lakukan.\n7. Minta satu orang mencoba aplikasinya tanpa penjelasan. Catat di mana ia bingung.\n8. Commit dengan pesan `Tambah tes komponen`.\n\n## Kalau gagal\n\n- `ReferenceError: localStorage is not defined`: tes tidak berjalan di jsdom. Periksa `environment: 'jsdom'` di `vitest.config.ts` bawaan create-vue.\n- Tes debounce menggantung: jangan memalsukan semua timer. `flushPromises` butuh timer asli untuk menunggu.\n- `[Vue warn]: Failed to resolve component: RouterLink`: router belum dipasang di `global.plugins` saat `mount`.\n",
+      "materials": [
+        {
+          "id": "rv-m-home-test",
+          "kind": "kode",
+          "name": "src/__tests__/HomeView.spec.ts",
+          "lang": "ts",
+          "content": "import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'\nimport { flushPromises, mount } from '@vue/test-utils'\nimport { createPinia } from 'pinia'\nimport App from '@/App.vue'\nimport { makeRouter, meal, mockApi } from './helpers'\n\nasync function mountAt(url: string) {\n  const router = makeRouter()\n  router.push(url)\n  await router.isReady()\n  const wrapper = mount(App, { global: { plugins: [router, createPinia()] } })\n  await flushPromises()\n  return { wrapper, router }\n}\n\nbeforeEach(() => localStorage.clear())\nafterEach(() => {\n  vi.unstubAllGlobals()\n  vi.useRealTimers()\n})\n\ndescribe('HomeView', () => {\n  it('menampilkan hasil pencarian dari ?q= di URL', async () => {\n    mockApi({ 'search.php?s=chicken': { meals: [meal('1', 'Chicken Soup'), meal('2', 'Chicken Katsu')] } })\n    const { wrapper } = await mountAt('/?q=chicken')\n    expect(wrapper.find('input[type=search]').element).toHaveProperty('value', 'chicken')\n    expect(wrapper.findAll('.card h3').map((h) => h.text())).toEqual(['Chicken Soup', 'Chicken Katsu'])\n    expect(wrapper.text()).toContain('2 resep cocok')\n  })\n\n  it('menampilkan keadaan kosong dan bisa menghapus filter', async () => {\n    mockApi({ 'filter.php?a=Indonesian': { meals: null } })\n    const { wrapper, router } = await mountAt('/?a=Indonesian')\n    expect(wrapper.text()).toContain('Tidak ada resep yang cocok')\n    await wrapper.get('button.btn').trigger('click')\n    await flushPromises()\n    expect(router.currentRoute.value.query).toEqual({})\n  })\n\n  it('menampilkan error lalu pulih lewat tombol Coba lagi', async () => {\n    mockApi({}, 500)\n    const { wrapper } = await mountAt('/?q=pasta')\n    expect(wrapper.text()).toContain('Resep gagal dimuat')\n\n    mockApi({ 'search.php?s=pasta': { meals: [meal('5', 'Pasta Pesto')] } })\n    await wrapper.get('button.btn').trigger('click')\n    await flushPromises()\n    expect(wrapper.findAll('.card')).toHaveLength(1)\n  })\n\n  it('menunggu 400 ms setelah berhenti mengetik sebelum mengubah URL', async () => {\n    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })\n    const fetch = mockApi({ 'search.php?s=': { meals: [] } })\n    const { wrapper, router } = await mountAt('/')\n    const input = wrapper.get('input[type=search]')\n\n    await input.setValue('pas')\n    await input.setValue('pasta')\n    vi.advanceTimersByTime(399)\n    await flushPromises()\n    expect(router.currentRoute.value.query.q).toBeUndefined()\n\n    vi.advanceTimersByTime(1)\n    await flushPromises()\n    expect(router.currentRoute.value.query.q).toBe('pasta')\n    expect(fetch.mock.calls.filter(([url]) => url.includes('search.php?s=pas')).map(([url]) => url)).toEqual([\n      'https://www.themealdb.com/api/json/v1/1/search.php?s=pasta',\n    ])\n  })\n\n  it('tombol hati menambah hitungan favorit di header', async () => {\n    mockApi({ 'search.php?s=': { meals: [meal('3', 'Gado-gado')] } })\n    const { wrapper } = await mountAt('/')\n    await wrapper.get('.fav').trigger('click')\n    expect(wrapper.get('nav').text()).toContain('Favorit (1)')\n    expect(wrapper.get('.fav').attributes('aria-pressed')).toBe('true')\n  })\n})\n"
+        },
+        {
+          "id": "rv-m-recipe-test",
+          "kind": "kode",
+          "name": "src/__tests__/RecipeView.spec.ts",
+          "lang": "ts",
+          "content": "import { afterEach, describe, expect, it, vi } from 'vitest'\nimport { flushPromises, mount } from '@vue/test-utils'\nimport { createPinia } from 'pinia'\nimport RecipeView from '@/views/RecipeView.vue'\nimport { makeRouter, meal, mockApi } from './helpers'\n\nafterEach(() => vi.unstubAllGlobals())\n\nasync function mountRecipe(id: string) {\n  const router = makeRouter()\n  router.push(`/resep/${id}`)\n  await router.isReady()\n  const wrapper = mount(RecipeView, { props: { id }, global: { plugins: [router, createPinia()] } })\n  await flushPromises()\n  return wrapper\n}\n\ndescribe('RecipeView', () => {\n  it('menampilkan bahan dari strIngredientN dan strMeasureN', async () => {\n    mockApi({\n      'lookup.php?i=42': {\n        meals: [\n          {\n            ...meal('42', 'Soto Ayam'),\n            strCategory: 'Chicken',\n            strArea: 'Indonesian',\n            strInstructions: 'STEP 1\\r\\nRebus ayam.\\r\\n\\r\\nSaring kuahnya.',\n            strIngredient1: 'Chicken',\n            strMeasure1: '500g',\n            strIngredient2: 'Turmeric',\n            strMeasure2: '1 tsp',\n            strIngredient3: '',\n            strMeasure3: '',\n          },\n        ],\n      },\n    })\n    const wrapper = await mountRecipe('42')\n    expect(wrapper.get('h1').text()).toBe('Soto Ayam')\n    expect(wrapper.findAll('.ingredients li').map((li) => li.text())).toEqual(['Chicken500g', 'Turmeric1 tsp'])\n    expect(wrapper.findAll('.steps li').map((li) => li.text())).toEqual(['Rebus ayam.', 'Saring kuahnya.'])\n  })\n\n  it('menampilkan pesan kalau id tidak ada atau bukan angka', async () => {\n    mockApi({ 'lookup.php?i=999': { meals: null }, 'lookup.php?i=abc': { meals: 'Invalid ID' } })\n    expect((await mountRecipe('999')).text()).toContain('Resep tidak ditemukan')\n    expect((await mountRecipe('abc')).text()).toContain('Resep tidak ditemukan')\n  })\n})\n"
+        },
+        {
+          "id": "rv-m-cek-manual",
+          "kind": "kode",
+          "name": "cek-manual.md",
+          "lang": "markdown",
+          "content": "# Cek manual di npm run preview (http://localhost:4173)\n\n| Cek | Hasil |\n| --- | --- |\n| Beranda menampilkan resep tanpa mengetik apa pun | |\n| Mengetik cepat hanya mengirim 1 request search.php (tab Network) | |\n| Kategori + asal + kata kunci tersimpan di URL, refresh tetap sama | |\n| Asal tanpa resep (mis. Indonesian) menampilkan keadaan kosong | |\n| Mode Offline menampilkan pesan gagal, Coba lagi memulihkan | |\n| Kembali dari detail mengembalikan filter yang sama | |\n| Refresh di /resep/52772 tetap menampilkan resep | |\n| /resep/abc menampilkan \"Resep tidak ditemukan\" | |\n| /ngawur menampilkan halaman tidak ditemukan | |\n| Favorit bertahan setelah browser ditutup dan dibuka lagi | |\n| Bisa dipakai penuh dengan Tab, Enter, dan Spasi; fokus selalu terlihat | |\n| Lebar 375 px: tidak ada gulir menyamping | |\n"
+        },
+        {
+          "id": "rv-m-vtu",
+          "kind": "tautan",
+          "name": "Vue Test Utils: panduan",
+          "url": "https://test-utils.vuejs.org/guide/"
+        },
+        {
+          "id": "rv-m-vue-testing",
+          "kind": "tautan",
+          "name": "Vue: Testing",
+          "url": "https://vuejs.org/guide/scaling-up/testing.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-uji-semua",
+          "text": "npm run test:unit -- --run: 13 tes di 5 berkas lulus."
+        },
+        {
+          "id": "rv-uji-rusak",
+          "text": "Aku merusak kode dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "rv-uji-manual",
+          "text": "Semua baris cek-manual.md sudah kuperiksa di npm run preview."
+        },
+        {
+          "id": "rv-uji-lighthouse",
+          "text": "Aku mencatat skor Accessibility Lighthouse dan satu perbaikan."
+        },
+        {
+          "id": "rv-uji-orang",
+          "text": "Satu orang sudah mencoba aplikasinya dan catatannya kusimpan."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-netlify-spa-fallback",
+      "title": "Deploy ke Netlify dengan SPA fallback",
+      "est_minutes": 45,
+      "body": "## Masalah khas aplikasi satu halaman\n\nHasil build hanya punya satu berkas HTML: `dist/index.html`. Rute seperti `/resep/52772` hanya ada di dalam JavaScript Vue Router. Kalau seseorang membuka alamat itu langsung atau menekan refresh, server mencari berkas `/resep/52772`, tidak menemukannya, dan menjawab **404**.\n\nSolusinya *SPA fallback*: semua alamat yang tidak cocok dengan berkas apa pun dijawab dengan `index.html` dan status **200**. Setelah itu Vue Router membaca alamatnya dan menampilkan halaman yang benar.\n\n![Berkas yang ada (JavaScript, CSS, favicon) dilayani apa adanya. Alamat lain ditulis ulang ke index.html dengan status 200, lalu Vue Router yang memilih halaman](/studio/aplikasi-resep-vue/spa-fallback.svg)\n\n`npm run preview` sudah melakukan ini secara otomatis. Hosting tidak, jadi harus diatur.\n\n## Deploy ke Netlify\n\n1. Buat `netlify.toml` dan `.nvmrc` dari bagian Bahan di folder paling atas proyek. `.nvmrc` membuat Netlify membangun dengan Node.js 24, sama seperti di komputermu.\n2. Commit dan push ke repositori GitHub baru bernama `aplikasi-resep-vue`.\n3. Di Netlify, pilih **Add new project**, lalu **Import an existing project**, hubungkan GitHub, dan pilih repositorinya.\n4. Netlify membaca `netlify.toml`, jadi build command `npm run build` dan publish directory `dist` sudah terisi. Klik **Deploy**.\n5. Setelah selesai, buka alamat `https://NAMA.netlify.app`. Ganti nama situs di **Project configuration** kalau mau alamat yang lebih rapi.\n6. Uji fallback: buka satu resep, salin alamatnya, buka di jendela penyamaran, lalu tekan refresh. Harus tampil resepnya, bukan halaman \"Page not found\" Netlify.\n\nAturan `[[redirects]]` tidak menimpa berkas yang benar-benar ada. Jadi `/assets/index-abc123.js` tetap dilayani sebagai JavaScript, hanya alamat yang tidak punya berkas yang jatuh ke `index.html`.\n\n## Memilih Vercel?\n\nVercel mengenali proyek Vite secara otomatis. Untuk fallback, buat `vercel.json` di folder paling atas:\n\n```json\n{\n  \"$schema\": \"https://openapi.vercel.sh/vercel.json\",\n  \"rewrites\": [{ \"source\": \"/(.*)\", \"destination\": \"/index.html\" }]\n}\n```\n\nLalu impor repositori dari dashboard Vercel. Uji refresh di halaman detail dengan cara yang sama.\n\n## Kalau gagal\n\n- Build gagal di Netlify tetapi lancar di laptop: buka log build. Biasanya versi Node berbeda (`.nvmrc` tidak ikut ter-push) atau ada error tipe yang terlewat karena kamu hanya menjalankan `npm run dev`. Selalu jalankan `npm run build` sebelum push.\n- Halaman detail 404 setelah refresh: `netlify.toml` tidak berada di folder paling atas repositori, atau `from` tertulis `/` bukan `/*`.\n- Halaman putih dan Console menampilkan 404 untuk berkas `.js`: `base` di `vite.config.ts` diubah. Untuk Netlify dan Vercel, biarkan bawaan (`/`).\n",
+      "materials": [
+        {
+          "id": "rv-m-netlify",
+          "kind": "kode",
+          "name": "netlify.toml",
+          "lang": "toml",
+          "content": "[build]\n  command = \"npm run build\"\n  publish = \"dist\"\n\n# SPA fallback: alamat tanpa berkas dijawab index.html dengan status 200\n[[redirects]]\n  from = \"/*\"\n  to = \"/index.html\"\n  status = 200\n"
+        },
+        {
+          "id": "rv-m-nvmrc",
+          "kind": "kode",
+          "name": ".nvmrc",
+          "lang": "text",
+          "content": "24\n"
+        },
+        {
+          "id": "rv-m-netlify-spa",
+          "kind": "tautan",
+          "name": "Netlify: rewrites dan history pushstate",
+          "url": "https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/"
+        },
+        {
+          "id": "rv-m-netlify-node",
+          "kind": "tautan",
+          "name": "Netlify: memilih versi Node.js",
+          "url": "https://docs.netlify.com/build/configure-builds/manage-dependencies/"
+        },
+        {
+          "id": "rv-m-vercel-vite",
+          "kind": "tautan",
+          "name": "Vercel: Vite dan SPA rewrites",
+          "url": "https://vercel.com/docs/frameworks/frontend/vite"
+        },
+        {
+          "id": "rv-m-vite-deploy",
+          "kind": "tautan",
+          "name": "Vite: deploy situs statis",
+          "url": "https://vite.dev/guide/static-deploy"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-dep-live",
+          "text": "Aplikasi bisa dibuka di alamat publik Netlify atau Vercel."
+        },
+        {
+          "id": "rv-dep-refresh",
+          "text": "Refresh di halaman detail tetap menampilkan resep, bukan 404."
+        },
+        {
+          "id": "rv-dep-node",
+          "text": ".nvmrc dan netlify.toml ikut ter-push ke repositori."
+        },
+        {
+          "id": "rv-dep-hp",
+          "text": "Aplikasi live sudah kucoba di HP sungguhan."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "Tulis README dan kirim tautanmu",
+      "est_minutes": 45,
+      "body": "## README menceritakan keputusanmu\n\nPerekrut jarang menjalankan kodemu. Mereka membuka tautan demo, melihat README, lalu membaca satu atau dua berkas. Karena itu README harus menjawab: apa aplikasinya, bagaimana menjalankannya, dan keputusan apa yang kamu ambil.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti `README.md` bawaan create-vue dengan template di bagian Bahan, lalu isi semua `___`.\n2. Ambil tangkapan layar beranda dan halaman detail, simpan di folder `docs/`, lalu tampilkan di README.\n3. Isi **Keputusan desain** dengan minimal dua keputusan nyata beserta alasannya. Contoh yang bagus dari proyek ini: URL sebagai sumber kebenaran filter, irisan beberapa request karena API hanya menerima satu filter, atau localStorage tanpa plugin.\n4. Isi **Yang kupelajari** dengan tiga hal dan satu rencana berikutnya, misalnya daftar belanja dari bahan favorit atau mode gelap.\n5. Isi deskripsi repositori GitHub dengan satu kalimat dan alamat Netlify-mu, lalu tambahkan topik `vue`, `pinia`, `vitest`.\n6. Kirim tautan aplikasi live dan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membangun aplikasi Vue yang utuh: data dari API sungguhan, request yang bisa dibatalkan, URL yang bisa dibagikan, state global yang bertahan, keadaan loading, error, dan kosong yang jelas, tes komponen, dan deploy dengan SPA fallback. Itu pekerjaan sehari-hari frontend developer. Langkah berikutnya yang menarik: tambahkan fitur daftar belanja dari bahan resep favorit, lengkap dengan tesnya.\n",
+      "materials": [
+        {
+          "id": "rv-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Resepku: Aplikasi Resep dengan Vue\n\nCari resep, saring berdasarkan kategori dan asal masakan, lalu simpan favoritmu. Data dari [TheMealDB](https://www.themealdb.com/).\n\n**Demo:** https://___.netlify.app\n\n![Beranda Resepku](docs/beranda.png)\n\n## Fitur\n- Pencarian dengan debounce 400 ms\n- Filter kategori dan asal masakan, tersimpan di URL sehingga bisa dibagikan\n- Detail resep dengan daftar bahan dan langkah memasak\n- Favorit tersimpan di browser (Pinia + localStorage)\n- Keadaan memuat, gagal (dengan Coba lagi), dan kosong yang jelas\n- Tampilan responsif dan bisa dipakai dengan keyboard\n\n## Teknologi\nVue 3, TypeScript, Vite, Vue Router, Pinia, Vitest, Vue Test Utils. Deploy di Netlify.\n\n## Menjalankan di komputer sendiri\nButuh Node.js 24.\n\n```bash\nnpm install\nnpm run dev              # server pengembangan\nnpm run test:unit -- --run\nnpm run build && npm run preview\n```\n\n## Keputusan desain\n1. ___ karena ___\n2. ___ karena ___\n\n## Yang kupelajari\n- ___\n- ___\n- ___\n\nRencana berikutnya: ___\n"
+        },
+        {
+          "id": "rv-m-gh-readme",
+          "kind": "tautan",
+          "name": "GitHub: tentang README",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes"
+        }
+      ],
+      "checks": [
+        {
+          "id": "rv-dok-readme",
+          "text": "README berisi tautan demo, fitur, dan cara menjalankan."
+        },
+        {
+          "id": "rv-dok-gambar",
+          "text": "README menampilkan tangkapan layar aplikasi."
+        },
+        {
+          "id": "rv-dok-keputusan",
+          "text": "Aku menulis dua keputusan desain beserta alasannya."
+        },
+        {
+          "id": "rv-dok-kirim",
+          "text": "Tautan live dan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
