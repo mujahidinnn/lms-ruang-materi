@@ -1,6 +1,7 @@
 import ArrowBadge from "@/components/ui/ArrowBadge";
 import { chip, tile } from "@/components/ui/styles";
-import { totalMinutes } from "@/lib/chapters";
+import { Clock } from "lucide-react";
+import { durasi, totalMinutes } from "@/lib/chapters";
 import type { Topic } from "@/lib/content";
 import { coverSrc, retryWith } from "@/lib/slides";
 
@@ -17,7 +18,10 @@ export default function TopicCard({ topic, index }: { topic: CardTopic; index: n
         className={`group grid h-full grid-cols-[minmax(0,1fr)_8rem] items-center gap-x-3 gap-y-2 rounded-[18px] p-4 sm:flex sm:flex-col sm:items-stretch sm:gap-4 sm:rounded-[18px] sm:p-5 sm:transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none ${tile(index)}`}
       >
         <div className="col-start-1 flex items-start justify-between gap-3 self-end sm:self-auto">
-          <span className={`${chip} bg-zinc-900/70 tabular-nums`}>{n ? `${n} bab · ${totalMinutes(topic.chapters)} menit` : `${topic.slideCount} slide`}</span>
+          <span className="flex flex-wrap gap-1.5 max-sm:gap-1">
+            <span className={`${chip} bg-zinc-900/70 tabular-nums`}>{n ? `${n} bab` : `${topic.slideCount} slide`}</span>
+            {n > 0 && <span className={`${chip} bg-zinc-900/70 tabular-nums`}><Clock aria-hidden className="size-3.5 max-sm:hidden" />{durasi(totalMinutes(topic.chapters))}</span>}
+          </span>
           <span className="hidden sm:block"><ArrowBadge /></span>
         </div>
         <div className="col-start-1 flex-1 self-start sm:self-auto">

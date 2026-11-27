@@ -6,7 +6,7 @@ import ArrowBadge from "@/components/ui/ArrowBadge";
 import ClassPath from "./ClassPath";
 import { chip, primaryButton } from "@/components/ui/styles";
 import Art from "@/components/ui/Art";
-import { totalMinutes } from "@/lib/chapters";
+import { durasi, totalMinutes } from "@/lib/chapters";
 import { coverSrc, retryWith } from "@/lib/slides";
 import type { Topic } from "@/lib/content";
 import { useChapterProgress } from "./useChapterProgress";
@@ -41,7 +41,7 @@ export default function CourseView({ topic }: { topic: Topic }) {
             </li>
             <li className={`${chip} bg-zinc-900/70 tabular-nums`}>
               <Clock aria-hidden className="size-3.5" />
-              {totalMinutes(chapters)} menit
+              {durasi(totalMinutes(chapters))}
             </li>
             <li className={`${chip} bg-zinc-900/70 tabular-nums`}>
               {topic.slideCount} slide

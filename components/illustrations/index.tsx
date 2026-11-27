@@ -23,15 +23,6 @@ function Quiet({ label, className = "size-10", children }: Props & { children: R
   );
 }
 
-// Nothing due: one card filed away, checked.
-export function NothingDue(props: Props) {
-  return (
-    <Quiet {...props}>
-      <rect x="10" y="12" width="28" height="24" rx="5" />
-      <path d="M18 24l4 4 8-8" />
-    </Quiet>
-  );
-}
 
 // Lulus: a big check on the brightest badge.
 export function Passed(props: Props) {
@@ -52,15 +43,6 @@ export function TryAgain(props: Props) {
   );
 }
 
-// 404: an empty, dashed card with a question mark.
-export function Missing(props: Props) {
-  return (
-    <Quiet {...props}>
-      <circle cx="21" cy="21" r="10" />
-      <path d="M28.5 28.5L37 37" />
-    </Quiet>
-  );
-}
 
 // Dasbor greeting: a smiling face, Gen Z sticker style.
 export function Welcome(props: Props) {

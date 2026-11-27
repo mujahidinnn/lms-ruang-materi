@@ -60,6 +60,12 @@ export function totalMinutes(list: { estMinutes: number }[]): number {
   return list.reduce((sum, c) => sum + c.estMinutes, 0);
 }
 
+// 300 -> "5 jam", 355 -> "5 jam 55 menit", 45 -> "45 menit".
+export function durasi(min: number): string {
+  const h = Math.floor(min / 60), m = min % 60;
+  return [h && `${h} jam`, (m || !h) && `${m} menit`].filter(Boolean).join(" ");
+}
+
 // Status for a chapter an admin adds. A topic without chapters, or one with
 // drafts, gets a draft (Terbitkan publishes it). Only when live chapters
 // already exist does it go live too: a lone draft next to them would make

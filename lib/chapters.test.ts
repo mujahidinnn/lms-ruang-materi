@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { diagramCount, diagramSrc, missingDiagrams, neighbors, newChapterStatus, parseDiagramRef, parseSlideRef, quizDone, resolveSlideRef, totalMinutes } from "./chapters";
+import { diagramCount, diagramSrc, missingDiagrams, neighbors, newChapterStatus, parseDiagramRef, parseSlideRef, quizDone, resolveSlideRef, totalMinutes, durasi } from "./chapters";
 
 const slides = [1, 2, 3].map((index) => ({ index, src: `https://x/s/slide-0${index}.avif`, width: 3200, height: 1800 }));
 
@@ -59,4 +59,11 @@ test("diagramCount counts gambar: references in a body", () => {
 test("missingDiagrams lists unique missing names in order, invalid names included", () => {
   const body = "![a](gambar:ada) ![b](gambar:hilang) ![c](gambar:hilang) ![d](gambar:../bad) ![e](gambar:Besar)";
   expect(missingDiagrams(body, (n) => n === "ada")).toEqual(["hilang", "../bad", "Besar"]);
+});
+
+test("durasi formats minutes as jam and menit", () => {
+  expect(durasi(45)).toBe("45 menit");
+  expect(durasi(300)).toBe("5 jam");
+  expect(durasi(355)).toBe("5 jam 55 menit");
+  expect(durasi(0)).toBe("0 menit");
 });
