@@ -33,8 +33,8 @@ function endpointTabel() {
     ["GET", "/health", "200", "500"],
     ["GET", "/api/notes?q=&limit=", "200 (array)", "500"],
     ["GET", "/api/notes/:id", "200", "400, 404"],
-    ["POST", "/api/notes", "201 + Location", "400, 422"],
-    ["PATCH", "/api/notes/:id", "200", "400, 404, 422"],
+    ["POST", "/api/notes", "201 + Location", "400, 413, 422"],
+    ["PATCH", "/api/notes/:id", "200", "400, 404, 413, 422"],
     ["DELETE", "/api/notes/:id", "204 tanpa body", "400, 404"],
   ];
   rows.forEach(([m, p, ok, err], i) => {
@@ -95,9 +95,9 @@ function deploy() {
   b += arrow(786, 320, 872, 320) + text(830, 300, "SSL", S({ anchor: "middle", weight: 700 }));
   b += box(40, 570, 1120, 150, { r: 16, sw: 3 });
   b += text(70, 612, "Connection string Neon", S({ weight: 800 }));
-  b += text(70, 650, "postgresql://USER:SANDI@HOST.neon.tech/DB?sslmode=require", { size: 23, weight: 500, mono: true });
-  b += text(70, 694, "Disimpan di Environment Render, tidak pernah di repo. sslmode=require wajib ada.", S());
-  b += note(770, "Paket gratis Render tidur saat sepi: request pertama setelahnya bisa lambat beberapa detik.");
+  b += text(70, 650, "postgresql://USER:SANDI@HOST.neon.tech/DB?sslmode=require&channel_binding=require", { size: 19, weight: 500, mono: true });
+  b += text(70, 694, "Disimpan di Environment Render, tidak pernah di repo. sslmode wajib ada.", S());
+  b += note(770, "Paket gratis Render tidur saat sepi: request pertama setelahnya butuh sekitar satu menit.");
   return frame("Alur deploy: kode di-push ke GitHub, Render membangun dan menjalankan API, pemakai memanggil lewat HTTPS, dan API terhubung ke Neon Postgres dengan SSL", 810, b, AH);
 }
 
