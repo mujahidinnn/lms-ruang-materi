@@ -1,0 +1,334 @@
+{
+  "theme": "nuxt",
+  "deck": "Nuxt",
+  "kicker": "KELAS",
+  "subtitle": "Meta-framework Vue full-stack: routing berbasis file, mengambil data, server route Nitro, middleware, SEO, sampai deploy.",
+  "slides": [
+    {
+      "title": "Nuxt"
+    },
+    {
+      "title": "Apa itu Nuxt?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Meta-framework di atas Vue 3, kembaran Next.js untuk Vue",
+        "Routing, render di server, dan API dalam satu proyek",
+        "Server Nitro bawaan untuk endpoint dan deploy",
+        "Kelas ini memakai Nuxt 4 dengan folder app/",
+        "Bekal kamu: komponen Vue, props, ref, dan computed"
+      ],
+      "note": "Nuxt menambah server dan aturan folder di sekitar Vue yang sudah kamu kenal."
+    },
+    {
+      "title": "Cara halaman dirender",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "SPA: HTML kosong, browser merakit halaman dengan JS",
+        "Universal (SSR): server membuat HTML, lalu Vue hidrasi",
+        "Prerender (SSG): HTML dibuat sekali saat build",
+        "Bawaan Nuxt adalah universal rendering",
+        "Mode bisa diatur per route lewat routeRules"
+      ]
+    },
+    {
+      "title": "Membuat proyek Nuxt 4",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Siapkan Node.js versi LTS terbaru",
+        "Kode aplikasi di app/, server/ dan public/ di akar",
+        "Komponen, composable, dan API Vue di-import otomatis",
+        "Buka http://localhost:3000 setelah npm run dev"
+      ],
+      "code": "npm create nuxt@latest kantin-sekolah\ncd kantin-sekolah\nnpm run dev\n\napp/\n  app.vue\n  pages/  components/  composables/\nserver/api/\npublic/\nnuxt.config.ts"
+    },
+    {
+      "title": "Folder pages",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Setiap file .vue di app/pages menjadi satu route",
+        "index.vue adalah halaman beranda folder itu",
+        "Folder di dalam pages menjadi segmen URL",
+        "app.vue memasang <NuxtPage /> agar halaman tampil"
+      ],
+      "code": "app/pages/index.vue        ->  /\napp/pages/menu/index.vue   ->  /menu\napp/pages/menu/promo.vue   ->  /menu/promo\napp/pages/tentang.vue      ->  /tentang"
+    },
+    {
+      "title": "Route dinamis",
+      "kicker": "ROUTING",
+      "bullets": [
+        "[id].vue menangkap satu segmen, misalnya /menu/12",
+        "[...slug].vue menangkap sisa segmen sekaligus",
+        "Baca parameter lewat useRoute().params",
+        "Halaman statis menang atas halaman dinamis"
+      ],
+      "code": "<!-- app/pages/menu/[id].vue -->\n<script setup lang=\"ts\">\nconst route = useRoute()\nconst id = route.params.id\n</script>\n\n<template>\n  <h1>Menu nomor {{ id }}</h1>\n</template>"
+    },
+    {
+      "title": "NuxtLink dan NuxtPage",
+      "kicker": "ROUTING",
+      "bullets": [
+        "<NuxtLink to> berpindah halaman tanpa muat ulang",
+        "Link ke situs luar juga bisa memakai NuxtLink",
+        "<NuxtPage /> tempat halaman aktif ditampilkan",
+        "navigateTo() untuk pindah halaman dari kode"
+      ],
+      "code": "<template>\n  <nav>\n    <NuxtLink to=\"/\">Beranda</NuxtLink>\n    <NuxtLink to=\"/menu\">Menu</NuxtLink>\n  </nav>\n  <NuxtLayout>\n    <NuxtPage />\n  </NuxtLayout>\n</template>"
+    },
+    {
+      "title": "Layout",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Layout di app/layouts, isinya masuk lewat <slot />",
+        "default.vue dipakai bila halaman tidak memilih",
+        "Pilih layout lain dengan definePageMeta",
+        "app/error.vue menampilkan halaman error dan 404"
+      ],
+      "code": "<!-- app/pages/admin/index.vue -->\n<script setup lang=\"ts\">\ndefinePageMeta({ layout: 'admin' })\n</script>\n\n<!-- app/layouts/admin.vue -->\n<template>\n  <aside>Panel Admin</aside>\n  <slot />\n</template>"
+    },
+    {
+      "title": "Komponen otomatis",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "File di app/components langsung bisa dipakai",
+        "Nama folder ikut jadi awalan nama komponen",
+        "Awalan Lazy menunda pemuatan komponen",
+        "Tidak perlu menulis import di setiap halaman"
+      ],
+      "code": "app/components/KartuMenu.vue   -> <KartuMenu />\napp/components/base/Tombol.vue -> <BaseTombol />\napp/components/form/Input.vue  -> <FormInput />\n\n<LazyKartuMenu v-if=\"tampil\" />"
+    },
+    {
+      "title": "Composable",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "Fungsi useXxx di app/composables di-import otomatis",
+        "Membungkus logika yang dipakai banyak komponen",
+        "ref, computed, dan watch juga otomatis tersedia",
+        "Fungsi bantu biasa bisa ditaruh di app/utils"
+      ],
+      "code": "// app/composables/useKeranjang.ts\nexport function useKeranjang() {\n  const isi = ref<string[]>([])\n  const tambah = (nama: string) => {\n    isi.value.push(nama)\n  }\n  const jumlah = computed(() => isi.value.length)\n  return { isi, tambah, jumlah }\n}"
+    },
+    {
+      "title": "State bersama",
+      "kicker": "KOMPONEN",
+      "bullets": [
+        "ref di luar komponen bisa bocor antar pengguna di SSR",
+        "useState(key) berbagi state aman dari server ke klien",
+        "Key yang sama berarti state yang sama",
+        "Pinia lewat modul @pinia/nuxt untuk state besar"
+      ],
+      "code": "// app/composables/usePengguna.ts\nexport const usePengguna = () =>\n  useState('pengguna', () => ({\n    nama: '',\n    kelas: 'XI RPL 1',\n  }))"
+    },
+    {
+      "title": "useFetch",
+      "kicker": "DATA",
+      "bullets": [
+        "Mengambil data saat halaman dirender di server",
+        "Hasil server dikirim ke browser, tidak diambil ulang",
+        "Mengembalikan data, status, error, dan refresh",
+        "Cocok untuk memanggil server/api milik sendiri"
+      ],
+      "code": "<script setup lang=\"ts\">\nconst { data: menu, status } =\n  await useFetch('/api/menu')\n</script>\n\n<template>\n  <p v-if=\"status === 'pending'\">Memuat...</p>\n  <li v-for=\"m in menu\" :key=\"m.id\">{{m.nama}}</li>\n</template>"
+    },
+    {
+      "title": "useAsyncData dan $fetch",
+      "kicker": "DATA",
+      "bullets": [
+        "$fetch: fungsi fetch biasa, cocok di event handler",
+        "useAsyncData(key, fn) untuk logika ambil data bebas",
+        "useFetch kira-kira useAsyncData plus $fetch",
+        "Key dipakai untuk cache dan berbagi hasil"
+      ],
+      "code": "const { data: nilai } = await useAsyncData(\n  'nilai-rapor',\n  () => $fetch('/api/nilai'),\n)\n\nasync function simpan() {\n  await $fetch('/api/nilai', {\n    method: 'POST', body: { mapel: 'MTK' },\n  })\n}"
+    },
+    {
+      "title": "Pending, error, refresh",
+      "kicker": "DATA",
+      "bullets": [
+        "status: idle, pending, success, atau error",
+        "error berisi masalah bila permintaan gagal",
+        "refresh() mengambil ulang data dengan key yang sama",
+        "Tampilkan keadaan memuat dan gagal di template"
+      ],
+      "code": "const { data, error, refresh, status } =\n  await useFetch('/api/absensi')\n\n// di template:\n// <p v-if=\"error\">Gagal memuat absensi</p>\n// <button @click=\"refresh()\">Muat ulang</button>"
+    },
+    {
+      "title": "Lazy dan transform",
+      "kicker": "DATA",
+      "bullets": [
+        "lazy: true, halaman tampil dulu tanpa menunggu data",
+        "Siapkan tampilan memuat karena data awalnya kosong",
+        "transform mengolah hasil sebelum disimpan",
+        "pick mengambil beberapa field saja"
+      ],
+      "code": "const { data: murah, status } = await useFetch(\n  '/api/menu',\n  {\n    lazy: true,\n    transform: (menu) =>\n      menu.filter((m) => m.harga < 10000),\n  },\n)"
+    },
+    {
+      "title": "Server route",
+      "kicker": "SERVER",
+      "bullets": [
+        "File di server/api menjadi endpoint /api/...",
+        "Ditangani Nitro, server bawaan Nuxt",
+        "defineEventHandler membungkus fungsi handler",
+        "Akhiran .get.ts atau .post.ts membatasi method",
+        "Nilai yang di-return dikirim sebagai JSON"
+      ],
+      "code": "// server/api/menu.get.ts\nexport default defineEventHandler(() => {\n  return [\n    { id: 1, nama: 'Nasi goreng', harga: 12000 },\n    { id: 2, nama: 'Es teh', harga: 3000 },\n  ]\n})"
+    },
+    {
+      "title": "Membaca query dan body",
+      "kicker": "SERVER",
+      "bullets": [
+        "getQuery(event) membaca ?kelas=XI di URL",
+        "readBody(event) membaca body JSON permintaan POST",
+        "getRouterParam(event, 'id') untuk file [id].get.ts",
+        "Selalu periksa input sebelum dipakai"
+      ],
+      "code": "// server/api/absensi.post.ts\nexport default defineEventHandler(async (event) => {\n  const { kelas } = getQuery(event)\n  const body = await readBody(event)\n  return { kelas, nis: body.nis, hadir: true }\n})"
+    },
+    {
+      "title": "Error di server",
+      "kicker": "SERVER",
+      "bullets": [
+        "createError membuat error dengan kode status HTTP",
+        "throw error itu untuk menghentikan handler",
+        "Klien menerimanya di error milik useFetch",
+        "server/middleware berjalan di setiap request"
+      ],
+      "code": "// server/api/menu/[id].get.ts\nexport default defineEventHandler((event) => {\n  const id = Number(getRouterParam(event, 'id'))\n  const item = daftarMenu.find((m) => m.id === id)\n  if (!item) {\n    throw createError({ status: 404,\n      statusText: 'Menu tidak ditemukan' })\n  }\n  return item\n})"
+    },
+    {
+      "title": "Route middleware",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "File di app/middleware berjalan sebelum pindah halaman",
+        "defineNuxtRouteMiddleware menerima to dan from",
+        "return navigateTo('/login') untuk mengalihkan",
+        "Akhiran .global.ts membuat middleware jalan di semua route"
+      ],
+      "code": "// app/middleware/auth.ts\nexport default defineNuxtRouteMiddleware((to) => {\n  const pengguna = usePengguna()\n  if (!pengguna.value.nama) {\n    return navigateTo('/login')\n  }\n})"
+    },
+    {
+      "title": "Cookie dan sesi",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "useCookie membaca dan menulis cookie di server dan klien",
+        "Sesi berisi token, bukan password",
+        "Di server: getCookie dan setCookie",
+        "Atur httpOnly, secure, dan maxAge untuk cookie sesi"
+      ],
+      "code": "// server/api/login.post.ts\nexport default defineEventHandler(async (event) => {\n  const { nis, sandi } = await readBody(event)\n  const token = await cekLogin(nis, sandi)\n  setCookie(event, 'sesi', token, {\n    httpOnly: true, maxAge: 60 * 60 * 24,\n  })\n  return { ok: true }\n})"
+    },
+    {
+      "title": "Melindungi halaman",
+      "kicker": "AUTENTIKASI",
+      "bullets": [
+        "Pasang middleware lewat definePageMeta",
+        "Middleware halaman hanya menjaga tampilan",
+        "Endpoint server/api tetap wajib memeriksa sesi",
+        "Balas 401 bila sesi tidak ada atau tidak sah"
+      ],
+      "code": "<!-- app/pages/rapor.vue -->\n<script setup lang=\"ts\">\ndefinePageMeta({ middleware: 'auth' })\nconst { data } = await useFetch('/api/rapor')\n</script>"
+    },
+    {
+      "title": "useHead dan useSeoMeta",
+      "kicker": "SEO",
+      "bullets": [
+        "useHead mengatur title, meta, dan link di <head>",
+        "useSeoMeta menulis meta SEO dengan nama yang rapi",
+        "Bisa dipanggil di halaman, layout, atau app.vue",
+        "Ikut dirender di server, jadi terbaca mesin pencari"
+      ],
+      "code": "useSeoMeta({\n  title: 'Menu Kantin SMK',\n  description: 'Daftar menu dan harga hari ini',\n  ogTitle: 'Menu Kantin SMK',\n  ogImage: '/menu.png',\n})"
+    },
+    {
+      "title": "routeRules",
+      "kicker": "RENDERING",
+      "bullets": [
+        "Atur cara render per pola route di nuxt.config.ts",
+        "prerender: true membuat HTML saat build",
+        "swr: detik menyimpan cache dan memperbarui di belakang",
+        "ssr: false menjadikan route itu SPA"
+      ],
+      "code": "export default defineNuxtConfig({\n  routeRules: {\n    '/': { prerender: true },\n    '/menu/**': { swr: 60 },\n    '/admin/**': { ssr: false },\n  },\n})"
+    },
+    {
+      "title": "Client only",
+      "kicker": "RENDERING",
+      "bullets": [
+        "Hidrasi: Vue di browser menghidupkan HTML dari server",
+        "HTML server dan klien harus sama, kalau beda muncul peringatan",
+        "<ClientOnly> merender isinya hanya di browser",
+        "Cocok untuk grafik, peta, atau kode yang butuh window"
+      ],
+      "code": "<template>\n  <ClientOnly>\n    <GrafikNilai :data=\"nilai\" />\n    <template #fallback>\n      <p>Memuat grafik...</p>\n    </template>\n  </ClientOnly>\n</template>"
+    },
+    {
+      "title": "nuxt.config.ts",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "Satu file konfigurasi di akar proyek",
+        "Isinya modul, css global, routeRules, runtimeConfig",
+        "defineNuxtConfig memberi bantuan tipe di editor",
+        "Ubah file ini lalu dev server memuat ulang"
+      ],
+      "code": "export default defineNuxtConfig({\n  modules: ['@pinia/nuxt'],\n  css: ['~/assets/css/utama.css'],\n  devtools: { enabled: true },\n})"
+    },
+    {
+      "title": "runtimeConfig",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "runtimeConfig: rahasia, hanya terbaca di server",
+        "runtimeConfig.public: terbaca di server dan browser",
+        "Ditimpa env NUXT_..., misalnya NUXT_API_SECRET",
+        "Baca dengan useRuntimeConfig()"
+      ],
+      "code": "export default defineNuxtConfig({\n  runtimeConfig: {\n    apiSecret: '',\n    public: { namaSekolah: 'SMK Nusantara' },\n  },\n})\n\n# .env\nNUXT_API_SECRET=rahasia123\nNUXT_PUBLIC_NAMA_SEKOLAH=SMK Bakti"
+    },
+    {
+      "title": "Modul Nuxt",
+      "kicker": "KONFIGURASI",
+      "bullets": [
+        "Modul menambah fitur dengan satu baris konfigurasi",
+        "Nuxt UI: komponen antarmuka siap pakai",
+        "Nuxt Content: halaman dari file Markdown",
+        "Nuxt Image: gambar dioptimalkan otomatis",
+        "npx nuxt module add memasang dan mendaftarkan modul"
+      ],
+      "code": "npx nuxt module add image\n\n// nuxt.config.ts\nexport default defineNuxtConfig({\n  modules: ['@nuxt/image'],\n})"
+    },
+    {
+      "title": "Build dan generate",
+      "kicker": "DEPLOY",
+      "bullets": [
+        "npm run build: nuxt build, hasil ke folder .output",
+        "node .output/server/index.mjs menjalankan server",
+        "nuxt generate: prerender semua halaman jadi statis",
+        "npm run preview mencoba hasil build di lokal"
+      ],
+      "code": "npm run build\nnode .output/server/index.mjs\n\nnpx nuxt generate\n# hasil statis di .output/public"
+    },
+    {
+      "title": "Deploy dengan Nitro",
+      "kicker": "DEPLOY",
+      "bullets": [
+        "Nitro membangun keluaran sesuai preset tujuan",
+        "Preset node-server untuk VPS dan server sendiri",
+        "Vercel dan Netlify dikenali otomatis saat build",
+        "Hasil generate bisa ke hosting statis mana saja",
+        "Isi env NUXT_... di dashboard hosting"
+      ],
+      "code": "# memilih preset secara manual\nNITRO_PRESET=node-server npm run build\nNITRO_PRESET=netlify npm run build"
+    },
+    {
+      "title": "Langkah berikutnya",
+      "kicker": "PENUTUP",
+      "bullets": [
+        "Kerjakan proyek akhir: Mini Nuxt Router",
+        "Coba Nuxt UI untuk tampilan cepat",
+        "Pelajari Pinia untuk state aplikasi besar",
+        "Sambungkan server/api ke database sungguhan",
+        "Deploy satu proyek kecil ke Vercel atau Netlify"
+      ]
+    }
+  ]
+}
