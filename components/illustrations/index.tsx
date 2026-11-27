@@ -54,3 +54,13 @@ export function Welcome(props: Props) {
     </Badge>
   );
 }
+
+// Data kosong: an empty inbox tray.
+export function Empty(props: Props) {
+  return (
+    <Badge tone="light" {...props}>
+      <path d="M28 47l8-12h24l8 12v15a4 4 0 0 1-4 4H32a4 4 0 0 1-4-4Z" className="fill-matcha-50 stroke-noir" strokeWidth="3" />
+      <path d="M28 47h12l3 6h10l3-6h12" className="stroke-noir" strokeWidth="3" />
+    </Badge>
+  );
+}
