@@ -6,7 +6,7 @@ import type { AstroCookies } from "astro";
 // src/middleware.ts opens it for each request.
 // jar: the request's cookies plus any set while serving it, so a refreshed
 // session is what later reads in the same request see.
-export type RequestStore = { cookies: AstroCookies; request: Request; jar: Map<string, string>; memo: Map<string, Promise<unknown>>; refresh?: boolean };
+export type RequestStore = { cookies: AstroCookies; request: Request; jar: Map<string, string>; memo: Map<string, Promise<unknown>>; refresh?: boolean; rpc?: { name: string; args: unknown } };
 
 export const requestStore = new AsyncLocalStorage<RequestStore>();
 
@@ -31,6 +31,8 @@ export class Redirect extends Error {
   }
 }
 export class NotFound extends Error {}
+// An admin change queued for approval instead of run (lib/dal.ts requireAdmin).
+export class Pending extends Error {}
 
 export function redirect(to: string): never {
   throw new Redirect(to);

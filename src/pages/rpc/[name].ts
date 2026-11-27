@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { ACTIONS, type ActionName } from "@/lib/actions";
-import { currentRequest, NotFound, Redirect } from "@/lib/request";
-import { decodeArgs, type RpcReply } from "@/lib/rpc-wire";
+import { currentRequest, NotFound, Pending, Redirect } from "@/lib/request";
+import { decodeArgs, encodeArgs, type RpcReply } from "@/lib/rpc-wire";
 import { safeNext } from "@/lib/safe-next";
 
 // Runs one function from lib/actions. JSON bodies come from lib/rpc.ts and
@@ -19,10 +19,12 @@ export const POST: APIRoute = async ({ params, request, url }) => {
   let reply: RpcReply;
   try {
     const args = json ? decodeArgs(await request.json()) : fn.length >= 2 ? [undefined, await request.formData()] : [await request.formData()];
+    currentRequest().rpc = { name: params.name!, args: encodeArgs(args) };
     reply = { ok: (await fn(...args)) ?? null, refresh: currentRequest().refresh };
   } catch (e) {
     if (e instanceof NotFound) return new Response(null, { status: 404 });
-    if (!(e instanceof Redirect)) {
+    if (e instanceof Pending) reply = { ok: { ok: "Terkirim, menunggu persetujuan admin utama." } };
+    else if (!(e instanceof Redirect)) {
       console.error(`rpc ${params.name}`, e);
       reply = { error: "Terjadi kesalahan di server. Coba lagi." };
     } else reply = { redirect: e.to };

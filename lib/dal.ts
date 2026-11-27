@@ -1,4 +1,4 @@
-import { currentRequest, notFound, perRequest, redirect } from "@/lib/request";
+import { currentRequest, notFound, Pending, perRequest, redirect } from "@/lib/request";
 import { createClient } from "@/lib/supabase/server";
 
 export type Role = "student" | "admin";
@@ -60,9 +60,24 @@ export async function requireUser(next = "/"): Promise<CurrentUser> {
   return user;
 }
 
-// Students get a 404 so admin routes do not advertise themselves.
+// The one account whose admin changes run at once; everyone else's wait in
+// /admin/persetujuan. Same email as public.is_approver().
+export const APPROVER = "mujahidin28394@gmail.com";
+// Admin actions that change nothing (or only mail the admin themself).
+const READ_ONLY = new Set(["slugTersedia", "daftarPengguna", "kirimTesPengumuman"]);
+
+// Students get a 404 so admin routes do not advertise themselves. Another
+// admin's change through /rpc is stored for the approver and not run.
 export async function requireAdmin(next = "/admin"): Promise<CurrentUser> {
   const user = await requireUser(next);
   if (user.role !== "admin") notFound();
+  const call = currentRequest().rpc;
+  if (call && user.email !== APPROVER && !READ_ONLY.has(call.name)) {
+    const { error } = await (await createClient())
+      .from("admin_approvals")
+      .insert({ action: call.name, args: call.args, requested_by: user.id, requested_email: user.email });
+    if (error) throw new Error(error.message);
+    throw new Pending();
+  }
   return user;
 }
