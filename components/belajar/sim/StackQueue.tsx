@@ -16,7 +16,7 @@ function Lane({ name, rule, items, lastOut, enter, exit, color }: { name: string
         {Array.from({ length: CAP }, (_, i) => (
           <div key={i} className="grid h-11 min-w-0 flex-1 place-items-center rounded-lg border-2 border-dashed border-zinc-700 text-base font-extrabold">
             {items[i] !== undefined && (
-              <span key={`${items[i]}${i}`} className="sim-pop grid size-full place-items-center rounded-md" style={{ background: color, color: INK }}>{items[i]}</span>
+              <span key={`${items[i]}${i}`} className="sim-pop grid size-full place-items-center rounded-lg" style={{ background: color, color: INK }}>{items[i]}</span>
             )}
           </div>
         ))}

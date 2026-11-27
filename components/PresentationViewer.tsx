@@ -338,7 +338,7 @@ export default function PresentationViewer({
               <ActiveLayoutIcon className="h-4 w-4" strokeWidth={1.75} />
             </button>
             {isLayoutMenuOpen && (
-              <div className="absolute right-0 top-11 z-10 w-44 overflow-hidden rounded-[18px] bg-zinc-900 p-1 shadow-soft">
+              <div className="absolute right-0 top-11 z-10 w-44 overflow-hidden rounded-2xl bg-zinc-900 p-1 shadow-soft">
                 {NAV_POSITIONS.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}

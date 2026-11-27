@@ -5,7 +5,7 @@ const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visi
 // The one main action on a screen: a matcha pill with an ink outline and a
 // hard shadow, like a sticker; it presses down on click.
 export const primaryButton =
-  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-noir bg-primary px-6 font-bold text-on-primary shadow-[3px_3px_0_0_var(--color-noir)] transition-[background-color,translate,box-shadow] hover:bg-primary-hover active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-50 motion-reduce:transition-none ${focus}`;
+  `inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-noir bg-primary px-6 font-bold text-on-primary shadow-hard-sm transition-[background-color,translate,box-shadow] hover:bg-primary-hover active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:opacity-50 motion-reduce:transition-none ${focus}`;
 
 // Everything else: a white pill on the canvas.
 export const secondaryButton =
@@ -16,7 +16,7 @@ export const iconButton =
   `grid size-11 shrink-0 place-items-center rounded-full bg-zinc-900 text-zinc-300 shadow-soft transition-colors hover:text-zinc-50 ${focus}`;
 
 // A white surface on the lavender canvas.
-export const card = "rounded-[18px] bg-zinc-900 shadow-soft";
+export const card = "rounded-2xl bg-zinc-900 shadow-soft";
 
 // Pill chip for counts, filters and small states. Pass the background:
 // chip + " bg-tile-mint", or mutedChip for the plain grey one.

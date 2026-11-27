@@ -110,7 +110,7 @@ export default function ChapterQuiz({
       {exercises.map((ex, i) => (
         <CodeExercise key={ex.id} ex={ex} prompt={<div dangerouslySetInnerHTML={{ __html: prompts[i] ?? "" }} />} onPassed={exercisePassed} />
       ))}
-      <section aria-labelledby="kuis" className="mt-10 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-8">
+      <section aria-labelledby="kuis" className="mt-10 rounded-2xl bg-zinc-900 p-5 shadow-soft sm:p-8">
         <h2 id="kuis" className="text-2xl font-bold tracking-tight">Cek pemahaman</h2>
         {questions.length === 0 ? (
           <button type="button" onClick={() => { playWin(); celebrate(); complete(); }} disabled={status === "saved" || !allPassed} className={`${primaryButton} mt-5`}>
@@ -126,7 +126,7 @@ export default function ChapterQuiz({
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-noir text-xs text-on-noir tabular-nums">{qi + 1}</span>
                     <span className="min-w-0 pt-0.5 [overflow-wrap:anywhere]">{q.prompt}</span>
                   </p>
-                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-[18px] bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
+                  {q.code && <pre className="scrollbar-thin mt-3 overflow-x-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{q.code}</code></pre>}
                   <div role="group" aria-label={`Pilihan jawaban soal ${qi + 1}`} className="mt-3 grid gap-2">
                     {q.options.map((opt, n) => {
                       const chosen = picked === n;
@@ -198,7 +198,7 @@ export default function ChapterQuiz({
             const retried = questions.map((q, i) => (tried[q.id]?.length ? i + 1 : 0)).filter(Boolean);
             const first = questions.length - retried.length;
             return (
-              <div className="mt-3 rounded-[18px] bg-zinc-950 px-4 py-3 text-sm">
+              <div className="mt-3 rounded-2xl bg-zinc-950 px-4 py-3 text-sm">
                 <p className="font-semibold">{first} dari {questions.length} soal benar di percobaan pertama.</p>
                 <p className="mt-1 text-zinc-400">
                   {retried.length === 0

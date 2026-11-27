@@ -11,7 +11,7 @@ function Lane({ name, plan, t, scale, accent }: { name: string; plan: Plan; t: n
         <p className="text-sm font-extrabold">{name}</p>
         <div className="flex gap-1" role="img" aria-label={`${n} dari ${FEATURES} fitur sudah berfungsi`}>
           {Array.from({ length: FEATURES }, (_, i) => (
-            <span key={i} className={`size-3.5 rounded-[4px] border-2 ${i < n ? "border-[#b5d36f] bg-[#b5d36f]" : "border-zinc-600"}`} />
+            <span key={i} className={`size-3.5 rounded border-2 ${i < n ? "border-[#b5d36f] bg-[#b5d36f]" : "border-zinc-600"}`} />
           ))}
         </div>
       </div>
@@ -20,7 +20,7 @@ function Lane({ name, plan, t, scale, accent }: { name: string; plan: Plan; t: n
           const rework = s.kind === "ulang";
           const p = progress(s, t);
           return (
-            <div key={s.id} title={`${s.label}: ${s.len} minggu`} className={`absolute inset-y-1 overflow-hidden rounded-md border ${rework ? "border-red-400 bg-red-400/15" : "border-zinc-600 bg-zinc-800"}`}
+            <div key={s.id} title={`${s.label}: ${s.len} minggu`} className={`absolute inset-y-1 overflow-hidden rounded-lg border ${rework ? "border-red-400 bg-red-400/15" : "border-zinc-600 bg-zinc-800"}`}
               style={{ left: `calc(${(s.start / scale) * 100}% + 1px)`, width: `calc(${(s.len / scale) * 100}% - 2px)` }}>
               <div className="absolute inset-y-0 left-0" style={{ width: `${p * 100}%`, background: rework ? "#f8717166" : accent + "aa" }} />
               <span className="relative block truncate px-1 text-[9px] font-bold leading-[2.5rem] sm:text-[11px]">{s.label}</span>

@@ -55,7 +55,7 @@ export default function PidControl({ title }: { title: string }) {
         <div className="relative mt-3 h-9" aria-hidden>
           <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-zinc-700" />
           <div className="absolute top-0 h-9 w-0.5 bg-white/80" style={{ left: `${(sp / yMax) * 100}%` }} />
-          <div className="absolute top-1.5 grid h-6 w-9 -translate-x-1/2 place-items-center rounded-md bg-[#b5d36f] text-[10px] font-extrabold text-[#12140d]" style={{ left: `${Math.min(100, Math.max(0, (pos[shown] / yMax) * 100))}%` }}>robot</div>
+          <div className="absolute top-1.5 grid h-6 w-9 -translate-x-1/2 place-items-center rounded-lg bg-[#b5d36f] text-[10px] font-extrabold text-[#12140d]" style={{ left: `${Math.min(100, Math.max(0, (pos[shown] / yMax) * 100))}%` }}>robot</div>
         </div>
         <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
           {[["Overshoot", `${m.overshoot.toFixed(0)}%`], ["Waktu tenang", m.settle === null ? "belum" : `${m.settle.toFixed(1).replace(".", ",")} s`], ["Galat akhir", (m.finalErr).toFixed(2).replace(".", ",")]].map(([a, b]) => (

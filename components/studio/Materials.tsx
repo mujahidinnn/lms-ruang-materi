@@ -29,7 +29,7 @@ export default function Materials({ items }: { items: Material[] }) {
     <ul className="grid gap-3">
       {items.map((m) =>
         m.kind === "kode" ? (
-          <li key={m.id} className="overflow-hidden rounded-[18px] border-2 border-noir bg-zinc-900">
+          <li key={m.id} className="overflow-hidden rounded-2xl border-2 border-noir bg-zinc-900">
             <div className="flex flex-wrap items-center gap-2 border-b-2 border-noir bg-zinc-800 px-3 py-1.5">
               <FileCode2 aria-hidden className="size-4 text-zinc-400" />
               <span className="font-mono text-sm font-semibold">{m.name}</span>

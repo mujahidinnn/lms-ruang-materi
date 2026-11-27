@@ -17,7 +17,7 @@ function Nest({ depth, children }: { depth: number; children: ReactNode }): Reac
     <div key={depth} className="sim-pop relative rounded-xl border-2 px-2.5 pt-6 pb-2.5" style={{ borderColor: l.color, background: `${l.color}1a` }}>
       <span className="absolute top-1 left-2 text-[11px] font-bold" style={{ color: l.color }}>{l.header}</span>
       <Nest depth={depth - 1}>{children}</Nest>
-      {depth === 3 && <span className="mt-2 block rounded-md px-2 py-0.5 text-center text-[11px] font-bold text-[#12140d]" style={{ background: l.color }}>Trailer (pemeriksa kesalahan)</span>}
+      {depth === 3 && <span className="mt-2 block rounded-lg px-2 py-0.5 text-center text-[11px] font-bold text-[#12140d]" style={{ background: l.color }}>Trailer (pemeriksa kesalahan)</span>}
     </div>
   );
 }

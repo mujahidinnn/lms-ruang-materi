@@ -41,7 +41,7 @@ export default function CpuFetchExecute({ title }: { title: string }) {
                 const m = sorot(a);
                 const tipe = a < 5 ? "kode" : a === 7 ? "hasil" : "data";
                 return (
-                  <li key={a} className={`flex items-center gap-2 rounded-md border px-2 py-1 font-mono text-xs ${m === "baca" ? "border-matcha-300 bg-[#2b3517]" : m === "tulis" ? "border-amber-300 bg-[#3a2f10]" : m === "pc" ? "border-zinc-300" : "border-zinc-700"}`}>
+                  <li key={a} className={`flex items-center gap-2 rounded-lg border px-2 py-1 font-mono text-xs ${m === "baca" ? "border-matcha-300 bg-[#2b3517]" : m === "tulis" ? "border-amber-300 bg-[#3a2f10]" : m === "pc" ? "border-zinc-300" : "border-zinc-700"}`}>
                     <span className="w-4 text-zinc-400">{a}</span>
                     <span className="w-9 text-[10px] text-zinc-500">{tipe}</span>
                     <span className="flex-1 font-bold text-zinc-100">{typeof x === "number" ? x : teksInstr(x)}</span>

@@ -94,7 +94,7 @@ export default function ChapterSyllabus({
       {variant === "sidebar" ? (
         <nav
           aria-label="Daftar bab"
-          className="scrollbar-thin sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-[18px] bg-zinc-900 p-3 shadow-soft"
+          className="scrollbar-thin sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl bg-zinc-900 p-3 shadow-soft"
         >
           {list}
         </nav>
@@ -119,7 +119,7 @@ export default function ChapterSyllabus({
             role="dialog"
             aria-modal="true"
             aria-label="Daftar bab"
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[18px] bg-zinc-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-soft lg:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-2xl bg-zinc-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-soft lg:hidden"
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-lg font-bold">Daftar bab</p>

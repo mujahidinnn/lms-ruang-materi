@@ -55,7 +55,7 @@ function read(m: Mode): ExerciseFiles {
   }
 }
 
-const panel = "overflow-hidden rounded-[18px] border-2 border-noir bg-zinc-900";
+const panel = "overflow-hidden rounded-2xl border-2 border-noir bg-zinc-900";
 const bar = "flex min-h-12 flex-wrap items-center gap-2 border-b-2 border-noir bg-zinc-800 px-3 py-1.5";
 const body = "h-[22rem] lg:h-[34rem]";
 

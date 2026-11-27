@@ -58,7 +58,7 @@ export default function CatatanBab({ chapterId }: { chapterId: string }) {
   }
 
   return (
-    <section aria-labelledby="catatan" className="mt-10 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+    <section aria-labelledby="catatan" className="mt-10 rounded-2xl bg-zinc-900 p-5 shadow-soft sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="catatan" className="flex items-center gap-2 text-lg font-extrabold">
           <NotebookPen aria-hidden className="size-5" />Catatanmu

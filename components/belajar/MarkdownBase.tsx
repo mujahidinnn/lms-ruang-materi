@@ -36,7 +36,7 @@ export default function MarkdownBase({
           img: ({ src, alt }) => {
             // Hydrated in the browser by ReaderScripts; this text is the fallback.
             const sim = typeof src === "string" ? parseSimRef(src) : null;
-            if (sim) return <span data-sim={sim} data-title={alt} className="my-5 block rounded-[18px] bg-zinc-900 p-5 text-sm text-zinc-400 shadow-soft">Simulasi interaktif: {alt || sim}</span>;
+            if (sim) return <span data-sim={sim} data-title={alt} className="my-5 block rounded-2xl bg-zinc-900 p-5 text-sm text-zinc-400 shadow-soft">Simulasi interaktif: {alt || sim}</span>;
             const diagram = typeof src === "string" ? parseDiagramRef(src) : null;
             if (diagram) {
               return (
@@ -75,12 +75,12 @@ export default function MarkdownBase({
             const text = String(children ?? "");
             const lang = /language-(\w+)/.exec(className ?? "")?.[1];
             const block = lang !== undefined || text.includes("\n");
-            if (!block) return <code className="rounded-md bg-zinc-800 px-1.5 py-0.5 font-mono text-[0.9em] break-words [overflow-wrap:anywhere]">{children}</code>;
+            if (!block) return <code className="rounded-lg bg-zinc-800 px-1.5 py-0.5 font-mono text-[0.9em] break-words [overflow-wrap:anywhere]">{children}</code>;
             const code = text.replace(/\n$/, "");
             return renderCode ? (
               renderCode(code, lang ?? "text")
             ) : (
-              <pre className="scrollbar-thin my-5 overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{code}</code></pre>
+              <pre className="scrollbar-thin my-5 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{code}</code></pre>
             );
           },
           a: ({ href, children }) => (

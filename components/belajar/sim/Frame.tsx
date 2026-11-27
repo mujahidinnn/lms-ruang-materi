@@ -7,7 +7,7 @@ export const simChip = "min-h-11 rounded-full px-4 text-sm font-bold aria-presse
 // Shared card for every simulation: title, hint, stage, controls.
 export default function Frame({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <figure className="not-prose my-6 rounded-[18px] border-2 border-noir bg-zinc-900 p-4 shadow-soft sm:p-6">
+    <figure className="not-prose my-6 rounded-2xl border-2 border-noir bg-zinc-900 p-4 shadow-soft sm:p-6">
       <figcaption className="mb-4">
         <p className="text-lg font-extrabold">{title}</p>
         <p className="mt-1 text-sm text-zinc-400">{hint}</p>

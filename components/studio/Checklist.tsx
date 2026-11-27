@@ -42,7 +42,7 @@ export default function Checklist({ project, items, done }: { project: string; i
           <li key={it.id}>
             <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-zinc-800/60">
               <input type="checkbox" checked={ticked.has(it.id)} onChange={() => toggle(it.id)} className="peer sr-only" />
-              <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-2 border-noir bg-zinc-900 text-noir peer-checked:bg-matcha-300 peer-focus-visible:outline-2 peer-focus-visible:outline-accent [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100">
+              <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg border-2 border-noir bg-zinc-900 text-noir peer-checked:bg-matcha-300 peer-focus-visible:outline-2 peer-focus-visible:outline-accent [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100">
                 <Check className="size-4" strokeWidth={3} />
               </span>
               <span className={`text-sm leading-relaxed ${ticked.has(it.id) ? "text-zinc-500 line-through" : "text-zinc-50"}`}>{it.text}</span>

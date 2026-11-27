@@ -16,7 +16,7 @@ export function confirmDialog({ title, text, action = "Lanjutkan", cancel = "Bat
   return new Promise((resolve) => {
     const d = document.createElement("dialog");
     d.className =
-      "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-[28px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm";
+      "m-auto w-[min(28rem,calc(100vw-2rem))] rounded-3xl border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-hard-lg backdrop:bg-black/50 backdrop:backdrop-blur-sm";
     d.setAttribute("aria-labelledby", "konfirmasi-judul");
     const form = document.createElement("form");
     form.method = "dialog";

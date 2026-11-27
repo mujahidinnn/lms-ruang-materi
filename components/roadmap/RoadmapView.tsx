@@ -52,7 +52,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             </span>
           ))}
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-5 rounded-md border-2 border-dashed border-zinc-700" />
+            <span className="h-3 w-5 rounded-lg border-2 border-dashed border-zinc-700" />
             opsional
           </span>
         </p>
@@ -96,7 +96,7 @@ export default function RoadmapView({ nodes, edges }: { nodes: RoadmapNode[]; ed
             <div aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSelected(null)} />
             <section
               aria-labelledby="node-title"
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-[18px] bg-zinc-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft lg:static lg:z-auto lg:max-h-none lg:rounded-[18px]"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[80dvh] overflow-y-auto rounded-t-2xl bg-zinc-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft lg:static lg:z-auto lg:max-h-none lg:rounded-2xl"
             >
               <div className="flex items-start gap-3">
                 <h2 id="node-title" ref={heading} tabIndex={-1} className="flex-1 text-2xl font-bold tracking-tight outline-none">

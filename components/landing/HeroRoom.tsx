@@ -6,7 +6,7 @@ import { coverSrc, retryWith, type Presentation } from "@/lib/slides";
 // A bright matcha folder with a foam pocket, ink-outlined like a sticker.
 // Fixed colors: the folder always sits on the black hero panel.
 const FOLDER = "bg-matcha-300";
-const POCKET = "bg-matcha-50 text-noir border-2 border-noir shadow-[5px_5px_0_0_var(--color-noir)]";
+const POCKET = "bg-matcha-50 text-noir border-2 border-noir shadow-hard";
 
 // Where each cover sits in the folder, front first. Covers past the last slot
 // wait, hidden, behind it.
@@ -127,11 +127,11 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
     <div className="relative pt-8">
       {/* Tab, sitting on the panel's top edge; it covers the panel border
           beneath it so the two read as one sheet. */}
-      <span aria-hidden className={`absolute top-0 left-0 z-10 h-[calc(2rem+1px)] w-2/5 rounded-t-[14px] ${FOLDER}`}>
+      <span aria-hidden className={`absolute top-0 left-0 z-10 h-[calc(2rem+1px)] w-2/5 rounded-t-xl ${FOLDER}`}>
         <svg viewBox="0 0 24 24" className="absolute top-2 right-4 size-4 fill-noir"><path d="M12 0c.9 6.4 4.7 10.6 12 12-7.3 1.4-11.1 5.6-12 12-.9-6.4-4.7-10.6-12-12C7.3 10.6 11.1 6.4 12 0Z" /></svg>
       </span>
 
-      <div ref={box} className={`relative aspect-4/3 rounded-[18px] rounded-tl-none ${FOLDER}`}>
+      <div ref={box} className={`relative aspect-4/3 rounded-2xl rounded-tl-none ${FOLDER}`}>
         {topics.map((t, i) => {
           const slot = order.indexOf(i);
           const isFront = slot === 0;
@@ -148,7 +148,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
               aria-label={`Buka materi ${t.title}`}
               aria-describedby="hero-room-hint"
               draggable={false}
-              className={`${base} ${motion} cursor-grab touch-pan-y shadow-lg select-none [-webkit-touch-callout:none] hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
+              className={`${base} ${motion} cursor-grab touch-pan-y shadow-soft select-none [-webkit-touch-callout:none] hover:-translate-y-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing`}
               style={{
                 transform: `translate(${drag.x}px, ${drag.y}px) rotate(${leaving ? tilt(drag.x) * 3 : tilt(drag.x)}deg)`,
                 // Out of the pocket it sits above everything, so the throw is
@@ -182,7 +182,7 @@ export default function HeroRoom({ topics }: { topics: Presentation[] }) {
         })}
 
         {/* Front pocket, holding the label. */}
-        <div className={`pointer-events-none absolute -inset-x-1 -bottom-1 z-40 flex h-[40%] items-end rounded-[18px] p-6 sm:p-7 ${POCKET}`}>
+        <div className={`pointer-events-none absolute -inset-x-1 -bottom-1 z-40 flex h-[40%] items-end rounded-2xl p-6 sm:p-7 ${POCKET}`}>
           <span aria-hidden className="absolute -top-4 right-6 -rotate-6 rounded-full border-2 border-noir bg-matcha-700 px-3 py-1 font-(family-name:--font-bricolage) text-xs font-extrabold tracking-tight text-matcha-50 uppercase">
             tarik ↑
           </span>

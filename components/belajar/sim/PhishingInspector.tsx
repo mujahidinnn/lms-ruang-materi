@@ -25,7 +25,7 @@ export default function PhishingInspector({ title }: { title: string }) {
       else if (sp.flag) ring = "outline outline-2 outline-dashed outline-[#d9534f]";
     }
     return (
-      <button type="button" aria-pressed={on} aria-label={`${label}: ${on ? "ditandai mencurigakan" : "belum ditandai"}`} onClick={() => toggle(id)} className={`min-h-11 w-full rounded-md px-2 py-1 text-left ${ring} ${extra}`}>
+      <button type="button" aria-pressed={on} aria-label={`${label}: ${on ? "ditandai mencurigakan" : "belum ditandai"}`} onClick={() => toggle(id)} className={`min-h-11 w-full rounded-lg px-2 py-1 text-left ${ring} ${extra}`}>
         {children}
       </button>
     );

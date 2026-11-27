@@ -150,7 +150,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
 
       <h2 className="mt-5 text-xl leading-snug font-bold tracking-tight text-balance [overflow-wrap:anywhere] sm:mt-8 sm:text-2xl">{q.prompt}</h2>
       {q.code && (
-        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
+        <pre className="scrollbar-thin mt-4 overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft"><code className="font-mono">{q.code}</code></pre>
       )}
 
       <div role="group" aria-label="Pilihan jawaban" className="mt-4 grid gap-2 sm:mt-6">
@@ -159,7 +159,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
             key={n}
             aria-pressed={answers[q.id] === n}
             onClick={() => setAnswers((a) => ({ ...a, [q.id]: n }))}
-            className={`flex min-h-14 items-center gap-3 rounded-[18px] border-2 bg-zinc-900 px-3 py-2.5 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`flex min-h-14 items-center gap-3 rounded-2xl border-2 bg-zinc-900 px-3 py-2.5 text-left shadow-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               answers[q.id] === n ? "border-zinc-50" : "border-transparent hover:border-zinc-700"
             }`}
           >
@@ -199,7 +199,7 @@ export default function ExamRunner({ attemptId, secondsLeft, questions }: { atte
       </div>
       <p aria-live="polite" className="mt-3 text-right text-sm text-red-500 empty:hidden">{error}</p>
 
-      <nav aria-label="Daftar soal" className="mt-6 rounded-[18px] bg-zinc-800/50 p-4 sm:mt-10 sm:rounded-[18px] sm:p-5">
+      <nav aria-label="Daftar soal" className="mt-6 rounded-2xl bg-zinc-800/50 p-4 sm:mt-10 sm:rounded-2xl sm:p-5">
         <ol className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-2">
           {questions.map((qq, n) => {
             const isDoubt = doubts.includes(qq.id);

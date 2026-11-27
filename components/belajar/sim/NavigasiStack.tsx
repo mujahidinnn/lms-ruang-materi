@@ -25,8 +25,8 @@ export default function NavigasiStack({ title }: { title: string }) {
   return (
     <Frame title={title} hint="Push layar, kembali, dan ganti tab. Perhatikan tumpukan di samping ponsel: tiap tab menyimpan tumpukannya sendiri. Deep link membentuk tumpukan lengkap sekaligus.">
       <div className="sim-stage grid items-start gap-4 p-3 sm:grid-cols-[13rem_1fr]">
-        <div role="group" aria-label={`Ponsel di tab ${k.aktif}, layar teratas ${label(atas)}`} className="mx-auto w-52 rounded-[28px] border-4 border-zinc-600 bg-[#0a0c06] p-1.5">
-          <div className="flex h-[22rem] flex-col overflow-hidden rounded-[20px] bg-zinc-900">
+        <div role="group" aria-label={`Ponsel di tab ${k.aktif}, layar teratas ${label(atas)}`} className="mx-auto w-52 rounded-3xl border-4 border-zinc-600 bg-[#0a0c06] p-1.5">
+          <div className="flex h-[22rem] flex-col overflow-hidden rounded-2xl bg-zinc-900">
             <div className="flex min-h-11 items-center gap-2 border-b border-zinc-800 px-2">
               <button type="button" aria-label="Kembali" disabled={tumpukan.length === 1} onClick={kembali} className="min-h-11 min-w-8 text-lg font-bold text-matcha-300 disabled:text-zinc-700">←</button>
               <span className="truncate font-mono text-xs font-bold text-zinc-100">{label(atas)}</span>
@@ -64,7 +64,7 @@ export default function NavigasiStack({ title }: { title: string }) {
                 <p className={`mb-1 text-xs font-bold ${k.aktif === t ? "text-matcha-300" : "text-zinc-400"}`}>{TAB_LABEL[t]}</p>
                 <ol aria-label={`Tumpukan tab ${t}`} className="flex flex-col-reverse gap-1">
                   {k.tab[t].map((l, i, a) => (
-                    <li key={i} className={`break-words rounded-md px-1.5 py-1 font-mono text-[11px] leading-tight ${i === a.length - 1 ? "bg-zinc-100 font-bold text-noir" : "bg-zinc-800 text-zinc-300"}`}>{label(l).replaceAll("/", "/\u200b")}</li>
+                    <li key={i} className={`break-words rounded-lg px-1.5 py-1 font-mono text-[11px] leading-tight ${i === a.length - 1 ? "bg-zinc-100 font-bold text-noir" : "bg-zinc-800 text-zinc-300"}`}>{label(l).replaceAll("/", "/\u200b")}</li>
                   ))}
                 </ol>
               </div>

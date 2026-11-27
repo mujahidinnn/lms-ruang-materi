@@ -60,7 +60,7 @@ export default function StudioStepEditor({ step }: { step: StepRow }) {
           </div>
         </div>
         <textarea name="body" aria-label="Arahan (markdown)" value={body} onChange={(e) => setBody(e.target.value)} rows={18} maxLength={20000} hidden={preview} className={`${field} mt-2 font-mono leading-relaxed`} />
-        {preview && <div className="mt-2 rounded-[18px] bg-zinc-950 p-5"><MarkdownBase body={body} slides={[]} /></div>}
+        {preview && <div className="mt-2 rounded-2xl bg-zinc-950 p-5"><MarkdownBase body={body} slides={[]} /></div>}
         <p className="mt-1 text-xs text-zinc-500">Gunakan <code className="font-mono">##</code> untuk subjudul, daftar bernomor untuk langkah, dan pagar tiga petik berbahasa untuk contoh kode. Tulis arahan selengkap mungkin, dari a sampai z.</p>
       </div>
 

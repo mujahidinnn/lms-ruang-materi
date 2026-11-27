@@ -18,7 +18,7 @@ export default function Sorting({ title }: { title: string }) {
 
   return (
     <Frame title={title} hint="Pilih algoritma, lalu putar atau maju satu langkah. Batang kuning sedang dibandingkan, hijau sudah di posisi akhirnya.">
-      <div role="group" aria-label="Algoritma pengurutan" className="flex flex-wrap gap-1 rounded-[18px] bg-zinc-800 p-1">
+      <div role="group" aria-label="Algoritma pengurutan" className="flex flex-wrap gap-1 rounded-2xl bg-zinc-800 p-1">
         {KINDS.map((k) => (
           <button key={k.id} type="button" aria-pressed={kind === k.id} onClick={() => { setKind(k.id); p.reset(); }} className={`${simChipFix} flex-1`}>{k.label}</button>
         ))}
@@ -32,7 +32,7 @@ export default function Sorting({ title }: { title: string }) {
             return (
               <div key={i} className="flex h-full min-w-0 flex-1 flex-col justify-end">
                 <span className="mb-0.5 text-center text-[10px] leading-none font-bold text-zinc-400">{v}</span>
-                <div className="rounded-t-md motion-safe:transition-[height,background-color] motion-safe:duration-150" style={{ height: `${v * 0.82}%`, background: hot ? "#f2c879" : ok ? G : "#6b7d3c", boxShadow: hot ? "0 0 12px #f2c87988" : undefined }} />
+                <div className="rounded-t-lg motion-safe:transition-[height,background-color] motion-safe:duration-150" style={{ height: `${v * 0.82}%`, background: hot ? "#f2c879" : ok ? G : "#6b7d3c", boxShadow: hot ? "0 0 12px #f2c87988" : undefined }} />
               </div>
             );
           })}

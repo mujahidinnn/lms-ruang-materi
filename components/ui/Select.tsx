@@ -57,7 +57,7 @@ export default function Select({
         <ChevronDown aria-hidden className={`size-4 shrink-0 text-zinc-400 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <ul role="listbox" aria-label={label} className="absolute right-0 z-20 mt-2 max-h-72 w-full min-w-48 overflow-y-auto rounded-[18px] border border-zinc-800 bg-zinc-900 p-1.5 shadow-soft">
+        <ul role="listbox" aria-label={label} className="absolute right-0 z-20 mt-2 max-h-72 w-full min-w-48 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900 p-1.5 shadow-soft">
           {options.map(([key, optionText]) => (
             <li key={key} role="option" aria-selected={key === current}>
               <button

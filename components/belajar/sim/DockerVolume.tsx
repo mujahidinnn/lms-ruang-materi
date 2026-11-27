@@ -5,7 +5,7 @@ import Frame, { simButton, simChip, simGhost } from "./Frame";
 const Rows = ({ n, alive }: { n: number; alive: boolean }) => (
   <ul className="mt-2 flex min-h-8 flex-wrap gap-1" aria-label="Record di database">
     {n === 0 && <li className="text-[11px] text-zinc-500">{alive ? "belum ada record" : "container tidak ada"}</li>}
-    {Array.from({ length: n }, (_, i) => <li key={i} className="sim-pop rounded-md border border-[#b5d36f] bg-[#1d2014] px-1.5 py-0.5 font-mono text-[11px] text-[#b5d36f]">catatan {i + 1}</li>)}
+    {Array.from({ length: n }, (_, i) => <li key={i} className="sim-pop rounded-lg border border-[#b5d36f] bg-[#1d2014] px-1.5 py-0.5 font-mono text-[11px] text-[#b5d36f]">catatan {i + 1}</li>)}
   </ul>
 );
 

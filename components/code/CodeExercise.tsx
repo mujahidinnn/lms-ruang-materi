@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // CodeMirror needs the DOM: loaded in the browser only, after mount.
 const CodeEditor = lazy(() => import("@/components/code/CodeEditor"));
-const editorSkeleton = <div className="h-40 animate-pulse rounded-[18px] bg-zinc-950" />;
+const editorSkeleton = <div className="h-40 animate-pulse rounded-2xl bg-zinc-950" />;
 
 type Part = keyof ExerciseFiles;
 const PARTS: Record<CodeExerciseData["kind"], Part[]> = { web: ["html", "css", "js"], js: ["code"], express: ["code"], python: ["code"], mikrotik: ["code"], php: ["code"] };
@@ -166,7 +166,7 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
       </div>
 
       {ex.kind === "web" && (
-        <iframe ref={preview} title={`Preview ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-[18px] border-0 bg-white" />
+        <iframe ref={preview} title={`Preview ${ex.title}`} sandbox="allow-scripts" className="mt-4 h-64 w-full rounded-2xl border-0 bg-white" />
       )}
 
       <div aria-live="polite" className="mt-4 space-y-3 empty:hidden">
@@ -175,7 +175,7 @@ export default function CodeExercise({ ex, prompt, onPassed, project = false }: 
         )}
         {out && out.logs.length > 0 && (
           ex.kind === "mikrotik" ? <MikrotikTerminal lines={out.logs.flatMap((l) => l.split("\n"))} /> : (
-            <pre className="scrollbar-thin max-h-48 overflow-auto rounded-[18px] bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
+            <pre className="scrollbar-thin max-h-48 overflow-auto rounded-2xl bg-zinc-950 p-4 text-sm"><code className="font-mono">{out.logs.join("\n")}</code></pre>
           )
         )}
         {out && out.results.length > 0 && (

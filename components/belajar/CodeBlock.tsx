@@ -44,7 +44,7 @@ function highlight(code: string, lang: string): string {
 export default function CodeBlock({ code, lang }: { code: string; lang: string }) {
   return (
     <div className="relative my-5">
-      <div className="scrollbar-thin overflow-x-auto rounded-[18px] bg-zinc-900 p-5 text-sm shadow-soft" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
+      <div className="scrollbar-thin overflow-x-auto rounded-2xl bg-zinc-900 p-5 text-sm shadow-soft" dangerouslySetInnerHTML={{ __html: highlight(code, lang) }} />
       <button
         type="button"
         data-copy={code}

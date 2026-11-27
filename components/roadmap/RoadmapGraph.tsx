@@ -31,7 +31,7 @@ export default function RoadmapGraph({
   const height = Math.max(...nodes.map((n) => y(n) + H));
 
   return (
-    <div aria-hidden className="scrollbar-thin overflow-x-auto rounded-[18px] bg-zinc-800/40 p-4 sm:p-5">
+    <div aria-hidden className="scrollbar-thin overflow-x-auto rounded-2xl bg-zinc-800/40 p-4 sm:p-5">
       <div className="relative" style={{ width, height }}>
         <svg width={width} height={height} className="absolute inset-0" fill="none">
           {edges.map(({ from, to }) => {

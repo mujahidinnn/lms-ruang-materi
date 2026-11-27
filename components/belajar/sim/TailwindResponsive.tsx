@@ -15,7 +15,7 @@ export default function TailwindResponsive({ title }: { title: string }) {
     <Frame title={title} hint="Geser lebar layar atau pilih breakpoint. Prefiks yang menyala sedang aktif; yang terakhir menang.">
       <div className="sim-stage p-3">
         <div className="rounded-lg bg-[#0a0c06] p-2">
-          <div className="mx-auto rounded-md border-2 border-matcha-300/60 bg-zinc-900 p-2 transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${pct}%` }} role="img" aria-label={`Halaman ${w}px menampilkan ${winner.cols} kolom`}>
+          <div className="mx-auto rounded-lg border-2 border-matcha-300/60 bg-zinc-900 p-2 transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${pct}%` }} role="img" aria-label={`Halaman ${w}px menampilkan ${winner.cols} kolom`}>
             <div className="mb-2 h-2 rounded bg-zinc-700" />
             <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${winner.cols}, minmax(0, 1fr))` }}>
               {Array.from({ length: 4 }, (_, i) => <div key={i} className="grid h-10 place-items-center rounded bg-matcha-300 text-xs font-extrabold text-[#12140d]">{i + 1}</div>)}

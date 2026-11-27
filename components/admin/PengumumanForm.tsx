@@ -68,7 +68,7 @@ export default function PengumumanForm({ people, emailToday }: { people: Person[
     });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-[18px] bg-zinc-900 p-5 shadow-soft sm:p-6">
+    <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="grid gap-4 rounded-2xl bg-zinc-900 p-5 shadow-soft sm:p-6">
       <fieldset>
         <legend className="text-sm text-zinc-400">Mulai dari template, atau tulis sendiri di bawah</legend>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -90,7 +90,7 @@ export default function PengumumanForm({ people, emailToday }: { people: Person[
         ref={dialog}
         aria-label="Pratinjau template"
         onClick={(e) => e.target === dialog.current && dialog.current?.close()}
-        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-[18px] border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-[6px_6px_0_0_var(--color-noir)] backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border-2 border-noir bg-zinc-900 p-0 text-zinc-50 shadow-hard-lg backdrop:bg-black/50 backdrop:backdrop-blur-sm"
       >
         {preview && (
           <div className="grid gap-4 p-5">
@@ -100,7 +100,7 @@ export default function PengumumanForm({ people, emailToday }: { people: Person[
             </div>
             <div>
               <p className="mb-2 text-xs text-zinc-500">Begini tampilannya di Dashboard murid</p>
-              <section className="rounded-[18px] bg-tile-butter p-5 ring-1 ring-zinc-800">
+              <section className="rounded-2xl bg-tile-butter p-5 ring-1 ring-zinc-800">
                 <p className="flex items-center gap-2 text-sm font-semibold text-zinc-50"><Megaphone aria-hidden className="size-4" />Pengumuman</p>
                 <h2 className="mt-2 text-lg font-bold tracking-tight text-zinc-50">{marked(preview.title)}</h2>
                 <div className="mt-1 grid gap-2 text-sm leading-relaxed text-zinc-50">{preview.body.split("\n\n").map((para, i) => <p key={i}>{marked(para)}</p>)}</div>
