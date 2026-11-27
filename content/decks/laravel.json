@@ -1,0 +1,331 @@
+{
+  "theme": "laravel",
+  "deck": "Laravel",
+  "kicker": "KELAS",
+  "subtitle": "Framework PHP paling populer: dari route dan controller sampai Eloquent, validasi, login, API, dan deploy.",
+  "slides": [
+    {
+      "title": "Laravel"
+    },
+    {
+      "title": "Kenapa pakai framework?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "PHP murni: routing, validasi, keamanan kamu tulis sendiri",
+        "Framework memberi struktur yang sama untuk semua tim",
+        "Fitur siap pakai: auth, database, email, antrean",
+        "Laravel 12 butuh PHP 8.2 ke atas, kelas ini pakai 8.3"
+      ],
+      "note": "Framework bukan sihir: di baliknya tetap PHP yang sudah kamu kenal."
+    },
+    {
+      "title": "Pola MVC",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Model: data dan aturan bisnis (tabel produk)",
+        "View: tampilan yang dilihat pengguna (Blade)",
+        "Controller: penghubung, menerima request lalu menjawab",
+        "Route menentukan controller mana yang dipanggil"
+      ],
+      "note": "Alur: browser, route, controller, model, view, browser."
+    },
+    {
+      "title": "Membuat proyek dengan Composer",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Composer mengunduh Laravel dan semua pustakanya",
+        "app/ berisi kode, routes/ berisi rute, resources/ view",
+        "database/ untuk migration, seeder, dan factory",
+        "Artisan: alat baris perintah bawaan Laravel"
+      ],
+      "code": "composer create-project laravel/laravel toko\ncd toko\nphp artisan serve\n# buka http://localhost:8000"
+    },
+    {
+      "title": "Route pertama",
+      "kicker": "ROUTING",
+      "bullets": [
+        "Semua rute halaman web ada di routes/web.php",
+        "Route::get untuk membaca, Route::post untuk mengirim",
+        "Argumen kedua: closure atau [Controller, 'method']",
+        "Yang di-return closure dikirim ke browser"
+      ],
+      "code": "<?php\nuse Illuminate\\Support\\Facades\\Route;\n\nRoute::get('/', function () {\n    return view('welcome');\n});\nRoute::get('/halo', fn () => 'Halo, kantin!');"
+    },
+    {
+      "title": "Parameter route",
+      "kicker": "ROUTING",
+      "bullets": [
+        "{id} menangkap bagian URL ke parameter closure",
+        "{nama?} opsional, wajib diberi nilai default",
+        "whereNumber('id') membatasi hanya angka",
+        "Tidak cocok dengan pola mana pun: 404"
+      ],
+      "code": "<?php\nRoute::get('/produk/{id}', function ($id) {\n    return \"Produk nomor $id\";\n})->whereNumber('id');\n\nRoute::get('/sapa/{nama?}',\n    fn ($nama = 'tamu') => \"Halo $nama\");"
+    },
+    {
+      "title": "Named route dan group",
+      "kicker": "ROUTING",
+      "bullets": [
+        "name() memberi nama, route() membuat URL dari nama",
+        "Ganti URL cukup di satu tempat",
+        "prefix() menambah awalan untuk banyak rute",
+        "Group bisa berbagi middleware dan nama"
+      ],
+      "code": "<?php\nRoute::prefix('admin')->name('admin.')\n    ->group(function () {\n        Route::get('/buku', [BukuController::class,\n            'index'])->name('buku');\n    });\n\nroute('admin.buku'); // /admin/buku"
+    },
+    {
+      "title": "Melihat semua route",
+      "kicker": "ROUTING",
+      "bullets": [
+        "route:list menampilkan metode, URI, nama, dan aksi",
+        "--path=admin menyaring rute tertentu",
+        "Cek di sini dulu saat muncul 404 yang aneh",
+        "Urutan rute penting: yang lebih spesifik di atas"
+      ],
+      "code": "php artisan route:list\nphp artisan route:list --path=produk"
+    },
+    {
+      "title": "Controller",
+      "kicker": "CONTROLLER DAN REQUEST",
+      "bullets": [
+        "Class di app/Http/Controllers, satu fitur satu controller",
+        "Setiap method menangani satu aksi",
+        "Route menunjuk dengan [NamaController::class, 'method']",
+        "Membuat route tetap pendek dan rapi"
+      ],
+      "code": "php artisan make:controller ProdukController\n\n// routes/web.php\nRoute::get('/produk',\n    [ProdukController::class, 'index']);"
+    },
+    {
+      "title": "Resource controller",
+      "kicker": "CONTROLLER DAN REQUEST",
+      "bullets": [
+        "--resource membuat 7 method CRUD sekaligus",
+        "index, create, store, show, edit, update, destroy",
+        "Route::resource mendaftarkan ketujuh rute",
+        "only() atau except() bila tidak butuh semuanya"
+      ],
+      "code": "php artisan make:controller BukuController \\\n    --resource\n\n// routes/web.php\nRoute::resource('buku', BukuController::class);"
+    },
+    {
+      "title": "Membaca request",
+      "kicker": "CONTROLLER DAN REQUEST",
+      "bullets": [
+        "Ketik Request $request, Laravel mengisinya otomatis",
+        "input('nama') membaca form atau query string",
+        "input('stok', 0) dengan nilai default",
+        "response()->json() untuk menjawab dalam JSON"
+      ],
+      "code": "<?php\npublic function store(Request $request)\n{\n    $nama = $request->input('nama');\n    $stok = $request->input('stok', 0);\n    return response()->json([\n        'nama' => $nama,\n        'stok' => $stok,\n    ], 201);\n}"
+    },
+    {
+      "title": "Dasar Blade",
+      "kicker": "BLADE TEMPLATE",
+      "bullets": [
+        "File view berakhiran .blade.php di resources/views",
+        "{{ $x }} mencetak nilai dan meng-escape HTML",
+        "{!! $x !!} tanpa escape, hanya untuk HTML tepercaya",
+        "@if, @foreach, @forelse menggantikan tag <?php"
+      ],
+      "code": "<h1>Menu {{ $kantin }}</h1>\n<ul>\n@forelse ($menu as $m)\n    <li>{{ $m->nama }}: Rp{{ $m->harga }}</li>\n@empty\n    <li>Menu habis</li>\n@endforelse\n</ul>"
+    },
+    {
+      "title": "Layout dengan @extends",
+      "kicker": "BLADE TEMPLATE",
+      "bullets": [
+        "Layout induk menyimpan kerangka HTML bersama",
+        "@yield('konten') menandai tempat kosong",
+        "Halaman anak: @extends lalu @section",
+        "Ubah header sekali, semua halaman ikut berubah"
+      ],
+      "code": "{{-- resources/views/buku/index.blade.php --}}\n@extends('layouts.app')\n\n@section('judul', 'Daftar Buku')\n\n@section('konten')\n    <p>Ada {{ count($buku) }} buku.</p>\n@endsection"
+    },
+    {
+      "title": "Komponen Blade",
+      "kicker": "BLADE TEMPLATE",
+      "bullets": [
+        "Potongan tampilan yang dipakai ulang",
+        "File di resources/views/components",
+        "Dipanggil dengan tag <x-nama>",
+        "$slot berisi isi di antara tag pembuka dan penutup"
+      ],
+      "code": "{{-- components/alert.blade.php --}}\n<div class=\"alert alert-{{ $type }}\">\n    {{ $slot }}\n</div>\n\n{{-- dipakai di halaman --}}\n<x-alert type=\"sukses\">Data tersimpan</x-alert>"
+    },
+    {
+      "title": "Koneksi database di .env",
+      "kicker": "MIGRATION DAN SEEDER",
+      "bullets": [
+        ".env menyimpan pengaturan yang beda tiap komputer",
+        "DB_CONNECTION: sqlite, mysql, atau pgsql",
+        "Jangan pernah commit .env ke Git",
+        "Bawaan Laravel 12: SQLite di database/database.sqlite"
+      ],
+      "code": "DB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=perpustakaan\nDB_USERNAME=root\nDB_PASSWORD="
+    },
+    {
+      "title": "Migration",
+      "kicker": "MIGRATION DAN SEEDER",
+      "bullets": [
+        "Riwayat perubahan struktur tabel dalam bentuk kode",
+        "up() membuat, down() membatalkan",
+        "migrate menjalankan, migrate:rollback membatalkan",
+        "id(), string(), integer(), foreignId(), timestamps()"
+      ],
+      "code": "<?php\nSchema::create('buku', function (Blueprint $t) {\n    $t->id();\n    $t->string('judul');\n    $t->string('penulis', 100);\n    $t->integer('stok')->default(0);\n    $t->timestamps();\n});"
+    },
+    {
+      "title": "Seeder dan factory",
+      "kicker": "MIGRATION DAN SEEDER",
+      "bullets": [
+        "Seeder mengisi data awal, misalnya akun admin",
+        "Factory membuat data palsu dalam jumlah banyak",
+        "db:seed menjalankan DatabaseSeeder",
+        "migrate:fresh --seed: hapus semua, bangun ulang"
+      ],
+      "code": "<?php\npublic function run(): void\n{\n    Buku::factory()->count(20)->create();\n    User::factory()->create([\n        'email' => 'admin@sekolah.test',\n    ]);\n}"
+    },
+    {
+      "title": "Model Eloquent",
+      "kicker": "ELOQUENT ORM",
+      "bullets": [
+        "Satu model mewakili satu tabel",
+        "Model Produk otomatis memakai tabel produks",
+        "$table bila nama tabel berbeda",
+        "make:model Produk -m sekalian membuat migration"
+      ],
+      "code": "<?php\nclass Produk extends Model\n{\n    protected $table = 'produk';\n    protected $fillable = ['nama', 'harga', 'stok'];\n}"
+    },
+    {
+      "title": "Query dengan Eloquent",
+      "kicker": "ELOQUENT ORM",
+      "bullets": [
+        "all() semua baris, find($id) satu baris",
+        "where()->orderBy()->get() untuk menyaring",
+        "create() butuh $fillable demi keamanan",
+        "update() dan delete() pada model yang sudah diambil"
+      ],
+      "code": "<?php\n$murah = Produk::where('harga', '<', 5000)\n    ->orderBy('nama')->get();\n$teh = Produk::find(3);\n$teh->update(['stok' => 40]);\nProduk::create(['nama' => 'Roti',\n    'harga' => 4000, 'stok' => 10]);"
+    },
+    {
+      "title": "Relasi antar model",
+      "kicker": "ELOQUENT ORM",
+      "bullets": [
+        "hasMany: satu kategori punya banyak produk",
+        "belongsTo: satu produk milik satu kategori",
+        "Kolom foreign key: kategori_id",
+        "Dipakai seperti properti: $kategori->produk"
+      ],
+      "code": "<?php\n// di class Kategori\npublic function produk() {\n    return $this->hasMany(Produk::class);\n}\n\n// di class Produk\npublic function kategori() {\n    return $this->belongsTo(Kategori::class);\n}"
+    },
+    {
+      "title": "Eager loading",
+      "kicker": "ELOQUENT ORM",
+      "bullets": [
+        "Masalah N+1: 1 query daftar + N query relasi",
+        "100 produk bisa berarti 101 query",
+        "with('kategori') mengambil relasi dalam 1 query",
+        "Gejala: halaman daftar lambat padahal datanya sedikit"
+      ],
+      "code": "<?php\n// N+1: query kategori di setiap putaran\n$produk = Produk::all();\n\n// Eager loading: hanya 2 query\n$produk = Produk::with('kategori')->get();\nforeach ($produk as $p) {\n    echo $p->kategori->nama;\n}"
+    },
+    {
+      "title": "Validasi request",
+      "kicker": "VALIDASI DAN FORM",
+      "bullets": [
+        "$request->validate() memeriksa input sebelum dipakai",
+        "Gagal: kembali ke form beserta pesan error",
+        "Aturan: required, min, max, email, numeric",
+        "unique:tabel,kolom mencegah data ganda"
+      ],
+      "code": "<?php\n$data = $request->validate([\n    'nama'  => 'required|max:100',\n    'email' => 'required|email|unique:siswa',\n    'nilai' => 'required|numeric|min:0',\n]);\nSiswa::create($data);"
+    },
+    {
+      "title": "Menampilkan error di form",
+      "kicker": "VALIDASI DAN FORM",
+      "bullets": [
+        "@error('field') tampil bila field itu gagal",
+        "$message berisi teks error di dalam @error",
+        "old('field') mengisi ulang input sebelumnya",
+        "Pengguna tidak perlu mengetik semuanya lagi"
+      ],
+      "code": "<input name=\"nama\" value=\"{{ old('nama') }}\">\n@error('nama')\n    <small class=\"error\">{{ $message }}</small>\n@enderror"
+    },
+    {
+      "title": "CSRF dan FormRequest",
+      "kicker": "VALIDASI DAN FORM",
+      "bullets": [
+        "@csrf wajib di setiap form POST, PUT, DELETE",
+        "Tanpa token, Laravel menolak dengan error 419",
+        "FormRequest memindahkan aturan ke class sendiri",
+        "Controller jadi pendek, aturan mudah dipakai ulang"
+      ],
+      "code": "<form method=\"POST\" action=\"/siswa\">\n    @csrf\n    <input name=\"nama\">\n    <button>Simpan</button>\n</form>\n\nphp artisan make:request SimpanSiswaRequest"
+    },
+    {
+      "title": "Autentikasi dengan Breeze",
+      "kicker": "AUTENTIKASI DAN MIDDLEWARE",
+      "bullets": [
+        "Breeze: login, daftar, lupa password siap pakai",
+        "auth()->user() mengambil pengguna yang login",
+        "auth()->check() memeriksa sudah login atau belum",
+        "Password disimpan sebagai hash, bukan teks asli"
+      ],
+      "code": "composer require laravel/breeze --dev\nphp artisan breeze:install blade\nphp artisan migrate"
+    },
+    {
+      "title": "Middleware",
+      "kicker": "AUTENTIKASI DAN MIDDLEWARE",
+      "bullets": [
+        "Penjaga yang memeriksa request sebelum ke controller",
+        "auth: belum login dialihkan ke halaman login",
+        "Bisa dipasang di satu route atau satu group",
+        "Gate untuk izin yang lebih halus, misalnya admin"
+      ],
+      "code": "<?php\nRoute::middleware('auth')->group(function () {\n    Route::get('/absensi',\n        [AbsensiController::class, 'index']);\n});"
+    },
+    {
+      "title": "Membuat middleware sendiri",
+      "kicker": "AUTENTIKASI DAN MIDDLEWARE",
+      "bullets": [
+        "make:middleware membuat class dengan handle()",
+        "$next($request) meneruskan ke lapisan berikutnya",
+        "Tidak memanggil $next berarti request dihentikan",
+        "Didaftarkan di bootstrap/app.php"
+      ],
+      "code": "<?php\npublic function handle(Request $r, Closure $next)\n{\n    if ($r->user()?->peran !== 'admin') {\n        abort(403);\n    }\n    return $next($r);\n}"
+    },
+    {
+      "title": "Membuat API",
+      "kicker": "API, TESTING, DAN DEPLOY",
+      "bullets": [
+        "php artisan install:api menyiapkan routes/api.php",
+        "Rute API otomatis berawalan /api",
+        "Jawab dengan JSON dan status code yang tepat",
+        "API Resource merapikan bentuk JSON, Sanctum untuk token"
+      ],
+      "code": "<?php\nRoute::get('/produk/{id}', function ($id) {\n    $p = Produk::find($id);\n    if (! $p) {\n        return response()->json(\n            ['pesan' => 'Tidak ada'], 404);\n    }\n    return new ProdukResource($p);\n});"
+    },
+    {
+      "title": "Testing dengan Pest atau PHPUnit",
+      "kicker": "API, TESTING, DAN DEPLOY",
+      "bullets": [
+        "Tes memastikan fitur tetap jalan setelah diubah",
+        "Feature test mengirim request pura-pura",
+        "assertStatus, assertJson, assertSee",
+        "php artisan test menjalankan semuanya"
+      ],
+      "code": "<?php\ntest('daftar produk bisa dibuka', function () {\n    $this->get('/api/produk')\n        ->assertStatus(200);\n});"
+    },
+    {
+      "title": "Deploy dan langkah berikutnya",
+      "kicker": "API, TESTING, DAN DEPLOY",
+      "bullets": [
+        "APP_ENV=production dan APP_DEBUG=false",
+        "config:cache dan route:cache mempercepat aplikasi",
+        "storage:link agar file unggahan bisa diakses",
+        "Berikutnya: queue, Livewire, Filament, Laravel Cloud"
+      ],
+      "code": "composer install --no-dev --optimize-autoloader\nphp artisan migrate --force\nphp artisan config:cache\nphp artisan route:cache\nphp artisan storage:link",
+      "note": "Proyek akhir: API Katalog Produk dengan PHP murni."
+    }
+  ]
+}

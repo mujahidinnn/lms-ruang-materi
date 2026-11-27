@@ -7,7 +7,7 @@ spec: {"theme": <key in deck-themes.json>, "deck": "Nama kelas", "kicker": "KELA
 Slide 1 is always the cover (title + subtitle); each slide may have bullets (max 5,
 ~90 chars each), code (monospace block, max ~12 lines), or both, plus a note bar.
 Slide order and count are fixed: chapter slide_from/slide_to in the draft point at them."""
-import json, math, os, sys
+import json, math, os, re, sys
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
@@ -759,7 +759,7 @@ class Browser(St):
         logo(s, "white", 9.25, 2.35, 2.3)
 
     def chrome(self, s, n, sl):
-        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower().replace(" ", "-")
+        k = re.sub(r"[^a-z0-9]+", "-", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("-")
         self.bar(s, 0.45, 0.3, 12.43, f"localhost:8000/{k}.php", False)
         rect(s, 0.45, 0.92, 12.43, 0.02, T.line)
         self.title(s, 0.6, 1.15, 10.8, sl["title"])
@@ -786,7 +786,111 @@ class Browser(St):
         return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
 
 
-STYLES = {"php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- 15. Laravel: artisan route:list, method badges ----------
+class Artisan(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.15, 1.15
+
+    @property
+    def bg(self): return mix(WHITE, T.accent, 0.04)
+
+    def badge(self, s, x, y, label, fill, fg, w=0.9, h=0.34, size=11):
+        rrect(s, x, y, w, h, fill, adj=0.3)
+        text(s, x, y, w, h, label, size, True, fg, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        rect(s, 0, 0, 0.18, H, T.accent)
+        text(s, 0.9, 1.0, 8, 0.4, "$ php artisan serve", 16, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.8, 7.5, 1.6, sl["title"], 72, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.5, 6.8, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        for k, (m, path) in enumerate((("GET", "/"), ("GET", "/produk/{id}"), ("POST", "/produk"), ("PUT", "/produk/{id}"))):
+            y = 5.0 + k * 0.42
+            self.badge(s, 0.9, y, m, T.accent if m == "GET" else T.mid, WHITE, w=0.8, h=0.3, size=10)
+            text(s, 1.85, y, 4, 0.3, path, 13, color=SLATE, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+        oval(s, 8.9, 1.6, 3.4, 3.4, mix(T.ink, T.accent, 0.25))
+        logo(s, "white", 9.6, 2.3, 2.0)
+
+    def chrome(self, s, n, sl):
+        k = re.sub(r"[^a-z0-9]+", "-", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("-")
+        self.badge(s, 0.6, 0.45, "GET", T.accent, WHITE, w=0.75)
+        text(s, 1.5, 0.45, 8, 0.34, f"/{k}", 14, color=T.grey, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+        text(s, 9.2, 0.45, 2.6, 0.34, f"slide.{n}", 12, color=T.grey, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
+        self.title(s, 0.6, 1.0, 11, sl["title"])
+        logo(s, "accent", 12.05, 0.35, 0.65)
+        rect(s, 0.6, 1.85, 12.1, 0.03, T.accent)
+        return (0.6, 2.15, 12.1, 4.65)
+
+    def mark(self, s, x, cy, i):
+        self.badge(s, x, cy - 0.15, f"{i + 1:02d}", T.light, T.accent, w=0.7, h=0.3, size=11)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x, y + 0.2, 0.08, h - 0.4, T.accent)
+        lines = code.splitlines()
+        sz = 15 if len(lines) <= 9 and max(map(len, lines)) <= 48 else 13
+        text(s, x + 0.4, y + 0.25, w - 0.65, h - 0.4, lines, sz, color=C("F1E4E2"), gap=2, font=MONO)
+
+
+# ---------- 16. MySQL: mysql> prompt, result grid ----------
+class Console(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.0, 0.85
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        text(s, 0.9, 0.9, 9, 0.4, "mysql> SELECT judul FROM kelas;", 16, color=T.amber, font=MONO, gap=0)
+        for k, ln in enumerate(("+-----------+", "| judul     |", "+-----------+")):
+            text(s, 0.9, 1.4 + k * 0.3, 6, 0.3, ln, 14, color=T.mid, font=MONO, gap=0)
+        text(s, 0.9, 2.45, 7.5, 1.6, sl["title"], 72, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.95, 6.8, 1.2, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 5.5, 6, 0.3, "+-----------+", 14, color=T.mid, font=MONO, gap=0)
+        text(s, 0.9, 5.85, 6, 0.3, "1 row in set (0.00 sec)", 14, color=SLATE, font=MONO, gap=0)
+        rrect(s, 8.8, 1.5, 3.6, 3.6, T.accent, adj=0.12)
+        logo(s, "white", 9.3, 2.0, 2.6)
+
+    def chrome(self, s, n, sl):
+        k = re.sub(r"[^a-z0-9]+", "_", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("_")
+        text(s, 0.6, 0.4, 10, 0.35, f"mysql> USE {k};", 14, color=T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.85, 11, sl["title"])
+        logo(s, "accent", 12.05, 0.35, 0.65)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def foot(self, s, n, sl):
+        rows = len(sl.get("bullets", []))
+        text(s, 0.6, 7.03, 8, 0.25, f"{rows} rows in set" if rows else spec["deck"], 10, color=T.grey, gap=0, font=MONO)
+        text(s, 11.7, 7.03, 1.0, 0.25, f"{n} / {N}", 10, color=T.grey, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rect(s, x, y + 0.04, w, h - 0.08, T.card if i % 2 == 0 else WHITE, line=T.line, lw=0.75)
+        rect(s, x + 0.65, y + 0.04, 0.012, h - 0.08, T.line)
+
+    def mark(self, s, x, cy, i):
+        text(s, x, cy - 0.2, 0.65, 0.4, str(i + 1), 14, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.44
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.03)
+        lines = code.splitlines()
+        sz = 15 if len(lines) <= 9 and max(map(len, lines)) <= 48 else 13
+        text(s, x + 0.3, y + 0.25, w - 0.6, h - 0.4, lines, sz, color=C("DDEFF3"), gap=2, font=MONO)
+
+
+STYLES = {"laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
