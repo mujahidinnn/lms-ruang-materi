@@ -3,7 +3,6 @@ import EmptyState from "../../../components/EmptyState.astro";
 import { Search } from "lucide-react";
 import ActionForm from "@/components/admin/ActionForm";
 import StatusBadge from "@/components/admin/StatusBadge";
-import { field, smallButton } from "@/components/admin/editor";
 import { chip } from "@/components/ui/styles";
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "../../../components/AppShell.astro";
@@ -25,11 +24,12 @@ type Exam = {
 };
 
 const FIELDS = [
-  ["duration_minutes", "Menit", 180],
-  ["max_attempts", "Percobaan", 10],
-  ["pass_score", "Lulus", 100],
-  ["question_count", "Soal", 100],
+  ["duration_minutes", "Durasi", "menit", 180],
+  ["max_attempts", "Percobaan", "kali", 10],
+  ["pass_score", "Nilai lulus", "poin", 100],
+  ["question_count", "Soal", "soal", 100],
 ] as const;
+type Field = (typeof FIELDS)[number][0];
 
 const { data } = await (await createClient())
   .from("exams")
@@ -37,92 +37,144 @@ const { data } = await (await createClient())
   .order("created_at");
 const exams = (data ?? []) as unknown as Exam[];
 const bankOf = (e: Exam) => e.exam_questions.filter((q) => q.status === "published").length;
-const short = exams.filter((e) => bankOf(e) < 2 * e.question_count);
+
+// The most common setting is the house standard; rows show only where they differ.
+const keyOf = (e: Exam) => FIELDS.map(([f]) => e[f]).join("/");
+const tally = new Map<string, number>();
+for (const e of exams) tally.set(keyOf(e), (tally.get(keyOf(e)) ?? 0) + 1);
+const stdKey = [...tally].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+const std = Object.fromEntries(FIELDS.map(([f], i) => [f, Number(stdKey.split("/")[i])])) as Record<Field, number>;
+const rows = exams.map((e) => {
+  const bank = bankOf(e);
+  const need = 2 * e.question_count;
+  return { e, bank, need, drafts: e.exam_questions.filter((q) => q.status === "draft").length, short: bank < need, odd: keyOf(e) !== stdKey };
+});
+const shortN = rows.filter((r) => r.short).length;
+const oddN = rows.filter((r) => r.odd).length;
+const cols = "md:grid-cols-[minmax(0,1fr)_repeat(4,6.5rem)_5.5rem]";
+const filters = [["semua", "Semua", exams.length], ["beda", "Beda dari standar", oddN], ["kurang", "Bank kurang", shortN]] as const;
 ---
 
 <Base title="Ujian" description="Atur durasi, percobaan, nilai lulus dan jumlah soal tiap ujian." noindex>
   <AppShell set="admin" email={user.email}>
     <div class="mx-auto max-w-6xl">
       <h1 class="text-3xl font-bold tracking-tight sm:text-5xl">Ujian</h1>
-      <p class="mt-2 text-sm text-zinc-400">
+      <p class="mt-2 max-w-2xl text-sm text-zinc-400">
         Soal dan kuncinya diedit di halaman kelas. Bank soal yang terbit harus minimal dua kali jumlah soal per percobaan.
       </p>
-      {exams.length > 0 && (
-        <div class="mt-5 flex flex-wrap items-center gap-3">
-          <label class="flex min-w-0 flex-1 basis-60 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
-            <Search aria-hidden className="size-4 shrink-0 text-zinc-500" />
-            <span class="sr-only">Cari ujian</span>
-            <input id="cari-ujian" type="search" placeholder="Cari ujian" class="min-h-12 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
-          </label>
-          <p class="text-sm tabular-nums text-zinc-400">{exams.length} ujian</p>
-          <button type="button" id="saring-bank" aria-pressed="false" class={`${chip} min-h-10 cursor-pointer bg-zinc-800 hover:bg-zinc-700 aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-on-primary`}>
-            Bank kurang<span class="tabular-nums opacity-70">{short.length}</span>
-          </button>
-        </div>
-      )}
       {!exams.length ? (
         <EmptyState title="Belum ada ujian" class="mt-6"> Ujian dibuat saat <a href="/admin/impor" class="text-accent hover:underline">mengimpor deck</a>.</EmptyState>
       ) : (
-        <div class="mt-6 rounded-[18px] bg-zinc-900 px-5 shadow-soft">
-          <div aria-hidden class="hidden items-center gap-3 border-b border-zinc-800 py-3 text-xs text-zinc-500 md:grid md:grid-cols-[minmax(0,1fr)_repeat(4,5rem)_6rem]">
-            <span>Ujian</span>
-            {FIELDS.map(([, label]) => <span>{label}</span>)}
-            <span></span>
+        <>
+          <section aria-labelledby="standar" class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-[18px] border-2 border-noir bg-matcha-100 px-5 py-4 text-noir">
+            <h2 id="standar" class="text-sm font-bold">Setelan standar <span class="font-medium opacity-70">dipakai {tally.get(stdKey)} dari {exams.length} ujian</span></h2>
+            <dl class="flex flex-wrap gap-2">
+              {FIELDS.map(([f, label, unit]) => (
+                <div class="flex items-baseline gap-1.5 rounded-full bg-white/70 px-3 py-1 text-sm">
+                  <dt class="text-xs opacity-70">{label}</dt>
+                  <dd class="font-bold tabular-nums">{std[f]} <span class="text-xs font-medium opacity-70">{unit}</span></dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <label class="flex min-w-0 flex-1 basis-60 items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 focus-within:ring-2 focus-within:ring-accent">
+              <Search aria-hidden className="size-4 shrink-0 text-zinc-500" />
+              <span class="sr-only">Cari ujian</span>
+              <input id="cari-ujian" type="search" placeholder="Cari kelas" class="min-h-12 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500" />
+            </label>
+            <div role="group" aria-label="Saring ujian" class="flex flex-wrap gap-1.5">
+              {filters.map(([key, label, n]) => (
+                <button type="button" data-saring={key} aria-pressed={key === "semua" ? "true" : "false"} class={`${chip} min-h-10 cursor-pointer bg-zinc-900 shadow-soft hover:bg-zinc-800 aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-on-primary`}>
+                  {label}<span class="tabular-nums opacity-70">{n}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <ul class="divide-y divide-zinc-800">
-            {exams.map((e) => {
-              const bank = e.exam_questions.filter((q) => q.status === "published").length;
-              const drafts = e.exam_questions.filter((q) => q.status === "draft").length;
-              return (
-                <li data-title={e.topics.title.toLowerCase()} data-short={bank < 2 * e.question_count ? "1" : undefined} class="py-3 md:grid md:grid-cols-[minmax(0,1fr)_repeat(4,5rem)_6rem] md:items-center md:gap-3 md:py-3">
-                  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <a href={`/admin/topik/${e.topics.slug}#ujian`} class="font-medium hover:text-accent">{e.topics.title}</a>
-                    <StatusBadge status={e.status} />
-                    <span class={`text-xs tabular-nums ${bank < 2 * e.question_count ? "text-accent-warm" : "text-zinc-500"}`}>
-                      bank {bank}{drafts > 0 && `, draf ${drafts}`}
-                    </span>
-                  </div>
-                  <ActionForm client:load action="simpanUjian" className="mt-3 grid grid-cols-[repeat(4,minmax(0,1fr))_auto] items-end gap-1.5 md:contents md:gap-2">
+
+          <div class="mt-4 rounded-[18px] bg-zinc-900 px-4 shadow-soft sm:px-5">
+            <div aria-hidden class={`hidden items-center gap-3 border-b border-zinc-800 py-3 text-xs font-medium text-zinc-500 md:grid ${cols}`}>
+              <span>Kelas dan bank soal</span>
+              {FIELDS.map(([, label]) => <span class="pl-1">{label}</span>)}
+              <span></span>
+            </div>
+            <ul class="divide-y divide-zinc-800">
+              {rows.map(({ e, bank, need, drafts, short, odd }) => (
+                <li data-title={e.topics.title.toLowerCase()} data-short={short ? "1" : undefined} data-odd={odd ? "1" : undefined} class="py-3.5">
+                  <ActionForm client:load action="simpanUjian" className={`group grid grid-cols-4 items-center gap-x-2 gap-y-3 md:gap-x-3 ${cols}`}>
+                    <div class="col-span-4 min-w-0 md:col-span-1">
+                      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <a href={`/admin/topik/${e.topics.slug}#ujian`} class="truncate font-semibold hover:text-accent hover:underline">{e.topics.title}</a>
+                        {e.status === "draft" && <StatusBadge status={e.status} />}
+                      </div>
+                      <div class="mt-1.5 flex items-center gap-2 text-xs tabular-nums">
+                        <span aria-hidden class="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
+                          <span class={`block h-full rounded-full ${short ? "bg-accent-warm" : "bg-matcha-400"}`} style={`width:${Math.min(100, Math.round((bank / need) * 100))}%`}></span>
+                        </span>
+                        <span class={short ? "font-medium text-accent-warm" : "text-zinc-500"}>
+                          {short ? `Bank ${bank} dari ${need} yang dibutuhkan` : `Bank ${bank} soal`}{drafts > 0 && `, ${drafts} draf`}
+                        </span>
+                      </div>
+                    </div>
                     <input type="hidden" name="id" value={e.id} />
-                    {FIELDS.map(([name, label, max]) => (
-                      <label class="text-xs text-zinc-500">
-                        <span class="block text-[11px] md:sr-only"><span class="max-sm:hidden">{label}</span><span class="sm:hidden">{label === "Percobaan" ? "Coba" : label}</span></span>
-                        <input name={name} type="number" min={1} max={max} value={e[name]} required class={`${field} mt-1 w-full px-3 tabular-nums md:mt-0 md:min-h-11`} />
+                    {FIELDS.map(([name, label, unit, max]) => (
+                      <label class="relative block">
+                        <span class="mb-1 block text-[11px] text-zinc-500 md:sr-only">{label}</span>
+                        <input
+                          name={name}
+                          type="number"
+                          min={1}
+                          max={max}
+                          value={e[name]}
+                          required
+                          class={`min-h-11 w-full rounded-xl border px-3 text-sm sm:pr-11 font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-accent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none ${e[name] === std[name] ? "border-zinc-800 bg-transparent text-zinc-400" : "border-matcha-400 bg-matcha-100 text-noir"}`}
+                        />
+                        <span aria-hidden class={`pointer-events-none absolute right-3 bottom-0 max-sm:hidden flex h-11 items-center text-[11px] ${e[name] === std[name] ? "text-zinc-500" : "text-noir/60"}`}>{unit}</span>
                       </label>
                     ))}
-                    <button class={`${smallButton} justify-center px-3 md:col-span-1 md:px-4`}>Simpan</button>
+                    <button class="col-span-4 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-noir bg-primary px-4 text-sm font-bold text-on-primary shadow-[2px_2px_0_var(--color-noir)] hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent invisible group-data-dirty:visible max-md:hidden max-md:group-data-dirty:inline-flex md:col-span-1">Simpan</button>
                   </ActionForm>
                 </li>
-              );
-            })}
-          </ul>
-          <EmptyState art="cari" id="ujian-kosong" hidden title="Tidak ada hasil" class="justify-center py-8">Tidak ada ujian yang cocok dengan pencarian.</EmptyState>
-        </div>
+              ))}
+            </ul>
+            <EmptyState art="cari" id="ujian-kosong" hidden title="Tidak ada hasil" class="justify-center py-8">Tidak ada ujian yang cocok dengan pencarian atau saringan.</EmptyState>
+          </div>
+        </>
       )}
     </div>
   </AppShell>
 </Base>
 
 <script>
-  // Search and the "bank kurang" filter, on the rows already in the page.
+  // Search and filters on the rows already in the page; Simpan shows on a row
+  // once one of its numbers differs from what was loaded.
   const box = document.querySelector<HTMLInputElement>("#cari-ujian");
-  const only = document.querySelector<HTMLButtonElement>("#saring-bank");
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>("[data-saring]")];
   const rows = [...document.querySelectorAll<HTMLElement>("li[data-title]")];
   const none = document.querySelector<HTMLElement>("#ujian-kosong");
+  let mode = "semua";
   const apply = () => {
     const q = (box?.value ?? "").trim().toLowerCase();
-    const warn = only?.getAttribute("aria-pressed") === "true";
     let n = 0;
     for (const r of rows) {
-      const show = (r.dataset.title ?? "").includes(q) && (!warn || r.dataset.short === "1");
+      const show = (r.dataset.title ?? "").includes(q) && (mode === "semua" || (mode === "kurang" ? r.dataset.short : r.dataset.odd) === "1");
       r.hidden = !show;
       if (show) n++;
     }
     if (none) none.hidden = n > 0;
   };
   box?.addEventListener("input", apply);
-  only?.addEventListener("click", () => {
-    only.setAttribute("aria-pressed", String(only.getAttribute("aria-pressed") !== "true"));
-    apply();
+  for (const b of buttons)
+    b.addEventListener("click", () => {
+      mode = b.dataset.saring ?? "semua";
+      for (const o of buttons) o.setAttribute("aria-pressed", String(o === b));
+      apply();
+    });
+  document.addEventListener("input", (ev) => {
+    const form = (ev.target as HTMLElement).closest("li[data-title] form");
+    if (!form) return;
+    const dirty = [...form.querySelectorAll<HTMLInputElement>("input[type=number]")].some((i) => i.value !== i.defaultValue);
+    form.toggleAttribute("data-dirty", dirty);
   });
 </script>
