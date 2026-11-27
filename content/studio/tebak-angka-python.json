@@ -1,0 +1,507 @@
+{
+  "slug": "tebak-angka-python",
+  "title": "Game Tebak Angka dengan Python",
+  "summary": "Bangun game tebak angka di terminal dengan Python: tiga level, petunjuk terlalu kecil/besar plus panas-dingin, input salah yang tidak membuat crash, skor terbaik di berkas JSON, dan keluar rapi dengan Ctrl+C. Kodenya dipecah jadi modul, dites dengan pytest memakai input palsu, dirapikan dengan ruff, lalu bisa dimainkan siapa pun lewat uvx atau Codespaces.",
+  "level": "pemula",
+  "est_hours": 6,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-tujuan-game",
+      "title": "Tentukan tujuan game-mu",
+      "est_minutes": 15,
+      "body": "## Game kecil, kebiasaan besar\n\nGame tebak angka terdengar seperti tugas hari pertama belajar Python. Bedanya ada di detail: apa yang terjadi kalau pemain mengetik `sepuluh`, menekan Enter tanpa isi, atau menekan **Ctrl+C** di tengah permainan? Program pemula biasanya crash dengan traceback panjang. Program yang kamu buat di proyek ini menjawab semua kasus itu dengan sopan, menyimpan skor terbaik di berkas, dan punya tes otomatis yang membuktikannya.\n\n![Hasil akhir proyek ini: level sulit diselesaikan dengan membelah rentang, input salah dijawab ramah tanpa mengurangi kesempatan, lalu rekor baru tersimpan](/studio/tebak-angka-python/sesi-permainan.gif)\n\n## Yang perlu kamu kerjakan\n\n1. Salin template brief di bagian Bahan ke catatanmu (atau ke berkas `BRIEF.md`).\n2. Lengkapi kalimat tujuan. Contoh: \"Game ini dimainkan oleh adik saya yang kelas 4 SD untuk latihan membandingkan angka.\"\n3. Baca daftar **Wajib ada**. Lima butir itulah ukuran selesai proyek ini, bukan jumlah fitur.\n4. Tulis tujuan pribadimu. Proyek ini cocok sebagai proyek pertama di GitHub: kecil, tetapi menunjukkan kamu bisa memecah kode jadi modul, menangani error, dan menulis tes.\n\n> Ukuran keberhasilan: orang lain bisa memainkan game-mu dengan satu perintah dari README, dan tidak ada input apa pun yang membuatnya crash.\n",
+      "materials": [
+        {
+          "id": "ta-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Tebak Angka\n\nKalimat tujuan:\nGame ini dimainkan oleh ___ untuk ___.\n\nAturan inti (versi pertama):\n1. Komputer memilih angka rahasia secara acak.\n2. Pemain menebak; game menjawab \"terlalu kecil\" atau \"terlalu besar\", plus panas/hangat/dingin.\n3. Kesempatan terbatas, tergantung level.\n\nWajib ada:\n- [ ] Tiga level dengan rentang dan jumlah kesempatan berbeda\n- [ ] Input salah (huruf, kosong, di luar rentang) tidak membuat crash dan tidak mengurangi kesempatan\n- [ ] Skor terbaik per level tersimpan di berkas, tetap ada setelah game ditutup\n- [ ] Bisa main lagi tanpa menjalankan ulang program\n- [ ] Ctrl+C dan Ctrl+D keluar dengan sopan, tanpa traceback\n\nBukan untuk versi pertama:\n- Tampilan grafis, warna, suara\n- Papan skor online atau banyak pemain\n\nTujuan pribadiku: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-brief-kalimat",
+          "text": "Aku sudah melengkapi kalimat \"Game ini dimainkan oleh ... untuk ...\"."
+        },
+        {
+          "id": "ta-brief-wajib",
+          "text": "Aku paham lima butir Wajib ada dan setuju itu ukuran selesai."
+        },
+        {
+          "id": "ta-brief-batas",
+          "text": "Aku sudah menulis apa yang tidak dikerjakan di versi pertama."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "alur-pemain-dan-kasus-tepi",
+      "title": "Petakan alur pemain dan kasus tepi",
+      "est_minutes": 20,
+      "body": "## Mainkan dulu di kepala\n\nSebelum menulis kode, bayangkan satu orang memainkan game-mu dari awal sampai keluar. Tulis langkahnya sebagai daftar pendek:\n\n1. Program menyapa dan menampilkan skor terbaik.\n2. Pemain memilih level.\n3. Pemain menebak berkali-kali sampai benar atau kesempatan habis.\n4. Skor dihitung; kalau lebih tinggi dari rekor, rekor disimpan.\n5. Pemain memilih main lagi atau keluar.\n\n## Kasus tepi: tempat bug bersembunyi\n\nKasus tepi adalah input atau keadaan yang jarang, tapi pasti terjadi kalau game-mu dimainkan cukup banyak orang. Untuk setiap baris di bawah, tulis **apa yang seharusnya terjadi**:\n\n| Kasus | Pertanyaan untukmu |\n| --- | --- |\n| Enter tanpa isi | Pesan apa yang muncul? Kesempatan berkurang? |\n| `abc`, `7.5`, `sepuluh` | Crash karena `int()` gagal, atau pesan ramah? |\n| `0` atau `500` di level 1-20 | Dianggap tebakan atau ditolak? |\n| Menebak angka yang sama dua kali | Adil kalau kesempatan berkurang? |\n| Ctrl+C saat diminta input | Traceback `KeyboardInterrupt`, atau pamit? |\n| Ctrl+D (Ctrl+Z lalu Enter di Windows) | `input()` melempar `EOFError`. Lalu? |\n| Berkas rekor belum ada | Game pertama kali dijalankan di komputer baru |\n| Berkas rekor rusak | Seseorang mengeditnya dan salah ketik |\n\nJawaban yang dipakai proyek ini: input yang salah **tidak mengurangi kesempatan**, Ctrl+C dan Ctrl+D selalu berakhir dengan \"Sampai jumpa!\", dan berkas rekor yang hilang atau rusak dianggap kosong. Kalau jawabanmu berbeda, tidak apa-apa, asalkan kamu bisa menjelaskan alasannya.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis alur lima langkah di atas dengan kata-katamu sendiri.\n2. Isi kolom \"seharusnya terjadi\" untuk kedelapan kasus tepi.\n3. Tandai satu fitur tambahan yang menggoda tapi ditunda, misalnya papan skor online. Tulis di bagian \"Bukan untuk versi pertama\".\n",
+      "materials": [],
+      "checks": [
+        {
+          "id": "ta-ide-alur",
+          "text": "Aku punya alur pemain dari mulai sampai keluar."
+        },
+        {
+          "id": "ta-ide-tepi",
+          "text": "Aku sudah menulis perilaku yang diharapkan untuk kedelapan kasus tepi."
+        },
+        {
+          "id": "ta-ide-tunda",
+          "text": "Aku menunda minimal satu fitur tambahan dengan sadar."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-python-uv-pytest-ruff",
+      "title": "Pilih alat: Python, uv, pytest, ruff",
+      "est_minutes": 25,
+      "body": "## Alat yang dipakai developer Python sekarang\n\n| Bagian | Pilihan | Alasan singkat |\n| --- | --- | --- |\n| Bahasa | Python 3.15 (kode tetap jalan di 3.12 ke atas) | Rilis stabil terbaru; game ini hanya memakai pustaka standar |\n| Pengelola proyek | uv | Satu alat untuk memasang Python, membuat virtualenv, menambah paket, dan menjalankan perintah |\n| Tes | pytest | `assert` biasa, pesan gagal yang jelas, `parametrize`, dan `tmp_path` |\n| Gaya kode | ruff | Linter dan formatter dalam satu alat, sangat cepat |\n\n### Kenapa pytest, bukan unittest?\n\n`unittest` sudah ada di pustaka standar, jadi tidak perlu dipasang. Tapi tesnya harus ditulis di dalam kelas dengan `self.assertEqual(...)` dan sejenisnya. Dengan pytest, tes cukup berupa fungsi dan `assert a == b`; saat gagal, pytest menampilkan kedua nilai. Fixture `tmp_path` memberi folder sementara untuk menguji berkas rekor tanpa menyentuh rekor aslimu, dan `@pytest.mark.parametrize` menguji banyak input dengan satu fungsi. Karena uv membuat pemasangan pytest cukup satu perintah, alasan memakai unittest jadi kecil. Bonus: pytest juga bisa menjalankan tes gaya unittest kalau suatu saat kamu menemuinya.\n\n### Kenapa uv?\n\nDulu kamu perlu `python -m venv`, `pip install`, dan `requirements.txt` sendiri. uv mengerjakan semuanya dan mencatat versi persis di `uv.lock`, jadi orang lain mendapat lingkungan yang sama. uv juga memungkinkan orang memainkan game-mu langsung dari GitHub dengan `uvx`, yang akan kamu pakai di langkah deploy.\n\n## Yang perlu kamu siapkan\n\n1. Pasang uv. macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`. Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c \"irm https://astral.sh/uv/install.ps1 | iex\"`.\n2. Buka terminal baru, cek dengan `uv --version`.\n3. Kamu tidak wajib memasang Python sendiri: uv mengunduh Python 3.15 saat dibutuhkan.\n4. Pastikan `git --version` jalan dan kamu punya akun GitHub.\n",
+      "materials": [
+        {
+          "id": "ta-m-uv-install",
+          "kind": "tautan",
+          "name": "uv: cara memasang",
+          "url": "https://docs.astral.sh/uv/getting-started/installation/"
+        },
+        {
+          "id": "ta-m-python-dl",
+          "kind": "tautan",
+          "name": "Python: daftar rilis dan masa dukungan",
+          "url": "https://www.python.org/downloads/"
+        },
+        {
+          "id": "ta-m-pytest-start",
+          "kind": "tautan",
+          "name": "pytest: memulai",
+          "url": "https://docs.pytest.org/en/stable/getting-started.html"
+        },
+        {
+          "id": "ta-m-ruff-docs",
+          "kind": "tautan",
+          "name": "Ruff: dokumentasi",
+          "url": "https://docs.astral.sh/ruff/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-tek-uv",
+          "text": "uv --version berjalan di terminalku."
+        },
+        {
+          "id": "ta-tek-git",
+          "text": "git terpasang dan aku punya akun GitHub."
+        },
+        {
+          "id": "ta-tek-alasan",
+          "text": "Aku bisa menjelaskan kenapa memilih pytest dibanding unittest."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-modul-dan-aturan",
+      "title": "Rancang aturan dan pembagian modul",
+      "est_minutes": 30,
+      "body": "## Angka dulu, kode kemudian\n\nTulis aturan game dalam angka yang pasti sebelum ngoding. Jumlah kesempatan tidak asal pilih: dengan strategi membelah rentang jadi dua, angka 1-100 selalu bisa ditemukan dalam **7** tebakan (2 pangkat 7 = 128, lebih dari 100). Jadi level sulit adil tapi ketat: tebakan asal hampir pasti kalah, tebakan cerdas pasti menang.\n\nRumus suhu memakai persentase rentang, bukan angka tetap. Jarak 5 terasa \"panas\" di rentang 1-100, tapi di rentang 1-20 jarak 5 sudah seperempat rentang.\n\n## Pisahkan aturan dari input-output\n\nKeputusan desain terpenting di proyek ini: **fungsi aturan tidak boleh memanggil `input()`, `print()`, atau `random`**. Fungsi seperti `baca_tebakan(\"abc\", 1, 20)` hanya menerima nilai dan mengembalikan nilai (atau melempar error). Fungsi seperti itu disebut fungsi murni, dan menguji fungsi murni semudah `assert`.\n\nBagian yang memang butuh input, output, dan angka acak (loop permainan) menerimanya sebagai **parameter**: `main(tanya=input, tulis=print, acak=None, berkas=...)`. Saat game dimainkan, nilainya `input` dan `print` sungguhan. Saat dites, kamu menyuntikkan input palsu, daftar penampung output, dan random yang angkanya kamu tentukan.\n\n![Tiga modul dan arah ketergantungannya: logika.py murni, rekor.py menyentuh berkas, __init__.py menerima input, output, dan random lewat parameter sehingga tes bisa menggantinya](/studio/tebak-angka-python/modul-dan-suntikan.svg)\n\n## Yang perlu kamu kerjakan\n\n1. Salin `rancangan.md` dari bagian Bahan ke repositorimu nanti (sementara simpan di catatan).\n2. Hitung sendiri: berapa tebakan maksimum untuk rentang 1-20 dan 1-50 dengan strategi membelah? Bandingkan dengan jumlah kesempatan di tabel.\n3. Periksa tabel input: apakah cocok dengan jawaban kasus tepimu di langkah brainstorming?\n4. Hitung skor kalau menebak benar di tebakan ke-3 pada level sedang.\n",
+      "materials": [
+        {
+          "id": "ta-m-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan Tebak Angka\n\n## Level\n| Level  | Rentang | Kesempatan | Pengali skor |\n| ------ | ------- | ---------- | ------------ |\n| mudah  | 1-20    | 6          | 1            |\n| sedang | 1-50    | 7          | 2            |\n| sulit  | 1-100   | 7          | 3            |\n\n## Petunjuk\n- Arah: \"Terlalu kecil\" atau \"Terlalu besar\".\n- Suhu, dihitung dari jarak ke angka rahasia dan lebar rentang:\n  - panas  : jarak <= 5% rentang (minimal 1)\n  - hangat : jarak <= 20% rentang\n  - dingin : selebihnya\n\n## Skor\nskor = (kesempatan - tebakan_terpakai + 1) * 10 * pengali\nKalah = 0. Skor terbaik disimpan per level.\n\n## Input dan pesannya\n| Input pemain        | Pesan                                   | Kesempatan berkurang? |\n| ------------------- | --------------------------------------- | --------------------- |\n| kosong              | Ketik sebuah angka dulu, ya.            | tidak                 |\n| bukan angka bulat   | 'abc' bukan angka bulat.                | tidak                 |\n| di luar rentang     | Angkanya harus di antara 1 dan 20.      | tidak                 |\n| angka yang sama     | Kamu sudah menebak 4. Coba angka lain.  | tidak                 |\n| angka valid         | Terlalu kecil, hangat.                  | ya                    |\n| Ctrl+C / Ctrl+D     | Sampai jumpa!                           | game selesai          |\n\n## Modul\n- logika.py : aturan murni (tanpa input, print, random, berkas)\n- rekor.py  : baca/tulis skor terbaik di ~/.tebak-angka.json\n- __init__.py : loop permainan; input, output, dan random disuntikkan sebagai parameter\n- __main__.py : agar bisa dijalankan dengan python -m tebak_angka\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-ran-level",
+          "text": "Aku tahu kenapa level sulit diberi 7 kesempatan."
+        },
+        {
+          "id": "ta-ran-murni",
+          "text": "Aku bisa menjelaskan kenapa logika.py tidak boleh memanggil input() atau print()."
+        },
+        {
+          "id": "ta-ran-skor",
+          "text": "Aku sudah menghitung satu contoh skor dengan rumus di rancangan."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-uv",
+      "title": "Siapkan proyek dengan uv",
+      "est_minutes": 25,
+      "body": "## Satu perintah, proyek siap\n\n`uv init --package` membuat proyek berbentuk **paket** dengan susunan `src/`: kodenya ada di `src/tebak_angka/`, dan `pyproject.toml` sudah mendaftarkan perintah `tebak-angka` di bagian `[project.scripts]`. Susunan ini yang nanti membuat `uvx` bisa menjalankan game-mu langsung dari GitHub.\n\nPerhatikan dua nama: proyeknya `tebak-angka` (pakai tanda hubung, nama perintah dan paket), sedangkan modul Python-nya `tebak_angka` (pakai garis bawah, karena tanda hubung tidak boleh di nama modul).\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan perintah di `setup.sh` satu per satu. Di akhir langkah 3 harus muncul `Hello from tebak-angka!`.\n2. Buka `pyproject.toml`, lalu samakan dengan versi di bagian Bahan: ubah `description` dan `authors`, turunkan `requires-python` ke `>=3.12` supaya orang dengan Python lama tetap bisa main, dan tambahkan bagian `[tool.ruff]` serta `[tool.pytest]` di bawah. Biarkan `[build-system]` dan versi di `dependency-groups` seperti buatan uv di komputermu.\n3. Jalankan `uv run ruff check` dan `uv run pytest`. Ruff harus menjawab `All checks passed!`. pytest belum menemukan tes apa pun, jadi wajar kalau ia berkata `no tests ran`.\n4. Lihat isi folder. Ada `.venv/` (dibuat uv, tidak di-commit karena tercantum di `.gitignore`) dan `uv.lock` (di-commit, supaya versi pytest dan ruff sama di semua komputer).\n\n> Jangan aktifkan virtualenv dengan `source .venv/bin/activate`. `uv run` selalu memakai lingkungan yang benar.\n",
+      "materials": [
+        {
+          "id": "ta-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "# 1. Buat proyek berbentuk paket. uv mengunduh Python 3.15 kalau belum ada,\n#    lalu membuat folder, git, .gitignore, dan pyproject.toml.\nuv init --package --python 3.15 tebak-angka\ncd tebak-angka\n\n# 2. Tambah alat pengembangan (hanya untuk kamu, bukan untuk pemain)\nuv add --dev pytest ruff\n\n# 3. Coba jalankan. Harus muncul: Hello from tebak-angka!\nuv run tebak-angka\n\n# 4. Siapkan folder tes, lalu commit pertama\nmkdir tests\ngit add .\ngit commit -m \"Kerangka proyek dengan uv\"\n"
+        },
+        {
+          "id": "ta-m-pyproject",
+          "kind": "kode",
+          "name": "pyproject.toml",
+          "lang": "toml",
+          "content": "[project]\nname = \"tebak-angka\"\nversion = \"0.1.0\"\ndescription = \"Game tebak angka di terminal dengan level, petunjuk hangat/dingin, dan skor terbaik\"\nreadme = \"README.md\"\nauthors = [\n    { name = \"Nama Kamu\", email = \"kamu@example.com\" }\n]\nrequires-python = \">=3.12\"\ndependencies = []\n\n[project.scripts]\ntebak-angka = \"tebak_angka:main\"\n\n# Bagian ini biarkan persis seperti buatan uv di komputermu (versinya bisa beda).\n[build-system]\nrequires = [\"uv_build>=0.13.10,<0.14.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\n    \"pytest>=9.2.0\",\n    \"ruff>=0.17.6\",\n]\n\n[tool.ruff]\nline-length = 100\n\n[tool.ruff.lint]\nselect = [\"E\", \"F\", \"I\", \"B\", \"UP\"]\n\n[tool.pytest]\ntestpaths = [\"tests\"]\n"
+        },
+        {
+          "id": "ta-m-uv-projects",
+          "kind": "tautan",
+          "name": "uv: bekerja dengan proyek",
+          "url": "https://docs.astral.sh/uv/guides/projects/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-setup-hello",
+          "text": "uv run tebak-angka menampilkan Hello from tebak-angka!"
+        },
+        {
+          "id": "ta-setup-pyproject",
+          "text": "pyproject.toml sudah berisi requires-python >=3.12, [tool.ruff], dan [tool.pytest]."
+        },
+        {
+          "id": "ta-setup-commit",
+          "text": "Commit pertama sudah dibuat, tanpa folder .venv."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "tulis-aturan-permainan",
+      "title": "Tulis aturan permainan sebagai fungsi murni",
+      "est_minutes": 45,
+      "body": "## Semua aturan di satu berkas\n\nBuat `src/tebak_angka/logika.py` dari bagian Bahan. Isinya hanya data level dan empat fungsi kecil. Tidak ada `input()`, `print()`, atau `random`.\n\nHal yang perlu kamu perhatikan:\n\n- `LEVEL` adalah dictionary berisi dictionary. Menambah level baru cukup satu baris, tanpa mengubah fungsi lain.\n- `baca_tebakan` mengubah teks jadi angka. Kalau gagal, ia **melempar `ValueError` berisi pesan untuk pemain**. Loop permainan nanti cukup menampilkan pesan itu. `from None` menyembunyikan error `int()` yang asli, karena pemain tidak perlu melihatnya.\n- `bawah <= angka <= atas` adalah perbandingan berantai khas Python, sama dengan `bawah <= angka and angka <= atas`.\n- `suhu` memakai `//` (pembagian bulat), jadi 5% dari rentang 20 adalah `20 // 20 = 1`, bukan 1.0. `max(1, ...)` menjaga rentang kecil tetap punya zona \"panas\".\n\n## Coba langsung di REPL\n\n```bash\nuv run python\n```\n\n```python\n>>> from tebak_angka.logika import baca_tebakan, petunjuk, hitung_skor\n>>> baca_tebakan(\" 7 \", 1, 20)\n7\n>>> baca_tebakan(\"abc\", 1, 20)\nTraceback (most recent call last):\n  ...\nValueError: 'abc' bukan angka bulat.\n>>> petunjuk(40, 50, 1, 100)\n'Terlalu kecil, hangat.'\n>>> hitung_skor(\"sedang\", 3)\n100\n```\n\nKetik `exit()` untuk keluar. Inilah enaknya fungsi murni: kamu bisa mencobanya tanpa memainkan game sama sekali.\n\n## Kenapa 7 kesempatan cukup?\n\nCoba strategi terbaik untuk game ini: selalu tebak angka tengah dari sisa rentang. Setiap jawaban \"terlalu kecil\" atau \"terlalu besar\" membuang separuh kemungkinan. Bandingkan dengan menebak berurutan dari 1.\n\n![Pencarian biner membuang separuh kemungkinan di setiap langkah, sama seperti pemain yang selalu menebak angka tengah; bandingkan jumlah perbandingannya dengan pencarian linear](sim:binary-search)\n\n## Yang perlu kamu kerjakan\n\n1. Buat `logika.py` dan coba keempat fungsinya di REPL seperti contoh di atas.\n2. Coba `baca_tebakan(\"\", 1, 20)` dan `baca_tebakan(\"21\", 1, 20)`. Pesannya harus sama dengan tabel di rancangan.\n3. Jalankan `uv run ruff check` dan `uv run ruff format --check`. Kalau format belum rapi, jalankan `uv run ruff format`.\n4. Commit dengan pesan `Tambah aturan permainan`.\n",
+      "materials": [
+        {
+          "id": "ta-m-logika",
+          "kind": "kode",
+          "name": "src/tebak_angka/logika.py",
+          "lang": "python",
+          "content": "\"\"\"Aturan permainan. Tidak ada input(), print(), atau random di sini.\"\"\"\n\nLEVEL = {\n    \"mudah\": {\"bawah\": 1, \"atas\": 20, \"kesempatan\": 6, \"pengali\": 1},\n    \"sedang\": {\"bawah\": 1, \"atas\": 50, \"kesempatan\": 7, \"pengali\": 2},\n    \"sulit\": {\"bawah\": 1, \"atas\": 100, \"kesempatan\": 7, \"pengali\": 3},\n}\n\n\ndef baca_tebakan(teks: str, bawah: int, atas: int) -> int:\n    \"\"\"Ubah ketikan pemain menjadi angka, atau lempar ValueError berisi pesan ramah.\"\"\"\n    teks = teks.strip()\n    if not teks:\n        raise ValueError(\"Ketik sebuah angka dulu, ya.\")\n    try:\n        angka = int(teks)\n    except ValueError:\n        raise ValueError(f\"'{teks}' bukan angka bulat.\") from None\n    if not bawah <= angka <= atas:\n        raise ValueError(f\"Angkanya harus di antara {bawah} dan {atas}.\")\n    return angka\n\n\ndef suhu(tebakan: int, rahasia: int, bawah: int, atas: int) -> str:\n    \"\"\"Seberapa dekat tebakan, relatif terhadap lebar rentang.\"\"\"\n    jarak = abs(tebakan - rahasia)\n    rentang = atas - bawah + 1\n    if jarak <= max(1, rentang // 20):\n        return \"panas\"\n    if jarak <= rentang // 5:\n        return \"hangat\"\n    return \"dingin\"\n\n\ndef petunjuk(tebakan: int, rahasia: int, bawah: int, atas: int) -> str:\n    if tebakan == rahasia:\n        return \"Benar!\"\n    arah = \"Terlalu kecil\" if tebakan < rahasia else \"Terlalu besar\"\n    return f\"{arah}, {suhu(tebakan, rahasia, bawah, atas)}.\"\n\n\ndef hitung_skor(nama_level: str, dipakai: int) -> int:\n    \"\"\"Makin sedikit tebakan, makin besar skornya. Level sulit dikali 3.\"\"\"\n    level = LEVEL[nama_level]\n    return (level[\"kesempatan\"] - dipakai + 1) * 10 * level[\"pengali\"]\n"
+        },
+        {
+          "id": "ta-m-py-errors",
+          "kind": "tautan",
+          "name": "Python: tutorial error dan exception",
+          "url": "https://docs.python.org/3/tutorial/errors.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-logika-repl",
+          "text": "Aku sudah mencoba keempat fungsi di REPL dan hasilnya sesuai."
+        },
+        {
+          "id": "ta-logika-valueerror",
+          "text": "baca_tebakan melempar ValueError dengan pesan ramah untuk input kosong, huruf, dan di luar rentang."
+        },
+        {
+          "id": "ta-logika-ruff",
+          "text": "ruff check dan ruff format --check lulus."
+        },
+        {
+          "id": "ta-logika-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "simpan-skor-terbaik-json",
+      "title": "Simpan skor terbaik di berkas JSON",
+      "est_minutes": 30,
+      "body": "## Data yang bertahan setelah program ditutup\n\nVariabel hilang saat program selesai. Supaya skor terbaik tetap ada besok, simpan di berkas. JSON pas untuk ini: bisa dibaca manusia dan langsung jadi dictionary Python.\n\nBuat `src/tebak_angka/rekor.py` dari bagian Bahan. Isinya berkas seperti ini:\n\n```json\n{\n  \"sulit\": 120,\n  \"mudah\": 50\n}\n```\n\n## Dua fungsi, dua janji\n\n**`muat_rekor` tidak pernah crash.** Berkas belum ada memunculkan `FileNotFoundError`, yang merupakan turunan `OSError`. Isi rusak memunculkan `json.JSONDecodeError`, turunan `ValueError`. Keduanya ditangkap dan menghasilkan `{}`. Pemeriksaan `isinstance` menyaring isi yang valid sebagai JSON tapi tidak masuk akal, misalnya list atau skor berupa teks. `bool` dikecualikan karena di Python `True` juga terhitung `int`.\n\n**`simpan_rekor` tidak pernah meninggalkan berkas setengah jadi.** Data ditulis ke `.tebak-angka.json.tmp` dulu, lalu `replace` menggantikan berkas lama sekaligus. Kalau listrik padam atau Ctrl+C ditekan di tengah penulisan, berkas lama tetap utuh. Teknik ini dipakai juga oleh editor teks dan database.\n\nLokasi berkasnya `~/.tebak-angka.json` di folder home, sehingga rekor tetap sama dari folder mana pun game dijalankan. Lokasi ini ditentukan di langkah berikutnya, dan tes akan menggantinya dengan folder sementara.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `rekor.py`, lalu coba di REPL (`uv run python`):\n\n```python\n>>> from pathlib import Path\n>>> from tebak_angka.rekor import muat_rekor, simpan_rekor\n>>> simpan_rekor(Path(\"coba.json\"), {\"mudah\": 40})\n>>> muat_rekor(Path(\"coba.json\"))\n{'mudah': 40}\n>>> muat_rekor(Path(\"tidak-ada.json\"))\n{}\n```\n\n2. Rusak `coba.json` dengan editor (hapus kurung kurawal penutupnya), lalu panggil `muat_rekor` lagi. Hasilnya harus `{}`, bukan traceback.\n3. Hapus `coba.json`, jalankan ruff, lalu commit dengan pesan `Simpan skor terbaik`.\n",
+      "materials": [
+        {
+          "id": "ta-m-rekor",
+          "kind": "kode",
+          "name": "src/tebak_angka/rekor.py",
+          "lang": "python",
+          "content": "\"\"\"Simpan dan baca skor terbaik per level di berkas JSON.\"\"\"\n\nimport json\nfrom pathlib import Path\n\n\ndef muat_rekor(berkas: Path) -> dict[str, int]:\n    \"\"\"Berkas belum ada, rusak, atau isinya aneh: mulai dari nol, jangan crash.\"\"\"\n    try:\n        data = json.loads(berkas.read_text(encoding=\"utf-8\"))\n    except (OSError, ValueError):\n        return {}\n    if not isinstance(data, dict):\n        return {}\n    return {\n        nama: skor\n        for nama, skor in data.items()\n        if isinstance(skor, int) and not isinstance(skor, bool)\n    }\n\n\ndef simpan_rekor(berkas: Path, rekor: dict[str, int]) -> None:\n    \"\"\"Tulis ke berkas sementara dulu, lalu ganti sekaligus.\n\n    Kalau program terhenti di tengah penulisan, berkas lama tetap utuh.\n    \"\"\"\n    sementara = berkas.with_name(berkas.name + \".tmp\")\n    sementara.write_text(json.dumps(rekor, indent=2), encoding=\"utf-8\")\n    sementara.replace(berkas)\n"
+        },
+        {
+          "id": "ta-m-py-json",
+          "kind": "tautan",
+          "name": "Python: modul json",
+          "url": "https://docs.python.org/3/library/json.html"
+        },
+        {
+          "id": "ta-m-py-pathlib",
+          "kind": "tautan",
+          "name": "Python: pathlib.Path",
+          "url": "https://docs.python.org/3/library/pathlib.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-rekor-simpan",
+          "text": "simpan_rekor lalu muat_rekor mengembalikan dictionary yang sama."
+        },
+        {
+          "id": "ta-rekor-rusak",
+          "text": "muat_rekor mengembalikan {} untuk berkas yang tidak ada dan yang rusak."
+        },
+        {
+          "id": "ta-rekor-tmp",
+          "text": "Aku bisa menjelaskan kenapa rekor ditulis ke berkas .tmp dulu."
+        },
+        {
+          "id": "ta-rekor-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "loop-permainan-dan-main-guard",
+      "title": "Tulis loop permainan dan main guard",
+      "est_minutes": 55,
+      "body": "## Menyatukan semuanya\n\nGanti isi `src/tebak_angka/__init__.py` dengan versi di bagian Bahan, lalu buat `src/tebak_angka/__main__.py`. Kode ini memakai semua yang sudah kamu tulis.\n\n![Satu ronde: input yang salah atau berulang kembali ke pertanyaan tanpa mengurangi kesempatan; hanya tebakan valid yang baru dihitung](/studio/tebak-angka-python/alur-satu-ronde.svg)\n\nBagian penting:\n\n- **`satu_ronde`** mencatat tebakan valid di `set` bernama `sudah`. Jumlah kesempatan terpakai adalah `len(sudah)`, jadi tebakan yang salah format atau berulang otomatis tidak dihitung, karena keduanya `continue` sebelum `sudah.add`.\n- **`main(tanya=input, tulis=print, acak=None, berkas=BERKAS_REKOR)`**. Nilai bawaannya membuat game berjalan normal. Tes akan mengisi parameter ini dengan versi palsu. `acak or random.Random()` membuat generator acak baru kalau tidak ada yang disuntikkan.\n- **`except (KeyboardInterrupt, EOFError)`** membungkus seluruh loop. Ctrl+C memunculkan `KeyboardInterrupt`; Ctrl+D (atau input dari pipa yang habis) membuat `input()` melempar `EOFError`. Keduanya berakhir dengan \"Sampai jumpa!\". Rekor sudah disimpan setiap kali pecah, jadi tidak ada yang hilang.\n- **`except OSError`** saat menyimpan: kalau folder home tidak bisa ditulisi, pemain diberi tahu, tapi game tetap jalan.\n\n## Dua cara menjalankan\n\n`pyproject.toml` menghubungkan perintah `tebak-angka` ke fungsi `main`. Berkas `__main__.py` membuat `python -m tebak_angka` juga bisa. Baris `if __name__ == \"__main__\":` adalah **main guard**: isinya hanya jalan kalau berkas dijalankan langsung, bukan saat di-import. Tanpa guard, sekadar `import` di tes akan memulai game dan menunggu input.\n\n`sys.exit(main())` meneruskan nilai kembalian `main` (0 berarti sukses) sebagai kode keluar program.\n\n## Yang perlu kamu kerjakan\n\n1. Jalankan `uv run tebak-angka` dan mainkan satu ronde di setiap level.\n2. Coba semua kasus tepi dari brainstorming: Enter kosong, huruf, angka di luar rentang, angka yang sama dua kali. Kesempatan tidak boleh berkurang.\n3. Tekan Ctrl+C saat diminta tebakan. Harus muncul \"Sampai jumpa!\" tanpa traceback. Ulangi dengan Ctrl+D (Windows: Ctrl+Z lalu Enter).\n4. Jalankan juga `uv run python -m tebak_angka`.\n5. Jalankan ruff, lalu commit dengan pesan `Loop permainan, main lagi, dan keluar dengan rapi`.\n",
+      "materials": [
+        {
+          "id": "ta-m-init",
+          "kind": "kode",
+          "name": "src/tebak_angka/__init__.py",
+          "lang": "python",
+          "content": "\"\"\"Game tebak angka di terminal.\"\"\"\n\nimport random\nfrom pathlib import Path\n\nfrom tebak_angka.logika import LEVEL, baca_tebakan, hitung_skor, petunjuk\nfrom tebak_angka.rekor import muat_rekor, simpan_rekor\n\nBERKAS_REKOR = Path.home() / \".tebak-angka.json\"\n\n\ndef pilih_level(tanya, tulis) -> str:\n    tulis(\"Pilih level:\")\n    nama_level = list(LEVEL)\n    for nomor, nama in enumerate(nama_level, start=1):\n        lv = LEVEL[nama]\n        rentang = f\"{lv['bawah']}-{lv['atas']}\"\n        tulis(f\"  {nomor}) {nama:<6} angka {rentang}, {lv['kesempatan']} kesempatan\")\n    while True:\n        jawab = tanya(\"Pilihanmu [1-3]: \").strip().lower()\n        if jawab in {\"1\", \"2\", \"3\"}:\n            return nama_level[int(jawab) - 1]\n        if jawab in LEVEL:\n            return jawab\n        tulis(\"Ketik 1, 2, atau 3.\")\n\n\ndef satu_ronde(nama_level: str, tanya, tulis, acak) -> int:\n    \"\"\"Mainkan satu ronde dan kembalikan skornya (0 kalau kalah).\"\"\"\n    lv = LEVEL[nama_level]\n    bawah, atas, kesempatan = lv[\"bawah\"], lv[\"atas\"], lv[\"kesempatan\"]\n    rahasia = acak.randint(bawah, atas)\n    sudah = set()\n    tulis(f\"Aku memikirkan angka {bawah} sampai {atas}. Kamu punya {kesempatan} kesempatan.\")\n    while len(sudah) < kesempatan:\n        sisa = kesempatan - len(sudah)\n        try:\n            tebakan = baca_tebakan(tanya(f\"Tebakan ({sisa} tersisa): \"), bawah, atas)\n        except ValueError as galat:\n            tulis(str(galat))\n            continue\n        if tebakan in sudah:\n            tulis(f\"Kamu sudah menebak {tebakan}. Coba angka lain.\")\n            continue\n        sudah.add(tebakan)\n        if tebakan == rahasia:\n            skor = hitung_skor(nama_level, len(sudah))\n            tulis(f\"Benar! Angkanya {rahasia}, ketemu dalam {len(sudah)} tebakan. Skor: {skor}\")\n            return skor\n        tulis(petunjuk(tebakan, rahasia, bawah, atas))\n    tulis(f\"Kesempatan habis. Angkanya {rahasia}.\")\n    return 0\n\n\ndef main(tanya=input, tulis=print, acak=None, berkas=BERKAS_REKOR) -> int:\n    acak = acak or random.Random()\n    rekor = muat_rekor(berkas)\n    tulis(\"=== Tebak Angka ===\")\n    try:\n        while True:\n            nama_level = pilih_level(tanya, tulis)\n            skor = satu_ronde(nama_level, tanya, tulis, acak)\n            if skor > rekor.get(nama_level, 0):\n                rekor[nama_level] = skor\n                tulis(f\"Rekor baru untuk level {nama_level}!\")\n                try:\n                    simpan_rekor(berkas, rekor)\n                except OSError as galat:\n                    tulis(f\"Rekor tidak bisa disimpan: {galat}\")\n            tulis(f\"Skor terbaik level {nama_level}: {rekor.get(nama_level, 0)}\")\n            if not tanya(\"Main lagi? (y/n): \").strip().lower().startswith(\"y\"):\n                break\n    except (KeyboardInterrupt, EOFError):\n        tulis(\"\")\n    tulis(\"Sampai jumpa!\")\n    return 0\n"
+        },
+        {
+          "id": "ta-m-main",
+          "kind": "kode",
+          "name": "src/tebak_angka/__main__.py",
+          "lang": "python",
+          "content": "\"\"\"Membuat `python -m tebak_angka` bisa dijalankan.\"\"\"\n\nimport sys\n\nfrom tebak_angka import main\n\nif __name__ == \"__main__\":\n    sys.exit(main())\n"
+        },
+        {
+          "id": "ta-m-py-main",
+          "kind": "tautan",
+          "name": "Python: __main__ dan main guard",
+          "url": "https://docs.python.org/3/library/__main__.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-loop-main",
+          "text": "Aku sudah menang dan kalah setidaknya sekali, lalu memilih main lagi."
+        },
+        {
+          "id": "ta-loop-tepi",
+          "text": "Input kosong, huruf, di luar rentang, dan berulang tidak mengurangi kesempatan."
+        },
+        {
+          "id": "ta-loop-keluar",
+          "text": "Ctrl+C dan Ctrl+D menampilkan Sampai jumpa! tanpa traceback."
+        },
+        {
+          "id": "ta-loop-modul",
+          "text": "uv run python -m tebak_angka juga menjalankan game."
+        },
+        {
+          "id": "ta-loop-commit",
+          "text": "Perubahan sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-pytest-input-palsu",
+      "title": "Tulis tes pytest dengan input palsu",
+      "est_minutes": 55,
+      "body": "## Menguji game yang meminta input\n\nGame interaktif terlihat sulit dites karena menunggu ketikan. Berkat parameter di `main`, kamu tidak perlu mengetik apa pun:\n\n- **Input palsu.** `jawaban(\"1\", \"12\", \"15\", \"n\")` membuat fungsi pengganti `input()` yang mengembalikan isinya satu per satu. Setelah habis, ia melempar `EOFError`, persis seperti `input()` saat pemain menekan Ctrl+D.\n- **Output ditampung.** `tulis=keluar.append` menyimpan setiap baris ke list, lalu tes memeriksa isinya.\n- **Random yang ditentukan.** `AcakTetap(15)` punya metode `randint` yang selalu memberi 15, jadi tes tahu jawabannya. Tes terakhir memakai `random.Random(2026)`: generator dengan **seed** yang sama selalu menghasilkan urutan yang sama.\n- **Folder sementara.** `tmp_path` adalah fixture pytest: folder baru untuk setiap tes, sehingga rekor aslimu di `~/.tebak-angka.json` tidak tersentuh.\n\n## Yang perlu kamu kerjakan\n\n1. Buat ketiga berkas di folder `tests/` dari bagian Bahan.\n2. Jalankan:\n\n```bash\nuv run pytest\nuv run ruff check\nuv run ruff format --check\n```\n\n   pytest harus melaporkan `30 passed`. Satu fungsi dengan `parametrize` dihitung sebagai beberapa tes.\n3. Rusak kode dengan sengaja: di `logika.py`, ubah `rentang // 5` menjadi `rentang // 4`. Jalankan pytest; tes suhu harus gagal dan menunjukkan nilai yang diharapkan dan yang didapat. Kembalikan seperti semula.\n4. Tambahkan satu tes milikmu sendiri, misalnya pilihan level `\"4\"` harus dijawab \"Ketik 1, 2, atau 3.\" lalu tetap bisa memilih level.\n5. Commit dengan pesan `Tambah tes pytest`.\n\nHampir semua tesmu adalah tes unit: cepat, banyak, dan tidak menyentuh apa pun di luar Python. Hanya sedikit yang menyentuh berkas, dan nanti kamu menguji terminal sungguhan dengan tangan di langkah berikutnya. Proporsi seperti itu sehat.\n\n![Atur jumlah tes unit, integrasi, dan end-to-end, lalu lihat dampaknya ke waktu dan risiko tes goyah; tes tebak angka hampir semuanya ada di lapisan unit](sim:piramida-tes)\n",
+      "materials": [
+        {
+          "id": "ta-m-test-logika",
+          "kind": "kode",
+          "name": "tests/test_logika.py",
+          "lang": "python",
+          "content": "import pytest\n\nfrom tebak_angka.logika import baca_tebakan, hitung_skor, petunjuk, suhu\n\n\n@pytest.mark.parametrize(\"teks, hasil\", [(\"7\", 7), (\"  20 \", 20), (\"1\", 1)])\ndef test_baca_tebakan_valid(teks, hasil):\n    assert baca_tebakan(teks, 1, 20) == hasil\n\n\n@pytest.mark.parametrize(\n    \"teks, pesan\",\n    [\n        (\"\", \"Ketik sebuah angka\"),\n        (\"   \", \"Ketik sebuah angka\"),\n        (\"abc\", \"bukan angka bulat\"),\n        (\"7.5\", \"bukan angka bulat\"),\n        (\"0\", \"di antara 1 dan 20\"),\n        (\"21\", \"di antara 1 dan 20\"),\n    ],\n)\ndef test_baca_tebakan_tidak_valid(teks, pesan):\n    with pytest.raises(ValueError, match=pesan):\n        baca_tebakan(teks, 1, 20)\n\n\n@pytest.mark.parametrize(\n    \"tebakan, hasil\",\n    [(45, \"panas\"), (55, \"panas\"), (44, \"hangat\"), (30, \"hangat\"), (29, \"dingin\"), (100, \"dingin\")],\n)\ndef test_suhu_rentang_1_sampai_100(tebakan, hasil):\n    assert suhu(tebakan, 50, 1, 100) == hasil\n\n\ndef test_petunjuk_menyebut_arah_dan_suhu():\n    assert petunjuk(10, 50, 1, 100) == \"Terlalu kecil, dingin.\"\n    assert petunjuk(53, 50, 1, 100) == \"Terlalu besar, panas.\"\n    assert petunjuk(50, 50, 1, 100) == \"Benar!\"\n\n\ndef test_skor_makin_besar_kalau_makin_cepat():\n    assert hitung_skor(\"mudah\", 1) == 60\n    assert hitung_skor(\"mudah\", 6) == 10\n    assert hitung_skor(\"sulit\", 7) == 30\n"
+        },
+        {
+          "id": "ta-m-test-rekor",
+          "kind": "kode",
+          "name": "tests/test_rekor.py",
+          "lang": "python",
+          "content": "import json\n\nfrom tebak_angka.rekor import muat_rekor, simpan_rekor\n\n\ndef test_berkas_belum_ada(tmp_path):\n    assert muat_rekor(tmp_path / \"tidak-ada.json\") == {}\n\n\ndef test_berkas_rusak(tmp_path):\n    berkas = tmp_path / \"rekor.json\"\n    berkas.write_text(\"{ini bukan json\", encoding=\"utf-8\")\n    assert muat_rekor(berkas) == {}\n\n\ndef test_isi_bukan_objek_atau_nilai_aneh(tmp_path):\n    berkas = tmp_path / \"rekor.json\"\n    berkas.write_text(\"[1, 2, 3]\", encoding=\"utf-8\")\n    assert muat_rekor(berkas) == {}\n    berkas.write_text('{\"mudah\": 50, \"sedang\": \"banyak\", \"sulit\": true}', encoding=\"utf-8\")\n    assert muat_rekor(berkas) == {\"mudah\": 50}\n\n\ndef test_simpan_lalu_muat(tmp_path):\n    berkas = tmp_path / \"rekor.json\"\n    simpan_rekor(berkas, {\"sulit\": 120})\n    assert muat_rekor(berkas) == {\"sulit\": 120}\n    assert json.loads(berkas.read_text(encoding=\"utf-8\")) == {\"sulit\": 120}\n    assert list(tmp_path.iterdir()) == [berkas]  # berkas .tmp sudah hilang\n"
+        },
+        {
+          "id": "ta-m-test-permainan",
+          "kind": "kode",
+          "name": "tests/test_permainan.py",
+          "lang": "python",
+          "content": "import json\nimport random\n\nfrom tebak_angka import main\n\n\ndef jawaban(*isi):\n    \"\"\"Pengganti input(): mengembalikan isi satu per satu, lalu EOFError seperti Ctrl+D.\"\"\"\n    antrean = iter(isi)\n\n    def tanya(prompt=\"\"):\n        try:\n            return next(antrean)\n        except StopIteration:\n            raise EOFError from None\n\n    return tanya\n\n\nclass AcakTetap:\n    \"\"\"Pengganti random.Random() yang selalu memilih angka yang kita tentukan.\"\"\"\n\n    def __init__(self, *angka):\n        self.angka = list(angka)\n\n    def randint(self, bawah, atas):\n        return self.angka.pop(0)\n\n\ndef main_palsu(tmp_path, *isi, acak):\n    keluar = []\n    kode = main(tanya=jawaban(*isi), tulis=keluar.append, acak=acak, berkas=tmp_path / \"rekor.json\")\n    return kode, \"\\n\".join(keluar)\n\n\ndef test_menang_dan_rekor_tersimpan(tmp_path):\n    kode, layar = main_palsu(tmp_path, \"1\", \"12\", \"15\", \"n\", acak=AcakTetap(15))\n    assert kode == 0\n    assert \"Terlalu kecil, hangat.\" in layar\n    assert \"ketemu dalam 2 tebakan. Skor: 50\" in layar\n    assert \"Rekor baru untuk level mudah!\" in layar\n    assert json.loads((tmp_path / \"rekor.json\").read_text(encoding=\"utf-8\")) == {\"mudah\": 50}\n\n\ndef test_input_salah_tidak_mengurangi_kesempatan(tmp_path):\n    _, layar = main_palsu(tmp_path, \"1\", \"\", \"abc\", \"0\", \"21\", \"15\", \"n\", acak=AcakTetap(15))\n    assert \"Ketik sebuah angka dulu, ya.\" in layar\n    assert \"'abc' bukan angka bulat.\" in layar\n    assert \"Angkanya harus di antara 1 dan 20.\" in layar\n    assert \"ketemu dalam 1 tebakan\" in layar\n\n\ndef test_tebakan_yang_sama_tidak_dihitung(tmp_path):\n    _, layar = main_palsu(tmp_path, \"1\", \"4\", \"4\", \"15\", \"n\", acak=AcakTetap(15))\n    assert \"Kamu sudah menebak 4.\" in layar\n    assert \"ketemu dalam 2 tebakan\" in layar\n\n\ndef test_kalah_kalau_kesempatan_habis(tmp_path):\n    _, layar = main_palsu(tmp_path, \"1\", \"1\", \"2\", \"3\", \"4\", \"5\", \"6\", \"n\", acak=AcakTetap(20))\n    assert \"Kesempatan habis. Angkanya 20.\" in layar\n    assert not (tmp_path / \"rekor.json\").exists()\n\n\ndef test_main_lagi_dan_rekor_tidak_turun(tmp_path):\n    (tmp_path / \"rekor.json\").write_text('{\"mudah\": 60}', encoding=\"utf-8\")\n    _, layar = main_palsu(tmp_path, \"1\", \"3\", \"y\", \"sulit\", \"50\", \"n\", acak=AcakTetap(3, 50))\n    assert \"Skor terbaik level mudah: 60\" in layar\n    assert \"Rekor baru untuk level sulit!\" in layar\n    rekor = json.loads((tmp_path / \"rekor.json\").read_text(encoding=\"utf-8\"))\n    assert rekor == {\"mudah\": 60, \"sulit\": 210}\n\n\ndef test_berkas_rekor_rusak_tidak_membuat_crash(tmp_path):\n    (tmp_path / \"rekor.json\").write_text(\"{rusak\", encoding=\"utf-8\")\n    kode, _ = main_palsu(tmp_path, \"1\", \"15\", \"n\", acak=AcakTetap(15))\n    assert kode == 0\n    assert json.loads((tmp_path / \"rekor.json\").read_text(encoding=\"utf-8\")) == {\"mudah\": 60}\n\n\ndef test_ctrl_d_di_tengah_ronde_keluar_dengan_rapi(tmp_path):\n    kode, layar = main_palsu(tmp_path, \"1\", \"5\", acak=AcakTetap(15))\n    assert kode == 0\n    assert layar.endswith(\"Sampai jumpa!\")\n\n\ndef test_ctrl_c_keluar_dengan_rapi(tmp_path):\n    def tanya(prompt=\"\"):\n        raise KeyboardInterrupt\n\n    keluar = []\n    assert main(tanya=tanya, tulis=keluar.append, berkas=tmp_path / \"rekor.json\") == 0\n    assert keluar[-1] == \"Sampai jumpa!\"\n\n\ndef test_random_dengan_seed_selalu_sama(tmp_path):\n    rahasia = random.Random(2026).randint(1, 20)\n    _, layar = main_palsu(tmp_path, \"1\", str(rahasia), \"n\", acak=random.Random(2026))\n    assert f\"Benar! Angkanya {rahasia}, ketemu dalam 1 tebakan.\" in layar\n"
+        },
+        {
+          "id": "ta-m-pytest-tmp",
+          "kind": "tautan",
+          "name": "pytest: folder sementara dengan tmp_path",
+          "url": "https://docs.pytest.org/en/stable/how-to/tmp_path.html"
+        },
+        {
+          "id": "ta-m-pytest-param",
+          "kind": "tautan",
+          "name": "pytest: parametrize",
+          "url": "https://docs.pytest.org/en/stable/how-to/parametrize.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-tes-lulus",
+          "text": "uv run pytest lulus semua."
+        },
+        {
+          "id": "ta-tes-rusak",
+          "text": "Aku sudah merusak kode dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "ta-tes-sendiri",
+          "text": "Aku menambah minimal satu tes buatanku sendiri."
+        },
+        {
+          "id": "ta-tes-ruff",
+          "text": "ruff check dan ruff format --check lulus."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-manual-di-terminal",
+      "title": "Uji manual di terminal sungguhan",
+      "est_minutes": 25,
+      "body": "## Tes otomatis tidak melihat semuanya\n\nTes memanggil `main()` langsung. Yang belum teruji: apakah perintah `tebak-angka` terpasang dengan benar, apakah Ctrl+C sungguhan sampai ke program, dan apakah game tetap jalan saat input datang dari pipa. Itu yang kamu cek sekarang.\n\n## Yang perlu kamu kerjakan\n\nJalankan perintah di `uji-manual.sh` satu per satu (jangan sebagai satu skrip, karena beberapa perintah menunggu kamu bermain).\n\n1. **Main biasa.** Mainkan ketiga level. Untuk level sulit, pakai strategi membelah rentang dan pastikan kamu selalu menang dalam 7 tebakan.\n2. **Input dari pipa.** `printf` mengirim lima baris: pilih level 1, lalu empat input yang semuanya salah. Kamu akan melihat empat pesan kesalahan, lalu \"Sampai jumpa!\" karena input habis. Kode keluar harus `0`.\n3. **Sebagai modul.** `python -m tebak_angka` harus berperilaku sama.\n4. **Berkas rekor rusak.** Game harus tetap jalan seolah belum ada rekor. Menangkan satu ronde, lalu `cat` berkasnya: isinya kembali JSON yang benar. Kembalikan rekor aslimu dengan perintah terakhir.\n5. **Ctrl+C dan Ctrl+D** di setiap jenis pertanyaan: pilihan level, tebakan, dan \"Main lagi?\".\n\nCatat setiap hal aneh yang kamu temukan beserta perbaikannya. Cerita \"aku menemukan bug saat input datang dari pipa\" bagus untuk diceritakan saat wawancara.\n",
+      "materials": [
+        {
+          "id": "ta-m-uji-manual",
+          "kind": "kode",
+          "name": "uji-manual.sh",
+          "lang": "bash",
+          "content": "# 1. Main biasa. Coba ketiga level, menang dan kalah, lalu jawab y untuk main lagi.\nuv run tebak-angka\n\n# 2. Semua input salah lewat pipa. Setelah input habis, game harus pamit\n#    seperti saat kamu menekan Ctrl+D, tanpa traceback.\nprintf '1\\nabc\\n\\n0\\n99\\n' | uv run tebak-angka\necho \"kode keluar: $?\"\n\n# 3. Jalankan sebagai modul (memakai __main__.py)\nuv run python -m tebak_angka\n\n# 4. Berkas rekor rusak (macOS/Linux; di Windows edit berkasnya dengan Notepad).\n#    Simpan dulu rekor aslimu.\ncp ~/.tebak-angka.json ~/.tebak-angka.json.bak\necho '{rusak' > ~/.tebak-angka.json\nuv run tebak-angka\ncat ~/.tebak-angka.json\nmv ~/.tebak-angka.json.bak ~/.tebak-angka.json\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-manual-sulit",
+          "text": "Aku selalu menang di level sulit dengan strategi membelah rentang."
+        },
+        {
+          "id": "ta-manual-pipa",
+          "text": "Input dari pipa berakhir dengan Sampai jumpa! dan kode keluar 0."
+        },
+        {
+          "id": "ta-manual-rusak",
+          "text": "Game tetap jalan dengan berkas rekor rusak, lalu menulis JSON yang benar."
+        },
+        {
+          "id": "ta-manual-ctrl",
+          "text": "Ctrl+C dan Ctrl+D keluar dengan rapi di semua jenis pertanyaan."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "terbitkan-di-github-dan-codespaces",
+      "title": "Terbitkan di GitHub, main dengan uvx atau di browser",
+      "est_minutes": 30,
+      "body": "## \"Deploy\" untuk program terminal\n\nGame terminal tidak butuh server. Deploy berarti: orang lain bisa memainkannya semudah mungkin. Kamu akan menyediakan tiga jalan.\n\n1. **GitHub** sebagai rumah kodenya.\n2. **`uvx`**: siapa pun yang punya uv bisa main dengan satu perintah, tanpa clone dan tanpa memasang Python sendiri. Ini bisa karena proyekmu berbentuk paket dengan `[project.scripts]`.\n3. **GitHub Codespaces**: terminal Linux di browser, gratis dalam kuota bulanan akun GitHub pribadi (120 jam inti per bulan, kira-kira 60 jam di mesin 2-core). Cocok untuk orang yang tidak mau memasang apa pun.\n\n## Yang perlu kamu kerjakan\n\n1. Buat repositori **publik** kosong bernama `tebak-angka-python` di GitHub. Jangan centang README atau .gitignore, karena keduanya sudah ada di proyekmu.\n2. Jalankan bagian 1 dari `deploy.sh` (ganti `USERNAME`). `git branch -M main` mengganti nama cabang, karena git di beberapa komputer masih memakai `master`.\n3. Uji jalan kedua dari folder lain, misalnya `cd ~`, lalu jalankan perintah `uvx --from git+https://...` di bagian 2. uv mengunduh kodemu dari GitHub, memasangnya di lingkungan sementara, lalu memulai game.\n4. Uji jalan ketiga: di halaman repositori klik **Code > Codespaces > Create codespace on main**. Setelah terbuka, jalankan `codespaces.sh` di terminalnya.\n5. Hentikan codespace setelah selesai (menu **Codespaces** di GitHub > titik tiga > **Stop codespace**) supaya kuota tidak terpakai saat kamu tidak bermain.\n\n> Nama di `uvx --from ... tebak-angka` adalah nama perintah dari `[project.scripts]`, bukan nama repositori.\n",
+      "materials": [
+        {
+          "id": "ta-m-deploy",
+          "kind": "kode",
+          "name": "deploy.sh",
+          "lang": "bash",
+          "content": "# 1. Buat repositori kosong bernama tebak-angka-python di github.com\n#    (tanpa README, tanpa .gitignore), lalu hubungkan dan kirim:\ngit branch -M main\ngit remote add origin https://github.com/USERNAME/tebak-angka-python.git\ngit push -u origin main\n\n# 2. Siapa pun yang punya uv bisa langsung main tanpa clone:\nuvx --from git+https://github.com/USERNAME/tebak-angka-python tebak-angka\n\n# 3. Atau memasangnya sebagai perintah tetap:\nuv tool install git+https://github.com/USERNAME/tebak-angka-python\ntebak-angka\n"
+        },
+        {
+          "id": "ta-m-codespaces",
+          "kind": "kode",
+          "name": "codespaces.sh",
+          "lang": "bash",
+          "content": "# Di terminal Codespaces (Linux). Pasang uv:\ncurl -LsSf https://astral.sh/uv/install.sh | sh\nsource $HOME/.local/bin/env\n\n# Jalankan game dan tesnya, persis seperti di komputermu:\nuv run tebak-angka\nuv run pytest\n"
+        },
+        {
+          "id": "ta-m-uv-tools",
+          "kind": "tautan",
+          "name": "uv: menjalankan dan memasang tool (uvx)",
+          "url": "https://docs.astral.sh/uv/guides/tools/"
+        },
+        {
+          "id": "ta-m-gh-codespace",
+          "kind": "tautan",
+          "name": "GitHub: membuat codespace dari repositori",
+          "url": "https://docs.github.com/en/codespaces/developing-in-a-codespace/creating-a-codespace-for-a-repository"
+        },
+        {
+          "id": "ta-m-gh-codespace-billing",
+          "kind": "tautan",
+          "name": "GitHub: kuota gratis Codespaces",
+          "url": "https://docs.github.com/en/billing/concepts/product-billing/github-codespaces"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-dep-push",
+          "text": "Kode sudah ada di repositori publik GitHub."
+        },
+        {
+          "id": "ta-dep-uvx",
+          "text": "uvx --from git+https://... tebak-angka berhasil menjalankan game dari folder lain."
+        },
+        {
+          "id": "ta-dep-codespace",
+          "text": "Aku sudah memainkan game di Codespaces lalu menghentikan codespace-nya."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-kirim-tautan",
+      "title": "Tulis README dan kirim tautannya",
+      "est_minutes": 25,
+      "body": "## README adalah pintu masuk\n\nOrang yang membuka repositorimu ingin tahu tiga hal dalam setengah menit: ini apa, bagaimana memainkannya, dan apakah kodenya rapi. README menjawab ketiganya.\n\n## Yang perlu kamu kerjakan\n\n1. Ganti isi `README.md` dengan template di bagian Bahan, ganti `USERNAME`, dan isi semua `___`.\n2. Ambil tangkapan layar terminal saat kamu baru saja memecahkan rekor. Simpan sebagai `gambar/sesi.png`.\n3. Di **Keputusan desain**, tulis dua keputusan nyata beserta alasannya. Pilihan bagus: kenapa `input()` dan `random` disuntikkan sebagai parameter, kenapa input salah tidak mengurangi kesempatan, atau kenapa rekor ditulis ke berkas sementara dulu.\n4. Di **Yang kupelajari**, tulis tiga hal spesifik, misalnya \"`input()` melempar `EOFError` kalau input dari pipa habis\". Tulis juga satu rencana berikutnya, misalnya mode dua pemain atau papan skor dengan nama.\n5. Salin `rancangan.md` ke repositori supaya orang bisa melihat rancanganmu.\n6. Commit, push, lalu isi bagian **About** di repositori GitHub dengan satu kalimat deskripsi.\n7. Kirim tautan repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membuat program Python yang tidak bisa dirusak oleh input pemain, menyimpan data dengan aman, dan dibuktikan oleh puluhan tes otomatis. Cara memisahkan aturan dari input-output dan menyuntikkan ketergantungan akan kamu pakai lagi di setiap proyek berikutnya, dari bot Telegram sampai API web.\n",
+      "materials": [
+        {
+          "id": "ta-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Tebak Angka\n\nGame tebak angka di terminal, ditulis dengan Python. ___ (satu kalimat: apa yang membuatnya menarik dimainkan)\n\n![Contoh sesi permainan](gambar/sesi.png)\n\n## Cara main\n\nTanpa clone, cukup punya [uv](https://docs.astral.sh/uv/):\n\n```bash\nuvx --from git+https://github.com/USERNAME/tebak-angka-python tebak-angka\n```\n\nDari kode sumber:\n\n```bash\ngit clone https://github.com/USERNAME/tebak-angka-python\ncd tebak-angka-python\nuv run tebak-angka\n```\n\nDi browser: buka repositori ini, klik **Code > Codespaces > Create codespace on main**, pasang uv di terminalnya, lalu jalankan `uv run tebak-angka`.\n\n## Aturan\n\n| Level  | Rentang | Kesempatan | Pengali skor |\n| ------ | ------- | ---------- | ------------ |\n| mudah  | 1-20    | 6          | 1            |\n| sedang | 1-50    | 7          | 2            |\n| sulit  | 1-100   | 7          | 3            |\n\n- Setiap tebakan dijawab \"terlalu kecil\" atau \"terlalu besar\", plus panas, hangat, atau dingin.\n- Input yang salah (kosong, huruf, di luar rentang, angka yang sudah ditebak) tidak mengurangi kesempatan.\n- Skor = (kesempatan - tebakan terpakai + 1) x 10 x pengali. Skor terbaik per level disimpan di `~/.tebak-angka.json`.\n- Ctrl+C atau Ctrl+D untuk keluar kapan saja.\n\n## Menjalankan tes\n\n```bash\nuv run pytest\nuv run ruff check\nuv run ruff format --check\n```\n\n## Struktur\n\n| Berkas | Isi |\n| ------ | --- |\n| `src/tebak_angka/logika.py` | Aturan murni: level, validasi input, petunjuk, skor |\n| `src/tebak_angka/rekor.py` | Membaca dan menyimpan skor terbaik (JSON) |\n| `src/tebak_angka/__init__.py` | Loop permainan; input, output, dan random bisa diganti saat tes |\n| `src/tebak_angka/__main__.py` | Agar bisa dijalankan dengan `python -m tebak_angka` |\n| `tests/` | Tes pytest dengan input palsu dan random yang ditentukan |\n\n## Keputusan desain\n\n- ___ (contoh: kenapa input() dan random disuntikkan sebagai parameter)\n- ___ (contoh: kenapa rekor ditulis ke berkas sementara dulu)\n\n## Yang kupelajari\n\n- ___\n- ___\n- ___\n\nBerikutnya: ___\n"
+        },
+        {
+          "id": "ta-m-gh-readme",
+          "kind": "tautan",
+          "name": "GitHub: tentang README",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes"
+        }
+      ],
+      "checks": [
+        {
+          "id": "ta-dok-main",
+          "text": "README menjelaskan tiga cara memainkan game dan perintahnya benar."
+        },
+        {
+          "id": "ta-dok-keputusan",
+          "text": "Aku menulis dua keputusan desain beserta alasannya."
+        },
+        {
+          "id": "ta-dok-gambar",
+          "text": "README menampilkan tangkapan layar sesi permainan."
+        },
+        {
+          "id": "ta-dok-tautan",
+          "text": "Tautan repositori sudah kukirim di halaman ringkasan proyek."
+        }
+      ]
+    }
+  ]
+}
