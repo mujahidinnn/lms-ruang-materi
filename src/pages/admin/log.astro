@@ -11,7 +11,10 @@ if (user instanceof Response) return user;
 
 type Row = { id: number; admin_email: string; action: string; detail: string; created_at: string };
 const { data } = await (await createClient()).from("admin_audit_log").select("id, admin_email, action, detail, created_at").order("created_at", { ascending: false }).limit(200);
-const rows = (data ?? []) as Row[];
+// Older rows stored the account's UUID; show its email where it still exists.
+const { data: people } = await (await createClient()).rpc("admin_users");
+const emails = new Map(((people ?? []) as { user_id: string; email: string }[]).map((p) => [p.user_id, p.email]));
+const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, detail: r.detail?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => emails.get(id) ?? id) }));
 const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 const dayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
 const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
