@@ -4,7 +4,7 @@ import { primaryButton, secondaryButton } from "@/components/ui/styles";
 
 // Two optional invitations to sign up for guests, both closable: the first
 // after 30 seconds on the site, the second after about 2 more minutes of
-// browsing. Then never again (GuestNotice stays as the quiet reminder).
+// browsing. Then quiet for 3 days (GuestNotice stays as the reminder).
 // Time counts only while the tab is visible, across pages, in localStorage.
 // Skipped on sign-in, exam, practice and admin pages, and for signed-in
 // visitors (data-auth, set before first paint in Base.astro).
@@ -42,12 +42,15 @@ const BENEFITS = ["Progres bab dan kuis tersimpan", "Streak, catatan, dan target
     { title: "Simpan progres belajarmu, gratis", text: "Daftar sekitar satu menit. Kamu tetap bisa menjelajah tanpa akun, tapi progresnya tidak akan tersimpan.", later: "Nanti saja" },
     { title: "Masih menjelajah? Jangan sampai progresmu hilang", text: "Tanpa akun, bab yang sudah kamu baca dan jawaban kuis tidak tersimpan. Daftar sekarang dan lanjutkan dari titik ini.", later: "Lanjut menjelajah" },
   ];
-  type State = { sec: number; shown: number; at: number };
+  type State = { sec: number; shown: number; at: number; ts: number };
+  const TTL = 3 * 24 * 3600 * 1000; // ajakan diulang tiap 3 hari
 
   const dialog = document.querySelector<HTMLDialogElement>("[data-nudge]");
   if (dialog && !("auth" in root.dataset) && !SKIP.test(location.pathname)) {
-    let s: State = { sec: 0, shown: 0, at: 0 };
-    try { s = { ...s, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") }; } catch {}
+    const fresh: State = { sec: 0, shown: 0, at: 0, ts: Date.now() };
+    let s = fresh;
+    try { s = { ...fresh, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") }; } catch {}
+    if (Date.now() - s.ts > TTL) s = fresh;
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} };
 
     function show(stage: number) {
