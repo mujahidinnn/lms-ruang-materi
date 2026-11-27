@@ -1,0 +1,666 @@
+{
+  "slug": "mesin-pencari-dokumen",
+  "title": "Mesin Pencari Dokumen",
+  "summary": "Bangun layanan pencarian pusat bantuan berbahasa Indonesia setara produksi di atas PostgreSQL: ingest Markdown/HTML per subjudul, tsvector berbobot dengan GIN, kamus sinonim dan stopword sendiri, koreksi salah ketik pg_trgm, cuplikan aman, facet, keyset pagination, rate limit dan cache, harness nDCG, serta tuning EXPLAIN ANALYZE pada 100 ribu dokumen.",
+  "level": "pro",
+  "est_hours": 36,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tetapkan-pengguna-dan-target",
+      "title": "Tetapkan pengguna, lingkup, dan target terukur",
+      "est_minutes": 60,
+      "body": "## Pencarian yang dipercaya orang\n\nDi proyek ini kamu membangun layanan pencarian untuk pusat bantuan berbahasa Indonesia: pelanggan mengetik \"lupa sandi\" atau \"paket belum sampai\", lalu mendapat artikel yang tepat dengan cuplikan yang menyorot kata yang dicari. Contoh di sepanjang langkah memakai pusat bantuan toko online fiktif **Warungku** (akun, pembayaran, pengiriman, kasir). Boleh ganti domain (dokumentasi internal, FAQ kampus, SOP kantor) asalkan bahasanya Indonesia dan ada kategori untuk facet.\n\nLevel Pro berarti setiap langkah berisi **batasan dan kriteria lulus**, bukan resep baris demi baris. Kode kunci (skema, ingest, query builder, evaluasi) disediakan dan sudah diuji pada PostgreSQL 19, tapi keputusan dan buktinya adalah tugasmu.\n\n## Yang perlu kamu kerjakan\n\n1. Buat repositori kosong, salin template brief di Bahan ke `docs/brief.md`.\n2. Tulis masalah pencarian sekarang dengan angka kalau ada (berapa persen pencarian tanpa hasil, keluhan yang paling sering). Kalau tidak punya data nyata, tulis persona yang jujur dan tandai sebagai asumsi.\n3. Isi tabel target. Angka latensi biarkan `___` dulu: kamu baru boleh mengisinya setelah mengukur di langkah 100 ribu dokumen. Target yang ditulis sebelum diukur hanyalah harapan.\n\n## Kriteria lulus\n\n- Brief muat di satu layar dan bisa dibaca orang non-teknis.\n- Setiap target punya kolom \"dibuktikan dengan\" yang menunjuk perintah atau tes, bukan perasaan.\n",
+      "materials": [
+        {
+          "id": "mpd-brief-template",
+          "kind": "kode",
+          "name": "docs/brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Mesin Pencari Dokumen\n\nPengguna: pelanggan dan staf support <nama produk> yang mencari jawaban di pusat bantuan.\nMasalah sekarang: ___ (contoh: pencarian bawaan CMS hanya mencocokkan judul persis,\n\"kata sandi\" tidak menemukan artikel \"password\", 30% pencarian berakhir tanpa hasil).\n\n## Lingkup v1\n- Ingest artikel Markdown dan HTML, dipotong per subjudul\n- API GET /cari: sintaks pengguna (\"frasa\", -kecuali, or), filter kategori/produk/tanggal,\n  facet, cuplikan dengan sorotan, halaman berikutnya lewat cursor\n- Koreksi salah ketik (\"maksud Anda\") dan fallback sebagian kata\n- POST /klik untuk sinyal popularitas\n\n## Di luar v1\n- Pencarian semantik/vektor, autocomplete, multi-bahasa, UI pencarian\n\n## Target (setiap angka punya cara pembuktian)\n| Target | Angka | Dibuktikan dengan |\n| --- | --- | --- |\n| Relevansi | nDCG@10 >= 0.85, MRR >= 0.9 pada set kueri berlabel | npm run eval |\n| Latensi | p95 < ___ ms tanpa cache, 100k dokumen, 4 klien paralel | npm run bench + EXPLAIN |\n| Galat | 0 respons 5xx saat bench | output bench |\n| Keamanan | cuplikan tidak pernah memuat HTML dari dokumen | tes XSS |\n| Kuota | > 60 req/menit per IP mendapat 429 | tes rate limit |\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-brief-pengguna",
+          "text": "Aku sudah menulis siapa yang mencari, apa yang mereka cari, dan apa yang gagal hari ini."
+        },
+        {
+          "id": "mpd-brief-lingkup",
+          "text": "Lingkup v1 dan daftar di luar v1 sudah tertulis."
+        },
+        {
+          "id": "mpd-brief-target",
+          "text": "Setiap target (relevansi, latensi, galat, keamanan) punya cara pembuktian."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "kumpulkan-kueri-dan-label-relevansi",
+      "title": "Kumpulkan kueri nyata dan beri label relevansi",
+      "est_minutes": 120,
+      "body": "## Mesin pencari dinilai dari kueri, bukan dari kode\n\nSebelum menulis satu baris SQL, kumpulkan kueri yang benar-benar diketik orang. Sumber terbaik: log pencarian CMS lama, tiket support, atau pesan WhatsApp pelanggan. Tanpa itu, kamu akan mengoptimalkan kueri rekaan sendiri.\n\nKelompokkan kueri ke dalam jenis, karena tiap jenis gagal dengan cara berbeda:\n\n| Jenis | Contoh | Kegagalan yang diperkirakan |\n| --- | --- | --- |\n| Navigasi | `metode pembayaran` | jarang gagal, tapi urutan penting |\n| Gejala | `paket belum sampai` | kata di artikel berbeda (\"terlambat\") |\n| Sinonim | `ganti kata sandi` vs artikel \"password\" | tidak cocok sama sekali |\n| Singkatan / gaul | `gmn ganti no hp`, `notif`, `lemot` | AND gagal karena satu kata asing |\n| Salah ketik | `pasword lupa` | nol hasil |\n\n## Label relevansi\n\nSet kueri berlabel (*judged query set*) adalah kunci jawaban: untuk tiap kueri, dokumen mana yang relevan dan seberapa relevan. Skala 0-3: **3** jawaban persis, **2** relevan, **1** sedikit membantu, **0** (tidak ditulis) tidak relevan. File di Bahan memakai `slug` artikel di korpus contoh yang kamu ingest di langkah 5.\n\nAturan main supaya evaluasi jujur:\n\n1. Beri label **sebelum** melihat hasil mesinmu. Kalau label dibuat dari hasil mesin, mesin selalu tampak benar.\n2. Minimal 20 kueri, mencakup semua jenis di tabel. Sertakan kueri yang kamu duga akan gagal.\n3. Kalau ragu antara dua nilai, pilih yang lebih rendah dan tulis alasannya di commit.\n\n## Yang perlu kamu kerjakan\n\n1. Simpan `eval/judgments.json` dari Bahan, lalu tambahkan minimal lima kueri milikmu sendiri.\n2. Di `docs/brief.md`, tambahkan bagian \"Kueri yang kami perkirakan gagal\" berisi tiga kueri dan dugaan penyebabnya. Di langkah evaluasi kamu akan memeriksa dugaan ini.\n",
+      "materials": [
+        {
+          "id": "mpd-judgments",
+          "kind": "kode",
+          "name": "eval/judgments.json",
+          "lang": "json",
+          "content": "[\n  { \"q\": \"lupa password\", \"rel\": { \"lupa-password\": 3, \"ganti-password\": 1 } },\n  { \"q\": \"ganti kata sandi\", \"rel\": { \"ganti-password\": 3, \"lupa-password\": 2, \"akun-diretas\": 1 } },\n  { \"q\": \"gmn ganti no hp\", \"rel\": { \"ubah-nomor-hp\": 3, \"ubah-email\": 1 } },\n  { \"q\": \"bayar pakai qris\", \"rel\": { \"bayar-qris\": 3, \"metode-pembayaran\": 2 } },\n  { \"q\": \"uang belum kembali\", \"rel\": { \"refund\": 3, \"pembayaran-gagal\": 2, \"pesanan-terlambat\": 1 } },\n  { \"q\": \"refund berapa lama\", \"rel\": { \"refund\": 3, \"pembayaran-gagal\": 1 } },\n  { \"q\": \"paket belum sampai\", \"rel\": { \"pesanan-terlambat\": 3, \"lacak-pengiriman\": 2 } },\n  { \"q\": \"cek resi\", \"rel\": { \"lacak-pengiriman\": 3, \"pesanan-terlambat\": 1 } },\n  { \"q\": \"ongkir\", \"rel\": { \"ongkos-kirim\": 3, \"retur-barang\": 1 } },\n  { \"q\": \"akun dibobol\", \"rel\": { \"akun-diretas\": 3, \"verifikasi-dua-langkah\": 2, \"ganti-password\": 1 } },\n  { \"q\": \"2fa\", \"rel\": { \"verifikasi-dua-langkah\": 3, \"akun-diretas\": 1 } },\n  { \"q\": \"printer tidak bisa cetak struk\", \"rel\": { \"printer-struk\": 3 } },\n  { \"q\": \"jualan tanpa internet\", \"rel\": { \"kasir-offline\": 3 } },\n  { \"q\": \"upload produk banyak sekaligus\", \"rel\": { \"impor-produk-csv\": 3, \"tambah-produk\": 1 } },\n  { \"q\": \"stok kasir beda dengan toko online\", \"rel\": { \"sinkron-stok\": 3 } },\n  { \"q\": \"invoice langganan\", \"rel\": { \"faktur-pajak\": 3, \"berhenti-langganan\": 1 } },\n  { \"q\": \"berhenti langganan pro\", \"rel\": { \"berhenti-langganan\": 3 } },\n  { \"q\": \"kode voucher tidak bisa dipakai\", \"rel\": { \"diskon-voucher\": 3 } },\n  { \"q\": \"notif pesanan tidak masuk\", \"rel\": { \"notifikasi-tidak-muncul\": 3 } },\n  { \"q\": \"aplikasi lemot\", \"rel\": { \"aplikasi-lambat\": 3, \"perbarui-aplikasi\": 1 } },\n  { \"q\": \"tambah karyawan kasir\", \"rel\": { \"tambah-staf\": 3 } },\n  { \"q\": \"ubah alamat kirim\", \"rel\": { \"alamat-pengiriman\": 3 } },\n  { \"q\": \"pasang chat di website\", \"rel\": { \"pasang-widget-chat\": 3 } },\n  { \"q\": \"metode pembayaran\", \"rel\": { \"metode-pembayaran\": 3, \"bayar-qris\": 1, \"pembayaran-gagal\": 1 } },\n  { \"q\": \"laporan omzet harian\", \"rel\": { \"laporan-penjualan\": 3 } }\n]\n"
+        },
+        {
+          "id": "mpd-ndcg",
+          "kind": "tautan",
+          "name": "Wikipedia: Discounted cumulative gain",
+          "url": "https://en.wikipedia.org/wiki/Discounted_cumulative_gain"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-ide-jenis",
+          "text": "Aku punya contoh kueri untuk tiap jenis: navigasi, gejala, sinonim, singkatan, salah ketik."
+        },
+        {
+          "id": "mpd-ide-label",
+          "text": "Minimal 20 kueri sudah berlabel 0-3, dilabeli sebelum melihat hasil mesin."
+        },
+        {
+          "id": "mpd-ide-gagal",
+          "text": "Aku menulis kegagalan yang kuperkirakan untuk tiap jenis kueri."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-stack-dan-tulis-adr",
+      "title": "Pilih stack pencarian dan tulis ADR",
+      "est_minutes": 90,
+      "body": "## Keputusan besar ditulis, bukan diingat\n\nArchitecture Decision Record (ADR) adalah catatan pendek: konteks, pilihan, keputusan, konsekuensi, dan kapan ditinjau ulang. Di proyek ini ADR juga menyimpan **bukti**: angka evaluasi dan benchmark yang kamu hasilkan nanti.\n\n## Stack acuan (boleh kamu tolak dengan ADR)\n\n| Kebutuhan | Acuan | Alasan singkat | Alternatif yang layak |\n| --- | --- | --- | --- |\n| Mesin pencari | PostgreSQL 19 full-text search | data sudah di Postgres, transaksi + indeks satu tempat, tanpa sinkronisasi ke sistem kedua | Meilisearch/Typesense (typo tolerance bawaan, tapi layanan kedua), OpenSearch (BM25, analyzer Indonesia, tapi berat untuk tim kecil), ParadeDB (BM25 di Postgres) |\n| Typo | `pg_trgm` | ekstensi bawaan, indeks GIN trigram | Levenshtein di aplikasi |\n| Runtime | Node.js 26 LTS | menjalankan `.ts` langsung (type stripping), tanpa build | Bun, Deno |\n| HTTP | Fastify 5 | validasi skema JSON bawaan, log JSON (pino), `inject()` untuk tes, plugin rate limit resmi | Express 5 (lebih umum, tanpa validasi bawaan), Hono |\n| Driver | postgres.js 4 | tagged template aman dari injeksi, fragmen dinamis, `COPY` sebagai stream | node-postgres (`pg`) |\n| Deploy | VPS + Docker Compose + Caddy | kamus teks kustom butuh berkas di server Postgres | lihat catatan di bawah |\n\nButuh Node 22.18 atau lebih baru (26 LTS disarankan), Docker, dan sekitar 1 GB RAM kosong.\n\n## Bahasa Indonesia di Postgres: keputusan paling penting\n\nPostgres punya konfigurasi `simple` (huruf kecil saja) dan, sejak versi 13, stemmer Snowball `indonesian`. Coba sendiri di langkah berikutnya:\n\n```sql\nselect to_tsvector('indonesian', 'pembayaran membayarkan pengguna menggunakan');\n-- 'bayar':1,2 'guna':3,4\n```\n\nStemmer menyatukan \"pembayaran\" dan \"bayar\" (bagus), tapi juga \"pengguna\" dan \"menggunakan\" menjadi `guna` (over-stemming). Acuan proyek ini: konfigurasi sendiri bernama `idn` = `unaccent` + kamus sinonim + `simple` dengan daftar stopword Indonesia, **tanpa stemming**, dengan alasan:\n\n1. Kosakata pusat bantuan sempit dan istilahnya spesifik; variasi yang paling sering justru sinonim dan singkatan (\"sandi\", \"pw\", \"hp\", \"ongkir\"), bukan imbuhan. Kamus sinonim menyelesaikannya secara eksplisit dan bisa diaudit.\n2. \"Maksud Anda\" (pg_trgm) menyarankan kata dari kosakata indeks. Dengan stemmer, kosakatanya berisi potongan seperti `guna`, yang buruk ditampilkan ke pengguna.\n3. Keputusan ini **tidak final**: di langkah evaluasi kamu membandingkan `idn` dengan `idn_stem` (stemmer + sinonim) memakai nDCG. Data yang menentukan.\n\nKonsekuensi yang harus masuk ADR: kamus sinonim dan stopword adalah **berkas di server Postgres** (`tsearch_data`). Postgres terkelola seperti Neon, Supabase, atau RDS tidak mengizinkan berkas kustom, jadi kamu menjalankan Postgres sendiri dari image yang berisi kamus. Kalau suatu hari wajib pindah ke Postgres terkelola, jalan keluarnya: ekspansi sinonim di aplikasi sebelum membuat tsquery.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `docs/adr/` dan tulis minimal dua ADR dari template: (a) Postgres FTS vs mesin pencari terpisah, (b) konfigurasi bahasa. Status keduanya \"diusulkan\" dulu; kamu menerimanya setelah ada angka.\n2. Tulis kondisi tinjau ulang yang terukur, misalnya \"pindah ke OpenSearch kalau p95 > 500 ms setelah dokumen > 1 juta\" atau \"pakai stemmer kalau nDCG@10 idn_stem lebih tinggi 0,03\".\n3. ADR ketiga (ts_rank vs ts_rank_cd) dan keempat (kata umum) kamu tulis di langkah performa.\n",
+      "materials": [
+        {
+          "id": "mpd-adr-template",
+          "kind": "kode",
+          "name": "docs/adr/template.md",
+          "lang": "markdown",
+          "content": "# ADR-000X: <judul keputusan>\n\n- Status: diusulkan | diterima | digantikan oleh ADR-00YY\n- Tanggal: YYYY-MM-DD\n\n## Konteks\nMasalah apa yang memaksa keputusan ini? Batasan apa yang berlaku (biaya, tim, RAM, hosting)?\n\n## Pilihan yang dipertimbangkan\n1. <pilihan A>: kelebihan, kekurangan\n2. <pilihan B>: kelebihan, kekurangan\n3. <pilihan C>: kelebihan, kekurangan\n\n## Keputusan\nKami memilih ___ karena ___. Bukti: <angka eval/bench, tautan EXPLAIN>.\n\n## Konsekuensi\n- Yang jadi lebih mudah: ___\n- Yang jadi lebih sulit atau kami korbankan: ___\n\n## Tinjau ulang jika\n<kondisi terukur, misalnya \"p95 > 500 ms setelah dokumen > 1 juta\" atau \"butuh pencarian semantik\">\n"
+        },
+        {
+          "id": "mpd-pg-fts",
+          "kind": "tautan",
+          "name": "PostgreSQL: Full Text Search",
+          "url": "https://www.postgresql.org/docs/current/textsearch.html"
+        },
+        {
+          "id": "mpd-pg-dict",
+          "kind": "tautan",
+          "name": "PostgreSQL: Dictionaries (synonym, snowball)",
+          "url": "https://www.postgresql.org/docs/current/textsearch-dictionaries.html"
+        },
+        {
+          "id": "mpd-fastify",
+          "kind": "tautan",
+          "name": "Dokumentasi Fastify",
+          "url": "https://fastify.dev/docs/latest/"
+        },
+        {
+          "id": "mpd-postgresjs",
+          "kind": "tautan",
+          "name": "postgres.js",
+          "url": "https://github.com/porsager/postgres"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-tek-adr",
+          "text": "Aku menulis ADR mesin pencari dan ADR konfigurasi bahasa, masing-masing dengan dua pilihan yang ditolak."
+        },
+        {
+          "id": "mpd-tek-tinjau",
+          "text": "Setiap ADR menyebut kondisi terukur kapan keputusannya ditinjau ulang."
+        },
+        {
+          "id": "mpd-tek-stemmer",
+          "text": "Aku sudah mencoba to_tsvector('indonesian', ...) dan mencatat contoh over-stemming."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-skema-dan-konfigurasi-teks",
+      "title": "Rancang skema, indeks GIN, dan konfigurasi teks idn",
+      "est_minutes": 180,
+      "body": "## Skema yang membuat Postgres bekerja untukmu\n\n![Alur dari berkas ke indeks: potongan per subjudul, kolom tsv berbobot A/B/C dengan indeks GIN, dan rantai kamus idn. Perhatikan contoh di bawah: \"kata\" dan \"di\" hilang sebagai stopword, \"sandi\" menjadi password.](/studio/mesin-pencari-dokumen/ingest-indeks.svg)\n\nKeputusan rancangan yang tertanam di `db/schema.sql`:\n\n- **Unit pencarian = potongan (chunk) per subjudul**, bukan dokumen utuh. Hasil bisa menautkan langsung ke `#bagian` yang menjawab, dan cuplikan diambil dari bagian itu. Hasil tetap satu baris per dokumen (`DISTINCT ON` memilih potongan terbaik).\n- **`tsv` adalah kolom generated stored**: Postgres menghitungnya saat INSERT/UPDATE, jadi aplikasi tidak mungkin lupa memperbaruinya. Bobot: judul `A`, subjudul `B`, isi `C`. Kolom generated hanya boleh membaca baris yang sama, karena itu judul dokumen **disalin** ke setiap potongan.\n- **`tsv_judul`** (judul + subjudul saja) dan indeksnya baru dipakai di langkah performa. Biarkan dulu; kamu akan mengukur gunanya.\n- **`kosakata`** adalah materialized view dari `ts_stat`: semua leksem yang ada di indeks dan jumlah potongannya. Dipakai untuk \"maksud Anda\" dan untuk memperkirakan seberapa umum sebuah kata.\n- `pg_stat_statements` dimuat sejak awal supaya kamu punya data saat tuning nanti.\n\nDua jebakan yang sudah ditangani dan perlu kamu pahami:\n\n1. `ts_stat('select tsv from public.chunks')` memakai nama tabel lengkap. Sejak Postgres 17, pembuatan dan refresh materialized view berjalan dengan `search_path` aman, sehingga `from chunks` saja gagal dengan *relation \"chunks\" does not exist*.\n2. Urutan kamus di `idn`: `unaccent` (penyaring) meneruskan kata ke `idn_sinonim`; kalau ada di kamus sinonim, kata diganti dan berhenti di situ; kalau tidak, `idn_kata` mengecilkan huruf dan membuang stopword. Karena itu **sinonim tidak boleh menunjuk ke kata yang ada di daftar stopword**.\n\n## Yang perlu kamu kerjakan\n\n1. Salin semua berkas di Bahan sesuai namanya, lalu:\n   ```bash\n   cp .env.example .env\n   npm install\n   docker compose up -d --build --wait db\n   npm run db:reset\n   ```\n   `--wait` menunggu healthcheck; tanpa itu `db:reset` bisa tersambung saat Postgres masih menjalankan inisialisasi dan putus dengan `ECONNRESET`.\n2. Periksa konfigurasi teks:\n   ```bash\n   docker compose exec db psql -U cari -c \"select to_tsvector('idn', 'Cara ganti kata sandi di HP')\"\n   docker compose exec db psql -U cari -c \"select websearch_to_tsquery('idn', '\\\"nomor hp\\\" -email or wa')\"\n   docker compose exec db psql -U cari -c \"select to_tsvector('indonesian', 'pembayaran pengguna menggunakan')\"\n   ```\n   Hasil pertama harus `'ganti':2 'password':4 'ponsel':6`. Catat hasil ketiga untuk ADR konfigurasi bahasa.\n3. Commit.\n\n## Kriteria lulus\n\n- Container `db` memakai `mem_limit: 384m`, port host `5433` (5432 sering sudah dipakai Postgres lokal), dan hanya terbuka di `127.0.0.1`.\n- Kamu bisa menjelaskan, tanpa melihat catatan, kenapa mengubah kamus sinonim mengharuskan isi ulang data (petunjuk: kolom stored).\n",
+      "materials": [
+        {
+          "id": "mpd-compose",
+          "kind": "kode",
+          "name": "docker-compose.yml",
+          "lang": "yaml",
+          "content": "services:\n  db:\n    build: ./db\n    environment:\n      POSTGRES_USER: cari\n      POSTGRES_DB: cari\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rahasia-lokal}\n    command: >\n      postgres -c shared_preload_libraries=pg_stat_statements\n      -c shared_buffers=96MB -c effective_cache_size=256MB\n      -c work_mem=8MB -c maintenance_work_mem=64MB\n    ports: [\"127.0.0.1:5433:5432\"]\n    mem_limit: 384m\n    volumes: [pgdata:/var/lib/postgresql]\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U cari -d cari\"]\n      interval: 3s\n      retries: 20\n\n  api:\n    build: .\n    environment:\n      DATABASE_URL: postgres://cari:${POSTGRES_PASSWORD:-rahasia-lokal}@db:5432/cari\n      PORT: 3000\n      TRUST_PROXY: ${TRUST_PROXY:-0}\n      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}\n    ports: [\"127.0.0.1:3000:3000\"]\n    mem_limit: 192m\n    healthcheck:\n      test: [\"CMD\", \"wget\", \"-qO-\", \"http://127.0.0.1:3000/sehat\"]\n      interval: 5s\n      retries: 10\n    depends_on:\n      db: { condition: service_healthy }\n    restart: unless-stopped\n\n  caddy:\n    image: caddy:2-alpine\n    profiles: [prod]\n    environment:\n      DOMAIN: ${DOMAIN:-localhost}\n    ports: [\"80:80\", \"443:443\"]\n    volumes:\n      - ./Caddyfile:/etc/caddy/Caddyfile:ro\n      - caddy:/data\n    mem_limit: 64m\n    depends_on:\n      api: { condition: service_healthy }\n    restart: unless-stopped\n\nvolumes:\n  pgdata:\n  caddy:\n"
+        },
+        {
+          "id": "mpd-db-dockerfile",
+          "kind": "kode",
+          "name": "db/Dockerfile",
+          "lang": "dockerfile",
+          "content": "FROM postgres:19-alpine\n# Kamus teks harus berupa berkas di server: salin ke direktori tsearch_data image.\nCOPY tsearch/ /usr/local/share/postgresql/tsearch_data/\n"
+        },
+        {
+          "id": "mpd-sinonim",
+          "kind": "kode",
+          "name": "db/tsearch/idn_sinonim.syn",
+          "lang": "text",
+          "content": "sandi password\nkatasandi password\npass password\npw password\nhp ponsel\nhandphone ponsel\nnohp ponsel\nno nomor\nsurel email\nlogin masuk\nsignin masuk\nlogout keluar\nongkir ongkos\ninvoice faktur\nnota struk\nkwitansi struk\nkupon voucher\napk aplikasi\napp aplikasi\napps aplikasi\nwa whatsapp\n"
+        },
+        {
+          "id": "mpd-stopword",
+          "kind": "kode",
+          "name": "db/tsearch/idn_stop.stop",
+          "lang": "text",
+          "content": "yang\ndan\ndi\nke\ndari\nuntuk\ndengan\nini\nitu\natau\npada\nadalah\nsaya\naku\nkamu\nanda\nkami\nkita\nbisa\ndapat\ncara\nbagaimana\ngimana\ngmn\ngak\nnggak\nenggak\ntidak\napa\napakah\nakan\nada\njuga\nsudah\nbelum\nkarena\njika\nkalau\nagar\nsupaya\noleh\nsebagai\ndalam\ntersebut\nlebih\nsaat\nmaka\nya\nkok\nsih\ndong\ndeh\ntolong\nmohon\nkenapa\nmengapa\nharus\nperlu\nmau\ningin\nbila\ntapi\ntetapi\nnamun\nserta\nhingga\nsampai\nsetelah\nsebelum\nkata\npakai\npake\nlewat\nvia\n"
+        },
+        {
+          "id": "mpd-schema",
+          "kind": "kode",
+          "name": "db/schema.sql",
+          "lang": "sql",
+          "content": "-- Skema mesin pencari. Dijalankan oleh `npm run db:reset` (menghapus semua data).\ncreate extension if not exists unaccent;\ncreate extension if not exists pg_trgm;\ncreate extension if not exists pg_stat_statements;\n\n-- Kamus berbasis berkas (db/tsearch, disalin ke image). Nama tanpa ekstensi.\ncreate text search dictionary idn_sinonim (template = synonym, synonyms = idn_sinonim);\ncreate text search dictionary idn_kata (template = simple, stopwords = idn_stop);\n-- Varian pembanding: stemmer Snowball bawaan Postgres untuk Bahasa Indonesia.\ncreate text search dictionary idn_stem_kamus (template = snowball, language = indonesian, stopwords = idn_stop);\n\n-- idn: hapus aksen -> sinonim -> huruf kecil + stopword. Tanpa stemming.\ncreate text search configuration idn (copy = simple);\nalter text search configuration idn\n  alter mapping for asciiword, word, numword, asciihword, hword, numhword, hword_asciipart, hword_part, hword_numpart\n  with unaccent, idn_sinonim, idn_kata;\n\n-- idn_stem: sama, tapi kata akhir di-stem (pembayaran -> bayar).\ncreate text search configuration idn_stem (copy = idn);\nalter text search configuration idn_stem\n  alter mapping for asciiword, word, asciihword, hword, hword_asciipart, hword_part\n  with unaccent, idn_sinonim, idn_stem_kamus;\n\ncreate table documents (\n  id bigint generated by default as identity primary key,\n  slug text not null unique,\n  title text not null,\n  url text not null,\n  koleksi text not null default 'bantuan',\n  kategori text not null,\n  produk text not null,\n  updated_at timestamptz not null,\n  clicks bigint not null default 0,\n  content_hash text not null\n);\n\ncreate table chunks (\n  id bigint generated always as identity primary key,\n  doc_id bigint not null references documents (id) on delete cascade,\n  ord int not null,\n  anchor text not null,\n  title text not null, -- salinan judul: kolom generated tidak bisa membaca tabel lain\n  heading text not null default '',\n  body text not null,\n  tsv tsvector generated always as (\n    setweight(to_tsvector('idn'::regconfig, title), 'A') ||\n    setweight(to_tsvector('idn'::regconfig, heading), 'B') ||\n    setweight(to_tsvector('idn'::regconfig, body), 'C')\n  ) stored,\n  -- Judul + subjudul saja: penyaring kandidat untuk kata yang sangat umum (lihat langkah performa).\n  tsv_judul tsvector generated always as (\n    setweight(to_tsvector('idn'::regconfig, title), 'A') ||\n    setweight(to_tsvector('idn'::regconfig, heading), 'B')\n  ) stored,\n  unique (doc_id, ord)\n);\n\ncreate index chunks_tsv_gin on chunks using gin (tsv);\ncreate index chunks_tsv_judul_gin on chunks using gin (tsv_judul);\ncreate index documents_kategori on documents (kategori);\ncreate index documents_produk on documents (produk);\n\n-- Kosakata untuk \"maksud Anda\": leksem yang benar-benar ada di indeks.\ncreate materialized view kosakata as\n  -- Nama tabel wajib lengkap: Postgres 17+ memakai search_path aman saat membuat/refresh matview.\n  select word, ndoc from ts_stat('select tsv from public.chunks')\n  where length(word) between 3 and 30 and word !~ '^[0-9]+$';\ncreate unique index kosakata_word on kosakata (word);\ncreate index kosakata_trgm on kosakata using gin (word gin_trgm_ops);\n"
+        },
+        {
+          "id": "mpd-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"mesin-pencari-dokumen\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": {\n    \"node\": \">=22.18\"\n  },\n  \"scripts\": {\n    \"db:reset\": \"node --env-file-if-exists=.env scripts/db-reset.ts\",\n    \"ingest\": \"node --env-file-if-exists=.env src/ingest.ts korpus\",\n    \"dev\": \"node --env-file-if-exists=.env --watch src/server.ts\",\n    \"start\": \"node src/server.ts\",\n    \"test\": \"node --env-file-if-exists=.env --test test/*.test.ts\",\n    \"eval\": \"node --env-file-if-exists=.env scripts/eval.ts\",\n    \"gen\": \"node --env-file-if-exists=.env scripts/gen-100k.ts\",\n    \"bench\": \"node scripts/bench.ts\"\n  },\n  \"dependencies\": {\n    \"@fastify/rate-limit\": \"^11.3.0\",\n    \"fastify\": \"^5.12.8\",\n    \"marked\": \"^18.3.0\",\n    \"node-html-parser\": \"^9.0.7\",\n    \"postgres\": \"^4.1.1\",\n    \"prom-client\": \"^15.1.3\"\n  }\n}\n"
+        },
+        {
+          "id": "mpd-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "DATABASE_URL=postgres://cari:rahasia-lokal@localhost:5433/cari\nPORT=3000\n# Naikkan hanya untuk benchmark lokal\nRATE_LIMIT_MAX=60\n"
+        },
+        {
+          "id": "mpd-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules\n.env\n"
+        },
+        {
+          "id": "mpd-db-reset",
+          "kind": "kode",
+          "name": "scripts/db-reset.ts",
+          "lang": "typescript",
+          "content": "import postgres from \"postgres\";\n\n// HANYA untuk lokal atau setup pertama: menghapus seluruh skema public.\nconst sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });\nawait sql.unsafe(\"drop schema if exists public cascade; create schema public;\");\nawait sql.file(\"db/schema.sql\");\nconsole.log(\"skema siap\");\nawait sql.end();\n"
+        },
+        {
+          "id": "mpd-pg-generated",
+          "kind": "tautan",
+          "name": "PostgreSQL: Generated Columns",
+          "url": "https://www.postgresql.org/docs/current/ddl-generated-columns.html"
+        },
+        {
+          "id": "mpd-pg-gin",
+          "kind": "tautan",
+          "name": "PostgreSQL: GIN dan GiST untuk teks",
+          "url": "https://www.postgresql.org/docs/current/textsearch-indexes.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-ran-up",
+          "text": "Container db sehat dengan mem_limit 384m dan port host bukan 5432."
+        },
+        {
+          "id": "mpd-ran-config",
+          "text": "to_tsvector('idn', 'Cara ganti kata sandi di HP') menghasilkan 'ganti', 'password', 'ponsel'."
+        },
+        {
+          "id": "mpd-ran-bobot",
+          "text": "Aku bisa menjelaskan kenapa judul disalin ke tabel chunks."
+        },
+        {
+          "id": "mpd-ran-commit",
+          "text": "Skema dan kamus sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "pipa-ingest-markdown-html",
+      "title": "Pipa ingest: Markdown dan HTML jadi potongan bersih",
+      "est_minutes": 240,
+      "body": "## Sampah masuk, sampah keluar\n\nKualitas pencarian ditentukan di sini. Menu navigasi, footer, dan skrip analitik yang ikut terindeks membuat setiap halaman cocok dengan kata \"Beranda\". Bagian yang terlalu panjang membuat cuplikan tidak relevan. `src/ingest.ts` di Bahan melakukan:\n\n1. **Markdown -> HTML** dengan `marked`, supaya Markdown dan HTML melewati satu jalur pemotongan yang sama. Satu berkas `.md` boleh berisi banyak artikel; setiap artikel diawali front matter yang baris pertamanya `slug:` (jadi garis `---` biasa di isi artikel tetap aman).\n2. **HTML -> teks bersih**: ambil `<main>` atau `<article>`, buang `script`, `style`, `nav`, `header`, `footer`, `aside`, `form`. `<pre>` sengaja di-parse biasa (bawaan node-html-parser menganggapnya teks mentah, sehingga tag `<code>` ikut masuk ke isi).\n3. **Potong per subjudul**: `h1` adalah judul dokumen; setiap `h2`/`h3` membuka potongan baru dengan anchor dari atribut `id` atau slug teksnya. `h3` mewarisi `h2` di atasnya (\"Kode pemasangan › Widget tidak muncul\"). Bagian lebih dari 1.500 karakter dipecah di batas paragraf, bukan di tengah kalimat.\n4. **Upsert idempoten**: hash SHA-256 dari isi dokumen. Hash sama berarti dilewati; berubah berarti potongan lama dihapus dan ditulis ulang **dalam satu transaksi**, sehingga pencarian tidak pernah melihat dokumen setengah jadi. Jumlah klik tidak ditimpa.\n5. Setelah semua berkas, `refresh materialized view concurrently kosakata` (tidak mengunci pembaca).\n\nKorpus contoh berisi 29 artikel Markdown dan 1 HTML. Angka `klik` di front matter adalah **data klik historis simulasi** supaya sinyal popularitas punya isi; di produksi angka ini datang dari `POST /klik`.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `src/ingest.ts`, `korpus/bantuan.md`, dan `korpus/widget-chat.html`.\n2. Jalankan dua kali dan bandingkan:\n   ```bash\n   npm run ingest   # 30 dokumen dibaca, 30 baru/berubah\n   npm run ingest   # 30 dokumen dibaca, 0 baru/berubah\n   ```\n3. Periksa hasil pemotongan HTML:\n   ```bash\n   docker compose exec db psql -U cari -c \"select ord, anchor, heading, left(body, 70) from chunks c join documents d on d.id = c.doc_id where d.slug = 'pasang-widget-chat' order by ord\"\n   docker compose exec db psql -U cari -c \"select tsv from chunks c join documents d on d.id = c.doc_id where d.slug = 'pasang-widget-chat' and ord = 1\"\n   ```\n   Isi potongan 1 memuat `<script src=...>` sebagai teks (dari `&lt;script&gt;` di HTML), tapi `tsv`-nya **tidak** memuat `script`: parser teks Postgres mengenali `<...>` sebagai token jenis `tag` dan tidak memetakannya ke kamus mana pun. Artinya pengguna yang mencari \"script\" tidak menemukan potongan itu. Catat di README sebagai batasan, atau ganti `<` dan `>` dengan spasi sebelum disimpan kalau dokumentasimu banyak memuat kode.\n4. Ubah satu kalimat di salah satu artikel, jalankan ingest lagi: hanya 1 yang berubah.\n\n## Kriteria lulus\n\n- Tidak ada teks \"Beranda\", \"jangan ikut terindeks\", atau \"© Warungku\" di tabel `chunks`.\n- Ingest kedua tanpa perubahan tidak menulis apa pun.\n- Dokumen tanpa `slug`, `kategori`, `produk`, atau `diperbarui` membuat ingest berhenti dengan pesan yang menyebut dokumennya, bukan masuk diam-diam.\n",
+      "materials": [
+        {
+          "id": "mpd-ingest",
+          "kind": "kode",
+          "name": "src/ingest.ts",
+          "lang": "typescript",
+          "content": "import { createHash } from \"node:crypto\";\nimport { readdir, readFile } from \"node:fs/promises\";\nimport { extname, join } from \"node:path\";\nimport { marked } from \"marked\";\nimport { parse, type HTMLElement } from \"node-html-parser\";\nimport postgres from \"postgres\";\n\nexport type Chunk = { anchor: string; heading: string; body: string };\nexport type Doc = {\n  slug: string; title: string; url: string; kategori: string; produk: string;\n  updated_at: string; clicks: number; chunks: Chunk[];\n};\n\nconst MAX_CHUNK = 1500; // karakter; bagian lebih panjang dipecah per paragraf\nconst DROP = new Set([\"script\", \"style\", \"nav\", \"header\", \"footer\", \"aside\", \"noscript\", \"iframe\", \"form\", \"svg\"]);\n\nexport function slugify(s: string): string {\n  return s.normalize(\"NFKD\").replace(/[̀-ͯ]/g, \"\").toLowerCase()\n    .replace(/[^a-z0-9]+/g, \"-\").replace(/^-|-$/g, \"\").slice(0, 60) || \"bagian\";\n}\n\nconst clean = (s: string) => s.replace(/\\s+/g, \" \").trim();\n\n// HTML -> potongan per heading h2/h3. h1 = judul dokumen, bukan bagian.\nexport function chunkHtml(html: string): { title: string; chunks: Chunk[] } {\n  // Default parser menganggap <pre> teks mentah (tag <code> ikut); kita ingin teksnya saja.\n  const root = parse(html, { blockTextElements: { script: true, noscript: true, style: true } });\n  const title = clean(root.querySelector(\"h1\")?.text ?? root.querySelector(\"title\")?.text ?? \"\");\n  const main = root.querySelector(\"main\") ?? root.querySelector(\"article\") ?? root.querySelector(\"body\") ?? root;\n  const sections: { heading: string; anchor: string; parts: string[] }[] = [{ heading: \"\", anchor: \"\", parts: [] }];\n  let h2 = \"\";\n\n  const walk = (node: HTMLElement) => {\n    for (const n of node.childNodes) {\n      if (n.nodeType === 3) { const t = clean(n.text); if (t) sections.at(-1)!.parts.push(t); continue; }\n      if (n.nodeType !== 1) continue;\n      const el = n as HTMLElement;\n      const tag = el.rawTagName.toLowerCase();\n      if (DROP.has(tag) || tag === \"h1\") continue;\n      if (tag === \"h2\" || tag === \"h3\") {\n        const text = clean(el.text);\n        if (tag === \"h2\") h2 = text;\n        const heading = tag === \"h3\" && h2 ? `${h2} › ${text}` : text;\n        sections.push({ heading, anchor: el.getAttribute(\"id\") ?? slugify(text), parts: [] });\n      } else if (el.querySelector(\"h2, h3\")) {\n        walk(el);\n      } else {\n        const t = clean(el.structuredText);\n        if (t) sections.at(-1)!.parts.push(t);\n      }\n    }\n  };\n  walk(main);\n\n  const chunks: Chunk[] = [];\n  for (const s of sections) {\n    let body = \"\";\n    for (const p of s.parts) {\n      if (body && body.length + p.length > MAX_CHUNK) {\n        chunks.push({ anchor: s.anchor, heading: s.heading, body });\n        body = \"\";\n      }\n      body = body ? `${body}\\n${p}` : p;\n    }\n    if (body || s.heading) chunks.push({ anchor: s.anchor, heading: s.heading, body });\n  }\n  return { title, chunks };\n}\n\n// Satu berkas .md boleh berisi banyak dokumen; tiap dokumen diawali front matter\n// yang baris pertamanya `slug:` (jadi garis `---` biasa di isi artikel tetap aman).\nexport function parseMarkdown(text: string): Doc[] {\n  const docs: Doc[] = [];\n  const re = /^---\\n(slug:[\\s\\S]*?)\\n---\\n([\\s\\S]*?)(?=^---\\nslug:|(?![\\s\\S]))/gm;\n  for (const [, front, md] of text.matchAll(re)) {\n    const meta = Object.fromEntries(front.split(\"\\n\").map((l) => {\n      const i = l.indexOf(\":\");\n      return [l.slice(0, i).trim(), l.slice(i + 1).trim()];\n    }));\n    const { chunks } = chunkHtml(marked.parse(md, { async: false }));\n    docs.push(toDoc(meta, meta.judul, chunks));\n  }\n  return docs;\n}\n\nexport function parseHtmlDoc(html: string): Doc {\n  const root = parse(html);\n  const meta: Record<string, string> = {};\n  for (const m of root.querySelectorAll(\"meta[name]\")) meta[m.getAttribute(\"name\")!] = m.getAttribute(\"content\") ?? \"\";\n  const { title, chunks } = chunkHtml(html);\n  return toDoc(meta, title, chunks);\n}\n\nfunction toDoc(meta: Record<string, string>, title: string | undefined, chunks: Chunk[]): Doc {\n  for (const k of [\"slug\", \"kategori\", \"produk\", \"diperbarui\"]) {\n    if (!meta[k]) throw new Error(`metadata \"${k}\" kosong pada dokumen \"${title ?? \"?\"}\"`);\n  }\n  if (!title) throw new Error(`judul kosong pada ${meta.slug}`);\n  return {\n    slug: meta.slug, title, url: `/bantuan/${meta.slug}`,\n    kategori: meta.kategori, produk: meta.produk,\n    updated_at: new Date(meta.diperbarui).toISOString(),\n    clicks: Number(meta.klik ?? 0), chunks,\n  };\n}\n\nexport async function upsert(sql: postgres.Sql, doc: Doc, koleksi = \"bantuan\"): Promise<boolean> {\n  const hash = createHash(\"sha256\").update(JSON.stringify(doc)).digest(\"hex\");\n  const [old] = await sql`select content_hash from documents where slug = ${doc.slug}`;\n  if (old?.content_hash === hash) return false; // tidak berubah, lewati\n  await sql.begin(async (tx) => {\n    const [{ id }] = await tx`\n      insert into documents (slug, title, url, koleksi, kategori, produk, updated_at, clicks, content_hash)\n      values (${doc.slug}, ${doc.title}, ${doc.url}, ${koleksi}, ${doc.kategori}, ${doc.produk},\n              ${doc.updated_at}, ${doc.clicks}, ${hash})\n      on conflict (slug) do update set title = excluded.title, url = excluded.url,\n        kategori = excluded.kategori, produk = excluded.produk, updated_at = excluded.updated_at,\n        content_hash = excluded.content_hash\n      returning id`;\n    await tx`delete from chunks where doc_id = ${id}`;\n    const rows = doc.chunks.map((c, ord) => ({ doc_id: id, ord, anchor: c.anchor, title: doc.title, heading: c.heading, body: c.body }));\n    if (rows.length) await tx`insert into chunks ${tx(rows)}`;\n  });\n  return true;\n}\n\nif (import.meta.filename === process.argv[1]) {\n  const dir = process.argv[2] ?? \"korpus\";\n  const sql = postgres(process.env.DATABASE_URL!, { max: 2 });\n  let changed = 0, total = 0;\n  for (const f of (await readdir(dir)).sort()) {\n    const text = await readFile(join(dir, f), \"utf8\");\n    const docs = extname(f) === \".md\" ? parseMarkdown(text) : extname(f) === \".html\" ? [parseHtmlDoc(text)] : [];\n    for (const d of docs) { total++; if (await upsert(sql, d)) changed++; }\n  }\n  await sql`refresh materialized view concurrently kosakata`;\n  console.log(`${total} dokumen dibaca, ${changed} baru/berubah`);\n  await sql.end();\n}\n"
+        },
+        {
+          "id": "mpd-korpus-md",
+          "kind": "kode",
+          "name": "korpus/bantuan.md",
+          "lang": "markdown",
+          "content": "---\nslug: ganti-password\njudul: Mengganti kata sandi akun\nkategori: akun\nproduk: web\ndiperbarui: 2026-09-14\nklik: 420\n---\nGanti kata sandi secara berkala, terutama kalau kamu pernah masuk di perangkat orang lain.\n\n## Dari aplikasi\nBuka **Profil > Keamanan > Ubah kata sandi**. Masukkan kata sandi lama, lalu kata sandi baru minimal 10 karakter.\n\n## Dari web\nMasuk ke dasbor, klik foto profil, pilih **Keamanan**. Setelah disimpan, semua sesi lain otomatis keluar.\n\n## Email konfirmasi tidak datang\nPeriksa folder spam. Kalau dalam 10 menit belum ada, minta kirim ulang dari halaman yang sama.\n---\nslug: lupa-password\njudul: Lupa kata sandi dan tidak bisa masuk\nkategori: akun\nproduk: web\ndiperbarui: 2026-10-02\nklik: 910\n---\nKalau lupa kata sandi, kamu bisa membuat yang baru lewat tautan atur ulang.\n\n## Minta tautan atur ulang\nDi halaman masuk, klik **Lupa kata sandi?** lalu isi email akun. Tautan berlaku 30 menit dan hanya bisa dipakai sekali.\n\n## Email akun juga lupa\nCoba masuk dengan nomor HP yang terdaftar. Kalau tetap gagal, hubungi tim bantuan dengan bukti kepemilikan toko.\n---\nslug: verifikasi-dua-langkah\njudul: Mengaktifkan verifikasi dua langkah (2FA)\nkategori: keamanan\nproduk: web\ndiperbarui: 2026-08-20\nklik: 260\n---\nVerifikasi dua langkah meminta kode tambahan setiap kali masuk dari perangkat baru.\n\n## Aktifkan dengan aplikasi autentikator\nBuka **Profil > Keamanan > Verifikasi dua langkah**, pindai kode QR dengan aplikasi autentikator, lalu masukkan kode 6 digit.\n\n## Kode cadangan\nSimpan 10 kode cadangan di tempat aman. Setiap kode hanya bisa dipakai sekali saat ponsel hilang.\n---\nslug: akun-diretas\njudul: Akun diretas atau ada login mencurigakan\nkategori: keamanan\nproduk: web\ndiperbarui: 2026-07-11\nklik: 150\n---\nTanda akun diretas: notifikasi masuk dari kota lain, pesanan yang tidak kamu buat, atau email akun berubah.\n\n## Langkah darurat\nSegera ganti kata sandi, keluarkan semua sesi dari **Keamanan > Perangkat aktif**, dan aktifkan verifikasi dua langkah.\n\n## Laporkan\nKirim laporan ke tim bantuan. Kami bisa membekukan pencairan dana sementara sampai akun aman.\n---\nslug: ubah-email\njudul: Mengubah alamat email akun\nkategori: akun\nproduk: web\ndiperbarui: 2026-03-05\nklik: 120\n---\nEmail dipakai untuk masuk, notifikasi pesanan, dan atur ulang kata sandi.\n\n## Ganti email\nBuka **Profil > Data akun > Email**. Kami mengirim kode ke email lama dan email baru; keduanya harus dikonfirmasi.\n\n## Email lama sudah tidak aktif\nPilih **Saya tidak punya akses ke email lama** dan verifikasi dengan nomor HP.\n---\nslug: ubah-nomor-hp\njudul: Mengganti nomor HP yang terdaftar\nkategori: akun\nproduk: aplikasi\ndiperbarui: 2026-06-18\nklik: 340\n---\nNomor HP dipakai untuk kode OTP dan notifikasi WhatsApp.\n\n## Ganti nomor ponsel\nBuka aplikasi, masuk ke **Profil > Data akun > Nomor ponsel**. Masukkan nomor baru lalu kode OTP yang dikirim lewat SMS.\n\n## Nomor lama hilang\nKalau nomor lama tidak bisa menerima SMS, verifikasi lewat email lalu ganti nomor.\n---\nslug: hapus-akun\njudul: Menghapus akun secara permanen\nkategori: akun\nproduk: web\ndiperbarui: 2025-11-30\nklik: 60\n---\nMenghapus akun menghapus toko, produk, dan riwayat pesanan setelah 30 hari.\n\n## Syarat\nTidak ada pesanan yang belum selesai dan saldo sudah dicairkan.\n\n## Cara menghapus\nBuka **Profil > Data akun > Hapus akun**, ketik nama toko untuk konfirmasi. Dalam 30 hari kamu masih bisa membatalkan.\n---\nslug: metode-pembayaran\njudul: Metode pembayaran yang tersedia\nkategori: pembayaran\nproduk: web\ndiperbarui: 2026-09-01\nklik: 380\n---\nPembeli bisa membayar dengan transfer virtual account (BCA, BNI, BRI, Mandiri), QRIS, e-wallet (GoPay, OVO, DANA, ShopeePay), dan kartu kredit.\n\n## Biaya per metode\nVirtual account Rp4.000 per transaksi, QRIS 0,7%, kartu kredit 2,9%. Biaya dipotong dari dana yang kamu terima.\n\n## Mengatur metode\nBuka **Pengaturan > Pembayaran** untuk menyalakan atau mematikan metode tertentu.\n---\nslug: bayar-qris\njudul: Menerima pembayaran dengan QRIS\nkategori: pembayaran\nproduk: kasir\ndiperbarui: 2026-10-10\nklik: 300\n---\nQRIS bisa dibayar dari semua aplikasi bank dan e-wallet.\n\n## QRIS di kasir\nDi layar pembayaran kasir, pilih **QRIS**. Kode QR dinamis muncul dengan nominal otomatis; pembeli cukup memindai.\n\n## Pembayaran QRIS belum masuk\nStatus biasanya berubah dalam 10 detik. Kalau lebih dari 5 menit, cek menu **Riwayat transaksi** sebelum meminta pembeli membayar ulang.\n---\nslug: pembayaran-gagal\njudul: Pembayaran gagal atau tertunda\nkategori: pembayaran\nproduk: web\ndiperbarui: 2026-08-02\nklik: 450\n---\nPembayaran bisa gagal karena saldo kurang, batas waktu habis, atau gangguan bank.\n\n## Status tertunda\nVirtual account berlaku 24 jam. Selama itu status pesanan **Menunggu pembayaran**. Jangan transfer dua kali.\n\n## Dana terpotong tapi pesanan gagal\nDana dikembalikan otomatis ke rekening atau e-wallet pembeli dalam 1-3 hari kerja.\n---\nslug: refund\njudul: Pengembalian dana (refund) ke pembeli\nkategori: pembayaran\nproduk: web\ndiperbarui: 2026-05-22\nklik: 290\n---\nRefund dipakai saat pesanan dibatalkan atau barang dikembalikan.\n\n## Memproses refund\nBuka pesanan, pilih **Kembalikan dana**, isi jumlah (penuh atau sebagian). Dana kembali ke metode pembayaran asal.\n\n## Lama pengembalian dana\nE-wallet dan QRIS 1 hari kerja, virtual account 3 hari kerja, kartu kredit sampai 14 hari kerja.\n---\nslug: faktur-pajak\njudul: Mengunduh faktur dan bukti potong pajak\nkategori: pembayaran\nproduk: web\ndiperbarui: 2026-02-14\nklik: 95\n---\nFaktur langganan dan bukti potong PPh tersedia setiap awal bulan.\n\n## Unduh faktur\nBuka **Pengaturan > Tagihan > Faktur**, pilih bulan, lalu unduh PDF.\n\n## Data NPWP\nIsi NPWP di **Pengaturan > Tagihan** sebelum tanggal 25 supaya faktur bulan berikutnya memakai data yang benar.\n---\nslug: berhenti-langganan\njudul: Berhenti berlangganan paket Pro\nkategori: pembayaran\nproduk: web\ndiperbarui: 2026-04-09\nklik: 130\n---\nKamu bisa berhenti kapan saja; paket Pro tetap aktif sampai akhir periode tagihan.\n\n## Membatalkan langganan\nBuka **Pengaturan > Tagihan > Paket**, klik **Berhenti berlangganan**, dan pilih alasan.\n\n## Setelah berhenti\nToko kembali ke paket Gratis: maksimal 50 produk dan satu staf. Data tidak dihapus.\n---\nslug: lacak-pengiriman\njudul: Melacak status pengiriman pesanan\nkategori: pengiriman\nproduk: web\ndiperbarui: 2026-10-20\nklik: 700\n---\nSetiap pesanan yang sudah dikirim punya nomor resi.\n\n## Cek resi\nBuka **Pesanan > Detail > Lacak**. Status diperbarui dari kurir setiap 30 menit.\n\n## Resi tidak ditemukan\nResi baru aktif beberapa jam setelah paket diserahkan ke kurir. Kalau lewat 24 jam, hubungi kurir dengan nomor resi.\n---\nslug: ongkos-kirim\njudul: Cara menghitung ongkos kirim\nkategori: pengiriman\nproduk: web\ndiperbarui: 2026-06-30\nklik: 210\n---\nOngkos kirim dihitung dari berat, ukuran paket, dan jarak kota asal ke tujuan.\n\n## Berat volume\nKurir memakai nilai terbesar antara berat asli dan berat volume (panjang x lebar x tinggi / 6000).\n\n## Gratis ongkir\nAtur subsidi ongkos kirim di **Promosi > Gratis ongkir** dengan minimal belanja tertentu.\n---\nslug: pesanan-terlambat\njudul: Pesanan belum sampai atau terlambat\nkategori: pengiriman\nproduk: web\ndiperbarui: 2026-09-25\nklik: 520\n---\nKeterlambatan biasanya terjadi saat tanggal merah atau cuaca buruk.\n\n## Lewat estimasi\nKalau paket melewati estimasi lebih dari 2 hari, cek status di menu lacak lalu ajukan komplain ke kurir dari halaman pesanan.\n\n## Paket hilang\nKurir menyelidiki 3-7 hari kerja. Kalau dinyatakan hilang, pembeli mendapat refund penuh.\n---\nslug: retur-barang\njudul: Mengembalikan barang (retur)\nkategori: pengiriman\nproduk: web\ndiperbarui: 2026-07-28\nklik: 330\n---\nPembeli bisa mengajukan retur dalam 7 hari setelah barang diterima.\n\n## Mengajukan retur\nPembeli memilih **Ajukan pengembalian**, mengunggah foto, dan menulis alasan. Penjual punya 2 hari untuk menyetujui.\n\n## Ongkos kirim retur\nKalau barang rusak atau salah kirim, ongkos kirim retur ditanggung penjual.\n---\nslug: alamat-pengiriman\njudul: Mengubah alamat pengiriman\nkategori: pengiriman\nproduk: aplikasi\ndiperbarui: 2026-01-15\nklik: 180\n---\nAlamat bisa diubah sebelum pesanan dikemas.\n\n## Ubah alamat pesanan\nBuka pesanan, pilih **Ubah alamat**. Kalau ongkos kirim berubah, pembeli diminta membayar selisihnya.\n\n## Pesanan sudah dikirim\nAlamat tidak bisa diubah lagi; hubungi kurir untuk titip ke alamat lain.\n---\nslug: tambah-produk\njudul: Menambahkan produk ke toko\nkategori: toko\nproduk: web\ndiperbarui: 2026-08-08\nklik: 610\n---\nProduk butuh nama, harga, stok, berat, dan minimal satu foto.\n\n## Foto produk\nGunakan foto persegi minimal 800 piksel dengan latar polos. Maksimal 8 foto per produk.\n\n## Varian\nTambahkan varian seperti ukuran atau warna; setiap varian punya harga dan stok sendiri.\n---\nslug: impor-produk-csv\njudul: Impor produk massal dari CSV\nkategori: toko\nproduk: web\ndiperbarui: 2026-05-03\nklik: 240\n---\nUnggah ratusan produk sekaligus dengan berkas CSV.\n\n## Format berkas\nUnduh template dari **Produk > Impor**. Kolom wajib: nama, harga, stok, berat. Pisahkan dengan koma, simpan sebagai UTF-8.\n\n## Impor gagal\nBaris yang gagal ditampilkan dengan alasannya, misalnya harga kosong. Perbaiki lalu unggah ulang hanya baris tersebut.\n---\nslug: sinkron-stok\njudul: Sinkron stok otomatis antara kasir dan toko online\nkategori: kasir\nproduk: kasir\ndiperbarui: 2026-10-05\nklik: 270\n---\nStok berkurang di toko online saat barang terjual di kasir, dan sebaliknya.\n\n## Mengaktifkan sinkron stok\nBuka **Kasir > Pengaturan > Sinkron stok** dan pilih gudang yang dipakai bersama.\n\n## Stok tidak sama\nSinkron berjalan setiap 1 menit. Kalau masih berbeda, jalankan **Hitung ulang stok**.\n---\nslug: printer-struk\njudul: Menghubungkan printer struk Bluetooth\nkategori: kasir\nproduk: kasir\ndiperbarui: 2026-04-27\nklik: 230\n---\nKasir mendukung printer thermal 58 mm dan 80 mm.\n\n## Menyambungkan printer\nNyalakan Bluetooth, buka **Kasir > Pengaturan > Printer**, pilih printer, lalu cetak struk percobaan.\n\n## Struk tidak tercetak\nPastikan kertas terpasang dan baterai cukup. Lepaskan pasangan Bluetooth lalu sambungkan ulang.\n---\nslug: kasir-offline\njudul: Memakai kasir saat offline\nkategori: kasir\nproduk: kasir\ndiperbarui: 2026-03-19\nklik: 140\n---\nKasir tetap bisa mencatat transaksi tunai tanpa internet.\n\n## Saat offline\nTransaksi disimpan di perangkat. QRIS dan kartu tidak tersedia sampai koneksi kembali.\n\n## Setelah online\nTransaksi dikirim otomatis. Jangan hapus aplikasi sebelum semua transaksi terkirim.\n---\nslug: laporan-penjualan\njudul: Membaca laporan penjualan harian\nkategori: kasir\nproduk: kasir\ndiperbarui: 2026-09-09\nklik: 260\n---\nLaporan penjualan merangkum omzet, jumlah transaksi, dan produk terlaris.\n\n## Membuka laporan\nBuka **Laporan > Penjualan**, pilih tanggal. Data kasir dan toko online bisa digabung atau dipisah.\n\n## Ekspor\nUnduh laporan sebagai CSV atau PDF untuk pembukuan.\n---\nslug: diskon-voucher\njudul: Membuat diskon dan kode voucher\nkategori: toko\nproduk: web\ndiperbarui: 2026-07-02\nklik: 310\n---\nDiskon langsung memotong harga produk, voucher dipakai pembeli saat checkout.\n\n## Membuat voucher\nBuka **Promosi > Voucher**, isi kode, potongan (nominal atau persen), kuota, dan masa berlaku.\n\n## Voucher tidak bisa dipakai\nCek minimal belanja, kuota, dan masa berlaku. Satu pesanan hanya bisa memakai satu voucher.\n---\nslug: notifikasi-tidak-muncul\njudul: Notifikasi aplikasi tidak muncul\nkategori: aplikasi\nproduk: aplikasi\ndiperbarui: 2026-08-14\nklik: 200\n---\nNotifikasi pesanan baru bisa tertahan oleh pengaturan ponsel.\n\n## Android\nBuka **Setelan > Aplikasi > Warungku > Notifikasi** dan izinkan semua. Matikan mode hemat baterai untuk aplikasi ini.\n\n## iPhone\nBuka **Settings > Notifications > Warungku** lalu aktifkan **Allow Notifications**.\n---\nslug: aplikasi-lambat\njudul: Aplikasi lambat atau sering keluar sendiri\nkategori: aplikasi\nproduk: aplikasi\ndiperbarui: 2026-06-06\nklik: 170\n---\nAplikasi yang lambat biasanya karena versi lama atau memori ponsel penuh.\n\n## Langkah cepat\nPerbarui aplikasi, hapus cache dari **Setelan > Aplikasi > Warungku > Penyimpanan**, lalu mulai ulang ponsel.\n\n## Masih keluar sendiri\nKirim laporan dari **Profil > Bantuan > Laporkan masalah** supaya log galat ikut terkirim.\n---\nslug: perbarui-aplikasi\njudul: Memperbarui aplikasi ke versi terbaru\nkategori: aplikasi\nproduk: aplikasi\ndiperbarui: 2026-10-22\nklik: 90\n---\nVersi terbaru membawa perbaikan keamanan dan fitur baru.\n\n## Cara memperbarui\nBuka Play Store atau App Store, cari Warungku, lalu ketuk **Perbarui**. Aktifkan pembaruan otomatis supaya tidak tertinggal.\n---\nslug: tambah-staf\njudul: Menambahkan staf dan mengatur hak akses\nkategori: akun\nproduk: web\ndiperbarui: 2026-05-12\nklik: 220\n---\nStaf bisa membantu mengelola pesanan tanpa tahu kata sandi pemilik.\n\n## Undang staf\nBuka **Pengaturan > Staf > Undang**, isi email staf, dan pilih peran: Admin, Kasir, atau Gudang.\n\n## Hak akses\nKasir hanya bisa membuat transaksi, Gudang hanya mengubah stok, Admin mengelola semua kecuali pencairan dana.\n"
+        },
+        {
+          "id": "mpd-korpus-html",
+          "kind": "kode",
+          "name": "korpus/widget-chat.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <title>Pusat Bantuan Warungku</title>\n  <meta name=\"slug\" content=\"pasang-widget-chat\">\n  <meta name=\"kategori\" content=\"toko\">\n  <meta name=\"produk\" content=\"web\">\n  <meta name=\"diperbarui\" content=\"2026-09-30\">\n  <meta name=\"klik\" content=\"110\">\n  <script>window.analytics = \"jangan ikut terindeks\";</script>\n</head>\n<body>\n  <nav><a href=\"/\">Beranda</a> <a href=\"/bantuan\">Bantuan</a></nav>\n  <main>\n    <h1>Memasang widget chat di website sendiri</h1>\n    <p>Widget chat membuat pembeli bisa bertanya langsung dari website tokomu.</p>\n    <h2 id=\"kode-pemasangan\">Kode pemasangan</h2>\n    <p>Salin kode berikut sebelum tag penutup body:</p>\n    <pre><code>&lt;script src=\"https://widget.warungku.example/chat.js\" data-toko=\"ID_TOKO\"&gt;&lt;/script&gt;</code></pre>\n    <h3>Widget tidak muncul</h3>\n    <ul>\n      <li>Pastikan domain website sudah didaftarkan di <b>Pengaturan &gt; Widget</b>.</li>\n      <li>Matikan pemblokir iklan lalu muat ulang halaman.</li>\n    </ul>\n    <h2>Jam operasional chat</h2>\n    <p>Di luar jam operasional, pesan masuk ke kotak masuk dan dibalas keesokan harinya.</p>\n  </main>\n  <footer>© Warungku</footer>\n</body>\n</html>\n"
+        },
+        {
+          "id": "mpd-marked",
+          "kind": "tautan",
+          "name": "marked",
+          "url": "https://marked.js.org/"
+        },
+        {
+          "id": "mpd-nhp",
+          "kind": "tautan",
+          "name": "node-html-parser",
+          "url": "https://github.com/taoqf/node-html-parser"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-ing-30",
+          "text": "npm run ingest membaca 30 dokumen, dan run kedua melaporkan 0 yang berubah."
+        },
+        {
+          "id": "mpd-ing-bersih",
+          "text": "Teks nav, footer, dan script dari HTML tidak ada di tabel chunks."
+        },
+        {
+          "id": "mpd-ing-tag",
+          "text": "Aku sudah melihat sendiri bahwa parser Postgres membuang token mirip tag seperti <script>."
+        },
+        {
+          "id": "mpd-ing-commit",
+          "text": "Ingest dan korpus sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "query-builder-dan-api",
+      "title": "Query builder dan API pencarian",
+      "est_minutes": 300,
+      "body": "## Dari kueri pengguna ke JSON\n\n![Alur satu request /cari: cache dulu, lalu AND, koreksi ejaan, dan OR sebagai jalan terakhir. Kotak hijau tua adalah tempat skor dan halaman dihitung; cuplikan di-escape sebelum keluar.](/studio/mesin-pencari-dokumen/alur-cari.svg)\n\nIsi `src/search.ts`, bagian demi bagian:\n\n- **Sintaks pengguna**: `websearch_to_tsquery('idn', q)` menerima `\"frasa persis\"`, `-kecuali`, dan `or` tanpa pernah melempar error sintaks. Jangan pakai `to_tsquery` untuk input pengguna: `lupa (` membuatnya gagal.\n- **Kueri hanya stopword** (\"yang dan di\") menghasilkan tsquery kosong. Ini dideteksi dengan `numnode()` dan dijawab 400 dengan pesan yang jelas, bukan nol hasil yang membingungkan.\n- **Skor** = `ts_rank(tsv, q, 1)` x kesegaran x klik. Normalisasi `1` membagi dengan 1 + log(panjang potongan). Kesegaran meluruh dengan paruh sekitar satu tahun dan paling banyak memberi 20%; klik masuk lewat `ln(1 + klik)` supaya artikel populer tidak mengubur yang relevan. Varian `cd` dan `cd_sinyal` memakai `ts_rank_cd` (kedekatan antar-kata); kamu akan membandingkan semuanya di langkah evaluasi dan performa.\n- **Satu hasil per dokumen**: `DISTINCT ON (doc_id)` memilih potongan dengan skor tertinggi, lalu hasil diurutkan per skor.\n- **Keyset pagination**: cursor berisi skor dan id hasil terakhir (`where (skor, doc_id) < (...)`), bukan `OFFSET`. Cursor juga membekukan waktu acuan kesegaran (`t`), mode AND/OR, dan kueri efektif, sehingga halaman 2 dihitung dengan aturan yang sama dengan halaman 1. Batasan jujurnya: klik baru di antara dua halaman bisa menggeser skor; untuk pusat bantuan ini dapat diterima.\n- **Koreksi ejaan**: kata yang leksemnya tidak ada di `kosakata` diganti dengan kata terdekat menurut trigram (`%` dan `<->` dari pg_trgm), lalu pencarian diulang. Respons membawa `koreksi` supaya UI bisa menulis \"Menampilkan hasil untuk ...\".\n- **OR sebagai jalan terakhir**: kalau AND dan koreksi tetap nol, kata-kata digabung dengan `|`. Respons membawa `sebagian: true`.\n- **Cuplikan aman**: `ts_headline` **tidak meng-escape HTML**. Penanda sorotan dipasang sebagai karakter kontrol `\\u0002`/`\\u0003`, seluruh teks di-escape, baru penanda diganti `<mark>`. Tes di langkah berikutnya membuktikannya.\n- **Facet** (`total`, jumlah per `kategori` dan `produk`) dihitung hanya di halaman pertama.\n\n`src/app.ts` membungkusnya dengan validasi skema Fastify (q 1-200 karakter, limit 1-50, nama filter `^[a-z0-9-]{1,40}$`, cursor maks 600 karakter), rate limit per IP, cache LRU 60 detik di memori, log JSON per pencarian, `Server-Timing`, dan histogram Prometheus. `statement_timeout` 2 detik di `src/db.ts` memastikan kueri lepas kendali tidak menahan koneksi.\n\n## Yang perlu kamu kerjakan\n\n1. Salin keempat berkas, jalankan `npm run dev`, lalu coba:\n   ```bash\n   curl -s 'localhost:3000/cari?q=ganti%20sandi' | head -c 600; echo\n   curl -s 'localhost:3000/cari?q=%22nomor%20hp%22' | head -c 300; echo\n   curl -s 'localhost:3000/cari?q=refund%20-kartu' | head -c 300; echo\n   curl -s 'localhost:3000/cari?q=pasword%20lupa' | head -c 300; echo\n   curl -s 'localhost:3000/cari?q=dana&kategori=pembayaran&limit=2'; echo\n   curl -si 'localhost:3000/cari?q=yang%20dan%20di' | head -1\n   ```\n   Kueri salah ketik harus menjawab `\"koreksi\":\"password lupa\"`, dan kueri stopword `400`.\n2. Ambil `berikutnya` dari kueri `dana` (limit 2) lalu panggil lagi dengan `&cursor=...` sampai `null`. Tidak boleh ada id yang muncul dua kali.\n3. Kirim `curl -s -X POST localhost:3000/klik -H 'content-type: application/json' -d '{\"id\":\"1\"}' -w '%{http_code}\\n'` dan pastikan `204`.\n\n## Kriteria lulus\n\n- Tidak ada string SQL yang dirakit dengan `+` atau template string biasa: semua nilai lewat tagged template postgres.js, nama kolom hanya dari daftar tetap (`sql(kolom)` dengan tipe `Kolom`).\n- Respons tidak pernah memuat stack trace; galat tak terduga menjadi `500 {\"error\":\"terjadi kesalahan\"}` dan tercatat di log.\n",
+      "materials": [
+        {
+          "id": "mpd-db",
+          "kind": "kode",
+          "name": "src/db.ts",
+          "lang": "typescript",
+          "content": "import postgres from \"postgres\";\n\nexport const sql = postgres(process.env.DATABASE_URL!, {\n  max: Number(process.env.DB_POOL ?? 10),\n  onnotice: () => {}, // \"query hanya berisi stopword\" ditangani sendiri di search.ts\n  connection: {\n    application_name: \"mesin-pencari\",\n    statement_timeout: Number(process.env.DB_TIMEOUT_MS ?? 2000),\n  },\n});\n"
+        },
+        {
+          "id": "mpd-search",
+          "kind": "kode",
+          "name": "src/search.ts",
+          "lang": "typescript",
+          "content": "import { sql } from \"./db.ts\";\n\nexport type Variant = \"dasar\" | \"cd\" | \"sinyal\" | \"cd_sinyal\";\nexport type Kolom = \"tsv\" | \"tsv_stem\";\nexport type Mode = \"semua\" | \"sebagian\"; // AND (websearch) atau OR antar-kata\nexport type Params = {\n  q: string; kategori?: string; produk?: string; koleksi?: string; setelah?: string;\n  limit?: number; cursor?: string; variant?: Variant; kolom?: Kolom;\n};\ntype Hasil = { dipersempit: boolean; hasil: Record<string, any>[]; berikutnya: string | null };\ntype Cursor = { s: number; id: string; t: number; q: string; m: Mode; f: boolean }; // f = teks penuh\n\nexport class InputError extends Error {}\n\nconst VARIAN = (process.env.VARIAN ?? \"sinyal\") as Variant;\n// Kueri yang diperkirakan cocok dengan lebih dari BATAS potongan dianggap \"lebar\" (0 = matikan).\nconst BATAS = Number(process.env.BATAS_KATA_UMUM ?? 5_000);\n\nconst KONFIG: Record<Kolom, string> = { tsv: \"idn\", tsv_stem: \"idn_stem\" };\nconst MULAI = \"\\u0002\", SELESAI = \"\\u0003\";\nconst HEADLINE = `StartSel=${MULAI}, StopSel=${SELESAI}, MaxWords=35, MinWords=15, MaxFragments=2, FragmentDelimiter=\" … \"`;\n\n// ts_headline TIDAK meng-escape HTML. Penanda diganti setelah seluruh teks di-escape.\nexport const escapeHtml = (s: string) =>\n  s.replace(/[&<>\"']/g, (c) => `&#${c.charCodeAt(0)};`).replace(/[\\u0000-\\u0001\\u0004-\\u0008]/g, \"\");\nexport const sorot = (h: string) => escapeHtml(h).replaceAll(MULAI, \"<mark>\").replaceAll(SELESAI, \"</mark>\");\n\nconst encodeCursor = (c: Cursor) => Buffer.from(JSON.stringify(c)).toString(\"base64url\");\nfunction decodeCursor(raw: string): Cursor {\n  try {\n    const c = JSON.parse(Buffer.from(raw, \"base64url\").toString());\n    if (typeof c.s === \"number\" && /^\\d+$/.test(c.id) && Number.isFinite(c.t) && typeof c.q === \"string\"\n      && (c.m === \"semua\" || c.m === \"sebagian\") && typeof c.f === \"boolean\") return c;\n  } catch {}\n  throw new InputError(\"cursor tidak valid\");\n}\n\nfunction tsquery(mode: Mode, cfg: string, q: string) {\n  return mode === \"semua\"\n    ? sql`websearch_to_tsquery(${cfg}::regconfig, ${q})`\n    : sql`(select coalesce(string_agg(quote_literal(l), ' | '), '')::tsquery\n           from unnest(tsvector_to_array(to_tsvector(${cfg}::regconfig, ${q}))) l)`;\n}\n\nfunction skor(v: Variant, kolom: Kolom, asof: Date) {\n  const tsv = sql`c.${sql(kolom)}`;\n  // ts_rank: frekuensi berbobot. ts_rank_cd: kedekatan antar-kata (cover density), jauh lebih mahal.\n  // Normalisasi 1 = bagi dengan 1 + log(panjang potongan), supaya potongan panjang tidak selalu menang.\n  const teks = v.startsWith(\"cd\") ? sql`ts_rank_cd(${tsv}, q.q, 1)` : sql`ts_rank(${tsv}, q.q, 1)`;\n  if (v === \"dasar\" || v === \"cd\") return teks;\n  // Sinyal: kesegaran (paruh ~1 tahun, maks 20%) dan klik (logaritmik, supaya tidak mendominasi).\n  return sql`${teks}\n    * (0.8 + 0.2 * exp(-extract(epoch from (${asof}::timestamptz - d.updated_at)) / 86400 / 365))\n    * (1 + 0.1 * ln(1 + d.clicks))`;\n}\n\n// Kueri lebar (kata sangat umum) membuat Postgres me-ranking puluhan ribu baris.\n// Untuk kueri seperti itu, kandidat disaring dari judul + subjudul saja (tsv_judul), lalu\n// tetap di-ranking dengan tsv penuh. Perkiraan lebar diambil dari kosakata (ts_stat), murah.\nasync function saringan(mode: Mode, q: string, kolom: Kolom): Promise<\"tsv\" | \"tsv_judul\" | \"tsv_stem\"> {\n  if (!BATAS || kolom !== \"tsv\") return kolom;\n  // Perkiraan jumlah baris yang harus di-ranking: AND <= kata paling jarang, OR ~ jumlah semua kata.\n  const [{ n }] = await sql`\n    select ${mode === \"semua\" ? sql`min(k.ndoc)` : sql`sum(k.ndoc)`}::int as n\n    from kosakata k where k.word = any(tsvector_to_array(to_tsvector('idn', ${q})))`;\n  return n > BATAS ? \"tsv_judul\" : \"tsv\";\n}\n\n// Bagian bersama: kueri + filter. Dipakai pencarian dan facet.\nasync function cocok(p: Params, mode: Mode, q: string, penuh: boolean) {\n  const kolom = p.kolom ?? \"tsv\";\n  const saring = penuh ? kolom : await saringan(mode, q, kolom);\n  return {\n    kolom, dipersempit: saring === \"tsv_judul\",\n    cte: sql`q as (select ${tsquery(mode, KONFIG[kolom], q)} as q)`,\n    where: sql`c.${sql(saring)} @@ q.q\n      ${p.koleksi ? sql`and d.koleksi = ${p.koleksi}` : sql``}\n      ${p.kategori ? sql`and d.kategori = ${p.kategori}` : sql``}\n      ${p.produk ? sql`and d.produk = ${p.produk}` : sql``}\n      ${p.setelah ? sql`and d.updated_at >= ${p.setelah}::date` : sql``}`,\n  };\n}\n\nexport async function search(p: Params, mode: Mode, q: string, cur: Cursor | null, penuh = false): Promise<Hasil> {\n  const limit = p.limit ?? 10;\n  const asof = new Date(cur?.t ?? Date.now()); // skor kesegaran dibekukan selama paging\n  const { kolom, dipersempit, cte, where } = await cocok(p, mode, q, penuh);\n  const rows = await sql`\n    with ${cte},\n    hits as (\n      select distinct on (c.doc_id) c.doc_id, c.id as chunk_id, (${skor(p.variant ?? VARIAN, kolom, asof)})::float8 as skor\n      from q, chunks c join documents d on d.id = c.doc_id\n      where ${where}\n      order by c.doc_id, skor desc, c.ord\n    ),\n    page as (\n      select * from hits\n      ${cur ? sql`where (skor, doc_id) < (${cur.s}::float8, ${cur.id}::bigint)` : sql``}\n      order by skor desc, doc_id desc\n      limit ${limit + 1}\n    )\n    select p.skor, d.id, d.slug, d.title, d.kategori, d.produk, d.updated_at, c.heading,\n      case when c.anchor = '' then d.url else d.url || '#' || c.anchor end as url,\n      ts_headline(${KONFIG[kolom]}::regconfig, c.body, q.q, ${HEADLINE}) as cuplikan\n    from page p join documents d on d.id = p.doc_id join chunks c on c.id = p.chunk_id, q\n    order by p.skor desc, p.doc_id desc`;\n  // Disaring dari judul tapi kosong (misalnya karena filter): ulangi dengan teks penuh.\n  if (!rows.length && dipersempit && !cur) return search(p, mode, q, cur, true);\n  const more = rows.length > limit;\n  const hasil = rows.slice(0, limit).map((r) => ({\n    id: r.id, slug: r.slug, judul: r.title, bagian: r.heading, url: r.url, kategori: r.kategori,\n    produk: r.produk, diperbarui: r.updated_at, skor: r.skor, cuplikan: sorot(r.cuplikan),\n  }));\n  const last = hasil.at(-1);\n  return { dipersempit, hasil, berikutnya: more && last ? encodeCursor({ s: last.skor, id: last.id, t: asof.getTime(), q, m: mode, f: !dipersempit }) : null };\n}\n\nexport async function facets(p: Params, mode: Mode, q: string, penuh: boolean) {\n  const { cte, where } = await cocok(p, mode, q, penuh);\n  const [r] = await sql`\n    with ${cte},\n    hits as (select distinct c.doc_id from q, chunks c join documents d on d.id = c.doc_id where ${where})\n    select (select count(*) from hits)::int as total,\n      (select coalesce(jsonb_object_agg(kategori, n), '{}') from (select d.kategori, count(*)::int n\n         from hits h join documents d on d.id = h.doc_id group by 1) x) as kategori,\n      (select coalesce(jsonb_object_agg(produk, n), '{}') from (select d.produk, count(*)::int n\n         from hits h join documents d on d.id = h.doc_id group by 1) x) as produk`;\n  return r;\n}\n\n// \"Maksud Anda\": ganti kata yang leksemnya tidak ada di kosakata dengan kata terdekat (trigram).\nexport async function saran(q: string): Promise<string | null> {\n  const words = [...new Set(q.toLowerCase().match(/[\\p{L}\\p{N}]+/gu) ?? [])].slice(0, 8);\n  if (!words.length) return null;\n  const rows = await sql`\n    select w, (select k.word from kosakata k where k.word % l.lex\n               order by k.word <-> l.lex, k.ndoc desc limit 1) as ganti\n    from unnest(${words}::text[]) w,\n      lateral (select (tsvector_to_array(to_tsvector('idn', w)))[1] as lex) l\n    where length(l.lex) >= 3 and not exists (select 1 from kosakata k where k.word = l.lex)`;\n  let out = q;\n  for (const r of rows) {\n    if (r.ganti) out = out.replace(new RegExp(`(?<![\\\\p{L}\\\\p{N}])${r.w}(?![\\\\p{L}\\\\p{N}])`, \"giu\"), r.ganti);\n  }\n  return out === q ? null : out;\n}\n\n// Alur lengkap: AND -> koreksi ejaan -> OR. Halaman berikutnya memakai mode dan kueri di cursor.\nexport async function cari(p: Params) {\n  const cur = p.cursor ? decodeCursor(p.cursor) : null;\n  if (cur) return { q: cur.q, koreksi: null, sebagian: cur.m === \"sebagian\", ...(await search(p, cur.m, cur.q, cur, cur.f)) };\n\n  let q = p.q, mode: Mode = \"semua\", koreksi: string | null = null;\n  let res = await search(p, mode, q, null);\n  if (!res.hasil.length) {\n    const [{ n }] = await sql`select numnode(websearch_to_tsquery('idn', ${q})) as n`;\n    if (n === 0) throw new InputError(\"kueri hanya berisi kata umum; tambahkan kata kunci\");\n    const s = await saran(q);\n    if (s) {\n      const r2 = await search(p, mode, s, null);\n      if (r2.hasil.length) { res = r2; q = s; koreksi = s; }\n    }\n    if (!res.hasil.length) { mode = \"sebagian\"; res = await search(p, mode, q, null); }\n  }\n  return { q, koreksi, sebagian: mode === \"sebagian\", ...res, ...(await facets(p, mode, q, !res.dipersempit)) };\n}\n"
+        },
+        {
+          "id": "mpd-app",
+          "kind": "kode",
+          "name": "src/app.ts",
+          "lang": "typescript",
+          "content": "import Fastify from \"fastify\";\nimport rateLimit from \"@fastify/rate-limit\";\nimport client from \"prom-client\";\nimport { sql } from \"./db.ts\";\nimport { cari, InputError, type Params } from \"./search.ts\";\n\nconst durasi = new client.Histogram({\n  name: \"pencarian_durasi_detik\", help: \"Durasi /cari\", labelNames: [\"cache\", \"hasil\"],\n  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1, 2],\n});\nclient.collectDefaultMetrics();\n\n// Cache LRU sederhana di memori: Map menyimpan urutan sisip, entri tertua dibuang dulu.\n// ponytail: cache per proses; pakai Redis atau CDN kalau API lebih dari satu instance.\nconst TTL = 60_000, MAKS = 500;\nconst cache = new Map<string, { at: number; body: unknown }>();\nfunction ambil(key: string) {\n  const e = cache.get(key);\n  if (!e || Date.now() - e.at > TTL) return undefined;\n  cache.delete(key); cache.set(key, e); // tandai baru dipakai\n  return e.body;\n}\nfunction simpan(key: string, body: unknown) {\n  cache.set(key, { at: Date.now(), body });\n  if (cache.size > MAKS) cache.delete(cache.keys().next().value!);\n}\n\nconst nama = { type: \"string\", pattern: \"^[a-z0-9-]{1,40}$\" };\nconst cariSchema = {\n  querystring: {\n    type: \"object\", additionalProperties: false, required: [\"q\"],\n    properties: {\n      q: { type: \"string\", minLength: 1, maxLength: 200 },\n      kategori: nama, produk: nama, koleksi: nama,\n      setelah: { type: \"string\", format: \"date\" },\n      limit: { type: \"integer\", minimum: 1, maximum: 50, default: 10 },\n      cursor: { type: \"string\", maxLength: 600 },\n    },\n  },\n};\n\nexport async function buildApp(opts: { rateMax?: number; logger?: boolean } = {}) {\n  const app = Fastify({ logger: opts.logger ?? true, trustProxy: process.env.TRUST_PROXY === \"1\" });\n  await app.register(rateLimit, { max: opts.rateMax ?? Number(process.env.RATE_LIMIT_MAX ?? 60), timeWindow: \"1 minute\" });\n\n  app.setErrorHandler((err, req, reply) => {\n    if (err instanceof InputError) return reply.code(400).send({ error: err.message });\n    if ((err as { statusCode?: number }).statusCode! < 500) return reply.send(err);\n    req.log.error(err);\n    return reply.code(500).send({ error: \"terjadi kesalahan\" });\n  });\n\n  app.get(\"/cari\", { schema: cariSchema }, async (req, reply) => {\n    const p = req.query as Params;\n    const mulai = performance.now();\n    const key = JSON.stringify([p.q.trim().toLowerCase(), p.kategori, p.produk, p.koleksi, p.setelah, p.limit, p.cursor]);\n    let body = ambil(key) as Awaited<ReturnType<typeof cari>> | undefined;\n    const status = body ? \"hit\" : \"miss\";\n    if (!body) { body = await cari(p); simpan(key, body); }\n    const ms = performance.now() - mulai;\n    durasi.observe({ cache: status, hasil: body.hasil.length ? \"ada\" : \"nol\" }, ms / 1000);\n    req.log.info({ q: p.q, hasil: body.hasil.length, koreksi: body.koreksi, sebagian: body.sebagian, cache: status, ms: Math.round(ms) }, \"cari\");\n    reply.header(\"x-cache\", status).header(\"cache-control\", \"public, max-age=60\")\n      .header(\"server-timing\", `cari;dur=${ms.toFixed(1)}`);\n    return body;\n  });\n\n  app.post(\"/klik\", {\n    schema: { body: { type: \"object\", required: [\"id\"], properties: { id: { type: \"string\", pattern: \"^[0-9]{1,18}$\" } } } },\n  }, async (req, reply) => {\n    // ponytail: satu klik = +1 tanpa dedup; tambahkan dedup per sesi kalau ada yang memanipulasi peringkat.\n    await sql`update documents set clicks = clicks + 1 where id = ${(req.body as { id: string }).id}`;\n    return reply.code(204).send();\n  });\n\n  app.get(\"/sehat\", { config: { rateLimit: false } }, async () => {\n    await sql`select 1`;\n    return { ok: true };\n  });\n\n  app.get(\"/metrics\", { config: { rateLimit: false } }, async (_req, reply) =>\n    reply.type(client.register.contentType).send(await client.register.metrics()));\n\n  return app;\n}\n"
+        },
+        {
+          "id": "mpd-server",
+          "kind": "kode",
+          "name": "src/server.ts",
+          "lang": "typescript",
+          "content": "import { buildApp } from \"./app.ts\";\nimport { sql } from \"./db.ts\";\n\nconst app = await buildApp();\nawait app.listen({ port: Number(process.env.PORT ?? 3000), host: \"0.0.0.0\" });\n\nfor (const sig of [\"SIGTERM\", \"SIGINT\"]) {\n  process.once(sig, async () => {\n    await app.close(); // selesaikan request yang sedang jalan\n    await sql.end({ timeout: 5 });\n    process.exit(0);\n  });\n}\n"
+        },
+        {
+          "id": "mpd-websearch",
+          "kind": "tautan",
+          "name": "PostgreSQL: websearch_to_tsquery dan ts_headline",
+          "url": "https://www.postgresql.org/docs/current/textsearch-controls.html"
+        },
+        {
+          "id": "mpd-trgm",
+          "kind": "tautan",
+          "name": "PostgreSQL: pg_trgm",
+          "url": "https://www.postgresql.org/docs/current/pgtrgm.html"
+        },
+        {
+          "id": "mpd-ratelimit",
+          "kind": "tautan",
+          "name": "@fastify/rate-limit",
+          "url": "https://github.com/fastify/fastify-rate-limit"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-api-sintaks",
+          "text": "Kueri dengan \"frasa\", -kecuali, dan or memberi hasil yang masuk akal."
+        },
+        {
+          "id": "mpd-api-koreksi",
+          "text": "Kueri salah ketik mengembalikan koreksi dan hasil yang benar."
+        },
+        {
+          "id": "mpd-api-cursor",
+          "text": "Aku bisa mengikuti cursor sampai habis tanpa hasil ganda."
+        },
+        {
+          "id": "mpd-api-commit",
+          "text": "API sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "tes-perilaku-pencarian",
+      "title": "Tes perilaku dengan Postgres sungguhan",
+      "est_minutes": 180,
+      "body": "## Tes yang menyerang, bukan tes yang menemani\n\nTes di Bahan berjalan terhadap Postgres sungguhan, tanpa mock, lewat `app.inject()` Fastify (tanpa membuka port). Mock FTS tidak berguna: yang ingin kamu buktikan justru perilaku kamus, parser, dan `ts_headline` milik Postgres.\n\nYang diuji, dan kenapa:\n\n| Tes | Yang dibuktikan |\n| --- | --- |\n| sinonim | \"sandi\" menemukan artikel berjudul \"kata sandi\" maupun \"password\" |\n| cuplikan aman | potongan HTML berbahaya yang **lolos** dari `ts_headline` (`<img src=x onerror=...`, `\"><svg/onload=...>`) keluar sebagai teks, hanya `<mark>` yang tersisa |\n| salah ketik | \"pasword lupa\" dikoreksi dan artikel yang benar di peringkat 1 |\n| OR | kueri tanpa hasil AND jatuh ke sebagian kata |\n| keyset | mengikuti cursor 2 per halaman = satu halaman berisi 50, tanpa duplikat |\n| facet | jumlah facet `pembayaran` sama dengan total saat difilter `pembayaran` |\n| input buruk | kueri stopword dan cursor palsu -> 400 |\n| cache, rate limit | request kedua `x-cache: hit`; request ke-3 dengan batas 2 -> 429 |\n| nDCG | fungsi metrik memberi 1 untuk urutan ideal |\n\nTes XSS menulis dokumen sementara ke koleksi `uji` lewat `upsert()` lalu menghapusnya di `finally`, jadi aman diulang.\n\n## Yang perlu kamu kerjakan\n\n1. Salin `test/cari.test.ts` dan `scripts/metrik.ts` (fungsi P@k, MRR, nDCG yang juga dipakai harness evaluasi di langkah berikutnya), pastikan korpus sudah di-ingest, lalu `npm test`. Semua harus lulus.\n2. **Buktikan tes XSS bisa gagal**: ubah sementara `sorot` di `src/search.ts` menjadi `(h: string) => h`, jalankan `npm test`, catat tes yang merah, kembalikan.\n3. Tambahkan minimal satu tes untuk perilaku yang kamu temukan sendiri di langkah sebelumnya, misalnya filter `setelah`, kueri frasa, atau artikel HTML.\n\n## Kriteria lulus\n\n- `npm test` hijau dari database yang baru di-reset dan di-ingest.\n- Langkah 2 benar-benar membuat tes merah. Tes yang tidak pernah kamu lihat gagal belum terbukti menguji apa pun.\n",
+      "materials": [
+        {
+          "id": "mpd-test",
+          "kind": "kode",
+          "name": "test/cari.test.ts",
+          "lang": "typescript",
+          "content": "// Jalankan setelah `npm run db:reset && npm run ingest` (butuh Postgres sungguhan, tanpa mock).\nimport { test, after } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { buildApp } from \"../src/app.ts\";\nimport { sql } from \"../src/db.ts\";\nimport { upsert } from \"../src/ingest.ts\";\nimport { ndcgAt } from \"../scripts/metrik.ts\";\n\nconst app = await buildApp({ logger: false, rateMax: 1000 });\nafter(async () => { await app.close(); await sql.end(); });\n\nconst cari = async (qs: Record<string, string>) => {\n  const res = await app.inject({ url: `/cari?${new URLSearchParams({ koleksi: \"bantuan\", ...qs })}` });\n  return { status: res.statusCode, headers: res.headers, body: res.json() };\n};\n\ntest(\"sinonim: 'sandi' menemukan artikel yang menulis 'kata sandi' maupun 'password'\", async () => {\n  const { body } = await cari({ q: \"ganti sandi\" });\n  assert.equal(body.hasil[0].slug, \"ganti-password\");\n});\n\ntest(\"cuplikan aman: teks berbahaya di dokumen di-escape, hanya <mark> yang tersisa\", async () => {\n  // ts_headline membuang token yang mirip tag lengkap, tapi potongan seperti ini lolos apa adanya.\n  const xss = `Widget galat <img src=x onerror=alert(1)// lalu \"><svg/onload=alert(1)> muncul`;\n  await upsert(sql, { slug: \"uji-xss\", title: \"Uji XSS\", url: \"/uji\", kategori: \"toko\", produk: \"web\",\n    updated_at: new Date().toISOString(), clicks: 0, chunks: [{ anchor: \"\", heading: \"\", body: xss }] }, \"uji\");\n  try {\n    const { body } = await cari({ q: \"galat muncul\", koleksi: \"uji\" });\n    const c = body.hasil[0].cuplikan;\n    assert.match(c, /&#60;img/);\n    assert.doesNotMatch(c.replace(/<\\/?mark>/g, \"\"), /[<>]/);\n  } finally {\n    await sql`delete from documents where slug = 'uji-xss'`;\n  }\n});\n\ntest(\"salah ketik dikoreksi lewat trigram\", async () => {\n  const { body } = await cari({ q: \"pasword lupa\" });\n  assert.equal(body.koreksi, \"password lupa\");\n  assert.equal(body.hasil[0].slug, \"lupa-password\");\n});\n\ntest(\"tanpa hasil AND, kembali ke OR (sebagian kata)\", async () => {\n  const { body } = await cari({ q: \"printer zebra merah\" });\n  assert.equal(body.sebagian, true);\n  assert.equal(body.hasil[0].slug, \"printer-struk\");\n});\n\ntest(\"keyset pagination: tidak ada duplikat dan sama dengan satu halaman besar\", async () => {\n  const semua = (await cari({ q: \"pesanan\", limit: \"50\" })).body.hasil.map((h: { id: string }) => h.id);\n  const dikumpulkan: string[] = [];\n  let cursor: string | null = null;\n  do {\n    const { body } = await cari({ q: \"pesanan\", limit: \"2\", ...(cursor ? { cursor } : {}) });\n    dikumpulkan.push(...body.hasil.map((h: { id: string }) => h.id));\n    cursor = body.berikutnya;\n  } while (cursor);\n  assert.ok(semua.length > 2);\n  assert.deepEqual(dikumpulkan, semua);\n});\n\ntest(\"facet dan filter kategori konsisten\", async () => {\n  const { body } = await cari({ q: \"dana\" });\n  assert.ok(body.kategori.pembayaran >= 2);\n  const f = await cari({ q: \"dana\", kategori: \"pembayaran\" });\n  assert.equal(f.body.total, body.kategori.pembayaran);\n  assert.ok(f.body.hasil.every((h: { kategori: string }) => h.kategori === \"pembayaran\"));\n});\n\ntest(\"kueri hanya stopword dan cursor rusak ditolak 400\", async () => {\n  assert.equal((await cari({ q: \"yang dan di\" })).status, 400);\n  assert.equal((await cari({ q: \"akun\", cursor: \"bukan-cursor\" })).status, 400);\n});\n\ntest(\"cache: request kedua dilayani dari memori\", async () => {\n  await cari({ q: \"laporan penjualan\" });\n  assert.equal((await cari({ q: \"laporan penjualan\" })).headers[\"x-cache\"], \"hit\");\n});\n\ntest(\"rate limit mengembalikan 429\", async () => {\n  const kecil = await buildApp({ logger: false, rateMax: 2 });\n  const codes = [];\n  for (let i = 0; i < 3; i++) codes.push((await kecil.inject({ url: \"/cari?q=akun\" })).statusCode);\n  await kecil.close();\n  assert.deepEqual(codes, [200, 200, 429]);\n});\n\ntest(\"nDCG: urutan ideal = 1, relevan di posisi 2 < 1\", () => {\n  assert.equal(ndcgAt(10, [\"a\", \"b\"], { a: 3, b: 1 }), 1);\n  assert.ok(ndcgAt(10, [\"x\", \"a\"], { a: 3 }) < 1);\n});\n"
+        },
+        {
+          "id": "mpd-metrik",
+          "kind": "kode",
+          "name": "scripts/metrik.ts",
+          "lang": "typescript",
+          "content": "// Relevan = nilai >= 2 (skala 0-3). nDCG memakai gain bertingkat 2^nilai - 1.\nexport function precisionAt(k: number, ranked: string[], rel: Record<string, number>) {\n  return ranked.slice(0, k).filter((s) => (rel[s] ?? 0) >= 2).length / k;\n}\nexport function reciprocalRank(ranked: string[], rel: Record<string, number>) {\n  const i = ranked.findIndex((s) => (rel[s] ?? 0) >= 2);\n  return i < 0 ? 0 : 1 / (i + 1);\n}\nexport function ndcgAt(k: number, ranked: string[], rel: Record<string, number>) {\n  const dcg = (gains: number[]) => gains.slice(0, k).reduce((a, g, i) => a + (2 ** g - 1) / Math.log2(i + 2), 0);\n  const ideal = dcg(Object.values(rel).sort((a, b) => b - a));\n  return ideal ? dcg(ranked.map((s) => rel[s] ?? 0)) / ideal : 0;\n}\n"
+        },
+        {
+          "id": "mpd-node-test",
+          "kind": "tautan",
+          "name": "Node.js: test runner",
+          "url": "https://nodejs.org/api/test.html"
+        },
+        {
+          "id": "mpd-owasp-xss",
+          "kind": "tautan",
+          "name": "OWASP: Cross Site Scripting Prevention",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-tes-lulus",
+          "text": "Semua tes lulus terhadap Postgres sungguhan."
+        },
+        {
+          "id": "mpd-tes-merah",
+          "text": "Aku sudah membuktikan tes XSS menjadi merah saat escape dimatikan."
+        },
+        {
+          "id": "mpd-tes-tambah",
+          "text": "Aku menambah minimal satu tes untuk perilaku yang kutemukan sendiri."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "harness-evaluasi-relevansi",
+      "title": "Harness evaluasi relevansi: P@k, MRR, nDCG",
+      "est_minutes": 240,
+      "body": "## Mengukur, bukan menebak\n\n\"Hasilnya kelihatan bagus\" tidak bisa dibandingkan antar-versi. Harness di Bahan menjalankan setiap kueri berlabel lewat `cari()` (alur lengkap: AND, koreksi, OR) dan menghitung:\n\n- **P@5**: berapa dari 5 hasil teratas yang relevan (nilai >= 2). Plafonnya = jumlah dokumen relevan / 5; dengan 1-2 dokumen relevan per kueri, P@5 maksimal sekitar 0,2-0,4. Gunakan untuk membandingkan varian, bukan sebagai nilai rapor.\n- **MRR**: 1 / posisi hasil relevan pertama, dirata-rata. Menjawab \"apakah jawaban benar pertama muncul cepat?\".\n- **nDCG@10**: memberi kredit bertingkat (nilai 3 lebih berharga dari 1) dan menghukum posisi bawah secara logaritmik. Angka utama proyek ini.\n\nVarian yang dibandingkan: `dasar` (ts_rank), `cd` (ts_rank_cd), `sinyal` (ts_rank x kesegaran x klik, bawaan API), `cd_sinyal`, dan `stem` (sinyal di atas kolom stemmer).\n\n## Yang perlu kamu kerjakan\n\n1. Salin `scripts/eval.ts` (`scripts/metrik.ts` sudah ada dari langkah tes), lalu `npm run eval`. Catat tabelnya dan baca daftar \"Kueri terlemah\". Bandingkan dengan dugaan kegagalan yang kamu tulis di langkah 2.\n2. **Eksperimen stemmer**: simpan `db/eksperimen-stem.sql` dari Bahan, jalankan `docker compose exec -T db psql -U cari < db/eksperimen-stem.sql`, lalu `npm run eval -- sinyal stem`. Stemmer menyelamatkan \"bayar\" -> \"pembayaran\", tapi menyatukan kata yang seharusnya beda; lihat kueri mana yang naik dan mana yang turun. Tulis hasilnya di ADR konfigurasi bahasa, lalu hapus kolomnya (`alter table chunks drop column tsv_stem;`).\n3. **Perbaiki dari data**: kueri seperti \"notif ...\", \"aplikasi lemot\", \"tambah karyawan kasir\", \"akun dibobol\", \"uang belum kembali\" lemah karena kata pengguna tidak ada di artikel. Tambahkan baris dari Bahan ke akhir `db/tsearch/idn_sinonim.syn`, lalu:\n   ```bash\n   docker compose up -d --build --wait db\n   npm run db:reset && npm run ingest && npm run eval\n   ```\n   Kamus dibaca dari berkas di image, dan `tsv` tersimpan, karena itu perlu bangun ulang image **dan** isi ulang data. nDCG@10 dan MRR harus naik; simpan kedua tabel.\n4. Lihat kueri yang masih gagal: \"notif pesanan tidak masuk\". Penyebabnya bukan algoritma, tapi **konten**: artikel notifikasi tidak pernah memakai kata \"masuk\". Perbaikan yang benar adalah menambah kalimat seperti \"notifikasi pesanan tidak masuk\" ke artikelnya. Lakukan, ingest, ukur lagi.\n\n## Angka acuan (korpus contoh, PostgreSQL 19)\n\n| Tahap | Varian | P@5 | MRR | nDCG@10 |\n| --- | --- | --- | --- | --- |\n| Awal (kamus sinonim dasar) | dasar | 0,19 | 0,82 | 0,81 |\n| | cd | 0,19 | 0,86 | 0,83 |\n| | sinyal | 0,19 | 0,83 | 0,81 |\n| | cd_sinyal | 0,19 | 0,84 | 0,82 |\n| | stem | 0,20 | 0,81 | 0,81 |\n| + 9 baris sinonim | semua varian | 0,20 | 0,94 | 0,88 |\n| + kalimat \"tidak masuk\" di artikel notifikasi | sinyal | 0,21 | 0,98 | 0,92 |\n\nAngkamu bisa bergeser di digit kedua (urutan skor yang seri, artikel yang kamu ubah). Yang penting arahnya: sebelum sinonim, `ts_rank_cd` sedikit unggul; setelah sinonim semua varian sama, dan perbaikan konten memberi lompatan terbesar.\n\n## Kriteria lulus\n\n- Laporan `docs/relevansi.md` berisi tabel sebelum dan sesudah setiap perubahan, plus satu paragraf tentang kueri yang masih gagal.\n- Mulai sekarang, setiap perubahan ranking atau kamus disertai `npm run eval` sebelum dan sesudahnya. Kalau nDCG turun, perubahan tidak di-merge.\n- Varian ranking memberi angka hampir sama di korpus kecil. Jangan mengklaim sinyal klik \"meningkatkan relevansi\" tanpa angka; pilihan di antara mereka diputuskan oleh biaya di langkah berikutnya.\n",
+      "materials": [
+        {
+          "id": "mpd-eval",
+          "kind": "kode",
+          "name": "scripts/eval.ts",
+          "lang": "typescript",
+          "content": "// Evaluasi relevansi: jalankan kueri berlabel, hitung P@5, MRR, dan nDCG@10 per varian.\n//   npm run eval                      -> semua varian, hanya koleksi \"bantuan\"\n//   npm run eval -- sinyal stem       -> varian tertentu (\"stem\" butuh kolom tsv_stem)\n//   npm run eval -- --semua           -> termasuk dokumen sintetis sebagai pengecoh\nimport { readFileSync } from \"node:fs\";\nimport { sql } from \"../src/db.ts\";\nimport { cari, type Params } from \"../src/search.ts\";\nimport { ndcgAt, precisionAt, reciprocalRank } from \"./metrik.ts\";\n\ntype Judged = { q: string; rel: Record<string, number> };\nconst judged: Judged[] = JSON.parse(readFileSync(\"eval/judgments.json\", \"utf8\"));\n\nconst VARIAN: Record<string, Partial<Params>> = {\n  dasar: { variant: \"dasar\" },\n  cd: { variant: \"cd\" },\n  sinyal: { variant: \"sinyal\" },\n  cd_sinyal: { variant: \"cd_sinyal\" },\n  stem: { variant: \"sinyal\", kolom: \"tsv_stem\" },\n};\n\n// --semua: cari di semua koleksi (termasuk 100k dokumen sintetis sebagai pengecoh, dianggap tidak relevan).\nconst semua = process.argv.includes(\"--semua\");\nconst args = process.argv.slice(2).filter((a) => a !== \"--semua\");\nconst names = args.length ? args : [\"dasar\", \"cd\", \"sinyal\", \"cd_sinyal\"];\nconst rows: Record<string, string | number>[] = [];\nconst worst: string[] = [];\nfor (const name of names) {\n  const v = VARIAN[name];\n  if (!v) throw new Error(`varian tidak dikenal: ${name}`);\n  let p5 = 0, mrr = 0, ndcg = 0;\n  for (const j of judged) {\n    const res = await cari({ q: j.q, koleksi: semua ? undefined : \"bantuan\", limit: 10, ...v });\n    const ranked = res.hasil.map((h) => h.slug);\n    const n = ndcgAt(10, ranked, j.rel);\n    p5 += precisionAt(5, ranked, j.rel); mrr += reciprocalRank(ranked, j.rel); ndcg += n;\n    if (n < 0.5) worst.push(`${name.padEnd(6)} nDCG ${n.toFixed(2)}  \"${j.q}\" -> ${ranked.slice(0, 3).join(\", \") || \"(kosong)\"}`);\n  }\n  const N = judged.length;\n  rows.push({ varian: name, \"P@5\": +(p5 / N).toFixed(3), MRR: +(mrr / N).toFixed(3), \"nDCG@10\": +(ndcg / N).toFixed(3) });\n}\nconsole.table(rows);\nif (worst.length) console.log(\"Kueri terlemah (nDCG < 0.5):\\n\" + worst.join(\"\\n\"));\nawait sql.end();\n"
+        },
+        {
+          "id": "mpd-sql-stem",
+          "kind": "kode",
+          "name": "db/eksperimen-stem.sql",
+          "lang": "sql",
+          "content": "-- Eksperimen: kolom kedua dengan stemmer Snowball indonesian (hanya untuk korpus kecil).\nalter table chunks add column tsv_stem tsvector generated always as (\n  setweight(to_tsvector('idn_stem'::regconfig, title), 'A') ||\n  setweight(to_tsvector('idn_stem'::regconfig, heading), 'B') ||\n  setweight(to_tsvector('idn_stem'::regconfig, body), 'C')\n) stored;\n\n-- Setelah membandingkan, hapus lagi sebelum membuat 100k dokumen:\n-- alter table chunks drop column tsv_stem;\n"
+        },
+        {
+          "id": "mpd-sinonim-tambahan",
+          "kind": "kode",
+          "name": "db/tsearch/idn_sinonim.syn (tambahkan di akhir)",
+          "lang": "text",
+          "content": "notif notifikasi\nkaryawan staf\npegawai staf\nuang dana\nlemot lambat\nlelet lambat\ndibobol diretas\nhack diretas\nupload unggah\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-eval-dasar",
+          "text": "Aku mencatat angka awal P@5, MRR, dan nDCG@10 semua varian."
+        },
+        {
+          "id": "mpd-eval-stem",
+          "text": "Aku membandingkan idn dengan idn_stem dan menulis keputusannya di ADR."
+        },
+        {
+          "id": "mpd-eval-naik",
+          "text": "Perubahan sinonim menaikkan nDCG@10, dibuktikan dengan dua tabel sebelum dan sesudah."
+        },
+        {
+          "id": "mpd-eval-sisa",
+          "text": "Kueri yang masih gagal sudah kucatat beserta dugaan penyebabnya."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "data-100k-dan-explain-analyze",
+      "title": "100 ribu dokumen, EXPLAIN ANALYZE, dan target p95",
+      "est_minutes": 300,
+      "body": "## 30 artikel selalu cepat. 100 ribu tidak.\n\nMasalah performa FTS tidak terlihat di korpus kecil. `scripts/gen-100k.ts` membuat 100.000 dokumen sintetis (sekitar 200 ribu potongan, koleksi `sintetis`) dengan cara yang hemat memori:\n\n- Baris ditulis ke stream `COPY ... FROM STDIN` satu per satu dan menunggu `drain` saat buffer penuh, per batch 10.000 dokumen. Memori Node tetap sekitar 150 MB, bukan gigabyte.\n- Indeks GIN dihapus dulu lalu dibangun sekali di akhir (jauh lebih cepat daripada memperbarui indeks untuk setiap baris), lalu `VACUUM ANALYZE` dan refresh `kosakata`.\n- Kosakatanya mengikuti hukum Zipf (20.000 kata semu, peringkat diambil log-uniform), dengan kata sungguhan seperti \"pesanan\" dan \"refund\" diselipkan di peringkat 20, 40, 60, dan seterusnya. Tanpa ini setiap kata muncul di hampir semua dokumen dan hasil benchmark menipu.\n- PRNG ber-seed: data sama setiap kali, jadi angka sebelum dan sesudah bisa dibandingkan.\n\nDokumen sintetis tidak berlabel. Saat `npm run eval -- --semua`, mereka berperan sebagai **pengecoh**: kalau artikel asli terdorong ke bawah oleh sampah, nDCG turun.\n\n## Cara mengukur yang jujur\n\n![Mainkan simulasi ini: p50 bisa terlihat bagus padahal 1 dari 20 pengguna menunggu lama. Target proyek ini memakai p95.](sim:persentil-latensi)\n\n`scripts/bench.ts` mengirim campuran kueri (70% satu-dua kata, 20% tiga kata, 10% salah ketik, 30% dengan filter kategori) dari 4 klien paralel dan mencetak p50/p95/p99, jumlah galat, dan cache hit. Aturannya:\n\n1. Jalankan API dengan `RATE_LIMIT_MAX=100000` (hanya untuk bench lokal).\n2. Pemanasan dengan seed 1, **restart API** (mengosongkan cache aplikasi), lalu ukur dengan seed 2. Yang diukur: database hangat, cache aplikasi dingin.\n3. Satu perubahan per pengukuran. Simpan setiap baris output.\n\n## Yang perlu kamu kerjakan\n\n1. `npm run gen` (sekitar 2 menit; mesin kecil boleh `npm run gen -- 20000` dan menyebutkannya di laporan). Cek ukurannya:\n   ```bash\n   docker compose exec db psql -U cari -c \"select pg_size_pretty(pg_relation_size('chunks')) heap, pg_size_pretty(pg_indexes_size('chunks')) indeks\"\n   docker compose exec db psql -U cari -c \"select word, ndoc from kosakata where word in ('pesanan','produk','kurir','printer')\"\n   ```\n2. **Baseline naif**, di dua terminal:\n   ```bash\n   VARIAN=cd_sinyal BATAS_KATA_UMUM=0 RATE_LIMIT_MAX=100000 npm run dev\n   npm run bench -- http://localhost:3000 400 4 1   # pemanasan; restart API, lalu:\n   npm run bench -- http://localhost:3000 400 4 2\n   ```\n3. **Baca rencananya**. `db/explain.sql` menulis ulang kueri pencarian untuk `EXPLAIN (ANALYZE, BUFFERS)`:\n   ```bash\n   docker compose exec -T db psql -U cari -v q=produk -v rank=ts_rank_cd -v saring=tsv < db/explain.sql\n   ```\n   Cari node yang memakan waktu. Untuk kata umum, `Bitmap Heap Scan` cepat (indeks GIN bekerja), tapi node di atasnya menghitung skor untuk **setiap** baris yang cocok: puluhan ribu panggilan `ts_rank_cd`. Bandingkan dengan `-v rank=ts_rank`, lalu dengan `-v saring=tsv_judul`.\n4. **Perbaikan 1, fungsi ranking**: setelah perbaikan sinonim, evaluasi menunjukkan `ts_rank` setara kualitasnya dengan `ts_rank_cd` (sebelumnya `cd` unggul sekitar 0,02 nDCG), padahal jauh lebih murah. Ukur ulang dengan `VARIAN=sinyal BATAS_KATA_UMUM=0`, lalu tulis ADR-0003, termasuk syarat tinjau ulang: kalau set kueri berlabel bertambah dan `cd` unggul lagi, biayanya dibandingkan ulang.\n5. **Perbaikan 2, kueri lebar**: jalankan tanpa variabel (bawaan `BATAS_KATA_UMUM=5000`). Sebelum mencari, `saringan()` memperkirakan jumlah potongan yang akan di-ranking dari `kosakata` (satu lookup indeks): untuk AND, `ndoc` kata paling jarang; untuk OR, jumlah `ndoc` semua kata. Di atas 5.000, kandidat disaring dari `tsv_judul` lalu tetap di-ranking dengan `tsv` penuh. Kalau saringan judul kosong, pencarian diulang dengan teks penuh. Di korpus 30 artikel saringan ini tidak pernah aktif, jadi angka evaluasi langkah sebelumnya tidak berubah. Ukur, lalu bandingkan `npm run eval -- sinyal --semua` dengan `BATAS_KATA_UMUM=0 DB_TIMEOUT_MS=60000 npm run eval -- sinyal --semua` untuk membuktikan kualitas tidak turun (acuan: keduanya nDCG@10 sekitar 0,89 dengan 100 ribu pengecoh). Tulis ADR-0004 termasuk konsekuensinya: kueri satu kata yang sangat umum tidak lagi menemukan dokumen yang memuat kata itu hanya di isi.\n6. Isi angka p95 di brief berdasarkan pengukuranmu, bukan sebaliknya.\n\n## Angka acuan\n\nLaptop 4 inti, container Postgres `mem_limit: 384m` (`shared_buffers` 96 MB), 100.030 dokumen, 200 ribu potongan, heap `chunks` sekitar 320 MB. Angkamu akan berbeda; urutannya seharusnya sama.\n\n`EXPLAIN ANALYZE`, kueri `produk` (32.185 potongan cocok), cache hangat:\n\n| Konfigurasi | Baris di-ranking | Waktu eksekusi |\n| --- | --- | --- |\n| ts_rank_cd, saring tsv | 32.185 | ~2.000 ms |\n| ts_rank, saring tsv | 32.185 | ~550-750 ms |\n| ts_rank, saring tsv_judul | 1.586 | ~25-60 ms |\n\n`npm run bench -- http://localhost:3000 400 4 2`:\n\n| Konfigurasi | Galat (timeout 2 dtk) | p50 | p95 | p99 |\n| --- | --- | --- | --- | --- |\n| naif: `VARIAN=cd_sinyal BATAS_KATA_UMUM=0` | 20 dari 400 | 53 ms | 2.008 ms | 2.270 ms |\n| `VARIAN=sinyal BATAS_KATA_UMUM=0` (ts_rank) | 0 | 51 ms | 916 ms | 1.720 ms |\n| bawaan: ts_rank + saringan kueri lebar | 0 | 34 ms | 315 ms | 1.105 ms |\n\nSelisih 10-20% antar-run wajar di laptop; ulangi sampai dua run berturut-turut mirip.\n\n![Ringkasan pengukuran verifikasi: perhatikan bahwa perbaikan terbesar bukan dari indeks baru, tapi dari mengurangi jumlah baris yang harus di-ranking.](/studio/mesin-pencari-dokumen/performa.svg)\n\nEkor yang tersisa adalah kata kerja seperti \"menghapus\" yang umum **di judul** sintetis, sehingga saringan judul pun masih besar. Itulah batas pendekatan ini; catat di ADR kapan kamu akan pindah ke mesin BM25 dengan pruning (OpenSearch, ParadeDB).\n\n## Kriteria lulus\n\n- Bench akhir: **0 galat** dan p95 memenuhi target yang kamu tulis (acuan di mesin di atas: p95 < 500 ms tanpa cache aplikasi).\n- `docs/performa.md` berisi tiga potongan `EXPLAIN ANALYZE` (sebelum, perbaikan 1, perbaikan 2) dengan node termahal ditandai, plus tabel bench.\n",
+      "materials": [
+        {
+          "id": "mpd-gen",
+          "kind": "kode",
+          "name": "scripts/gen-100k.ts",
+          "lang": "typescript",
+          "content": "// Buat N dokumen sintetis (default 100.000) untuk uji performa, lewat COPY per batch.\n//   npm run gen               -> 100000 dokumen\n//   npm run gen -- 20000      -> lebih sedikit, untuk mesin kecil\n// Memori tetap kecil: baris ditulis ke stream COPY satu per satu dan menunggu 'drain'.\nimport { once } from \"node:events\";\nimport postgres from \"postgres\";\n\nconst N = Number(process.argv[2] ?? 100_000);\nconst BATCH = 10_000;\nconst ID0 = 1_000_000; // id sintetis jauh dari id korpus asli\nconst sql = postgres(process.env.DATABASE_URL!, { max: 1, onnotice: () => {} });\n\n// PRNG deterministik: data sama setiap kali dijalankan, hasil benchmark bisa dibandingkan.\nlet seed = 42;\nconst rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);\n\nconst KATA = (\"pesanan produk toko akun pembayaran pengiriman stok harga kasir pembeli penjual laporan \" +\n  \"voucher diskon kurir resi alamat saldo pencairan rekening faktur pajak langganan aplikasi notifikasi \" +\n  \"printer struk gudang varian kategori foto ulasan rating komplain retur refund promosi iklan kampanye \" +\n  \"integrasi webhook token sinkron impor ekspor jadwal shift karyawan pelanggan member poin hadiah \" +\n  \"ongkos berat dimensi asuransi cicilan tunai transfer qris dompet bank cabang outlet meja menu dapur \" +\n  \"resep bahan pemasok pembelian tagihan jatuh tempo pengingat dasbor grafik target omzet margin\").split(\" \");\nconst KERJA = \"mengatur membuat mengubah menghapus melihat mengunduh mengirim menyambungkan memeriksa membatalkan\".split(\" \");\nconst KATEGORI = [\"akun\", \"keamanan\", \"pembayaran\", \"pengiriman\", \"toko\", \"kasir\", \"aplikasi\"];\nconst PRODUK = [\"web\", \"aplikasi\", \"kasir\"];\n\n// Kosakata 20.000 kata semu + kata sungguhan di peringkat 20, 40, 60, ...\n// Peringkat diambil log-uniform (frekuensi ~ 1/peringkat, hukum Zipf): beberapa kata sangat umum,\n// sebagian besar jarang. Tanpa ini setiap kata muncul di hampir semua dokumen dan hasil benchmark menipu.\nconst SUKU = \"ba be bi bo bu da di du ga gi ka ke ki ku la li lu ma me mi mu na ni nu pa pe pi ra ri ru sa se si su ta te ti tu wa ya\".split(\" \");\nconst VOCAB = Array.from({ length: 20_000 }, (_, i) =>\n  SUKU[i % 40] + SUKU[Math.floor(i / 40) % 40] + SUKU[Math.floor(i / 1600) % 40]);\nKATA.forEach((k, i) => { VOCAB[20 + i * 20] = k; });\nconst kata = () => VOCAB[Math.floor(VOCAB.length ** rnd()) - 1];\nconst pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];\nconst kalimat = (n: number) => Array.from({ length: n }, kata).join(\" \");\nconst tsv = (v: string) => v.replace(/[\\\\\\t\\n\\r]/g, \" \"); // aman untuk format teks COPY\n\nasync function copyRows(stmt: postgres.PendingQuery<postgres.Row[]>, rows: Iterable<string[]>) {\n  const stream = await stmt.writable();\n  for (const r of rows) {\n    if (!stream.write(r.map(tsv).join(\"\\t\") + \"\\n\")) await once(stream, \"drain\");\n  }\n  stream.end();\n  await once(stream, \"finish\");\n}\n\nconsole.time(\"total\");\nawait sql`delete from documents where koleksi = 'sintetis'`;\nawait sql`drop index if exists chunks_tsv_gin`; // bangun indeks sekali di akhir, jauh lebih cepat\nawait sql`drop index if exists chunks_tsv_judul_gin`;\nfor (let from = 0; from < N; from += BATCH) {\n  const ids = Array.from({ length: Math.min(BATCH, N - from) }, (_, i) => ID0 + from + i);\n  const docs = ids.map((id) => {\n    const judul = `${pick(KERJA)} ${kata()} ${kata()}`;\n    const hari = Math.floor(rnd() * 1500);\n    return { id, judul, row: [String(id), `sin-${id}`, judul, `/arsip/sin-${id}`, \"sintetis\",\n      KATEGORI[Math.floor(rnd() * KATEGORI.length)], PRODUK[Math.floor(rnd() * PRODUK.length)],\n      new Date(Date.UTC(2026, 10, 1) - hari * 86_400_000).toISOString(), String(Math.floor(rnd() ** 4 * 500)), \"-\"] };\n  });\n  await copyRows(sql`copy documents (id, slug, title, url, koleksi, kategori, produk, updated_at, clicks, content_hash) from stdin`,\n    docs.map((d) => d.row));\n  await copyRows(sql`copy chunks (doc_id, ord, anchor, title, heading, body) from stdin`,\n    (function* () {\n      for (const d of docs) {\n        const n = 1 + Math.floor(rnd() * 3);\n        for (let ord = 0; ord < n; ord++) {\n          const h = ord ? kalimat(3) : \"\";\n          yield [String(d.id), String(ord), h.replaceAll(\" \", \"-\"), d.judul, h, kalimat(40 + Math.floor(rnd() * 60))];\n        }\n      }\n    })());\n  console.log(`${from + ids.length} / ${N}`);\n}\nawait sql`select setval(pg_get_serial_sequence('documents', 'id'), (select max(id) from documents))`;\nawait sql`set maintenance_work_mem = '64MB'`;\nconsole.time(\"indeks GIN\");\nawait sql`create index chunks_tsv_gin on chunks using gin (tsv)`;\nawait sql`create index chunks_tsv_judul_gin on chunks using gin (tsv_judul)`;\nconsole.timeEnd(\"indeks GIN\");\nawait sql`vacuum analyze documents`;\nawait sql`vacuum analyze chunks`;\nawait sql`refresh materialized view concurrently kosakata`;\nconsole.timeEnd(\"total\");\nawait sql.end();\n"
+        },
+        {
+          "id": "mpd-bench",
+          "kind": "kode",
+          "name": "scripts/bench.ts",
+          "lang": "typescript",
+          "content": "// Uji beban kecil: kirim campuran kueri ke API dan laporkan p50/p95/p99.\n//   npm run bench -- http://localhost:3000 400 4 1   (url, jumlah request, konkurensi, seed)\n// Seed berbeda = kueri berbeda: pakai seed 1 untuk pemanasan, seed lain untuk pengukuran.\nconst [base = \"http://localhost:3000\", total = \"400\", conc = \"4\", seedArg = \"1\"] = process.argv.slice(2);\n\nconst KATA = [\"pesanan\", \"produk\", \"stok\", \"pembayaran\", \"kurir\", \"resi\", \"voucher\", \"printer\", \"struk\",\n  \"refund\", \"faktur\", \"notifikasi\", \"qris\", \"gudang\", \"laporan\", \"omzet\", \"pajak\", \"cicilan\", \"webhook\",\n  \"integrasi\", \"pemasok\", \"asuransi\", \"shift\", \"membatalkan\", \"menghapus\", \"pengiriman\", \"rekening\"];\nlet seed = Number(seedArg);\nconst rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);\nconst pick = () => KATA[Math.floor(rnd() * KATA.length)];\n\n// 70% kueri 1-2 kata, 20% 3 kata, 10% salah ketik; 30% memakai filter kategori.\nfunction kueri() {\n  const r = rnd();\n  let q = r < 0.7 ? [pick(), pick()].slice(0, 1 + Math.floor(rnd() * 2)).join(\" \")\n    : r < 0.9 ? `${pick()} ${pick()} ${pick()}` : pick().replace(/[aeiou]/, \"\");\n  const p = new URLSearchParams({ q });\n  if (rnd() < 0.3) p.set(\"kategori\", [\"akun\", \"pembayaran\", \"pengiriman\", \"kasir\"][Math.floor(rnd() * 4)]);\n  return p;\n}\n\nconst lat: number[] = [];\nlet hit = 0, gagal = 0, next = 0;\nasync function worker() {\n  while (next++ < Number(total)) {\n    const t = performance.now();\n    const res = await fetch(`${base}/cari?${kueri()}`);\n    await res.arrayBuffer();\n    lat.push(performance.now() - t);\n    if (!res.ok) gagal++;\n    if (res.headers.get(\"x-cache\") === \"hit\") hit++;\n  }\n}\nawait Promise.all(Array.from({ length: Number(conc) }, worker));\nlat.sort((a, b) => a - b);\nconst p = (x: number) => lat[Math.min(lat.length - 1, Math.floor(lat.length * x))].toFixed(1);\nconsole.log(`n=${lat.length} gagal=${gagal} cache-hit=${hit}  p50=${p(0.5)}ms p95=${p(0.95)}ms p99=${p(0.99)}ms`);\n"
+        },
+        {
+          "id": "mpd-explain",
+          "kind": "kode",
+          "name": "db/explain.sql",
+          "lang": "sql",
+          "content": "-- Rencana kueri pencarian (bentuk sama dengan src/search.ts, varian sinyal, halaman pertama).\n-- Variabel: q = kueri, rank = ts_rank | ts_rank_cd, saring = tsv | tsv_judul\n--   docker compose exec -T db psql -U cari -v q=produk -v rank=ts_rank -v saring=tsv < db/explain.sql\nexplain (analyze, buffers, costs off)\nwith q as (select websearch_to_tsquery('idn', :'q') as q),\nhits as (\n  select distinct on (c.doc_id) c.doc_id, c.id as chunk_id,\n    (:rank(c.tsv, q.q, 1)\n      * (0.8 + 0.2 * exp(-extract(epoch from (now() - d.updated_at)) / 86400 / 365))\n      * (1 + 0.1 * ln(1 + d.clicks)))::float8 as skor\n  from q, chunks c join documents d on d.id = c.doc_id\n  where c.:saring @@ q.q\n  order by c.doc_id, skor desc, c.ord\n),\npage as (select * from hits order by skor desc, doc_id desc limit 11)\nselect p.skor, d.slug, ts_headline('idn', c.body, q.q) as cuplikan\nfrom page p join documents d on d.id = p.doc_id join chunks c on c.id = p.chunk_id, q\norder by p.skor desc, p.doc_id desc;\n"
+        },
+        {
+          "id": "mpd-pg-explain",
+          "kind": "tautan",
+          "name": "PostgreSQL: Using EXPLAIN",
+          "url": "https://www.postgresql.org/docs/current/using-explain.html"
+        },
+        {
+          "id": "mpd-pg-copy",
+          "kind": "tautan",
+          "name": "PostgreSQL: COPY",
+          "url": "https://www.postgresql.org/docs/current/sql-copy.html"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-perf-data",
+          "text": "100 ribu dokumen sintetis masuk lewat COPY tanpa memori Node membengkak."
+        },
+        {
+          "id": "mpd-perf-explain",
+          "text": "Aku menyimpan EXPLAIN ANALYZE sebelum dan sesudah, dan bisa menunjuk node yang paling mahal."
+        },
+        {
+          "id": "mpd-perf-tabel",
+          "text": "Tabel bench tiga konfigurasi (naif, ts_rank, ts_rank + saring) sudah kutulis."
+        },
+        {
+          "id": "mpd-perf-target",
+          "text": "p95 konfigurasi akhir memenuhi target brief dengan 0 galat, atau targetnya kurevisi dengan alasan."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-keamanan-dan-observability",
+      "title": "Uji batas, keamanan, dan observability",
+      "est_minutes": 150,
+      "body": "## Uji seperti penyerang, pantau seperti on-call\n\nAPI pencarian publik adalah sasaran empuk: tanpa login, setiap request memicu kerja database. Sebelum online, buktikan batasnya bekerja dan kamu bisa melihat apa yang terjadi.\n\n## Yang perlu kamu kerjakan\n\n1. **Rate limit**. Dengan API berjalan memakai `.env` biasa (60 per menit):\n   ```bash\n   for i in $(seq 1 61); do curl -s -o /dev/null -w '%{http_code}\\n' \"localhost:3000/cari?q=akun$i\"; done | sort | uniq -c\n   ```\n   Harus ada 60 baris `200` (atau `400` untuk kueri yang hanya stopword) dan 1 `429`. Respons 429 membawa header `retry-after`. `/sehat` dan `/metrics` tidak dibatasi.\n2. **Input jahat**, semua harus 400, tidak satu pun 500:\n   ```bash\n   curl -s -o /dev/null -w '%{http_code}\\n' \"localhost:3000/cari?q=$(head -c 10000 /dev/zero | tr '\\0' a)\"\n   curl -s -o /dev/null -w '%{http_code}\\n' 'localhost:3000/cari?q=akun&limit=9999'\n   curl -s -o /dev/null -w '%{http_code}\\n' 'localhost:3000/cari?q=akun&cursor=eyJzIjoxfQ'\n   curl -s -o /dev/null -w '%{http_code}\\n' 'localhost:3000/cari?q=akun&kategori=x%27%3Bdrop%20table'\n   curl -s -o /dev/null -w '%{http_code}\\n' 'localhost:3000/cari?q=akun&setelah=kemarin'\n   curl -s -o /dev/null -w '%{http_code}\\n' -X POST localhost:3000/klik -H 'content-type: application/json' -d '{\"id\":\"1 or 1=1\"}'\n   ```\n   Kueri pertama bisa berakhir 414 dari server HTTP sebelum validasi; itu juga aman. Yang tidak boleh: 500.\n3. **Metrik**. Buka `localhost:3000/metrics` dan cari `pencarian_durasi_detik_bucket`. Hitung kasar p95 dari bucket, atau tulis kueri PromQL yang akan kamu pakai di Grafana:\n   ```text\n   histogram_quantile(0.95, sum by (le) (rate(pencarian_durasi_detik_bucket{cache=\"miss\"}[5m])))\n   ```\n   Label `hasil=\"nol\"` memberi rasio pencarian tanpa hasil, metrik produk terpenting pusat bantuan.\n4. **Kueri termahal di database**:\n   ```bash\n   docker compose exec db psql -U cari -c \"select calls, round(mean_exec_time) rata_ms, round(max_exec_time) maks_ms, left(regexp_replace(query, '\\s+', ' ', 'g'), 80) kueri from pg_stat_statements order by total_exec_time desc limit 5\"\n   ```\n5. **Log**. Setiap pencarian menulis satu baris JSON berisi `q`, `hasil`, `koreksi`, `sebagian`, `cache`, `ms`. Tampilkan kueri tanpa hasil:\n   ```bash\n   npm run dev | grep '\"msg\":\"cari\"' | grep '\"hasil\":0'\n   ```\n   Daftar ini adalah bahan kamus sinonim dan artikel baru berikutnya. Tulis di README bahwa kueri pengguna dicatat, berapa lama disimpan, dan jangan pernah mencatat token atau data pribadi lain.\n\n## Kriteria lulus\n\n- Bukti (output terminal) untuk setiap poin di atas tersimpan di `docs/uji.md`.\n- Tidak ada satu pun respons 500 dari input yang kamu kirim.\n",
+      "materials": [
+        {
+          "id": "mpd-pgss",
+          "kind": "tautan",
+          "name": "PostgreSQL: pg_stat_statements",
+          "url": "https://www.postgresql.org/docs/current/pgstatstatements.html"
+        },
+        {
+          "id": "mpd-prom",
+          "kind": "tautan",
+          "name": "prom-client",
+          "url": "https://github.com/siimon/prom-client"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-uji-429",
+          "text": "Request ke-61 dalam semenit mendapat 429."
+        },
+        {
+          "id": "mpd-uji-input",
+          "text": "Input jahat (q 10.000 karakter, cursor palsu, limit 9999) ditolak 400 tanpa 500."
+        },
+        {
+          "id": "mpd-uji-metrik",
+          "text": "Aku bisa membaca p95 dari /metrics dan kueri termahal dari pg_stat_statements."
+        },
+        {
+          "id": "mpd-uji-nol",
+          "text": "Aku punya cara melihat kueri tanpa hasil dari log."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-vps-docker-compose",
+      "title": "Deploy ke VPS dengan Docker Compose dan Caddy",
+      "est_minutes": 210,
+      "body": "## Kenapa VPS, bukan platform serverless\n\nKonfigurasi `idn` membutuhkan berkas kamus di server Postgres, jadi kamu menjalankan Postgres sendiri dari image `db/Dockerfile`. Cara paling sederhana yang tetap produksi: satu VPS kecil, Docker Compose, dan Caddy di depan untuk HTTPS otomatis. Stack yang sama persis dengan yang sudah kamu jalankan lokal.\n\n![Bentuk deploy: Caddy menerima HTTPS di port 443 dan meneruskan ke container api di jaringan internal; database tidak pernah terbuka ke internet.](gambar:docker-reverse-proxy-https)\n\nYang sudah disiapkan di Bahan:\n\n- `Dockerfile` API: `node:26-alpine`, `npm ci --omit=dev`, berjalan sebagai user `node`, menjalankan `src/server.ts` langsung. `SIGTERM` ditangani: Fastify menyelesaikan request yang sedang jalan, lalu pool database ditutup.\n- Service `api` punya healthcheck ke `/sehat`, sehingga `docker compose up --wait` benar-benar menunggu API siap menerima request (tanpa healthcheck, `--wait` hanya menunggu container berjalan).\n- Service `caddy` di `docker-compose.yml` berada di profil `prod`, jadi tidak ikut jalan di laptop. `Caddyfile` menjawab `/metrics` dengan 404 untuk publik; Prometheus mengambilnya dari jaringan internal (`api:3000/metrics`).\n- Port Postgres dan API hanya terikat ke `127.0.0.1` di host. Ini penting: port yang dipublikasikan Docker **melewati aturan ufw**, jadi `ufw deny 5433` tidak melindungi apa pun kalau port itu terikat ke `0.0.0.0`.\n\n## Yang perlu kamu kerjakan\n\n1. **Uji image lokal dulu**:\n   ```bash\n   docker compose up -d --build --wait\n   curl -s 'localhost:3000/cari?q=lupa%20password' | head -c 300; echo\n   docker compose logs api --tail 5\n   ```\n   (`npm run dev` harus mati dulu: keduanya memakai port 3000.)\n2. **Siapkan VPS**: Ubuntu 26.04 LTS atau 24.04 LTS, minimal 1 GB RAM (2 GB kalau memuat 100 ribu dokumen), instal Docker Engine sesuai dokumentasi resmi di Bahan. Buka hanya port 22, 80, 443 (`ufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw enable`). Arahkan record DNS `A` subdomainmu (misalnya `cari.domainmu.id`) ke IP VPS.\n3. **Konfigurasi rahasia di server**, di folder repo:\n   ```bash\n   cat > .env <<'ENV'\n   POSTGRES_PASSWORD=<acak, minimal 24 karakter>\n   DOMAIN=cari.domainmu.id\n   TRUST_PROXY=1\n   ENV\n   docker compose --profile prod up -d --build --wait\n   ```\n   `TRUST_PROXY=1` wajib di belakang Caddy. Tanpanya semua request terlihat berasal dari IP Caddy, sehingga rate limit 60/menit berlaku untuk **seluruh** pengunjung sekaligus.\n4. **Isi data** (`db-reset` hanya sekali, saat server masih kosong):\n   ```bash\n   docker compose exec api node scripts/db-reset.ts\n   docker compose exec api node src/ingest.ts korpus\n   curl -s \"https://cari.domainmu.id/cari?q=ganti%20sandi\" | head -c 300; echo\n   curl -s -o /dev/null -w '%{http_code}\\n' https://cari.domainmu.id/metrics   # 404\n   ```\n   Jangan jalankan `gen` di produksi: data sintetis hanya untuk benchmark.\n5. **Backup dan uji restore**: jadwalkan `pg_dump` harian dengan cron, salin ke luar server, lalu buktikan restore bekerja:\n   ```bash\n   docker compose exec -T db pg_dump -U cari -Fc cari > cari-$(date +%F).dump\n   docker compose exec -T db createdb -U cari cari_restore\n   docker compose exec -T db pg_restore -U cari -d cari_restore < cari-$(date +%F).dump\n   docker compose exec db psql -U cari -d cari_restore -c \"select count(*) from documents\"\n   ```\n   Restore ke Postgres lain butuh image yang sama (`db/Dockerfile`), karena konfigurasi `idn` merujuk berkas kamus.\n\n## Kriteria lulus\n\n- API live lewat HTTPS dengan sertifikat valid, `/metrics` dari luar 404, `nmap` dari laptopmu tidak menemukan port 5432/5433/3000 terbuka.\n- Satu backup sudah pernah di-restore dan jumlah dokumennya cocok.\n",
+      "materials": [
+        {
+          "id": "mpd-dockerfile",
+          "kind": "kode",
+          "name": "Dockerfile",
+          "lang": "dockerfile",
+          "content": "FROM node:26-alpine\nWORKDIR /app\nENV NODE_ENV=production\nCOPY package.json package-lock.json ./\nRUN npm ci --omit=dev\nCOPY . .\nUSER node\nEXPOSE 3000\nCMD [\"node\", \"src/server.ts\"]\n"
+        },
+        {
+          "id": "mpd-dockerignore",
+          "kind": "kode",
+          "name": ".dockerignore",
+          "lang": "text",
+          "content": "node_modules\n.env\n.git\n"
+        },
+        {
+          "id": "mpd-caddyfile",
+          "kind": "kode",
+          "name": "Caddyfile",
+          "lang": "text",
+          "content": "{$DOMAIN} {\n\tencode zstd gzip\n\t# Metrik hanya untuk jaringan internal (scrape ke api:3000/metrics)\n\trespond /metrics 404\n\treverse_proxy api:3000\n}\n"
+        },
+        {
+          "id": "mpd-caddy-rp",
+          "kind": "tautan",
+          "name": "Caddy: reverse_proxy",
+          "url": "https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+        },
+        {
+          "id": "mpd-caddy-https",
+          "kind": "tautan",
+          "name": "Caddy: Automatic HTTPS",
+          "url": "https://caddyserver.com/docs/automatic-https"
+        },
+        {
+          "id": "mpd-docker-install",
+          "kind": "tautan",
+          "name": "Docker Engine: instalasi di Ubuntu",
+          "url": "https://docs.docker.com/engine/install/ubuntu/"
+        },
+        {
+          "id": "mpd-pg-image",
+          "kind": "tautan",
+          "name": "Image resmi postgres",
+          "url": "https://hub.docker.com/_/postgres"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-dep-lokal",
+          "text": "docker compose up --build menjalankan api + db lokal dan /cari menjawab."
+        },
+        {
+          "id": "mpd-dep-https",
+          "text": "API live di domainmu lewat HTTPS, /metrics dari luar menjawab 404."
+        },
+        {
+          "id": "mpd-dep-data",
+          "text": "Korpus ter-ingest di server dan pencarian live memberi hasil."
+        },
+        {
+          "id": "mpd-dep-backup",
+          "text": "Aku punya perintah pg_dump terjadwal dan sudah mencoba restore sekali."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-adr-dan-laporan-relevansi",
+      "title": "README, ADR, dan laporan relevansi",
+      "est_minutes": 90,
+      "body": "## Ceritakan keputusannya, dengan angka\n\nPembaca portofolio untuk posisi senior mencari bukti penilaian: kenapa Postgres dan bukan OpenSearch, kenapa tanpa stemmer, kenapa `ts_rank`, dan bagaimana kamu tahu hasilnya relevan dan cepat. Semua jawabannya sudah kamu hasilkan; tinggal dirapikan.\n\n## Yang perlu kamu kerjakan\n\n1. Lengkapi `README.md` dari template: tautan demo dan repo, cara menjalankan lokal, tabel API, dan **Bukti kualitas** dengan angka nyata dari `npm run eval`, `npm run bench`, dan `npm test`.\n2. Rapikan `docs/adr/`: minimal empat ADR (mesin pencari, konfigurasi bahasa, fungsi ranking, kata umum), semuanya berstatus \"diterima\" dengan tautan ke bukti (`docs/relevansi.md`, `docs/performa.md`).\n3. Tulis `docs/relevansi.md` sebagai laporan singkat: set kueri dan cara melabelinya, tabel varian, perubahan kamus dan efeknya, satu kueri yang masih gagal beserta penjelasannya, dan apa yang akan kamu coba berikutnya (misalnya ekspansi sinonim dari log kueri tanpa hasil).\n4. Tambahkan contoh request dan respons nyata (dengan data contoh, bukan data pelanggan) supaya pembaca bisa mencoba tanpa membaca kode.\n5. Kirim tautan API live dan repositori di halaman ringkasan proyek ini.\n\n## Kriteria lulus\n\n- Orang lain bisa menjalankan proyek dari nol hanya dengan README, termasuk `npm test` dan `npm run eval`.\n- Setiap klaim angka di README punya perintah untuk mengulangnya.\n",
+      "materials": [
+        {
+          "id": "mpd-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Mesin Pencari Dokumen\n\nPencarian pusat bantuan berbahasa Indonesia di atas PostgreSQL full-text search:\nkonfigurasi teks `idn` (unaccent + sinonim + stopword), ranking berbobot dengan sinyal\nkesegaran dan klik, koreksi salah ketik pg_trgm, cuplikan aman, facet, keyset pagination.\n\n**Demo API:** https://___/cari?q=lupa%20password   **Repo:** https://github.com/___\n\n## Arsitektur\nCaddy (HTTPS) -> API Fastify (Node 26) -> PostgreSQL 19 (image sendiri berisi kamus teks).\nAlur GET /cari: validasi + rate limit -> cache -> AND (websearch_to_tsquery) -> koreksi\nejaan (pg_trgm) -> OR -> ranking + keyset -> cuplikan yang di-escape. Skema: db/schema.sql.\n\n## Menjalankan lokal\n```bash\ncp .env.example .env\ndocker compose up -d --wait db\nnpm install\nnpm run db:reset && npm run ingest\nnpm test && npm run eval\nnpm run dev   # http://localhost:3000/cari?q=ganti%20sandi\n```\n\n## API\n| Metode | Path | Keterangan |\n| --- | --- | --- |\n| GET | /cari?q=&kategori=&produk=&koleksi=&setelah=&limit=&cursor= | hasil, cuplikan, facet (halaman 1), cursor |\n| POST | /klik `{ \"id\": \"12\" }` | sinyal klik, 204 |\n| GET | /sehat | cek DB |\n| GET | /metrics | Prometheus (diblokir di Caddy untuk publik) |\n\n## Bukti kualitas\n| Ukuran | Hasil | Cara ulang |\n| --- | --- | --- |\n| nDCG@10 / MRR (25 kueri berlabel) | ___ / ___ | npm run eval |\n| p95 tanpa cache, 100k dokumen, 4 paralel | ___ ms (sebelum optimasi ___ ms) | npm run bench |\n| Tes perilaku | ___ lulus | npm test |\n\n## Keputusan penting\n| ADR | Keputusan |\n| --- | --- |\n| 0001 | PostgreSQL FTS, bukan mesin pencari terpisah |\n| 0002 | Konfigurasi `idn` tanpa stemming (diukur vs Snowball indonesian) |\n| 0003 | ts_rank + sinyal, bukan ts_rank_cd (kualitas sama, ___x lebih cepat) |\n| 0004 | Saring kandidat dari judul untuk kata sangat umum |\n\n## Batasan yang diketahui\n- Cache per proses; rate limit per proses (satu instance).\n- Kamus berbasis berkas: tidak bisa dipakai di Postgres terkelola yang melarang berkas kustom.\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "mpd-dok-readme",
+          "text": "README memuat cara menjalankan, API, dan tabel bukti kualitas dengan angka nyata."
+        },
+        {
+          "id": "mpd-dok-adr",
+          "text": "Minimal empat ADR berstatus jelas ada di docs/adr."
+        },
+        {
+          "id": "mpd-dok-laporan",
+          "text": "Laporan relevansi berisi tabel varian dan satu kueri gagal yang kujelaskan."
+        },
+        {
+          "id": "mpd-dok-kirim",
+          "text": "Tautan API live dan repositori sudah kukirim di halaman ringkasan proyek ini."
+        }
+      ]
+    }
+  ]
+}
