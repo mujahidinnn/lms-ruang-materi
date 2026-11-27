@@ -1,0 +1,684 @@
+{
+  "slug": "absensi-qr-code",
+  "title": "Absensi dengan QR Code",
+  "summary": "Bangun aplikasi absensi kelas atau acara: QR di layar berganti tiap 30 detik dan ditandatangani HMAC, peserta memindai dari browser HP, server menolak QR palsu, basi, NIM ganda, dan HP ganda, daftar hadir bertambah live lewat Server-Sent Events, lalu rekap CSV. Node.js, Express 5, SQLite, diuji otomatis dan di-deploy dengan disk persisten.",
+  "level": "menengah",
+  "est_hours": 14,
+  "steps": [
+    {
+      "stage": "brief",
+      "slug": "tentukan-masalah-absensi",
+      "title": "Tentukan masalah absensi yang ingin diselesaikan",
+      "est_minutes": 15,
+      "body": "## Masalah yang semua orang pernah alami\n\nKertas absen berkeliling kelas, ada yang menulis nama temannya, lalu asisten dosen mengetik ulang semuanya ke spreadsheet. Atau dosen memanggil 40 nama satu per satu dan sepuluh menit kuliah habis. Proyek ini menggantinya dengan **QR di layar proyektor** yang dipindai peserta dari HP masing-masing.\n\nIni proyek yang enak dipamerkan karena orang langsung paham kegunaannya, dan di baliknya ada hal-hal yang sering ditanyakan di wawancara backend: tanda tangan kriptografis, sesi login, constraint database, dan koneksi realtime.\n\n## Yang perlu kamu kerjakan\n\n1. Pilih satu tempat nyata yang akan memakai aplikasimu: kelasmu, himpunan, komunitas, atau acara kampus. Semakin nyata, semakin mudah memutuskan fitur.\n2. Salin template `brief.md` di bagian Bahan dan isi semua `___`.\n3. Tulis **ukuran berhasil** dengan angka. Contoh: 40 peserta selesai absen dalam 3 menit.\n4. Tulis batas versi pertama. Saran kuat: tanpa aplikasi HP (cukup browser), satu server, satu berkas SQLite.\n\n> Satu hal yang perlu jujur sejak awal: absensi QR **tidak bisa** 100% mencegah titip absen. Yang bisa kita lakukan adalah membuatnya lebih repot daripada kertas. Batasan ini akan kamu tulis di README, dan kejujuran semacam itu justru terlihat matang di mata perekrut.",
+      "materials": [
+        {
+          "id": "abs-m-brief",
+          "kind": "kode",
+          "name": "brief.md",
+          "lang": "markdown",
+          "content": "# Brief: Absensi dengan QR Code\n\n## Masalah\nSaat ini absensi di ___ (kelas/acara) dilakukan dengan ___ (kertas keliling / panggil nama satu per satu).\nMasalahnya: ___ (makan waktu ___ menit, kertas bisa diisi untuk teman, rekap harus diketik ulang).\n\n## Pengguna\n- Panitia/dosen: ___ (membuka sesi, menampilkan QR di proyektor, mengunduh rekap)\n- Peserta: ___ (memindai QR dengan HP, mengisi nama dan NIM)\n\n## Versi pertama pasti bisa\n1. ___\n2. ___\n3. ___\n\n## Ukuran berhasil\n- 40 peserta selesai absen dalam kurang dari ___ menit.\n- Rekap CSV bisa langsung dibuka di spreadsheet tanpa diketik ulang.\n\n## Batas versi pertama\n- Tanpa aplikasi HP, cukup browser.\n- Satu server, satu berkas database SQLite.\n- Anti-titip absen sederhana saja, dan batasannya ditulis jujur di README.\n\n## Tujuan pribadi\n___ (contoh: portofolio backend, dipakai sungguhan di himpunan/kelas)\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-brief-tempat",
+          "text": "Aku sudah memilih satu kelas, komunitas, atau acara nyata yang akan memakai aplikasiku."
+        },
+        {
+          "id": "abs-brief-ukuran",
+          "text": "Ukuran berhasil sudah kutulis dengan angka."
+        },
+        {
+          "id": "abs-brief-batas",
+          "text": "Batas versi pertama sudah kutulis, termasuk bahwa titip absen tidak bisa dicegah 100%."
+        }
+      ]
+    },
+    {
+      "stage": "brainstorming",
+      "slug": "petakan-alur-dan-kecurangan",
+      "title": "Petakan alur panitia, peserta, dan cara curangnya",
+      "est_minutes": 30,
+      "body": "## Dua sisi: panitia dan peserta\n\nAplikasi ini punya dua pemakai yang memegang perangkat berbeda. Panitia memakai laptop yang tersambung ke proyektor, peserta memakai HP. Petakan alur keduanya dulu sebelum memikirkan kode.\n\n## Yang perlu kamu kerjakan\n\n1. Tulis alur panitia dari login sampai mengunduh rekap, dalam 5 sampai 7 langkah.\n2. Tulis alur peserta dari membuka halaman sampai melihat tanda berhasil. Usahakan tidak lebih dari 4 langkah, karena 40 orang akan melakukannya bersamaan.\n3. Pikirkan seperti peserta yang malas datang: **bagaimana cara titip absen?** Tulis minimal lima cara, lalu untuk tiap cara tulis penangkalnya, atau tulis \"tidak ditangkal\" kalau memang tidak.\n4. Tandai fitur **wajib** dan **nanti**.\n\n## Contoh tabel kecurangan\n\n| Cara curang | Penangkal di versi pertama |\n| --- | --- |\n| Memotret QR lalu mengirimnya ke grup kemarin | QR berganti tiap 30 detik, token kedaluwarsa sekitar 60 detik |\n| Membuat QR palsu berisi id sesi | Token ditandatangani HMAC dengan rahasia server |\n| Satu HP dipakai absen untuk lima teman | Cookie perangkat: satu HP sekali per sesi |\n| Absen dua kali dengan NIM sama | `UNIQUE (session_id, nim)` di database |\n| Foto QR dikirim lewat chat dan dipindai dalam 30 detik | **Tidak ditangkal.** Tulis jujur di README |\n| Mode penyamaran untuk mendapat cookie baru | **Tidak ditangkal.** Hanya membuatnya lebih repot |\n\n## Fitur nanti (jangan dikerjakan sekarang)\n\nCek lokasi GPS, daftar peserta resmi per kelas, banyak panitia per sesi, impor dari SIAKAD. Tulis di README sebagai rencana.",
+      "materials": [],
+      "checks": [
+        {
+          "id": "abs-ide-panitia",
+          "text": "Alur panitia dari login sampai unduh rekap sudah kutulis."
+        },
+        {
+          "id": "abs-ide-peserta",
+          "text": "Alur peserta tidak lebih dari empat langkah."
+        },
+        {
+          "id": "abs-ide-curang",
+          "text": "Aku menulis minimal lima cara titip absen beserta penangkalnya atau tanda tidak ditangkal."
+        },
+        {
+          "id": "abs-ide-prioritas",
+          "text": "Fitur sudah kutandai wajib atau nanti."
+        }
+      ]
+    },
+    {
+      "stage": "teknologi",
+      "slug": "pilih-stack-absensi",
+      "title": "Pilih stack: Node.js, Express 5, SQLite, dan pemindai QR",
+      "est_minutes": 30,
+      "body": "## Stack kecil yang cukup untuk satu kelas\n\n| Bagian | Pilihan | Alasan |\n| --- | --- | --- |\n| Runtime | Node.js 26 LTS (24 LTS juga bisa) | LTS berarti mendapat perbaikan keamanan jangka panjang. Punya `--watch`, `--env-file`, test runner, dan `crypto` bawaan |\n| Framework | Express 5 | Kecil dan matang. Sejak versi 5, error yang dilempar di fungsi `async` otomatis diteruskan ke penanganan error |\n| Database | SQLite lewat `better-sqlite3` 13 | Satu berkas, tanpa server database. Untuk satu kelas atau satu acara, SQLite jauh lebih dari cukup |\n| QR | `qrcode` | Membuat QR sebagai SVG di server, tajam di proyektor sebesar apa pun |\n| Pemindai | `BarcodeDetector` + `jsQR` | Pakai API bawaan browser kalau ada, kalau tidak pakai jsQR |\n| Realtime | Server-Sent Events | Server cukup mendorong data ke satu arah (ke layar). Tidak perlu WebSocket |\n| Uji | `node:test` + `supertest` | Tanpa framework tes tambahan |\n\n## Kenapa better-sqlite3, bukan `node:sqlite` bawaan?\n\nNode sudah punya modul `node:sqlite`, tetapi sampai Node 26 statusnya masih **Stability 1.2, release candidate**: hampir stabil, tetapi API-nya masih boleh berubah. `better-sqlite3` sudah stabil bertahun-tahun, API-nya sinkron dan sederhana, dan versi 13 membawa binary jadi untuk Linux, macOS, dan Windows, jadi biasanya tidak perlu compiler. Kalau suatu saat `node:sqlite` dinyatakan stabil, kodenya mudah dipindah karena bentuknya mirip (`prepare().get()`, `.all()`, `.run()`).\n\n## Kenapa butuh dua cara memindai?\n\n`BarcodeDetector` adalah API bawaan browser yang cepat, tetapi menurut data kompatibilitas MDN baru tersedia di **Chrome Android** dan Chrome/Edge di **macOS dan ChromeOS**. Chrome di Windows dan Linux, Firefox, dan Safari (iPhone) belum menyalakannya secara bawaan. Padahal banyak peserta memakai iPhone. Karena itu halaman pindai memeriksa dulu: kalau `BarcodeDetector` ada, pakai itu, kalau tidak, muat `jsQR` (pustaka JavaScript murni yang membaca piksel dari kamera).\n\n## Yang perlu kamu siapkan\n\n1. Pasang Node.js 26 LTS (atau 24 LTS). Cek dengan `node -v`.\n2. Siapkan HP dengan kamera untuk mencoba nanti, plus laptop dengan browser Chrome atau Firefox.\n3. Tulis dua alasan pilihan stack ini dengan kata-katamu sendiri.",
+      "materials": [
+        {
+          "id": "abs-m-node-rilis",
+          "kind": "tautan",
+          "name": "Node.js: jadwal rilis dan versi LTS",
+          "url": "https://nodejs.org/en/about/previous-releases"
+        },
+        {
+          "id": "abs-m-bsqlite",
+          "kind": "tautan",
+          "name": "better-sqlite3: dokumentasi API",
+          "url": "https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md"
+        },
+        {
+          "id": "abs-m-node-sqlite",
+          "kind": "tautan",
+          "name": "Node.js: node:sqlite (status release candidate)",
+          "url": "https://nodejs.org/api/sqlite.html"
+        },
+        {
+          "id": "abs-m-mdn-barcode",
+          "kind": "tautan",
+          "name": "MDN: BarcodeDetector dan dukungan browser",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/BarcodeDetector"
+        },
+        {
+          "id": "abs-m-jsqr",
+          "kind": "tautan",
+          "name": "jsQR di GitHub",
+          "url": "https://github.com/cozmo/jsQR"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-tek-node",
+          "text": "Node.js 26 LTS (atau 24 LTS) sudah terpasang."
+        },
+        {
+          "id": "abs-tek-sqlite",
+          "text": "Aku bisa menjelaskan kenapa memakai better-sqlite3, bukan node:sqlite."
+        },
+        {
+          "id": "abs-tek-pemindai",
+          "text": "Aku tahu browser mana yang punya BarcodeDetector dan kenapa jsQR tetap dibutuhkan."
+        },
+        {
+          "id": "abs-tek-alasan",
+          "text": "Aku bisa menyebut dua alasan memilih stack ini."
+        }
+      ]
+    },
+    {
+      "stage": "merancang",
+      "slug": "rancang-token-dan-tabel",
+      "title": "Rancang token QR bertanda tangan dan tabel",
+      "est_minutes": 60,
+      "body": "## Inti proyek: QR yang tidak bisa dipalsukan dan cepat basi\n\nKalau isi QR hanya `sesi-12`, siapa pun bisa membuat QR sendiri berisi `sesi-12` dari rumah. Kalau isi QR angka acak yang disimpan di database, server harus menyimpan dan membersihkan token setiap 30 detik. Ada cara yang lebih rapi: **token yang ditandatangani**.\n\n![Waktu dibagi menjadi jendela 30 detik. Tiap jendela punya token sendiri, dan server menerima token jendela sekarang serta satu jendela sebelumnya](/studio/absensi-qr-code/token-berputar.svg)\n\n## Cara kerjanya\n\n1. Waktu dibagi menjadi **jendela** 30 detik: `jendela = floor(waktuMs / 30000)`. Semua orang di dunia yang menghitung pada detik yang sama mendapat nomor jendela yang sama.\n2. Server membuat tanda tangan `HMAC-SHA256(QR_SECRET, \"idSesi.jendela\")`. HMAC adalah hash yang dicampur kunci rahasia. Tanpa kunci itu, tidak ada yang bisa membuat tanda tangan yang cocok.\n3. Isi QR: `idSesi.jendela.tandaTangan`, contohnya `12.59012345.Q2xh...` (43 karakter terakhir adalah tanda tangan).\n4. Saat peserta mengirim token, server **menghitung ulang** tanda tangannya. Cocok berarti token dibuat server ini. Lalu server memeriksa nomor jendelanya: harus jendela sekarang atau satu sebelumnya.\n\nKenapa jendela sebelumnya juga diterima? Peserta yang memindai di detik ke-29 butuh beberapa detik untuk mengirim. Tanpa kelonggaran ini, dia gagal karena QR sudah berganti. Akibatnya token berumur antara 30 dan 60 detik.\n\nServer **tidak menyimpan token sama sekali**. Semua yang dibutuhkan untuk memeriksa ada di token itu sendiri plus rahasia server.\n\n![Ubah satu karakter saja dan seluruh hash berubah. Itu sebabnya mengganti idSesi di token membuat tanda tangannya tidak cocok lagi](sim:hash-avalanche)\n\n## Tabel\n\n- `organizers`: akun panitia dengan kata sandi ter-hash.\n- `logins`: sesi login panitia. Yang disimpan **hash** tokennya, jadi kalau berkas database bocor, cookie orang tidak ikut bocor.\n- `sessions`: satu pertemuan kelas atau acara.\n- `checkins`: satu baris per kehadiran, dengan dua aturan `UNIQUE` yang menjaga NIM ganda dan HP ganda. Aturan ini sengaja di database, bukan hanya di JavaScript: dua request yang datang di milidetik yang sama tetap tidak bisa lolos dua-duanya.\n\n## Yang perlu kamu kerjakan\n\n1. Baca `rancangan.md` di bagian Bahan. Sesuaikan dengan hasil Brainstorming-mu, tapi jaga tetap kecil.\n2. Baca `schema.sql`. Cocokkan tiap aturan dengan tabel kecurangan yang kamu tulis.\n3. Tulis dengan kata-katamu: kenapa server tidak perlu menyimpan token QR?\n4. Simpan kedua berkas, keduanya masuk ke repositori nanti.",
+      "materials": [
+        {
+          "id": "abs-m-rancangan",
+          "kind": "kode",
+          "name": "rancangan.md",
+          "lang": "markdown",
+          "content": "# Rancangan Absensi QR\n\n## Halaman\n| Alamat | Untuk | Isi |\n| --- | --- | --- |\n| `/login` | panitia | form email dan kata sandi |\n| `/` | panitia | daftar sesi, buat sesi baru |\n| `/layar?id=ID` | panitia (proyektor) | QR berganti tiap 30 detik, daftar hadir live |\n| `/scan` | peserta (HP) | isi nama dan NIM, pindai QR dengan kamera |\n\n## Endpoint\n| Metode | Path | Siapa | Sukses | Error |\n| --- | --- | --- | --- | --- |\n| POST | `/api/login` | umum | 200 + cookie `panitia` | 400, 401 |\n| POST | `/api/logout` | umum | 204 | - |\n| GET | `/api/sessions` | panitia | 200 daftar sesi + jumlah hadir | 401 |\n| POST | `/api/sessions` | panitia | 201 sesi baru | 401, 422 |\n| GET | `/api/sessions/:id` | panitia | 200 | 401, 404 |\n| POST | `/api/sessions/:id/close` | panitia | 200 | 401, 404 |\n| GET | `/api/sessions/:id/qr` | panitia | 200 `{ svg, expiresIn }` | 401, 404, 409 ditutup |\n| GET | `/api/sessions/:id/stream` | panitia | 200 `text/event-stream` | 401, 404 |\n| GET | `/api/sessions/:id/export.csv` | panitia | 200 `text/csv` | 401, 404 |\n| POST | `/api/checkin` | peserta | 201 | 400 QR salah/kedaluwarsa, 404, 409 ganda/ditutup, 422 data |\n\n## Token QR\n- Isi QR: `idSesi.jendela.tandaTangan`\n- `jendela = floor(waktuMs / 30000)`\n- `tandaTangan = HMAC-SHA256(QR_SECRET, \"idSesi.jendela\")`, base64url (43 karakter)\n- Diterima bila tanda tangan cocok DAN jendela = sekarang atau sekarang - 1 (maksimal umur sekitar 60 detik)\n\n## Aturan anti-ganda\n- Satu NIM hanya sekali per sesi: `UNIQUE (session_id, nim)`\n- Satu HP (cookie `perangkat`) hanya sekali per sesi: `UNIQUE (session_id, device_id)`\n"
+        },
+        {
+          "id": "abs-m-schema",
+          "kind": "kode",
+          "name": "schema.sql",
+          "lang": "sql",
+          "content": "-- Dijalankan setiap server menyala. IF NOT EXISTS membuat aman dijalankan berulang.\nCREATE TABLE IF NOT EXISTS organizers (\n  id INTEGER PRIMARY KEY,\n  email TEXT NOT NULL UNIQUE,\n  password_hash TEXT NOT NULL\n);\n\n-- Sesi login panitia. Yang disimpan hash token, bukan token aslinya.\nCREATE TABLE IF NOT EXISTS logins (\n  token_hash TEXT PRIMARY KEY,\n  organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,\n  expires_at INTEGER NOT NULL\n);\n\n-- Satu baris = satu pertemuan kelas atau acara yang diabsen.\nCREATE TABLE IF NOT EXISTS sessions (\n  id INTEGER PRIMARY KEY,\n  organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,\n  title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 100),\n  created_at INTEGER NOT NULL DEFAULT (unixepoch()),\n  closed_at INTEGER\n);\n\nCREATE TABLE IF NOT EXISTS checkins (\n  id INTEGER PRIMARY KEY,\n  session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,\n  nim TEXT NOT NULL,\n  name TEXT NOT NULL,\n  device_id TEXT NOT NULL,\n  created_at INTEGER NOT NULL DEFAULT (unixepoch()),\n  UNIQUE (session_id, nim),\n  UNIQUE (session_id, device_id)\n);\n"
+        },
+        {
+          "id": "abs-m-hmac",
+          "kind": "tautan",
+          "name": "Node.js: crypto.createHmac",
+          "url": "https://nodejs.org/api/crypto.html#cryptocreatehmacalgorithm-key-options"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-ran-token",
+          "text": "Aku bisa menjelaskan isi token: idSesi, jendela, dan tanda tangan HMAC."
+        },
+        {
+          "id": "abs-ran-jendela",
+          "text": "Aku tahu kenapa jendela sebelumnya juga diterima dan berapa umur maksimal token."
+        },
+        {
+          "id": "abs-ran-tabel",
+          "text": "Setiap aturan UNIQUE di schema.sql cocok dengan baris di tabel kecuranganku."
+        },
+        {
+          "id": "abs-ran-simpan",
+          "text": "rancangan.md dan schema.sql sudah tersimpan."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "siapkan-proyek-sqlite",
+      "title": "Siapkan proyek Express dan database SQLite",
+      "est_minutes": 60,
+      "body": "## Kerangka yang bisa menyala\n\nTarget langkah ini: server menyala dan `GET /health` menjawab `{\"status\":\"ok\"}` setelah menyapa database.\n\n## Langkah-langkah\n\n1. Jalankan perintah di `setup.sh` satu per satu.\n2. npm mungkin menampilkan peringatan `install-scripts` untuk `better-sqlite3`. Itu aman diabaikan: versi 13 sudah membawa binary jadi di folder `prebuilds`, jadi skrip build-nya memang tidak perlu dijalankan.\n3. Buka `package.json` dan samakan dengan versi di bagian Bahan, terutama `\"type\": \"module\"`, `engines`, dan `scripts`. Biarkan `dependencies` dan `devDependencies` yang dibuat npm.\n4. Simpan `schema.sql` dari langkah Merancang di folder paling atas.\n5. Buat `.env.example` dan `.gitignore`. Salin `.env.example` menjadi `.env`, lalu ganti `QR_SECRET` dengan hasil perintah yang tertulis di komentar `.env.example`.\n6. Buat `src/db.js`, `src/http.js`, `src/app.js`, dan `src/server.js`.\n7. Jalankan `npm run dev`, lalu buka http://localhost:3000/health. Folder `data/` dan berkas `absensi.db` dibuat otomatis.\n8. Commit dengan pesan `Siapkan kerangka Express dan SQLite`.\n\n## Hal yang perlu dipahami\n\n- `--env-file-if-exists=.env` membuat Node membaca `.env` sendiri, tanpa paket `dotenv`. Di server produksi berkas itu tidak ada, dan variabel diambil dari pengaturan hosting.\n- `schema.sql` dijalankan setiap server menyala. Karena semua tabel memakai `IF NOT EXISTS`, ini aman diulang.\n- **WAL** (write-ahead log) membuat pembaca tidak perlu menunggu penulis. Akibatnya ada dua berkas tambahan, `absensi.db-wal` dan `absensi.db-shm`. Itu normal, jangan dihapus saat server menyala.\n- `foreign_keys = ON` wajib dinyalakan sendiri, karena SQLite mematikannya secara bawaan.\n- `app.js` hanya menyusun aplikasi, `server.js` yang membuka port, supaya tes nanti bisa memakai `app` tanpa membuka port.\n- `express.static` dengan `extensions: [\"html\"]` membuat `/scan` otomatis melayani `public/scan.html`.\n\n## Kalau gagal\n\n- `QR_SECRET wajib diisi`: belum muncul di langkah ini, tetapi akan muncul di langkah 7 kalau `.env` belum diisi.\n- `Cannot use import statement outside a module`: `\"type\": \"module\"` belum ada di `package.json`.\n- `Could not locate the bindings file`: versi Node terlalu lama. Cek `node -v`, minimal 24.\n\n> `.env` dan `data/` sudah ada di `.gitignore`. Pastikan sebelum commit pertama, karena database berisi NIM dan nama orang sungguhan.",
+      "materials": [
+        {
+          "id": "abs-m-setup",
+          "kind": "kode",
+          "name": "setup.sh",
+          "lang": "bash",
+          "content": "mkdir absensi-qr && cd absensi-qr\ngit init\nnpm init -y\nnpm install express better-sqlite3 qrcode jsqr\nnpm install --save-dev supertest\nmkdir src public scripts test\n"
+        },
+        {
+          "id": "abs-m-package",
+          "kind": "kode",
+          "name": "package.json",
+          "lang": "json",
+          "content": "{\n  \"name\": \"absensi-qr\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"engines\": {\n    \"node\": \">=24\"\n  },\n  \"scripts\": {\n    \"dev\": \"node --watch --env-file-if-exists=.env src/server.js\",\n    \"start\": \"node --env-file-if-exists=.env src/server.js\",\n    \"panitia\": \"node --env-file-if-exists=.env scripts/tambah-panitia.js\",\n    \"test\": \"node --test\"\n  }\n}\n"
+        },
+        {
+          "id": "abs-m-env",
+          "kind": "kode",
+          "name": ".env.example",
+          "lang": "bash",
+          "content": "PORT=3000\nDB_PATH=data/absensi.db\n# Buat dengan: node -e \"console.log(require('node:crypto').randomBytes(32).toString('base64url'))\"\nQR_SECRET=ganti-dengan-string-acak-minimal-32-karakter\n"
+        },
+        {
+          "id": "abs-m-gitignore",
+          "kind": "kode",
+          "name": ".gitignore",
+          "lang": "text",
+          "content": "node_modules/\n.env\ndata/\n"
+        },
+        {
+          "id": "abs-m-db",
+          "kind": "kode",
+          "name": "src/db.js",
+          "lang": "javascript",
+          "content": "import Database from \"better-sqlite3\";\nimport { mkdirSync, readFileSync } from \"node:fs\";\nimport { dirname } from \"node:path\";\n\nconst file = process.env.DB_PATH ?? \"data/absensi.db\";\nif (file !== \":memory:\") mkdirSync(dirname(file), { recursive: true });\n\nexport const db = new Database(file);\ndb.pragma(\"journal_mode = WAL\"); // pembaca tidak menunggu penulis\ndb.pragma(\"foreign_keys = ON\"); // SQLite mematikannya secara bawaan\ndb.exec(readFileSync(new URL(\"../schema.sql\", import.meta.url), \"utf8\"));\n"
+        },
+        {
+          "id": "abs-m-http",
+          "kind": "kode",
+          "name": "src/http.js",
+          "lang": "javascript",
+          "content": "// Error yang membawa kode status. Contoh: throw gagal(404, \"Sesi tidak ditemukan\")\nexport const gagal = (status, message) => Object.assign(new Error(message), { status });\n\n// Express 5 tidak membaca cookie sendiri. Nilai cookie kita base64url, jadi tidak perlu decode.\nexport function bacaCookie(req, name) {\n  for (const part of (req.headers.cookie ?? \"\").split(\";\")) {\n    const [key, ...rest] = part.trim().split(\"=\");\n    if (key === name) return rest.join(\"=\");\n  }\n}\n\nexport const cookieAman = {\n  httpOnly: true,\n  sameSite: \"lax\",\n  secure: process.env.NODE_ENV === \"production\",\n};\n"
+        },
+        {
+          "id": "abs-m-app-v1",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { fileURLToPath } from \"node:url\";\nimport { db } from \"./db.js\";\n\nexport const app = express();\napp.disable(\"x-powered-by\");\napp.use(express.json({ limit: \"10kb\" }));\napp.use(express.static(fileURLToPath(new URL(\"../public\", import.meta.url)), { extensions: [\"html\"] }));\n\napp.get(\"/health\", (req, res) => {\n  db.prepare(\"SELECT 1\").get();\n  res.json({ status: \"ok\" });\n});\n\napp.use(\"/api\", (req, res) => res.status(404).json({ error: \"Alamat API tidak dikenal\" }));\n\napp.use((err, req, res, next) => {\n  if (err.type === \"entity.parse.failed\") return res.status(400).json({ error: \"Body bukan JSON yang sah\" });\n  if (err.type === \"entity.too.large\") return res.status(413).json({ error: \"Body terlalu besar\" });\n  if (err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "abs-m-server",
+          "kind": "kode",
+          "name": "src/server.js",
+          "lang": "javascript",
+          "content": "import { app } from \"./app.js\";\n\nconst port = Number(process.env.PORT ?? 3000);\napp.listen(port, () => console.log(`Absensi menyala di http://localhost:${port}`));\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-setup-health",
+          "text": "GET /health menjawab {\"status\":\"ok\"}."
+        },
+        {
+          "id": "abs-setup-db",
+          "text": "Berkas data/absensi.db terbuat otomatis saat server menyala."
+        },
+        {
+          "id": "abs-setup-env",
+          "text": ".env dan data/ tidak ikut ter-commit, .env.example ikut."
+        },
+        {
+          "id": "abs-setup-commit",
+          "text": "Kerangka proyek sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "login-panitia",
+      "title": "Buat login panitia dengan scrypt dan cookie sesi",
+      "est_minutes": 75,
+      "body": "## Hanya panitia yang boleh membuka sesi\n\nHalaman pindai terbuka untuk siapa saja, tetapi membuat sesi, menampilkan QR, dan mengunduh rekap hanya untuk panitia. Kita butuh login sederhana: email, kata sandi, dan cookie sesi.\n\n## Menyimpan kata sandi dengan benar\n\nKata sandi **tidak pernah** disimpan apa adanya. Yang disimpan hasil `scrypt`: fungsi hash yang sengaja lambat dan memakan memori, supaya penyerang yang mencuri database butuh waktu sangat lama untuk menebak kata sandi satu per satu. Setiap kata sandi diberi **salt** acak, jadi dua orang dengan kata sandi sama tetap punya hash berbeda. `scrypt` ada di `node:crypto`, jadi tidak perlu paket tambahan.\n\n![Bandingkan teks polos, SHA-256 biasa, dan hash dengan salt. Perhatikan mana yang bisa ditebak lewat tabel kata sandi populer](sim:password-hash)\n\n## Sesi login dengan cookie\n\n1. Login berhasil: server membuat token acak 32 byte, menyimpan **hash**-nya di tabel `logins` beserta waktu kedaluwarsa, lalu mengirim token aslinya sebagai cookie `panitia`.\n2. Setiap request panitia: middleware `wajibPanitia` membaca cookie, meng-hash-nya, dan mencarinya di tabel. Tidak ketemu atau kedaluwarsa: 401.\n3. Logout: baris di tabel dihapus, jadi cookie lama tidak berguna lagi walaupun masih tersimpan.\n\nAtribut cookie-nya penting:\n- `HttpOnly`: JavaScript di halaman tidak bisa membaca cookie, jadi kalau ada celah XSS, cookie tidak bisa dicuri.\n- `SameSite=Lax`: cookie tidak ikut dikirim pada request `POST` dari situs lain, ini penangkal dasar CSRF. Ditambah `express.json()` yang hanya membaca body berjenis `application/json`, form palsu dari situs lain tidak bisa membuat sesi atas namamu.\n- `Secure`: hanya dikirim lewat HTTPS. Dinyalakan otomatis saat `NODE_ENV=production`.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/auth.js` dan `scripts/tambah-panitia.js` dari bagian Bahan.\n2. Perbarui `src/app.js` dengan versi di bagian Bahan (tiga rute baru: login, logout, dan `/api/me` untuk mengecek).\n3. Buat `public/style.css` dan `public/login.html`.\n4. Buat akun panitia: `npm run panitia -- dosen@contoh.id kata-sandi-demo-123`. Tidak ada halaman daftar, karena tidak semua orang boleh menjadi panitia.\n5. Buka http://localhost:3000/api/me: harus 401. Login di http://localhost:3000/login. Browser pindah ke `/` yang masih menampilkan `Cannot GET /`, karena halamannya baru dibuat di langkah berikutnya. Buka lagi `/api/me`: sekarang 200.\n6. Buka DevTools, tab Application, bagian Cookies. Pastikan cookie `panitia` bertanda HttpOnly.\n7. Commit dengan pesan `Tambah login panitia`.\n\n> Pesan error login sengaja sama untuk email yang tidak terdaftar dan kata sandi yang salah: \"Email atau kata sandi salah\". Pesan yang berbeda memberi tahu penyerang email mana yang terdaftar.",
+      "materials": [
+        {
+          "id": "abs-m-auth",
+          "kind": "kode",
+          "name": "src/auth.js",
+          "lang": "javascript",
+          "content": "import { createHash, randomBytes, scrypt, timingSafeEqual } from \"node:crypto\";\nimport { promisify } from \"node:util\";\nimport { db } from \"./db.js\";\nimport { bacaCookie, cookieAman, gagal } from \"./http.js\";\n\nconst scryptAsync = promisify(scrypt);\n// Parameter scrypt dari OWASP Password Storage Cheat Sheet (N=2^14, r=8, p=5), sekitar 16 MB per hash.\nconst SCRYPT = { N: 2 ** 14, r: 8, p: 5 };\nconst LOGIN_MS = 8 * 60 * 60 * 1000; // 8 jam, cukup untuk satu hari mengajar\n\nexport async function hashPassword(password) {\n  const salt = randomBytes(16);\n  const hash = await scryptAsync(password, salt, 64, SCRYPT);\n  return `scrypt$${salt.toString(\"base64url\")}$${hash.toString(\"base64url\")}`;\n}\n\nexport async function checkPassword(password, stored) {\n  const [, salt, hash] = stored.split(\"$\");\n  const fresh = await scryptAsync(password, Buffer.from(salt, \"base64url\"), 64, SCRYPT);\n  return timingSafeEqual(fresh, Buffer.from(hash, \"base64url\"));\n}\n\nconst sha256 = (s) => createHash(\"sha256\").update(s).digest(\"base64url\");\n\nexport async function login(req, res) {\n  const { email, password } = req.body ?? {};\n  if (typeof email !== \"string\" || typeof password !== \"string\") throw gagal(400, \"Email dan kata sandi wajib diisi\");\n  const user = db.prepare(\"SELECT id, password_hash FROM organizers WHERE email = ?\").get(email.trim().toLowerCase());\n  if (!user || !(await checkPassword(password, user.password_hash))) throw gagal(401, \"Email atau kata sandi salah\");\n\n  const token = randomBytes(32).toString(\"base64url\");\n  db.prepare(\"DELETE FROM logins WHERE expires_at < ?\").run(Date.now()); // bersihkan yang kedaluwarsa\n  db.prepare(\"INSERT INTO logins (token_hash, organizer_id, expires_at) VALUES (?, ?, ?)\")\n    .run(sha256(token), user.id, Date.now() + LOGIN_MS);\n  res.cookie(\"panitia\", token, { ...cookieAman, maxAge: LOGIN_MS });\n  res.json({ ok: true });\n}\n\nexport function logout(req, res) {\n  const token = bacaCookie(req, \"panitia\");\n  if (token) db.prepare(\"DELETE FROM logins WHERE token_hash = ?\").run(sha256(token));\n  res.clearCookie(\"panitia\", cookieAman);\n  res.status(204).end();\n}\n\n// Middleware: hanya panitia yang sudah login boleh lewat.\nexport function wajibPanitia(req, res, next) {\n  const token = bacaCookie(req, \"panitia\");\n  const row = token && db.prepare(\"SELECT organizer_id FROM logins WHERE token_hash = ? AND expires_at > ?\")\n    .get(sha256(token), Date.now());\n  if (!row) throw gagal(401, \"Silakan login dulu\");\n  req.organizerId = row.organizer_id;\n  next();\n}\n"
+        },
+        {
+          "id": "abs-m-tambah-panitia",
+          "kind": "kode",
+          "name": "scripts/tambah-panitia.js",
+          "lang": "javascript",
+          "content": "// Pakai: npm run panitia -- email@kampus.ac.id kata-sandi-panjang\nimport { db } from \"../src/db.js\";\nimport { hashPassword } from \"../src/auth.js\";\n\nconst [email, password] = process.argv.slice(2);\nif (!email?.includes(\"@\") || !password || password.length < 12) {\n  console.error(\"Pakai: npm run panitia -- email@kampus.ac.id kata-sandi-minimal-12-karakter\");\n  process.exit(1);\n}\ndb.prepare(`INSERT INTO organizers (email, password_hash) VALUES (?, ?)\n  ON CONFLICT (email) DO UPDATE SET password_hash = excluded.password_hash`)\n  .run(email.trim().toLowerCase(), await hashPassword(password));\nconsole.log(`Akun panitia ${email} siap dipakai.`);\n"
+        },
+        {
+          "id": "abs-m-app-v2",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { fileURLToPath } from \"node:url\";\nimport { db } from \"./db.js\";\nimport { login, logout, wajibPanitia } from \"./auth.js\";\n\nexport const app = express();\napp.disable(\"x-powered-by\");\napp.use(express.json({ limit: \"10kb\" }));\napp.use(express.static(fileURLToPath(new URL(\"../public\", import.meta.url)), { extensions: [\"html\"] }));\n\napp.get(\"/health\", (req, res) => {\n  db.prepare(\"SELECT 1\").get();\n  res.json({ status: \"ok\" });\n});\n\napp.post(\"/api/login\", login);\napp.post(\"/api/logout\", logout);\napp.get(\"/api/me\", wajibPanitia, (req, res) => res.json({ organizerId: req.organizerId }));\n\napp.use(\"/api\", (req, res) => res.status(404).json({ error: \"Alamat API tidak dikenal\" }));\n\napp.use((err, req, res, next) => {\n  if (err.type === \"entity.parse.failed\") return res.status(400).json({ error: \"Body bukan JSON yang sah\" });\n  if (err.type === \"entity.too.large\") return res.status(413).json({ error: \"Body terlalu besar\" });\n  if (err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "abs-m-style",
+          "kind": "kode",
+          "name": "public/style.css",
+          "lang": "css",
+          "content": ":root {\n  --ink: #0f100d;\n  --kertas: #ffffff;\n  --matcha: #b5d36f;\n  --matcha-muda: #e3edc8;\n  --merah: #b42318;\n  font-family: system-ui, \"Segoe UI\", Roboto, sans-serif;\n  color: var(--ink);\n  background: var(--kertas);\n}\n* { box-sizing: border-box; }\nbody { margin: 0; padding: 24px 16px; }\nmain { max-width: 960px; margin: 0 auto; }\nh1 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0 0 16px; }\na { color: inherit; }\nlabel { display: block; font-weight: 600; margin: 12px 0 4px; }\ninput {\n  width: 100%; min-height: 48px; padding: 0 12px; font: inherit;\n  border: 2px solid var(--ink); border-radius: 12px;\n}\nbutton {\n  min-height: 48px; padding: 0 20px; font: inherit; font-weight: 700; cursor: pointer;\n  background: var(--ink); color: var(--kertas); border: 2px solid var(--ink); border-radius: 12px;\n}\nbutton.sekunder { background: var(--kertas); color: var(--ink); }\n.kartu { border: 2px solid var(--ink); border-radius: 18px; padding: 20px; margin-bottom: 16px; }\n.pesan { min-height: 1.5em; font-weight: 600; }\n.pesan.salah { color: var(--merah); }\n.pesan.berhasil { background: var(--matcha-muda); border-radius: 12px; padding: 12px; }\n.baris { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }\n\n/* Layar panitia */\n.layar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 24px; }\n@media (max-width: 760px) { .layar { grid-template-columns: 1fr; } }\n#qr { max-width: min(100%, 60vh); margin: 0 auto; } /* alamat /scan tetap terlihat di proyektor */\n#qr svg { width: 100%; height: auto; display: block; }\n.waktu { height: 10px; background: var(--matcha-muda); border-radius: 99px; overflow: hidden; margin-top: 12px; }\n.waktu div { height: 100%; background: var(--matcha); transform-origin: left; }\n.alamat { font-size: 1.25rem; font-weight: 800; word-break: break-all; }\n#jumlah { font-size: 3rem; font-weight: 800; line-height: 1; }\n#daftar { list-style: none; padding: 0; margin: 0; max-height: 60vh; overflow: auto; }\n#daftar li { padding: 10px 0; border-bottom: 1px solid #d4d4cf; display: flex; justify-content: space-between; gap: 8px; }\n#daftar li.baru { animation: muncul 1.2s ease-out; }\n@keyframes muncul { from { background: var(--matcha); } to { background: transparent; } }\n.nim { font-family: ui-monospace, Menlo, Consolas, monospace; }\n\n/* Halaman pindai */\nvideo { width: 100%; border-radius: 18px; border: 2px solid var(--ink); background: var(--ink); }\n"
+        },
+        {
+          "id": "abs-m-login-html",
+          "kind": "kode",
+          "name": "public/login.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Login panitia</title>\n  <link rel=\"stylesheet\" href=\"/style.css\">\n</head>\n<body>\n  <main style=\"max-width: 420px\">\n    <h1>Login panitia</h1>\n    <form id=\"form\" class=\"kartu\">\n      <label for=\"email\">Email</label>\n      <input id=\"email\" name=\"email\" type=\"email\" autocomplete=\"username\" required>\n      <label for=\"password\">Kata sandi</label>\n      <input id=\"password\" name=\"password\" type=\"password\" autocomplete=\"current-password\" required>\n      <p id=\"pesan\" class=\"pesan salah\" role=\"alert\"></p>\n      <button>Masuk</button>\n    </form>\n  </main>\n  <script type=\"module\">\n    const form = document.querySelector(\"#form\");\n    form.addEventListener(\"submit\", async (e) => {\n      e.preventDefault();\n      const r = await fetch(\"/api/login\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify(Object.fromEntries(new FormData(form))),\n      });\n      if (r.ok) location.href = \"/\";\n      else document.querySelector(\"#pesan\").textContent = (await r.json()).error;\n    });\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "abs-m-owasp-pw",
+          "kind": "tautan",
+          "name": "OWASP: Password Storage Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
+        },
+        {
+          "id": "abs-m-mdn-cookie",
+          "kind": "tautan",
+          "name": "MDN: Set-Cookie (HttpOnly, SameSite, Secure)",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-login-akun",
+          "text": "Akun panitia dibuat lewat npm run panitia dan kata sandinya tersimpan sebagai hash scrypt."
+        },
+        {
+          "id": "abs-login-me",
+          "text": "/api/me menjawab 401 sebelum login dan 200 sesudah login."
+        },
+        {
+          "id": "abs-login-cookie",
+          "text": "Cookie panitia bertanda HttpOnly dan SameSite=Lax."
+        },
+        {
+          "id": "abs-login-commit",
+          "text": "Login panitia sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "qr-berputar-di-layar",
+      "title": "Tampilkan QR yang berganti tiap 30 detik",
+      "est_minutes": 90,
+      "body": "## QR yang berganti sendiri\n\nSekarang bagian yang paling terlihat: panitia membuat sesi, lalu layar proyektor menampilkan QR yang berganti setiap 30 detik, lengkap dengan batang hijau yang menyusut sebagai hitung mundur.\n\n## Alurnya\n\n1. Halaman `/layar?id=1` meminta `GET /api/sessions/1/qr`.\n2. Server membuat token untuk jendela sekarang (`makeToken`), mengubahnya menjadi SVG dengan paket `qrcode`, lalu menjawab `{ svg, expiresIn }`. `expiresIn` adalah sisa milidetik sampai jendela berganti.\n3. Halaman memasang SVG-nya dan memasang `setTimeout` seharga `expiresIn` untuk meminta QR berikutnya.\n\nJam yang dipakai hanya jam **server**, baik saat membuat maupun memeriksa token. Jadi jam laptop atau HP yang meleset tidak berpengaruh.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/token.js` dan `src/sessions.js` dari bagian Bahan.\n2. Perbarui `src/app.js` dengan versi di bagian Bahan (router sesi dipasang di `/api/sessions`).\n3. Buat `public/index.html` (daftar sesi panitia) dan `public/layar.html`.\n4. Pastikan `QR_SECRET` di `.env` sudah diisi string acak sepanjang minimal 32 karakter. Kalau belum, server langsung berhenti dengan pesan yang jelas. Ini disengaja: lebih baik gagal di awal daripada berjalan dengan rahasia kosong.\n5. Login, buat sesi \"Coba QR\", lalu perhatikan QR berganti saat batang hijau habis.\n6. Pindai QR dengan aplikasi kamera bawaan HP. Yang muncul hanya teks seperti `1.59012345.Q2x...`, bukan alamat web. Itu benar: QR ini hanya berarti bagi halaman pindai milikmu.\n7. Commit dengan pesan `Tampilkan QR berputar di layar panitia`.\n\n## Hal yang perlu dipahami\n\n- `ambilSesi` selalu menyaring `organizer_id = ?`. Tanpa itu, panitia A bisa membuka QR milik panitia B hanya dengan mengganti angka di alamat. Kesalahan ini (IDOR) termasuk yang paling sering ditemukan di aplikasi sungguhan.\n- `timingSafeEqual` membandingkan tanda tangan dengan waktu yang sama panjang, berapa pun karakter yang cocok. Perbandingan `===` biasa berhenti di karakter pertama yang berbeda, dan selisih waktunya bisa dipakai untuk menebak.\n- `Cache-Control: no-store` mencegah browser atau proxy menyimpan QR lama.\n- `innerHTML` boleh dipakai untuk SVG karena isinya dibuat server kita sendiri. Untuk teks dari pengguna, nanti kita memakai `textContent`.",
+      "materials": [
+        {
+          "id": "abs-m-token",
+          "kind": "kode",
+          "name": "src/token.js",
+          "lang": "javascript",
+          "content": "import { createHmac, timingSafeEqual } from \"node:crypto\";\n\nexport const WINDOW_MS = 30_000; // QR berganti tiap 30 detik\n\nconst secret = process.env.QR_SECRET;\nif (!secret || secret.length < 32) throw new Error(\"QR_SECRET wajib diisi di .env, minimal 32 karakter\");\n\n// Nomor jendela waktu: berapa kali 30 detik sudah lewat sejak 1 Januari 1970.\nconst windowOf = (now) => Math.floor(now / WINDOW_MS);\nconst sign = (sessionId, w) => createHmac(\"sha256\", secret).update(`${sessionId}.${w}`).digest(\"base64url\");\n\n// Token = \"idSesi.jendela.tandaTangan\", contoh \"12.59012345.Q2x...\". Inilah isi QR.\nexport function makeToken(sessionId, now = Date.now()) {\n  const w = windowOf(now);\n  return { token: `${sessionId}.${w}.${sign(sessionId, w)}`, expiresIn: (w + 1) * WINDOW_MS - now };\n}\n\nexport function verifyToken(token, now = Date.now()) {\n  const m = /^(\\d{1,9})\\.(\\d{1,12})\\.([\\w-]{43})$/.exec(String(token));\n  if (!m) return { error: \"QR tidak dikenali. Pastikan kamu memindai QR di layar kelas.\" };\n  const [, sessionId, w, sig] = m;\n  if (!timingSafeEqual(Buffer.from(sign(sessionId, w)), Buffer.from(sig))) {\n    return { error: \"QR tidak sah.\" };\n  }\n  // Terima jendela sekarang dan satu jendela sebelumnya, supaya yang memindai\n  // di detik ke-29 tidak gagal karena jaringan lambat.\n  const current = windowOf(now);\n  if (Number(w) !== current && Number(w) !== current - 1) {\n    return { error: \"QR sudah kedaluwarsa. Pindai QR yang sedang tampil di layar.\" };\n  }\n  return { sessionId: Number(sessionId) };\n}\n"
+        },
+        {
+          "id": "abs-m-sessions-v1",
+          "kind": "kode",
+          "name": "src/sessions.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport QRCode from \"qrcode\";\nimport { db } from \"./db.js\";\nimport { wajibPanitia } from \"./auth.js\";\nimport { gagal } from \"./http.js\";\nimport { makeToken } from \"./token.js\";\n\nexport const sessions = Router();\nsessions.use(wajibPanitia); // semua rute di bawah ini khusus panitia\n\n// Panitia hanya boleh melihat sesi miliknya sendiri.\nfunction ambilSesi(req) {\n  const s = db.prepare(\"SELECT * FROM sessions WHERE id = ? AND organizer_id = ?\")\n    .get(Number(req.params.id), req.organizerId);\n  if (!s) throw gagal(404, \"Sesi tidak ditemukan\");\n  return s;\n}\n\nsessions.get(\"/\", (req, res) => {\n  res.json(db.prepare(`\n    SELECT s.id, s.title, s.created_at, s.closed_at, count(c.id) AS hadir\n    FROM sessions s LEFT JOIN checkins c ON c.session_id = s.id\n    WHERE s.organizer_id = ? GROUP BY s.id ORDER BY s.id DESC`).all(req.organizerId));\n});\n\nsessions.post(\"/\", (req, res) => {\n  const title = typeof req.body?.title === \"string\" ? req.body.title.trim() : \"\";\n  if (title.length < 1 || title.length > 100) throw gagal(422, \"Judul sesi wajib diisi, maksimal 100 karakter\");\n  const s = db.prepare(\"INSERT INTO sessions (organizer_id, title) VALUES (?, ?) RETURNING *\").get(req.organizerId, title);\n  res.status(201).json(s);\n});\n\nsessions.get(\"/:id\", (req, res) => res.json(ambilSesi(req)));\n\nsessions.post(\"/:id/close\", (req, res) => {\n  const s = ambilSesi(req);\n  db.prepare(\"UPDATE sessions SET closed_at = unixepoch() WHERE id = ? AND closed_at IS NULL\").run(s.id);\n  res.json(ambilSesi(req));\n});\n\n// QR berisi token yang hanya berlaku di jendela waktu ini (plus satu jendela sebelumnya).\nsessions.get(\"/:id/qr\", async (req, res) => {\n  const s = ambilSesi(req);\n  if (s.closed_at) throw gagal(409, \"Sesi sudah ditutup\");\n  const { token, expiresIn } = makeToken(s.id);\n  const svg = await QRCode.toString(token, { type: \"svg\", margin: 1, errorCorrectionLevel: \"M\" });\n  res.set(\"Cache-Control\", \"no-store\").json({ svg, expiresIn });\n});\n"
+        },
+        {
+          "id": "abs-m-app-v3",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { fileURLToPath } from \"node:url\";\nimport { db } from \"./db.js\";\nimport { login, logout, wajibPanitia } from \"./auth.js\";\nimport { sessions } from \"./sessions.js\";\n\nexport const app = express();\napp.disable(\"x-powered-by\");\napp.use(express.json({ limit: \"10kb\" }));\napp.use(express.static(fileURLToPath(new URL(\"../public\", import.meta.url)), { extensions: [\"html\"] }));\n\napp.get(\"/health\", (req, res) => {\n  db.prepare(\"SELECT 1\").get();\n  res.json({ status: \"ok\" });\n});\n\napp.post(\"/api/login\", login);\napp.post(\"/api/logout\", logout);\napp.get(\"/api/me\", wajibPanitia, (req, res) => res.json({ organizerId: req.organizerId }));\napp.use(\"/api/sessions\", sessions);\n\napp.use(\"/api\", (req, res) => res.status(404).json({ error: \"Alamat API tidak dikenal\" }));\n\napp.use((err, req, res, next) => {\n  if (err.type === \"entity.parse.failed\") return res.status(400).json({ error: \"Body bukan JSON yang sah\" });\n  if (err.type === \"entity.too.large\") return res.status(413).json({ error: \"Body terlalu besar\" });\n  if (err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "abs-m-index-html",
+          "kind": "kode",
+          "name": "public/index.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Sesi absensi</title>\n  <link rel=\"stylesheet\" href=\"/style.css\">\n</head>\n<body>\n  <main>\n    <div class=\"baris\" style=\"justify-content: space-between\">\n      <h1>Sesi absensi</h1>\n      <button id=\"keluar\" class=\"sekunder\">Keluar</button>\n    </div>\n    <form id=\"baru\" class=\"kartu baris\">\n      <input name=\"title\" placeholder=\"Contoh: Pemrograman Web A, pertemuan 5\" maxlength=\"100\" required style=\"flex: 1 1 240px\">\n      <button>Buat sesi</button>\n    </form>\n    <p id=\"pesan\" class=\"pesan salah\" role=\"alert\"></p>\n    <div id=\"sesi\"></div>\n  </main>\n  <script type=\"module\">\n    const pesan = document.querySelector(\"#pesan\");\n\n    async function api(url, options) {\n      const r = await fetch(url, options);\n      if (r.status === 401) location.href = \"/login\";\n      return r;\n    }\n\n    async function muat() {\n      const r = await api(\"/api/sessions\");\n      if (!r.ok) return;\n      const wadah = document.querySelector(\"#sesi\");\n      wadah.replaceChildren();\n      for (const s of await r.json()) {\n        const kartu = document.createElement(\"div\");\n        kartu.className = \"kartu baris\";\n        const judul = document.createElement(\"strong\");\n        judul.style.flex = \"1 1 240px\";\n        judul.textContent = `${s.title} (${s.hadir} hadir${s.closed_at ? \", ditutup\" : \"\"})`;\n        const layar = Object.assign(document.createElement(\"a\"), { href: `/layar?id=${s.id}`, textContent: \"Buka layar\" });\n        const csv = Object.assign(document.createElement(\"a\"), { href: `/api/sessions/${s.id}/export.csv`, textContent: \"Unduh CSV\" });\n        kartu.append(judul, layar, csv);\n        wadah.append(kartu);\n      }\n    }\n\n    document.querySelector(\"#baru\").addEventListener(\"submit\", async (e) => {\n      e.preventDefault();\n      const r = await api(\"/api/sessions\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({ title: e.target.title.value }),\n      });\n      if (r.ok) location.href = `/layar?id=${(await r.json()).id}`;\n      else pesan.textContent = (await r.json()).error;\n    });\n\n    document.querySelector(\"#keluar\").addEventListener(\"click\", async () => {\n      await fetch(\"/api/logout\", { method: \"POST\" });\n      location.href = \"/login\";\n    });\n\n    muat();\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "abs-m-layar-v1",
+          "kind": "kode",
+          "name": "public/layar.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Layar absensi</title>\n  <link rel=\"stylesheet\" href=\"/style.css\">\n</head>\n<body>\n  <main>\n    <p><a href=\"/\">Kembali ke daftar sesi</a></p>\n    <h1 id=\"judul\">Memuat...</h1>\n    <div class=\"layar\">\n      <section class=\"kartu\">\n        <div id=\"qr\" aria-label=\"QR absensi, berganti tiap 30 detik\"></div>\n        <div class=\"waktu\"><div id=\"sisa\"></div></div>\n        <p>Buka di HP: <span class=\"alamat\" id=\"alamat\"></span></p>\n      </section>\n      <aside class=\"kartu\">\n        <button id=\"tutup\" class=\"sekunder\">Tutup sesi</button>\n      </aside>\n    </div>\n  </main>\n  <script type=\"module\">\n    const id = new URLSearchParams(location.search).get(\"id\");\n    const qr = document.querySelector(\"#qr\");\n    document.querySelector(\"#alamat\").textContent = `${location.origin}/scan`;\n\n    async function api(url, options) {\n      const r = await fetch(url, options);\n      if (r.status === 401) location.href = \"/login\";\n      return r;\n    }\n\n    const sesi = await (await api(`/api/sessions/${id}`)).json();\n    document.querySelector(\"#judul\").textContent = sesi.title ?? sesi.error;\n\n    // Batang hijau menyusut sampai QR berganti.\n    function hitungMundur(ms) {\n      document.querySelector(\"#sisa\").animate(\n        [{ transform: \"scaleX(1)\" }, { transform: \"scaleX(0)\" }],\n        { duration: ms, easing: \"linear\", fill: \"forwards\" },\n      );\n    }\n\n    async function putarQR() {\n      const r = await api(`/api/sessions/${id}/qr`);\n      if (!r.ok) {\n        qr.textContent = (await r.json()).error;\n        return;\n      }\n      const { svg, expiresIn } = await r.json();\n      qr.innerHTML = svg; // aman: SVG dibuat server kita sendiri, bukan masukan pengguna\n      hitungMundur(expiresIn);\n      setTimeout(putarQR, expiresIn + 250); // ambil QR baru tepat setelah jendela berganti\n    }\n    putarQR();\n\n    document.querySelector(\"#tutup\").addEventListener(\"click\", async () => {\n      if (!confirm(\"Tutup sesi? QR berhenti dan absen tidak bisa lagi.\")) return;\n      await api(`/api/sessions/${id}/close`, { method: \"POST\" });\n      location.reload();\n    });\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "abs-m-qrcode",
+          "kind": "tautan",
+          "name": "qrcode di npm",
+          "url": "https://www.npmjs.com/package/qrcode"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-qr-sesi",
+          "text": "Aku bisa membuat sesi dari halaman daftar sesi."
+        },
+        {
+          "id": "abs-qr-putar",
+          "text": "QR di layar berganti sendiri saat batang hitung mundur habis."
+        },
+        {
+          "id": "abs-qr-idor",
+          "text": "Sesi milik panitia lain menjawab 404, bukan isinya."
+        },
+        {
+          "id": "abs-qr-commit",
+          "text": "QR berputar sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "halaman-pindai-kamera",
+      "title": "Buat halaman pindai dengan kamera dan endpoint absen",
+      "est_minutes": 120,
+      "body": "## Sisi peserta: buka, isi, pindai\n\nPeserta membuka `/scan` di HP, mengisi nama dan NIM sekali saja (tersimpan di `localStorage` untuk pertemuan berikutnya), menekan tombol, lalu mengarahkan kamera ke layar. Begitu QR terbaca, data langsung terkirim. Nama diisi **sebelum** memindai, supaya token tidak keburu kedaluwarsa selama peserta mengetik.\n\n![Perjalanan satu absen dari kamera HP sampai baris di database, dengan lima pemeriksaan di server. Gagal di pemeriksaan mana pun berarti tidak ada yang tersimpan](/studio/absensi-qr-code/alur-absensi.svg)\n\n## Pemindai di browser\n\n1. `getUserMedia({ video: { facingMode: \"environment\" } })` membuka kamera belakang. Browser hanya mengizinkan ini di **secure context**: HTTPS, atau `localhost`. Membuka `http://192.168.x.x:3000` dari HP tidak akan bisa memakai kamera. Cara mencobanya di HP ada di langkah Uji.\n2. Kalau `BarcodeDetector` ada dan mendukung `qr_code`, setiap frame video diberikan ke `detector.detect(video)`.\n3. Kalau tidak ada, `/vendor/jsQR.js` dimuat, frame digambar ke `<canvas>` yang diperkecil ke lebar 640 piksel, lalu pikselnya dibaca `jsQR`. Diperkecil karena jsQR berjalan di JavaScript biasa, dan gambar 1920 piksel terasa berat di HP murah.\n4. Pemindaian diulang tiap 150 ms sampai ada hasil, lalu kamera dimatikan supaya baterai tidak terkuras.\n\n## Lima pemeriksaan di server\n\n`POST /api/checkin` memeriksa berurutan: tanda tangan dan jendela waktu (400), sesi ada dan belum ditutup (404, 409), NIM dan nama masuk akal (422), lalu menyimpan. Pemeriksaan ganda tidak memakai `SELECT` dulu, melainkan langsung `INSERT` dan menangkap error `SQLITE_CONSTRAINT_UNIQUE`. Cara \"cek dulu lalu simpan\" bisa bocor kalau dua request datang bersamaan, sedangkan constraint database tidak.\n\n## Cookie perangkat, dan batasnya\n\nPertama kali sebuah HP absen, server memberi cookie `perangkat` berisi id acak yang berlaku setahun. Karena ada `UNIQUE (session_id, device_id)`, HP yang sama tidak bisa dipakai absen untuk NIM kedua di sesi yang sama. Ini menghentikan \"pinjam HP-mu dong, absenin aku juga\".\n\nTapi jujurlah soal batasnya: cookie hilang di mode penyamaran, di browser lain, atau setelah data browser dihapus. Penangkal ini membuat titip absen **lebih repot**, bukan mustahil.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/checkin.js` dari bagian Bahan.\n2. Perbarui `src/app.js` (rute `/api/checkin` dan folder `/vendor` untuk jsQR).\n3. Buat `public/scan.html`.\n4. Di laptop, buka layar sesi di satu tab dan http://localhost:3000/scan di jendela lain. Izinkan kamera, lalu arahkan webcam ke QR yang kamu tampilkan di HP (foto layar laptop dengan HP, buka fotonya, arahkan ke webcam). Harus muncul \"Tercatat hadir\".\n5. Coba lagi dengan NIM lain dari browser yang sama: harus ditolak karena HP (browser) yang sama.\n6. Commit dengan pesan `Tambah halaman pindai dan endpoint absen`.\n\n![Halaman pindai di HP setelah berhasil: nama dan NIM tersimpan, kamera sudah mati, dan pesan hijau menyebut nama sesinya](/studio/absensi-qr-code/halaman-pindai.webp)",
+      "materials": [
+        {
+          "id": "abs-m-checkin-v1",
+          "kind": "kode",
+          "name": "src/checkin.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport { randomBytes } from \"node:crypto\";\nimport { db } from \"./db.js\";\nimport { bacaCookie, cookieAman, gagal } from \"./http.js\";\nimport { verifyToken } from \"./token.js\";\n\nexport const checkin = Router();\nconst SETAHUN = 365 * 24 * 60 * 60 * 1000;\n\ncheckin.post(\"/\", (req, res) => {\n  const { token, nim, name } = req.body ?? {};\n\n  // 1. Tanda tangan dan jendela waktu\n  const hasil = verifyToken(token);\n  if (hasil.error) throw gagal(400, hasil.error);\n\n  // 2. Sesi ada dan masih dibuka\n  const s = db.prepare(\"SELECT id, title, closed_at FROM sessions WHERE id = ?\").get(hasil.sessionId);\n  if (!s) throw gagal(404, \"Sesi tidak ditemukan\");\n  if (s.closed_at) throw gagal(409, \"Sesi sudah ditutup panitia\");\n\n  // 3. Data peserta\n  const cleanNim = typeof nim === \"string\" ? nim.trim().toUpperCase() : \"\";\n  const cleanName = typeof name === \"string\" ? name.trim().replace(/\\s+/g, \" \") : \"\";\n  const details = {};\n  if (!/^[0-9A-Z]{5,20}$/.test(cleanNim)) details.nim = \"NIM berisi 5 sampai 20 huruf atau angka\";\n  if (cleanName.length < 2 || cleanName.length > 80) details.name = \"Nama 2 sampai 80 karakter\";\n  if (Object.keys(details).length) return res.status(422).json({ error: \"Data belum lengkap\", details });\n\n  // 4. Cookie perangkat: satu HP hanya bisa dipakai absen sekali per sesi\n  let device = bacaCookie(req, \"perangkat\");\n  if (!/^[\\w-]{22}$/.test(device ?? \"\")) {\n    device = randomBytes(16).toString(\"base64url\");\n    res.cookie(\"perangkat\", device, { ...cookieAman, maxAge: SETAHUN });\n  }\n\n  // 5. Simpan. Aturan UNIQUE di database yang menjaga NIM dan perangkat ganda.\n  try {\n    const row = db.prepare(`INSERT INTO checkins (session_id, nim, name, device_id) VALUES (?, ?, ?, ?)\n      RETURNING id, nim, name, created_at`).get(s.id, cleanNim, cleanName, device);\n    res.status(201).json({ session: s.title, checkin: row });\n  } catch (err) {\n    if (err.code !== \"SQLITE_CONSTRAINT_UNIQUE\") throw err;\n    throw gagal(409, err.message.includes(\"checkins.nim\")\n      ? \"NIM ini sudah tercatat hadir di sesi ini\"\n      : \"HP ini sudah dipakai absen di sesi ini\");\n  }\n});\n"
+        },
+        {
+          "id": "abs-m-app-v4",
+          "kind": "kode",
+          "name": "src/app.js",
+          "lang": "javascript",
+          "content": "import express from \"express\";\nimport { fileURLToPath } from \"node:url\";\nimport { db } from \"./db.js\";\nimport { login, logout, wajibPanitia } from \"./auth.js\";\nimport { sessions } from \"./sessions.js\";\nimport { checkin } from \"./checkin.js\";\n\nexport const app = express();\napp.disable(\"x-powered-by\");\napp.use(express.json({ limit: \"10kb\" }));\napp.use(express.static(fileURLToPath(new URL(\"../public\", import.meta.url)), { extensions: [\"html\"] }));\n// jsQR dipakai halaman pindai di browser yang belum punya BarcodeDetector.\napp.use(\"/vendor\", express.static(fileURLToPath(new URL(\"../node_modules/jsqr/dist\", import.meta.url))));\n\napp.get(\"/health\", (req, res) => {\n  db.prepare(\"SELECT 1\").get();\n  res.json({ status: \"ok\" });\n});\n\napp.post(\"/api/login\", login);\napp.post(\"/api/logout\", logout);\napp.get(\"/api/me\", wajibPanitia, (req, res) => res.json({ organizerId: req.organizerId }));\napp.use(\"/api/sessions\", sessions);\napp.use(\"/api/checkin\", checkin);\n\napp.use(\"/api\", (req, res) => res.status(404).json({ error: \"Alamat API tidak dikenal\" }));\n\napp.use((err, req, res, next) => {\n  if (err.type === \"entity.parse.failed\") return res.status(400).json({ error: \"Body bukan JSON yang sah\" });\n  if (err.type === \"entity.too.large\") return res.status(413).json({ error: \"Body terlalu besar\" });\n  if (err.status >= 400 && err.status < 500) return res.status(err.status).json({ error: err.message });\n  console.error(err);\n  res.status(500).json({ error: \"Terjadi kesalahan di server\" });\n});\n"
+        },
+        {
+          "id": "abs-m-scan-html",
+          "kind": "kode",
+          "name": "public/scan.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Absen</title>\n  <link rel=\"stylesheet\" href=\"/style.css\">\n</head>\n<body>\n  <main style=\"max-width: 480px\">\n    <h1>Absen</h1>\n    <form id=\"form\" class=\"kartu\">\n      <label for=\"name\">Nama lengkap</label>\n      <input id=\"name\" name=\"name\" autocomplete=\"name\" minlength=\"2\" maxlength=\"80\" required>\n      <label for=\"nim\">NIM</label>\n      <input id=\"nim\" name=\"nim\" inputmode=\"text\" autocapitalize=\"characters\" pattern=\"[0-9A-Za-z]{5,20}\" required>\n      <p></p>\n      <button>Pindai QR di layar</button>\n    </form>\n    <video id=\"video\" playsinline muted hidden></video>\n    <p id=\"pesan\" class=\"pesan\" role=\"status\" aria-live=\"polite\"></p>\n  </main>\n  <script type=\"module\">\n    const form = document.querySelector(\"#form\");\n    const video = document.querySelector(\"#video\");\n    const pesan = document.querySelector(\"#pesan\");\n    const canvas = document.createElement(\"canvas\");\n    const ctx = canvas.getContext(\"2d\", { willReadFrequently: true });\n    let stream = null;\n    let detector = null;\n\n    // Isi ulang nama dan NIM dari kunjungan sebelumnya\n    for (const k of [\"name\", \"nim\"]) form[k].value = localStorage.getItem(k) ?? \"\";\n\n    function tulis(teks, jenis = \"\") {\n      pesan.textContent = teks;\n      pesan.className = `pesan ${jenis}`;\n    }\n\n    // BarcodeDetector: Chrome Android dan Chrome macOS. Selain itu: jsQR.\n    async function siapkanPembaca() {\n      if (\"BarcodeDetector\" in window && (await BarcodeDetector.getSupportedFormats()).includes(\"qr_code\")) {\n        detector = new BarcodeDetector({ formats: [\"qr_code\"] });\n        return;\n      }\n      if (window.jsQR) return;\n      await new Promise((ok, gagal) => {\n        const s = Object.assign(document.createElement(\"script\"), { src: \"/vendor/jsQR.js\", onload: ok, onerror: gagal });\n        document.head.append(s);\n      });\n    }\n\n    async function bacaFrame() {\n      if (detector) return (await detector.detect(video))[0]?.rawValue;\n      const skala = Math.min(1, 640 / video.videoWidth); // jsQR lambat di gambar besar\n      canvas.width = Math.round(video.videoWidth * skala);\n      canvas.height = Math.round(video.videoHeight * skala);\n      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);\n      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);\n      return jsQR(img.data, img.width, img.height, { inversionAttempts: \"dontInvert\" })?.data;\n    }\n\n    function matikanKamera() {\n      stream?.getTracks().forEach((t) => t.stop());\n      stream = null;\n      video.hidden = true;\n    }\n\n    async function pindai() {\n      if (!stream) return;\n      const isi = video.readyState >= 2 ? await bacaFrame() : null;\n      if (isi) return kirim(isi);\n      setTimeout(pindai, 150);\n    }\n\n    async function kirim(token) {\n      matikanKamera();\n      tulis(\"Mengirim...\");\n      const r = await fetch(\"/api/checkin\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({ token, name: form.name.value, nim: form.nim.value }),\n      });\n      const data = await r.json();\n      if (r.ok) tulis(`Tercatat hadir di \"${data.session}\". Terima kasih, ${data.checkin.name}!`, \"berhasil\");\n      else tulis(Object.values(data.details ?? {})[0] ?? data.error, \"salah\");\n    }\n\n    form.addEventListener(\"submit\", async (e) => {\n      e.preventDefault();\n      for (const k of [\"name\", \"nim\"]) localStorage.setItem(k, form[k].value);\n      if (!window.isSecureContext || !navigator.mediaDevices) {\n        return tulis(\"Kamera hanya bisa dibuka lewat HTTPS (atau localhost).\", \"salah\");\n      }\n      try {\n        await siapkanPembaca();\n        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: \"environment\" }, audio: false });\n      } catch (err) {\n        return tulis(`Kamera tidak bisa dibuka: ${err.name === \"NotAllowedError\" ? \"izin ditolak\" : err.message}`, \"salah\");\n      }\n      video.srcObject = stream;\n      video.hidden = false;\n      await video.play();\n      tulis(\"Arahkan kamera ke QR di layar kelas.\");\n      pindai();\n    });\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "abs-m-mdn-gum",
+          "kind": "tautan",
+          "name": "MDN: getUserMedia dan secure context",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-scan-kamera",
+          "text": "Halaman /scan membuka kamera di localhost dan membaca QR dari layar."
+        },
+        {
+          "id": "abs-scan-berhasil",
+          "text": "Absen yang sah dijawab 201 dan halaman menampilkan nama sesi."
+        },
+        {
+          "id": "abs-scan-ganda",
+          "text": "NIM yang sama dan browser yang sama untuk NIM lain sama-sama ditolak 409."
+        },
+        {
+          "id": "abs-scan-batas",
+          "text": "Aku bisa menjelaskan batas cookie perangkat dengan jujur."
+        },
+        {
+          "id": "abs-scan-commit",
+          "text": "Halaman pindai dan endpoint absen sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "ngoding",
+      "slug": "daftar-hadir-live-dan-csv",
+      "title": "Daftar hadir live dengan SSE dan rekap CSV",
+      "est_minutes": 90,
+      "body": "## Layar yang hidup\n\nPanitia ingin melihat siapa saja yang sudah absen tanpa menekan refresh. Ada tiga pilihan:\n\n| Cara | Kelebihan | Kekurangan |\n| --- | --- | --- |\n| Polling tiap 3 detik | Paling sederhana | Banyak request kosong, ada jeda |\n| WebSocket | Dua arah | Butuh protokol dan pustaka tambahan |\n| **Server-Sent Events** | Satu arah server ke browser, cukup HTTP biasa, browser tersambung ulang sendiri | Hanya teks, satu arah |\n\nLayar panitia hanya **menerima** kabar, jadi SSE pas sekali.\n\n## Cara kerja SSE\n\n1. Browser membuka `new EventSource(\"/api/sessions/1/stream\")`. Cookie login ikut terkirim karena alamatnya satu origin.\n2. Server menjawab dengan `Content-Type: text/event-stream` dan **tidak menutup** koneksinya.\n3. Pertama kali tersambung, server mengirim event `awal` berisi daftar lengkap. Ini penting: kalau Wi-Fi kelas putus sebentar, `EventSource` tersambung ulang sendiri, menerima `awal` lagi, dan daftar di layar kembali lengkap tanpa ada nama ganda.\n4. Setiap ada absen baru, `kabarkan()` menulis event `hadir` ke semua layar yang sedang menonton sesi itu.\n5. Setiap 25 detik server mengirim komentar `: detak` supaya proxy tidak memutus koneksi yang dianggap diam.\n\n![Layar panitia saat peserta berdatangan: QR berputar di kiri, dan nama baru muncul di atas daftar dengan kilatan hijau tanpa refresh](/studio/absensi-qr-code/layar-live.gif)\n\n## Rekap CSV\n\n`GET /api/sessions/:id/export.csv` mengunduh rekap. Dua detail kecil yang sering terlewat:\n\n- **BOM** (`﻿`) di awal berkas memberi tahu Excel bahwa isinya UTF-8, jadi nama seperti \"Zoë\" atau \"Ñoman\" tidak berubah jadi karakter aneh.\n- **CSV injection**: nama yang diketik peserta bisa berupa `=HYPERLINK(...)`. Excel menjalankannya sebagai rumus saat berkas dibuka. Fungsi `sel()` menambahkan tanda petik di depan nilai yang diawali `=`, `+`, `-`, atau `@`.\n\nExcel dengan pengaturan bahasa Indonesia kadang memakai titik koma sebagai pemisah kolom, sehingga semua data masuk satu kolom. Buka lewat menu **Data, From Text/CSV**, atau impor ke Google Sheets.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `src/live.js` dari bagian Bahan.\n2. Ganti `src/checkin.js` dan `src/sessions.js` dengan versi lengkap di bagian Bahan.\n3. Ganti `public/layar.html` dengan versi lengkap (daftar hadir dan tautan CSV).\n4. Buka layar sesi, lalu dari browser lain (atau jendela penyamaran) absen di `/scan`. Nama harus muncul di layar dalam sekejap.\n5. Di DevTools tab Network, klik request `stream`, lalu buka tab **EventStream**. Kamu bisa melihat event `awal` dan `hadir` satu per satu.\n6. Unduh CSV dan buka di spreadsheet.\n7. Commit dengan pesan `Daftar hadir live dan rekap CSV`.\n\n> Nama peserta dipasang dengan `textContent`, bukan `innerHTML`. Kalau ada yang mengetik `<img src=x onerror=alert(1)>` sebagai nama, yang tampil hanya teks itu, bukan skrip yang berjalan di laptop panitia.",
+      "materials": [
+        {
+          "id": "abs-m-live",
+          "kind": "kode",
+          "name": "src/live.js",
+          "lang": "javascript",
+          "content": "// Siapa saja yang sedang menonton daftar hadir, dikelompokkan per sesi.\n// ponytail: disimpan di memori satu proses. Kalau server dijalankan lebih dari satu instance,\n// ganti dengan Redis pub/sub atau Postgres LISTEN/NOTIFY.\nconst penonton = new Map(); // sessionId -> Set<res>\n\nconst kirimEvent = (res, event, data) => res.write(`event: ${event}\\ndata: ${JSON.stringify(data)}\\n\\n`);\n\nexport function ikuti(req, res, sessionId, awal) {\n  res.set({\n    \"Content-Type\": \"text/event-stream\",\n    \"Cache-Control\": \"no-cache\",\n    \"X-Accel-Buffering\": \"no\", // minta proxy (nginx dan sejenisnya) tidak menahan data\n  });\n  res.flushHeaders();\n  kirimEvent(res, \"awal\", awal); // daftar lengkap saat (ulang) tersambung\n\n  if (!penonton.has(sessionId)) penonton.set(sessionId, new Set());\n  penonton.get(sessionId).add(res);\n  const detak = setInterval(() => res.write(\": detak\\n\\n\"), 25_000); // jaga koneksi tetap hidup\n\n  req.on(\"close\", () => {\n    clearInterval(detak);\n    penonton.get(sessionId)?.delete(res);\n  });\n}\n\nexport function kabarkan(sessionId, checkin) {\n  for (const res of penonton.get(sessionId) ?? []) kirimEvent(res, \"hadir\", checkin);\n}\n"
+        },
+        {
+          "id": "abs-m-checkin-final",
+          "kind": "kode",
+          "name": "src/checkin.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport { randomBytes } from \"node:crypto\";\nimport { db } from \"./db.js\";\nimport { bacaCookie, cookieAman, gagal } from \"./http.js\";\nimport { verifyToken } from \"./token.js\";\nimport { kabarkan } from \"./live.js\";\n\nexport const checkin = Router();\nconst SETAHUN = 365 * 24 * 60 * 60 * 1000;\n\ncheckin.post(\"/\", (req, res) => {\n  const { token, nim, name } = req.body ?? {};\n\n  // 1. Tanda tangan dan jendela waktu\n  const hasil = verifyToken(token);\n  if (hasil.error) throw gagal(400, hasil.error);\n\n  // 2. Sesi ada dan masih dibuka\n  const s = db.prepare(\"SELECT id, title, closed_at FROM sessions WHERE id = ?\").get(hasil.sessionId);\n  if (!s) throw gagal(404, \"Sesi tidak ditemukan\");\n  if (s.closed_at) throw gagal(409, \"Sesi sudah ditutup panitia\");\n\n  // 3. Data peserta\n  const cleanNim = typeof nim === \"string\" ? nim.trim().toUpperCase() : \"\";\n  const cleanName = typeof name === \"string\" ? name.trim().replace(/\\s+/g, \" \") : \"\";\n  const details = {};\n  if (!/^[0-9A-Z]{5,20}$/.test(cleanNim)) details.nim = \"NIM berisi 5 sampai 20 huruf atau angka\";\n  if (cleanName.length < 2 || cleanName.length > 80) details.name = \"Nama 2 sampai 80 karakter\";\n  if (Object.keys(details).length) return res.status(422).json({ error: \"Data belum lengkap\", details });\n\n  // 4. Cookie perangkat: satu HP hanya bisa dipakai absen sekali per sesi\n  let device = bacaCookie(req, \"perangkat\");\n  if (!/^[\\w-]{22}$/.test(device ?? \"\")) {\n    device = randomBytes(16).toString(\"base64url\");\n    res.cookie(\"perangkat\", device, { ...cookieAman, maxAge: SETAHUN });\n  }\n\n  // 5. Simpan. Aturan UNIQUE di database yang menjaga NIM dan perangkat ganda.\n  try {\n    const row = db.prepare(`INSERT INTO checkins (session_id, nim, name, device_id) VALUES (?, ?, ?, ?)\n      RETURNING id, nim, name, created_at`).get(s.id, cleanNim, cleanName, device);\n    kabarkan(s.id, row); // layar panitia langsung bertambah satu nama\n    res.status(201).json({ session: s.title, checkin: row });\n  } catch (err) {\n    if (err.code !== \"SQLITE_CONSTRAINT_UNIQUE\") throw err;\n    throw gagal(409, err.message.includes(\"checkins.nim\")\n      ? \"NIM ini sudah tercatat hadir di sesi ini\"\n      : \"HP ini sudah dipakai absen di sesi ini\");\n  }\n});\n"
+        },
+        {
+          "id": "abs-m-sessions-final",
+          "kind": "kode",
+          "name": "src/sessions.js",
+          "lang": "javascript",
+          "content": "import { Router } from \"express\";\nimport QRCode from \"qrcode\";\nimport { db } from \"./db.js\";\nimport { wajibPanitia } from \"./auth.js\";\nimport { gagal } from \"./http.js\";\nimport { makeToken } from \"./token.js\";\nimport { ikuti } from \"./live.js\";\n\nexport const sessions = Router();\nsessions.use(wajibPanitia); // semua rute di bawah ini khusus panitia\n\n// Panitia hanya boleh melihat sesi miliknya sendiri.\nfunction ambilSesi(req) {\n  const s = db.prepare(\"SELECT * FROM sessions WHERE id = ? AND organizer_id = ?\")\n    .get(Number(req.params.id), req.organizerId);\n  if (!s) throw gagal(404, \"Sesi tidak ditemukan\");\n  return s;\n}\n\nsessions.get(\"/\", (req, res) => {\n  res.json(db.prepare(`\n    SELECT s.id, s.title, s.created_at, s.closed_at, count(c.id) AS hadir\n    FROM sessions s LEFT JOIN checkins c ON c.session_id = s.id\n    WHERE s.organizer_id = ? GROUP BY s.id ORDER BY s.id DESC`).all(req.organizerId));\n});\n\nsessions.post(\"/\", (req, res) => {\n  const title = typeof req.body?.title === \"string\" ? req.body.title.trim() : \"\";\n  if (title.length < 1 || title.length > 100) throw gagal(422, \"Judul sesi wajib diisi, maksimal 100 karakter\");\n  const s = db.prepare(\"INSERT INTO sessions (organizer_id, title) VALUES (?, ?) RETURNING *\").get(req.organizerId, title);\n  res.status(201).json(s);\n});\n\nsessions.get(\"/:id\", (req, res) => res.json(ambilSesi(req)));\n\nsessions.post(\"/:id/close\", (req, res) => {\n  const s = ambilSesi(req);\n  db.prepare(\"UPDATE sessions SET closed_at = unixepoch() WHERE id = ? AND closed_at IS NULL\").run(s.id);\n  res.json(ambilSesi(req));\n});\n\n// QR berisi token yang hanya berlaku di jendela waktu ini (plus satu jendela sebelumnya).\nsessions.get(\"/:id/qr\", async (req, res) => {\n  const s = ambilSesi(req);\n  if (s.closed_at) throw gagal(409, \"Sesi sudah ditutup\");\n  const { token, expiresIn } = makeToken(s.id);\n  const svg = await QRCode.toString(token, { type: \"svg\", margin: 1, errorCorrectionLevel: \"M\" });\n  res.set(\"Cache-Control\", \"no-store\").json({ svg, expiresIn });\n});\n\nconst daftarHadir = (sessionId) =>\n  db.prepare(\"SELECT id, nim, name, created_at FROM checkins WHERE session_id = ? ORDER BY id\").all(sessionId);\n\n// Server-Sent Events: koneksi dibiarkan terbuka, server mendorong setiap peserta baru.\nsessions.get(\"/:id/stream\", (req, res) => {\n  const s = ambilSesi(req);\n  ikuti(req, res, s.id, daftarHadir(s.id));\n});\n\n// Sel CSV: selalu dikutip, dan nilai yang diawali = + - @ diberi petik supaya\n// tidak dijalankan sebagai rumus oleh Excel (CSV injection).\nconst sel = (v) => `\"${String(v).replace(/^[=+\\-@\\t\\r]/, \"'$&\").replaceAll('\"', '\"\"')}\"`;\nconst waktuWIB = (detik) => new Date(detik * 1000).toLocaleString(\"sv-SE\", { timeZone: \"Asia/Jakarta\" });\n\nsessions.get(\"/:id/export.csv\", (req, res) => {\n  const s = ambilSesi(req);\n  const baris = [[\"no\", \"nim\", \"nama\", \"waktu_wib\"]];\n  daftarHadir(s.id).forEach((c, i) => baris.push([i + 1, c.nim, c.name, waktuWIB(c.created_at)]));\n  res.type(\"text/csv; charset=utf-8\")\n    .attachment(`absensi-sesi-${s.id}.csv`)\n    .send(\"\\uFEFF\" + baris.map((b) => b.map(sel).join(\",\")).join(\"\\r\\n\")); // BOM supaya Excel membaca UTF-8\n});\n"
+        },
+        {
+          "id": "abs-m-layar-final",
+          "kind": "kode",
+          "name": "public/layar.html",
+          "lang": "html",
+          "content": "<!doctype html>\n<html lang=\"id\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Layar absensi</title>\n  <link rel=\"stylesheet\" href=\"/style.css\">\n</head>\n<body>\n  <main>\n    <p><a href=\"/\">Kembali ke daftar sesi</a></p>\n    <h1 id=\"judul\">Memuat...</h1>\n    <div class=\"layar\">\n      <section class=\"kartu\">\n        <div id=\"qr\" aria-label=\"QR absensi, berganti tiap 30 detik\"></div>\n        <div class=\"waktu\"><div id=\"sisa\"></div></div>\n        <p>Buka di HP: <span class=\"alamat\" id=\"alamat\"></span></p>\n      </section>\n      <aside class=\"kartu\">\n        <div id=\"jumlah\">0</div>\n        <p>sudah hadir</p>\n        <ol id=\"daftar\" aria-live=\"polite\"></ol>\n        <p class=\"baris\">\n          <a href=\"#\" id=\"csv\">Unduh CSV</a>\n          <button id=\"tutup\" class=\"sekunder\">Tutup sesi</button>\n        </p>\n      </aside>\n    </div>\n  </main>\n  <script type=\"module\">\n    const id = new URLSearchParams(location.search).get(\"id\");\n    const qr = document.querySelector(\"#qr\");\n    document.querySelector(\"#alamat\").textContent = `${location.origin}/scan`;\n\n    async function api(url, options) {\n      const r = await fetch(url, options);\n      if (r.status === 401) location.href = \"/login\";\n      return r;\n    }\n\n    const sesi = await (await api(`/api/sessions/${id}`)).json();\n    document.querySelector(\"#judul\").textContent = sesi.title ?? sesi.error;\n\n    // Batang hijau menyusut sampai QR berganti.\n    function hitungMundur(ms) {\n      document.querySelector(\"#sisa\").animate(\n        [{ transform: \"scaleX(1)\" }, { transform: \"scaleX(0)\" }],\n        { duration: ms, easing: \"linear\", fill: \"forwards\" },\n      );\n    }\n\n    async function putarQR() {\n      const r = await api(`/api/sessions/${id}/qr`);\n      if (!r.ok) {\n        qr.textContent = (await r.json()).error;\n        return;\n      }\n      const { svg, expiresIn } = await r.json();\n      qr.innerHTML = svg; // aman: SVG dibuat server kita sendiri, bukan masukan pengguna\n      hitungMundur(expiresIn);\n      setTimeout(putarQR, expiresIn + 250); // ambil QR baru tepat setelah jendela berganti\n    }\n    putarQR();\n\n    // Daftar hadir live lewat Server-Sent Events\n    const daftar = document.querySelector(\"#daftar\");\n    document.querySelector(\"#csv\").href = `/api/sessions/${id}/export.csv`;\n\n    function tambah(c, baru = false) {\n      const li = document.createElement(\"li\");\n      if (baru) li.className = \"baru\";\n      const nama = document.createElement(\"span\");\n      nama.textContent = c.name; // textContent, bukan innerHTML: nama diketik peserta\n      const nim = Object.assign(document.createElement(\"span\"), { className: \"nim\", textContent: c.nim });\n      li.append(nama, nim);\n      daftar.prepend(li); // yang terbaru di atas\n      document.querySelector(\"#jumlah\").textContent = daftar.children.length;\n    }\n\n    const es = new EventSource(`/api/sessions/${id}/stream`);\n    es.addEventListener(\"awal\", (e) => {\n      daftar.replaceChildren(); // EventSource tersambung ulang otomatis; mulai dari daftar lengkap\n      JSON.parse(e.data).forEach((c) => tambah(c));\n    });\n    es.addEventListener(\"hadir\", (e) => tambah(JSON.parse(e.data), true));\n\n    document.querySelector(\"#tutup\").addEventListener(\"click\", async () => {\n      if (!confirm(\"Tutup sesi? QR berhenti dan absen tidak bisa lagi.\")) return;\n      await api(`/api/sessions/${id}/close`, { method: \"POST\" });\n      location.reload();\n    });\n  </script>\n</body>\n</html>\n"
+        },
+        {
+          "id": "abs-m-mdn-sse",
+          "kind": "tautan",
+          "name": "MDN: Using server-sent events",
+          "url": "https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events"
+        },
+        {
+          "id": "abs-m-owasp-csv",
+          "kind": "tautan",
+          "name": "OWASP: CSV Injection",
+          "url": "https://owasp.org/www-community/attacks/CSV_Injection"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-live-muncul",
+          "text": "Nama peserta muncul di layar tanpa refresh."
+        },
+        {
+          "id": "abs-live-ulang",
+          "text": "Setelah server di-restart, layar tersambung ulang dan daftarnya tetap lengkap tanpa nama ganda."
+        },
+        {
+          "id": "abs-live-csv",
+          "text": "CSV terunduh dan terbaca rapi di spreadsheet."
+        },
+        {
+          "id": "abs-live-xss",
+          "text": "Nama berisi tag HTML tampil sebagai teks biasa."
+        },
+        {
+          "id": "abs-live-commit",
+          "text": "Daftar hadir live dan CSV sudah di-commit."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "uji-manual-dan-di-hp",
+      "title": "Uji dengan curl dan dengan HP sungguhan",
+      "est_minutes": 60,
+      "body": "## Uji seperti panitia yang skeptis\n\nDua bagian: dulu API dengan curl (cepat, bisa diulang), lalu sungguhan dengan HP (satu-satunya cara memastikan kamera dan QR terbaca di dunia nyata).\n\n## 1. API dengan curl\n\n1. Jalankan `npm run dev` di terminal pertama.\n2. Jalankan perintah di `uji-manual.sh` satu per satu di terminal kedua. Opsi `-c` menyimpan cookie ke berkas dan `-b` mengirimkannya lagi, persis seperti browser.\n3. Untuk perintah 6, buka terminal ketiga. `curl -N` menonton stream SSE tanpa buffer. Saat perintah 8 dijalankan, event `hadir` harus langsung muncul di terminal ketiga.\n4. curl tidak bisa memindai QR, jadi perintah 7 membuat token sah langsung dari `src/token.js` dengan `QR_SECRET` yang sama.\n5. Cocokkan setiap kode status dengan tabel di `rancangan.md`.\n\n## 2. Dengan HP sungguhan\n\nKamera butuh HTTPS. Cara termudah tanpa deploy adalah **Cloudflare Quick Tunnel**: pasang `cloudflared`, lalu jalankan\n\n```bash\ncloudflared tunnel --url http://localhost:3000\n```\n\nPerintah ini mencetak alamat acak seperti `https://kata-kata-acak.trycloudflare.com` yang meneruskan ke laptopmu. Tidak perlu akun.\n\n1. Di laptop, buka layar sesi lewat **http://localhost:3000** (bukan alamat tunnel). Quick Tunnel tidak mendukung Server-Sent Events, jadi daftar live hanya berjalan lewat localhost. Halaman pindai di HP tidak butuh SSE, jadi aman lewat tunnel.\n2. Di HP, buka `https://...trycloudflare.com/scan`, isi nama dan NIM, pindai QR di layar laptop.\n3. Coba dengan dua sampai tiga HP teman, termasuk minimal satu iPhone (jalur jsQR) dan satu Android dengan Chrome (jalur BarcodeDetector).\n4. Coba dari jarak 3 meter. Kalau QR sulit terbaca, perbesar jendela browser layar, atau naikkan `errorCorrectionLevel` di `sessions.js` dari `M` ke `Q`.\n5. Foto QR, tunggu satu menit lebih, lalu pindai fotonya. Harus ditolak \"QR sudah kedaluwarsa\".\n\n## Kasus nakal yang layak dicoba\n\n- Nama berisi `<b>tebal</b>`: di layar harus tampil sebagai teks apa adanya.\n- Nama `=1+1`: di CSV harus tertulis `'=1+1`.\n- Tutup sesi, lalu coba absen: 409.\n- Restart server di tengah sesi: layar tersambung ulang sendiri dan daftar tetap lengkap.\n\nCatat setiap bug yang kamu temukan dan cara memperbaikinya untuk README.",
+      "materials": [
+        {
+          "id": "abs-m-curl",
+          "kind": "kode",
+          "name": "uji-manual.sh",
+          "lang": "bash",
+          "content": "# Jalankan satu per satu di terminal kedua, sementara `npm run dev` menyala.\nBASE=http://localhost:3000\nJSON='Content-Type: application/json'\n\n# 1. Server dan database hidup\ncurl -i $BASE/health\n\n# 2. Belum login: 401\ncurl -i $BASE/api/sessions\n\n# 3. Login, simpan cookie ke berkas cookie.txt\ncurl -i -c cookie.txt -H \"$JSON\" -d '{\"email\":\"dosen@contoh.id\",\"password\":\"kata-sandi-demo-123\"}' $BASE/api/login\n\n# 4. Buat sesi (catat id yang dikembalikan, di sini dianggap 1)\ncurl -i -b cookie.txt -H \"$JSON\" -d '{\"title\":\"Basis Data B, pertemuan 3\"}' $BASE/api/sessions\n\n# 5. Ambil QR (SVG di dalam JSON) dan sisa waktu jendela\ncurl -s -b cookie.txt $BASE/api/sessions/1/qr | head -c 200; echo\n\n# 6. Di terminal KETIGA, tonton daftar hadir live (biarkan terbuka):\n#    curl -N -b cookie.txt http://localhost:3000/api/sessions/1/stream\n\n# 7. Buat token yang sah untuk sesi 1 (curl tidak bisa memindai QR)\nTOKEN=$(node --env-file=.env --input-type=module -e 'import { makeToken } from \"./src/token.js\"; console.log(makeToken(1).token)')\necho $TOKEN\n\n# 8. Absen: 201, dan terminal ketiga langsung menampilkan event \"hadir\"\ncurl -i -c hp.txt -b hp.txt -H \"$JSON\" -d \"{\\\"token\\\":\\\"$TOKEN\\\",\\\"nim\\\":\\\"2201001\\\",\\\"name\\\":\\\"Rina Demo\\\"}\" $BASE/api/checkin\n\n# 9. NIM yang sama lagi: 409\ncurl -i -H \"$JSON\" -d \"{\\\"token\\\":\\\"$TOKEN\\\",\\\"nim\\\":\\\"2201001\\\",\\\"name\\\":\\\"Rina Lagi\\\"}\" $BASE/api/checkin\n\n# 10. HP yang sama (cookie hp.txt) untuk NIM lain: 409\ncurl -i -b hp.txt -H \"$JSON\" -d \"{\\\"token\\\":\\\"$TOKEN\\\",\\\"nim\\\":\\\"2201002\\\",\\\"name\\\":\\\"Teman Rina\\\"}\" $BASE/api/checkin\n\n# 11. Data salah: 422 dengan details\ncurl -i -H \"$JSON\" -d \"{\\\"token\\\":\\\"$TOKEN\\\",\\\"nim\\\":\\\"12\\\",\\\"name\\\":\\\"\\\"}\" $BASE/api/checkin\n\n# 12. Token palsu: 400\ncurl -i -H \"$JSON\" -d '{\"token\":\"1.123.palsu\",\"nim\":\"2201003\",\"name\":\"Budi\"}' $BASE/api/checkin\n\n# 13. Tunggu lebih dari 60 detik, ulangi perintah 8 dengan NIM lain: 400 kedaluwarsa\n\n# 14. Rekap CSV\ncurl -s -b cookie.txt $BASE/api/sessions/1/export.csv\n"
+        },
+        {
+          "id": "abs-m-quick-tunnel",
+          "kind": "tautan",
+          "name": "Cloudflare: Quick Tunnels (TryCloudflare)",
+          "url": "https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-uji-curl",
+          "text": "Semua perintah di uji-manual.sh menghasilkan kode status sesuai rancangan."
+        },
+        {
+          "id": "abs-uji-sse",
+          "text": "curl -N menampilkan event hadir saat ada absen baru."
+        },
+        {
+          "id": "abs-uji-hp",
+          "text": "Minimal dua HP berbeda berhasil absen lewat alamat HTTPS."
+        },
+        {
+          "id": "abs-uji-basi",
+          "text": "Foto QR yang berumur lebih dari satu menit ditolak."
+        }
+      ]
+    },
+    {
+      "stage": "uji",
+      "slug": "tes-otomatis-absensi",
+      "title": "Tulis tes otomatis dengan node:test dan supertest",
+      "est_minutes": 75,
+      "body": "## Tes yang menjaga aturan penting\n\nYang paling berbahaya kalau rusak diam-diam adalah aturan keamanannya: token palsu diterima, token basi diterima, NIM ganda lolos. Tes otomatis memastikan perubahan besok tidak membuka lubang itu lagi.\n\n## Trik supaya tes rapi\n\n- `DB_PATH=\":memory:\"` membuat database baru di RAM untuk setiap run tes. Tidak ada berkas yang tertinggal dan tidak ada data sungguhan yang tersentuh.\n- Variabel lingkungan diisi **sebelum** `app.js` dimuat, karena `db.js` dan `token.js` membacanya saat pertama kali diimpor. Karena itu app dimuat dengan `await import(...)`, bukan `import` biasa di baris paling atas (`import` biasa selalu dijalankan lebih dulu).\n- `makeToken` dan `verifyToken` menerima parameter `now`. Tes bisa \"memajukan waktu\" 60 detik tanpa benar-benar menunggu.\n- `request.agent(app)` menyimpan cookie seperti browser. Satu agent dipakai sebagai panitia, satu lagi sebagai HP peserta.\n\n## Yang perlu kamu kerjakan\n\n1. Buat `test/absensi.test.js` dari bagian Bahan.\n2. Jalankan `npm test`. Kedelapan tes harus lulus. Tes pertama agak lama (sekitar satu sampai tiga detik) karena `scrypt` memang sengaja lambat.\n3. Rusak kode dengan sengaja: di `token.js`, ubah syarat jendela menjadi hanya `Number(w) !== current`. Tes pertama harus gagal. Kembalikan.\n4. Rusak lagi: di `schema.sql`, hapus baris `UNIQUE (session_id, device_id)` beserta koma di akhir baris sebelumnya. Tes \"HP yang sama\" harus gagal. Kembalikan.\n5. Tambahkan minimal satu tes buatanmu, misalnya panitia B tidak bisa membuka QR milik panitia A (harus 404).\n6. Commit dengan pesan `Tambah tes otomatis`.",
+      "materials": [
+        {
+          "id": "abs-m-test",
+          "kind": "kode",
+          "name": "test/absensi.test.js",
+          "lang": "javascript",
+          "content": "import { test, before } from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport request from \"supertest\";\n\n// Diisi SEBELUM app dimuat: database di memori, rahasia khusus tes.\nprocess.env.DB_PATH = \":memory:\";\nprocess.env.QR_SECRET = \"rahasia-khusus-tes-yang-panjangnya-32-karakter\";\nconst { app } = await import(\"../src/app.js\");\nconst { db } = await import(\"../src/db.js\");\nconst { hashPassword } = await import(\"../src/auth.js\");\nconst { makeToken, verifyToken, WINDOW_MS } = await import(\"../src/token.js\");\n\nconst panitia = request.agent(app); // agent menyimpan cookie seperti browser\nlet sessionId;\n\nbefore(async () => {\n  db.prepare(\"INSERT INTO organizers (email, password_hash) VALUES (?, ?)\")\n    .run(\"panitia@contoh.id\", await hashPassword(\"kata-sandi-tes-123\"));\n});\n\ntest(\"token: jendela sekarang dan sebelumnya diterima, yang lebih lama ditolak\", () => {\n  const t0 = 1_000_000 * WINDOW_MS + 5_000;\n  const { token, expiresIn } = makeToken(7, t0);\n  assert.equal(expiresIn, WINDOW_MS - 5_000);\n  assert.equal(verifyToken(token, t0).sessionId, 7);\n  assert.equal(verifyToken(token, t0 + WINDOW_MS).sessionId, 7);\n  assert.match(verifyToken(token, t0 + 2 * WINDOW_MS).error, /kedaluwarsa/);\n});\n\ntest(\"token: id sesi yang diubah membuat tanda tangan tidak cocok\", () => {\n  const { token } = makeToken(7);\n  assert.match(verifyToken(token.replace(/^7\\./, \"8.\")).error, /tidak sah/);\n  assert.match(verifyToken(\"bukan-token\").error, /tidak dikenali/);\n});\n\ntest(\"rute panitia menolak yang belum login\", async () => {\n  await request(app).get(\"/api/sessions\").expect(401);\n});\n\ntest(\"login salah 401, login benar lalu membuat sesi\", async () => {\n  await panitia.post(\"/api/login\").send({ email: \"panitia@contoh.id\", password: \"salah\" }).expect(401);\n  await panitia.post(\"/api/login\").send({ email: \"panitia@contoh.id\", password: \"kata-sandi-tes-123\" }).expect(200);\n  const r = await panitia.post(\"/api/sessions\").send({ title: \"Pemrograman Web A\" }).expect(201);\n  sessionId = r.body.id;\n  const qr = await panitia.get(`/api/sessions/${sessionId}/qr`).expect(200);\n  assert.match(qr.body.svg, /^<svg/);\n});\n\ntest(\"absen: 201, NIM ganda 409, HP yang sama untuk NIM lain 409\", async () => {\n  const hpRina = request.agent(app);\n  const { token } = makeToken(sessionId);\n  const r = await hpRina.post(\"/api/checkin\").send({ token, nim: \"2201001\", name: \"Rina\" }).expect(201);\n  assert.equal(r.body.session, \"Pemrograman Web A\");\n\n  const ganda = await request(app).post(\"/api/checkin\").send({ token, nim: \"2201001\", name: \"Rina lagi\" }).expect(409);\n  assert.match(ganda.body.error, /NIM/);\n  const titip = await hpRina.post(\"/api/checkin\").send({ token, nim: \"2201002\", name: \"Teman Rina\" }).expect(409);\n  assert.match(titip.body.error, /HP/);\n});\n\ntest(\"absen ditolak untuk data kosong dan token palsu\", async () => {\n  const { token } = makeToken(sessionId);\n  const r = await request(app).post(\"/api/checkin\").send({ token, nim: \"12\", name: \"\" }).expect(422);\n  assert.ok(r.body.details.nim && r.body.details.name);\n  await request(app).post(\"/api/checkin\").send({ token: token.slice(0, -1) + (token.endsWith(\"A\") ? \"B\" : \"A\"), nim: \"2201009\", name: \"Budi\" }).expect(400);\n});\n\ntest(\"CSV berisi peserta dan aman dari rumus Excel\", async () => {\n  await request(app).post(\"/api/checkin\")\n    .send({ token: makeToken(sessionId).token, nim: \"2201003\", name: \"=HYPERLINK(1)\" }).expect(201);\n  const r = await panitia.get(`/api/sessions/${sessionId}/export.csv`).expect(200).expect(\"content-type\", /text\\/csv/);\n  assert.match(r.text, /\"1\",\"2201001\",\"Rina\"/);\n  assert.match(r.text, /\"'=HYPERLINK\\(1\\)\"/);\n});\n\ntest(\"sesi yang ditutup tidak menerima absen\", async () => {\n  await panitia.post(`/api/sessions/${sessionId}/close`).expect(200);\n  await request(app).post(\"/api/checkin\")\n    .send({ token: makeToken(sessionId).token, nim: \"2201004\", name: \"Telat\" }).expect(409);\n});\n"
+        },
+        {
+          "id": "abs-m-node-test",
+          "kind": "tautan",
+          "name": "Node.js: dokumentasi test runner",
+          "url": "https://nodejs.org/api/test.html"
+        },
+        {
+          "id": "abs-m-supertest",
+          "kind": "tautan",
+          "name": "supertest di npm",
+          "url": "https://www.npmjs.com/package/supertest"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-tes-lulus",
+          "text": "npm test menjalankan delapan tes dan semuanya lulus."
+        },
+        {
+          "id": "abs-tes-rusak",
+          "text": "Aku sudah merusak aturan jendela dan UNIQUE dengan sengaja dan melihat tesnya gagal."
+        },
+        {
+          "id": "abs-tes-sendiri",
+          "text": "Aku menambah minimal satu tes buatanku sendiri."
+        }
+      ]
+    },
+    {
+      "stage": "deploy",
+      "slug": "deploy-render-dengan-disk",
+      "title": "Online-kan di Render dengan disk persisten",
+      "est_minutes": 90,
+      "body": "## SQLite butuh disk yang tidak hilang\n\nBanyak hosting gratis memakai sistem berkas **sementara**: setiap deploy atau restart, semua berkas yang ditulis aplikasi hilang. Untuk SQLite, itu berarti seluruh data absensi lenyap. Jadi pilihannya dua:\n\n| Pilihan | Untung | Rugi |\n| --- | --- | --- |\n| Hosting dengan **disk persisten** + SQLite | Kode tetap sederhana, satu berkas | Berbayar, hanya satu instance |\n| Hosting gratis + database terkelola (Postgres di Neon atau Supabase) | Bisa gratis | Harus menulis ulang lapisan database |\n\nUntuk proyek ini kita pakai **Render** dengan **Persistent Disk**. Menurut dokumentasi Render, disk hanya bisa dipasang ke layanan berbayar (instance termurah sekitar US$7 per bulan, disk US$0,25 per GB per bulan). Cek halaman harganya saat kamu membaca ini. Sesuaikan dengan kebutuhan: untuk kelas, 1 GB lebih dari cukup.\n\nBatasan disk di Render yang perlu kamu tahu:\n- Disk hanya bisa dipakai **satu instance**. Cocok dengan aplikasi kita, karena daftar penonton SSE juga hanya ada di memori satu proses.\n- Deploy tidak lagi tanpa jeda: instance lama dimatikan dulu sebelum yang baru menyala. Layar panitia akan tersambung ulang sendiri.\n- Hanya isi folder mount yang bertahan. Render membuat snapshot disk otomatis sekali sehari dan menyimpannya tujuh hari.\n\n## Langkah deploy\n\n1. Push repositori ke GitHub.\n2. Di Render, buat **Web Service** baru dari repositori itu. Language `Node`, Build Command `npm install`, Start Command `npm start`, pilih instance berbayar.\n3. Di **Environment**, tambahkan:\n   - `NODE_ENV` = `production` (menyalakan cookie `Secure`)\n   - `QR_SECRET` = string acak baru, **jangan** sama dengan yang di laptop\n   - `DB_PATH` = `/var/data/absensi.db`\n4. Di bagian **Disks**, tambahkan disk dengan Mount Path `/var/data`, ukuran 1 GB.\n5. Di **Settings**, isi Health Check Path dengan `/health`.\n6. Setelah status **Live**, buka tab **Shell** dan buat akun panitia: `npm run panitia -- emailmu@kampus.ac.id kata-sandi-yang-panjang`. Ini harus dijalankan saat layanan hidup, karena disk tidak tersedia saat build.\n7. Buka `https://NAMA-LAYANAN.onrender.com/login`, buat sesi, lalu pindai dari HP. HTTPS dari Render membuat kamera langsung bisa dipakai, dan SSE juga berjalan.\n8. Uji ketahanan data: klik **Manual Deploy**, tunggu Live lagi, lalu pastikan sesi dan daftar hadir masih ada.\n\n## Kalau gagal\n\n- Data hilang setelah deploy: `DB_PATH` tidak berada di bawah Mount Path disk.\n- `QR_SECRET wajib diisi`: variabel belum diisi atau kurang dari 32 karakter.\n- Daftar live tidak bergerak tapi absen berhasil: buka tab Network, pastikan request `stream` berstatus 200 dan tidak terputus. Header `X-Accel-Buffering: no` sudah dikirim untuk proxy yang suka menahan data.\n\n> Mau gratis? Pindahkan database ke Postgres (lihat proyek **REST API Catatan** untuk polanya). Tulis pilihan dan alasanmu di README.",
+      "materials": [
+        {
+          "id": "abs-m-render-disk",
+          "kind": "tautan",
+          "name": "Render: Persistent Disks",
+          "url": "https://render.com/docs/disks"
+        },
+        {
+          "id": "abs-m-render-node",
+          "kind": "tautan",
+          "name": "Render: deploy aplikasi Express",
+          "url": "https://render.com/docs/deploy-node-express-app"
+        },
+        {
+          "id": "abs-m-render-harga",
+          "kind": "tautan",
+          "name": "Render: harga instance dan disk",
+          "url": "https://render.com/pricing"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-dep-disk",
+          "text": "DB_PATH berada di bawah Mount Path disk Render."
+        },
+        {
+          "id": "abs-dep-env",
+          "text": "QR_SECRET produksi berbeda dari yang di laptop dan tidak ada di dalam kode."
+        },
+        {
+          "id": "abs-dep-hp",
+          "text": "Absen dari HP berhasil di alamat Render dan daftar live bergerak."
+        },
+        {
+          "id": "abs-dep-tahan",
+          "text": "Data sesi masih ada setelah Manual Deploy."
+        }
+      ]
+    },
+    {
+      "stage": "dokumentasi",
+      "slug": "readme-dan-batasan-jujur",
+      "title": "Tulis README dengan batasan yang jujur",
+      "est_minutes": 45,
+      "body": "## README yang jujur\n\nProyek keamanan ringan seperti ini dinilai dari dua hal: apakah jalan, dan apakah pembuatnya paham batasnya. README adalah tempat menunjukkan keduanya.\n\n## Yang perlu kamu kerjakan\n\n1. Salin template `README.md` di bagian Bahan dan ganti semua `___`.\n2. Ambil screenshot layar panitia (QR + daftar hadir berisi data contoh, **bukan** NIM teman sungguhan) dan halaman pindai di HP. Simpan di folder `docs/` dan pasang di README.\n3. Jelaskan cara kerja token dengan kata-katamu sendiri, dalam tiga sampai lima kalimat. Kalau kamu bisa menjelaskan kenapa jendela sebelumnya ikut diterima, kamu benar-benar paham.\n4. Isi **Batasan yang jujur**. Jangan dihapus atau diperhalus. Tambahkan apa yang akan kamu lakukan bila butuh lebih ketat, misalnya cek lokasi, daftar NIM resmi per kelas, atau batas percobaan login.\n5. Isi **Keputusan desain** dengan dua keputusan nyata, misalnya kenapa SSE dan bukan WebSocket, kenapa better-sqlite3 dan bukan `node:sqlite`, atau kenapa aturan ganda dijaga oleh `UNIQUE` di database.\n6. Commit, push, lalu isi deskripsi repositori GitHub dengan satu kalimat dan alamat Render-mu.\n7. Kirim alamat aplikasi atau repositorimu di halaman ringkasan proyek ini supaya tampil di profil publikmu di Ruang Materi.\n\n## Selamat\n\nKamu baru saja membangun aplikasi yang bisa dipakai besok pagi di kelas sungguhan: token bertanda tangan yang kedaluwarsa sendiri, login dengan hash yang benar, constraint database sebagai penjaga terakhir, dan layar realtime. Langkah berikutnya yang menarik: daftar peserta resmi per kelas supaya NIM asing ditolak, atau rekap kehadiran per mahasiswa sepanjang semester.",
+      "materials": [
+        {
+          "id": "abs-m-readme",
+          "kind": "kode",
+          "name": "README.md",
+          "lang": "markdown",
+          "content": "# Absensi QR\n\nAbsensi kelas atau acara tanpa kertas. Panitia menampilkan QR yang berganti tiap 30 detik, peserta memindainya dari halaman web di HP, dan daftar hadir di layar bertambah saat itu juga.\n\n**Demo:** https://___.onrender.com  ·  **Screenshot:** ___\n\n## Fitur\n- QR berputar tiap 30 detik, ditandatangani HMAC-SHA256 (id sesi + jendela waktu)\n- Pemindai di browser: BarcodeDetector bila ada, jsQR sebagai cadangan\n- Satu NIM dan satu HP hanya sekali absen per sesi\n- Daftar hadir live dengan Server-Sent Events\n- Rekap CSV (aman dari rumus Excel), login panitia dengan kata sandi ter-hash scrypt\n\n## Teknologi\nNode.js ___ LTS, Express 5, SQLite (better-sqlite3), qrcode, jsQR, node:test + supertest.\n\n## Menjalankan di komputer sendiri\n```bash\nnpm install\ncp .env.example .env        # isi QR_SECRET dengan string acak panjang\nnpm run panitia -- dosen@contoh.id kata-sandi-demo-123\nnpm run dev                 # http://localhost:3000/login\nnpm test\n```\nKamera di HP butuh HTTPS. Untuk mencoba dari HP: `cloudflared tunnel --url http://localhost:3000`.\n\n## Cara kerja token\n___ (jelaskan dengan kata-katamu: isi QR, kenapa jendela sebelumnya juga diterima, kenapa HMAC dan bukan angka acak biasa)\n\n## Batasan yang jujur\n- QR bisa difoto dan dikirim ke teman yang tidak hadir. Foto itu hanya berlaku sekitar 60 detik, tetapi itu cukup untuk chat cepat.\n- Cookie `perangkat` hilang kalau peserta membuka mode penyamaran atau menghapus data browser, jadi satu HP tetap bisa dipakai dua kali oleh orang yang niat.\n- Tidak ada cek lokasi. ___ (apa yang akan kamu tambahkan bila butuh lebih ketat)\n- Satu server saja: SQLite dan daftar penonton SSE ada di satu mesin.\n\n## Keputusan desain\n1. ___\n2. ___\n\n## Yang kupelajari\n1. ___\n2. ___\n3. ___\n\nRencana berikutnya: ___\n"
+        }
+      ],
+      "checks": [
+        {
+          "id": "abs-dok-jalankan",
+          "text": "README menjelaskan cara menjalankan, membuat akun panitia, dan menguji."
+        },
+        {
+          "id": "abs-dok-token",
+          "text": "Cara kerja token kujelaskan dengan kata-kataku sendiri."
+        },
+        {
+          "id": "abs-dok-batasan",
+          "text": "Bagian Batasan yang jujur terisi dan tidak diperhalus."
+        },
+        {
+          "id": "abs-dok-tautan",
+          "text": "Alamat aplikasi publik terpasang di README dan deskripsi repositori."
+        }
+      ]
+    }
+  ]
+}
