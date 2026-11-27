@@ -1375,7 +1375,7 @@ class Island(St):
         text(s, x + 0.3, y + 0.4, w - 0.6, h - 0.5, lines, sz, color=C("EDE4FB"), gap=2, font=MONO)
 
 
-STYLES = {"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+STYLES = {"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "flutter": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
