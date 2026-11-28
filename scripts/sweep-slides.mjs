@@ -13,7 +13,12 @@ const bucket = db.storage.from("slides");
 async function list(prefix) {
   const out = [];
   for (let offset = 0; ; offset += 1000) {
-    const { data, error } = await bucket.list(prefix, { limit: 1000, offset });
+    let data, error;
+    for (let t = 0; t < 4; t++) { // long sweeps hit the odd "fetch failed"
+      ({ data, error } = await bucket.list(prefix, { limit: 1000, offset }));
+      if (!error) break;
+      await new Promise((r) => setTimeout(r, 2000 * (t + 1)));
+    }
     if (error) throw new Error(`${prefix}: ${error.message}`);
     out.push(...data);
     if (data.length < 1000) return out;
