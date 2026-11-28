@@ -1,0 +1,360 @@
+{
+  "theme": "npm",
+  "deck": "Membuat dan Menerbitkan Paket npm",
+  "kicker": "KELAS",
+  "subtitle": "Paket TypeScript dari nol sampai terbit: package.json, semver, exports ESM dan CommonJS, build, tes, sampai trusted publishing.",
+  "slides": [
+    {
+      "title": "Membuat dan Menerbitkan Paket npm"
+    },
+    {
+      "title": "Kapan membuat paket?",
+      "kicker": "PAKET",
+      "bullets": [
+        "Fungsi yang sama disalin ke dua proyek atau lebih",
+        "Masalahnya jelas dan kecil, misalnya format Rupiah",
+        "Kamu siap merawatnya: bug, versi, dan pertanyaan",
+        "Belum yakin? Simpan dulu sebagai modul di proyekmu",
+        "Paket bagus menghemat waktu banyak orang"
+      ],
+      "note": "Setiap fungsi yang terbit adalah janji yang harus kamu rawat."
+    },
+    {
+      "title": "Registry, paket, dan scope",
+      "kicker": "PAKET",
+      "bullets": [
+        "Registry npm: gudang paket publik di npmjs.com",
+        "Paket = folder dengan package.json, dikemas tarball",
+        "Nama tanpa scope sering sudah dipakai orang",
+        "Scope @namamu/ milik akun atau organisasimu",
+        "Pemakai cukup npm install lalu import"
+      ],
+      "code": "npm view @namamu/idn-kit\nnpm install @namamu/idn-kit\n\nimport { terbilang }\n  from \"@namamu/idn-kit\";\nterbilang(1001);\n// \"seribu satu\""
+    },
+    {
+      "title": "API publik yang kecil",
+      "kicker": "PAKET",
+      "bullets": [
+        "Ekspor sesedikit mungkin, sisanya internal",
+        "Nama jelas: formatRupiah, bukan fmt",
+        "Salah pakai programmer: lempar RangeError",
+        "Masukan pengguna: kembalikan { ok, data }",
+        "Mengubah API yang ada = versi major baru"
+      ],
+      "code": "type HasilNik =\n  | { ok: true; data: DataNik }\n  | { ok: false; alasan: string };\n\nconst h = parseNik(input);\nif (h.ok) h.data.jenisKelamin;"
+    },
+    {
+      "title": "package.json minimal",
+      "kicker": "PACKAGE.JSON",
+      "bullets": [
+        "npm init -y membuat kerangka awal",
+        "name dan version wajib untuk terbit",
+        "description dan keywords membantu pencarian",
+        "repository menunjuk ke repo GitHub-mu",
+        "scripts: build, test, dan prepack"
+      ],
+      "code": "{\n  \"name\": \"@namamu/idn-kit\",\n  \"version\": \"0.1.0\",\n  \"description\": \"Rupiah, terbilang, NIK\",\n  \"keywords\": [\"rupiah\", \"terbilang\"],\n  \"license\": \"MIT\",\n  \"type\": \"module\",\n  \"files\": [\"dist\"]\n}"
+    },
+    {
+      "title": "name, version, dan license",
+      "kicker": "PACKAGE.JSON",
+      "bullets": [
+        "name maks 214 karakter, huruf kecil, aman di URL",
+        "Tanpa scope tidak boleh diawali titik atau _",
+        "Nama + versi yang pernah terbit tak bisa dipakai lagi",
+        "license memakai kode SPDX, misalnya MIT",
+        "Sertakan berkas LICENSE berisi teks lisensinya"
+      ],
+      "note": "Jangan pakai nama modul inti Node, misalnya fs atau http."
+    },
+    {
+      "title": "files: apa yang ikut terbit",
+      "kicker": "PACKAGE.JSON",
+      "bullets": [
+        "files adalah daftar putih, misalnya [\"dist\"]",
+        "Selalu ikut: package.json, README, LICENSE",
+        "Selalu dibuang: node_modules, .git, .npmrc",
+        "Lockfile seperti package-lock.json tidak ikut",
+        "src, tes, dan .env tidak terbit bila tak didaftar"
+      ],
+      "code": "npm pack --dry-run\n\nTarball Contents\n1.2kB dist/index.js\n1.3kB dist/index.cjs\n0.9kB dist/index.d.ts\n0.9kB dist/index.d.cts\n2.1kB package.json\n1.8kB README.md"
+    },
+    {
+      "title": "engines, type, dan publishConfig",
+      "kicker": "PACKAGE.JSON",
+      "bullets": [
+        "engines: versi Node yang kamu uji, hanya peringatan",
+        "type module: berkas .js dibaca sebagai ESM",
+        "sideEffects false: bundler boleh membuang sisa",
+        "publishConfig.access public untuk paket ber-scope",
+        "prepack: build ulang sebelum pack dan publish"
+      ],
+      "code": "\"engines\": { \"node\": \">=22\" },\n\"sideEffects\": false,\n\"publishConfig\": {\n  \"access\": \"public\"\n},\n\"scripts\": {\n  \"build\": \"tsdown\",\n  \"prepack\": \"npm run build\"\n}"
+    },
+    {
+      "title": "Semantic Versioning",
+      "kicker": "SEMVER",
+      "bullets": [
+        "Format MAJOR.MINOR.PATCH, misalnya 1.4.2",
+        "Patch: perbaikan bug, API tetap",
+        "Minor: fitur baru yang tidak merusak",
+        "Major: perubahan yang merusak pemakai lama",
+        "Versi 0.x: API masih boleh berubah"
+      ],
+      "note": "terbilang(1001) dulu salah lalu dibetulkan: cukup naik patch."
+    },
+    {
+      "title": "Prerelease dan dist-tag",
+      "kicker": "SEMVER",
+      "bullets": [
+        "Prerelease: 2.0.0-beta.1 lebih kecil dari 2.0.0",
+        "npm install memakai tag latest",
+        "Prerelease terbit di tag lain, misalnya next",
+        "npm 11 menolak prerelease tanpa --tag",
+        "npm version menaikkan versi dan membuat tag git"
+      ],
+      "code": "npm version prerelease --preid beta\n# 1.4.2 -> 1.4.3-beta.0\n\nnpm publish --tag next\nnpm install @namamu/idn-kit@next\n\nnpm dist-tag ls @namamu/idn-kit"
+    },
+    {
+      "title": "Rentang ^ dan ~",
+      "kicker": "SEMVER",
+      "bullets": [
+        "^1.2.3 berarti >=1.2.3 <2.0.0",
+        "~1.2.3 berarti >=1.2.3 <1.3.0",
+        "^0.2.3 berarti >=0.2.3 <0.3.0",
+        "Prerelease tidak ikut kecuali diminta",
+        "Lockfile mengunci versi persis yang terpasang"
+      ],
+      "note": "Itulah sebabnya bug di minor atau patch bisa sampai ke pemakai."
+    },
+    {
+      "title": "ESM dan CommonJS",
+      "kicker": "MODUL",
+      "bullets": [
+        "ESM: import dan export, standar JavaScript",
+        "CommonJS: require dan module.exports, gaya lama",
+        "type module: .js adalah ESM, .cjs CommonJS",
+        "Ekstensi .mjs selalu ESM, .cjs selalu CJS",
+        "Banyak alat dan proyek lama masih CommonJS"
+      ],
+      "code": "// ESM\nimport { terbilang }\n  from \"@namamu/idn-kit\";\n\n// CommonJS\nconst { terbilang } =\n  require(\"@namamu/idn-kit\");"
+    },
+    {
+      "title": "Field exports",
+      "kicker": "MODUL",
+      "bullets": [
+        "Daftar resmi pintu masuk paketmu",
+        "Subpath selalu diawali ./",
+        "Path lain ditolak: ERR_PACKAGE_PATH_NOT_EXPORTED",
+        "Berkas di dist/ bebas dipindah tanpa merusak",
+        "Ekspor juga ./package.json untuk alat lain"
+      ],
+      "code": "\"exports\": {\n  \".\": \"./dist/index.js\",\n  \"./nik\": \"./dist/nik.js\",\n  \"./package.json\":\n    \"./package.json\"\n}"
+    },
+    {
+      "title": "Conditional exports",
+      "kicker": "MODUL",
+      "bullets": [
+        "import dipilih saat pemakai menulis import",
+        "require dipilih saat pemakai memanggil require",
+        "types dibaca TypeScript, tulis paling atas",
+        "default selalu terakhir sebagai cadangan",
+        "Urutan kunci = prioritas, yang cocok duluan menang"
+      ],
+      "code": "\"./nik\": {\n  \"import\": {\n    \"types\": \"./dist/nik.d.ts\",\n    \"default\": \"./dist/nik.js\"\n  },\n  \"require\": {\n    \"types\": \"./dist/nik.d.cts\",\n    \"default\": \"./dist/nik.cjs\"\n  }\n}"
+    },
+    {
+      "title": "Paket ganda dan require(esm)",
+      "kicker": "MODUL",
+      "bullets": [
+        "Paket ganda: satu kode, keluaran ESM dan CJS",
+        "Hazard: modul termuat dua kali, state terpisah",
+        "Aman bila fungsi murni tanpa state",
+        "Node 22.12+ bisa require() modul ESM",
+        "Top-level await membuat require(esm) gagal"
+      ],
+      "note": "Paket hanya ESM sudah cukup bila pemakaimu semua di Node 22 ke atas."
+    },
+    {
+      "title": "TypeScript ketat untuk library",
+      "kicker": "TYPESCRIPT",
+      "bullets": [
+        "strict plus noUncheckedIndexedAccess",
+        "exactOptionalPropertyTypes untuk opsi",
+        "verbatimModuleSyntax: import type ditulis jelas",
+        "isolatedDeclarations: tipe kembalian eksplisit",
+        "Pakai TypeScript 6.0, alat lint belum dukung 7"
+      ],
+      "code": "{\n  \"compilerOptions\": {\n    \"strict\": true,\n    \"noUncheckedIndexedAccess\": true,\n    \"exactOptionalPropertyTypes\": true,\n    \"verbatimModuleSyntax\": true,\n    \"isolatedDeclarations\": true,\n    \"module\": \"nodenext\"\n  }\n}"
+    },
+    {
+      "title": "Berkas deklarasi .d.ts",
+      "kicker": "TYPESCRIPT",
+      "bullets": [
+        "Pemakai menjalankan .js, editornya membaca .d.ts",
+        "Isinya hanya tipe, tanpa kode yang berjalan",
+        ".d.ts untuk ESM, .d.cts untuk CommonJS",
+        "Tipe ESM di pintu require: Masquerading as ESM",
+        "Komentar TSDoc ikut tampil di editor pemakai"
+      ],
+      "code": "// dist/terbilang.d.ts\nexport declare const\n  BATAS_TERBILANG = 1e15;\nexport declare function\n  terbilang(n: number): string;"
+    },
+    {
+      "title": "Build dengan tsdown",
+      "kicker": "TYPESCRIPT",
+      "bullets": [
+        "Satu perintah: ESM, CJS, dan berkas tipe",
+        "Dibangun di atas Rolldown dan Oxc",
+        "tsup dulu populer, kini tidak dirawat aktif",
+        "tsc saja butuh dua kali kompilasi untuk ganda",
+        "Jalankan lewat npm run build atau prepack"
+      ],
+      "code": "// tsdown.config.ts\nimport { defineConfig } from \"tsdown\";\n\nexport default defineConfig({\n  entry: [\"src/index.ts\",\n    \"src/nik.ts\"],\n  format: [\"esm\", \"cjs\"],\n  dts: true,\n  clean: true,\n});"
+    },
+    {
+      "title": "Memeriksa isi dist",
+      "kicker": "TYPESCRIPT",
+      "bullets": [
+        "Tiap modul menghasilkan empat berkas",
+        ".js dan .d.ts untuk import",
+        ".cjs dan .d.cts untuk require",
+        "Cocokkan setiap target di exports",
+        "dist/ masuk .gitignore, bukan ke repo"
+      ],
+      "code": "ls dist\nindex.cjs   index.d.cts\nindex.d.ts  index.js\nnik.cjs     nik.d.cts\nnik.d.ts    nik.js\nrupiah.cjs  rupiah.d.cts\n..."
+    },
+    {
+      "title": "Tes dengan node:test dan Vitest",
+      "kicker": "TES",
+      "bullets": [
+        "node:test bawaan Node, tanpa instal apa pun",
+        "Vitest cepat dan langsung paham TypeScript",
+        "it.each untuk tabel contoh",
+        "Uji kasus pinggir: 0, 11, 100, 1000, negatif",
+        "Tes menjalankan src, bukan tarball"
+      ],
+      "code": "import { it, expect } from \"vitest\";\n\nit.each([\n  [11, \"sebelas\"],\n  [100, \"seratus\"],\n  [1000, \"seribu\"],\n])(\"terbilang(%i)\", (n, teks) => {\n  expect(terbilang(n)).toBe(teks);\n});"
+    },
+    {
+      "title": "Tes properti dengan fast-check",
+      "kicker": "TES",
+      "bullets": [
+        "Uji sifat, bukan hanya contoh",
+        "fast-check membuat ratusan masukan acak",
+        "Round-trip: parse(format(n)) kembali ke n",
+        "Gagal? Contoh di-shrink jadi paling sederhana",
+        "Seed dicetak supaya kegagalan bisa diulang"
+      ],
+      "code": "import fc from \"fast-check\";\n\nfc.assert(\n  fc.property(fc.integer(), (n) =>\n    parseRupiah(formatRupiah(n))\n      === n,\n  ),\n);"
+    },
+    {
+      "title": "Lint dengan typescript-eslint",
+      "kicker": "TES",
+      "bullets": [
+        "ESLint memakai konfigurasi flat eslint.config.js",
+        "strictTypeChecked membaca informasi tipe",
+        "Menangkap Promise lupa await dan cek yang sia-sia",
+        "projectService memakai tsconfig yang sama",
+        "Perbaiki kodenya, jangan matikan aturannya"
+      ],
+      "code": "import { defineConfig }\n  from \"eslint/config\";\nimport tseslint\n  from \"typescript-eslint\";\n\nexport default defineConfig(\n  tseslint.configs.strictTypeChecked,\n);"
+    },
+    {
+      "title": "README yang menjual",
+      "kicker": "DOKUMENTASI",
+      "bullets": [
+        "Tampil di GitHub dan di halaman npm",
+        "Urutan: apa ini, instal, contoh pakai, API",
+        "Contoh harus benar-benar jalan",
+        "Sebut versi Node yang didukung dan lisensi",
+        "README di npm baru berubah saat versi baru terbit"
+      ],
+      "code": "# @namamu/idn-kit\n\nRupiah, terbilang, dan NIK.\n\n## Instal\nnpm install @namamu/idn-kit\n\n## Pakai\nformatRupiah(1500000)\n// \"Rp 1.500.000\""
+    },
+    {
+      "title": "TSDoc dan TypeDoc",
+      "kicker": "DOKUMENTASI",
+      "bullets": [
+        "Komentar /** */ di atas fungsi yang diekspor",
+        "@param, @returns, @throws, dan @example",
+        "Editor pemakai menampilkannya saat hover",
+        "TypeDoc mengubahnya jadi situs HTML",
+        "treatWarningsAsErrors: dokumentasi ikut diuji"
+      ],
+      "code": "/**\n * Mengeja bilangan bulat.\n * @param n - Bilangan bulat.\n * @returns Ejaan huruf kecil.\n * @throws `RangeError` bila pecahan.\n * @example terbilang(11)\n */"
+    },
+    {
+      "title": "npm pack, publint, dan attw",
+      "kicker": "DOKUMENTASI",
+      "bullets": [
+        "npm pack --dry-run: daftar berkas yang terbit",
+        "publint: target exports ada dan urutannya benar",
+        "attw: tipe benar dari sudut pandang pemakai",
+        "Kolom node16 from CJS harus hijau",
+        "Uji asap: pasang tarball di folder kosong"
+      ],
+      "code": "npm pack --dry-run\nnpx publint --strict\nnpx @arethetypeswrong/cli \\\n  --pack . --profile node16\n\n# ./nik  node16 (from CJS)\n#   Masquerading as ESM"
+    },
+    {
+      "title": "npm publish dan 2FA",
+      "kicker": "TERBIT",
+      "bullets": [
+        "Aktifkan 2FA di akun npmjs.com",
+        "npm login, lalu npm publish",
+        "Paket ber-scope: --access public",
+        "Kode 2FA lewat --otp atau prompt",
+        "Token granular: paket terbatas dan kedaluwarsa"
+      ],
+      "code": "npm login\nnpm whoami\nnpm publish --dry-run\nnpm publish --access public\n\n+ @namamu/idn-kit@0.1.0"
+    },
+    {
+      "title": "Trusted publishing dan provenance",
+      "kicker": "TERBIT",
+      "bullets": [
+        "GitHub Actions terbit tanpa token npm tersimpan",
+        "Token OIDC berumur pendek, id-token: write",
+        "Syarat: npm 11.5.1+, Node 22.14.0+",
+        "repository.url harus sama persis dengan repo",
+        "Repo publik: provenance dibuat otomatis"
+      ],
+      "code": "permissions:\n  id-token: write\n  contents: read\nsteps:\n  - uses: actions/setup-node@v6\n    with:\n      node-version: 24\n  - run: npm ci\n  - run: npm publish",
+      "note": "Trusted publisher dipasang di paket yang sudah ada: rilis pertama manual."
+    },
+    {
+      "title": "Changesets dan changelog",
+      "kicker": "TERBIT",
+      "bullets": [
+        "Tiap PR membawa berkas .changeset kecil",
+        "Isinya: patch, minor, atau major + ringkasan",
+        "changeset version: naikkan versi, tulis CHANGELOG",
+        "changeset publish: terbitkan versi baru",
+        "Conventional Commits: fix, feat, feat!"
+      ],
+      "code": "npx changeset init\nnpx changeset\nnpx changeset status\nnpx changeset version\nnpx changeset publish\n\nfeat: tambah opsi sen   -> minor\nfix!: ubah alasan NIK   -> major"
+    },
+    {
+      "title": "Deprecate dan unpublish",
+      "kicker": "MERAWAT",
+      "bullets": [
+        "deprecate: tetap bisa dipasang, muncul peringatan",
+        "Unpublish bebas dalam 72 jam bila tanpa dependen",
+        "Lewat 72 jam: <300 unduhan/minggu, satu pemilik",
+        "Versi yang dihapus tidak bisa dipakai lagi",
+        "Hapus semua versi: tunggu 24 jam untuk terbit"
+      ],
+      "code": "npm deprecate @namamu/idn-kit@\"<0.2.0\" \\\n  \"terbilang salah, pakai 0.2.0\"\n\n# batalkan\nnpm deprecate @namamu/idn-kit@0.1.0 \"\"\n\nnpm unpublish @namamu/idn-kit@0.1.0"
+    },
+    {
+      "title": "Keamanan rantai pasok",
+      "kicker": "MERAWAT",
+      "bullets": [
+        "Commit package-lock.json, pakai npm ci di CI",
+        "npm audit dan npm audit signatures",
+        "Waspada typosquatting: nama mirip paket populer",
+        "npm 12 memblokir script install dependensi",
+        "Pin action ke SHA, izin workflow seminimal mungkin"
+      ],
+      "note": "Paketmu juga bagian rantai pasok orang lain: rilis dengan hati-hati."
+    }
+  ]
+}

@@ -1,0 +1,359 @@
+{
+ "theme": "saas",
+ "deck": "Membangun SaaS Multi-Tenant",
+ "kicker": "KELAS",
+ "subtitle": "Dari tenant dan RLS PostgreSQL ke undangan, RBAC, langganan Midtrans, webhook idempoten, job, kuota, sampai deploy.",
+ "slides": [
+  {
+   "title": "Membangun SaaS Multi-Tenant"
+  },
+  {
+   "title": "Apa itu SaaS?",
+   "kicker": "DASAR SAAS",
+   "bullets": [
+    "Software as a Service: aplikasi disewa, bukan dipasang sendiri",
+    "Pelanggan bayar per bulan, kamu yang mengurus server",
+    "Satu kode dan satu deploy melayani semua pelanggan",
+    "Perbaikan dirilis sekali, semua pelanggan langsung dapat",
+    "Contoh kelas ini: aplikasi booking untuk klinik kecil"
+   ],
+   "note": "B2B: pelanggannya bisnis (klinik), penggunanya staf klinik itu."
+  },
+  {
+   "title": "Tenant, organisasi, dan pengguna",
+   "kicker": "DASAR SAAS",
+   "bullets": [
+    "Tenant = satu pelanggan bisnis, di sini disebut organisasi",
+    "Satu organisasi punya banyak staf: owner, admin, member",
+    "Satu pengguna bisa jadi anggota beberapa organisasi",
+    "Multi-tenant: banyak organisasi berbagi satu aplikasi",
+    "Risiko terbesar: data klinik A terlihat oleh klinik B"
+   ],
+   "code": "orgs         klinik-gigi-ceria, bidan-sehati\nmemberships  (org_id, user_id, role)\nbookings     (id, org_id, client_name, ...)\n\nRani: owner di klinik-gigi-ceria\n      member di bidan-sehati"
+  },
+  {
+   "title": "Data milik tenant dan data global",
+   "kicker": "DASAR SAAS",
+   "bullets": [
+    "Milik tenant: setiap baris punya kolom org_id",
+    "memberships, invites, bookings, audit_log, jobs",
+    "Global: sama untuk semua tenant, misalnya plans",
+    "Indeks tabel tenant diawali org_id",
+    "Literatur sering menyebut kolom ini tenant_id"
+   ],
+   "code": "create table bookings (\n  id uuid primary key,\n  org_id uuid not null references orgs,\n  client_name text not null,\n  starts_at timestamptz not null\n);\ncreate index on bookings (org_id, starts_at);"
+  },
+  {
+   "title": "Tiga model isolasi",
+   "kicker": "MODEL ISOLASI",
+   "bullets": [
+    "Database per tenant: tiap klinik punya database sendiri",
+    "Skema per tenant: satu database, satu skema per klinik",
+    "Tabel bersama: semua klinik di tabel yang sama + org_id",
+    "Makin terpisah, makin kuat isolasinya tapi makin mahal",
+    "Kelas ini memakai tabel bersama + Row Level Security"
+   ],
+   "note": "Model hibrid: tenant besar boleh dipindah ke database sendiri nanti."
+  },
+  {
+   "title": "Untung rugi tiap model",
+   "kicker": "MODEL ISOLASI",
+   "bullets": [
+    "DB per tenant: isolasi kuat, backup per klinik mudah",
+    "Tapi koneksi, biaya, dan migrasi dikali jumlah tenant",
+    "Skema per tenant: migrasi harus diulang di ratusan skema",
+    "Tabel bersama: murah, satu migrasi, laporan lintas tenant",
+    "Tapi satu query lupa filter bisa membocorkan data"
+   ],
+   "code": "             isolasi  biaya   migrasi\nDB/tenant    kuat     tinggi  N kali\nskema/tenant sedang   sedang  N kali\ntabel+org_id lemah*   rendah  sekali\n\n* kuat lagi setelah RLS dipasang"
+  },
+  {
+   "title": "Menentukan tenant dari request",
+   "kicker": "MODEL ISOLASI",
+   "bullets": [
+    "Subdomain: klinik-sehat.bukajadwal.id",
+    "Path: /orgs/:orgId/bookings, mudah diuji dan dibagikan",
+    "Header khusus untuk API antarmesin",
+    "Tenant dari request hanya klaim, belum bukti",
+    "Selalu cek: apakah user ini anggota org tersebut?"
+   ],
+   "code": "GET /orgs/7f3a.../bookings\nCookie: sesi=...\n\n1. sesi    -> user_id   (401 bila kosong)\n2. path    -> org_id\n3. anggota? -> role      (403 bila bukan)"
+  },
+  {
+   "title": "Lupa WHERE cukup sekali",
+   "kicker": "ROW LEVEL SECURITY",
+   "bullets": [
+    "Filter org_id di aplikasi harus ditulis di setiap query",
+    "Satu query lupa where = data semua klinik ikut keluar",
+    "Code review dan tes tidak selalu menangkapnya",
+    "Row Level Security: database yang menyaring setiap baris",
+    "Aplikasi lupa, database tetap menolak"
+   ],
+   "code": "-- maksud: booking klinik aktif saja\nselect * from bookings\norder by starts_at;\n\n-- tanpa RLS: semua klinik terlihat\n-- dengan RLS: hanya baris org aktif"
+  },
+  {
+   "title": "ENABLE dan FORCE ROW LEVEL SECURITY",
+   "kicker": "ROW LEVEL SECURITY",
+   "bullets": [
+    "ENABLE: semua akses baris harus lolos policy",
+    "Belum ada policy = default-deny, nol baris",
+    "Pemilik tabel biasanya melewati RLS, kecuali FORCE",
+    "Superuser dan role BYPASSRLS selalu melewati RLS",
+    "Aplikasi konek sebagai app_user: bukan pemilik, NOBYPASSRLS"
+   ],
+   "code": "alter table bookings\n  enable row level security;\nalter table bookings\n  force row level security;\n\ncreate role app_user login\n  nobypassrls password '...';"
+  },
+  {
+   "title": "CREATE POLICY: USING dan WITH CHECK",
+   "kicker": "ROW LEVEL SECURITY",
+   "bullets": [
+    "USING menyaring baris yang sudah ada, tanpa error",
+    "WITH CHECK memeriksa baris baru dari INSERT dan UPDATE",
+    "WITH CHECK gagal = error, seluruh perintah batal",
+    "Tanpa WITH CHECK, policy FOR ALL memakai USING",
+    "Policy permissive digabung OR, restrictive digabung AND"
+   ],
+   "code": "create policy tenant on bookings\n  to app_user\n  using (org_id = app.current_org())\n  with check (org_id = app.current_org());"
+  },
+  {
+   "title": "Konteks tenant per transaksi",
+   "kicker": "ROW LEVEL SECURITY",
+   "bullets": [
+    "set_config(nama, nilai, true): hanya sampai transaksi selesai",
+    "Aman dengan pooler mode transaksi, tenant tidak terbawa",
+    "current_setting(nama, true): null bila belum diset",
+    "nullif(..., '') membuat konteks kosong jadi null",
+    "Null di policy = nol baris, bukan semua baris"
+   ],
+   "code": "create function app.current_org()\nreturns uuid language sql stable as $$\n  select nullif(\n    current_setting('app.org_id', true),\n    '')::uuid\n$$;\n\nbegin;\nselect set_config('app.org_id', $1, true);"
+  },
+  {
+   "title": "Repository dengan tenant wajib",
+   "kicker": "UJI ISOLASI",
+   "bullets": [
+    "Lapisan kedua di atas RLS, di kode aplikasi",
+    "Tanpa konteks tenant: langsung lempar error tenant_wajib",
+    "org_id selalu diisi dari konteks, bukan dari input",
+    "org_id kiriman klien dibuang diam-diam",
+    "Satu pintu: withTenant(userId, orgId, fn)"
+   ],
+   "code": "function buatRepo(tx) {\n  const org = tx.currentSetting(\"app.org_id\");\n  if (!org) throw new Error(\"tenant_wajib\");\n  return {\n    buat(tabel, { org_id, ...isi }) {\n      isi.org_id = org; // org_id input dibuang\n      return tx.insert(tabel, isi);\n    },\n  };\n}"
+  },
+  {
+   "title": "Tes serangan lintas tenant",
+   "kicker": "UJI ISOLASI",
+   "bullets": [
+    "Dari tenant A, select where org_id = B: nol baris",
+    "Insert baris dengan org_id B: ditolak WITH CHECK",
+    "Update dan delete baris B: nol baris kena",
+    "Tanpa konteks: app_user tidak melihat apa pun",
+    "app_user tidak bisa menghapus audit_log"
+   ],
+   "code": "test(\"A tidak bisa membaca B\", async () => {\n  const rows = await withTenant(rani, orgA,\n    (tx) => tx`select * from bookings\n             where org_id = ${orgB}`);\n  assert.equal(rows.length, 0);\n});"
+  },
+  {
+   "title": "Membuktikan tes bisa merah",
+   "kicker": "UJI ISOLASI",
+   "bullets": [
+    "Tes yang tidak pernah gagal belum tentu menguji apa pun",
+    "Matikan RLS bookings sementara, jalankan tes lagi",
+    "Tes isolasi harus merah, lalu kembalikan migrasinya",
+    "Jalankan terhadap Postgres sungguhan di CI, bukan mock",
+    "Tambah tes yang sama untuk setiap tabel tenant baru"
+   ],
+   "note": "Cek CI: route web tidak boleh mengimpor koneksi sistem (sqlSystem)."
+  },
+  {
+   "title": "Organisasi dan keanggotaan",
+   "kicker": "ORGANISASI DAN RBAC",
+   "bullets": [
+    "orgs: nama, plan_id, paid_until",
+    "memberships: kunci (org_id, user_id) dan role",
+    "Membuat org terjadi sebelum ada tenant aktif",
+    "Fungsi sempit security definer: buat org + owner sekaligus",
+    "Jangan longgarkan policy hanya demi satu alur"
+   ],
+   "code": "create function app.create_org(\n  p_name text, p_user text)\nreturns uuid language plpgsql\nsecurity definer as $$ ...\n\nselect app.create_org('Klinik Ceria', $1);"
+  },
+  {
+   "title": "Undangan dengan token sekali pakai",
+   "kicker": "ORGANISASI DAN RBAC",
+   "bullets": [
+    "Token acak 32 byte dikirim mentah lewat email, sekali saja",
+    "Database hanya menyimpan token_hash (SHA-256)",
+    "Kedaluwarsa 7 hari, accepted_at membuatnya sekali pakai",
+    "Email undangan harus sama dengan email sesi terverifikasi",
+    "Token salah dan kedaluwarsa dijawab dengan pesan yang sama"
+   ],
+   "code": "const token = randomBytes(32)\n  .toString(\"base64url\");\nconst hash = createHash(\"sha256\")\n  .update(token).digest();\n\n-- invites: email, role, token_hash,\n--          expires_at, accepted_at"
+  },
+  {
+   "title": "Role dan izin (RBAC)",
+   "kicker": "ORGANISASI DAN RBAC",
+   "bullets": [
+    "owner: semua, termasuk langganan dan mengundang admin",
+    "admin: mengundang dan mengubah member saja",
+    "member: mengelola booking",
+    "Izin dicek di server, menyembunyikan tombol tidak cukup",
+    "canManage: peringkat actor harus di atas target"
+   ],
+   "code": "const rank = { member: 0, admin: 1, owner: 2 };\n\nfunction canManage(actor, target) {\n  return actor !== \"member\"\n    && rank[actor] > rank[target];\n}"
+  },
+  {
+   "title": "Menjaga owner terakhir",
+   "kicker": "ORGANISASI DAN RBAC",
+   "bullets": [
+    "Organisasi tanpa owner tidak bisa bayar atau mengundang",
+    "Tolak menurunkan role atau mengeluarkan owner terakhir",
+    "Tegakkan di database dengan trigger, lalu tes",
+    "Pindah kepemilikan: angkat owner baru dulu, baru turun",
+    "Catat setiap perubahan role di audit_log"
+   ],
+   "note": "Aturan penting ditegakkan di tempat yang tidak bisa dilewati: database."
+  },
+  {
+   "title": "Sesi dan Better Auth",
+   "kicker": "AUTENTIKASI",
+   "bullets": [
+    "Sesi di cookie HttpOnly, Secure, SameSite=Lax",
+    "Better Auth: akun, sesi, verifikasi email di DB sendiri",
+    "auth.api.getSession({ headers }) membaca sesi di server",
+    "Tabel auth diakses role terpisah: app_auth",
+    "Identitas dari pustaka, keanggotaan milik aplikasimu"
+   ],
+   "code": "import { betterAuth } from \"better-auth\";\n\nexport const auth = betterAuth({\n  database: new Pool({ connectionString }),\n  emailAndPassword: {\n    enabled: true,\n    requireEmailVerification: true,\n  },\n});"
+  },
+  {
+   "title": "Dari sesi ke tenant aktif",
+   "kicker": "AUTENTIKASI",
+   "bullets": [
+    "Satu pintu tenantAction untuk semua route tenant",
+    "Tanpa sesi: 401. Bukan anggota atau role kurang: 403",
+    "Rate limit lewat: 429. Batas paket: 402",
+    "Error lain: 500 dengan pesan umum, detail ke log",
+    "org_id dari URL, bukan dari body request"
+   ],
+   "code": "const session = await auth.api.getSession({\n  headers: req.headers });\nif (!session) return json(401);\nreturn withTenant(session.user.id, orgId,\n  (tx, role) => handler(tx, role));"
+  },
+  {
+   "title": "Paket, trial, dan masa tenggang",
+   "kicker": "LANGGANAN",
+   "bullets": [
+    "plans: gratis (100 booking/bulan) dan pro (Rp299.000)",
+    "Trial: fitur pro gratis selama periode tertentu",
+    "paid_until lewat: masa tenggang, lalu fitur tulis dikunci",
+    "Upgrade langsung aktif setelah pembayaran sukses",
+    "Downgrade di akhir periode, cek kelebihan staf dulu"
+   ],
+   "code": "trial  -> aktif -> tenggang -> terkunci\n           ^          |\n           +-- bayar -+\n\nterkunci: baca boleh, tulis ditolak,\n          data tidak dihapus"
+  },
+  {
+   "title": "Bayar dengan Midtrans Snap",
+   "kicker": "LANGGANAN",
+   "bullets": [
+    "Server membuat billing_orders lalu transaksi Snap",
+    "Auth Basic: Server Key sebagai username, sandi kosong",
+    "Jawaban 201 berisi token dan redirect_url",
+    "Browser memuat snap.js lalu snap.pay(token)",
+    "Callback di browser tidak dipercaya untuk ubah status"
+   ],
+   "code": "POST /snap/v1/transactions\n{\n  \"transaction_details\": {\n    \"order_id\": \"sub-7f3a-202612\",\n    \"gross_amount\": 299000\n  }\n}\n-> 201 { \"token\": \"...\",\n         \"redirect_url\": \"...\" }"
+  },
+  {
+   "title": "Verifikasi signature_key",
+   "kicker": "LANGGANAN",
+   "bullets": [
+    "Midtrans mengirim notifikasi HTTP POST saat status berubah",
+    "signature_key = SHA512 dari 4 nilai yang disambung",
+    "Bandingkan dengan timingSafeEqual, bukan ===",
+    "Signature salah: 401 dan jangan sentuh data",
+    "Status final diambil ulang lewat API GET status"
+   ],
+   "code": "const expected = createHash(\"sha512\")\n  .update(n.order_id + n.status_code\n    + n.gross_amount + serverKey)\n  .digest(\"hex\");\n\n// sukses: settlement, atau capture\n// dengan fraud_status accept"
+  },
+  {
+   "title": "Webhook yang idempoten",
+   "kicker": "LANGGANAN",
+   "bullets": [
+    "Notifikasi bisa datang ganda atau urutannya terbalik",
+    "Catat order_id:status di webhook_events, on conflict nothing",
+    "Order pindah pending ke paid hanya sekali",
+    "Nominal harus cocok, expire terlambat tidak membatalkan",
+    "Balas 200 bila selesai, 500 bila gagal agar dikirim ulang"
+   ],
+   "code": "insert into webhook_events\n  (provider, event_key, payload)\nvalues ('midtrans',\n  'sub-7f3a-202612:settlement', $1)\non conflict do nothing\nreturning 1;\n-- 0 baris = duplikat, berhenti"
+  },
+  {
+   "title": "Antrean job dengan retry",
+   "kicker": "JOB DAN KUOTA",
+   "bullets": [
+    "Pengingat H-1 dimasukkan di transaksi yang sama",
+    "dedupe_key: satu booking satu job pengingat",
+    "Worker ambil job dengan FOR UPDATE SKIP LOCKED",
+    "locked_until: job diambil lagi bila worker mati",
+    "Gagal: mundur 30 x 2^n detik, berhenti di max_attempts"
+   ],
+   "code": "select id from jobs\nwhere done_at is null\n  and run_at <= now()\n  and (locked_until is null\n       or locked_until < now())\norder by run_at\nlimit 1\nfor update skip locked;"
+  },
+  {
+   "title": "Rate limit per tenant",
+   "kicker": "JOB DAN KUOTA",
+   "bullets": [
+    "Noisy neighbor: satu klinik membuat semua klinik lambat",
+    "Hitung per (org_id, bucket, jendela waktu)",
+    "Lewat batas: 429 Too Many Requests",
+    "Hitung di transaksi sendiri agar request gagal tetap tercatat",
+    "Tenant lain tidak ikut terkena batas"
+   ],
+   "code": "insert into rate_limits\n  (org_id, bucket, window_start, hits)\nvalues ($1, 'api', $2, 1)\non conflict (org_id, bucket, window_start)\ndo update\n  set hits = rate_limits.hits + 1\nreturning hits;"
+  },
+  {
+   "title": "Kuota pemakaian paket",
+   "kicker": "JOB DAN KUOTA",
+   "bullets": [
+    "Paket gratis: 100 booking per bulan, 2 staf",
+    "Cek di trigger database, bukan hanya di aplikasi",
+    "Kunci baris org (for update) agar request paralel antre",
+    "Lewat kuota: error plan_limit:bookings, dipetakan ke 402",
+    "Tampilkan meteran pemakaian sebelum batas tercapai"
+   ],
+   "code": "select p.max_bookings_per_month\n  from orgs o join plans p\n    on p.id = o.plan_id\n where o.id = new.org_id\n   for update of o;\n\nraise exception 'plan_limit:bookings';"
+  },
+  {
+   "title": "Audit log",
+   "kicker": "AUDIT DAN OPERASI",
+   "bullets": [
+    "Catat siapa, aksi apa, target apa, kapan",
+    "Ditulis di transaksi yang sama dengan perubahannya",
+    "Append-only: app_user hanya boleh select dan insert",
+    "Aksi sistem memakai aktor seperti system:midtrans",
+    "Jangan simpan data rahasia seperti token di meta"
+   ],
+   "code": "insert into audit_log\n  (org_id, actor_id, action, target)\nvalues (app.current_org(), $1,\n  'invite.created', 'dewi@klinik.id');\n\ngrant select, insert on audit_log\n  to app_user;"
+  },
+  {
+   "title": "Ekspor dan hapus data tenant",
+   "kicker": "AUDIT DAN OPERASI",
+   "bullets": [
+    "Ekspor: semua tabel milik tenant, hanya org_id itu",
+    "Hapus: on delete cascade, beri masa tunggu dulu",
+    "Ingat backup dan layanan pihak ketiga (email, log)",
+    "UU PDP (UU 27/2022): klinik pengendali, SaaS prosesor",
+    "Pasien berhak meminta akses dan penghapusan datanya"
+   ],
+   "note": "Data kesehatan termasuk data pribadi spesifik: jangan sampai masuk log."
+  },
+  {
+   "title": "Observabilitas dan deploy",
+   "kicker": "AUDIT DAN OPERASI",
+   "bullets": [
+    "Log JSON dengan req_id dan org_id, tanpa data pasien",
+    "Pantau error dan p95 latensi per tenant",
+    "Web dan worker dipisah, worker tidak cocok di serverless",
+    "Role DB dibuat sekali, migrasi dengan role pemilik",
+    "Lanjut ke Studio Proyek Platform SaaS Multi-Tenant"
+   ],
+   "code": "{\"level\":\"error\",\"req_id\":\"r-91\",\n \"org_id\":\"7f3a...\",\"user_id\":\"u-12\",\n \"msg\":\"booking gagal\",\"ms\":412}"
+  }
+ ]
+}

@@ -1860,7 +1860,158 @@ class Serp(St):
         text(s, x + 0.35, y, w - 0.6, h, note, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
 
 
-STYLES = {"search": Serp, "abtest": Variant, "realtime": Wire, "extension": Popup, "scraping": Inspector, "events": Stream,"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "flutter": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- SaaS multi-tenant: one building, one lit floor per tenant (org_id) ----------
+class Tenant(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.3, 0.6
+
+    @property
+    def bg(self): return mix(WHITE, T.accent, 0.03)
+
+    def door(self, s, x, y, w, h, fill, knob):
+        rrect(s, x, y, w, h, fill, adj=0.15)
+        oval(s, x + w * 0.66, y + h * 0.5, w * 0.18, w * 0.18, knob)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        dim, wall = mix(T.ink, "FFFFFF", 0.06), mix(T.ink, "FFFFFF", 0.12)
+        bx, bw, fh = 8.3, 4.2, 0.92
+        rect(s, bx - 0.25, 6.55, bw + 0.5, 0.08, T.mid)
+        for k, org in enumerate(("klinik-gigi-ceria", "bidan-sehati", "klinik-hewan-ok", "salon-ayu", "les-privat-pintar")):
+            y = 1.85 + k * fh
+            on = k == 2
+            rect(s, bx, y, bw, fh - 0.1, mix(T.ink, T.accent, 0.35) if on else dim, line=T.accent if on else None, lw=2)
+            text(s, bx + 0.2, y + 0.08, 3.0, 0.3, f"org: {org}", 11, True, WHITE if on else SLATE, gap=0, font=MONO)
+            for j in range(6):
+                rect(s, bx + 0.2 + j * 0.62, y + 0.45, 0.42, 0.24, T.amber if on and j % 2 == 0 else wall)
+        shape(s, M.ISOSCELES_TRIANGLE, bx - 0.1, 0.75, bw + 0.2, 1.0, mix(T.ink, T.accent, 0.2))
+        logo(s, "white", bx + bw / 2 - 0.3, 1.1, 0.6)
+        text(s, 0.9, 1.0, 7.0, 0.4, "select set_config('app.org_id', $1, true);", 14, True, T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.65, 7.0, 2.4, sl["title"], 52, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.15, 6.6, 1.5, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 6.1, 7.0, 0.3, "using (org_id = app.current_org())", 13, color=mix(T.accent, "FFFFFF", 0.5), font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        rrect(s, 0.3, 0.3, 0.6, 6.3, T.ink, adj=0.15)  # lift shaft
+        text(s, 0.3, 0.42, 0.6, 0.45, f"{n}", 18, True, WHITE, gap=0, align=PP_ALIGN.CENTER, font=MONO)
+        floors = 12
+        lit = round((n - 1) / max(N - 1, 1) * (floors - 1))
+        for k in range(floors):
+            yy = 6.35 - k * 0.43
+            rrect(s, 0.45, yy, 0.3, 0.2, T.accent if k == lit else T.deep, adj=0.3)
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower()
+        badge = f"org_id: {k}"
+        bw = 0.4 + 0.115 * len(badge)
+        rrect(s, 1.2, 0.36, bw, 0.4, T.light, adj=0.5)
+        text(s, 1.2, 0.36, bw, 0.4, badge, 12, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+        logo(s, "accent", 12.15, 0.3, 0.55)
+        self.title(s, 1.2, 0.9, 10.9, sl["title"], h=0.7)
+        rect(s, 1.2, 1.65, 11.5, 0.02, T.line)
+        return (1.2, 1.85, 11.5, 4.85)
+
+    def foot(self, s, n, sl):
+        text(s, 1.2, 7.0, 8, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 10.7, 7.0, 2.0, 0.25, f"lantai {n} / {N}", 10, True, T.accent, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rect(s, x, y + 0.06, w, h - 0.12, WHITE, line=T.line, lw=1)
+        rect(s, x, y + 0.06, 0.07, h - 0.12, T.accent if i % 2 == 0 else T.mid)
+
+    def mark(self, s, x, cy, i):
+        self.door(s, x, cy - 0.2, 0.26, 0.4, T.accent if i % 2 == 0 else T.mid, WHITE)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.42
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.ink)
+        rect(s, x, y, w, 0.42, T.deep)
+        oval(s, x + 0.22, y + 0.14, 0.14, 0.14, T.amber)
+        text(s, x + 0.48, y, w - 0.7, 0.42, "BEGIN;  -- satu transaksi, satu tenant", 11, color=SLATE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 48 else 12
+        text(s, x + 0.3, y + 0.6, w - 0.5, h - 0.7, lines, sz, color=C("ECE6F5"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.light)
+        self.door(s, x + 0.25, y + h / 2 - 0.22, 0.3, 0.44, T.accent, WHITE)
+        text(s, x + 0.8, y, w - 1.0, h, note, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- npm: package page with version chip, tarball listing rows ----------
+class Tarball(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.25, 0.6
+    PAPER = C("F6F1E7")  # kraft label
+
+    def box(self, s, x, y, w, h, top, front, line):
+        # cardboard box: wider lid on a front face, packing tape down the middle of the lid
+        d = w * 0.22
+        rect(s, x, y + d, w, h, front, line=line, lw=1.5)
+        rect(s, x - 0.12, y, w + 0.24, d, top, line=line, lw=1.5)
+        rect(s, x + w * 0.44, y, w * 0.12, d, self.PAPER)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        rect(s, 0, 0, W, 0.14, T.accent)
+        card = mix(T.ink, "FFFFFF", 0.07)
+        self.box(s, 8.6, 1.3, 3.2, 2.3, mix(T.ink, T.accent, 0.55), mix(T.ink, T.accent, 0.35), T.accent)
+        logo(s, "white", 9.6, 2.45, 1.2)
+        for k, (tag, ver) in enumerate((("latest", "1.0.0"), ("next", "1.1.0-beta.1"), ("legacy", "0.9.4"))):
+            y = 4.75 + k * 0.62
+            rrect(s, 8.1, y, 4.6, 0.48, card, adj=0.3)
+            rrect(s, 8.22, y + 0.09, 1.15, 0.3, T.accent if k == 0 else T.deep, adj=0.5)
+            text(s, 8.22, y + 0.09, 1.15, 0.3, tag, 11, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+            text(s, 9.55, y, 3, 0.48, ver, 14, color=SLATE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        text(s, 0.9, 0.9, 6.6, 0.4, "@ruang-materi/kelas", 15, True, mix(T.accent, "FFFFFF", 0.35), font=MONO, gap=0)
+        text(s, 0.9, 1.5, 6.9, 2.9, sl["title"], 50, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.5, 6.6, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 6.35, 6.6, 0.3, "$ npm publish --access public", 14, True, T.accent, font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        rect(s, 0, 0, W, 0.1, T.accent)
+        logo(s, "accent", 0.6, 0.34, 0.5)
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower().replace(" ", "-")
+        text(s, 1.25, 0.32, 7.5, 0.5, f"@kelas/{k}", 14, True, T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        rrect(s, 10.9, 0.38, 1.8, 0.4, T.light, adj=0.5)
+        text(s, 10.9, 0.38, 1.8, 0.4, f"v1.{n}.0", 12, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+        self.title(s, 0.6, 0.95, 12, sl["title"], h=0.75)
+        rect(s, 0.6, 1.78, 12.1, 0.015, T.line)
+        return (0.6, 1.95, 12.1, 4.85)
+
+    def foot(self, s, n, sl):
+        text(s, 0.6, 7.03, 8, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 10.2, 7.03, 2.5, 0.25, f"npm notice {n}/{N}", 10, True, T.accent, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rect(s, x, y + 0.05, w, h - 0.1, T.card if i % 2 == 0 else WHITE)
+        rect(s, x, y + 0.05, 0.05, h - 0.1, T.accent if i == 0 else T.line)
+
+    def mark(self, s, x, cy, i):
+        rect(s, x, cy - 0.06, 0.26, 0.2, None, line=T.accent, lw=1.5)
+        rect(s, x, cy - 0.13, 0.26, 0.07, T.accent)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.03)
+        for k in range(3): oval(s, x + 0.25 + k * 0.22, y + 0.17, 0.12, 0.12, T.accent if k == 0 else T.deep)
+        text(s, x + w - 2.3, y + 0.08, 2.0, 0.3, "terminal", 10, color=SLATE, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.5, w - 0.6, h - 0.6, lines, sz, color=C("F4E9E9"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.light)
+        text(s, x + 0.25, y, 1.4, h, "npm WARN", 12, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        text(s, x + 1.65, y, w - 1.9, h, note, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+STYLES = {"npm": Tarball, "saas": Tenant, "search": Serp, "abtest": Variant, "realtime": Wire, "extension": Popup, "scraping": Inspector, "events": Stream,"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "flutter": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()
