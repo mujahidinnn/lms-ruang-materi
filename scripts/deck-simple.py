@@ -1375,7 +1375,492 @@ class Island(St):
         text(s, x + 0.3, y + 0.4, w - 0.6, h - 0.5, lines, sz, color=C("EDE4FB"), gap=2, font=MONO)
 
 
-STYLES = {"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "flutter": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
+# ---------- Event-driven: event log with partitions and offsets ----------
+class Stream(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.25, 0.62
+    AMBER = C("F59E0B")
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        lane = mix(T.ink, "FFFFFF", 0.07)
+        hot = {(0, 3): T.accent, (0, 6): self.AMBER, (1, 1): T.accent, (1, 5): T.accent, (2, 2): self.AMBER, (2, 4): T.accent}
+        for p in range(3):
+            y = 1.55 + p * 1.45
+            rrect(s, 7.6, y - 0.12, 5.2, 0.86, mix(T.ink, "FFFFFF", 0.03), adj=0.15)
+            text(s, 7.75, y + 0.18, 0.5, 0.3, f"P{p}", 12, True, SLATE, font=MONO, gap=0)
+            for k in range(7):
+                r = rrect(s, 8.3 + k * 0.6, y, 0.5, 0.62, hot.get((p, k), lane), adj=0.15)
+                text(s, 8.3 + k * 0.6, y + 0.16, 0.5, 0.3, str(k), 11, True, WHITE if (p, k) in hot else SLATE, font=MONO, gap=0, align=PP_ALIGN.CENTER)
+            cx = 8.3 + (4 + p) % 7 * 0.6 + 0.13
+            shape(s, M.ISOSCELES_TRIANGLE, cx, y + 0.72, 0.24, 0.2, self.AMBER)
+        logo(s, "white", 12.0, 0.45, 0.75)
+        text(s, 0.9, 1.0, 6.4, 0.3, "topic: ruang-materi.kelas.v1", 15, True, self.AMBER, font=MONO, gap=0)
+        text(s, 0.9, 1.6, 6.5, 2.2, sl["title"].split(" ", 1), 52, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 3.95, 6.3, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 5.75, 6.4, 0.3, "order.placed -> stock.reserved -> paid", 13, True, T.light, font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower().replace(" ", "-")
+        text(s, 0.6, 0.32, 9, 0.3, f"topic: {k}.v1", 12, True, T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.68, 10.8, sl["title"])
+        logo(s, "accent", 12.1, 0.32, 0.6)
+        rect(s, 0, 6.88, W, 0.62, T.card)
+        for i in range(N):  # offset log doubles as progress
+            rect(s, 7.1 + i * 0.14, 7.1, 0.1, 0.18, T.accent if i < n else T.line)
+        return (0.6, 1.62, 12.1, 5.05)
+
+    def foot(self, s, n, sl):
+        text(s, 0.6, 7.07, 6, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.07, 1.0, 0.25, f"{n} / {N}", 10, True, T.grey, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rect(s, x, y + 0.06, w, h - 0.12, T.card)
+        rect(s, x, y + 0.06, 0.05, h - 0.12, self.AMBER if i % 2 else T.accent)
+
+    def mark(self, s, x, cy, i):
+        rrect(s, x - 0.08, cy - 0.15, 0.46, 0.3, T.ink, adj=0.2)
+        text(s, x - 0.08, cy - 0.11, 0.46, 0.25, f"{i:02d}", 10, True, WHITE, font=MONO, gap=0, align=PP_ALIGN.CENTER)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.46
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x, y + 0.45, w, 0.02, T.mid)
+        text(s, x + 0.3, y + 0.13, 3, 0.25, "message", 11, True, self.AMBER, font=MONO, gap=0)
+        for k in range(3): oval(s, x + w - 0.75 + k * 0.18, y + 0.18, 0.11, 0.11, T.accent if k == 0 else T.mid)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.62, w - 0.6, h - 0.7, lines, sz, color=C("E0E7FF"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.light)
+        rect(s, x, y, 0.08, h, self.AMBER)
+        text(s, x + 0.35, y, w - 0.6, h, note, 14, True, T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- Web scraping: DevTools element inspector ----------
+class Inspector(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.25, 0.75
+    TABS = ("Elements", "Console", "Sources", "Network")
+
+    def dashed(self, r, color, lw=1.5):
+        from pptx.enum.dml import MSO_LINE
+        r.line.color.rgb = color; r.line.width = Pt(lw); r.line.dash_style = MSO_LINE.DASH
+        return r
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        win, bar2 = mix(T.ink, "FFFFFF", 0.07), mix(T.ink, "FFFFFF", 0.14)
+        rrect(s, 7.6, 0.9, 5.0, 5.2, win, adj=0.04)
+        rrect(s, 7.85, 1.1, 4.5, 0.38, bar2, adj=0.5)
+        text(s, 8.05, 1.1, 4.2, 0.38, "books.toscrape.com/catalogue/page-2.html", 10, color=SLATE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        for k in range(8):  # product cards
+            cx, cy = 7.9 + (k % 4) * 1.1, 1.8 + (k // 4) * 2.0
+            rrect(s, cx, cy, 0.95, 1.75, bar2, adj=0.08)
+            rect(s, cx + 0.15, cy + 0.15, 0.65, 0.8, mix(T.ink, T.accent, 0.35 if k == 5 else 0.15))
+            rrect(s, cx + 0.12, cy + 1.08, 0.7, 0.1, win, adj=0.5)
+            rrect(s, cx + 0.12, cy + 1.3, 0.4, 0.12, T.accent if k == 5 else win, adj=0.5)
+        self.dashed(rrect(s, 8.95, 3.72, 1.05, 1.95, None, adj=0.08), T.accent, 2.25)
+        rrect(s, 8.25, 5.78, 2.6, 0.38, T.accent, adj=0.3)
+        text(s, 8.25, 5.78, 2.6, 0.38, "article.product_pod", 12, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+        oval(s, 11.35, 4.95, 1.7, 1.7, mix(T.ink, T.accent, 0.3), line=T.accent, lw=2.5)
+        logo(s, "white", 11.7, 5.3, 1.0)
+        text(s, 0.9, 1.0, 6.4, 0.4, "GET /catalogue/page-2.html  200 OK", 14, True, T.accent, font=MONO, gap=0)
+        text(s, 0.9, 1.6, 6.4, 2.6, sl["title"], 54, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.35, 6.2, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 6.0, 6.4, 0.3, 'soup.select("h3 a")', 14, color=mix(T.accent, "FFFFFF", 0.35), font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        rect(s, 0, 0, W, 0.44, T.card)
+        rect(s, 0, 0.44, W, 0.015, T.line)
+        x = 0.6
+        for k, t in enumerate(self.TABS):
+            w = 0.18 + len(t) * 0.095
+            text(s, x, 0.0, w, 0.44, t, 11, k == 0, T.ink if k == 0 else T.grey, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+            if k == 0: rect(s, x, 0.40, w - 0.18, 0.04, T.accent)
+            x += w + 0.25
+        logo(s, "accent", 12.4, 0.07, 0.3)
+        k = re.sub(r"[^a-z0-9]+", "-", sl.get("kicker", spec.get("kicker", "KELAS")).lower()).strip("-")
+        text(s, 0.6, 0.66, 11, 0.3, f"body > main > section.{k}", 12, color=T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.98, 11.6, sl["title"])
+        return (0.6, 1.95, 12.1, 4.8)
+
+    def foot(self, s, n, sl):
+        rect(s, 0, 6.98, W, 0.52, T.card)
+        rect(s, 0, 6.98, W, 0.015, T.line)
+        text(s, 0.6, 7.1, 8, 0.25, f"{spec['deck']}  |  {n} / {N} requests", 10, color=T.grey, gap=0, font=MONO)
+        text(s, 10.2, 7.1, 2.5, 0.25, "200 OK", 10, True, T.accent, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def mark(self, s, x, cy, i):
+        text(s, x, cy - 0.15, 0.7, 0.3, "<li>", 12, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i == 0:
+            self.dashed(rrect(s, x, y + 0.05, w, h - 0.1, T.light, adj=0.12), T.accent, 1.25)
+        else:
+            rect(s, x, y + 0.02, w, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.45
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.03)
+        rect(s, x + 0.3, y + 0.42, w - 0.6, 0.012, T.deep)
+        text(s, x + 0.3, y + 0.08, 2, 0.32, "Response", 11, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        rect(s, x + 0.3, y + 0.38, 0.85, 0.04, T.accent)
+        text(s, x + 1.45, y + 0.08, 2, 0.32, "Headers", 11, color=SLATE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.62, w - 0.6, h - 0.75, lines, sz, color=C("F5E6DC"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.12)
+        text(s, x + 0.3, y, 0.4, h, ">", 16, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        text(s, x + 0.7, y, w - 1.0, h, note, 14, color=WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- Ekstensi browser: toolbar + popup panel hanging from the extension icon ----------
+class Popup(St):
+    head = "Liberation Sans"; body = "Liberation Sans"; tsize = 28; size = 18
+    pad, gap = 0.25, 0.75
+    HUES = ("DB4437", "F4B400", "0F9D58", "4285F4")
+
+    @property
+    def bg(self): return mix(WHITE, T.accent, 0.06)
+
+    def icon(self, s, x, y, badge, dark=False, size=0.5):
+        rrect(s, x, y, size, size, T.deep if dark else WHITE, line=None if dark else T.line, lw=1, adj=0.25)
+        logo(s, "white" if dark else "accent", x + size * 0.15, y + size * 0.15, size * 0.7)
+        if badge:
+            bw = 0.18 + 0.1 * len(badge)
+            rrect(s, x + size - bw * 0.55, y - 0.1, bw, 0.26, C(self.HUES[0]), adj=0.5)
+            text(s, x + size - bw * 0.55, y - 0.1, bw, 0.26, badge, 10, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=self.body)
+
+    def toolbar(self, s, y, dark, badge, label):
+        rect(s, 0, y, W, 0.72, T.ink if dark else T.card)
+        rect(s, 0, y + 0.72, W, 0.02, T.deep if dark else T.line)
+        rrect(s, 0.45, y + 0.17, 0.1 + 0.115 * len(label), 0.38, T.accent, adj=0.5)
+        text(s, 0.45, y + 0.17, 0.1 + 0.115 * len(label), 0.38, label, 11, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO, spc=50)
+        for k in range(3):  # other extensions, greyed out
+            rrect(s, 10.15 + k * 0.62, y + 0.14, 0.44, 0.44, T.deep if dark else T.line, adj=0.25)
+        self.icon(s, 12.05, y + 0.11, badge, dark)
+
+    def toggle(self, s, x, cy, on=True):
+        rrect(s, x, cy - 0.11, 0.42, 0.22, T.accent if on else T.line, adj=0.5)
+        oval(s, x + (0.23 if on else 0.03), cy - 0.08, 0.16, 0.16, WHITE)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        self.toolbar(s, 0, True, "25m", "EKSTENSI")
+        for k, hue in enumerate(self.HUES): rect(s, k * W / 4, H - 0.12, W / 4, 0.12, C(hue))
+        text(s, 0.9, 1.45, 6.8, 0.35, "chrome://extensions  >  Load unpacked", 14, color=T.amber, font=MONO, gap=0)
+        text(s, 0.9, 1.95, 7.3, 1.9, sl["title"], 50, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.2, 6.6, 1.6, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        px, py, pw, ph = 8.55, 1.25, 4.15, 5.3   # popup under the icon
+        shape(s, M.ISOSCELES_TRIANGLE, 12.15, py - 0.22, 0.3, 0.24, WHITE)
+        rrect(s, px, py, pw, ph, WHITE, adj=0.05)
+        text(s, px + 0.35, py + 0.3, 3, 0.35, "FOKUS DULU", 12, True, T.accent, gap=0, font=MONO, spc=80)
+        text(s, px + 0.35, py + 0.8, pw - 0.7, 1.2, "25:00", 66, True, T.ink, gap=0, font=self.head)
+        for k, (lab, on) in enumerate((("Tutup situs pengganggu", True), ("Notifikasi", True), ("Mode istirahat", False))):
+            yy = py + 2.45 + k * 0.6
+            text(s, px + 0.35, yy - 0.18, 2.9, 0.36, lab, 13, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+            self.toggle(s, px + pw - 0.8, yy, on)
+            rect(s, px + 0.35, yy + 0.3, pw - 0.7, 0.01, T.line)
+        rrect(s, px + 0.35, py + ph - 0.95, pw - 0.7, 0.55, T.accent, adj=0.5)
+        text(s, px + 0.35, py + ph - 0.95, pw - 0.7, 0.55, "Mulai fokus", 15, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=self.body)
+
+    def chrome(self, s, n, sl):
+        self.toolbar(s, 0, False, str(n), sl.get("kicker", spec.get("kicker", "KELAS")))
+        shape(s, M.ISOSCELES_TRIANGLE, 12.15, 0.78, 0.3, 0.2, WHITE)
+        rrect(s, 0.45, 0.97, 12.43, 5.9, WHITE, line=T.line, lw=1, adj=0.03)
+        self.title(s, 0.85, 1.17, 11.0, sl["title"], h=0.7)
+        rect(s, 0.85, 1.9, 0.9, 0.05, T.accent)
+        return (0.85, 2.1, 11.65, 4.55)
+
+    def foot(self, s, n, sl):
+        text(s, 0.6, 7.03, 8, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.03, 1.0, 0.25, f"{n} / {N}", 10, color=T.grey, gap=0, align=PP_ALIGN.RIGHT)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x, y, w, 0.01, T.line)
+
+    def mark(self, s, x, cy, i): self.toggle(s, x, cy)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.45
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        for k, hue in enumerate(self.HUES): rect(s, x + 0.3 + k * 0.32, y + 0.2, 0.26, 0.05, C(hue))
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.42, w - 0.6, h - 0.5, lines, sz, color=C("E3ECFB"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.light, adj=0.2)
+        rect(s, x, y + 0.12, 0.07, h - 0.24, T.accent)
+        text(s, x + 0.3, y, w - 0.6, h, note, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- WebSocket dan realtime: sequence diagram + chat bubbles ----------
+class Wire(St):
+    head = "Liberation Sans"; tsize = 30; size = 18
+    pad, gap = 0.25, 0.6
+    CORAL = C("FF7A59")
+
+    def arrow(self, s, x1, x2, y, label, color):
+        rect(s, min(x1, x2), y, abs(x2 - x1), 0.03, color)
+        shape(s, M.ISOSCELES_TRIANGLE, (x2 - 0.2) if x2 > x1 else x2, y - 0.09, 0.2, 0.21, color, rot=90 if x2 > x1 else 270)
+        text(s, min(x1, x2) + 0.15, y - 0.36, abs(x2 - x1) - 0.3, 0.3, label, 12, True, SLATE, font=MONO, gap=0, align=PP_ALIGN.CENTER)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        a, b = 8.0, 12.1
+        for x, name in ((a, "browser"), (b, "server")):
+            rrect(s, x - 0.75, 0.75, 1.5, 0.5, mix(T.ink, "FFFFFF", 0.1), adj=0.3)
+            text(s, x - 0.75, 0.75, 1.5, 0.5, name, 13, True, WHITE, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+            for k in range(13):  # dashed lifeline
+                rect(s, x - 0.015, 1.4 + k * 0.38, 0.03, 0.2, mix(T.ink, "FFFFFF", 0.25))
+        steps = (("GET /chat  Upgrade", True, SLATE), ("101 Switching", False, SLATE), ('{"type":"join"}', True, T.accent),
+                 ('{"type":"message"}', False, T.accent), ("ping", False, self.CORAL), ("pong", True, self.CORAL))
+        for k, (lab, right, col) in enumerate(steps):
+            y = 1.95 + k * 0.75
+            if right: self.arrow(s, a, b, y, lab, col)
+            else: self.arrow(s, b, a, y, lab, col)
+        oval(s, b - 0.45, 6.3, 0.9, 0.9, T.accent)
+        logo(s, "white", b - 0.3, 6.45, 0.6)
+        text(s, 0.9, 1.0, 6, 0.3, "wss://ruangmateri/kelas", 15, True, T.accent, font=MONO, gap=0)
+        text(s, 0.9, 1.6, 6.2, 2.6, sl["title"], 50, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.35, 5.9, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        rrect(s, 0.9, 5.95, 1.35, 0.42, T.accent, adj=0.5)
+        text(s, 0.9, 5.95, 1.35, 0.42, "OPEN", 13, True, T.ink, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        text(s, 2.45, 5.95, 4.5, 0.42, "readyState === 1", 13, color=SLATE, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower().replace(" ", "-")
+        oval(s, 0.6, 0.4, 0.16, 0.16, T.accent)
+        text(s, 0.88, 0.33, 9, 0.3, f"OPEN  wss://kelas/{k}", 12, True, T.accent, font=MONO, gap=0)
+        self.title(s, 0.6, 0.7, 10.8, sl["title"])
+        logo(s, "accent", 12.1, 0.32, 0.6)
+        rect(s, 0, 6.88, W, 0.62, T.ink)
+        return (0.6, 1.62, 12.1, 5.05)
+
+    def foot(self, s, n, sl):
+        text(s, 0.6, 7.07, 6, 0.25, spec["deck"], 10, color=SLATE, gap=0)
+        text(s, 10.2, 7.07, 2.5, 0.25, f"frame {n}/{N}", 10, True, T.accent, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def bullets(self, s, items, box, size=None):  # chat bubbles: client rows left, server rows right
+        x, y, w, h = box
+        step = min(1.0, h / len(items))
+        for i, b in enumerate(items):
+            yy, srv = y + i * step, i % 2 == 1
+            bx, bw = x + (0.5 if srv else 0), w - 0.5
+            rrect(s, bx, yy + 0.07, bw, step - 0.14, T.light if srv else T.card, adj=0.3, line=None if srv else T.line, lw=1)
+            text(s, bx + self.pad, yy, 0.4, step, "<-" if srv else "->", 13, True, self.CORAL if srv else T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+            text(s, bx + self.pad + self.gap, yy, bw - self.pad - self.gap - 0.2, step, b, size or self.size, color=self.fg, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.46
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        for k, (lab, col) in enumerate((("FIN 1", T.accent), ("op 0x1", T.mid), ("MASK", self.CORAL))):
+            rrect(s, x + 0.3 + k * 0.95, y + 0.15, 0.85, 0.3, col, adj=0.4)
+            text(s, x + 0.3 + k * 0.95, y + 0.15, 0.85, 0.3, lab, 10, True, WHITE, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.65, w - 0.6, h - 0.75, lines, sz, color=C("DDF7EF"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.3)
+        rrect(s, x + 0.25, y + h / 2 - 0.17, 0.7, 0.34, self.CORAL, adj=0.5)
+        text(s, x + 0.25, y + h / 2 - 0.17, 0.7, 0.34, "ack", 11, True, WHITE, font=MONO, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        text(s, x + 1.15, y, w - 1.4, h, note, 14, color=WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- A/B testing: two variants side by side, bucket bar, CI whiskers ----------
+class Variant(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.25, 0.7
+    BLUE = C("1C7ED6")
+
+    def ab(self, i): return self.BLUE if i % 2 == 0 else T.accent
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        panel = mix(T.ink, "FFFFFF", 0.06)
+        for k, (lab, col, hgt, lo, hi, pct) in enumerate((("A", self.BLUE, 2.1, 1.85, 2.35, "5,00%"), ("B", T.accent, 2.6, 2.3, 2.9, "5,88%"))):
+            x = 8.2 + k * 2.3
+            rrect(s, x, 1.3, 2.0, 4.3, panel, adj=0.08)
+            base = 5.0
+            rect(s, x + 0.55, base - hgt, 0.9, hgt, col)
+            rect(s, x + 0.98, base - hi, 0.04, hi - lo, WHITE)
+            for yy in (base - hi, base - lo): rect(s, x + 0.82, yy - 0.02, 0.36, 0.04, WHITE)
+            rect(s, x + 0.25, base, 1.5, 0.03, SLATE)
+            text(s, x, 1.45, 2.0, 0.5, lab, 26, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+            text(s, x, 5.1, 2.0, 0.35, pct, 15, True, SLATE, font=MONO, gap=0, align=PP_ALIGN.CENTER)
+        for b in range(20):  # hash buckets
+            on_b = "10011010110010110100"[b] == "1"
+            rrect(s, 8.2 + b * 0.217, 6.0, 0.17, 0.3, T.accent if on_b else self.BLUE, adj=0.2)
+        logo(s, "white", 12.25, 0.45, 0.6)
+        text(s, 0.9, 1.0, 6.6, 0.3, 'flag("checkout-v2") -> "B"', 15, True, T.light, font=MONO, gap=0)
+        text(s, 0.9, 1.6, 6.8, 2.4, sl["title"], 50, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.15, 6.3, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        rrect(s, 0.9, 5.85, 0.5, 0.42, self.BLUE, adj=0.3)
+        rrect(s, 1.45, 5.85, 0.5, 0.42, T.accent, adj=0.3)
+        text(s, 0.9, 5.92, 0.5, 0.3, "A", 14, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+        text(s, 1.45, 5.92, 0.5, 0.3, "B", 14, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+        text(s, 2.15, 5.92, 5, 0.3, "z = 2,44   p = 0,015", 14, True, SLATE, font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower()
+        rrect(s, 0.6, 0.3, 0.32, 0.3, self.BLUE, adj=0.3)
+        rrect(s, 0.95, 0.3, 0.32, 0.3, T.accent, adj=0.3)
+        text(s, 0.6, 0.33, 0.32, 0.25, "A", 11, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+        text(s, 0.95, 0.33, 0.32, 0.25, "B", 11, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+        text(s, 1.45, 0.33, 9, 0.3, f"eksperimen: {k}", 12, True, T.grey, font=MONO, gap=0)
+        self.title(s, 0.6, 0.72, 10.8, sl["title"])
+        logo(s, "accent", 12.1, 0.32, 0.6)
+        rect(s, 0, 6.88, W, 0.62, T.card)
+        x0, w0 = 7.3, 4.2  # 50/50 traffic split doubles as progress
+        rect(s, x0, 7.12, w0 / 2, 0.14, self.BLUE)
+        rect(s, x0 + w0 / 2, 7.12, w0 / 2, 0.14, T.accent)
+        shape(s, M.ISOSCELES_TRIANGLE, x0 + w0 * (n - 1) / (N - 1) - 0.09, 6.93, 0.18, 0.15, T.ink, rot=180)
+        return (0.6, 1.7, 12.1, 4.95)
+
+    def foot(self, s, n, sl):
+        text(s, 0.6, 7.07, 6, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 11.7, 7.07, 1.0, 0.25, f"{n} / {N}", 10, True, T.grey, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        rrect(s, x, y + 0.06, w, h - 0.12, T.card, adj=0.15, line=T.line, lw=1)
+
+    def mark(self, s, x, cy, i):
+        rrect(s, x - 0.06, cy - 0.17, 0.4, 0.34, self.ab(i), adj=0.3)
+        text(s, x - 0.06, cy - 0.12, 0.4, 0.25, "AB"[i % 2], 11, True, WHITE, gap=0, align=PP_ALIGN.CENTER)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.45
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.04)
+        rect(s, x + 0.3, y + 0.2, 0.45, 0.07, self.BLUE)
+        rect(s, x + 0.8, y + 0.2, 0.45, 0.07, T.accent)
+        text(s, x + w - 1.5, y + 0.12, 1.2, 0.25, "ab.py", 11, True, SLATE, font=MONO, gap=0, align=PP_ALIGN.RIGHT)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.5, w - 0.6, h - 0.6, lines, sz, color=C("F3E8EE"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.light)
+        rect(s, x, y, 0.07, h / 2, self.BLUE)
+        rect(s, x, y + h / 2, 0.07, h / 2, T.accent)
+        text(s, x + 0.35, y, w - 0.6, h, note, 14, True, T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+# ---------- Pencarian full-text: search engine results page with highlighted hits ----------
+class Serp(St):
+    head = "Liberation Sans"; tsize = 30; size = 19
+    pad, gap = 0.2, 0.75
+    MARK = C("FDE047")
+
+    def lens(self, s, x, y, d, color, lw=2.5):
+        oval(s, x, y, d, d, None, line=color, lw=lw)
+        poly(s, [(x + d * 0.85, y + d * 0.85), (x + d * 1.3, y + d * 1.3)], color, lw + 1)
+
+    def cover(self, s, sl):
+        rect(s, 0, 0, W, H, T.ink)
+        card, bar2 = mix(T.ink, "FFFFFF", 0.07), mix(T.ink, "FFFFFF", 0.16)
+        rrect(s, 7.5, 0.95, 5.2, 0.7, WHITE, adj=0.5)
+        self.lens(s, 7.78, 1.12, 0.3, T.accent)
+        text(s, 8.35, 0.95, 3.2, 0.7, "lupa sandi kantin", 16, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        rrect(s, 11.55, 1.07, 0.95, 0.46, T.accent, adj=0.5)
+        text(s, 11.55, 1.07, 0.95, 0.46, "Cari", 13, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        for k, (hx, hw) in enumerate(((0.55, 0.9), (1.6, 0.75), (0.3, 1.1))):
+            y = 2.0 + k * 1.3
+            rrect(s, 7.5, y, 5.2, 1.1, card, adj=0.1)
+            rrect(s, 7.75, y + 0.2, 2.6 - k * 0.4, 0.16, mix(T.ink, T.accent, 0.6), adj=0.5)
+            rrect(s, 7.75, y + 0.52, 4.6, 0.1, bar2, adj=0.5)
+            rrect(s, 7.75, y + 0.75, 3.4, 0.1, bar2, adj=0.5)
+            rect(s, 7.75 + hx, y + 0.48, hw, 0.18, self.MARK)
+            text(s, 12.15, y + 0.15, 0.4, 0.3, f"#{k + 1}", 11, True, SLATE, gap=0, font=MONO)
+        oval(s, 11.3, 5.55, 1.4, 1.4, mix(T.ink, T.accent, 0.35), line=T.accent, lw=2.5)
+        logo(s, "white", 11.6, 5.85, 0.8)
+        text(s, 0.9, 1.0, 6.4, 0.4, "tsv @@ websearch_to_tsquery(...)", 14, True, self.MARK, font=MONO, gap=0)
+        text(s, 0.9, 1.6, 6.3, 2.8, sl["title"], 50, True, WHITE, gap=0, font=self.head)
+        text(s, 0.9, 4.55, 6.0, 1.4, spec.get("subtitle", ""), 17, color=SLATE, gap=0)
+        text(s, 0.9, 6.3, 6.4, 0.3, "ORDER BY ts_rank(tsv, q) DESC", 13, color=mix(T.accent, "FFFFFF", 0.45), font=MONO, gap=0)
+
+    def chrome(self, s, n, sl):
+        logo(s, "accent", 0.6, 0.33, 0.5)
+        rrect(s, 1.3, 0.3, 9.5, 0.56, WHITE, adj=0.5, line=T.line, lw=1.25)
+        self.lens(s, 1.52, 0.47, 0.18, T.grey, 1.75)
+        k = sl.get("kicker", spec.get("kicker", "KELAS")).lower()
+        text(s, 1.95, 0.3, 8.6, 0.56, k, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        rrect(s, 10.95, 0.34, 0.95, 0.48, T.accent, adj=0.5)
+        text(s, 10.95, 0.34, 0.95, 0.48, "Cari", 12, True, WHITE, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER)
+        text(s, 1.35, 0.98, 8, 0.25, f"Hasil {n} dari {N} untuk \"{k}\"", 10, color=T.grey, gap=0)
+        self.title(s, 0.6, 1.25, 11.8, sl["title"], h=0.7)
+        rect(s, 0.6, 1.95, 1.4, 0.07, self.MARK)
+        return (0.6, 2.2, 12.1, 4.6)
+
+    def foot(self, s, n, sl):
+        rect(s, 0, 6.95, W, 0.012, T.line)
+        text(s, 0.6, 7.07, 8, 0.25, spec["deck"], 10, color=T.grey, gap=0)
+        text(s, 10.7, 7.07, 2.0, 0.25, f"<  {n} / {N}  >", 10, True, T.accent, gap=0, align=PP_ALIGN.RIGHT, font=MONO)
+
+    def mark(self, s, x, cy, i):
+        rect(s, x - 0.05, cy - 0.17, 0.5, 0.34, T.light)
+        text(s, x - 0.05, cy - 0.17, 0.5, 0.34, f"{i + 1}", 13, True, T.accent, gap=0, anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.CENTER, font=MONO)
+
+    def rowbg(self, s, x, y, w, h, i):
+        if i: rect(s, x + self.pad + self.gap, y, w - self.pad - self.gap, 0.012, T.line)
+
+    def split(self, box):
+        x, y, w, h = box
+        a = w * 0.45
+        return (x, y, a, h), (x + a + 0.25, y, w - a - 0.25, h)
+
+    def code(self, s, code, box):
+        x, y, w, h = box
+        rrect(s, x, y, w, h, T.ink, adj=0.03)
+        text(s, x + 0.3, y + 0.1, 3, 0.3, "kantin=#", 11, True, self.MARK, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=MONO)
+        rect(s, x + 0.3, y + 0.45, w - 0.6, 0.012, T.deep)
+        lines = code.splitlines()
+        sz = 14 if len(lines) <= 9 and max(map(len, lines)) <= 46 else 12
+        text(s, x + 0.3, y + 0.6, w - 0.6, h - 0.7, lines, sz, color=C("F3EBDD"), gap=2, font=MONO)
+
+    def note(self, s, note, box):
+        x, y, w, h = box
+        rect(s, x, y, w, h, T.light)
+        rect(s, x, y, 0.08, h, T.accent)
+        text(s, x + 0.35, y, w - 0.6, h, note, 14, color=T.ink, gap=0, anchor=MSO_ANCHOR.MIDDLE, font=self.body)
+
+
+STYLES = {"search": Serp, "abtest": Variant, "realtime": Wire, "extension": Popup, "scraping": Inspector, "events": Stream,"astro": Island, "dl": Network, "graphql": Schema, "websec": Audit, "nuxt": Sfc, "redis": Cli, "rest": Http, "nextjs": FileTree, "mongodb": Document, "ml": Plot, "laravel": Artisan, "mysql": Console, "php": Browser, "analisis-data": Notebook, "mobile-lanjut": Phone, "flutter": Phone, "autentikasi-api": Keycard, "cicd": Pipeline, "uiux": Artboard,
           "basis-data": Table, "kubernetes": Cluster, "monitoring": Dashboard, "oop": Uml, "postgresql": Editorial,
           "tailwind": Chips, "testing": Test, "cloud": Sky}
 st = STYLES[spec["theme"]]()

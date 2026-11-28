@@ -1,0 +1,344 @@
+{
+ "theme": "realtime",
+ "deck": "WebSocket dan Aplikasi Realtime",
+ "kicker": "KELAS",
+ "subtitle": "Dari polling ke WebSocket: server ws, protokol pesan, room, reconnect, pesan tanpa ganda, Redis, SSE, sampai deploy.",
+ "slides": [
+  {
+   "title": "WebSocket dan Aplikasi Realtime"
+  },
+  {
+   "title": "Kenapa butuh realtime?",
+   "kicker": "DARI HTTP KE REALTIME",
+   "bullets": [
+    "HTTP biasa: klien bertanya, server menjawab, lalu selesai",
+    "Server tidak bisa memulai bicara lewat request biasa",
+    "Chat kelas, papan skor lomba, antrean kantin, notifikasi nilai",
+    "Realtime: data sampai ke layar beberapa saat setelah terjadi",
+    "Kelas ini memakai Node.js, Express, dan paket ws"
+   ],
+   "note": "Pertanyaannya bukan bisa atau tidak, tapi teknik mana yang paling pas."
+  },
+  {
+   "title": "Polling dan long polling",
+   "kicker": "DARI HTTP KE REALTIME",
+   "bullets": [
+    "Short polling: tanya tiap beberapa detik, sering dapat jawaban kosong",
+    "Long polling: server menahan request sampai ada data baru",
+    "Setelah dapat jawaban, klien langsung kirim request lagi",
+    "Mudah dibuat, tapi tiap pesan memakai satu request HTTP penuh"
+   ],
+   "code": "// short polling tiap 5 detik\nsetInterval(async () => {\n  const r = await fetch(\"/api/antrean\");\n  tampilkan(await r.json());\n}, 5000);\n// 300 siswa x 12 per menit\n// = 3600 request per menit"
+  },
+  {
+   "title": "SSE dan WebSocket",
+   "kicker": "DARI HTTP KE REALTIME",
+   "bullets": [
+    "SSE: satu respons HTTP panjang, server ke klien saja",
+    "SSE cocok untuk notifikasi, skor, dan progres",
+    "WebSocket: satu koneksi TCP, dua arah, kapan saja",
+    "WebSocket cocok untuk chat, game, dan editor bersama",
+    "Pilih yang paling sederhana yang cukup untuk kebutuhanmu"
+   ],
+   "note": "Butuh klien mengirim sering? WebSocket. Hanya menerima? SSE sering cukup."
+  },
+  {
+   "title": "Handshake: dari HTTP ke WebSocket",
+   "kicker": "HANDSHAKE DAN FRAME",
+   "bullets": [
+    "Diawali request GET biasa dengan header Upgrade",
+    "Sec-WebSocket-Version wajib 13",
+    "Server setuju dengan status 101 Switching Protocols",
+    "Sec-WebSocket-Accept dihitung dari Sec-WebSocket-Key",
+    "Setelah 101, koneksi TCP yang sama dipakai untuk frame"
+   ],
+   "code": "GET /chat HTTP/1.1\nHost: sekolah.id\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13\n\nHTTP/1.1 101 Switching Protocols\nUpgrade: websocket\nConnection: Upgrade"
+  },
+  {
+   "title": "Frame dan opcode",
+   "kicker": "HANDSHAKE DAN FRAME",
+   "bullets": [
+    "Data dikirim dalam frame, bukan request",
+    "FIN menandai frame terakhir dari satu pesan",
+    "Opcode 0x1 teks, 0x2 biner, 0x0 lanjutan",
+    "Frame kontrol: 0x8 close, 0x9 ping, 0xA pong",
+    "Frame dari klien ke server wajib di-mask"
+   ],
+   "code": "opcode  arti\n0x0     lanjutan pesan\n0x1     teks (UTF-8)\n0x2     biner\n0x8     close\n0x9     ping\n0xA     pong",
+   "note": "ws:// tanpa enkripsi, wss:// lewat TLS. Di produksi selalu wss://."
+  },
+  {
+   "title": "Menutup koneksi dan kode tutup",
+   "kicker": "HANDSHAKE DAN FRAME",
+   "bullets": [
+    "Pihak yang menutup mengirim frame close berisi kode",
+    "1000 normal, 1001 pergi (tab ditutup, server restart)",
+    "1008 melanggar kebijakan, 1009 pesan terlalu besar",
+    "1006: putus tanpa frame close, tidak pernah dikirim",
+    "4000 sampai 4999 bebas dipakai aplikasimu"
+   ],
+   "note": "Kode 1006 di onclose artinya koneksi hilang begitu saja, misalnya sinyal putus."
+  },
+  {
+   "title": "Membuka koneksi di browser",
+   "kicker": "WEBSOCKET DI BROWSER",
+   "bullets": [
+    "WebSocket sudah bawaan browser, tanpa pustaka",
+    "URL memakai ws:// atau wss://",
+    "Browser tidak bisa menambah header kustom saat membuka",
+    "Token dikirim lewat query, cookie, atau pesan pertama"
+   ],
+   "code": "const ws = new WebSocket(\n  \"wss://chat.sekolah.id/ws?token=abc\"\n);\nws.onopen = () => console.log(\"tersambung\");\nws.onclose = (e) => console.log(e.code);\nws.onerror = () => console.log(\"error\");"
+  },
+  {
+   "title": "readyState dan event",
+   "kicker": "WEBSOCKET DI BROWSER",
+   "bullets": [
+    "0 CONNECTING, 1 OPEN, 2 CLOSING, 3 CLOSED",
+    "open: koneksi siap, baru boleh send()",
+    "message: data ada di event.data",
+    "close: event.code, event.reason, event.wasClean",
+    "error selalu diikuti close, tangani di onclose"
+   ],
+   "note": "send() saat masih CONNECTING melempar error. Antrekan dulu sampai open."
+  },
+  {
+   "title": "Mengirim dan menerima JSON",
+   "kicker": "WEBSOCKET DI BROWSER",
+   "bullets": [
+    "WebSocket hanya mengirim teks atau biner",
+    "Kirim objek dengan JSON.stringify",
+    "Terima dengan JSON.parse di dalam try/catch",
+    "bufferedAmount: byte yang belum terkirim"
+   ],
+   "code": "function kirim(ws, obj) {\n  if (ws.readyState !== 1) return false; // OPEN\n  ws.send(JSON.stringify(obj));\n  return true;\n}\nws.onmessage = (e) => {\n  let ev;\n  try { ev = JSON.parse(e.data); } catch { return; }\n  tampilkan(ev);\n};"
+  },
+  {
+   "title": "Server pertama dengan ws",
+   "kicker": "SERVER DENGAN WS",
+   "bullets": [
+    "Pasang dengan npm install ws",
+    "WebSocketServer menerima koneksi masuk",
+    "Event connection memberi satu socket per klien",
+    "data di event message berupa Buffer"
+   ],
+   "code": "import { WebSocketServer } from \"ws\";\n\nconst wss = new WebSocketServer({ port: 8080 });\nwss.on(\"connection\", (ws) => {\n  ws.on(\"error\", console.error);\n  ws.on(\"message\", (data) => {\n    ws.send(\"gema: \" + data.toString());\n  });\n});"
+  },
+  {
+   "title": "Satu port bersama Express",
+   "kicker": "SERVER DENGAN WS",
+   "bullets": [
+    "Buat server HTTP dari app Express",
+    "Opsi server: ws ikut memakai port yang sama",
+    "Opsi noServer: kamu yang menangani event upgrade",
+    "Wajib pilih tepat satu: port, server, atau noServer"
+   ],
+   "code": "import express from \"express\";\nimport { createServer } from \"node:http\";\nimport { WebSocketServer } from \"ws\";\n\nconst app = express();\nconst server = createServer(app);\nconst wss = new WebSocketServer({ server });\nserver.listen(3000);"
+  },
+  {
+   "title": "Event di server ws",
+   "kicker": "SERVER DENGAN WS",
+   "bullets": [
+    "connection: (ws, request), request berisi URL dan header",
+    "message: (data, isBinary) untuk tiap pesan masuk",
+    "close: (code, reason) saat klien pergi",
+    "error: wajib dipasang supaya proses tidak mati",
+    "pong: balasan dari ping yang kamu kirim"
+   ],
+   "note": "Lupa ws.on(\"error\") bisa membuat satu klien nakal mematikan seluruh server."
+  },
+  {
+   "title": "Broadcast ke semua klien",
+   "kicker": "SERVER DENGAN WS",
+   "bullets": [
+    "wss.clients berisi semua socket yang tersambung",
+    "Cek readyState === WebSocket.OPEN sebelum send",
+    "Lewati pengirim bila ia tidak perlu gema"
+   ],
+   "code": "import { WebSocket } from \"ws\";\n\nws.on(\"message\", (data) => {\n  for (const c of wss.clients) {\n    const buka = c.readyState === WebSocket.OPEN;\n    if (c !== ws && buka) c.send(data.toString());\n  }\n});"
+  },
+  {
+   "title": "Pesan JSON bertipe",
+   "kicker": "PROTOKOL DAN ROOM",
+   "bullets": [
+    "Tiap event punya field v (versi) dan type",
+    "Klien: join, leave, send, history, typing",
+    "Server: hello, joined, message, ack, presence, error",
+    "Satu switch di server, type asing langsung ditolak"
+   ],
+   "code": "// klien -> server\n{ \"v\": 1, \"type\": \"send\",\n  \"room\": \"xi-rpl\", \"cid\": \"k7f2a9\",\n  \"text\": \"Besok ulangan bab 3?\" }\n\n// server -> klien\n{ \"v\": 1, \"type\": \"ack\",\n  \"room\": \"xi-rpl\", \"cid\": \"k7f2a9\",\n  \"id\": 812 }"
+  },
+  {
+   "title": "Validasi di satu pintu",
+   "kicker": "PROTOKOL DAN ROOM",
+   "bullets": [
+    "Semua data dari klien belum bisa dipercaya",
+    "Satu fungsi mengurai dan memeriksa setiap event",
+    "Hasilnya objek bersih, atau { error: \"kode\" }",
+    "Kode error: bad_json, bad_version, bad_room, bad_text",
+    "Salin field yang dikenal saja, jangan objek kiriman"
+   ],
+   "code": "function parseClientEvent(teks) {\n  let ev;\n  try { ev = JSON.parse(teks); }\n  catch { return { error: \"bad_json\" }; }\n  if (ev.v !== 1) return { error: \"bad_version\" };\n  if (!/^[a-z0-9-]{1,32}$/.test(ev.room))\n    return { error: \"bad_room\" };\n  // ... cek field per type\n}"
+  },
+  {
+   "title": "Room dan siaran per room",
+   "kicker": "PROTOKOL DAN ROOM",
+   "bullets": [
+    "Room: kelompok socket, misalnya satu room per kelas",
+    "Simpan sebagai Map dari nama room ke Set socket",
+    "join menambah, leave dan close menghapus",
+    "Hapus room yang kosong supaya Map tidak membengkak"
+   ],
+   "code": "const rooms = new Map(); // room -> Set<ws>\nfunction join(room, ws) {\n  if (!rooms.has(room)) rooms.set(room, new Set());\n  rooms.get(room).add(ws);\n}\nfunction siarkan(room, ev) {\n  const teks = JSON.stringify(ev);\n  for (const c of rooms.get(room) ?? [])\n    c.send(teks);\n}"
+  },
+  {
+   "title": "Presence dan indikator mengetik",
+   "kicker": "PROTOKOL DAN ROOM",
+   "bullets": [
+    "Presence: daftar siapa yang online di room",
+    "Hitung per user, bukan per tab yang terbuka",
+    "Kirim presence saat ada yang masuk atau keluar",
+    "typing diteruskan ke anggota lain, bukan ke pengirim",
+    "Batasi typing maksimal 1 kali per 2 detik"
+   ],
+   "note": "Tanda sedang mengetik hilang sendiri di klien setelah beberapa detik tanpa event baru."
+  },
+  {
+   "title": "Mendeteksi koneksi mati",
+   "kicker": "KONEKSI ANDAL",
+   "bullets": [
+    "Wi-Fi putus sering tanpa frame close sama sekali",
+    "Server mengirim ping berkala, klien hidup membalas pong",
+    "Tidak membalas sampai ping berikutnya: terminate()",
+    "Interval ping harus lebih pendek dari timeout proxy"
+   ],
+   "code": "// saat connection: ws.isAlive = true dan\n// ws.on(\"pong\", () => { ws.isAlive = true; })\nsetInterval(() => {\n  for (const ws of wss.clients) {\n    if (!ws.isAlive) { ws.terminate(); continue; }\n    ws.isAlive = false;\n    ws.ping();\n  }\n}, 30000);"
+  },
+  {
+   "title": "Reconnect dengan backoff",
+   "kicker": "KONEKSI ANDAL",
+   "bullets": [
+    "Klien menyambung ulang sendiri setelah onclose",
+    "Jeda naik dua kali lipat: 0,5 lalu 1, 2, 4 detik",
+    "Ada batas atas, misalnya 30 detik",
+    "Jitter: acak sebagian supaya klien tidak menyerbu bersama",
+    "Setelah berhasil tersambung, hitungan kembali ke nol"
+   ],
+   "code": "function jeda(percobaan) {\n  const n = 500 * 2 ** percobaan;\n  const dasar = Math.min(30000, n);\n  return dasar / 2 + Math.random() * dasar / 2;\n}"
+  },
+  {
+   "title": "Mengejar pesan yang terlewat",
+   "kicker": "KONEKSI ANDAL",
+   "bullets": [
+    "Klien mengingat id pesan terakhir di tiap room",
+    "Setelah tersambung, kirim join dengan after",
+    "Server mengirim pesan dengan id lebih besar",
+    "Kirim ulang pesan yang belum mendapat ack"
+   ],
+   "code": "// setelah onopen yang kedua dan seterusnya\nkirim({ v: 1, type: \"join\",\n  room: \"xi-rpl\", after: idTerakhir });\nfor (const p of belumAck.values()) kirim(p);",
+   "note": "Putus sebentar tidak boleh membuat lubang di percakapan."
+  },
+  {
+   "title": "Ack dan cid buatan klien",
+   "kicker": "URUTAN DAN DEDUPE",
+   "bullets": [
+    "Klien membuat cid acak sebelum mengirim",
+    "Server menyimpan pesan lalu membalas ack berisi id",
+    "Belum dapat ack: pesan tampil dengan status menunggu",
+    "Putus sebelum ack: kirim ulang dengan cid yang sama"
+   ],
+   "note": "Kirim ulang membuat pengiriman at-least-once: pesan bisa sampai lebih dari sekali."
+  },
+  {
+   "title": "Mencegah pesan ganda",
+   "kicker": "URUTAN DAN DEDUPE",
+   "bullets": [
+    "Server idempotent: cid sama tidak disimpan dua kali",
+    "Unik per room, user, dan cid",
+    "cid lama: balas ack dengan id lama, jangan siarkan ulang",
+    "Klien membuang message yang id-nya sudah ada",
+    "id berurutan dari server adalah urutan resmi"
+   ],
+   "code": "const kunci = `${room}|${user}|${cid}`;\nconst lama = sudahAda.get(kunci);\nif (lama) {\n  return balas({ type: \"ack\", room, cid,\n    id: lama });\n}\nconst id = ++idTerakhir;\nsudahAda.set(kunci, id);"
+  },
+  {
+   "title": "Riwayat dengan cursor",
+   "kicker": "URUTAN DAN DEDUPE",
+   "bullets": [
+    "history meminta pesan dengan id lebih kecil dari before",
+    "Ambil 50 terbaru, lalu balik jadi urut naik",
+    "more: true bila masih ada pesan lebih lama",
+    "Nomor halaman bergeser setiap ada pesan baru"
+   ],
+   "code": "-- 50 pesan sebelum id 812\nselect * from messages\nwhere room = $1 and id < $2\norder by id desc\nlimit 51; -- 1 ekstra untuk more"
+  },
+  {
+   "title": "Autentikasi saat upgrade",
+   "kicker": "AMAN DAN SKALA",
+   "bullets": [
+    "Periksa token dan Origin di event upgrade",
+    "Tidak sah: tulis 401 lalu socket.destroy()",
+    "Sah: handleUpgrade, lalu emit connection",
+    "Token punya masa berlaku, cek juga saat dipakai"
+   ],
+   "code": "server.on(\"upgrade\", (req, socket, head) => {\n  const user = cekToken(req);\n  if (!user) {\n    socket.write(TOLAK); // \"HTTP/1.1 401 ...\"\n    return socket.destroy();\n  }\n  wss.handleUpgrade(req, socket, head, (ws) => {\n    wss.emit(\"connection\", ws, req, user);\n  });\n});"
+  },
+  {
+   "title": "Rate limit dan batas ukuran",
+   "kicker": "AMAN DAN SKALA",
+   "bullets": [
+    "maxPayload: frame lebih besar ditutup dengan kode 1009",
+    "Bawaan ws 100 MiB, untuk chat cukup 4 KB",
+    "Token bucket: tiap event memakai satu token",
+    "Ember terisi 5 token per detik, maksimal 10",
+    "Ember kosong: balas error rate_limited"
+   ],
+   "code": "const wss = new WebSocketServer({\n  noServer: true,\n  maxPayload: 4096,\n});"
+  },
+  {
+   "title": "Banyak instance dengan Redis",
+   "kicker": "AMAN DAN SKALA",
+   "bullets": [
+    "Tiap instance hanya tahu socket miliknya sendiri",
+    "Kirim: simpan ke database, ack, lalu publish ke Redis",
+    "Semua instance subscribe dan meneruskan ke socket lokal",
+    "Pub/sub tidak menyimpan pesan, database tetap sumbernya"
+   ],
+   "code": "import { createClient } from \"redis\";\n\nconst pub = await createClient().connect();\nconst sub = pub.duplicate();\nawait sub.connect();\nawait sub.subscribe(\"chat\", (teks) => {\n  const ev = JSON.parse(teks);\n  siarkan(ev.room, ev);\n});\nawait pub.publish(\"chat\", JSON.stringify(ev));"
+  },
+  {
+   "title": "Socket.IO sekilas",
+   "kicker": "AMAN DAN SKALA",
+   "bullets": [
+    "Pustaka di atas WebSocket dengan protokol sendiri",
+    "Room, ack, dan reconnect sudah tersedia",
+    "Adapter Redis untuk banyak instance",
+    "Klien wajib pakai pustaka Socket.IO, bukan WebSocket biasa"
+   ],
+   "code": "io.on(\"connection\", (socket) => {\n  socket.join(\"xi-rpl\");\n  socket.on(\"kirim\", (pesan, ack) => {\n    io.to(\"xi-rpl\").emit(\"pesan\", pesan);\n    ack({ ok: true });\n  });\n});"
+  },
+  {
+   "title": "SSE untuk notifikasi",
+   "kicker": "SSE DAN DEPLOY",
+   "bullets": [
+    "Content-Type: text/event-stream, respons tidak ditutup",
+    "Tiap event: baris id, event, data, lalu baris kosong",
+    "Browser memakai EventSource dan reconnect otomatis",
+    "Saat reconnect, browser mengirim Last-Event-ID"
+   ],
+   "code": "app.get(\"/notif\", (req, res) => {\n  res.set({ \"Content-Type\": \"text/event-stream\",\n    \"Cache-Control\": \"no-cache\" });\n  res.flushHeaders();\n  res.write(\"id: 41\\nevent: nilai\\n\");\n  res.write('data: {\"mapel\":\"MTK\"}\\n\\n');\n});\n// browser\nnew EventSource(\"/notif\")\n  .addEventListener(\"nilai\", (e) => tampil(e.data));"
+  },
+  {
+   "title": "Deploy dan langkah berikutnya",
+   "kicker": "SSE DAN DEPLOY",
+   "bullets": [
+    "Proxy wajib meneruskan header Upgrade dan Connection",
+    "Timeout baca proxy lebih lama dari interval ping",
+    "Sticky session wajib untuk long-polling Socket.IO",
+    "SIGTERM: tutup klien dengan 1001, klien reconnect",
+    "Lanjut: Studio Proyek Aplikasi Chat Realtime"
+   ],
+   "code": "location /ws {\n  proxy_pass http://chat;\n  proxy_http_version 1.1;\n  proxy_set_header Upgrade $http_upgrade;\n  proxy_set_header Connection \"upgrade\";\n  proxy_read_timeout 120s;\n}"
+  }
+ ]
+}

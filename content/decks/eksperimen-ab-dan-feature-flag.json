@@ -1,0 +1,349 @@
+{
+  "theme": "abtest",
+  "deck": "Eksperimen A/B dan Feature Flag",
+  "kicker": "KELAS",
+  "subtitle": "Dari hipotesis sampai keputusan rilis: feature flag, assignment dengan hash, ukuran sampel, uji z, Welch, SRM, dan CUPED.",
+  "slides": [
+    {
+      "title": "Eksperimen A/B dan Feature Flag"
+    },
+    {
+      "title": "Angka naik, tapi karena apa?",
+      "kicker": "KENAPA EKSPERIMEN",
+      "bullets": [
+        "KantinKu pasang tombol checkout baru hari Senin",
+        "Jumat konversi naik dari 5,0% ke 5,6%",
+        "Tapi Jumat itu gajian, dan ada promo ongkir",
+        "Membandingkan sebelum dan sesudah mencampur semua sebab",
+        "Butuh pembanding yang hidup di waktu yang sama"
+      ],
+      "note": "Tanpa grup kontrol, kamu tidak tahu apa yang menaikkan angka."
+    },
+    {
+      "title": "Korelasi bukan kausalitas",
+      "kicker": "KENAPA EKSPERIMEN",
+      "bullets": [
+        "Penjualan es teh dan siswa pingsan saat upacara naik bersamaan",
+        "Penyebab keduanya sama: cuaca sedang panas",
+        "Cuaca panas di sini adalah faktor pengganggu",
+        "Data observasi hanya menunjukkan hubungan, bukan sebab",
+        "Pengacakan memutus pengaruh faktor pengganggu"
+      ]
+    },
+    {
+      "title": "Eksperimen terkontrol",
+      "kicker": "KENAPA EKSPERIMEN",
+      "bullets": [
+        "Pengguna diacak: sebagian dapat A (lama), sebagian B (baru)",
+        "A dan B berjalan serentak, jadi cuaca dan gajian sama",
+        "Hanya satu hal yang berbeda: perubahan yang diuji",
+        "A/A test: dua grup identik untuk menguji sistemnya",
+        "Siklus: ide, hipotesis, rancang, jalankan, analisis, putuskan"
+      ]
+    },
+    {
+      "title": "Menulis hipotesis",
+      "kicker": "HIPOTESIS DAN METRIK",
+      "bullets": [
+        "Tulis sebelum eksperimen dimulai, bukan setelah melihat data",
+        "H0: tidak ada beda antara A dan B",
+        "H1: ada beda (uji dua sisi, bisa naik atau turun)",
+        "Sebut perubahan, alasan, metrik, dan besar efek yang dicari"
+      ],
+      "note": "Karena tombol lama tertutup banner, kami yakin tombol tetap di bawah menaikkan konversi checkout minimal 1 poin."
+    },
+    {
+      "title": "Metrik utama dan pendukung",
+      "kicker": "HIPOTESIS DAN METRIK",
+      "bullets": [
+        "Metrik utama: satu angka penentu, dipilih di awal",
+        "Konversi = pengguna yang membeli / pengguna di varian",
+        "Hitung per pengguna unik, bukan per event atau klik",
+        "Metrik pendukung: rata-rata belanja, jumlah item",
+        "Metrik pendukung menjelaskan, bukan menentukan"
+      ],
+      "code": "def konversi(log, varian):\n    semua = {e[\"uid\"] for e in log\n             if e[\"varian\"] == varian}\n    beli = {e[\"uid\"] for e in log\n            if e[\"varian\"] == varian\n            and e[\"beli\"]}\n    return len(beli) / len(semua)"
+    },
+    {
+      "title": "Metrik guardrail",
+      "kicker": "HIPOTESIS DAN METRIK",
+      "bullets": [
+        "Guardrail: metrik yang tidak boleh rusak",
+        "Contoh: waktu muat halaman, pembatalan, keluhan, error",
+        "Konversi naik tapi pembatalan melonjak? Jangan rilis",
+        "Tetapkan batasnya sebelum mulai, misal error < 1%",
+        "Guardrail dicek dulu sebelum merayakan metrik utama"
+      ]
+    },
+    {
+      "title": "Apa itu feature flag?",
+      "kicker": "FEATURE FLAG",
+      "bullets": [
+        "Saklar di kode yang nilainya diatur dari luar, tanpa deploy",
+        "Flag rilis: sembunyikan fitur yang belum selesai",
+        "Flag eksperimen: bagi pengguna ke varian A dan B",
+        "Flag operasional: matikan fitur berat saat server sibuk",
+        "Contoh layanan: LaunchDarkly, Unleash, GrowthBook, PostHog"
+      ],
+      "code": "def tombol_checkout(pengguna):\n    if aktif(\"checkout-v2\", pengguna):\n        return \"tombol tetap di bawah\"\n    return \"tombol lama\""
+    },
+    {
+      "title": "Rollout bertahap",
+      "kicker": "FEATURE FLAG",
+      "bullets": [
+        "Nyalakan untuk 1% pengguna, pantau error dan keluhan",
+        "Aman? Naikkan ke 10%, 50%, lalu 100%",
+        "Persentase memakai bucket hash 0 sampai 99",
+        "Bucket < persen berarti dapat fitur baru",
+        "Naik dari 10% ke 50% tidak memindahkan pengguna lama"
+      ],
+      "code": "def dalam_rollout(uid, persen):\n    return bucket(\"checkout-v2\", uid) < persen\n\n# bucket 32 ikut saat persen 50,\n# tetap ikut saat persen 100"
+    },
+    {
+      "title": "Kill switch",
+      "kicker": "FEATURE FLAG",
+      "bullets": [
+        "Fitur baru bikin error? Matikan flag, bukan rollback deploy",
+        "Efeknya dalam hitungan detik di semua server",
+        "Saat flag mati, semua pengguna dapat nilai bawaan",
+        "Layanan flag mati? Pakai nilai bawaan yang aman",
+        "Catat siapa mengubah flag dan kapan (audit log)"
+      ],
+      "note": "Nilai bawaan harus selalu perilaku lama yang sudah terbukti aman."
+    },
+    {
+      "title": "Aturan targeting",
+      "kicker": "FEATURE FLAG",
+      "bullets": [
+        "Daftar uid khusus: tim QA selalu dapat fitur baru",
+        "Aturan atribut: kota = Bandung, peran = guru",
+        "Aturan dievaluasi berurutan, yang cocok pertama menang",
+        "Tidak ada aturan cocok? Lanjut ke rollout persentase",
+        "Hapus flag setelah keputusan, jangan jadi utang kode"
+      ],
+      "code": "def evaluasi(flag, p):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    if p[\"uid\"] in flag[\"daftar\"]:\n        return True\n    for atr, nilai in flag[\"aturan\"]:\n        if p.get(atr) == nilai:\n            return True\n    return bucket(flag[\"salt\"],\n        p[\"uid\"]) < flag[\"persen\"]"
+    },
+    {
+      "title": "Assignment dengan hash",
+      "kicker": "ASSIGNMENT",
+      "bullets": [
+        "random.random() tiap request: pengguna loncat varian",
+        "Hash salt + uid selalu menghasilkan angka yang sama",
+        "Ambil 8 digit hex pertama, ubah ke int, mod 100",
+        "Bucket 0 sampai 49 dapat A, 50 sampai 99 dapat B",
+        "Tanpa tabel assignment, tiap server dapat hasil sama"
+      ],
+      "code": "import hashlib\n\ndef bucket(salt, uid):\n    teks = f\"{salt}:{uid}\".encode()\n    h = hashlib.sha256(teks).hexdigest()\n    return int(h[:8], 16) % 100\n\nbucket(\"checkout-v2\", \"siswa-001\")  # 32"
+    },
+    {
+      "title": "Salt per eksperimen",
+      "kicker": "ASSIGNMENT",
+      "bullets": [
+        "Tanpa salt, pengguna yang sama selalu di bucket yang sama",
+        "Akibatnya grup B semua eksperimen berisi orang yang sama",
+        "Salt beda per eksperimen membuat pembagian saling bebas",
+        "siswa-001: bucket 32 di checkout-v2, 8 di banner-promo",
+        "Ganti salt hanya bila memang mau mengacak ulang"
+      ],
+      "code": "def varian(salt, uid, bobot):\n    b, batas = bucket(salt, uid), 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n\nvarian(\"checkout-v2\", \"siswa-001\",\n       {\"A\": 50, \"B\": 50})  # \"A\""
+    },
+    {
+      "title": "Unit randomisasi",
+      "kicker": "ASSIGNMENT",
+      "bullets": [
+        "Unit = siapa yang diacak: pengguna, sesi, atau perangkat",
+        "Per pengguna paling umum: pengalaman tetap konsisten",
+        "Unit analisis harus sama dengan unit randomisasi",
+        "Fitur kelas bersama? Acak per kelas atau per sekolah",
+        "Teman saling memengaruhi? Itu efek jaringan, acak per klaster"
+      ]
+    },
+    {
+      "title": "Alpha, beta, dan power",
+      "kicker": "UKURAN SAMPEL",
+      "bullets": [
+        "Alpha (biasanya 0,05): peluang positif palsu",
+        "Beta: peluang melewatkan efek yang sebenarnya ada",
+        "Power = 1 - beta, biasanya 80%",
+        "MDE: efek terkecil yang layak kamu deteksi",
+        "Efek lebih kecil dari MDE kemungkinan besar terlewat"
+      ]
+    },
+    {
+      "title": "Menghitung ukuran sampel",
+      "kicker": "UKURAN SAMPEL",
+      "bullets": [
+        "Baseline 5%, MDE 1 poin (ke 6%): 8155 per grup",
+        "Power 90%: 10918 per grup",
+        "MDE 0,5 poin (ke 5,5%): 31231 per grup",
+        "Efek setengah kali lipat butuh sekitar 4 kali sampel",
+        "Rata-rata: aturan praktis n = 16 x varians / selisih kuadrat"
+      ],
+      "code": "from math import ceil\nfrom statistics import NormalDist\n\ndef ukuran(p1, p2, a=0.05, pw=0.8):\n    z = NormalDist().inv_cdf\n    k = (z(1 - a / 2) + z(pw)) ** 2\n    v = p1 * (1 - p1) + p2 * (1 - p2)\n    return ceil(k * v / (p1 - p2) ** 2)\n\nukuran(0.05, 0.06)  # 8155"
+    },
+    {
+      "title": "Berapa lama eksperimen?",
+      "kicker": "UKURAN SAMPEL",
+      "bullets": [
+        "Durasi = total sampel / pengguna baru per hari",
+        "2 x 8155 pengguna, 2000 pengguna per hari: 9 hari",
+        "Bulatkan ke minggu penuh: Senin dan Sabtu beda perilaku",
+        "Tetapkan durasi di awal, jangan berhenti saat terlihat bagus",
+        "Traffic kecil? Perbesar MDE atau pilih metrik lain"
+      ],
+      "note": "Minimal satu minggu penuh, idealnya dua, agar semua hari terwakili."
+    },
+    {
+      "title": "Galat baku",
+      "kicker": "UJI STATISTIK",
+      "bullets": [
+        "Konversi sampel berubah-ubah walau pengguna sama",
+        "Galat baku mengukur seberapa besar goyangan itu",
+        "Proporsi: se = akar(p(1 - p) / n)",
+        "Sampel 4 kali lebih besar, galat baku jadi setengah",
+        "Uji statistik membandingkan selisih dengan galat baku"
+      ]
+    },
+    {
+      "title": "Uji z dua proporsi",
+      "kicker": "UJI STATISTIK",
+      "bullets": [
+        "A: 400 dari 8000 (5,00%), B: 470 dari 8000 (5,875%)",
+        "Proporsi gabungan untuk galat baku di bawah H0",
+        "z = selisih / galat baku = 2,44",
+        "p-value dua sisi = 0,0147, di bawah 0,05",
+        "Kesimpulan: tolak H0, ada beda konversi"
+      ],
+      "code": "from statistics import NormalDist\n\ndef uji_z(xa, na, xb, nb):\n    pa, pb = xa / na, xb / nb\n    p = (xa + xb) / (na + nb)\n    se = (p * (1 - p) * (1/na + 1/nb)) ** 0.5\n    z = (pb - pa) / se\n    pv = 2 * (1 - NormalDist().cdf(abs(z)))\n    return z, pv"
+    },
+    {
+      "title": "Welch t-test",
+      "kicker": "UJI STATISTIK",
+      "bullets": [
+        "Untuk rata-rata, misalnya belanja per pembeli",
+        "Tidak menganggap varians A dan B sama",
+        "A: Rp48.000 (sd 30.000), B: Rp50.500 (sd 32.000), n 2000",
+        "t = 2,55, df sekitar 3981, p sekitar 0,011",
+        "Sampel besar: distribusi t hampir sama dengan normal"
+      ],
+      "code": "def welch(ma, sa, na, mb, sb, nb):\n    va, vb = sa**2 / na, sb**2 / nb\n    t = (mb - ma) / (va + vb) ** 0.5\n    df = (va + vb) ** 2 / (\n        va**2 / (na - 1) + vb**2 / (nb - 1))\n    return t, df\n\n# SciPy: ttest_ind(a, b, equal_var=False)"
+    },
+    {
+      "title": "Interval kepercayaan",
+      "kicker": "UJI STATISTIK",
+      "bullets": [
+        "Selisih 400/8000 vs 470/8000: +0,875 poin",
+        "CI 95%: +0,17 sampai +1,58 poin, tidak memuat nol",
+        "500/10000 vs 560/10000: CI -0,02 sampai +1,22 poin",
+        "CI memuat nol berarti belum terbukti ada beda",
+        "CI lebih informatif dari p-value: ada besar efeknya"
+      ],
+      "code": "def interval(xa, na, xb, nb, z=1.96):\n    pa, pb = xa / na, xb / nb\n    se = (pa * (1 - pa) / na\n          + pb * (1 - pb) / nb) ** 0.5\n    d = pb - pa\n    return d - z * se, d + z * se\n\ninterval(400, 8000, 470, 8000)\n# (0.00172, 0.01578)"
+    },
+    {
+      "title": "Membaca p-value",
+      "kicker": "JEBAKAN",
+      "bullets": [
+        "p-value: peluang melihat beda sebesar ini bila H0 benar",
+        "Bukan peluang H0 benar, bukan peluang B lebih baik",
+        "p = 0,058 bukan bukti tidak ada efek, hanya belum cukup",
+        "Signifikan belum tentu penting: cek besar efeknya",
+        "Naik 0,01 poin bisa signifikan dengan jutaan pengguna"
+      ]
+    },
+    {
+      "title": "Bahaya mengintip",
+      "kicker": "JEBAKAN",
+      "bullets": [
+        "Mengintip tiap hari lalu berhenti saat p < 0,05",
+        "Simulasi A/A (tanpa beda), 1000 eksperimen:",
+        "Lihat sekali di akhir: 5,4% positif palsu",
+        "Mengintip 10 kali: 19,2%, mengintip 20 kali: 22,8%",
+        "Solusi: tetapkan durasi di awal atau pakai uji sekuensial"
+      ],
+      "note": "Boleh memantau guardrail tiap hari. Yang dilarang: berhenti karena metrik utama terlihat bagus."
+    },
+    {
+      "title": "Banyak metrik, banyak peluang salah",
+      "kicker": "JEBAKAN",
+      "bullets": [
+        "Uji 10 metrik pada alpha 0,05",
+        "Peluang minimal satu positif palsu: 1 - 0,95^10 = 40%",
+        "Bonferroni: pakai alpha / jumlah uji, 0,05 / 10 = 0,005",
+        "Membelah segmen sampai ketemu yang signifikan = p-hacking",
+        "Temuan segmen jadi hipotesis eksperimen berikutnya"
+      ]
+    },
+    {
+      "title": "Sample ratio mismatch",
+      "kicker": "VALIDITAS",
+      "bullets": [
+        "Rencana 50/50, data 10000 vs 10500: wajar atau rusak?",
+        "Uji chi-kuadrat: chi2 = 12,20, p = 0,00048",
+        "p < 0,001: SRM, jangan percaya hasil eksperimennya",
+        "Penyebab: bug assignment, bot, redirect, log hilang",
+        "10120 vs 9880: chi2 = 2,88, p = 0,090, aman"
+      ],
+      "code": "import math\n\ndef cek_srm(na, nb, rasio=0.5):\n    ea = (na + nb) * rasio\n    eb = (na + nb) - ea\n    chi2 = ((na - ea) ** 2 / ea\n            + (nb - eb) ** 2 / eb)\n    p = math.erfc(math.sqrt(chi2 / 2))\n    return chi2, p, p < 0.001"
+    },
+    {
+      "title": "CUPED singkat",
+      "kicker": "VALIDITAS",
+      "bullets": [
+        "Pakai data sebelum eksperimen (X) untuk tiap pengguna",
+        "Y_cuped = Y - theta x (X - rata-rata X)",
+        "theta = kovarians(X, Y) / varians(X)",
+        "Varians sisa sekitar 1 - rho kuadrat dari semula",
+        "rho 0,84: varians tinggal 30%, sampel bisa lebih kecil"
+      ],
+      "code": "from statistics import (covariance,\n    variance, mean)\n\ndef cuped(x, y):\n    th = covariance(x, y) / variance(x)\n    mx = mean(x)\n    return [yi - th * (xi - mx)\n            for xi, yi in zip(x, y)]"
+    },
+    {
+      "title": "Efek baru dan musiman",
+      "kicker": "VALIDITAS",
+      "bullets": [
+        "Efek baru (novelty): fitur baru diklik karena penasaran",
+        "Efek primacy: pengguna lama butuh waktu membiasakan diri",
+        "Lihat efek per hari: menurun atau stabil?",
+        "Musiman: gajian, libur sekolah, Ramadan, Harbolnas",
+        "Hasil saat promo besar belum tentu berlaku di hari biasa"
+      ],
+      "note": "Untuk perubahan besar, simpan grup holdout kecil beberapa minggu."
+    },
+    {
+      "title": "Urutan membaca hasil",
+      "kicker": "LAPORAN DAN ETIKA",
+      "bullets": [
+        "1. Cek SRM. Rusak? Berhenti dan perbaiki data",
+        "2. Cek guardrail. Ada yang jebol? Jangan rilis",
+        "3. Metrik utama: selisih dan CI 95%",
+        "4. Metrik pendukung untuk menjelaskan kenapa",
+        "5. Segmen hanya sebagai ide, bukan dasar keputusan"
+      ]
+    },
+    {
+      "title": "Keputusan dan laporan",
+      "kicker": "LAPORAN DAN ETIKA",
+      "bullets": [
+        "CI seluruhnya positif dan guardrail aman: rilis",
+        "CI seluruhnya negatif: jangan rilis",
+        "CI memuat nol: belum cukup bukti, putuskan dengan biaya",
+        "Laporan: hipotesis, rancangan, hasil dan CI, keputusan",
+        "Hasil netral tetap dicatat agar tidak diulang"
+      ],
+      "code": "def keputusan(srm, guardrail_ok, ci):\n    if srm:\n        return \"periksa data\"\n    if not guardrail_ok or ci[1] < 0:\n        return \"jangan rilis\"\n    if ci[0] > 0:\n        return \"rilis\"\n    return \"lanjutkan\""
+    },
+    {
+      "title": "Etika dan langkah berikutnya",
+      "kicker": "LAPORAN DAN ETIKA",
+      "bullets": [
+        "Jangan uji harga diskriminatif atau dark pattern",
+        "Kumpulkan data seperlunya, hormati UU PDP",
+        "Hapus flag dan kode varian kalah setelah keputusan",
+        "Proyek akhir: Analisis Eksperimen Tombol Checkout",
+        "Lanjut: Studio Proyek Platform Eksperimen A/B"
+      ],
+      "note": "Pengguna adalah manusia, bukan sekadar angka konversi."
+    }
+  ]
+}

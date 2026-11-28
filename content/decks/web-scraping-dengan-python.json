@@ -1,0 +1,358 @@
+{
+  "theme": "scraping",
+  "deck": "Web Scraping dengan Python",
+  "kicker": "KELAS",
+  "subtitle": "Mengambil data web dengan sopan: robots.txt, httpx, BeautifulSoup, paginasi, retry, SQLite, sampai scraper terjadwal.",
+  "slides": [
+    {
+      "title": "Web Scraping dengan Python"
+    },
+    {
+      "title": "Apa itu web scraping?",
+      "kicker": "ETIKA",
+      "bullets": [
+        "Program yang membuka halaman web lalu mengambil datanya",
+        "Contoh wajar: memantau harga, data lowongan, arsip berita",
+        "Cek dulu: apakah situs punya API resmi atau file unduhan?",
+        "Alat kelas ini: httpx, BeautifulSoup, SQLite, pytest",
+        "Situs latihan: books.toscrape.com, 1000 buku, 50 halaman"
+      ],
+      "note": "Scraper yang baik itu sopan, tahan gangguan, dan teruji."
+    },
+    {
+      "title": "robots.txt dan ketentuan situs",
+      "kicker": "ETIKA",
+      "bullets": [
+        "robots.txt ada di akar situs: /robots.txt",
+        "Berisi User-agent, Disallow, Allow, kadang Crawl-delay",
+        "robots.txt 404 berarti tidak ada larangan (RFC 9309)",
+        "Baca juga ketentuan layanan (ToS) situsnya",
+        "Halaman di balik login: jangan di-scrape tanpa izin"
+      ],
+      "code": "from urllib.robotparser import RobotFileParser\n\nrp = RobotFileParser()\nrp.parse([\n    \"User-agent: *\",\n    \"Disallow: /admin/\",\n    \"Crawl-delay: 2\",\n])\nrp.can_fetch(\"PantauBuku\", \"/admin/x\")  # False\nrp.crawl_delay(\"PantauBuku\")             # 2"
+    },
+    {
+      "title": "Etika, beban server, dan data pribadi",
+      "kicker": "ETIKA",
+      "bullets": [
+        "Beri jeda antar request, satu request dalam satu waktu",
+        "Jalankan di jam sepi, ambil hanya halaman yang perlu",
+        "Data pribadi (nama, nomor HP, email) dilindungi UU PDP",
+        "UU No. 27 Tahun 2022: kumpulkan seperlunya, punya dasar sah",
+        "Ragu soal hukum? Tanya guru atau ahli, bukan tebak"
+      ],
+      "note": "Server sekolahmu pun bisa tumbang kalau dibanjiri request."
+    },
+    {
+      "title": "HTML adalah pohon",
+      "kicker": "HTML",
+      "bullets": [
+        "Tag membungkus tag lain: induk, anak, saudara",
+        "Atribut memberi info tambahan: class, id, href, title",
+        "class bisa dipakai banyak elemen, id seharusnya unik",
+        "Satu buku di katalog = satu article.product_pod",
+        "Data yang kamu cari = posisi di pohon ini"
+      ],
+      "code": "<article class=\"product_pod\">\n  <p class=\"star-rating Three\"></p>\n  <h3>\n    <a href=\"a-light-in-the-attic_1000/index.html\"\n       title=\"A Light in the Attic\">\n      A Light in the ...</a>\n  </h3>\n  <p class=\"price_color\">£51.77</p>\n</article>"
+    },
+    {
+      "title": "Membedah halaman dengan DevTools",
+      "kicker": "HTML",
+      "bullets": [
+        "Klik kanan pada judul buku lalu pilih Inspect",
+        "Panel Elements menyorot tag yang kamu tunjuk",
+        "Klik kanan tag: Copy lalu Copy selector",
+        "Selector hasil salin sering terlalu panjang, sederhanakan",
+        "Tab Network: lihat semua request yang dibuat halaman"
+      ],
+      "note": "Tekan F12 atau Ctrl+Shift+I untuk membuka DevTools."
+    },
+    {
+      "title": "HTML mentah vs DOM",
+      "kicker": "HTML",
+      "bullets": [
+        "View source (Ctrl+U): HTML asli dari server",
+        "Panel Elements: DOM setelah JavaScript berjalan",
+        "httpx hanya menerima HTML mentah, tanpa menjalankan JS",
+        "Data ada di view source? Cukup httpx + BeautifulSoup",
+        "Data hanya ada di Elements? Cari API atau pakai browser"
+      ]
+    },
+    {
+      "title": "Request pertama dengan httpx",
+      "kicker": "HTTP",
+      "bullets": [
+        "Pasang dulu: pip install httpx beautifulsoup4",
+        "httpx.get() mengirim request GET dan menunggu respons",
+        "r.status_code: angka status, misalnya 200",
+        "r.text: isi respons sebagai teks (HTML)",
+        "Selalu beri timeout agar program tidak menunggu selamanya"
+      ],
+      "code": "import httpx\n\nURL = \"https://books.toscrape.com/\"\nr = httpx.get(URL, timeout=10)\n\nprint(r.status_code)   # 200\nprint(r.headers[\"content-type\"])\nprint(r.text[:80])"
+    },
+    {
+      "title": "Client, header, dan User-Agent",
+      "kicker": "HTTP",
+      "bullets": [
+        "httpx.Client memakai ulang koneksi untuk banyak request",
+        "Pakai dengan with agar koneksi ditutup rapi",
+        "User-Agent jujur: nama bot, versi, dan kontakmu",
+        "Jangan menyamar jadi browser untuk menembus larangan",
+        "Header yang sama berlaku untuk semua request client"
+      ],
+      "code": "import httpx\n\nHEADER = {\"User-Agent\":\n  \"PantauBuku/1.0 (+mailto:kamu@sekolah.sch.id)\"}\n\nwith httpx.Client(headers=HEADER,\n                  timeout=10) as client:\n    r = client.get(\n      \"https://books.toscrape.com/\")\n    print(r.status_code)"
+    },
+    {
+      "title": "Kode status HTTP",
+      "kicker": "HTTP",
+      "bullets": [
+        "200 OK: lanjut parsing",
+        "404 Not Found: halaman tidak ada, catat lalu lewati",
+        "403 Forbidden: kamu ditolak, berhenti dan cek aturan",
+        "429 Too Many Requests: terlalu cepat, tunggu Retry-After",
+        "500 dan 503: server sedang bermasalah, coba lagi nanti"
+      ],
+      "code": "r = client.get(url)\ntry:\n    r.raise_for_status()\nexcept httpx.HTTPStatusError as e:\n    kode = e.response.status_code\n    print(\"gagal\", kode, url)"
+    },
+    {
+      "title": "Timeout dan redirect",
+      "kicker": "HTTP",
+      "bullets": [
+        "timeout=10: batas tunggu 10 detik",
+        "Timeout melempar httpx.TimeoutException",
+        "Masalah jaringan lain: httpx.RequestError",
+        "httpx tidak mengikuti redirect secara bawaan",
+        "Aktifkan dengan follow_redirects=True, cek r.url"
+      ],
+      "code": "try:\n    r = client.get(url, timeout=10,\n                   follow_redirects=True)\nexcept httpx.TimeoutException:\n    print(\"server terlalu lama\")\nexcept httpx.RequestError as e:\n    print(\"jaringan bermasalah:\", e)\nelse:\n    print(r.url, r.status_code)"
+    },
+    {
+      "title": "BeautifulSoup pertama",
+      "kicker": "PARSING",
+      "bullets": [
+        "BeautifulSoup mengubah teks HTML jadi pohon objek",
+        "\"html.parser\" bawaan Python, tanpa instal tambahan",
+        "soup.title, soup.find(), soup.find_all() untuk menjelajah",
+        "Bisa membaca HTML yang berantakan sekalipun",
+        "Parsing tidak butuh jaringan: mudah diuji"
+      ],
+      "code": "from bs4 import BeautifulSoup\n\nsoup = BeautifulSoup(r.text, \"html.parser\")\nprint(soup.title.get_text(strip=True))\n\nbuku = soup.find_all(\"article\",\n                     class_=\"product_pod\")\nprint(len(buku))   # 20 per halaman"
+    },
+    {
+      "title": "Selector CSS",
+      "kicker": "PARSING",
+      "bullets": [
+        "select() mengembalikan list, select_one() satu atau None",
+        "Tag: h3, class: .price_color, id: #promo",
+        "Keturunan: article h3 a, anak langsung: h3 > a",
+        "Atribut: a[title], gabungan: p.star-rating.Three",
+        "Uji selector dulu di konsol DevTools"
+      ],
+      "code": "for art in soup.select(\"article.product_pod\"):\n    a = art.select_one(\"h3 > a\")\n    harga = art.select_one(\".price_color\")\n    print(a[\"title\"], harga.get_text())"
+    },
+    {
+      "title": "Mengambil teks dan atribut",
+      "kicker": "PARSING",
+      "bullets": [
+        "get_text(strip=True): teks tanpa spasi di tepi",
+        "tag[\"title\"] error bila atribut tidak ada",
+        "tag.get(\"href\") memberi None bila tidak ada",
+        "Judul di link terpotong, judul utuh di atribut title",
+        "tag[\"class\"] berupa list, misalnya star-rating, Three"
+      ],
+      "code": "a = art.select_one(\"h3 a\")\njudul = a[\"title\"]          # utuh\nlink = a.get(\"href\")         # relatif\n\nkelas = art.select_one(\"p.star-rating\")[\"class\"]\n# [\"star-rating\", \"Three\"]"
+    },
+    {
+      "title": "Membersihkan harga dan rating",
+      "kicker": "PARSING",
+      "bullets": [
+        "Teks harga \"£51.77\" belum bisa dijumlahkan",
+        "Buang simbol mata uang dan spasi, lalu ubah ke float",
+        "Format Rupiah \"Rp 45.000\": titik adalah pemisah ribuan",
+        "Rating dari kata: One sampai Five jadi angka 1 sampai 5",
+        "Gagal dibaca? Kembalikan None, jangan menebak"
+      ],
+      "code": "import re\n\nANGKA = {\"One\": 1, \"Two\": 2, \"Three\": 3,\n         \"Four\": 4, \"Five\": 5}\n\ndef ke_harga(teks):\n    bersih = re.sub(r\"[^0-9.]\", \"\", teks)\n    return float(bersih) if bersih else None\n\nke_harga(\" £51.77 \")   # 51.77"
+    },
+    {
+      "title": "Paginasi dengan tombol next",
+      "kicker": "PAGINASI",
+      "bullets": [
+        "Katalog dibagi 50 halaman, 20 buku per halaman",
+        "Tombol berikutnya: li.next a",
+        "Halaman terakhir tidak punya li.next",
+        "Ulangi: ambil, parse, cari next, sampai habis",
+        "Teks li.current berisi Page 2 of 50"
+      ],
+      "code": "nxt = soup.select_one(\"li.next a\")\nif nxt is None:\n    print(\"halaman terakhir\")\nelse:\n    print(nxt[\"href\"])   # page-3.html"
+    },
+    {
+      "title": "Link relatif dan urljoin",
+      "kicker": "PAGINASI",
+      "bullets": [
+        "href sering relatif: page-3.html, ../index.html",
+        "urljoin menggabungkan URL halaman sekarang dan href",
+        "Jangan menyambung string sendiri, mudah salah garis miring",
+        "Simpan URL absolut supaya bisa dibuka ulang",
+        "urljoin ada di urllib.parse, bawaan Python"
+      ],
+      "code": "from urllib.parse import urljoin\n\nsekarang = (\"https://books.toscrape.com\"\n            \"/catalogue/page-2.html\")\nurljoin(sekarang, \"page-3.html\")\n# .../catalogue/page-3.html\nurljoin(sekarang,\n        \"a-light-in-the-attic_1000/index.html\")"
+    },
+    {
+      "title": "Crawl tanpa berputar-putar",
+      "kicker": "PAGINASI",
+      "bullets": [
+        "Simpan URL yang sudah dikunjungi di set",
+        "Antrean berisi URL yang belum dikunjungi",
+        "Beri batas maksimal halaman untuk berjaga-jaga",
+        "Jangan ikuti link ke luar domain situs target",
+        "Pisahkan halaman katalog dan halaman detail"
+      ],
+      "code": "antre, sudah = [mulai], set()\nwhile antre and len(sudah) < MAKS:\n    url = antre.pop(0)\n    if url in sudah:\n        continue\n    sudah.add(url)\n    html = ambil(url)\n    nxt = link_berikut(html, url)\n    if nxt:\n        antre.append(nxt)"
+    },
+    {
+      "title": "Jeda yang sopan",
+      "kicker": "JEDA DAN RETRY",
+      "bullets": [
+        "time.sleep(1) di antara request",
+        "Tambah jitter acak agar tidak serempak",
+        "Ikuti Crawl-delay bila robots.txt menulisnya",
+        "Satu request dalam satu waktu sudah cukup untuk belajar",
+        "1000 halaman x 1 detik = sekitar 17 menit, itu wajar"
+      ],
+      "code": "import random, time\n\nfor url in daftar_url:\n    r = client.get(url)\n    proses(r)\n    time.sleep(1 + random.uniform(0, 0.5))"
+    },
+    {
+      "title": "Retry dengan backoff",
+      "kicker": "JEDA DAN RETRY",
+      "bullets": [
+        "Ulangi hanya untuk timeout, 429, dan 5xx",
+        "404 dan 403 jangan diulang, hasilnya akan sama",
+        "Backoff: tunggu 1, 2, 4, 8 detik, dengan batas atas",
+        "Ada header Retry-After? Pakai angka itu",
+        "Batasi jumlah percobaan, lalu catat sebagai gagal"
+      ],
+      "code": "def jeda(coba, dasar=1, maks=30):\n    return min(maks, dasar * 2 ** coba)\n\n[jeda(c) for c in range(6)]\n# [1, 2, 4, 8, 16, 30]"
+    },
+    {
+      "title": "Data kotor dan kesalahan",
+      "kicker": "JEDA DAN RETRY",
+      "bullets": [
+        "Field bisa hilang: select_one() memberi None",
+        "Spasi dan baris baru: pakai strip() atau strip=True",
+        "Format angka beda: £1,024.50 atau Rp 1.024.500",
+        "Satu buku rusak jangan menghentikan seluruh crawl",
+        "Catat kesalahan dengan logging, lalu lanjut"
+      ],
+      "code": "import logging\nlog = logging.getLogger(\"pantau\")\n\nfor art in soup.select(\"article.product_pod\"):\n    try:\n        hasil.append(parse_buku(art))\n    except (AttributeError, ValueError) as e:\n        log.warning(\"lewati satu buku: %s\", e)"
+    },
+    {
+      "title": "Menyimpan ke CSV",
+      "kicker": "PENYIMPANAN",
+      "bullets": [
+        "CSV mudah dibuka di Excel atau Google Sheets",
+        "csv.DictWriter menulis list dict jadi baris",
+        "Buka file dengan newline=\"\" dan encoding utf-8",
+        "Tulis header dulu dengan writeheader()",
+        "Cocok untuk sekali ambil, kurang cocok untuk riwayat"
+      ],
+      "code": "import csv\n\nwith open(\"buku.csv\", \"w\", newline=\"\",\n          encoding=\"utf-8\") as f:\n    w = csv.DictWriter(f, fieldnames=[\n        \"judul\", \"harga\", \"rating\"])\n    w.writeheader()\n    w.writerows(daftar_buku)"
+    },
+    {
+      "title": "SQLite dan upsert",
+      "kicker": "PENYIMPANAN",
+      "bullets": [
+        "SQLite: database dalam satu file, modul sqlite3 bawaan",
+        "Kolom url UNIQUE: satu baris untuk satu buku",
+        "Upsert: tambah bila baru, perbarui bila sudah ada",
+        "excluded berisi nilai yang barusan mau dimasukkan",
+        "Jalankan scraper berkali-kali, barisnya tidak dobel"
+      ],
+      "code": "conn.execute(\"\"\"\nINSERT INTO buku (url, judul, harga)\nVALUES (?, ?, ?)\nON CONFLICT(url) DO UPDATE SET\n  judul = excluded.judul,\n  harga = excluded.harga\n\"\"\", (url, judul, harga))\nconn.commit()"
+    },
+    {
+      "title": "Riwayat harga",
+      "kicker": "PENYIMPANAN",
+      "bullets": [
+        "Tabel riwayat_harga: url, harga, waktu",
+        "Baca harga lama sebelum upsert",
+        "Tambah baris riwayat hanya bila harga berubah",
+        "Laporan: bandingkan harga lama dan baru",
+        "Waktu disimpan sebagai teks ISO, mudah diurutkan"
+      ],
+      "code": "lama = conn.execute(\n  \"SELECT harga FROM buku WHERE url = ?\",\n  (url,)).fetchone()\nif lama is None or lama[0] != harga:\n    conn.execute(\n      \"INSERT INTO riwayat_harga VALUES (?,?,?)\",\n      (url, harga, waktu))"
+    },
+    {
+      "title": "Mencari API tersembunyi",
+      "kicker": "API DAN JS",
+      "bullets": [
+        "Banyak situs mengambil data lewat request JSON",
+        "DevTools, tab Network, filter Fetch/XHR, muat ulang",
+        "Klik request, lihat tab Response atau Preview",
+        "JSON lebih rapi dan stabil daripada HTML",
+        "Tetap patuhi aturan: jeda, User-Agent, tanpa login curian"
+      ],
+      "code": "r = client.get(\"https://contoh.id/api/produk\",\n               params={\"page\": 2})\ndata = r.json()\nfor p in data[\"items\"]:\n    print(p[\"nama\"], p[\"harga\"])"
+    },
+    {
+      "title": "Halaman yang dirender JavaScript",
+      "kicker": "API DAN JS",
+      "bullets": [
+        "HTML mentah hanya kerangka, data diisi oleh JavaScript",
+        "Tandanya: data tidak ada di view source",
+        "Cari API JSON-nya dulu, biasanya lebih ringan",
+        "Bila tidak ada, pakai browser headless seperti Playwright",
+        "Browser headless lebih lambat dan berat bagi servermu"
+      ],
+      "note": "Urutan pilihan: API resmi, API tersembunyi, HTML, browser."
+    },
+    {
+      "title": "Playwright sekilas",
+      "kicker": "API DAN JS",
+      "bullets": [
+        "pip install playwright, lalu playwright install chromium",
+        "Menjalankan browser sungguhan tanpa jendela",
+        "page.goto() membuka halaman dan menjalankan JS",
+        "Locator memakai selector CSS yang sama",
+        "Pakai seperlunya, satu tab, tetap dengan jeda"
+      ],
+      "code": "from playwright.sync_api import sync_playwright\n\nwith sync_playwright() as p:\n    browser = p.chromium.launch()\n    page = browser.new_page()\n    page.goto(\"https://books.toscrape.com/\")\n    judul = page.locator(\"h3 a\").all_inner_texts()\n    print(len(judul))\n    browser.close()"
+    },
+    {
+      "title": "Tes dengan fixture HTML",
+      "kicker": "TES DAN JADWAL",
+      "bullets": [
+        "Simpan satu halaman asli di tests/fixtures",
+        "Fungsi parse menerima teks HTML, bukan URL",
+        "Tes parse cepat, stabil, dan tanpa internet",
+        "httpx.MockTransport memalsukan server untuk tes ambil",
+        "Situs berubah? Perbarui fixture, tes langsung menunjukkannya"
+      ],
+      "code": "from pathlib import Path\nfrom pantau.parser import parse_katalog\n\nHTML = Path(\"tests/fixtures/page-1.html\")\n\ndef test_dua_puluh_buku():\n    buku = parse_katalog(HTML.read_text())\n    assert len(buku) == 20\n    assert buku[0][\"harga\"] == 51.77"
+    },
+    {
+      "title": "Jadwal dengan cron dan GitHub Actions",
+      "kicker": "TES DAN JADWAL",
+      "bullets": [
+        "Cron 5 kolom: menit, jam, tanggal, bulan, hari",
+        "0 23 * * * berarti setiap hari pukul 23.00 UTC",
+        "Jadwal GitHub Actions memakai UTC, WIB = UTC+7",
+        "workflow_dispatch: tombol untuk menjalankan manual",
+        "Jadwal bisa sedikit terlambat saat GitHub sibuk"
+      ],
+      "code": "on:\n  schedule:\n    - cron: \"0 23 * * *\"  # 06.00 WIB\n  workflow_dispatch:\njobs:\n  pantau:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v5\n      - run: python pantau.py"
+    },
+    {
+      "title": "Rangkuman dan langkah berikutnya",
+      "kicker": "TES DAN JADWAL",
+      "bullets": [
+        "Cek izin: API, robots.txt, ToS, data pribadi",
+        "Ambil dengan sopan: User-Agent jujur, jeda, retry",
+        "Parse dengan selector, bersihkan, simpan dengan upsert",
+        "Uji dengan fixture, jadwalkan, pantau hasilnya",
+        "Lanjut: Studio Proyek Scraper Harga Buku"
+      ],
+      "note": "Proyek akhir kelas ini: Pemantau Harga Buku."
+    }
+  ]
+}

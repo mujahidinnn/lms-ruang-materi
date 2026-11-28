@@ -1,0 +1,350 @@
+{
+  "theme": "extension",
+  "deck": "Membuat Ekstensi Browser",
+  "kicker": "KELAS",
+  "subtitle": "Ekstensi Chrome Manifest V3 dengan JavaScript biasa: manifest, izin, service worker, storage, pesan, content script, declarativeNetRequest, sampai Chrome Web Store.",
+  "slides": [
+    {
+      "title": "Membuat Ekstensi Browser"
+    },
+    {
+      "title": "Apa itu ekstensi browser?",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Program kecil yang menambah fitur ke browser",
+        "Contoh: pemblokir iklan, pengelola sandi, kamus",
+        "Ditulis dengan HTML, CSS, dan JavaScript biasa",
+        "Jalan di Chrome, Edge, Brave, dan (dengan sedikit ubahan) Firefox",
+        "Standar sekarang: Manifest V3, MV2 sudah dimatikan di Chrome"
+      ],
+      "note": "Bekalmu cukup JavaScript: fungsi, objek, Promise, dan async/await."
+    },
+    {
+      "title": "Anatomi ekstensi MV3",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "manifest.json: KTP ekstensi, wajib ada",
+        "Service worker: otak di latar, tanpa tampilan",
+        "Popup dan halaman opsi: halaman HTML milik ekstensi",
+        "Content script: skrip yang masuk ke halaman web",
+        "Side panel: panel samping yang tetap terbuka"
+      ],
+      "code": "fokus-dulu/\n  manifest.json\n  background.js\n  popup.html\n  popup.js\n  options.html\n  content.js\n  icons/icon128.png"
+    },
+    {
+      "title": "Memuat ekstensi unpacked",
+      "kicker": "PENGENALAN",
+      "bullets": [
+        "Buka chrome://extensions",
+        "Nyalakan Developer mode di pojok kanan atas",
+        "Klik Load unpacked, pilih folder berisi manifest.json",
+        "Setelah mengubah kode, klik tombol muat ulang",
+        "Sematkan ikonnya lewat tombol puzzle di toolbar"
+      ],
+      "note": "Error manifest langsung muncul saat memuat, baca pesannya baik-baik."
+    },
+    {
+      "title": "File manifest.json",
+      "kicker": "MANIFEST",
+      "bullets": [
+        "manifest_version harus 3",
+        "name dan version wajib",
+        "action: ikon toolbar dan popup",
+        "background.service_worker: file otak",
+        "icons: PNG 16, 48, dan 128 piksel"
+      ],
+      "code": "{\n  \"manifest_version\": 3,\n  \"name\": \"Fokus Dulu\",\n  \"version\": \"1.0.0\",\n  \"action\": { \"default_popup\": \"popup.html\" },\n  \"background\": {\n    \"service_worker\": \"background.js\"\n  }\n}"
+    },
+    {
+      "title": "permissions dan host_permissions",
+      "kicker": "MANIFEST",
+      "bullets": [
+        "permissions: API yang dipakai (storage, alarms)",
+        "host_permissions: situs yang boleh disentuh",
+        "Match pattern: skema://host/path",
+        "*:// berarti http dan https saja",
+        "optional_*: diminta nanti lewat permissions.request"
+      ],
+      "code": "\"permissions\": [\"storage\", \"alarms\"],\n\"host_permissions\": [\n  \"*://*.sekolahku.sch.id/*\"\n],\n\"optional_host_permissions\": [\n  \"*://*/*\"\n]"
+    },
+    {
+      "title": "Izin minimum dan activeTab",
+      "kicker": "MANIFEST",
+      "bullets": [
+        "Setiap izin memunculkan peringatan saat instal",
+        "Izin luas bikin pengguna ragu dan ulasan lebih lama",
+        "activeTab: akses tab aktif setelah ikon diklik",
+        "Minta izin situs saat benar-benar dibutuhkan",
+        "Hapus izin yang tidak lagi dipakai kode"
+      ],
+      "note": "Aturan emas: minta izin sesedikit mungkin, sesempit mungkin."
+    },
+    {
+      "title": "Service worker yang bisa tidur",
+      "kicker": "SERVICE WORKER",
+      "bullets": [
+        "Berjalan karena event: instal, pesan, alarm, klik",
+        "Dimatikan Chrome setelah 30 detik tanpa aktivitas",
+        "Variabel global hilang saat dimatikan",
+        "Tidak ada DOM dan tidak ada localStorage",
+        "Simpan state di chrome.storage, bukan di variabel"
+      ],
+      "note": "Anggap service worker bisa mati kapan saja, lalu hidup lagi dari nol."
+    },
+    {
+      "title": "Mendaftarkan listener",
+      "kicker": "SERVICE WORKER",
+      "bullets": [
+        "Daftarkan listener di top level file",
+        "Jangan daftarkan di dalam await atau callback",
+        "onInstalled: saat dipasang atau diperbarui",
+        "onStartup: saat profil browser dibuka"
+      ],
+      "code": "chrome.runtime.onInstalled.addListener(() => {\n  chrome.storage.local.set({ mode: \"diam\" });\n});\n\nchrome.runtime.onMessage.addListener(\n  (pesan, pengirim, balas) => {\n    // tangani pesan di sini\n  }\n);"
+    },
+    {
+      "title": "Timer dengan chrome.alarms",
+      "kicker": "SERVICE WORKER",
+      "bullets": [
+        "setTimeout panjang hilang saat worker tidur",
+        "Alarm tetap jalan dan membangunkan worker",
+        "Nama sama menggantikan alarm lama",
+        "Alarm bisa sedikit terlambat, jangan andalkan detik",
+        "Butuh izin \"alarms\""
+      ],
+      "code": "chrome.alarms.create(\"fokus\", {\n  delayInMinutes: 25,\n});\n\nchrome.alarms.onAlarm.addListener((a) => {\n  if (a.name === \"fokus\") mulaiIstirahat();\n});"
+    },
+    {
+      "title": "Tiga area storage",
+      "kicker": "STORAGE",
+      "bullets": [
+        "local: di perangkat ini, sekitar 10 MB",
+        "sync: ikut akun Chrome, kecil (100 KB, 8 KB per item)",
+        "session: di memori, hilang saat browser ditutup",
+        "Semua butuh izin \"storage\"",
+        "Nilai disimpan sebagai data mirip JSON"
+      ],
+      "note": "Pengaturan pengguna di sync, state yang sering berubah di local."
+    },
+    {
+      "title": "get, set, dan onChanged",
+      "kicker": "STORAGE",
+      "bullets": [
+        "get dengan objek default: kunci kosong terisi",
+        "set menggabungkan kunci, bukan mengganti semua",
+        "onChanged: tahu kapan data berubah",
+        "Popup dan worker tetap sinkron lewat storage"
+      ],
+      "code": "const { situs } = await chrome.storage.sync\n  .get({ situs: [] });\nawait chrome.storage.sync.set({\n  situs: [...situs, \"youtube.com\"],\n});\n\nchrome.storage.onChanged.addListener(\n  (ubah, area) => console.log(area, ubah)\n);"
+    },
+    {
+      "title": "Menyimpan state timer",
+      "kicker": "STORAGE",
+      "bullets": [
+        "Simpan waktu berakhir, bukan sisa detik",
+        "Sisa waktu dihitung ulang: berakhir - Date.now()",
+        "Tetap benar walau worker mati di tengah sesi",
+        "Satu kunci state: mode dan berakhir"
+      ],
+      "code": "await chrome.storage.local.set({\n  mode: \"fokus\",\n  berakhir: Date.now() + 25 * 60_000,\n});\n\nconst { berakhir } = await chrome.storage\n  .local.get(\"berakhir\");\nconst sisa = berakhir - Date.now();"
+    },
+    {
+      "title": "Popup",
+      "kicker": "POPUP DAN PESAN",
+      "bullets": [
+        "Halaman HTML yang muncul saat ikon diklik",
+        "Diatur di action.default_popup",
+        "Skrip hanya hidup selama popup terbuka",
+        "Tanpa skrip inline: pakai file popup.js",
+        "Baca state dari storage setiap kali dibuka"
+      ],
+      "note": "Popup ditutup berarti semua variabelnya ikut hilang."
+    },
+    {
+      "title": "Halaman opsi dan side panel",
+      "kicker": "POPUP DAN PESAN",
+      "bullets": [
+        "options_page: halaman pengaturan penuh",
+        "Dibuka dengan chrome.runtime.openOptionsPage()",
+        "Side panel: kunci side_panel dan izin sidePanel",
+        "Side panel tetap terbuka saat pindah tab",
+        "Ketiganya halaman ekstensi biasa: HTML dan JS"
+      ],
+      "code": "\"options_page\": \"options.html\",\n\"side_panel\": {\n  \"default_path\": \"panel.html\"\n},\n\"permissions\": [\"sidePanel\"]"
+    },
+    {
+      "title": "Mengirim pesan",
+      "kicker": "POPUP DAN PESAN",
+      "bullets": [
+        "Popup mengirim, service worker menjawab",
+        "Bentuk pesan: objek dengan field tipe",
+        "Balasan asinkron: listener return true",
+        "Pesan tidak dikenal tetap dijawab"
+      ],
+      "code": "// popup.js\nconst st = await chrome.runtime\n  .sendMessage({ tipe: \"status\" });\n\n// background.js\nchrome.runtime.onMessage.addListener(\n  (m, _, balas) => {\n    ambilStatus().then(balas);\n    return true;\n  });"
+    },
+    {
+      "title": "Pesan ke tab dan port",
+      "kicker": "POPUP DAN PESAN",
+      "bullets": [
+        "tabs.sendMessage(tabId, pesan) ke content script",
+        "Content script mendengar dengan runtime.onMessage",
+        "runtime.connect: saluran panjang dua arah",
+        "Port cocok untuk banyak pesan beruntun",
+        "Periksa sender sebelum memercayai pesan"
+      ],
+      "note": "Data dari halaman web tidak bisa dipercaya: validasi dulu."
+    },
+    {
+      "title": "Content script",
+      "kicker": "CONTENT SCRIPT",
+      "bullets": [
+        "Skrip ekstensi yang masuk ke halaman web",
+        "matches menentukan situs, js dan css filenya",
+        "run_at: kapan disuntikkan, bawaan document_idle",
+        "Butuh izin situs lewat matches",
+        "Dipakai untuk membaca atau mengubah DOM"
+      ],
+      "code": "\"content_scripts\": [{\n  \"matches\": [\"*://*.wikipedia.org/*\"],\n  \"js\": [\"content.js\"],\n  \"css\": [\"sorot.css\"],\n  \"run_at\": \"document_idle\"\n}]"
+    },
+    {
+      "title": "Isolated world dan DOM",
+      "kicker": "CONTENT SCRIPT",
+      "bullets": [
+        "DOM sama, tapi variabel JS halaman tidak terlihat",
+        "API chrome terbatas: runtime, storage, i18n",
+        "Pakai textContent, hindari innerHTML",
+        "Kirim hasil ke service worker lewat pesan"
+      ],
+      "code": "const kata = document.body.innerText\n  .split(/\\s+/).filter(Boolean).length;\nconst menit = Math.ceil(kata / 200);\n\nchrome.runtime.sendMessage({\n  tipe: \"waktuBaca\", menit,\n});"
+    },
+    {
+      "title": "scripting.executeScript",
+      "kicker": "CONTENT SCRIPT",
+      "bullets": [
+        "Menyuntik skrip hanya saat dibutuhkan",
+        "Butuh izin \"scripting\"",
+        "Plus activeTab atau host permission",
+        "Bisa menyuntik file atau fungsi"
+      ],
+      "code": "const [tab] = await chrome.tabs.query({\n  active: true, currentWindow: true,\n});\nawait chrome.scripting.executeScript({\n  target: { tabId: tab.id },\n  files: [\"content.js\"],\n});"
+    },
+    {
+      "title": "Badge di ikon",
+      "kicker": "UI KECIL",
+      "bullets": [
+        "Teks pendek di atas ikon toolbar",
+        "Muat sekitar 4 karakter, misal 25m",
+        "Warna latar bisa diatur",
+        "Teks kosong menyembunyikan badge"
+      ],
+      "code": "chrome.action.setBadgeText({ text: \"25m\" });\nchrome.action.setBadgeBackgroundColor({\n  color: \"#1A73E8\",\n});\n\n// sembunyikan\nchrome.action.setBadgeText({ text: \"\" });"
+    },
+    {
+      "title": "Notifikasi",
+      "kicker": "UI KECIL",
+      "bullets": [
+        "Butuh izin \"notifications\"",
+        "Tipe basic: ikon, judul, pesan",
+        "Pakai seperlunya, jangan bikin jengkel",
+        "Ikon wajib ada di paket ekstensi"
+      ],
+      "code": "chrome.notifications.create({\n  type: \"basic\",\n  iconUrl: \"icons/icon128.png\",\n  title: \"Sesi fokus selesai\",\n  message: \"Istirahat 5 menit dulu, ya.\",\n});"
+    },
+    {
+      "title": "Context menu",
+      "kicker": "UI KECIL",
+      "bullets": [
+        "Menu klik kanan milik ekstensi",
+        "Buat di onInstalled dengan id unik",
+        "contexts: selection, link, image, page",
+        "onClicked memberi info.selectionText",
+        "Butuh izin \"contextMenus\""
+      ],
+      "code": "chrome.runtime.onInstalled.addListener(() =>\n  chrome.contextMenus.create({\n    id: \"catat\",\n    title: \"Simpan ke catatan\",\n    contexts: [\"selection\"],\n  }));\nchrome.contextMenus.onClicked.addListener(\n  (info) => simpan(info.selectionText));"
+    },
+    {
+      "title": "declarativeNetRequest",
+      "kicker": "BLOKIR SITUS",
+      "bullets": [
+        "Aturan dicocokkan browser, bukan kode kita",
+        "Ekstensi tidak perlu melihat isi request",
+        "Aksi: block, redirect, allow, dan lainnya",
+        "webRequest blocking tidak untuk ekstensi biasa",
+        "Butuh izin \"declarativeNetRequest\""
+      ],
+      "note": "Lebih cepat dan lebih menjaga privasi daripada menyadap request."
+    },
+    {
+      "title": "Aturan statis",
+      "kicker": "BLOKIR SITUS",
+      "bullets": [
+        "Ditulis di file JSON dalam paket",
+        "Didaftarkan di rule_resources",
+        "Cocok untuk daftar tetap",
+        "Bisa dinyalakan atau dimatikan per ruleset"
+      ],
+      "code": "[{\n  \"id\": 1,\n  \"priority\": 1,\n  \"action\": { \"type\": \"block\" },\n  \"condition\": {\n    \"requestDomains\": [\"iklan.example\"],\n    \"resourceTypes\": [\"script\", \"image\"]\n  }\n}]"
+    },
+    {
+      "title": "Aturan dinamis dan redirect",
+      "kicker": "BLOKIR SITUS",
+      "bullets": [
+        "updateDynamicRules: hapus dan tambah sekaligus",
+        "Bertahan setelah browser ditutup",
+        "Redirect ke halaman milik ekstensi",
+        "Halaman itu wajib di web_accessible_resources",
+        "Redirect butuh host permission situsnya"
+      ],
+      "code": "await chrome.declarativeNetRequest\n  .updateDynamicRules({\n    removeRuleIds: [1],\n    addRules: [{\n      id: 1, priority: 1,\n      action: { type: \"redirect\", redirect:\n        { extensionPath: \"/blocked.html\" } },\n      condition: { requestDomains: [\"youtube.com\"],\n        resourceTypes: [\"main_frame\"] },\n    }] });"
+    },
+    {
+      "title": "Keamanan dan CSP",
+      "kicker": "KEAMANAN DAN RILIS",
+      "bullets": [
+        "Kode remote dilarang: semua skrip di dalam paket",
+        "Tanpa eval dan new Function",
+        "Tanpa skrip inline di HTML ekstensi",
+        "Data dari halaman web: anggap berbahaya",
+        "Simpan data seperlunya, jangan kirim ke luar"
+      ],
+      "code": "script-src 'self' 'wasm-unsafe-eval';\nobject-src 'self';"
+    },
+    {
+      "title": "Debugging dan pengujian",
+      "kicker": "KEAMANAN DAN RILIS",
+      "bullets": [
+        "Inspect views: service worker di chrome://extensions",
+        "Klik kanan popup, pilih Inspect",
+        "Tombol Errors merangkum error ekstensi",
+        "Playwright memuat ekstensi di Chromium",
+        "Uji alur nyata: mulai, blokir, berhenti"
+      ],
+      "code": "const ctx = await chromium\n  .launchPersistentContext(\"\", {\n    channel: \"chromium\",\n    args: [\n      `--disable-extensions-except=${dir}`,\n      `--load-extension=${dir}`,\n    ],\n  });"
+    },
+    {
+      "title": "Firefox dan WebExtensions",
+      "kicker": "KEAMANAN DAN RILIS",
+      "bullets": [
+        "Firefox juga memakai format WebExtensions",
+        "Belum mendukung background.service_worker",
+        "Pakai background.scripts, boleh berdampingan",
+        "Ada namespace browser.* selain chrome.*",
+        "ID add-on lewat browser_specific_settings"
+      ],
+      "code": "\"background\": {\n  \"service_worker\": \"background.js\",\n  \"scripts\": [\"background.js\"]\n},\n\"browser_specific_settings\": {\n  \"gecko\": { \"id\": \"fokus@contoh.id\" }\n}"
+    },
+    {
+      "title": "Menerbitkan di Chrome Web Store",
+      "kicker": "KEAMANAN DAN RILIS",
+      "bullets": [
+        "Daftar akun developer, bayar biaya sekali",
+        "Unggah ZIP berisi manifest.json di akarnya",
+        "Siapkan ikon 128, tangkapan layar, deskripsi",
+        "Tab privasi: tujuan tunggal dan alasan tiap izin",
+        "Izin sempit membuat ulasan lebih mulus"
+      ],
+      "note": "Selanjutnya: kerjakan Studio Proyek Ekstensi Browser untuk Fokus."
+    }
+  ]
+}

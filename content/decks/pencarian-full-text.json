@@ -1,0 +1,361 @@
+{
+ "theme": "search",
+ "deck": "Pencarian Full-Text dengan PostgreSQL",
+ "kicker": "KELAS",
+ "subtitle": "Dari LIKE ke tsvector, bobot, GIN, cuplikan aman, salah ketik, keyset, sampai mengukur kualitas pencarian.",
+ "slides": [
+  {
+   "title": "Pencarian Full-Text dengan PostgreSQL"
+  },
+  {
+   "title": "Kenapa LIKE '%x%' tidak cukup",
+   "kicker": "DASAR",
+   "bullets": [
+    "Wildcard di depan membuat indeks B-tree tidak terpakai",
+    "\"bayar\" tidak menemukan \"pembayaran\" atau \"dibayarkan\"",
+    "\"sandi\" malah cocok dengan \"sandiwara\"",
+    "Tidak ada urutan: hasil paling relevan bisa di bawah",
+    "\"password\" dan \"kata sandi\" dianggap beda total"
+   ],
+   "code": "SELECT judul FROM artikel\nWHERE isi ILIKE '%bayar%';\n\n-- Seq Scan on artikel\n-- semua baris dibaca satu per satu"
+  },
+  {
+   "title": "Tokenisasi dan normalisasi",
+   "kicker": "DASAR",
+   "bullets": [
+    "Tokenisasi: pecah teks jadi kata (token)",
+    "Huruf kecil semua: \"Saldo\" sama dengan \"saldo\"",
+    "Stopword dibuang: yang, di, ke, dan, untuk",
+    "Stemming: \"pembayaran\" jadi bentuk dasar \"bayar\"",
+    "Hasilnya disebut leksem, itulah yang dicari"
+   ],
+   "code": "\"Cara Mengisi Saldo di Kantin\"\n\n token  : cara mengisi saldo di kantin\n stop   : cara mengisi saldo    kantin\n leksem : isi saldo kantin"
+  },
+  {
+   "title": "Indeks terbalik",
+   "kicker": "DASAR",
+   "bullets": [
+    "Seperti indeks di belakang buku: kata ke halaman",
+    "Tiap leksem menunjuk daftar dokumen yang memuatnya",
+    "Cari \"saldo kantin\" = irisan dua daftar",
+    "Tidak perlu membaca semua dokumen",
+    "PostgreSQL menyimpannya di indeks GIN"
+   ],
+   "code": "saldo  -> [2, 5, 7]\nkantin -> [1, 2, 7]\nsandi  -> [3, 4]\n\nsaldo AND kantin -> [2, 7]",
+   "note": "Peta kelas: tsvector, bahasa, ranking, GIN, cuplikan, salah ketik, paginasi, evaluasi."
+  },
+  {
+   "title": "tsvector: dokumen jadi leksem",
+   "kicker": "TSVECTOR",
+   "bullets": [
+    "tsvector = daftar leksem unik, terurut, plus posisi",
+    "to_tsvector(konfigurasi, teks) membuatnya",
+    "Konfigurasi menentukan cara memecah dan menormalkan",
+    "Posisi dipakai untuk frasa dan ranking kedekatan",
+    "Tulis konfigurasi secara eksplisit, misal 'simple'"
+   ],
+   "code": "SELECT to_tsvector('simple',\n  'Saldo kantin belum masuk');\n\n'belum':3 'kantin':2\n'masuk':4 'saldo':1"
+  },
+  {
+   "title": "tsquery dan operator @@",
+   "kicker": "TSVECTOR",
+   "bullets": [
+    "tsquery = kueri berisi leksem dan operator",
+    "& (dan), | (atau), ! (bukan), <-> (diikuti)",
+    "pinjam:* mencocokkan awalan: pinjam, pinjaman",
+    "tsvector @@ tsquery bernilai true atau false",
+    "Dipakai di WHERE seperti kondisi biasa"
+   ],
+   "code": "SELECT judul FROM artikel\nWHERE to_tsvector('simple', isi)\n   @@ to_tsquery('simple',\n        'saldo & !refund');"
+  },
+  {
+   "title": "Dari teks pengguna ke tsquery",
+   "kicker": "TSVECTOR",
+   "bullets": [
+    "to_tsquery: paling lengkap, tapi error bila sintaks salah",
+    "plainto_tsquery: semua kata digabung dengan &",
+    "phraseto_tsquery: kata harus berurutan (<->)",
+    "websearch_to_tsquery: sintaks ala mesin pencari",
+    "Input mentah pengguna jangan masuk to_tsquery"
+   ],
+   "code": "plainto_tsquery('simple', 'kata sandi')\n-- 'kata' & 'sandi'\n\nphraseto_tsquery('simple', 'kata sandi')\n-- 'kata' <-> 'sandi'"
+  },
+  {
+   "title": "websearch_to_tsquery",
+   "kicker": "TSVECTOR",
+   "bullets": [
+    "Kata biasa digabung dengan &",
+    "\"frasa dalam kutip\" jadi <->",
+    "Kata or jadi |, tanda minus jadi !",
+    "Tanda baca lain diabaikan, tidak pernah error sintaks",
+    "Aman untuk kotak pencarian di aplikasi"
+   ],
+   "code": "SELECT websearch_to_tsquery('simple',\n  '\"kata sandi\" -email or pin');\n\n'kata' <-> 'sandi' & !'email'\n| 'pin'"
+  },
+  {
+   "title": "Konfigurasi teks bawaan",
+   "kicker": "BAHASA",
+   "bullets": [
+    "default_text_search_config: konfigurasi bawaan server",
+    "simple: huruf kecil saja, tanpa stopword dan stemming",
+    "english: stemmer Snowball dan stopword Inggris",
+    "Cek isinya dengan \\dF+ simple di psql",
+    "ts_debug menunjukkan perjalanan tiap token"
+   ],
+   "code": "SELECT to_tsvector('english',\n  'The cats are running');\n-- 'cat':2 'run':4\n\nSELECT to_tsvector('simple',\n  'The cats are running');\n-- 'are':3 'cats':2\n-- 'running':4 'the':1"
+  },
+  {
+   "title": "Bahasa Indonesia di PostgreSQL",
+   "kicker": "BAHASA",
+   "bullets": [
+    "Ada konfigurasi indonesian dengan stemmer Snowball",
+    "Tapi tanpa daftar stopword bahasa Indonesia",
+    "Stemmer bisa berlebihan: pengguna dan menggunakan",
+    "Untuk kosakata sempit, simple sering lebih aman",
+    "Stopword dan sinonim: buat sendiri"
+   ],
+   "code": "SELECT to_tsvector('indonesian',\n  'pembayaran membayarkan\n   pengguna menggunakan');\n\n-- 'bayar':1,2 'guna':3,4"
+  },
+  {
+   "title": "Stopword dan sinonim sendiri",
+   "kicker": "BAHASA",
+   "bullets": [
+    "File .stop: satu stopword per baris",
+    "File .syn: kata lalu sinonimnya, satu pasang per baris",
+    "Disimpan di $SHAREDIR/tsearch_data",
+    "Lokasi $SHAREDIR: pg_config --sharedir",
+    "Kamus sinonim tidak mendukung frasa (pakai thesaurus)"
+   ],
+   "code": "-- tsearch_data/indonesia.stop\nyang\ndi\nuntuk\n\n-- tsearch_data/idn.syn\npassword sandi\npin sandi"
+  },
+  {
+   "title": "Membuat konfigurasi idn",
+   "kicker": "BAHASA",
+   "bullets": [
+    "Salin dari simple, lalu ubah pemetaan token",
+    "Urutan kamus: paling spesifik dulu, paling umum akhir",
+    "Sinonim dulu, lalu simple dengan stopword",
+    "Uji dengan ts_debug sebelum dipakai di indeks",
+    "Ubah daftar stopword tidak memaksa reindex"
+   ],
+   "code": "CREATE TEXT SEARCH DICTIONARY idn_syn\n  (TEMPLATE = synonym, SYNONYMS = idn);\nCREATE TEXT SEARCH DICTIONARY idn_stop\n  (TEMPLATE = simple,\n   STOPWORDS = indonesia);\nCREATE TEXT SEARCH CONFIGURATION idn\n  (COPY = simple);\nALTER TEXT SEARCH CONFIGURATION idn\n  ALTER MAPPING FOR asciiword, word\n  WITH idn_syn, idn_stop;"
+  },
+  {
+   "title": "Bobot A sampai D",
+   "kicker": "RANKING",
+   "bullets": [
+    "setweight memberi label A, B, C, atau D ke leksem",
+    "Judul A, ringkasan B, isi D: judul lebih penting",
+    "Gabungkan tsvector dengan operator ||",
+    "coalesce mencegah NULL menghapus seluruh tsvector",
+    "Kueri bisa dibatasi bobot: 'sandi:A'"
+   ],
+   "code": "setweight(to_tsvector('idn',\n  coalesce(judul, '')), 'A')\n||\nsetweight(to_tsvector('idn',\n  coalesce(isi, '')), 'D')"
+  },
+  {
+   "title": "ts_rank dan ts_rank_cd",
+   "kicker": "RANKING",
+   "bullets": [
+    "ts_rank: frekuensi kata yang cocok dan bobotnya",
+    "ts_rank_cd: juga melihat seberapa dekat kata-katanya",
+    "Bobot bawaan {0.1, 0.2, 0.4, 1.0} untuk D, C, B, A",
+    "Bisa diganti dengan array bobot sendiri",
+    "Urutkan rank DESC, lalu id agar urutan stabil"
+   ],
+   "code": "SELECT id, judul,\n  ts_rank(tsv, q) AS rank\nFROM artikel,\n  websearch_to_tsquery('idn', $1) q\nWHERE tsv @@ q\nORDER BY rank DESC, id DESC\nLIMIT 10;"
+  },
+  {
+   "title": "Panjang dokumen dan normalisasi",
+   "kicker": "RANKING",
+   "bullets": [
+    "Dokumen panjang cenderung memuat kata lebih sering",
+    "Normalisasi: angka bit mask di argumen terakhir",
+    "1: bagi 1 + log panjang, 2: bagi panjang",
+    "32: rank/(rank+1), skala 0 sampai 1 saja",
+    "Tidak ada info global seperti IDF di ts_rank"
+   ],
+   "code": "ts_rank(tsv, q, 1)\n\nts_rank_cd('{0.1,0.2,0.4,1.0}',\n  tsv, q, 2|32)",
+   "note": "Ganti angka normalisasi lalu cek ulang dengan set kueri uji, jangan menebak."
+  },
+  {
+   "title": "Indeks GIN",
+   "kicker": "INDEKS",
+   "bullets": [
+    "GIN = indeks terbalik: leksem ke daftar baris",
+    "Pilihan utama untuk kolom tsvector",
+    "Indeks ekspresi: konfigurasi wajib ditulis",
+    "Query harus memakai ekspresi yang persis sama",
+    "GiST juga bisa, tapi lossy dan perlu cek ulang baris"
+   ],
+   "code": "CREATE INDEX artikel_isi_fts\nON artikel USING GIN\n  (to_tsvector('idn', isi));\n\n-- query harus sama persis:\nWHERE to_tsvector('idn', isi)\n   @@ websearch_to_tsquery('idn', $1)"
+  },
+  {
+   "title": "Kolom generated tsvector",
+   "kicker": "INDEKS",
+   "bullets": [
+    "Kolom dihitung otomatis setiap INSERT dan UPDATE",
+    "Sejak PostgreSQL 18 bawaannya VIRTUAL",
+    "Tulis STORED agar tersimpan dan bisa diindeks",
+    "Ekspresi harus immutable: konfigurasi ditulis jelas",
+    "Lebih rapi daripada trigger buatan sendiri"
+   ],
+   "code": "ALTER TABLE artikel ADD COLUMN tsv\n tsvector GENERATED ALWAYS AS (\n  setweight(to_tsvector('idn',\n   coalesce(judul,'')), 'A') ||\n  setweight(to_tsvector('idn',\n   coalesce(isi,'')), 'D')\n ) STORED;\nCREATE INDEX artikel_tsv\n  ON artikel USING GIN (tsv);"
+  },
+  {
+   "title": "Membaca EXPLAIN",
+   "kicker": "INDEKS",
+   "bullets": [
+    "EXPLAIN ANALYZE menunjukkan rencana dan waktu nyata",
+    "Bitmap Index Scan on artikel_tsv: indeks dipakai",
+    "Seq Scan di tabel besar: cek ekspresi dan konfigurasi",
+    "Tabel kecil boleh Seq Scan, itu wajar",
+    "Ukur dengan data yang mirip produksi"
+   ],
+   "code": "EXPLAIN ANALYZE\nSELECT id FROM artikel\nWHERE tsv @@ websearch_to_tsquery(\n  'idn', 'saldo kantin');\n\nBitmap Heap Scan on artikel\n  -> Bitmap Index Scan\n     on artikel_tsv"
+  },
+  {
+   "title": "Cuplikan dengan ts_headline",
+   "kicker": "CUPLIKAN",
+   "bullets": [
+    "Menampilkan potongan teks dengan kata yang disorot",
+    "StartSel dan StopSel: penanda sorotan",
+    "MaxWords dan MinWords: panjang cuplikan (35 dan 15)",
+    "MaxFragments di atas 0: beberapa potongan",
+    "Lambat karena membaca teks asli, bukan tsvector"
+   ],
+   "code": "SELECT ts_headline('idn', isi, q,\n  'MaxWords=20, MinWords=8,\n   MaxFragments=2')\nFROM (SELECT isi, q FROM ...\n      ORDER BY rank DESC\n      LIMIT 10) hasil;"
+  },
+  {
+   "title": "Cuplikan dan XSS",
+   "kicker": "CUPLIKAN",
+   "bullets": [
+    "Penanda bawaan <b> dan </b> menggoda untuk langsung tampil",
+    "Dokumentasi resmi: keluaran tidak dijamin aman",
+    "Isi artikel bisa memuat <script> atau atribut onerror",
+    "Menyisipkan keluaran mentah ke HTML = celah XSS",
+    "Judul dan teks kueri juga perlu di-escape"
+   ],
+   "code": "isi: 'Reset sandi <img src=x\n      onerror=alert(1)>'\n\n-- keluaran ts_headline langsung\n-- ke innerHTML = skrip jalan"
+  },
+  {
+   "title": "Escape dulu, sorot kemudian",
+   "kicker": "CUPLIKAN",
+   "bullets": [
+    "Pakai penanda privat, misal [[[ dan ]]]",
+    "Di aplikasi, escape seluruh teks lebih dulu",
+    "Baru ganti penanda privat dengan <mark>",
+    "Hanya tag <mark> buatanmu yang jadi HTML",
+    "Atau buang semua markup saat ingest"
+   ],
+   "code": "import html\n\ndef aman(cuplikan):\n    t = html.escape(cuplikan)\n    t = t.replace(\"[[[\", \"<mark>\")\n    return t.replace(\"]]]\", \"</mark>\")"
+  },
+  {
+   "title": "Trigram dan pg_trgm",
+   "kicker": "SALAH KETIK",
+   "bullets": [
+    "Trigram = 3 karakter berurutan dari sebuah kata",
+    "Kata diberi dua spasi di depan, satu di belakang",
+    "similarity: trigram sama dibagi trigram gabungan",
+    "Operator % true bila similarity > ambang (0.3)",
+    "Indeks gin_trgm_ops juga mempercepat LIKE dan ILIKE"
+   ],
+   "code": "CREATE EXTENSION pg_trgm;\n\nSELECT show_trgm('cat');\n-- \"  c\", \" ca\", \"cat\", \"at \"\n\nSELECT similarity('word', 'words');\n-- 4 trigram sama / 7 gabungan = 0.57"
+  },
+  {
+   "title": "Saran \"maksud Anda\"",
+   "kicker": "SALAH KETIK",
+   "bullets": [
+    "Kumpulkan kosakata dari tsvector dengan ts_stat",
+    "Simpan di tabel kosakata dengan indeks gin_trgm_ops",
+    "Kata tanpa hasil? Cari kata paling mirip dengan %",
+    "Ambang lewat SET pg_trgm.similarity_threshold",
+    "ORDER BY kata <-> 'x' cepat dengan indeks GiST"
+   ],
+   "code": "SELECT word,\n  similarity(word, 'sadlo') AS s\nFROM kosakata\nWHERE word % 'sadlo'\nORDER BY s DESC\nLIMIT 1;\n-- saldo"
+  },
+  {
+   "title": "Huruf beraksen dan unaccent",
+   "kicker": "SALAH KETIK",
+   "bullets": [
+    "Pengguna mengetik \"cafe\", artikel menulis \"café\"",
+    "Ekstensi unaccent membuang tanda aksen",
+    "Pasang kamus unaccent di konfigurasi idn",
+    "Fungsi unaccent() tidak immutable",
+    "Jadi tidak bisa langsung di kolom generated"
+   ],
+   "code": "CREATE EXTENSION unaccent;\n\nALTER TEXT SEARCH CONFIGURATION idn\n  ALTER MAPPING FOR word, hword,\n    hword_part\n  WITH unaccent, idn_syn, idn_stop;"
+  },
+  {
+   "title": "Filter dan facet",
+   "kicker": "FACET DAN PAGINASI",
+   "bullets": [
+    "Filter biasa digabung dengan @@ di WHERE",
+    "Facet: jumlah hasil per kategori untuk menu samping",
+    "Hitung facet dari himpunan hasil yang sama",
+    "CTE membuat kueri utama dan facet tetap konsisten",
+    "count(*) FILTER (WHERE ...) untuk beberapa hitungan"
+   ],
+   "code": "WITH hasil AS (\n  SELECT id, kategori FROM artikel\n  WHERE tsv @@ websearch_to_tsquery(\n    'idn', $1))\nSELECT kategori, count(*)\nFROM hasil\nGROUP BY kategori\nORDER BY count(*) DESC;"
+  },
+  {
+   "title": "OFFSET vs keyset",
+   "kicker": "FACET DAN PAGINASI",
+   "bullets": [
+    "OFFSET 1000 tetap menghitung dan membuang 1000 baris",
+    "Data berubah: hasil bisa terlewat atau muncul dua kali",
+    "Keyset: lanjut dari nilai baris terakhir",
+    "Urutan harus unik: rank lalu id",
+    "Perbandingan baris (rank, id) < (a, b)"
+   ],
+   "code": "SELECT id, judul, rank FROM (\n  SELECT id, judul,\n    ts_rank(tsv, q) AS rank\n  FROM artikel, websearch_to_tsquery(\n    'idn', $1) q\n  WHERE tsv @@ q) r\nWHERE (rank, id) < ($2, $3)\nORDER BY rank DESC, id DESC\nLIMIT 10;"
+  },
+  {
+   "title": "Cursor di API pencarian",
+   "kicker": "FACET DAN PAGINASI",
+   "bullets": [
+    "Simpan rank dan id baris terakhir di cursor",
+    "Encode jadi base64 agar rapi di URL",
+    "Halaman pertama tanpa cursor",
+    "Halaman terakhir: cursor kosong (null)",
+    "Rank dihitung dengan ekspresi yang sama tiap halaman"
+   ],
+   "code": "GET /cari?q=saldo&kategori=saldo\n\n{\"hasil\": [...],\n \"facet\": {\"saldo\": 4, \"akun\": 1},\n \"cursor\": \"eyJyIjogMC4zLCAiaWQiOiA3fQ==\"}"
+  },
+  {
+   "title": "Ingest per subjudul",
+   "kicker": "INGEST DAN EVALUASI",
+   "bullets": [
+    "Artikel panjang dipotong per subjudul (##)",
+    "Satu potongan = satu baris yang bisa dicari",
+    "Simpan judul artikel, subjudul, anchor, dan isi",
+    "Hasil bisa langsung menuju bagian yang tepat",
+    "Artikel berubah: hapus potongan lama, masukkan baru"
+   ],
+   "code": "## Lupa sandi\nKlik Lupa Sandi di halaman masuk...\n\n## Ganti PIN kantin\nBuka Profil lalu pilih PIN...\n\n-> /bantuan/akun#lupa-sandi\n-> /bantuan/akun#ganti-pin-kantin"
+  },
+  {
+   "title": "Mengukur kualitas pencarian",
+   "kicker": "INGEST DAN EVALUASI",
+   "bullets": [
+    "Siapkan kueri uji dan daftar jawaban relevan",
+    "Precision@k: berapa dari k hasil teratas yang relevan",
+    "Recall: berapa dari semua yang relevan ditemukan",
+    "MRR: rata-rata 1/posisi hasil relevan pertama",
+    "Ukur sebelum dan sesudah mengubah bobot atau kamus"
+   ],
+   "code": "kueri: \"lupa pin\"\nrelevan: {3, 8}\nhasil:   [5, 3, 9, 8, 1]\n\nprecision@3 = 1/3\nrecall@5    = 2/2\nRR          = 1/2"
+  },
+  {
+   "title": "Kapan beralih dan langkah berikutnya",
+   "kicker": "INGEST DAN EVALUASI",
+   "bullets": [
+    "Postgres cukup untuk banyak aplikasi sekolah dan toko",
+    "Elasticsearch/OpenSearch: skala besar, analyzer kaya",
+    "Meilisearch/Typesense: toleransi typo dan instan",
+    "pgvector: pencarian makna dengan embedding, bisa hibrida",
+    "Lanjut: Studio Proyek Mesin Pencari Dokumen"
+   ],
+   "note": "Proyek akhir kelas ini: Mesin Pencari Pusat Bantuan Mini."
+  }
+ ]
+}

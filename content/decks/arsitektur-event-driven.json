@@ -1,0 +1,359 @@
+{
+  "theme": "events",
+  "deck": "Arsitektur Event-Driven dan Microservices",
+  "kicker": "KELAS",
+  "subtitle": "Monolit vs microservices, broker pesan, outbox, konsumen idempoten, saga, stok tanpa oversell, DLQ, sampai tracing.",
+  "slides": [
+    {
+      "title": "Arsitektur Event-Driven"
+    },
+    {
+      "title": "Monolit dulu",
+      "kicker": "MONOLIT",
+      "bullets": [
+        "Satu aplikasi, satu deploy, satu database",
+        "Panggilan antar modul cukup memanggil fungsi",
+        "Transaksi database menjaga data tetap konsisten",
+        "Monolit modular: modul berbatas jelas di satu repo",
+        "Titik awal yang sehat untuk hampir semua produk"
+      ],
+      "note": "Monolit yang rapi lebih baik daripada microservices yang kusut."
+    },
+    {
+      "title": "Microservices dan biayanya",
+      "kicker": "MONOLIT",
+      "bullets": [
+        "Layanan kecil per bounded context, deploy sendiri",
+        "Setiap layanan punya database sendiri",
+        "Panggilan lewat jaringan: bisa lambat dan gagal",
+        "Tidak ada transaksi bersama antar layanan",
+        "Butuh log, tracing, dan CI/CD yang matang"
+      ],
+      "code": "Toko kantin sebagai layanan\n\norder      -> db_order\ninventory  -> db_inventory\npayment    -> db_payment\nnotif      -> db_notif\n\n# berbagi data hanya lewat API\n# atau pesan, bukan query silang"
+    },
+    {
+      "title": "Kapan tidak perlu microservices",
+      "kicker": "MONOLIT",
+      "bullets": [
+        "Tim masih kecil, satu atau dua orang",
+        "Batas domain belum jelas dan sering berubah",
+        "Trafik masih bisa dilayani satu server",
+        "Masalahnya kode berantakan, bukan skala",
+        "Pecah nanti saat ada alasan yang bisa diukur"
+      ],
+      "code": "Rantai panggilan sinkron\nA -> B -> C -> D\n\nketersediaan tiap layanan 99,9%\ntotal = 0,999 ^ 4 = 99,6%\n\nlatensi total = jumlah semuanya"
+    },
+    {
+      "title": "Sinkron vs asinkron",
+      "kicker": "PESAN",
+      "bullets": [
+        "Sinkron: pemanggil menunggu jawaban (HTTP)",
+        "Asinkron: kirim pesan lalu lanjut bekerja",
+        "Sinkron membuat layanan terikat waktu",
+        "Asinkron tahan saat penerima sedang mati",
+        "Harga asinkron: data konsisten belakangan"
+      ],
+      "note": "Pakai sinkron untuk butuh jawaban sekarang, asinkron untuk reaksi."
+    },
+    {
+      "title": "Event vs command",
+      "kicker": "PESAN",
+      "bullets": [
+        "Event: fakta yang sudah terjadi, bentuk lampau",
+        "Command: permintaan agar sesuatu dikerjakan",
+        "Event disiarkan, siapa pun boleh mendengar",
+        "Command ditujukan ke satu penerima",
+        "Penerima command boleh menolak"
+      ],
+      "code": "# event: sudah terjadi\norder.placed\nstock.reserved\npayment.failed\n\n# command: tolong kerjakan\nstock.reserve\nstock.release\npayment.charge"
+    },
+    {
+      "title": "Amplop pesan",
+      "kicker": "PESAN",
+      "bullets": [
+        "id unik dipakai untuk deduplikasi",
+        "type dan version menentukan bentuk data",
+        "correlation_id mengikat satu alur pesanan",
+        "occurred_at mencatat kapan kejadiannya",
+        "data berisi isi bisnis yang sebenarnya"
+      ],
+      "code": "{\n  \"id\": \"evt-0192\",\n  \"type\": \"stock.reserved\",\n  \"version\": 1,\n  \"correlation_id\": \"ord-77\",\n  \"occurred_at\": \"2026-11-28T10:00:01Z\",\n  \"data\": { \"sku\": \"SEPATU-01\", \"qty\": 1 }\n}"
+    },
+    {
+      "title": "Skema dan versioning",
+      "kicker": "PESAN",
+      "bullets": [
+        "Skema event diperlakukan seperti API publik",
+        "Tambah field opsional: versi tetap",
+        "Hapus, ganti nama, ubah tipe: buat v2",
+        "Tolerant reader: abaikan field yang tak dikenal",
+        "Event yang sudah terbit tidak pernah diubah"
+      ],
+      "code": "stock.reserved.v1  # lama\nstock.reserved.v2  # baru\n\n# produsen kirim keduanya\n# sampai semua konsumen pindah,\n# baru v1 dihentikan"
+    },
+    {
+      "title": "Peran message broker",
+      "kicker": "BROKER",
+      "bullets": [
+        "Perantara yang menyimpan pesan sementara",
+        "Produsen tidak perlu tahu siapa konsumennya",
+        "Konsumen membaca sesuai kecepatannya sendiri",
+        "Lonjakan trafik ditampung, bukan ditolak",
+        "Contoh: RabbitMQ, Kafka, Redis Streams"
+      ],
+      "note": "Broker memisahkan waktu kirim dari waktu proses."
+    },
+    {
+      "title": "Antrian vs pub/sub",
+      "kicker": "BROKER",
+      "bullets": [
+        "Antrian: satu pesan diambil satu konsumen",
+        "Banyak konsumen berbagi kerja (competing)",
+        "Pub/sub: satu pesan disalin ke banyak pelanggan",
+        "Notifikasi dan laporan bisa ikut mendengar",
+        "Sistem nyata sering memakai keduanya"
+      ],
+      "code": "antrian:  [p1 p2 p3] -> w1: p1, p3\n                      -> w2: p2\n\npub/sub:  order.placed -> inventory\n                       -> notif\n                       -> laporan"
+    },
+    {
+      "title": "RabbitMQ dan Kafka",
+      "kicker": "BROKER",
+      "bullets": [
+        "RabbitMQ: exchange merutekan ke antrian",
+        "Topic exchange: pola * satu kata, # banyak kata",
+        "Kafka: topic dibagi jadi partisi berisi log",
+        "Konsumen Kafka mencatat offset, bisa replay",
+        "Consumer group: satu partisi, satu konsumen"
+      ],
+      "code": "# RabbitMQ binding\nstock.*.v1   cocok stock.reserved.v1\norder.#      cocok order.placed.v1\n\n# Kafka\ntopic orders, 3 partisi\np0: [0 1 2 3]  offset grup = 2"
+    },
+    {
+      "title": "Redis Streams",
+      "kicker": "BROKER",
+      "bullets": [
+        "Stream adalah log yang hanya ditambah",
+        "XADD menambah entri, id otomatis",
+        "XREADGROUP membaca sebagai consumer group",
+        "XACK menandai entri selesai diproses",
+        "XPENDING dan XAUTOCLAIM untuk pesan tertinggal"
+      ],
+      "code": "XADD orders * type order.placed id 77\nXGROUP CREATE orders inv $ MKSTREAM\nXREADGROUP GROUP inv w1 COUNT 10\n  STREAMS orders >\nXACK orders inv 1732780800000-0"
+    },
+    {
+      "title": "Tiga jaminan pengiriman",
+      "kicker": "JAMINAN",
+      "bullets": [
+        "At-most-once: bisa hilang, tidak pernah dobel",
+        "At-least-once: tidak hilang, bisa dobel",
+        "Exactly-once: mahal dan terbatas cakupannya",
+        "Kafka exactly-once hanya di dalam Kafka",
+        "Praktisnya: at-least-once + konsumen idempoten"
+      ],
+      "note": "Anggap setiap pesan bisa datang dua kali."
+    },
+    {
+      "title": "Ack dan pengiriman ulang",
+      "kicker": "JAMINAN",
+      "bullets": [
+        "Konsumen kirim ack setelah proses selesai",
+        "Ack sebelum proses: crash berarti pesan hilang",
+        "Tanpa ack, broker mengirim ulang pesan",
+        "nack atau reject bisa minta pesan diantrikan lagi",
+        "Prefetch membatasi pesan yang dipegang sekaligus"
+      ],
+      "code": "channel.prefetch(10);\nchannel.consume('inventory', async (msg) => {\n  await proses(msg);   // dulu proses\n  channel.ack(msg);    // baru ack\n});"
+    },
+    {
+      "title": "Konsumen idempoten",
+      "kicker": "JAMINAN",
+      "bullets": [
+        "Pesan sama diproses dua kali, hasilnya tetap sama",
+        "Simpan id pesan di tabel processed_events",
+        "Catat id di transaksi yang sama dengan efeknya",
+        "id sudah ada: lewati dan ack saja",
+        "Operasi set nilai lebih aman daripada tambah"
+      ],
+      "code": "BEGIN;\nINSERT INTO processed_events (id)\n  VALUES ('evt-0192');  -- unik\nUPDATE stok SET sisa = sisa - 1\n  WHERE sku = 'SEPATU-01';\nCOMMIT;\n-- duplikat: INSERT gagal, rollback"
+    },
+    {
+      "title": "Masalah dual write",
+      "kicker": "OUTBOX",
+      "bullets": [
+        "Simpan pesanan ke database, lalu publish event",
+        "Publish gagal: pesanan ada, event tidak pernah ada",
+        "Publish dulu lalu simpan gagal: event palsu",
+        "Dua sistem berbeda tidak bisa satu transaksi",
+        "Butuh cara agar keduanya pasti sejalan"
+      ],
+      "code": "await db.insert('orders', pesanan);\n// server mati di sini\nawait broker.publish('order.placed', e);\n\n// pesanan tersimpan, tapi inventory\n// tidak pernah tahu"
+    },
+    {
+      "title": "Tabel outbox",
+      "kicker": "OUTBOX",
+      "bullets": [
+        "Event ditulis ke tabel outbox di database yang sama",
+        "Pesanan dan outbox masuk satu transaksi",
+        "Keduanya tersimpan atau keduanya batal",
+        "Kolom sent_at kosong berarti belum terkirim",
+        "Publish ke broker diurus proses terpisah"
+      ],
+      "code": "BEGIN;\nINSERT INTO orders (id, status)\n  VALUES ('ord-77', 'PENDING');\nINSERT INTO outbox (id, type, payload)\n  VALUES ('evt-01', 'order.placed', '{..}');\nCOMMIT;"
+    },
+    {
+      "title": "Relay outbox",
+      "kicker": "OUTBOX",
+      "bullets": [
+        "Relay mengambil baris yang sent_at-nya kosong",
+        "Publish ke broker, tunggu konfirmasi, isi sent_at",
+        "Crash setelah publish: pesan terkirim dua kali",
+        "Jadi relay itu at-least-once, konsumen harus idempoten",
+        "Alternatif polling: CDC seperti Debezium"
+      ],
+      "code": "SELECT * FROM outbox\n WHERE sent_at IS NULL\n ORDER BY created_at LIMIT 100\n FOR UPDATE SKIP LOCKED;\n\n-- publish tiap baris, lalu\nUPDATE outbox SET sent_at = now()\n WHERE id = $1;"
+    },
+    {
+      "title": "Transaksi lintas layanan",
+      "kicker": "SAGA",
+      "bullets": [
+        "Pesanan butuh order, inventory, dan payment",
+        "Tiap layanan punya database sendiri",
+        "Two-phase commit lintas layanan rapuh dan lambat",
+        "Saga: rangkaian transaksi lokal berurutan",
+        "Langkah gagal dibatalkan dengan kompensasi"
+      ],
+      "code": "PENDING\n  --stock.reserved-->   AWAITING_PAYMENT\n  --payment.succeeded-> CONFIRMED\n\nAWAITING_PAYMENT\n  --payment.failed-->   COMPENSATING\n  --stock.released-->   CANCELLED"
+    },
+    {
+      "title": "Koreografi vs orkestrasi",
+      "kicker": "SAGA",
+      "bullets": [
+        "Koreografi: tiap layanan bereaksi pada event",
+        "Tanpa pusat, tapi alurnya sulit dilacak",
+        "Orkestrasi: satu orkestrator mengirim command",
+        "Status saga terlihat di satu tabel",
+        "Alur dengan kompensasi cocok diorkestrasi"
+      ],
+      "note": "Mulai dari orkestrasi di layanan Order untuk alur pembayaran."
+    },
+    {
+      "title": "Kompensasi dan timeout",
+      "kicker": "SAGA",
+      "bullets": [
+        "Kompensasi membatalkan efek langkah sebelumnya",
+        "Dijalankan urut terbalik dari langkah yang sukses",
+        "Contoh: stock.release, refund pembayaran",
+        "Pembayaran tak menjawab: timeout lalu kompensasi",
+        "Kompensasi juga harus idempoten"
+      ],
+      "code": "for (const l of selesai.reverse()) {\n  await l.kompensasi(ctx);\n}\n\n// reserve OK, charge GAGAL\n// -> release stok\n// -> status CANCELLED"
+    },
+    {
+      "title": "Race condition stok",
+      "kicker": "STOK",
+      "bullets": [
+        "Dua pembeli membaca stok 1 di waktu yang sama",
+        "Keduanya lolos cek stok >= 1",
+        "Keduanya menulis stok 0, terjual 2 unit",
+        "Baca lalu tulis terpisah selalu rawan rebutan",
+        "Flash sale membuat rebutan ini pasti terjadi"
+      ],
+      "code": "// SALAH: baca lalu tulis\nconst s = await db.stok('SEPATU-01');\nif (s >= 1) {\n  await db.setStok('SEPATU-01', s - 1);\n}\n\n// A baca 1, B baca 1\n// A tulis 0, B tulis 0: oversell"
+    },
+    {
+      "title": "Update bersyarat dan kunci",
+      "kicker": "STOK",
+      "bullets": [
+        "Gabungkan cek dan kurangi dalam satu UPDATE",
+        "Baris terpengaruh 0 berarti stok habis",
+        "Kunci pesimis: SELECT ... FOR UPDATE",
+        "Optimistic: cek kolom version saat update",
+        "CHECK (stok >= 0) sebagai jaring terakhir"
+      ],
+      "code": "UPDATE stok\n   SET sisa = sisa - 1\n WHERE sku = 'SEPATU-01'\n   AND sisa >= 1;\n\n-- rowCount 1: berhasil\n-- rowCount 0: stok habis, tolak"
+    },
+    {
+      "title": "Reservasi stok",
+      "kicker": "STOK",
+      "bullets": [
+        "Stok ditahan dulu saat checkout",
+        "Reservasi punya batas waktu, misal 10 menit",
+        "Bayar sukses: reservasi jadi penjualan",
+        "Bayar gagal atau kedaluwarsa: stok dilepas",
+        "Stok panas bisa dijaga di Redis dengan DECRBY"
+      ],
+      "note": "Stok tersedia = stok fisik dikurangi reservasi aktif."
+    },
+    {
+      "title": "Retry dengan backoff",
+      "kicker": "RETRY",
+      "bullets": [
+        "Error sementara: timeout, server sibuk",
+        "Error permanen: data rusak, jangan diulang",
+        "Jeda naik eksponensial: 1, 2, 4, 8 detik",
+        "Beri batas atas dan jitter acak",
+        "Batasi jumlah percobaan"
+      ],
+      "code": "function jeda(n, dasar = 1000, maks = 30000) {\n  const batas = Math.min(maks, dasar * 2 ** n);\n  return Math.random() * batas; // full jitter\n}\n\n// n=0: 0-1s, n=3: 0-8s, n=6: 0-30s"
+    },
+    {
+      "title": "Dead letter queue",
+      "kicker": "RETRY",
+      "bullets": [
+        "Pesan yang gagal terus dipindah ke DLQ",
+        "Antrian utama tidak macet oleh poison message",
+        "RabbitMQ: x-dead-letter-exchange, x-delivery-limit",
+        "Kafka: DLQ berupa topic yang dibuat sendiri",
+        "Pantau isi DLQ, perbaiki, lalu putar ulang"
+      ],
+      "code": "orders.q --gagal 3x--> orders.dlq\n\n# di DLQ simpan juga:\n#  alasan error terakhir\n#  jumlah percobaan\n#  correlation_id"
+    },
+    {
+      "title": "Urutan pesan dan partisi",
+      "kicker": "RETRY",
+      "bullets": [
+        "Urutan hanya dijamin di dalam satu partisi",
+        "Key yang sama selalu masuk partisi yang sama",
+        "Pakai order_id sebagai key per pesanan",
+        "Konsumen paralel dan retry bisa mengacak urutan",
+        "Tolak pesan basi dengan cek versi atau status"
+      ],
+      "code": "partisi = hash(order_id) % 3\n\nord-77 -> p1: placed, reserved, paid\nord-78 -> p0: placed, rejected\n\n# antar pesanan boleh acak,\n# dalam satu pesanan tetap urut"
+    },
+    {
+      "title": "Correlation id dan tracing",
+      "kicker": "OBSERVABILITAS",
+      "bullets": [
+        "Setiap pesan membawa correlation_id pesanan",
+        "Tulis id itu di setiap baris log terstruktur",
+        "Trace: satu perjalanan request, berisi span",
+        "OpenTelemetry meneruskan konteks lewat header",
+        "Header W3C traceparent: versi, trace id, span id"
+      ],
+      "code": "traceparent:\n00-4bf92f3577b34da6a3ce929d0e0e4736\n  -00f067aa0ba902b7-01\n\n# 32 hex trace id, sama di semua layanan\n# 16 hex span id induk, flags 01"
+    },
+    {
+      "title": "Uji kontrak",
+      "kicker": "OBSERVABILITAS",
+      "bullets": [
+        "Konsumen menulis contoh pesan yang ia harapkan",
+        "Produsen diuji agar pesannya cocok dengan skema",
+        "Rusak kontrak ketahuan di CI, bukan di produksi",
+        "Pact: uji kontrak yang digerakkan konsumen",
+        "Tes tidak butuh semua layanan menyala"
+      ],
+      "note": "Kontrak event = skema + contoh pesan yang disepakati."
+    },
+    {
+      "title": "Uji beban dan langkah berikutnya",
+      "kicker": "OBSERVABILITAS",
+      "bullets": [
+        "k6 menulis skenario beban dalam JavaScript",
+        "VU = pengguna virtual yang berjalan bersamaan",
+        "Threshold membuat tes gagal bila p95 terlalu lambat",
+        "Pantau lag konsumen dan isi DLQ saat diuji",
+        "Lanjut ke Studio Proyek sistem pesanan flash sale"
+      ],
+      "code": "import http from 'k6/http';\nimport { check } from 'k6';\nexport const options = {\n  vus: 200, duration: '1m',\n  thresholds: { http_req_duration: ['p(95)<300'] },\n};\nexport default function () {\n  const r = http.post('http://api:3000/checkout');\n  check(r, { '202': (x) => x.status === 202 });\n}"
+    }
+  ]
+}
