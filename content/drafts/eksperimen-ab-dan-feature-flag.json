@@ -1,0 +1,2161 @@
+{
+  "title": "Eksperimen A/B dan Feature Flag",
+  "description": "Merancang dan menganalisis eksperimen A/B dengan Python: feature flag, assignment hash, ukuran sampel, uji z, Welch, interval kepercayaan, SRM, CUPED, sampai keputusan rilis.",
+  "summary": "Angka yang naik setelah fitur dirilis belum tentu karena fiturnya. Kelas ini dimulai dari beda korelasi dan kausalitas, kenapa membandingkan sebelum dan sesudah menyesatkan, dan bagaimana eksperimen terkontrol memisahkan efek fitur dari gajian, cuaca, atau promo. Kamu belajar menulis hipotesis, memilih satu metrik utama, dan menetapkan guardrail sebelum eksperimen dimulai.\n\nBagian tengah membangun mesinnya: feature flag dengan rollout bertahap, kill switch, dan aturan targeting, lalu assignment deterministik dengan hash dan salt per eksperimen. Setelah itu kamu menghitung ukuran sampel dan power, menguji beda konversi dengan uji z dua proporsi, membandingkan rata-rata belanja dengan Welch t-test, dan membaca interval kepercayaan, semuanya dengan pustaka standar Python.\n\nBagian akhir membahas jebakan yang sering menipu tim produk: salah paham p-value, mengintip hasil, terlalu banyak metrik, sample ratio mismatch, efek baru dan musiman, serta CUPED untuk mengecilkan varians. Kelas ditutup dengan cara membaca hasil, menulis laporan, mengambil keputusan rilis, dan etika eksperimen. Proyek Analisis Eksperimen Tombol Checkout merangkum semuanya.",
+  "tips": [
+    "Tulis hipotesis, metrik utama, guardrail, dan durasi sebelum eksperimen dimulai, lalu patuhi.",
+    "Hitung ukuran sampel dulu; bila traffic tidak cukup, perbesar MDE daripada menjalankan eksperimen yang pasti kurang power.",
+    "Selalu cek SRM sebelum melihat metrik utama, karena data yang rusak memberi kesimpulan yang salah dengan percaya diri.",
+    "Laporkan interval kepercayaan, bukan hanya p-value, agar besar efeknya terlihat.",
+    "Hapus flag dan kode varian yang kalah setelah keputusan supaya kode tidak penuh cabang mati."
+  ],
+  "flashcards": [
+    {
+      "front": "Eksperimen terkontrol",
+      "back": "Pengguna diacak ke A dan B yang berjalan serentak, hanya satu hal yang berbeda."
+    },
+    {
+      "front": "Faktor pengganggu",
+      "back": "Faktor yang memengaruhi sebab dan akibat sekaligus sehingga muncul hubungan palsu."
+    },
+    {
+      "front": "A/A test",
+      "back": "Dua grup identik untuk menguji bahwa sistem eksperimen tidak menghasilkan beda palsu."
+    },
+    {
+      "front": "H0 dan H1",
+      "back": "H0: tidak ada beda antara A dan B. H1: ada beda."
+    },
+    {
+      "front": "Metrik utama",
+      "back": "Satu angka penentu keputusan yang ditetapkan sebelum eksperimen dimulai."
+    },
+    {
+      "front": "Metrik guardrail",
+      "back": "Metrik yang tidak boleh rusak, misalnya error, waktu muat, dan pembatalan."
+    },
+    {
+      "front": "Feature flag",
+      "back": "Saklar di kode yang nilainya diatur dari luar tanpa deploy ulang."
+    },
+    {
+      "front": "Rollout bertahap",
+      "back": "Fitur dinyalakan untuk 1%, 10%, 50%, lalu 100% pengguna sambil dipantau."
+    },
+    {
+      "front": "Kill switch",
+      "back": "Mematikan flag sehingga semua pengguna kembali ke nilai bawaan dalam hitungan detik."
+    },
+    {
+      "front": "Aturan targeting",
+      "back": "Daftar uid dan aturan atribut yang dievaluasi berurutan sebelum rollout persentase."
+    },
+    {
+      "front": "Bucket hash",
+      "back": "int(sha256(salt:uid)[:8], 16) % 100, angka 0 sampai 99 yang stabil per pengguna."
+    },
+    {
+      "front": "Salt per eksperimen",
+      "back": "Teks pembeda di hash agar pembagian antar eksperimen saling bebas."
+    },
+    {
+      "front": "Unit randomisasi",
+      "back": "Siapa yang diacak: pengguna, sesi, perangkat, atau klaster seperti kelas."
+    },
+    {
+      "front": "Alpha",
+      "back": "Peluang positif palsu yang diterima, biasanya 0,05."
+    },
+    {
+      "front": "Power",
+      "back": "1 - beta, peluang mendeteksi efek sebesar MDE bila efek itu ada, biasanya 80%."
+    },
+    {
+      "front": "MDE",
+      "back": "Efek terkecil yang layak dideteksi; makin kecil, makin besar sampel yang dibutuhkan."
+    },
+    {
+      "front": "Ukuran sampel 5% ke 6%",
+      "back": "Sekitar 8155 pengguna per grup pada alpha 0,05 dan power 80%."
+    },
+    {
+      "front": "Galat baku proporsi",
+      "back": "akar(p(1 - p) / n); sampel 4 kali lipat membuatnya setengah."
+    },
+    {
+      "front": "Uji z dua proporsi",
+      "back": "z = (pB - pA) / akar(p(1 - p)(1/nA + 1/nB)) dengan p gabungan."
+    },
+    {
+      "front": "Welch t-test",
+      "back": "Membandingkan dua rata-rata tanpa menganggap varians sama; df Welch-Satterthwaite."
+    },
+    {
+      "front": "Interval kepercayaan 95%",
+      "back": "Selisih plus minus 1,96 galat baku; memuat nol berarti belum terbukti beda."
+    },
+    {
+      "front": "p-value",
+      "back": "Peluang melihat data seekstrem ini bila H0 benar, bukan peluang H0 benar."
+    },
+    {
+      "front": "Peeking",
+      "back": "Mengintip lalu berhenti saat signifikan; positif palsu naik dari 5% ke sekitar 19% dengan 10 intipan."
+    },
+    {
+      "front": "Sample ratio mismatch",
+      "back": "Rasio pengguna menyimpang dari rencana; dicek dengan chi-kuadrat, curiga bila p < 0,001."
+    },
+    {
+      "front": "CUPED",
+      "back": "Y - theta(X - rata-rata X) dengan theta = cov(X, Y) / var(X); varians sisa sekitar 1 - rho kuadrat."
+    }
+  ],
+  "practice_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa membandingkan konversi minggu sebelum dan sesudah rilis sering menyesatkan?",
+      "code": "",
+      "options": [
+        "Banyak hal lain ikut berubah di antara dua minggu itu",
+        "Jumlah harinya beda",
+        "Karena data minggu lalu otomatis terhapus oleh server",
+        "Karena konversi hanya boleh dihitung pada hari kerja saja"
+      ],
+      "answer": 0,
+      "explanation": "Gajian, promo, dan libur ikut berubah, jadi efeknya bercampur dengan efek fitur."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa fungsi utama pengacakan pengguna ke grup A dan B?",
+      "code": "",
+      "options": [
+        "Membuat jumlah pembeli di grup B selalu lebih banyak",
+        "Memutus pengaruh faktor pengganggu",
+        "Menghemat penyimpanan",
+        "Agar pengguna bisa memilih sendiri varian kesukaannya"
+      ],
+      "answer": 1,
+      "explanation": "Pengacakan membuat faktor lain tersebar rata di kedua grup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Metrik guardrail adalah",
+      "code": "",
+      "options": [
+        "Metrik yang dipilih setelah hasil eksperimen keluar",
+        "Metrik penentu rilis",
+        "Metrik yang tidak boleh rusak",
+        "Metrik yang hanya dihitung untuk grup kontrol saja"
+      ],
+      "answer": 2,
+      "explanation": "Guardrail menjaga hal penting seperti error dan waktu muat tetap aman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Konversi checkout sebaiknya dihitung sebagai",
+      "code": "",
+      "options": [
+        "Jumlah klik tombol dibagi jumlah tampilan halaman produk",
+        "Jumlah event beli dibagi jumlah semua event di log",
+        "Total belanja dibagi jumlah hari eksperimen berjalan",
+        "Pengguna unik yang membeli dibagi pengguna unik di varian"
+      ],
+      "answer": 3,
+      "explanation": "Unit analisis sama dengan unit randomisasi, yaitu pengguna."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa itu kill switch dalam feature flag?",
+      "code": "",
+      "options": [
+        "Menghapus semua data pengguna dari varian yang kalah",
+        "Mematikan fitur seketika tanpa deploy ulang",
+        "Mematikan server",
+        "Mengunci repositori agar tidak ada yang bisa merge"
+      ],
+      "answer": 1,
+      "explanation": "Flag dimatikan dan semua pengguna kembali ke nilai bawaan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa assignment memakai hash, bukan random.random() setiap request?",
+      "code": "",
+      "options": [
+        "Karena hash lebih cepat dari semua fungsi acak di Python",
+        "Agar lebih cepat",
+        "Agar pengguna yang sama selalu dapat varian sama",
+        "Agar jumlah pengguna di grup A selalu tepat sama dengan B"
+      ],
+      "answer": 2,
+      "explanation": "Hash salt:uid deterministik, jadi pengguna tidak loncat varian."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa tiap eksperimen memakai salt yang berbeda?",
+      "code": "",
+      "options": [
+        "Agar lebih aman",
+        "Agar bucket selalu berada di rentang 0 sampai 49",
+        "Agar eksperimen bisa berjalan tanpa feature flag",
+        "Agar pembagian antar eksperimen saling bebas"
+      ],
+      "answer": 3,
+      "explanation": "Tanpa salt beda, grup B semua eksperimen berisi orang yang sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Power 80% berarti",
+      "code": "",
+      "options": [
+        "Peluang 80% mendeteksi efek sebesar MDE bila efek itu ada",
+        "Peluang 80% bahwa varian B lebih baik dari varian A",
+        "80% pengguna masuk ke grup eksperimen dan 20% ke kontrol",
+        "80% pengguna puas"
+      ],
+      "answer": 0,
+      "explanation": "Power = 1 - beta, peluang tidak melewatkan efek sebesar MDE."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Baseline 5%, ingin mendeteksi kenaikan ke 6% (alpha 0,05, power 80%). Kira-kira berapa sampel per grup?",
+      "code": "",
+      "options": [
+        "816",
+        "31231",
+        "8155",
+        "1600"
+      ],
+      "answer": 2,
+      "explanation": "Rumus dua proporsi memberi 8155 per grup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "A: 400 dari 8000, B: 470 dari 8000. Uji z dua proporsi memberi z sekitar",
+      "code": "",
+      "options": [
+        "0,88",
+        "1,96",
+        "4,70",
+        "2,44"
+      ],
+      "answer": 3,
+      "explanation": "Selisih 0,875 poin dibagi galat baku gabungan memberi z sekitar 2,44."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "CI 95% selisih konversi B - A adalah -0,02 sampai +1,22 poin. Artinya",
+      "code": "",
+      "options": [
+        "Belum terbukti ada beda karena CI memuat nol",
+        "B pasti lebih baik karena batas atasnya positif",
+        "A pasti lebih baik karena batas bawahnya negatif",
+        "Eksperimen rusak"
+      ],
+      "answer": 0,
+      "explanation": "CI yang memuat nol berarti data belum cukup membedakan A dan B."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rencana 50/50, teramati 10000 vs 10500 pengguna. Uji chi-kuadrat memberi p sekitar 0,0005. Langkah yang tepat",
+      "code": "",
+      "options": [
+        "Langsung rilis varian dengan pengguna lebih banyak",
+        "Selidiki penyebab SRM sebelum membaca hasil",
+        "Abaikan saja karena selisihnya hanya 500 pengguna",
+        "Hapus 500 pengguna acak dari grup yang lebih besar"
+      ],
+      "answer": 1,
+      "explanation": "p < 0,001 menandakan sample ratio mismatch, hasilnya tidak bisa dipercaya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan membaca hasil eksperimen yang disarankan",
+      "code": "",
+      "options": [
+        "Metrik utama, segmen, guardrail, lalu SRM bila sempat",
+        "Metrik pendukung, metrik utama, SRM, lalu guardrail",
+        "Segmen terbaik dulu, lalu metrik utama dan guardrail",
+        "SRM, guardrail, metrik utama, metrik pendukung"
+      ],
+      "answer": 3,
+      "explanation": "Data rusak harus ketahuan dulu, lalu keamanan, baru keputusan utama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "p-value 0,03 berarti peluang hipotesis nol benar adalah 3%.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "p-value adalah peluang melihat data seekstrem itu bila H0 benar, bukan peluang H0 benar."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Mengintip hasil setiap hari lalu berhenti saat p < 0,05 menaikkan peluang positif palsu.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Simulasi A/A menunjukkan positif palsu naik dari sekitar 5% ke sekitar 19% dengan 10 kali mengintip."
+    }
+  ],
+  "exam_questions": [
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Penjualan es teh dan siswa pingsan saat upacara naik bersamaan. Penjelasan yang paling masuk akal",
+      "code": "",
+      "options": [
+        "Keduanya disebabkan cuaca panas",
+        "Es teh menyebabkan siswa pingsan",
+        "Siswa pingsan membuat es teh laris",
+        "Itu pasti kebetulan murni tanpa sebab"
+      ],
+      "answer": 0,
+      "explanation": "Cuaca panas adalah faktor pengganggu yang memengaruhi keduanya."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Faktor pengganggu (confounder) adalah",
+      "code": "",
+      "options": [
+        "Bug di kode yang membuat varian B gagal tampil",
+        "Faktor yang memengaruhi sebab dan akibat sekaligus",
+        "Pengguna yang mengeluh tentang fitur yang baru dirilis",
+        "Metrik pendukung yang tidak dipakai dalam keputusan"
+      ],
+      "answer": 1,
+      "explanation": "Confounder membuat dua hal tampak berhubungan tanpa sebab langsung."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa varian A dan B harus berjalan serentak?",
+      "code": "",
+      "options": [
+        "Agar server hanya perlu menyimpan satu versi kode",
+        "Agar pengguna bisa melihat dua versi sekaligus",
+        "Agar kondisi luar seperti gajian dan cuaca sama",
+        "Agar hasil analisis bisa langsung dilihat setiap jam"
+      ],
+      "answer": 2,
+      "explanation": "Berjalan serentak membuat faktor waktu sama untuk kedua grup."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa tujuan A/A test?",
+      "code": "",
+      "options": [
+        "Menguji dua fitur baru yang sama-sama belum dirilis",
+        "Mengulang eksperimen A/B yang hasilnya tidak signifikan",
+        "Membandingkan dua metrik utama di grup kontrol",
+        "Menguji sistem eksperimen dengan dua grup identik"
+      ],
+      "answer": 3,
+      "explanation": "Bila sistem benar, A/A test seharusnya jarang memberi hasil signifikan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana urutan siklus eksperimen yang benar?",
+      "code": "",
+      "options": [
+        "Jalankan, analisis, hipotesis, rancang, ide, putuskan",
+        "Ide, hipotesis, rancang, jalankan, analisis, putuskan",
+        "Analisis, ide, jalankan, putuskan, hipotesis, rancang",
+        "Rancang, jalankan, putuskan, ide, analisis, hipotesis"
+      ],
+      "answer": 1,
+      "explanation": "Hipotesis dan rancangan ditetapkan sebelum eksperimen berjalan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Data observasi (tanpa pengacakan) paling kuat untuk",
+      "code": "",
+      "options": [
+        "Membuktikan sebab akibat secara pasti",
+        "Menggantikan semua eksperimen terkontrol",
+        "Menunjukkan hubungan antar variabel",
+        "Menghapus pengaruh faktor pengganggu"
+      ],
+      "answer": 2,
+      "explanation": "Tanpa pengacakan, hubungan belum tentu sebab akibat."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kapan hipotesis eksperimen sebaiknya ditulis?",
+      "code": "",
+      "options": [
+        "Setelah melihat metrik yang naik",
+        "Saat menulis laporan akhir",
+        "Hanya bila hasilnya signifikan",
+        "Sebelum eksperimen dimulai"
+      ],
+      "answer": 3,
+      "explanation": "Hipotesis yang ditulis setelah melihat data mengundang p-hacking."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "H0 dalam uji A/B konversi checkout menyatakan",
+      "code": "",
+      "options": [
+        "Tidak ada beda konversi antara A dan B",
+        "Konversi B pasti lebih tinggi dari konversi A",
+        "Konversi A pasti lebih tinggi dari B",
+        "Jumlah pengguna A dan B harus sama"
+      ],
+      "answer": 0,
+      "explanation": "H0 adalah hipotesis tanpa efek, yang ingin ditolak dengan bukti."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Berapa metrik utama yang ideal untuk satu eksperimen?",
+      "code": "",
+      "options": [
+        "Sebanyak mungkin agar ada yang naik",
+        "Minimal sepuluh",
+        "Satu",
+        "Tergantung hasil yang keluar nanti"
+      ],
+      "answer": 2,
+      "explanation": "Satu metrik utama yang dipilih di awal mencegah memilih metrik yang kebetulan bagus."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang paling cocok jadi metrik guardrail untuk tombol checkout baru?",
+      "code": "",
+      "options": [
+        "Jumlah warna di halaman produk",
+        "Jumlah karyawan tim produk",
+        "Nama varian yang dipakai",
+        "Tingkat error saat pembayaran"
+      ],
+      "answer": 3,
+      "explanation": "Error pembayaran adalah hal yang tidak boleh rusak demi konversi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Log berisi 3 event milik satu pengguna: lihat, lihat, beli. Bila konversi dihitung per pengguna, pengguna ini dihitung",
+      "code": "",
+      "options": [
+        "Satu pengguna yang membeli",
+        "Tiga pengguna, satu membeli",
+        "Dua pengguna yang tidak membeli",
+        "Sepertiga pengguna yang membeli"
+      ],
+      "answer": 0,
+      "explanation": "Konversi dihitung dari pengguna unik, bukan dari jumlah event."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Konversi naik 1 poin tetapi pembatalan pesanan naik dua kali lipat. Keputusan yang tepat",
+      "code": "",
+      "options": [
+        "Rilis karena metrik utama sudah naik",
+        "Jangan rilis karena guardrail jebol",
+        "Ganti metrik utama menjadi pembatalan",
+        "Abaikan pembatalan karena bukan metrik utama"
+      ],
+      "answer": 1,
+      "explanation": "Guardrail yang jebol membatalkan rilis walau metrik utama naik."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Feature flag paling tepat didefinisikan sebagai",
+      "code": "",
+      "options": [
+        "Cabang git khusus untuk menyimpan fitur yang belum selesai",
+        "Variabel lingkungan yang hanya dibaca saat server dinyalakan",
+        "Tanda bendera di dokumentasi untuk fitur yang sudah usang",
+        "Saklar di kode yang nilainya diatur dari luar tanpa deploy"
+      ],
+      "answer": 3,
+      "explanation": "Flag mengubah perilaku aplikasi tanpa perlu deploy ulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Urutan rollout bertahap yang wajar",
+      "code": "",
+      "options": [
+        "1%, 10%, 50%, lalu 100%",
+        "100% dulu, lalu turun bila ada error",
+        "50% ke 0% ke 100%",
+        "Acak setiap jam"
+      ],
+      "answer": 0,
+      "explanation": "Mulai kecil, pantau error, lalu naikkan bertahap."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Layanan flag sedang mati dan SDK tidak bisa mengambil konfigurasi. Sebaiknya aplikasi",
+      "code": "",
+      "options": [
+        "Berhenti melayani semua pengguna",
+        "Memakai nilai bawaan yang aman",
+        "Menyalakan semua flag yang ada",
+        "Mengacak nilai flag setiap request"
+      ],
+      "answer": 1,
+      "explanation": "Nilai bawaan harus perilaku lama yang sudah terbukti aman."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Aturan targeting flag dievaluasi berurutan. Bila dua aturan sama-sama cocok",
+      "code": "",
+      "options": [
+        "Aturan terakhir yang cocok yang dipakai",
+        "Kedua aturan digabung dan dirata-rata",
+        "Aturan pertama yang cocok yang dipakai",
+        "Flag otomatis dimatikan karena bentrok"
+      ],
+      "answer": 2,
+      "explanation": "Pola umum evaluasi targeting: yang cocok pertama menang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Flag debt terjadi ketika",
+      "code": "",
+      "options": [
+        "Flag lama tidak dihapus setelah keputusan",
+        "Biaya layanan flag ditagih terlalu mahal tiap bulan",
+        "Flag dinyalakan untuk 100% pengguna",
+        "Terlalu sedikit flag di aplikasi"
+      ],
+      "answer": 0,
+      "explanation": "Flag yang tertinggal menambah cabang kode yang membingungkan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa naik dari rollout 10% ke 50% tidak memindahkan pengguna lama, bila memakai bucket hash?",
+      "code": "",
+      "options": [
+        "Karena pengguna lama sudah dicatat di tabel",
+        "Bucket < 10 tetap memenuhi bucket < 50",
+        "Karena hash dihitung ulang dengan salt baru",
+        "Karena pengguna lama selalu masuk grup A"
+      ],
+      "answer": 1,
+      "explanation": "Bucket tetap, dan batasnya hanya bertambah lebar."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Apa akibat memakai random.random() setiap request untuk memilih varian?",
+      "code": "",
+      "options": [
+        "Pembagian pengguna pasti berubah menjadi 90/10",
+        "Hash menjadi tidak stabil",
+        "Pengguna yang sama bisa loncat varian",
+        "Server tidak bisa membaca flag"
+      ],
+      "answer": 2,
+      "explanation": "Tiap request diundi ulang, jadi pengalaman pengguna tidak konsisten."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa yang dicetak kode berikut?",
+      "code": "import hashlib\n\ndef bucket(salt, uid):\n    h = hashlib.sha256(f\"{salt}:{uid}\".encode()).hexdigest()\n    return int(h[:8], 16) % 100\n\nprint(bucket(\"checkout-v2\", \"siswa-001\") == bucket(\"checkout-v2\", \"siswa-001\"))",
+      "options": [
+        "False",
+        "32",
+        "Error karena hashlib",
+        "True"
+      ],
+      "answer": 3,
+      "explanation": "sha256 deterministik, jadi masukan sama selalu memberi bucket sama."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Bucket 72 dengan bobot A 50, B 30, C 20. Apa keluarannya?",
+      "code": "def varian(b, bobot):\n    batas = 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n\nprint(varian(72, {\"A\": 50, \"B\": 30, \"C\": 20}))",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "None"
+      ],
+      "answer": 1,
+      "explanation": "Batas kumulatif 50, 80, 100; 72 kurang dari 80 jadi B."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Unit randomisasi untuk fitur diskusi kelas yang dipakai bersama satu kelas sebaiknya",
+      "code": "",
+      "options": [
+        "Per klik",
+        "Per request",
+        "Per kelas",
+        "Per halaman"
+      ],
+      "answer": 2,
+      "explanation": "Siswa satu kelas saling memengaruhi, jadi acak per klaster kelas."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Unit analisis sebaiknya",
+      "code": "",
+      "options": [
+        "Selalu per event",
+        "Selalu per halaman",
+        "Dipilih setelah hasil keluar",
+        "Sama dengan unit randomisasi"
+      ],
+      "answer": 3,
+      "explanation": "Bila diacak per pengguna, analisis juga per pengguna."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mengganti salt eksperimen yang sedang berjalan akan",
+      "code": "",
+      "options": [
+        "Mengacak ulang pembagian pengguna",
+        "Membuat bucket semua pengguna jadi 0",
+        "Tidak mengubah apa pun sama sekali",
+        "Menghapus data eksperimen di database"
+      ],
+      "answer": 0,
+      "explanation": "Salt baru menghasilkan hash dan bucket yang berbeda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Alpha 0,05 adalah",
+      "code": "",
+      "options": [
+        "Peluang melewatkan efek yang sebenarnya ada",
+        "Besar efek minimum yang dicari",
+        "Peluang positif palsu yang diterima",
+        "Porsi pengguna di grup B"
+      ],
+      "answer": 2,
+      "explanation": "Alpha adalah batas peluang menyatakan beda padahal tidak ada."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Beta dalam perencanaan eksperimen adalah",
+      "code": "",
+      "options": [
+        "Peluang positif palsu yang masih kita terima",
+        "Rasio pembagian antara grup A dan grup B",
+        "Varians metrik utama sebelum eksperimen",
+        "Peluang melewatkan efek yang sebenarnya ada"
+      ],
+      "answer": 3,
+      "explanation": "Power = 1 - beta."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "MDE adalah",
+      "code": "",
+      "options": [
+        "Efek terkecil yang layak dideteksi",
+        "Efek terbesar yang pernah terjadi di eksperimen",
+        "Rata-rata efek eksperimen lain",
+        "Metrik dengan error terendah"
+      ],
+      "answer": 0,
+      "explanation": "MDE dipilih dari besar efek yang berarti bagi bisnis."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila MDE diperkecil menjadi setengahnya, sampel yang dibutuhkan kira-kira",
+      "code": "",
+      "options": [
+        "Turun menjadi setengahnya",
+        "Naik sekitar 4 kali",
+        "Naik 2 kali",
+        "Tetap sama"
+      ],
+      "answer": 1,
+      "explanation": "Ukuran sampel berbanding terbalik dengan kuadrat selisih."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dibutuhkan 8155 pengguna per grup, 2 grup, dan ada 2000 pengguna baru per hari. Durasi minimal sekitar",
+      "code": "",
+      "options": [
+        "4 hari",
+        "16 hari",
+        "2 hari",
+        "9 hari"
+      ],
+      "answer": 3,
+      "explanation": "16310 dibagi 2000 sekitar 8,2, dibulatkan ke 9 hari, lalu sebaiknya ke minggu penuh."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa durasi eksperimen dibulatkan ke minggu penuh?",
+      "code": "",
+      "options": [
+        "Perilaku tiap hari dalam seminggu berbeda",
+        "Agar laporan mingguan bisa dikirim setiap Senin pagi",
+        "Karena rumus sampel butuh angka 7",
+        "Agar SRM tidak mungkin terjadi"
+      ],
+      "answer": 0,
+      "explanation": "Senin dan Sabtu bisa sangat berbeda, jadi semua hari harus terwakili."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Bila ukuran sampel dibuat 4 kali lebih besar, galat baku proporsi menjadi",
+      "code": "",
+      "options": [
+        "Seperempatnya",
+        "Setengahnya",
+        "Dua kali lipat",
+        "Tidak berubah"
+      ],
+      "answer": 1,
+      "explanation": "Galat baku sebanding dengan 1 / akar n."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada uji z dua proporsi, proporsi gabungan (pooled) dipakai untuk",
+      "code": "",
+      "options": [
+        "Menentukan varian yang menang",
+        "Menghitung interval kepercayaan Wald",
+        "Menghitung galat baku di bawah H0",
+        "Mengecek sample ratio mismatch"
+      ],
+      "answer": 2,
+      "explanation": "Di bawah H0 kedua grup dianggap punya proporsi sama."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Welch t-test dipilih untuk membandingkan rata-rata karena",
+      "code": "",
+      "options": [
+        "Tidak menganggap varians kedua grup sama",
+        "Hanya bisa dipakai untuk data proporsi",
+        "Tidak memerlukan rata-rata setiap grup",
+        "Selalu menghasilkan p-value lebih kecil"
+      ],
+      "answer": 0,
+      "explanation": "Welch aman dipakai walau sebaran kedua grup berbeda."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rata-rata belanja A Rp48.000 (sd 30.000, n 2000), B Rp50.500 (sd 32.000, n 2000). Nilai t Welch sekitar",
+      "code": "",
+      "options": [
+        "0,08",
+        "2,55",
+        "1,96",
+        "25,0"
+      ],
+      "answer": 1,
+      "explanation": "Selisih 2500 dibagi galat baku sekitar 981 memberi t sekitar 2,55."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pustaka standar Python tidak punya distribusi t. Untuk sampel ratusan per grup ke atas, p-value Welch bisa didekati dengan",
+      "code": "",
+      "options": [
+        "Distribusi seragam",
+        "Fungsi hash sha256",
+        "Distribusi normal",
+        "Rata-rata kedua grup"
+      ],
+      "answer": 2,
+      "explanation": "Dengan df besar, distribusi t hampir sama dengan normal."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "CI 95% selisih konversi +0,17 sampai +1,58 poin. Kesimpulan yang tepat",
+      "code": "",
+      "options": [
+        "Tidak ada beda karena selisihnya kecil",
+        "B pasti naik tepat 0,875 poin",
+        "Eksperimen harus diulang dari awal",
+        "Ada beda dan B kemungkinan lebih tinggi"
+      ],
+      "answer": 3,
+      "explanation": "CI tidak memuat nol dan seluruhnya positif."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Hasil eksperimen memberi p = 0,058. Pernyataan yang benar",
+      "code": "",
+      "options": [
+        "Terbukti tidak ada efek sama sekali pada konversi",
+        "Data belum cukup kuat untuk menolak H0",
+        "Peluang B lebih baik adalah 94,2%",
+        "Peluang H0 benar adalah 5,8%"
+      ],
+      "answer": 1,
+      "explanation": "p di atas alpha berarti belum cukup bukti, bukan bukti tidak ada efek."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Dengan jutaan pengguna, kenaikan 0,01 poin bisa signifikan. Pelajarannya",
+      "code": "",
+      "options": [
+        "Hasil itu pasti salah karena efeknya terlalu kecil untuk diuji",
+        "Eksperimen besar selalu menghasilkan SRM",
+        "Signifikan statistik belum tentu penting bagi bisnis",
+        "Alpha harus dinaikkan menjadi 0,5"
+      ],
+      "answer": 2,
+      "explanation": "Lihat besar efek dan CI, bukan hanya p-value."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Simulasi A/A dengan mengintip 10 kali memberi positif palsu sekitar 19%. Penyebabnya",
+      "code": "",
+      "options": [
+        "Simulasi A/A memang selalu memberi hasil 19% apa pun aturannya",
+        "Data A/A rusak karena kedua grup berisi pengguna yang sama",
+        "Uji z tidak bisa dipakai untuk data hasil simulasi",
+        "Setiap intipan adalah peluang baru untuk kebetulan signifikan"
+      ],
+      "answer": 3,
+      "explanation": "Berhenti pada intipan pertama yang signifikan melipatgandakan peluang salah."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Cara yang benar menghindari masalah mengintip",
+      "code": "",
+      "options": [
+        "Tetapkan durasi di awal atau pakai uji sekuensial",
+        "Intip lebih sering agar efek cepat terlihat",
+        "Pakai alpha 0,1 agar lebih mudah signifikan",
+        "Hentikan eksperimen saat p di bawah 0,05"
+      ],
+      "answer": 0,
+      "explanation": "Durasi tetap atau metode sekuensial menjaga laju positif palsu."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Menguji 10 metrik independen pada alpha 0,05, peluang minimal satu positif palsu sekitar",
+      "code": "",
+      "options": [
+        "5%",
+        "50%",
+        "40%",
+        "10%"
+      ],
+      "answer": 2,
+      "explanation": "1 - 0,95^10 = 0,401."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Koreksi Bonferroni untuk 10 uji pada alpha 0,05 memakai batas",
+      "code": "",
+      "options": [
+        "0,5",
+        "0,05",
+        "0,0005",
+        "0,005"
+      ],
+      "answer": 3,
+      "explanation": "Bonferroni membagi alpha dengan jumlah uji."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Sample ratio mismatch berarti",
+      "code": "",
+      "options": [
+        "Rasio pengguna antar grup menyimpang dari rencana",
+        "Konversi grup B jauh lebih tinggi daripada konversi grup A",
+        "Jumlah metrik utama lebih dari satu",
+        "Ukuran sampel lebih kecil dari hitungan awal"
+      ],
+      "answer": 0,
+      "explanation": "SRM menandakan ada masalah di assignment atau pencatatan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Uji yang dipakai untuk mengecek SRM dua grup",
+      "code": "",
+      "options": [
+        "Welch t-test untuk rata-rata",
+        "Chi-kuadrat goodness of fit, df 1",
+        "Uji z dua proporsi pada konversi",
+        "Korelasi Pearson antar grup"
+      ],
+      "answer": 1,
+      "explanation": "Jumlah teramati dibandingkan jumlah harapan dari rasio rencana."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Rencana 50/50, teramati 10120 vs 9880 (chi2 = 2,88, p sekitar 0,09). Kesimpulan",
+      "code": "",
+      "options": [
+        "Pasti ada bug assignment",
+        "Eksperimen harus dihentikan",
+        "Grup A harus dikurangi",
+        "Tidak ada tanda SRM"
+      ],
+      "answer": 3,
+      "explanation": "p jauh di atas 0,001, selisih masih wajar karena kebetulan."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Mana yang bisa menyebabkan SRM?",
+      "code": "",
+      "options": [
+        "Redirect di varian B membuang sebagian pengguna",
+        "Konversi grup B lebih tinggi dari grup A",
+        "Metrik guardrail dipantau setiap hari",
+        "Eksperimen berjalan dua minggu penuh"
+      ],
+      "answer": 0,
+      "explanation": "Pengguna yang hilang dari satu grup membuat rasionya menyimpang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Pada CUPED, theta dihitung sebagai",
+      "code": "",
+      "options": [
+        "rata-rata(Y) / rata-rata(X)",
+        "kovarians(X, Y) / varians(X)",
+        "varians(Y) - varians(X)",
+        "korelasi(X, Y) x n"
+      ],
+      "answer": 1,
+      "explanation": "Theta adalah koefisien regresi Y terhadap data sebelum eksperimen X."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Klik fitur baru tinggi di minggu pertama lalu turun perlahan. Ini tanda",
+      "code": "",
+      "options": [
+        "Sample ratio mismatch",
+        "Bonferroni terlalu ketat",
+        "Efek baru (novelty)",
+        "Unit randomisasi salah"
+      ],
+      "answer": 2,
+      "explanation": "Pengguna penasaran di awal, lalu kembali ke kebiasaan biasa."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Keluaran kode berikut adalah",
+      "code": "def keputusan(srm, guardrail_ok, ci):\n    if srm:\n        return \"periksa data\"\n    if not guardrail_ok or ci[1] < 0:\n        return \"jangan rilis\"\n    if ci[0] > 0:\n        return \"rilis\"\n    return \"lanjutkan\"\n\nprint(keputusan(False, True, (-0.0002, 0.0122)))",
+      "options": [
+        "lanjutkan",
+        "rilis",
+        "jangan rilis",
+        "periksa data"
+      ],
+      "answer": 0,
+      "explanation": "Tidak ada SRM, guardrail aman, dan CI memuat nol."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "CI 95% selisih konversi seluruhnya negatif dan guardrail aman. Keputusan",
+      "code": "",
+      "options": [
+        "Rilis ke 100%",
+        "Jangan rilis",
+        "Ulang dengan salt baru",
+        "Pilih segmen yang naik"
+      ],
+      "answer": 1,
+      "explanation": "Varian baru menurunkan konversi."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Isi laporan eksperimen yang baik mencakup",
+      "code": "",
+      "options": [
+        "Hanya angka p-value terkecil dari semua metrik",
+        "Daftar nama semua pengguna di grup varian B",
+        "Hipotesis, rancangan, hasil dengan CI, dan keputusan",
+        "Hanya segmen pengguna yang hasilnya signifikan"
+      ],
+      "answer": 2,
+      "explanation": "Laporan lengkap membuat keputusan bisa diperiksa dan diulang."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Kenapa hasil eksperimen netral tetap dicatat?",
+      "code": "",
+      "options": [
+        "Agar bisa diubah menjadi hasil signifikan",
+        "Karena hasil netral selalu berarti ada bug",
+        "Karena wajib dirilis ke semua pengguna",
+        "Agar ide yang sama tidak diuji ulang sia-sia"
+      ],
+      "answer": 3,
+      "explanation": "Hasil netral adalah pengetahuan, bukan kegagalan."
+    },
+    {
+      "type": "baca_kode",
+      "prompt": "Apa keluaran kode berikut?",
+      "code": "flag = {\"aktif\": False, \"bawaan\": \"lama\", \"persen\": 100}\n\ndef nilai(flag, b):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    return \"baru\" if b < flag[\"persen\"] else \"lama\"\n\nprint(nilai(flag, 5))",
+      "options": [
+        "baru",
+        "lama",
+        "None",
+        "Error"
+      ],
+      "answer": 1,
+      "explanation": "Flag tidak aktif, jadi nilai bawaan yang dipakai walau persen 100."
+    },
+    {
+      "type": "pilihan_ganda",
+      "prompt": "Eksperimen mana yang bermasalah secara etika?",
+      "code": "",
+      "options": [
+        "Menguji dua letak tombol checkout yang sama jelas",
+        "Menguji dua warna banner promo yang sama jujur",
+        "Menampilkan harga lebih mahal untuk pengguna HP mahal",
+        "Menguji urutan menu kantin berdasarkan popularitas"
+      ],
+      "answer": 2,
+      "explanation": "Harga diskriminatif merugikan pengguna dan tidak adil."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Eksperimen terkontrol bisa memisahkan efek fitur dari efek gajian karena kedua grup mengalami gajian yang sama.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Grup berjalan serentak, jadi faktor waktu sama."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Metrik utama boleh diganti setelah melihat metrik mana yang naik paling tinggi.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "Mengganti metrik setelah melihat data adalah p-hacking."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Dengan bucket hash, pengguna yang sama selalu mendapat bucket yang sama untuk salt yang sama.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Hash bersifat deterministik."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Bila CI 95% memuat nol, berarti terbukti A dan B sama persis.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 1,
+      "explanation": "CI memuat nol hanya berarti belum cukup bukti adanya beda."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "Bila terdeteksi SRM, hasil metrik utama sebaiknya tidak dipakai untuk keputusan sampai penyebabnya ditemukan.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "SRM menandakan data rusak sehingga hasilnya tidak bisa dipercaya."
+    },
+    {
+      "type": "benar_salah",
+      "prompt": "CUPED mengurangi varians memakai data metrik yang sama dari sebelum eksperimen.",
+      "code": "",
+      "options": [
+        "Benar",
+        "Salah"
+      ],
+      "answer": 0,
+      "explanation": "Varians tersisa sekitar 1 - rho kuadrat dari semula."
+    }
+  ],
+  "prerequisites": [
+    "analisis-data-dengan-python"
+  ],
+  "project": {
+    "kind": "python",
+    "title": "Analisis Eksperimen Tombol Checkout",
+    "brief": "Tim KantinKu sudah menjalankan eksperimen tombol checkout baru selama dua minggu. Varian A memakai tombol lama, varian B tombol baru yang lebih besar. Tugasmu menyusun modul **Analisis Eksperimen Tombol Checkout** yang membagi pengguna ke varian, meringkas log, memeriksa kesehatan data, menguji selisih konversi, lalu memberi keputusan rilis.\n\nProgram tidak memakai `input()`, file, atau jaringan, dan hanya memakai pustaka standar (`hashlib`, `math`, `statistics`). Pemeriksa sudah menyiapkan:\n\n- `UIDS`: list 6000 ID pengguna, `\"siswa-0001\"` sampai `\"siswa-6000\"`.\n- `buat_log(fungsi_varian)`: membangkitkan log event secara deterministik dengan `random.Random(2026)`. Setiap pengguna punya 1 sampai 3 event kunjungan, dan pembeli punya 1 sampai 2 event beli. Bentuk event: `{\"uid\": \"siswa-0001\", \"varian\": \"A\", \"beli\": False, \"total\": 0}`.\n- `LOG_RUSAK`: ringkasan eksperimen lain yang jumlah penggunanya tidak seimbang (10000 vs 10500).\n- `HASIL_GUARDRAIL`: waktu muat checkout A dan B beserta batas kenaikan yang diizinkan (10%).\n\n## Fungsi wajib\n\n| Nama | Tugas |\n| --- | --- |\n| `bucket(salt, uid)` | Hash `sha256` dari teks `f\"{salt}:{uid}\"`, ambil 8 karakter hex pertama, ubah ke int basis 16, lalu `% 100`. Hasil 0 sampai 99. |\n| `varian(salt, uid, bobot)` | `bobot` berupa dict berurutan seperti `{\"A\": 50, \"B\": 50}` atau `{\"A\": 90, \"B\": 10}`. Jumlahkan persen secara kumulatif dan kembalikan nama varian pertama yang batas kumulatifnya lebih besar dari bucket. |\n| `ringkas(log)` | Dict per varian `{\"n\", \"pembeli\", \"konversi\"}`. `n` adalah banyaknya **uid unik** di varian itu, `pembeli` banyaknya uid unik yang punya minimal satu event `beli` bernilai `True`, `konversi` = `pembeli / n`. |\n| `cek_srm(n_a, n_b, rasio=0.5)` | Uji chi-kuadrat goodness of fit dengan harapan `(n_a + n_b) * rasio` untuk A dan sisanya untuk B. Kembalikan `{\"chi2\", \"p\", \"srm\"}`, dengan `p = math.erfc(math.sqrt(chi2 / 2))` dan `srm` bernilai `True` bila `p < 0.001`. |\n| `uji_z(x_a, n_a, x_b, n_b)` | Uji z dua proporsi dengan proporsi gabungan. Kembalikan `{\"z\", \"p\"}` dengan p-value dua sisi `2 * (1 - NormalDist().cdf(abs(z)))`. |\n| `interval(x_a, n_a, x_b, n_b, tingkat=0.95)` | Tuple `(bawah, atas)` untuk selisih proporsi B - A, galat baku tanpa pooling, dan `z = NormalDist().inv_cdf((1 + tingkat) / 2)`. |\n| `keputusan(ringkasan, guardrail_ok)` | `ringkasan` berbentuk hasil `ringkas`. Periksa berurutan: SRM (`\"periksa data\"`), guardrail jebol atau batas atas CI 95% di bawah nol (`\"jangan rilis\"`), batas bawah CI di atas nol (`\"rilis\"`), selain itu `\"lanjutkan\"`. |\n\n## Contoh hasil\n\n```python\nbucket(\"checkout-v2\", \"siswa-001\")              # 32\nbucket(\"banner-promo\", \"siswa-001\")             # 8\ncek_srm(10000, 10500)[\"srm\"]                    # True  (chi2 12.20, p 0.00048)\nround(uji_z(400, 8000, 470, 8000)[\"z\"], 2)      # 2.44\ninterval(500, 10000, 560, 10000)                # kira-kira (-0.00021, 0.01221)\nkeputusan(LOG_RUSAK, True)                      # \"periksa data\"\n```\n\nSetelah semua fungsi jalan, baris di bagian bawah kode awal membagi `UIDS` dengan salt `checkout-v2`, membangkitkan log, dan mencetak ringkasan serta keputusannya. Kerjakan berurutan: `varian` bergantung pada `bucket`, dan `keputusan` memakai `cek_srm` serta `interval`. Ingat juga bahwa satu pengguna bisa muncul berkali-kali di log; menghitung event alih-alih pengguna adalah kesalahan yang paling sering terjadi.",
+    "prompt": "Lengkapi tujuh fungsi di kode awal: `bucket`, `varian`, `ringkas`, `cek_srm`, `uji_z`, `interval`, dan `keputusan`. Baca brief untuk aturan lengkap. `UIDS`, `buat_log`, `LOG_RUSAK`, dan `HASIL_GUARDRAIL` sudah disiapkan pemeriksa. Ringkasan harus menghitung pengguna unik, dan keputusan diperiksa berurutan: SRM, guardrail dan CI negatif, CI positif, lalu lanjutkan.",
+    "starter": {
+      "code": "import hashlib\nimport math\nfrom statistics import NormalDist\n\n\ndef bucket(salt, uid):\n    # TODO: sha256 dari f\"{salt}:{uid}\", 8 karakter hex pertama, mod 100\n    return 0\n\n\ndef varian(salt, uid, bobot):\n    # TODO: telusuri bobot berurutan, kembalikan nama varian saat bucket < batas kumulatif\n    return \"A\"\n\n\ndef ringkas(log):\n    # TODO: per varian {\"n\", \"pembeli\", \"konversi\"} dari pengguna UNIK\n    return {}\n\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    # TODO: chi-kuadrat goodness of fit df 1, p = math.erfc(math.sqrt(chi2 / 2))\n    return {\"chi2\": 0.0, \"p\": 1.0, \"srm\": False}\n\n\ndef uji_z(x_a, n_a, x_b, n_b):\n    # TODO: uji z dua proporsi dengan proporsi gabungan, p-value dua sisi\n    return {\"z\": 0.0, \"p\": 1.0}\n\n\ndef interval(x_a, n_a, x_b, n_b, tingkat=0.95):\n    # TODO: CI selisih B - A tanpa pooling, z = NormalDist().inv_cdf((1 + tingkat) / 2)\n    return (0.0, 0.0)\n\n\ndef keputusan(ringkasan, guardrail_ok):\n    # TODO: urutan SRM -> guardrail dan CI negatif -> CI positif -> lanjutkan\n    return \"lanjutkan\"\n\n\nLOG = buat_log(lambda uid: varian(\"checkout-v2\", uid, {\"A\": 50, \"B\": 50}))\nHASIL = ringkas(LOG)\nprint(HASIL)\nprint(keputusan(HASIL, True))\n"
+    },
+    "solution": {
+      "code": "import hashlib\nimport math\nfrom statistics import NormalDist\n\n\ndef bucket(salt, uid):\n    h = hashlib.sha256(f\"{salt}:{uid}\".encode()).hexdigest()\n    return int(h[:8], 16) % 100\n\n\ndef varian(salt, uid, bobot):\n    b = bucket(salt, uid)\n    batas = 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n    return None\n\n\ndef ringkas(log):\n    pengguna, pembeli = {}, {}\n    for e in log:\n        v = e[\"varian\"]\n        pengguna.setdefault(v, set()).add(e[\"uid\"])\n        pembeli.setdefault(v, set())\n        if e[\"beli\"]:\n            pembeli[v].add(e[\"uid\"])\n    hasil = {}\n    for v in sorted(pengguna):\n        n, x = len(pengguna[v]), len(pembeli[v])\n        hasil[v] = {\"n\": n, \"pembeli\": x, \"konversi\": x / n}\n    return hasil\n\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    total = n_a + n_b\n    e_a = total * rasio\n    e_b = total - e_a\n    chi2 = (n_a - e_a) ** 2 / e_a + (n_b - e_b) ** 2 / e_b\n    p = math.erfc(math.sqrt(chi2 / 2))\n    return {\"chi2\": chi2, \"p\": p, \"srm\": p < 0.001}\n\n\ndef uji_z(x_a, n_a, x_b, n_b):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    p = (x_a + x_b) / (n_a + n_b)\n    se = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\n    z = (p_b - p_a) / se\n    return {\"z\": z, \"p\": 2 * (1 - NormalDist().cdf(abs(z)))}\n\n\ndef interval(x_a, n_a, x_b, n_b, tingkat=0.95):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    se = math.sqrt(p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b)\n    z = NormalDist().inv_cdf((1 + tingkat) / 2)\n    d = p_b - p_a\n    return (d - z * se, d + z * se)\n\n\ndef keputusan(ringkasan, guardrail_ok):\n    a, b = ringkasan[\"A\"], ringkasan[\"B\"]\n    if cek_srm(a[\"n\"], b[\"n\"])[\"srm\"]:\n        return \"periksa data\"\n    bawah, atas = interval(a[\"pembeli\"], a[\"n\"], b[\"pembeli\"], b[\"n\"])\n    if not guardrail_ok or atas < 0:\n        return \"jangan rilis\"\n    if bawah > 0:\n        return \"rilis\"\n    return \"lanjutkan\"\n\n\nLOG = buat_log(lambda uid: varian(\"checkout-v2\", uid, {\"A\": 50, \"B\": 50}))\nHASIL = ringkas(LOG)\nprint(HASIL)\nprint(keputusan(HASIL, True))\n"
+    },
+    "setup": "import random\n\nUIDS = [f\"siswa-{i:04d}\" for i in range(1, 6001)]\n\n\ndef peluang_beli(uid, varian):\n    # Peluang membeli yang \"sebenarnya\" (tidak diketahui tim saat eksperimen).\n    return 0.10 if varian == \"A\" else 0.125\n\n\ndef buat_log(fungsi_varian):\n    \"\"\"Log event KantinKu. fungsi_varian(uid) -> \"A\" atau \"B\".\"\"\"\n    r = random.Random(2026)\n    log = []\n    for uid in UIDS:\n        v = fungsi_varian(uid)\n        for _ in range(r.randint(1, 3)):\n            log.append({\"uid\": uid, \"varian\": v, \"beli\": False, \"total\": 0})\n        if r.random() < peluang_beli(uid, v):\n            for _ in range(r.randint(1, 2)):\n                log.append({\"uid\": uid, \"varian\": v, \"beli\": True, \"total\": r.randint(5, 40) * 1000})\n    return log\n\n\nLOG_RUSAK = {\n    \"A\": {\"n\": 10000, \"pembeli\": 500, \"konversi\": 0.05},\n    \"B\": {\"n\": 10500, \"pembeli\": 620, \"konversi\": 620 / 10500},\n}\n\nHASIL_GUARDRAIL = {\"metrik\": \"waktu muat checkout (ms)\", \"A\": 820, \"B\": 1240, \"batas_naik\": 0.10}\n",
+    "tests": [
+      {
+        "name": "bucket stabil, 0 sampai 99, dan cocok dengan contoh",
+        "check": "bucket(\"checkout-v2\", \"siswa-001\") == 32 and bucket(\"banner-promo\", \"siswa-001\") == 8 and bucket(\"checkout-v2\", \"budi\") == 53 and all(0 <= bucket(\"checkout-v2\", u) <= 99 for u in UIDS)"
+      },
+      {
+        "name": "varian stabil dan sebaran mendekati 50/50",
+        "check": "varian(\"checkout-v2\", \"siswa-0001\", {\"A\": 50, \"B\": 50}) == varian(\"checkout-v2\", \"siswa-0001\", {\"A\": 50, \"B\": 50}) and 2850 <= sum(varian(\"checkout-v2\", u, {\"A\": 50, \"B\": 50}) == \"A\" for u in UIDS) <= 3150"
+      },
+      {
+        "name": "Bobot 90/10 mengikuti batas bucket",
+        "check": "all(varian(\"checkout-v2\", u, {\"A\": 90, \"B\": 10}) == (\"A\" if bucket(\"checkout-v2\", u) < 90 else \"B\") for u in UIDS[:1000]) and varian(\"x\", \"siswa-0001\", {\"A\": 0, \"B\": 100}) == \"B\""
+      },
+      {
+        "name": "Salt berbeda mengubah pembagian",
+        "check": "2700 <= sum(varian(\"checkout-v2\", u, {\"A\": 50, \"B\": 50}) != varian(\"banner-promo\", u, {\"A\": 50, \"B\": 50}) for u in UIDS) <= 3300"
+      },
+      {
+        "name": "ringkas menghitung pengguna unik, bukan event",
+        "check": "ringkas([{\"uid\": \"u1\", \"varian\": \"A\", \"beli\": False, \"total\": 0}, {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": True, \"total\": 9000}, {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": True, \"total\": 6000}, {\"uid\": \"u2\", \"varian\": \"A\", \"beli\": False, \"total\": 0}, {\"uid\": \"u3\", \"varian\": \"B\", \"beli\": False, \"total\": 0}]) == {\"A\": {\"n\": 2, \"pembeli\": 1, \"konversi\": 0.5}, \"B\": {\"n\": 1, \"pembeli\": 0, \"konversi\": 0.0}}"
+      },
+      {
+        "name": "Ringkasan log tombol checkout",
+        "check": "HASIL[\"A\"][\"n\"] + HASIL[\"B\"][\"n\"] == 6000 and HASIL[\"A\"][\"n\"] == 3023 and HASIL[\"A\"][\"pembeli\"] == 278 and HASIL[\"B\"][\"pembeli\"] == 387"
+      },
+      {
+        "name": "SRM terdeteksi pada 10000 vs 10500, tidak pada 10120 vs 9880",
+        "check": "cek_srm(10000, 10500)[\"srm\"] is True and abs(cek_srm(10000, 10500)[\"chi2\"] - 12.1951) < 1e-3 and cek_srm(10120, 9880)[\"srm\"] is False and abs(cek_srm(10120, 9880)[\"p\"] - 0.089686) < 1e-3"
+      },
+      {
+        "name": "uji_z 400/8000 vs 470/8000: z 2,44, p 0,0147",
+        "check": "abs(uji_z(400, 8000, 470, 8000)[\"z\"] - 2.4405) < 1e-3 and abs(uji_z(400, 8000, 470, 8000)[\"p\"] - 0.014667) < 1e-3"
+      },
+      {
+        "name": "interval memuat atau tidak memuat nol sesuai contoh",
+        "check": "interval(400, 8000, 470, 8000)[0] > 0 and abs(interval(400, 8000, 470, 8000)[0] - 0.001724) < 1e-4 and interval(500, 10000, 560, 10000)[0] < 0 < interval(500, 10000, 560, 10000)[1] and interval(400, 8000, 470, 8000, 0.99)[0] < 0"
+      },
+      {
+        "name": "keputusan untuk empat kasus",
+        "check": "keputusan(LOG_RUSAK, True) == \"periksa data\" and keputusan(HASIL, HASIL_GUARDRAIL[\"B\"] <= HASIL_GUARDRAIL[\"A\"] * (1 + HASIL_GUARDRAIL[\"batas_naik\"])) == \"jangan rilis\" and keputusan(HASIL, True) == \"rilis\" and keputusan({\"A\": {\"n\": 10000, \"pembeli\": 500, \"konversi\": 0.05}, \"B\": {\"n\": 10000, \"pembeli\": 560, \"konversi\": 0.056}}, True) == \"lanjutkan\""
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "slug": "kenapa-eksperimen",
+      "title": "Kenapa Eksperimen?",
+      "est_minutes": 25,
+      "slide_from": 1,
+      "slide_to": 4,
+      "body": "## Tujuan\n\n- Menjelaskan kenapa keputusan produk sebaiknya diuji dengan data, bukan hanya opini.\n- Membedakan korelasi dan kausalitas, lalu mengenali faktor pengganggu.\n- Memahami kenapa perbandingan sebelum dan sesudah rilis sering menyesatkan.\n- Mengenal ciri eksperimen terkontrol, A/A test, dan siklus eksperimen.\n\n## KantinKu dan tombol checkout baru\n\nSepanjang kelas ini kita akan menemani tim kecil yang mengelola **KantinKu**, toko online kantin sekolah. Siswa memesan nasi goreng, mie ayam, atau es teh dari HP, lalu tinggal mengambil pesanan saat istirahat. Tim KantinKu punya banyak ide: tombol checkout yang selalu terlihat di bawah layar, banner promo di halaman depan, dan rekomendasi menu berdasarkan pesanan sebelumnya.\n\nMasalahnya, setiap orang di tim punya pendapat sendiri. Desainer yakin tombol baru lebih enak dipakai. Pemilik kantin merasa banner promo bikin halaman ramai. Siapa yang benar? Kalau keputusan diambil dari siapa yang paling keras bicara atau paling tinggi jabatannya, hasilnya bergantung pada keberuntungan. Banyak perusahaan teknologi besar melaporkan bahwa sebagian besar ide yang mereka uji ternyata tidak menaikkan metrik apa pun, dan sebagian malah menurunkannya. Artinya, rasa yakin tim bukan bukti.\n\nKelas ini mengajarkan cara menjawab pertanyaan seperti itu dengan **eksperimen A/B**: membagi pengguna secara acak ke versi lama (A) dan versi baru (B), lalu membandingkan hasilnya dengan statistik yang jujur. Kamu juga akan belajar **feature flag**, saklar di kode yang membuat pembagian itu bisa dilakukan tanpa deploy ulang.\n\n## Angka naik, tapi karena apa?\n\nMisalnya tim KantinKu memasang tombol checkout baru hari Senin. Hari Jumat, seseorang membuka dasbor dan berteriak senang: konversi naik dari 5,0% menjadi 5,6%. Konversi di sini berarti persentase pengguna yang akhirnya membeli.\n\n![Angka naik setelah rilis, tapi penyebabnya bercampur](slide:2)\n\nSebelum merayakan, coba lihat kalender. Jumat itu tanggal gajian, banyak orang tua mengisi saldo jajan anaknya. Minggu itu juga ada promo gratis ongkir dari tim pemasaran. Ditambah lagi, minggu sebelumnya ujian, jadi siswa jarang memesan. Semua hal ini terjadi berbarengan dengan rilis tombol baru.\n\nPerbandingan **sebelum dan sesudah** mencampur semua sebab itu jadi satu angka. Kenaikan 0,6 poin bisa karena tombol, karena gajian, karena promo, atau gabungan semuanya. Bahkan bisa saja tombol baru sebenarnya menurunkan konversi, tetapi tertutup oleh efek gajian yang jauh lebih besar. Tanpa pembanding yang hidup di waktu yang sama, kamu tidak punya cara memisahkan pengaruh masing-masing.\n\n## Korelasi bukan kausalitas\n\nContoh klasik dari halaman sekolah: di bulan-bulan tertentu, penjualan es teh di kantin naik, dan jumlah siswa yang pingsan saat upacara juga naik. Kalau hanya melihat dua grafik itu, kamu bisa tergoda menyimpulkan es teh membuat siswa pingsan. Tentu tidak. Penyebab keduanya sama: cuaca sedang panas.\n\nDua angka yang bergerak bersama disebut **berkorelasi**. Tapi korelasi tidak sama dengan **kausalitas** (hubungan sebab akibat). Cuaca panas di contoh tadi adalah **faktor pengganggu** (confounder): variabel ketiga yang memengaruhi kedua angka sekaligus sehingga keduanya tampak berhubungan.\n\nDi produk digital, faktor pengganggu ada di mana-mana:\n\n- **Waktu**: gajian, libur sekolah, musim ujian, Ramadan.\n- **Kampanye lain**: promo ongkir, pengumuman di grup kelas, iklan baru.\n- **Jenis pengguna**: siswa yang rajin membuka aplikasi mungkin lebih cepat mencoba fitur baru dan memang lebih sering membeli.\n\nPoin terakhir penting. Misalnya KantinKu membiarkan siswa memilih sendiri mau memakai tombol baru atau lama. Yang memilih tombol baru kemungkinan pengguna aktif yang memang sering jajan. Konversi mereka tinggi, tapi bukan karena tombolnya. Data seperti ini disebut **data observasi**: kita hanya mengamati apa yang terjadi, tanpa mengatur siapa mendapat apa. Data observasi bisa menunjukkan hubungan, tetapi sulit membuktikan sebab.\n\n## Eksperimen terkontrol\n\nJalan keluarnya adalah **eksperimen terkontrol acak** (randomized controlled experiment). Di dunia produk namanya eksperimen A/B. Ciri-cirinya:\n\n1. **Acak.** Setiap pengguna dimasukkan ke grup A atau B oleh sistem secara acak, bukan dipilih sendiri dan bukan dipilih tim. Karena acak, siswa rajin dan siswa jarang jajan tersebar merata di kedua grup.\n2. **Serentak.** A dan B berjalan di hari yang sama. Gajian, promo ongkir, dan cuaca panas dirasakan kedua grup bersamaan, jadi pengaruhnya saling meniadakan saat dibandingkan.\n3. **Satu perubahan.** Satu-satunya perbedaan yang disengaja antara A dan B adalah hal yang diuji, misalnya posisi tombol checkout.\n\nDengan tiga syarat itu, kalau B jauh lebih baik dari A, penjelasan yang masuk akal tinggal dua: perubahannya memang berpengaruh, atau perbedaannya hanya kebetulan acak. Bab-bab statistik nanti mengajarkan cara mengukur seberapa besar kemungkinan \"hanya kebetulan\".\n\nDalam kode, ide membandingkan grup sederhana sekali. Misalnya log berisi satu baris per pengguna:\n\n```python\nlog = [\n    {\"uid\": \"siswa-001\", \"varian\": \"A\", \"beli\": True},\n    {\"uid\": \"siswa-002\", \"varian\": \"B\", \"beli\": False},\n    {\"uid\": \"siswa-003\", \"varian\": \"B\", \"beli\": True},\n]\n\ndef konversi(log, varian):\n    grup = [e for e in log if e[\"varian\"] == varian]\n    return sum(e[\"beli\"] for e in grup) / len(grup)\n```\n\n`True` di Python dihitung sebagai 1 dan `False` sebagai 0, jadi `sum(e[\"beli\"] ...)` langsung menghasilkan jumlah pembeli.\n\n## A/A test: menguji sistemnya dulu\n\nSebelum memakai sistem eksperimen untuk keputusan penting, banyak tim menjalankan **A/A test**: dua grup yang mendapat versi yang **sama persis**. Karena tidak ada perbedaan, hasilnya seharusnya mirip. Kalau A/A test berkali-kali menunjukkan beda \"signifikan\", ada yang rusak: pembagian grup tidak benar-benar acak, ada log yang hilang di satu grup, atau cara menghitungnya keliru.\n\nKenapa bisa rusak? Contohnya, kode pembagian grup ditulis keliru sehingga pengguna HP Android lebih sering masuk A. Atau pencatatan event pembelian di versi B kadang gagal terkirim karena jaringan sekolah lambat. Kesalahan seperti ini tidak terlihat dari luar, tetapi membuat semua eksperimen berikutnya ikut salah. A/A test murah dan mudah: cukup bagi pengguna seperti biasa tanpa mengubah apa pun, lalu lihat apakah hasilnya tenang.\n\nA/A test juga memberi gambaran seberapa besar angka bisa naik turun hanya karena kebetulan. Kalau dua grup identik saja bisa berbeda 0,3 poin, kamu jadi tahu bahwa beda 0,3 poin di eksperimen sungguhan belum tentu berarti apa-apa.\n\n## Siklus eksperimen\n\nEksperimen yang baik tidak dimulai dari kode, tetapi dari pertanyaan. Siklusnya kira-kira begini:\n\n1. **Ide**: tombol checkout sering tertutup banner, mungkin itu yang bikin siswa batal.\n2. **Hipotesis**: tulis apa yang diubah, kenapa, dan metrik apa yang diharapkan naik. Ini bab berikutnya.\n3. **Rancang**: tentukan metrik, jumlah pengguna yang dibutuhkan, dan berapa lama eksperimen berjalan.\n4. **Jalankan**: bagi pengguna dengan feature flag dan catat kejadian (event) dengan rapi.\n5. **Analisis**: cek kesehatan data, lalu hitung beda dan ketidakpastiannya.\n6. **Putuskan**: rilis, jangan rilis, atau lanjutkan. Catat pelajarannya, lalu kembali ke ide berikutnya.\n\nPerhatikan bahwa langkah 2 dan 3 terjadi **sebelum** satu pun pengguna melihat versi B. Banyak kesalahan eksperimen berasal dari keputusan yang dibuat setelah data terlihat: mengganti metrik, memperpanjang atau memotong durasi, atau memilih kelompok pengguna yang hasilnya bagus.\n\nUrutan ini juga urutan kelas ini. Kamu akan menulis hipotesis dan metrik, membangun feature flag dan assignment dengan hash, menghitung ukuran sampel, menguji hasil, mengenali jebakan, lalu menulis laporan dan keputusan.\n\n## Rangkuman\n\n- Opini tim, sekuat apa pun, bukan bukti. Banyak ide produk ternyata tidak berpengaruh saat diuji.\n- Perbandingan sebelum dan sesudah mencampur efek perubahan dengan gajian, promo, libur, dan faktor lain.\n- Korelasi tidak sama dengan kausalitas. Faktor pengganggu bisa membuat dua angka tampak berhubungan.\n- Eksperimen terkontrol memakai pembagian acak, berjalan serentak, dan hanya mengubah satu hal.\n- A/A test mengecek apakah sistem eksperimen sehat sebelum dipakai untuk keputusan.\n- Siklus eksperimen: ide, hipotesis, rancang, jalankan, analisis, putuskan.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Konversi KantinKu naik dari 5,0% ke 5,6% di minggu tombol baru dirilis, bertepatan dengan gajian dan promo ongkir. Kesimpulan apa yang paling tepat?",
+          "code": "",
+          "options": [
+            "Tombol baru terbukti menaikkan konversi sebesar 0,6 poin persen",
+            "Kenaikan belum bisa dikaitkan ke tombol karena sebabnya bercampur",
+            "Gajian pasti satu-satunya penyebab kenaikan konversi di minggu itu",
+            "Promo ongkir harus dihentikan karena merusak data eksperimen tim"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa grup kontrol yang berjalan di waktu yang sama, efek tombol, gajian, dan promo tidak bisa dipisahkan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Penjualan es teh dan jumlah siswa pingsan saat upacara naik bersamaan. Cuaca panas dalam contoh ini disebut apa?",
+          "code": "",
+          "options": [
+            "Metrik utama dari eksperimen yang sedang dijalankan",
+            "Grup kontrol yang dipakai sebagai pembanding hasil",
+            "Faktor pengganggu",
+            "Unit randomisasi yang dipilih secara acak oleh sistem"
+          ],
+          "answer": 2,
+          "explanation": "Cuaca panas memengaruhi kedua angka sekaligus sehingga keduanya tampak berhubungan, itulah faktor pengganggu."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dalam A/A test, kedua grup mendapat versi yang sama persis, sehingga beda besar yang sering muncul menandakan ada masalah di sistem eksperimen.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "A/A test tidak punya perubahan apa pun, jadi beda yang terus-menerus signifikan menunjukkan pembagian atau pencatatan yang rusak."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak kode ini?",
+          "code": "log = [\n    {\"varian\": \"B\", \"beli\": True},\n    {\"varian\": \"B\", \"beli\": False},\n    {\"varian\": \"A\", \"beli\": True},\n    {\"varian\": \"B\", \"beli\": True},\n]\ngrup = [e for e in log if e[\"varian\"] == \"B\"]\nprint(sum(e[\"beli\"] for e in grup) / len(grup))",
+          "options": [
+            "0.75",
+            "0.5",
+            "0.6666666666666666",
+            "Error karena True tidak bisa dijumlahkan"
+          ],
+          "answer": 2,
+          "explanation": "Grup B berisi tiga baris dengan dua True. True dihitung 1, jadi hasilnya 2 / 3."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Sebelum dan sesudah rilis",
+          "prompt": "Tim KantinKu merilis tombol checkout baru pada tanggal 8. Variabel `HARIAN` berisi data 14 hari: `tanggal`, jumlah `pengguna`, dan jumlah `pembeli`.\n\nLengkapi `sebelum_sesudah(harian, tanggal_rilis)` yang mengembalikan dict `{\"sebelum\": ..., \"sesudah\": ...}`. Konversi dihitung dari **total** pembeli dibagi **total** pengguna (bukan rata-rata persentase harian). Hari dengan `tanggal < tanggal_rilis` masuk sebelum, sisanya masuk sesudah.\n\nSetelah kodenya jalan, ingat: angka yang naik ini belum membuktikan apa pun, karena tidak ada grup kontrol.",
+          "starter": {
+            "code": "def sebelum_sesudah(harian, tanggal_rilis):\n    # TODO: jumlahkan pengguna dan pembeli untuk masing-masing periode\n    return {\"sebelum\": 0, \"sesudah\": 0}\n\n\nprint(sebelum_sesudah(HARIAN, 8))\n"
+          },
+          "solution": {
+            "code": "def sebelum_sesudah(harian, tanggal_rilis):\n    total = {\"sebelum\": [0, 0], \"sesudah\": [0, 0]}\n    for h in harian:\n        k = \"sebelum\" if h[\"tanggal\"] < tanggal_rilis else \"sesudah\"\n        total[k][0] += h[\"pembeli\"]\n        total[k][1] += h[\"pengguna\"]\n    return {k: b / n for k, (b, n) in total.items()}\n\n\nprint(sebelum_sesudah(HARIAN, 8))\n"
+          },
+          "setup": "HARIAN = [\n    {\"tanggal\": 1, \"pengguna\": 1000, \"pembeli\": 48},\n    {\"tanggal\": 2, \"pengguna\": 1000, \"pembeli\": 52},\n    {\"tanggal\": 3, \"pengguna\": 1000, \"pembeli\": 50},\n    {\"tanggal\": 4, \"pengguna\": 1000, \"pembeli\": 47},\n    {\"tanggal\": 5, \"pengguna\": 1000, \"pembeli\": 53},\n    {\"tanggal\": 6, \"pengguna\": 1000, \"pembeli\": 49},\n    {\"tanggal\": 7, \"pengguna\": 1000, \"pembeli\": 51},\n    {\"tanggal\": 8, \"pengguna\": 1000, \"pembeli\": 55},\n    {\"tanggal\": 9, \"pengguna\": 1000, \"pembeli\": 58},\n    {\"tanggal\": 10, \"pengguna\": 1000, \"pembeli\": 54},\n    {\"tanggal\": 11, \"pengguna\": 1000, \"pembeli\": 57},\n    {\"tanggal\": 12, \"pengguna\": 1000, \"pembeli\": 56},\n    {\"tanggal\": 13, \"pengguna\": 1000, \"pembeli\": 55},\n    {\"tanggal\": 14, \"pengguna\": 1000, \"pembeli\": 57},\n]\n",
+          "tests": [
+            {
+              "name": "Konversi sebelum rilis 5,0%",
+              "check": "abs(sebelum_sesudah(HARIAN, 8)[\"sebelum\"] - 0.05) < 1e-3"
+            },
+            {
+              "name": "Konversi sesudah rilis 5,6%",
+              "check": "abs(sebelum_sesudah(HARIAN, 8)[\"sesudah\"] - 0.056) < 1e-3"
+            },
+            {
+              "name": "Tanggal rilis lain mengubah pembagian",
+              "check": "abs(sebelum_sesudah(HARIAN, 11)[\"sebelum\"] - 0.0517) < 1e-3"
+            },
+            {
+              "name": "Memakai total, bukan rata-rata persentase",
+              "check": "abs(sebelum_sesudah([{\"tanggal\": 1, \"pengguna\": 100, \"pembeli\": 10}, {\"tanggal\": 2, \"pengguna\": 900, \"pembeli\": 0}, {\"tanggal\": 6, \"pengguna\": 100, \"pembeli\": 5}], 5)[\"sebelum\"] - 0.01) < 1e-3"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Membandingkan grup acak",
+          "prompt": "Di minggu yang sama, KantinKu juga menjalankan eksperimen kecil: pengguna diacak ke varian `A` atau `B`. Variabel `LOG` berisi satu baris per pengguna dengan kunci `uid`, `varian`, `beli` (bool), dan `total` (rupiah).\n\n1. Lengkapi `rata_per_varian(log, kolom)` yang mengembalikan dict `{varian: rata-rata nilai kolom}` untuk setiap varian yang muncul. Karena `True` bernilai 1, `rata_per_varian(log, \"beli\")` sama dengan konversi.\n2. Lengkapi `beda_acak(log)` yang mengembalikan konversi B dikurangi konversi A.",
+          "starter": {
+            "code": "def rata_per_varian(log, kolom):\n    hasil = {}\n    # TODO: kelompokkan nilai kolom per varian, lalu hitung rata-ratanya\n    return hasil\n\n\ndef beda_acak(log):\n    # TODO: konversi B dikurangi konversi A\n    return 0\n\n\nprint(rata_per_varian(LOG, \"beli\"))\nprint(beda_acak(LOG))\n"
+          },
+          "solution": {
+            "code": "def rata_per_varian(log, kolom):\n    grup = {}\n    for e in log:\n        grup.setdefault(e[\"varian\"], []).append(e[kolom])\n    return {v: sum(isi) / len(isi) for v, isi in grup.items()}\n\n\ndef beda_acak(log):\n    k = rata_per_varian(log, \"beli\")\n    return k[\"B\"] - k[\"A\"]\n\n\nprint(rata_per_varian(LOG, \"beli\"))\nprint(beda_acak(LOG))\n"
+          },
+          "setup": "LOG = [\n    {\"uid\": \"siswa-001\", \"varian\": \"A\", \"beli\": True, \"total\": 15000},\n    {\"uid\": \"siswa-002\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"siswa-003\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"siswa-004\", \"varian\": \"B\", \"beli\": True, \"total\": 12000},\n    {\"uid\": \"siswa-005\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"siswa-006\", \"varian\": \"B\", \"beli\": True, \"total\": 20000},\n    {\"uid\": \"siswa-007\", \"varian\": \"A\", \"beli\": True, \"total\": 18000},\n    {\"uid\": \"siswa-008\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"siswa-009\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"siswa-010\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n]\n",
+          "tests": [
+            {
+              "name": "Konversi A dan B masing-masing 40%",
+              "check": "abs(rata_per_varian(LOG, \"beli\")[\"A\"] - 0.4) < 1e-3 and abs(rata_per_varian(LOG, \"beli\")[\"B\"] - 0.4) < 1e-3"
+            },
+            {
+              "name": "Rata-rata total per varian",
+              "check": "abs(rata_per_varian(LOG, \"total\")[\"A\"] - 6600) < 1e-3 and abs(rata_per_varian(LOG, \"total\")[\"B\"] - 6400) < 1e-3"
+            },
+            {
+              "name": "Beda konversi grup acak nol",
+              "check": "abs(beda_acak(LOG)) < 1e-3"
+            },
+            {
+              "name": "Beda dihitung B dikurangi A",
+              "check": "abs(beda_acak([{\"varian\": \"A\", \"beli\": False, \"total\": 0}, {\"varian\": \"B\", \"beli\": True, \"total\": 5000}]) - 1.0) < 1e-3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "hipotesis-dan-metrik",
+      "title": "Hipotesis dan Metrik",
+      "est_minutes": 25,
+      "slide_from": 5,
+      "slide_to": 7,
+      "body": "## Tujuan\n\n- Menulis hipotesis eksperimen dengan format yang jelas dan bisa diuji.\n- Membedakan hipotesis nol (H0) dan hipotesis alternatif (H1).\n- Memilih satu metrik utama, beberapa metrik pendukung, dan metrik guardrail.\n- Menghitung metrik per pengguna unik, bukan per event.\n\n## Dari ide ke hipotesis\n\nDi bab sebelumnya tim KantinKu punya ide: tombol checkout sering tertutup banner promo, jadi siswa mungkin batal membeli karena tidak menemukan tombolnya. Ide seperti ini masih kabur. \"Bikin tombol lebih bagus\" tidak bisa diuji, karena tidak jelas apa yang diubah dan apa ukuran berhasilnya.\n\nHipotesis yang baik menyebut empat hal: **perubahan**, **alasan**, **metrik**, dan **besar efek** yang dicari. Format yang sering dipakai:\n\n> Karena [pengamatan], kami yakin [perubahan] akan menaikkan [metrik] minimal [besar efek], diukur dengan [cara mengukur].\n\nUntuk KantinKu:\n\n> Karena tombol checkout lama sering tertutup banner, kami yakin tombol yang tetap menempel di bawah layar akan menaikkan konversi checkout minimal 1 poin persen, diukur dengan persentase pengguna yang menyelesaikan pembayaran.\n\n![Hipotesis ditulis sebelum eksperimen dimulai](slide:5)\n\nSatu aturan yang tidak boleh dilanggar: hipotesis **ditulis sebelum eksperimen dimulai**. Kalau kamu menulisnya setelah melihat data, kamu akan tergoda mencari metrik yang kebetulan naik lalu mengarang alasannya. Itu bukan menguji, itu mencocok-cocokkan.\n\n## H0 dan H1\n\nStatistik eksperimen bekerja dengan dua hipotesis yang saling berlawanan:\n\n- **H0 (hipotesis nol)**: tidak ada beda antara A dan B. Tombol baru tidak mengubah konversi.\n- **H1 (hipotesis alternatif)**: ada beda. Konversi B tidak sama dengan konversi A.\n\nPerhatikan bahwa H1 di sini tidak berbunyi \"B lebih baik\". Di kelas ini kita memakai **uji dua sisi**, artinya kita juga siap menemukan bahwa B lebih buruk. Ini penting, karena perubahan yang menurut tim keren bisa saja membuat pengguna bingung.\n\nCara kerjanya mirip sidang. H0 dianggap benar dulu, seperti terdakwa yang dianggap tidak bersalah. Data eksperimen adalah barang bukti. Kalau bukti cukup kuat sehingga sangat tidak masuk akal bila H0 benar, kita menolak H0. Kalau bukti lemah, kita **tidak menolak** H0, yang tidak sama dengan membuktikan H0 benar. Bisa jadi efeknya ada, tapi datanya belum cukup untuk melihatnya. Ukuran \"cukup kuat\" ini akan kita hitung di bab ukuran sampel dan bab uji statistik.\n\n## Metrik utama\n\n**Metrik utama** (primary metric) adalah satu angka yang menentukan keputusan. Pilih satu, tetapkan sebelum mulai, dan jangan diganti di tengah jalan. Untuk tombol checkout, pilihan paling wajar adalah **konversi**:\n\n```text\nkonversi = jumlah pengguna yang membeli / jumlah pengguna di varian\n```\n\nKenapa hanya satu? Kalau kamu memantau sepuluh metrik dan memutuskan \"rilis kalau salah satunya naik\", hampir pasti ada yang naik hanya karena kebetulan. Masalah ini dibahas serius di bab tentang jebakan p-value.\n\nMetrik utama yang baik punya beberapa sifat:\n\n- **Berkaitan langsung** dengan perubahan. Tombol checkout memengaruhi pembelian, bukan jumlah siswa yang mendaftar akun.\n- **Cukup sensitif.** Bisa bergerak dalam waktu eksperimen yang wajar, misalnya dua minggu.\n- **Sulit dicurangi.** Jumlah klik tombol mudah naik kalau tombolnya dibuat berkedip, tapi itu belum tentu berarti lebih banyak yang membeli.\n\n## Per pengguna, bukan per event\n\nLog aplikasi biasanya berisi **event**: buka halaman, tambah ke keranjang, bayar. Satu siswa bisa menghasilkan puluhan event sehari. Kalau konversi dihitung sebagai \"event beli dibagi semua event\", siswa yang sering membuka aplikasi akan punya bobot jauh lebih besar dari siswa lain.\n\nKarena pengguna yang diacak ke A atau B, metrik juga dihitung **per pengguna unik**. Di Python, `set` adalah alat yang pas:\n\n```python\ndef konversi(log, varian):\n    semua = {e[\"uid\"] for e in log if e[\"varian\"] == varian}\n    beli = {e[\"uid\"] for e in log\n            if e[\"varian\"] == varian and e[\"beli\"]}\n    return len(beli) / len(semua)\n```\n\nSet otomatis membuang uid yang dobel. Siswa yang membeli tiga kali tetap dihitung satu pembeli, dan siswa yang membuka aplikasi sepuluh kali tetap dihitung satu pengguna. Ada juga metrik **per kunjungan** (per sesi), misalnya konversi per sesi. Itu sah, tapi hati-hati: unit analisisnya jadi sesi, padahal yang diacak adalah pengguna. Bab assignment akan membahas kenapa ini bisa bermasalah.\n\n## Metrik pendukung\n\n**Metrik pendukung** (secondary metric) membantu menjelaskan apa yang terjadi, tetapi tidak menentukan keputusan. Contoh untuk KantinKu:\n\n- **Rata-rata belanja** per pembeli: apakah pembeli di B membeli lebih banyak atau lebih sedikit?\n- **Jumlah item** per pesanan.\n- **Waktu dari buka aplikasi sampai bayar.**\n\nAda satu detail definisi yang sering bikin debat: rata-rata belanja dihitung per **pembeli** atau per **pengguna**? Kalau per pembeli, kamu menjumlahkan semua belanja lalu membaginya dengan jumlah orang yang membeli. Kalau per pengguna, pembaginya semua pengguna di varian, termasuk yang tidak membeli (dihitung Rp0). Keduanya sah, tapi artinya berbeda. Di latihan bab ini kita memakai rata-rata per pembeli. Yang penting, definisinya ditulis di awal dan tidak diganti diam-diam.\n\nMisalnya konversi B naik, tapi rata-rata belanja turun karena siswa buru-buru checkout tanpa menambah es teh. Metrik pendukung membuat cerita ini terlihat, sehingga tim bisa mendiskusikannya dengan jujur.\n\n## Metrik guardrail\n\n**Guardrail** adalah metrik yang tidak boleh rusak, apa pun hasil metrik utamanya. Ibarat pagar pembatas di jalan, guardrail tidak menunjukkan arah, tetapi mencegah kamu masuk jurang. Contoh guardrail di KantinKu:\n\n- **Waktu muat halaman**, misalnya tidak boleh lebih dari 1500 milidetik.\n- **Tingkat pembatalan pesanan.**\n- **Jumlah keluhan** ke admin kantin.\n- **Tingkat error** di aplikasi, misalnya harus di bawah 1%.\n\nBatas guardrail ditetapkan **sebelum mulai**, sama seperti metrik utama. Kalau konversi naik tapi pembatalan melonjak karena siswa salah pesan, perubahan itu jangan dirilis. Saat membaca hasil, guardrail dicek lebih dulu sebelum merayakan metrik utama.\n\nDalam kode, batas guardrail bisa disimpan sebagai dict sederhana, lalu dibandingkan dengan hasil eksperimen:\n\n```python\nBATAS = {\"waktu_muat_ms\": 1500, \"pembatalan\": 0.05, \"error\": 0.01}\nhasil_b = {\"waktu_muat_ms\": 1720, \"pembatalan\": 0.031, \"error\": 0.004}\n\njebol = [m for m, maks in BATAS.items() if hasil_b[m] > maks]\nprint(jebol)  # ['waktu_muat_ms']\n```\n\nDi contoh ini tombol baru membuat halaman lebih lambat dimuat, mungkin karena gambar ikonnya terlalu besar. Walaupun konversinya naik, tim harus memperbaiki kecepatan dulu sebelum mempertimbangkan rilis.\n\n## OEC singkat\n\nPerusahaan yang sudah matang sering menggabungkan beberapa metrik menjadi satu **OEC** (Overall Evaluation Criterion), ukuran gabungan yang mencerminkan tujuan jangka panjang, misalnya kombinasi pembelian dan kepuasan pengguna. Merancang OEC butuh diskusi panjang tentang apa yang benar-benar penting bagi bisnis. Untuk kelas ini cukup pegang prinsipnya: satu metrik utama yang jelas, ditambah metrik pendukung dan guardrail.\n\n## Rangkuman\n\n- Hipotesis menyebut perubahan, alasan, metrik, dan besar efek, dan ditulis sebelum eksperimen dimulai.\n- H0 menyatakan tidak ada beda, H1 menyatakan ada beda. Kita memakai uji dua sisi.\n- Tidak menolak H0 tidak sama dengan membuktikan H0 benar.\n- Pilih satu metrik utama. Metrik pendukung menjelaskan, bukan menentukan.\n- Hitung metrik per pengguna unik dengan `set`, bukan per event.\n- Guardrail adalah batas yang tidak boleh dilanggar dan dicek lebih dulu.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kapan hipotesis eksperimen sebaiknya ditulis?",
+          "code": "",
+          "options": [
+            "Setelah data terkumpul, supaya sesuai dengan metrik yang naik",
+            "Sebelum eksperimen dimulai",
+            "Di tengah eksperimen, saat grafik mulai terlihat stabil dan jelas",
+            "Setelah rapat keputusan, sebagai bahan dokumentasi untuk tim"
+          ],
+          "answer": 1,
+          "explanation": "Hipotesis yang ditulis setelah melihat data membuka peluang mencocok-cocokkan metrik yang kebetulan naik."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Jika hasil eksperimen tidak cukup kuat untuk menolak H0, artinya sudah terbukti bahwa A dan B sama persis.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Tidak menolak H0 hanya berarti bukti belum cukup. Efeknya bisa ada tetapi terlalu kecil untuk terlihat dengan data yang ada."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Konversi tombol baru naik, tetapi tingkat pembatalan pesanan melonjak melewati batas yang ditetapkan di awal. Apa langkah yang tepat?",
+          "code": "",
+          "options": [
+            "Rilis saja, karena metrik utama yang menentukan keputusan akhir",
+            "Ganti metrik utama menjadi pembatalan agar hasilnya lebih menarik",
+            "Hapus data pembatalan karena bukan bagian dari hipotesis awal tim",
+            "Jangan rilis"
+          ],
+          "answer": 3,
+          "explanation": "Pembatalan adalah guardrail. Guardrail yang jebol membatalkan rilis walaupun metrik utama naik."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "log = [\n    {\"uid\": \"u1\", \"beli\": True},\n    {\"uid\": \"u1\", \"beli\": True},\n    {\"uid\": \"u2\", \"beli\": False},\n    {\"uid\": \"u2\", \"beli\": False},\n]\nsemua = {e[\"uid\"] for e in log}\nbeli = {e[\"uid\"] for e in log if e[\"beli\"]}\nprint(len(beli) / len(semua))",
+          "options": [
+            "0.25",
+            "1.0",
+            "0.5",
+            "0.6666666666666666"
+          ],
+          "answer": 2,
+          "explanation": "Set membuang uid dobel: ada dua pengguna unik dan satu pembeli unik, jadi 1 / 2."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Metrik per pengguna unik",
+          "prompt": "`LOG` berisi event KantinKu: satu pengguna bisa punya beberapa baris (buka halaman, membeli, membeli lagi). Kunci tiap event: `uid`, `varian`, `beli` (bool), `total` (rupiah, 0 bila tidak membeli).\n\nLengkapi `hitung_metrik(log)` yang mengembalikan dict per varian, misalnya `{\"A\": {...}, \"B\": {...}}`, berisi:\n\n- `pengguna`: jumlah uid unik di varian itu.\n- `pembeli`: jumlah uid unik yang punya minimal satu event `beli` bernilai `True`.\n- `konversi`: `pembeli / pengguna`.\n- `rata_belanja`: jumlah `total` semua event beli dibagi `pembeli` (0 bila tidak ada pembeli).",
+          "starter": {
+            "code": "def hitung_metrik(log):\n    hasil = {}\n    for e in log:\n        v = hasil.setdefault(e[\"varian\"], {\"pengguna\": 0, \"pembeli\": 0, \"total\": 0})\n        # TODO: ini menghitung event, bukan pengguna unik\n        v[\"pengguna\"] += 1\n        if e[\"beli\"]:\n            v[\"pembeli\"] += 1\n            v[\"total\"] += e[\"total\"]\n    for v in hasil.values():\n        v[\"konversi\"] = v[\"pembeli\"] / v[\"pengguna\"]\n        v[\"rata_belanja\"] = 0  # TODO\n    return hasil\n\n\nprint(hitung_metrik(LOG))\n"
+          },
+          "solution": {
+            "code": "def hitung_metrik(log):\n    grup = {}\n    for e in log:\n        g = grup.setdefault(e[\"varian\"], {\"semua\": set(), \"beli\": set(), \"total\": 0})\n        g[\"semua\"].add(e[\"uid\"])\n        if e[\"beli\"]:\n            g[\"beli\"].add(e[\"uid\"])\n            g[\"total\"] += e[\"total\"]\n    hasil = {}\n    for v, g in grup.items():\n        n, b = len(g[\"semua\"]), len(g[\"beli\"])\n        hasil[v] = {\n            \"pengguna\": n,\n            \"pembeli\": b,\n            \"konversi\": b / n,\n            \"rata_belanja\": g[\"total\"] / b if b else 0,\n        }\n    return hasil\n\n\nprint(hitung_metrik(LOG))\n"
+          },
+          "setup": "LOG = [\n    {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": True, \"total\": 15000},\n    {\"uid\": \"u2\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u3\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u3\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u4\", \"varian\": \"A\", \"beli\": True, \"total\": 10000},\n    {\"uid\": \"u4\", \"varian\": \"A\", \"beli\": True, \"total\": 8000},\n    {\"uid\": \"u5\", \"varian\": \"B\", \"beli\": True, \"total\": 12000},\n    {\"uid\": \"u6\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u7\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u7\", \"varian\": \"B\", \"beli\": True, \"total\": 20000},\n    {\"uid\": \"u8\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u9\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n]\nHASIL = {\"waktu_muat_ms\": 1720, \"pembatalan\": 0.031, \"error\": 0.004}\nBATAS = {\"waktu_muat_ms\": 1500, \"pembatalan\": 0.05, \"error\": 0.01}\n",
+          "tests": [
+            {
+              "name": "Pengguna dihitung unik",
+              "check": "hitung_metrik(LOG)[\"A\"][\"pengguna\"] == 4 and hitung_metrik(LOG)[\"B\"][\"pengguna\"] == 5"
+            },
+            {
+              "name": "Pembeli dihitung unik",
+              "check": "hitung_metrik(LOG)[\"A\"][\"pembeli\"] == 2 and hitung_metrik(LOG)[\"B\"][\"pembeli\"] == 2"
+            },
+            {
+              "name": "Konversi A 50% dan B 40%",
+              "check": "abs(hitung_metrik(LOG)[\"A\"][\"konversi\"] - 0.5) < 1e-3 and abs(hitung_metrik(LOG)[\"B\"][\"konversi\"] - 0.4) < 1e-3"
+            },
+            {
+              "name": "Rata-rata belanja per pembeli",
+              "check": "abs(hitung_metrik(LOG)[\"A\"][\"rata_belanja\"] - 16500) < 1e-3 and abs(hitung_metrik(LOG)[\"B\"][\"rata_belanja\"] - 16000) < 1e-3"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Cek guardrail",
+          "prompt": "Guardrail KantinKu ditetapkan sebelum eksperimen di `BATAS`: setiap metrik punya nilai maksimum yang diizinkan. Hasil varian B ada di `HASIL`.\n\nLengkapi `cek_guardrail(hasil, batas)` yang mengembalikan **list nama metrik yang jebol**, yaitu yang nilainya di `hasil` **lebih besar** dari batasnya. Urutannya mengikuti urutan kunci di `batas`. Metrik yang tidak ada di `hasil` dianggap jebol juga, karena guardrail yang tidak tercatat tidak bisa dipercaya. Bila semua aman, kembalikan list kosong.",
+          "starter": {
+            "code": "def cek_guardrail(hasil, batas):\n    jebol = []\n    # TODO: bandingkan setiap metrik di batas dengan nilainya di hasil\n    return jebol\n\n\nprint(cek_guardrail(HASIL, BATAS))\n"
+          },
+          "solution": {
+            "code": "def cek_guardrail(hasil, batas):\n    jebol = []\n    for nama, maks in batas.items():\n        if nama not in hasil or hasil[nama] > maks:\n            jebol.append(nama)\n    return jebol\n\n\nprint(cek_guardrail(HASIL, BATAS))\n"
+          },
+          "setup": "LOG = [\n    {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u1\", \"varian\": \"A\", \"beli\": True, \"total\": 15000},\n    {\"uid\": \"u2\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u3\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u3\", \"varian\": \"A\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u4\", \"varian\": \"A\", \"beli\": True, \"total\": 10000},\n    {\"uid\": \"u4\", \"varian\": \"A\", \"beli\": True, \"total\": 8000},\n    {\"uid\": \"u5\", \"varian\": \"B\", \"beli\": True, \"total\": 12000},\n    {\"uid\": \"u6\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u7\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u7\", \"varian\": \"B\", \"beli\": True, \"total\": 20000},\n    {\"uid\": \"u8\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n    {\"uid\": \"u9\", \"varian\": \"B\", \"beli\": False, \"total\": 0},\n]\nHASIL = {\"waktu_muat_ms\": 1720, \"pembatalan\": 0.031, \"error\": 0.004}\nBATAS = {\"waktu_muat_ms\": 1500, \"pembatalan\": 0.05, \"error\": 0.01}\n",
+          "tests": [
+            {
+              "name": "Waktu muat yang lewat batas terdeteksi",
+              "check": "cek_guardrail(HASIL, BATAS) == [\"waktu_muat_ms\"]"
+            },
+            {
+              "name": "Semua aman menghasilkan list kosong",
+              "check": "cek_guardrail({\"waktu_muat_ms\": 900, \"pembatalan\": 0.02, \"error\": 0.001}, BATAS) == []"
+            },
+            {
+              "name": "Nilai tepat di batas masih aman",
+              "check": "cek_guardrail({\"waktu_muat_ms\": 1500, \"pembatalan\": 0.05, \"error\": 0.01}, BATAS) == []"
+            },
+            {
+              "name": "Metrik yang tidak tercatat dianggap jebol",
+              "check": "cek_guardrail({\"waktu_muat_ms\": 900, \"pembatalan\": 0.09}, BATAS) == [\"pembatalan\", \"error\"]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "feature-flag",
+      "title": "Feature Flag",
+      "est_minutes": 25,
+      "slide_from": 8,
+      "slide_to": 11,
+      "body": "## Tujuan\n\n- Menjelaskan apa itu feature flag dan jenis-jenisnya.\n- Memahami rollout bertahap, kill switch, dan nilai bawaan yang aman.\n- Menyusun aturan targeting dan urutan evaluasinya.\n- Mengenali flag debt serta perbedaan evaluasi lokal dan panggilan server.\n\n## Saklar di dalam kode\n\nSelama ini, kalau kamu ingin mengubah perilaku aplikasi, caranya mengubah kode lalu deploy ulang. Untuk KantinKu yang servernya kecil, deploy bisa makan beberapa menit, dan kalau ternyata ada bug, kamu harus deploy lagi untuk mengembalikannya.\n\n**Feature flag** (sering juga disebut feature toggle) adalah saklar di dalam kode yang nilainya diatur **dari luar**, biasanya dari dasbor atau file konfigurasi, tanpa deploy ulang. Kodenya kira-kira seperti ini:\n\n```python\ndef tombol_checkout(pengguna):\n    if aktif(\"checkout-v2\", pengguna):\n        return \"tombol tetap di bawah\"\n    return \"tombol lama\"\n```\n\nFungsi `aktif` di atas buatan kita sendiri. Ia bertanya ke konfigurasi flag: untuk pengguna ini, flag `checkout-v2` menyala atau tidak? Kode untuk kedua versi sudah ada di server. Yang berubah hanya nilai flag.\n\nFlag yang paling sederhana bernilai **boolean**: menyala atau mati. Ada juga flag **multivarian** yang mengembalikan salah satu dari beberapa nilai, misalnya `\"A\"`, `\"B\"`, atau `\"C\"` untuk tiga desain banner promo. Flag multivarian inilah yang dipakai untuk eksperimen A/B.\n\n## Jenis-jenis flag\n\nFlag bisa dikelompokkan berdasarkan tujuannya:\n\n- **Flag rilis**: menyembunyikan fitur yang belum selesai. Kode boleh masuk ke cabang utama dan ikut deploy, tapi fiturnya baru terlihat saat flag dinyalakan.\n- **Flag eksperimen**: membagi pengguna ke varian A dan B untuk diukur.\n- **Flag operasional**: mematikan fitur berat saat server sibuk, misalnya rekomendasi menu yang memakai banyak query saat jam istirahat.\n- **Flag izin**: membuka fitur hanya untuk kelompok tertentu, misalnya menu laporan penjualan hanya untuk admin kantin.\n\nUmurnya juga berbeda. Flag rilis dan flag eksperimen seharusnya berumur pendek: setelah keputusan diambil, flag dihapus. Flag operasional dan flag izin bisa hidup lama.\n\n## Rollout bertahap\n\nFitur baru, sekalipun sudah dites, tetap bisa bermasalah saat dipakai banyak orang. Daripada menyalakan untuk semua siswa sekaligus, tim KantinKu memakai **rollout bertahap**: nyalakan untuk 1% pengguna, pantau error dan keluhan. Kalau aman, naikkan ke 10%, lalu 50%, lalu 100%.\n\n![Rollout bertahap dari 1% sampai 100% dengan bucket hash](slide:9)\n\nBagaimana memilih 10% pengguna? Setiap pengguna diberi nomor **bucket** dari 0 sampai 99 yang dihitung dari hash uid (caranya dibahas di bab berikutnya). Pengguna dengan bucket lebih kecil dari persentase rollout mendapat fitur baru:\n\n```python\ndef dalam_rollout(uid, persen):\n    return bucket(\"checkout-v2\", uid) < persen\n```\n\nKarena bucket seorang pengguna selalu sama, siswa dengan bucket 32 belum ikut saat rollout 10%, mulai ikut saat 50%, dan tetap ikut saat 100%. Menaikkan persentase hanya **menambah** pengguna baru, tidak memindahkan pengguna yang sudah mendapat fitur.\n\n## Kill switch dan nilai bawaan\n\nBayangkan tombol baru ternyata bikin aplikasi error di HP Android lama. Tanpa flag, kamu harus rollback deploy. Dengan flag, kamu cukup mematikannya di dasbor dan efeknya terasa di semua server dalam hitungan detik. Inilah fungsi **kill switch**.\n\nSaat flag dimatikan, semua pengguna mendapat **nilai bawaan** (default). Nilai bawaan harus selalu perilaku lama yang sudah terbukti aman. Aturan yang sama berlaku saat layanan flag sendiri bermasalah, misalnya server konfigurasi tidak bisa dihubungi. Aplikasi tidak boleh ikut mati. Ia harus memakai nilai bawaan yang aman dan tetap melayani pesanan.\n\nHal kecil tapi penting: catat **siapa** mengubah flag dan **kapan** (audit log). Kalau konversi tiba-tiba anjlok jam 10 pagi, kamu bisa cek apakah ada flag yang diubah tepat sebelumnya.\n\n## Aturan targeting\n\nKadang kamu ingin fitur baru dinyalakan untuk kelompok tertentu dulu. Inilah **aturan targeting**:\n\n- **Daftar uid khusus**: tim QA KantinKu selalu mendapat fitur baru untuk dites.\n- **Aturan atribut**: hanya pengguna di kota Bandung, hanya peran guru, atau hanya kelas XII.\n- **Rollout persentase**: sisanya dibagi berdasarkan bucket.\n\nUrutan evaluasi menentukan hasilnya. Pola yang umum: cek dulu apakah flag menyala. Kalau mati, kembalikan nilai bawaan. Lalu cek daftar uid, lalu aturan atribut **berurutan** (aturan pertama yang cocok menang), dan bila tidak ada yang cocok, baru masuk ke rollout persentase.\n\n```python\ndef evaluasi(flag, p):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    if p[\"uid\"] in flag[\"daftar\"]:\n        return True\n    for atr, nilai in flag[\"aturan\"]:\n        if p.get(atr) == nilai:\n            return True\n    return bucket(flag[\"salt\"], p[\"uid\"]) < flag[\"persen\"]\n```\n\nPerhatikan `p.get(atr)`. Tidak semua pengguna punya atribut yang sama. Siswa mungkin tidak punya atribut `peran`, dan `get` mengembalikan `None` alih-alih melempar error.\n\nCoba telusuri beberapa pengguna dengan flag yang menyala, daftar berisi `qa-rina`, aturan kota Bandung, dan rollout 50%:\n\n- `qa-rina` dari Surabaya mendapat fitur baru karena ada di daftar uid, walaupun kotanya tidak cocok.\n- Pak Darto, guru di Bandung, mendapat fitur baru dari aturan atribut tanpa melihat bucket-nya.\n- `siswa-001` di Malang tidak cocok dengan aturan mana pun, jadi masuk rollout. Bucket-nya 32, lebih kecil dari 50, sehingga ia ikut.\n- Kalau flag dimatikan, ketiganya langsung kembali ke tombol lama.\n\nSatu catatan untuk eksperimen: pengguna yang masuk lewat daftar uid atau aturan atribut sebaiknya **tidak** ikut dihitung dalam analisis A/B, karena mereka tidak diacak. Tim QA yang selalu mendapat versi B bukan sampel acak dari pengguna KantinKu.\n\n## Evaluasi lokal atau panggilan server\n\nAda dua cara aplikasi mengetahui nilai flag. Cara pertama, setiap kali butuh, aplikasi **bertanya ke server flag** lewat jaringan. Sederhana, tapi setiap halaman jadi menunggu satu panggilan jaringan tambahan, dan kalau server flag lambat, aplikasimu ikut lambat.\n\nCara kedua, **evaluasi lokal**. Aplikasi mengunduh seluruh konfigurasi flag (aturan, daftar, persentase) secara berkala lalu menyimpannya di **cache** memori. Saat butuh, fungsi seperti `evaluasi` di atas dijalankan langsung di server aplikasi tanpa panggilan jaringan. Banyak SDK feature flag bekerja dengan cara ini untuk aplikasi server. Konsekuensinya, perubahan flag baru terasa setelah cache diperbarui, biasanya dalam hitungan detik.\n\n## Layanan flag dan flag debt\n\nKamu bisa membuat sistem flag sendiri, dan itulah yang kita latih di kelas ini. Di dunia kerja, banyak tim memakai layanan jadi seperti **LaunchDarkly**, **Unleash**, **GrowthBook**, **PostHog**, atau **Flagsmith**. Ada juga **OpenFeature**, standar API terbuka di bawah CNCF, supaya kode aplikasimu tidak terikat ke satu vendor. Detail API tiap produk berbeda, jadi selalu baca dokumentasi resminya.\n\nFlag punya sisi gelap: **flag debt** (utang flag). Setiap flag menambah satu cabang `if` di kode. Kalau flag eksperimen dibiarkan setelah keputusan, kode jadi penuh cabang yang tidak pernah lagi dipakai, dan orang baru di tim bingung mana yang masih aktif. Kebiasaan yang baik: beri setiap flag pemilik dan tanggal kedaluwarsa, lalu hapus flag beserta cabang kode lamanya segera setelah keputusan diambil.\n\n## Rangkuman\n\n- Feature flag adalah saklar di kode yang nilainya diatur dari luar tanpa deploy.\n- Jenis flag: rilis, eksperimen, operasional, dan izin. Flag rilis dan eksperimen berumur pendek.\n- Rollout bertahap memakai bucket 0 sampai 99. Menaikkan persentase tidak memindahkan pengguna lama.\n- Kill switch mematikan fitur dalam hitungan detik. Nilai bawaan harus perilaku lama yang aman.\n- Urutan evaluasi: flag mati, daftar uid, aturan atribut berurutan, lalu rollout persentase.\n- Hapus flag setelah keputusan agar tidak menumpuk jadi flag debt.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Flag yang dipakai untuk mematikan rekomendasi menu saat server sibuk di jam istirahat termasuk jenis apa?",
+          "code": "",
+          "options": [
+            "Flag rilis untuk menyembunyikan fitur yang belum selesai",
+            "Flag operasional",
+            "Flag eksperimen untuk membagi pengguna ke varian A dan B",
+            "Flag izin untuk membuka fitur bagi admin kantin saja"
+          ],
+          "answer": 1,
+          "explanation": "Flag operasional mengatur perilaku sistem saat beban tinggi, misalnya mematikan fitur yang berat."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Server konfigurasi flag KantinKu tidak bisa dihubungi. Apa yang sebaiknya dilakukan aplikasi?",
+          "code": "",
+          "options": [
+            "Menolak semua pesanan sampai server flag kembali hidup",
+            "Menyalakan semua flag supaya fitur baru tetap terlihat",
+            "Memakai nilai bawaan yang aman",
+            "Memilih nilai flag secara acak untuk setiap request yang masuk"
+          ],
+          "answer": 2,
+          "explanation": "Aplikasi harus tetap jalan dengan nilai bawaan, yaitu perilaku lama yang sudah terbukti aman."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Dengan bucket hash, menaikkan rollout dari 10% ke 50% membuat sebagian pengguna yang tadinya mendapat fitur baru kembali ke versi lama.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Bucket pengguna tetap. Yang bucket-nya di bawah 10 juga di bawah 50, jadi mereka tetap mendapat fitur baru."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Dengan fungsi evaluasi di bawah, apa hasil untuk pengguna ini?",
+          "code": "flag = {\"aktif\": False, \"bawaan\": False,\n        \"daftar\": [\"qa-rina\"], \"aturan\": [],\n        \"salt\": \"checkout-v2\", \"persen\": 100}\n\ndef evaluasi(flag, p):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    if p[\"uid\"] in flag[\"daftar\"]:\n        return True\n    return True\n\nprint(evaluasi(flag, {\"uid\": \"qa-rina\"}))",
+          "options": [
+            "True, karena qa-rina ada di daftar uid khusus",
+            "True, karena rollout sudah diatur ke 100 persen",
+            "False",
+            "Error karena aturan berupa list yang masih kosong"
+          ],
+          "answer": 2,
+          "explanation": "Flag mati dicek paling awal, jadi nilai bawaan False dikembalikan sebelum daftar uid diperiksa."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Mengevaluasi feature flag",
+          "prompt": "Fungsi `bucket(salt, uid)` (0 sampai 99) dan contoh flag `FLAG` sudah tersedia. Sebagai patokan: `bucket(\"checkout-v2\", \"siswa-001\")` = 32 dan `bucket(\"checkout-v2\", \"siswa-002\")` = 95.\n\nLengkapi `evaluasi(flag, pengguna)` yang mengembalikan `True` bila pengguna mendapat fitur baru, dengan urutan:\n\n1. Bila `flag[\"aktif\"]` bernilai `False`, kembalikan `flag[\"bawaan\"]`.\n2. Bila `pengguna[\"uid\"]` ada di `flag[\"daftar\"]`, kembalikan `True`.\n3. Periksa `flag[\"aturan\"]` berurutan. Setiap aturan berbentuk `[atribut, nilai]`; bila `pengguna` punya atribut itu dengan nilai yang sama, kembalikan `True`. Pengguna yang tidak punya atributnya tidak cocok.\n4. Selain itu, kembalikan `bucket(flag[\"salt\"], uid) < flag[\"persen\"]`.",
+          "starter": {
+            "code": "def evaluasi(flag, pengguna):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    # TODO: daftar uid, aturan atribut, lalu rollout persentase\n    return False\n\n\nprint(evaluasi(FLAG, {\"uid\": \"siswa-001\"}))\n"
+          },
+          "solution": {
+            "code": "def evaluasi(flag, pengguna):\n    if not flag[\"aktif\"]:\n        return flag[\"bawaan\"]\n    uid = pengguna[\"uid\"]\n    if uid in flag[\"daftar\"]:\n        return True\n    for atribut, nilai in flag[\"aturan\"]:\n        if pengguna.get(atribut) == nilai:\n            return True\n    return bucket(flag[\"salt\"], uid) < flag[\"persen\"]\n\n\nprint(evaluasi(FLAG, {\"uid\": \"siswa-001\"}))\n"
+          },
+          "setup": "import hashlib\n\n\ndef bucket(salt, uid):\n    h = hashlib.sha256(f\"{salt}:{uid}\".encode()).hexdigest()\n    return int(h[:8], 16) % 100\n\n\nFLAG = {\n    \"aktif\": True,\n    \"bawaan\": False,\n    \"daftar\": [\"qa-rina\"],\n    \"aturan\": [[\"kota\", \"Bandung\"], [\"peran\", \"guru\"]],\n    \"salt\": \"checkout-v2\",\n    \"persen\": 50,\n}\n",
+          "tests": [
+            {
+              "name": "Flag mati mengembalikan nilai bawaan",
+              "check": "evaluasi({**FLAG, \"aktif\": False}, {\"uid\": \"qa-rina\"}) is False and evaluasi({**FLAG, \"aktif\": False, \"bawaan\": True}, {\"uid\": \"siswa-002\"}) is True"
+            },
+            {
+              "name": "Daftar uid khusus selalu dapat fitur",
+              "check": "evaluasi({**FLAG, \"persen\": 0}, {\"uid\": \"qa-rina\", \"kota\": \"Surabaya\"}) is True"
+            },
+            {
+              "name": "Aturan atribut dicek",
+              "check": "evaluasi(FLAG, {\"uid\": \"siswa-002\", \"peran\": \"guru\"}) is True and evaluasi(FLAG, {\"uid\": \"siswa-002\", \"kota\": \"Bandung\"}) is True"
+            },
+            {
+              "name": "Rollout persentase memakai bucket",
+              "check": "evaluasi(FLAG, {\"uid\": \"siswa-001\"}) is True and evaluasi(FLAG, {\"uid\": \"siswa-002\", \"kota\": \"Malang\"}) is False"
+            },
+            {
+              "name": "Rollout 100% menyalakan semua, 0% mematikan semua",
+              "check": "evaluasi({**FLAG, \"persen\": 100}, {\"uid\": \"siswa-002\"}) is True and evaluasi({**FLAG, \"persen\": 0}, {\"uid\": \"siswa-001\"}) is False"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "assignment-dan-unit-randomisasi",
+      "title": "Assignment dan Unit Randomisasi",
+      "est_minutes": 30,
+      "slide_from": 12,
+      "slide_to": 14,
+      "body": "## Tujuan\n\n- Menjelaskan kenapa varian tidak boleh dipilih dengan `random.random()` di setiap request.\n- Membuat bucket 0 sampai 99 yang deterministik dengan `hashlib.sha256`.\n- Membagi pengguna ke varian berbobot dan memakai salt per eksperimen.\n- Memilih unit randomisasi yang tepat dan menyamakannya dengan unit analisis.\n\n## Masalah pengguna yang loncat varian\n\nCara paling polos membagi pengguna ke A dan B adalah melempar koin setiap kali halaman dibuka:\n\n```python\nimport random\n\ndef pilih_varian():\n    return \"A\" if random.random() < 0.5 else \"B\"\n```\n\nKelihatannya adil, tapi coba bayangkan pengalaman Sari, siswi kelas XI. Pagi hari ia membuka KantinKu dan melihat tombol checkout lama. Lima menit kemudian ia membuka lagi dan tombolnya pindah ke bawah. Siang hari kembali ke tombol lama. Sari bingung, dan datamu juga kacau: Sari tercatat di grup A **dan** grup B. Kalau ia akhirnya membeli, pembelian itu milik varian yang mana?\n\nVarian harus **menempel** pada pengguna. Sekali Sari masuk B, ia harus tetap di B sampai eksperimen selesai, di HP mana pun dan di server mana pun yang melayaninya.\n\nSalah satu solusinya menyimpan tabel assignment di database: uid Sari, varian B. Ini bisa, tapi setiap request harus membaca database dulu, dan semua server harus berbagi tabel yang sama. Ada cara yang lebih ringan: **hash**.\n\n## Assignment dengan hash\n\nFungsi hash seperti SHA-256 mengubah teks apa pun menjadi deretan karakter heksadesimal yang tampak acak, tapi **selalu sama** untuk teks yang sama. Kita bisa memanfaatkannya untuk menghitung bucket:\n\n```python\nimport hashlib\n\ndef bucket(salt, uid):\n    teks = f\"{salt}:{uid}\".encode()\n    h = hashlib.sha256(teks).hexdigest()\n    return int(h[:8], 16) % 100\n\nprint(bucket(\"checkout-v2\", \"siswa-001\"))  # 32\n```\n\n![Hash salt dan uid menjadi bucket 0 sampai 99](slide:12)\n\nLangkahnya:\n\n1. Gabungkan salt dan uid menjadi satu teks, misalnya `\"checkout-v2:siswa-001\"`, lalu ubah ke bytes dengan `.encode()`.\n2. Hitung SHA-256 dan ambil bentuk heksadesimalnya dengan `.hexdigest()`. Hasilnya 64 karakter.\n3. Ambil 8 karakter pertama dan ubah menjadi bilangan bulat dengan `int(..., 16)`. Delapan digit heksadesimal mewakili angka 0 sampai sekitar 4,29 miliar.\n4. Ambil sisa bagi 100 sehingga hasilnya 0 sampai 99.\n\nKarena SHA-256 menyebar hasilnya dengan sangat rata, bucket pengguna juga tersebar hampir merata di 0 sampai 99. Yang paling penting, fungsinya **deterministik**: server mana pun, kapan pun, menghitung bucket 32 untuk `siswa-001` di eksperimen `checkout-v2`. Tidak perlu tabel assignment sama sekali.\n\n## Varian dengan bobot\n\nSetelah punya bucket, membagi ke varian tinggal soal batas. Untuk 50/50, bucket 0 sampai 49 dapat A dan 50 sampai 99 dapat B. Supaya bisa dipakai untuk bobot apa pun, kita jalan berurutan sambil menjumlahkan batas:\n\n```python\ndef varian(salt, uid, bobot):\n    b, batas = bucket(salt, uid), 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n\nvarian(\"checkout-v2\", \"siswa-001\", {\"A\": 50, \"B\": 50})  # \"A\"\n```\n\nDengan `{\"A\": 90, \"B\": 10}`, bucket 0 sampai 89 mendapat A dan 90 sampai 99 mendapat B. Bobot tidak seimbang seperti ini berguna kalau perubahannya berisiko dan kamu ingin hanya sedikit pengguna yang terpapar. Dict di Python menjaga urutan kunci sesuai urutan dimasukkan, jadi urutan batas selalu sama.\n\nBobot juga tidak harus berjumlah 100 untuk varian yang diuji saja. Misalnya `{\"A\": 10, \"B\": 10, \"luar\": 80}`: hanya 20% pengguna yang ikut eksperimen, 10% di A dan 10% di B, sedangkan 80% sisanya tetap memakai versi lama dan tidak dihitung dalam analisis. Pola ini berguna saat perubahan masih berisiko tetapi kamu tetap ingin grup A dan B sama besar, sehingga perbandingannya adil.\n\nSaat dicoba pada 10.000 uid `siswa-00000` sampai `siswa-09999`, pembagian 50/50 menghasilkan 5105 pengguna di A, dan pembagian 90/10 menghasilkan 1044 pengguna di B. Tidak persis setengah atau sepersepuluh, karena hash berperilaku seperti acak, tapi sudah sangat dekat.\n\n## Salt per eksperimen\n\nKenapa ada `salt`? Bayangkan KantinKu menjalankan dua eksperimen sekaligus, tombol checkout dan banner promo, dan keduanya memakai hash uid **tanpa** salt. Bucket Sari sama di kedua eksperimen. Akibatnya, semua orang yang masuk grup B tombol checkout juga masuk grup B banner promo. Kalau konversi grup B naik, kamu tidak tahu itu karena tombol atau karena banner.\n\nDengan salt berbeda per eksperimen, pembagiannya jadi saling bebas:\n\n| uid | bucket `checkout-v2` | bucket `banner-promo` |\n|---|---|---|\n| siswa-001 | 32 | 8 |\n| siswa-002 | 95 | 93 |\n| budi | 53 | 39 |\n\nDengan pembagian 50/50, `siswa-001` dan `siswa-002` kebetulan mendapat varian yang sama di kedua eksperimen, sedangkan `budi` masuk B di checkout tetapi A di banner. Pada 10.000 uid tadi, 5137 orang mendapat varian berbeda di kedua eksperimen, mendekati separuh, persis seperti dua lemparan koin yang tidak saling terkait.\n\nSalt juga punya aturan sendiri: **jangan diganti** selama eksperimen berjalan. Mengganti salt sama dengan mengacak ulang semua pengguna. Itu hanya dilakukan dengan sengaja, misalnya saat memulai eksperimen baru dari nol.\n\n## Menambah persentase tanpa memindahkan pengguna\n\nHash juga yang membuat rollout bertahap di bab sebelumnya aman. Misalnya eksperimen dimulai dengan hanya 20% pengguna (bucket 0 sampai 19), lalu diperluas. Selama aturan batasnya hanya bertambah dan salt tidak berubah, pengguna lama tetap di bucket yang sama sehingga tetap di variannya. Yang berubah hanya pengguna baru yang ikut masuk.\n\n## Unit randomisasi\n\n**Unit randomisasi** adalah \"siapa\" yang diacak. Pilihannya:\n\n- **Pengguna** (akun): paling umum. Pengalaman konsisten di semua perangkat setelah login.\n- **Perangkat**: dipakai kalau pengguna belum login, misalnya pengunjung halaman depan.\n- **Sesi**: setiap kunjungan diacak ulang. Cocok untuk perubahan yang tidak terasa oleh pengguna, misalnya urutan hasil pencarian, tapi jarang dipakai untuk tampilan.\n- **Klaster**: kelas atau sekolah sebagai satu unit.\n\nAturan pentingnya: **unit analisis harus sama dengan unit randomisasi**. Kalau yang diacak pengguna, metrik dihitung per pengguna, seperti di bab hipotesis dan metrik. Kalau kamu mengacak per pengguna tapi menganalisis per sesi, sesi-sesi milik satu orang tidak saling bebas, dan perhitungan statistik di bab-bab berikutnya akan memberi hasil yang terlalu yakin.\n\nKlaster dipakai saat pengguna saling memengaruhi. Misalnya KantinKu membuat fitur \"pesan bareng satu kelas\". Kalau separuh kelas XI-2 dapat fitur itu dan separuh lagi tidak, mereka tetap mengobrol dan saling ikut memesan, sehingga grup A ikut terpengaruh B. Ini disebut **efek jaringan**. Solusinya mengacak per kelas atau per sekolah: satu kelas utuh dapat A, kelas lain utuh dapat B. Harganya, jumlah unit jadi jauh lebih sedikit dan eksperimen butuh waktu lebih lama.\n\nDengan fungsi `bucket` yang sama, randomisasi per klaster tidak butuh kode baru. Yang dimasukkan ke hash cukup diganti dari uid siswa menjadi id kelas:\n\n```python\nkelas = \"smk1-xi-2\"\nv = varian(\"pesan-bareng\", kelas, {\"A\": 50, \"B\": 50})\n```\n\nSemua siswa di kelas XI-2 otomatis mendapat varian yang sama, karena teks yang di-hash sama. Analisisnya pun dihitung per kelas, misalnya rata-rata konversi tiap kelas, sesuai aturan unit analisis tadi.\n\n## Rangkuman\n\n- Varian harus menempel pada pengguna. Memilih ulang dengan `random.random()` membuat pengguna loncat varian.\n- Bucket dihitung dari `sha256(\"salt:uid\")`, 8 hex pertama diubah ke int, lalu `% 100`.\n- Bobot varian diterapkan dengan menjumlahkan batas berurutan.\n- Salt berbeda per eksperimen membuat pembagian antar eksperimen saling bebas.\n- Unit analisis harus sama dengan unit randomisasi. Efek jaringan diatasi dengan randomisasi per klaster.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa masalah utama memilih varian dengan random.random() setiap kali halaman dibuka?",
+          "code": "",
+          "options": [
+            "Fungsi random.random() terlalu lambat untuk server sekolah yang kecil",
+            "Pengguna bisa melihat varian berbeda di kunjungan berbeda",
+            "Hasilnya selalu lebih banyak A daripada B karena angka acak tidak adil",
+            "random.random() tidak tersedia di semua versi Python yang dipakai"
+          ],
+          "answer": 1,
+          "explanation": "Tanpa assignment yang menempel, satu pengguna tercatat di A dan B sekaligus sehingga pengalaman dan datanya kacau."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "bucket(\"checkout-v2\", \"budi\") bernilai 53. Apa yang dicetak?",
+          "code": "def varian(salt, uid, bobot):\n    b, batas = bucket(salt, uid), 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n\nprint(varian(\"checkout-v2\", \"budi\",\n             {\"A\": 40, \"B\": 40, \"C\": 20}))",
+          "options": [
+            "A",
+            "C",
+            "None, karena bobotnya tidak berjumlah 50 dan 50",
+            "B"
+          ],
+          "answer": 3,
+          "explanation": "Batas A adalah 40 dan batas B adalah 80. Bucket 53 tidak kurang dari 40 tetapi kurang dari 80, jadi B."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Kenapa setiap eksperimen sebaiknya memakai salt yang berbeda?",
+          "code": "",
+          "options": [
+            "Supaya pembagian grup antar eksperimen tidak saling terkait",
+            "Supaya hasil hash lebih aman dari serangan peretas di internet",
+            "Supaya bucket pengguna berubah setiap hari dan terasa lebih adil",
+            "Supaya eksperimen bisa berjalan tanpa perlu feature flag sama sekali"
+          ],
+          "answer": 0,
+          "explanation": "Tanpa salt berbeda, pengguna yang sama selalu jatuh ke grup yang sama di semua eksperimen sehingga efeknya bercampur."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Jika yang diacak adalah pengguna, metrik sebaiknya juga dihitung per pengguna, bukan per sesi.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Unit analisis harus sama dengan unit randomisasi agar perhitungan statistiknya tidak terlalu yakin."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Bucket dan varian dengan hash",
+          "prompt": "Buat assignment deterministik untuk KantinKu. `hashlib` sudah diimpor dan `UIDS` berisi 10.000 uid untuk menguji sebaran.\n\n1. `bucket(salt, uid)`: hitung `sha256` dari teks `f\"{salt}:{uid}\"`, ambil 8 karakter pertama `hexdigest()`, ubah ke int basis 16, lalu `% 100`. Patokan: `bucket(\"checkout-v2\", \"siswa-001\")` = 32.\n2. `varian(salt, uid, bobot)`: `bobot` adalah dict seperti `{\"A\": 50, \"B\": 50}` yang jumlahnya 100. Telusuri bobot berurutan sambil menjumlahkan batas, kembalikan nama varian pertama yang batasnya lebih besar dari bucket.",
+          "starter": {
+            "code": "def bucket(salt, uid):\n    # TODO: sha256 dari f\"{salt}:{uid}\", 8 hex pertama, int basis 16, % 100\n    return 0\n\n\ndef varian(salt, uid, bobot):\n    # TODO: jumlahkan batas berurutan dan bandingkan dengan bucket\n    return \"A\"\n\n\nprint(bucket(\"checkout-v2\", \"siswa-001\"))\nprint(varian(\"checkout-v2\", \"siswa-002\", {\"A\": 50, \"B\": 50}))\n"
+          },
+          "solution": {
+            "code": "def bucket(salt, uid):\n    h = hashlib.sha256(f\"{salt}:{uid}\".encode()).hexdigest()\n    return int(h[:8], 16) % 100\n\n\ndef varian(salt, uid, bobot):\n    b, batas = bucket(salt, uid), 0\n    for nama, persen in bobot.items():\n        batas += persen\n        if b < batas:\n            return nama\n\n\nprint(bucket(\"checkout-v2\", \"siswa-001\"))\nprint(varian(\"checkout-v2\", \"siswa-002\", {\"A\": 50, \"B\": 50}))\n"
+          },
+          "setup": "import hashlib\n\nUIDS = [f\"siswa-{i:05d}\" for i in range(10000)]\n",
+          "tests": [
+            {
+              "name": "Bucket sesuai patokan dan stabil",
+              "check": "bucket(\"checkout-v2\", \"siswa-001\") == 32 and bucket(\"banner-promo\", \"siswa-001\") == 8 and bucket(\"checkout-v2\", \"budi\") == bucket(\"checkout-v2\", \"budi\") == 53"
+            },
+            {
+              "name": "Bucket selalu di rentang 0 sampai 99",
+              "check": "all(0 <= bucket(\"checkout-v2\", u) < 100 for u in UIDS[:2000]) and len({bucket(\"checkout-v2\", u) for u in UIDS[:2000]}) == 100"
+            },
+            {
+              "name": "Varian mengikuti batas bobot",
+              "check": "varian(\"checkout-v2\", \"siswa-001\", {\"A\": 50, \"B\": 50}) == \"A\" and varian(\"checkout-v2\", \"siswa-002\", {\"A\": 50, \"B\": 50}) == \"B\" and varian(\"checkout-v2\", \"budi\", {\"A\": 40, \"B\": 40, \"C\": 20}) == \"B\""
+            },
+            {
+              "name": "Sebaran mendekati bobot 50/50 dan 90/10",
+              "check": "4800 < sum(varian(\"checkout-v2\", u, {\"A\": 50, \"B\": 50}) == \"A\" for u in UIDS) < 5200 and 900 < sum(varian(\"checkout-v2\", u, {\"A\": 90, \"B\": 10}) == \"B\" for u in UIDS) < 1100"
+            },
+            {
+              "name": "Salt berbeda menghasilkan pembagian berbeda",
+              "check": "4500 < sum(varian(\"checkout-v2\", u, {\"A\": 50, \"B\": 50}) != varian(\"banner-promo\", u, {\"A\": 50, \"B\": 50}) for u in UIDS) < 5500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "ukuran-sampel-dan-power",
+      "title": "Ukuran Sampel dan Power",
+      "est_minutes": 30,
+      "slide_from": 15,
+      "slide_to": 17,
+      "body": "## Tujuan\n\n- Menjelaskan arti alpha, beta, power, dan MDE dengan bahasa sehari-hari.\n- Menghitung ukuran sampel per grup untuk dua proporsi dengan `NormalDist().inv_cdf`.\n- Memakai aturan praktis 16 kali varians dibagi selisih kuadrat untuk metrik rata-rata.\n- Menghitung durasi eksperimen dari traffic harian dan membulatkannya ke minggu penuh.\n\n## Dua cara salah menyimpulkan\n\nSetiap eksperimen berakhir dengan keputusan: ada beda atau tidak ada beda. Karena data mengandung unsur kebetulan, keputusan itu bisa salah dengan dua cara.\n\n**Positif palsu** (kesalahan tipe I): sebenarnya tombol baru tidak berpengaruh, tapi datamu kebetulan menunjukkan B lebih baik, lalu kamu merilisnya. Peluang kesalahan ini disebut **alpha** (α). Nilai yang paling umum dipakai adalah 0,05, artinya kalau tidak ada efek sama sekali, ada peluang 5% kamu tetap menyatakan \"ada beda\".\n\n**Negatif palsu** (kesalahan tipe II): sebenarnya tombol baru menaikkan konversi, tapi datamu tidak cukup kuat untuk melihatnya, sehingga kamu menyimpulkan tidak ada beda. Peluang kesalahan ini disebut **beta** (β).\n\n**Power** adalah kebalikan beta: `power = 1 - β`, yaitu peluang eksperimen berhasil mendeteksi efek yang memang ada. Standar yang umum dipakai adalah power 80%. Artinya, kalau efeknya benar-benar sebesar yang kamu cari, eksperimenmu punya peluang 80% untuk menemukannya, dan 20% untuk melewatkannya.\n\n![Alpha, beta, dan power](slide:15)\n\nKenapa tidak membuat alpha dan beta sekecil mungkin? Karena keduanya tarik-menarik. Kalau kamu sangat takut positif palsu dan menurunkan alpha ke 0,001, kamu jadi butuh bukti yang jauh lebih kuat, sehingga lebih sering melewatkan efek yang sebenarnya ada. Satu-satunya cara menekan keduanya sekaligus adalah menambah data, yaitu lebih banyak pengguna. Dan data butuh waktu. Jadi angka 0,05 dan 80% adalah kompromi yang sudah lama dipakai banyak tim, bukan hukum alam. Kalau kesalahan positif palsu sangat mahal, misalnya mengubah alur pembayaran, tim boleh memilih alpha lebih ketat dan menerima eksperimen yang lebih lama.\n\n## MDE dan baseline\n\nPower selalu dihitung untuk efek dengan ukuran tertentu. Efek yang sangat kecil hampir mustahil dideteksi, sedangkan efek besar mudah terlihat. Karena itu kamu harus memutuskan dulu **MDE** (minimum detectable effect): efek terkecil yang layak kamu deteksi.\n\nMDE bukan angka yang kamu harapkan terjadi, tapi angka yang **berarti bagi bisnis**. Tim KantinKu menghitung bahwa tombol checkout baru butuh waktu pengembangan dan perawatan. Kalau konversi hanya naik 0,1 poin, tidak sepadan. Mereka memutuskan MDE 1 poin persen. Inilah angka yang sama dengan hipotesis di bab hipotesis dan metrik.\n\nSelain MDE, kamu butuh **baseline**, yaitu nilai metrik saat ini di versi lama. Dari data bulan lalu, konversi KantinKu sekitar 5%. Jadi pertanyaannya: berapa pengguna per grup yang dibutuhkan untuk mendeteksi kenaikan dari 5% ke 6% dengan α 0,05 dan power 80%?\n\n## Rumus ukuran sampel dua proporsi\n\nUntuk metrik proporsi seperti konversi, rumus ukuran sampel per grup adalah:\n\n```text\nn = (z_(1-α/2) + z_power)^2 * (p1(1-p1) + p2(1-p2)) / (p1 - p2)^2\n```\n\n`z_(1-α/2)` dan `z_power` adalah titik pada distribusi normal standar. Untuk α 0,05 (dua sisi) nilainya 1,96, dan untuk power 80% nilainya 0,8416. Di Python kamu tidak perlu menghafal tabel, karena `statistics.NormalDist` sudah menyediakan `inv_cdf`:\n\n```python\nfrom math import ceil\nfrom statistics import NormalDist\n\ndef ukuran(p1, p2, alpha=0.05, power=0.8):\n    z = NormalDist().inv_cdf\n    k = (z(1 - alpha / 2) + z(power)) ** 2\n    v = p1 * (1 - p1) + p2 * (1 - p2)\n    return ceil(k * v / (p1 - p2) ** 2)\n\nprint(ukuran(0.05, 0.06))  # 8155\n```\n\n`NormalDist()` tanpa argumen adalah distribusi normal standar (rata-rata 0, simpangan baku 1). `inv_cdf(0.975)` menghasilkan 1,95996, angka yang biasa dibulatkan jadi 1,96. Hasil akhir dibulatkan **ke atas** dengan `ceil`, karena kamu tidak bisa merekrut 0,3 orang dan pembulatan ke bawah membuat power sedikit di bawah target.\n\nHasilnya, KantinKu butuh **8155 pengguna per grup**, atau 16.310 pengguna total untuk A dan B.\n\n## Efek kecil butuh sampel besar\n\nCoba ubah angkanya:\n\n| Baseline | Target | Power | Per grup |\n|---|---|---|---|\n| 5% | 6% | 80% | 8155 |\n| 5% | 6% | 90% | 10918 |\n| 5% | 5,5% | 80% | 31231 |\n| 10% | 12% | 80% | 3839 |\n\nAda dua pelajaran penting. Pertama, menaikkan power dari 80% ke 90% butuh sekitar sepertiga lebih banyak pengguna. Kedua, MDE yang setengah kali lebih kecil (0,5 poin, bukan 1 poin) butuh sekitar **empat kali** lebih banyak pengguna, karena selisih muncul dalam bentuk kuadrat di penyebut rumus. Jadi MDE adalah tuas paling kuat. Kalau KantinKu memaksa ingin mendeteksi kenaikan 0,5 poin, mereka butuh 31.231 siswa per grup, jauh lebih banyak dari pengguna aktif sebuah kantin sekolah.\n\nBaris terakhir menunjukkan hal lain: baseline 10% dengan kenaikan 2 poin hanya butuh 3839 per grup. Efek yang lebih besar jauh lebih mudah dideteksi.\n\n## Aturan praktis untuk rata-rata\n\nUntuk metrik rata-rata, misalnya rata-rata belanja, ada aturan praktis yang mudah diingat:\n\n```text\nn per grup ≈ 16 * σ² / δ²\n```\n\nσ adalah simpangan baku metrik, dan δ adalah selisih yang ingin dideteksi. Angka 16 berasal dari `2 * (1,96 + 0,84)²`, yang hasilnya sekitar 15,7, lalu dibulatkan supaya gampang dihitung. Aturan ini berlaku untuk α 0,05 dan power 80%.\n\nMisalnya simpangan baku belanja di KantinKu Rp30.000 dan tim ingin mendeteksi selisih Rp2.000. Maka `16 * 30000² / 2000²` = 3600 pengguna per grup. Kalau selisih yang dicari hanya Rp1.000, kebutuhannya naik empat kali menjadi 14.400. Polanya sama: setengah selisih, empat kali sampel.\n\n## Berapa lama eksperimen?\n\nUkuran sampel belum berarti apa-apa sebelum diubah menjadi waktu. Rumusnya sederhana:\n\n```text\nhari = total sampel / pengguna baru yang masuk eksperimen per hari\n```\n\nKalau KantinKu punya 2000 pengguna per hari dan semuanya masuk eksperimen, kebutuhan 2 x 8155 = 16.310 pengguna tercapai dalam 8,2 hari, dibulatkan ke atas menjadi **9 hari**. Kalau hanya separuh traffic yang dimasukkan ke eksperimen (porsi 50%), waktunya jadi 17 hari.\n\nTapi jangan berhenti di hari ke-9. Perilaku siswa hari Senin berbeda dengan hari Sabtu, saat kantin tutup dan hanya sedikit yang memesan. Kalau eksperimen berhenti di tengah minggu, sebagian hari terwakili dua kali dan sebagian sekali. Karena itu durasi dibulatkan ke **minggu penuh**: 9 hari menjadi 14 hari. Minimal satu minggu penuh, idealnya dua.\n\nDua aturan lagi:\n\n- **Tetapkan durasi di awal.** Jangan berhenti lebih cepat saat grafik terlihat bagus. Bab tentang jebakan p-value akan menunjukkan dengan simulasi seberapa besar kerusakannya.\n- **Traffic terlalu kecil?** Kalau hasil hitungan menunjukkan eksperimen butuh setengah tahun, perbesar MDE, pilih metrik yang lebih sensitif, atau pertimbangkan apakah eksperimen memang cara yang tepat.\n\n## Rangkuman\n\n- Alpha adalah peluang positif palsu, beta peluang negatif palsu, dan power = 1 - beta.\n- MDE adalah efek terkecil yang berarti bagi bisnis, bukan efek yang kamu harapkan.\n- Ukuran sampel dua proporsi dihitung dengan `NormalDist().inv_cdf` dan dibulatkan ke atas: 5% ke 6% butuh 8155 per grup.\n- Setengah MDE butuh sekitar empat kali sampel. Aturan praktis rata-rata: 16σ²/δ² per grup.\n- Durasi = total sampel dibagi traffic harian, lalu dibulatkan ke minggu penuh dan ditetapkan di awal.\n",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Eksperimen memakai power 80%. Apa artinya?",
+          "code": "",
+          "options": [
+            "Ada peluang 80% bahwa varian B lebih baik dari varian A",
+            "Hasil eksperimen akan benar di 80% pengguna yang ikut serta",
+            "Peluang 80% mendeteksi efek sebesar MDE bila efek itu ada",
+            "Ada peluang 80% hipotesis nol benar setelah data terkumpul"
+          ],
+          "answer": 2,
+          "explanation": "Power adalah peluang eksperimen menemukan efek yang memang ada, dihitung untuk efek sebesar MDE."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Untuk baseline 5% dan MDE 1 poin dibutuhkan 8155 per grup. Kira-kira berapa yang dibutuhkan bila MDE diperkecil menjadi 0,5 poin?",
+          "code": "",
+          "options": [
+            "Sekitar 4100 per grup, karena MDE-nya separuh",
+            "Sekitar 16.300 per grup, karena dua kali lipat",
+            "Tetap 8155 per grup, karena baseline tidak berubah",
+            "Sekitar empat kali lipat"
+          ],
+          "answer": 3,
+          "explanation": "Selisih muncul dalam bentuk kuadrat di penyebut, jadi setengah MDE butuh sekitar empat kali sampel (31231 per grup)."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Bila hitungan durasi menghasilkan 9 hari, sebaiknya eksperimen dijalankan 14 hari agar semua hari dalam seminggu terwakili sama banyak.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Perilaku tiap hari berbeda, jadi durasi dibulatkan ke minggu penuh."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Berapa nilai yang dicetak?",
+          "code": "from math import ceil\n\nn_per_grup = 3000\njumlah_grup = 2\ntraffic_harian = 1000\nporsi = 0.5\nprint(ceil(n_per_grup * jumlah_grup / (traffic_harian * porsi)))",
+          "options": [
+            "6",
+            "12",
+            "3",
+            "7"
+          ],
+          "answer": 1,
+          "explanation": "Total 6000 pengguna dibagi 500 pengguna eksperimen per hari menghasilkan 12 hari."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Menghitung ukuran sampel",
+          "prompt": "Lengkapi `ukuran_sampel(p1, mde, alpha=0.05, power=0.8)` yang mengembalikan jumlah pengguna **per grup** (int) untuk mendeteksi perubahan konversi dari `p1` ke `p2 = p1 + mde`.\n\nRumus: `n = (z(1 - alpha/2) + z(power))**2 * (p1*(1-p1) + p2*(1-p2)) / mde**2`, dengan `z = NormalDist().inv_cdf`. Bulatkan ke atas dengan `math.ceil`.\n\nPatokan: `ukuran_sampel(0.05, 0.01)` = 8155.",
+          "starter": {
+            "code": "import math\nfrom statistics import NormalDist\n\n\ndef ukuran_sampel(p1, mde, alpha=0.05, power=0.8):\n    p2 = p1 + mde\n    # TODO: ganti angka z yang masih kasar dengan NormalDist().inv_cdf\n    k = (2 + 1) ** 2\n    v = p1 * (1 - p1) + p2 * (1 - p2)\n    return round(k * v / mde ** 2)\n\n\nprint(ukuran_sampel(0.05, 0.01))\n"
+          },
+          "solution": {
+            "code": "import math\nfrom statistics import NormalDist\n\n\ndef ukuran_sampel(p1, mde, alpha=0.05, power=0.8):\n    p2 = p1 + mde\n    z = NormalDist().inv_cdf\n    k = (z(1 - alpha / 2) + z(power)) ** 2\n    v = p1 * (1 - p1) + p2 * (1 - p2)\n    return math.ceil(k * v / mde ** 2)\n\n\nprint(ukuran_sampel(0.05, 0.01))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "5% ke 6% butuh 8155 per grup",
+              "check": "ukuran_sampel(0.05, 0.01) == 8155"
+            },
+            {
+              "name": "Power 90% butuh 10918 per grup",
+              "check": "ukuran_sampel(0.05, 0.01, power=0.9) == 10918"
+            },
+            {
+              "name": "MDE 0,5 poin butuh 31231 per grup",
+              "check": "ukuran_sampel(0.05, 0.005) == 31231"
+            },
+            {
+              "name": "10% ke 12% butuh 3839 dan hasilnya int",
+              "check": "ukuran_sampel(0.10, 0.02) == 3839 and type(ukuran_sampel(0.10, 0.02)) is int"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Durasi eksperimen",
+          "prompt": "Ubah ukuran sampel menjadi jumlah hari.\n\n1. `durasi_hari(n_per_grup, jumlah_grup, traffic_harian, porsi=1.0)`: total sampel (`n_per_grup * jumlah_grup`) dibagi pengguna eksperimen per hari (`traffic_harian * porsi`), dibulatkan **ke atas**.\n2. `minggu_penuh(hari)`: bulatkan jumlah hari ke atas ke kelipatan 7 terdekat. 9 menjadi 14, 14 tetap 14.\n\nPatokan KantinKu: `durasi_hari(8155, 2, 2000)` = 9.",
+          "starter": {
+            "code": "import math\n\n\ndef durasi_hari(n_per_grup, jumlah_grup, traffic_harian, porsi=1.0):\n    # TODO: porsi belum dipakai dan pembulatannya salah\n    return n_per_grup * jumlah_grup // traffic_harian\n\n\ndef minggu_penuh(hari):\n    # TODO: bulatkan ke atas ke kelipatan 7\n    return hari\n\n\nprint(durasi_hari(8155, 2, 2000), minggu_penuh(9))\n"
+          },
+          "solution": {
+            "code": "import math\n\n\ndef durasi_hari(n_per_grup, jumlah_grup, traffic_harian, porsi=1.0):\n    return math.ceil(n_per_grup * jumlah_grup / (traffic_harian * porsi))\n\n\ndef minggu_penuh(hari):\n    return math.ceil(hari / 7) * 7\n\n\nprint(durasi_hari(8155, 2, 2000), minggu_penuh(9))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "8155 per grup dan 2000 per hari butuh 9 hari",
+              "check": "durasi_hari(8155, 2, 2000) == 9"
+            },
+            {
+              "name": "Porsi 50% butuh 17 hari",
+              "check": "durasi_hari(8155, 2, 2000, 0.5) == 17"
+            },
+            {
+              "name": "Tiga grup dan pembagian pas",
+              "check": "durasi_hari(8155, 3, 2000) == 13 and durasi_hari(1000, 2, 2000) == 1"
+            },
+            {
+              "name": "Dibulatkan ke minggu penuh",
+              "check": "minggu_penuh(9) == 14 and minggu_penuh(14) == 14 and minggu_penuh(1) == 7"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "uji-proporsi-dan-rata-rata",
+      "title": "Uji Proporsi dan Rata-rata",
+      "est_minutes": 35,
+      "slide_from": 18,
+      "slide_to": 21,
+      "body": "## Tujuan\n\n- Menjelaskan galat baku sebagai ukuran goyangan angka sampel.\n- Menghitung uji z dua proporsi langkah demi langkah untuk konversi checkout.\n- Membandingkan rata-rata belanja dengan Welch t-test tanpa menganggap varians sama.\n- Membaca interval kepercayaan 95% dan membedakan efek absolut dengan efek relatif (lift).\n\n## Angka sampel itu bergoyang\n\nEksperimen tombol checkout KantinKu sudah selesai. Grup A (tombol lama) punya 8000 pengguna dan 400 di antaranya membeli, jadi konversinya 5,00%. Grup B (tombol baru) juga 8000 pengguna dengan 470 pembeli, konversinya 5,875%. B lebih tinggi 0,875 poin persen. Pertanyaannya: apakah tombol baru memang lebih bagus, atau selisih itu cuma kebetulan?\n\nBayangkan kamu mengulang eksperimen yang sama minggu depan dengan siswa lain. Konversi A hampir pasti tidak tepat 5,00% lagi, mungkin 4,8% atau 5,2%. Angka dari sampel selalu bergoyang di sekitar nilai sebenarnya. Kumpulan semua kemungkinan hasil itu disebut **distribusi sampling**, dan lebar goyangannya diukur dengan **galat baku** (*standard error*, se).\n\nUntuk proporsi, rumusnya sederhana:\n\n```python\nimport math\n\ndef galat_baku(p, n):\n    return math.sqrt(p * (1 - p) / n)\n\nfor n in (100, 1000, 8000):\n    print(n, round(galat_baku(0.05, n) * 100, 2))\n```\n\nOutput:\n\n```\n100 2.18\n1000 0.69\n8000 0.24\n```\n\nDengan konversi 5% dan hanya 100 pengguna, galat bakunya 2,18 poin persen, lebih besar dari selisih yang mau kita deteksi. Dengan 8000 pengguna, galat bakunya tinggal 0,24 poin. Perhatikan pola akar: sampel 4 kali lebih besar membuat galat baku jadi setengahnya (32000 pengguna memberi 0,12 poin). Itu sebabnya efek kecil butuh sampel yang jauh lebih besar, seperti yang kamu lihat di bab ukuran sampel.\n\nSemua uji statistik di bab ini punya ide yang sama: **bandingkan selisih yang teramati dengan galat baku selisih itu**. Selisih yang jauh lebih besar dari goyangan wajar sulit dijelaskan sebagai kebetulan.\n\n## Uji z dua proporsi\n\nUntuk konversi, alat standarnya adalah uji z dua proporsi. Hipotesis nol (H0) bilang konversi A dan B sama. Kalau H0 benar, cara terbaik menaksir konversi bersama adalah menggabungkan kedua grup. Ini disebut proporsi gabungan (*pooled*).\n\nLangkahnya dengan angka KantinKu:\n\n1. Proporsi gabungan: (400 + 470) / (8000 + 8000) = 870 / 16000 = 0,054375.\n2. Galat baku selisih di bawah H0: akar dari 0,054375 x (1 - 0,054375) x (1/8000 + 1/8000) = 0,003585.\n3. Selisih: 0,05875 - 0,05 = 0,00875.\n4. z = 0,00875 / 0,003585 = 2,44.\n5. p-value dua sisi = 2 x (1 - Phi(2,44)) = 0,0147.\n\nPhi adalah fungsi distribusi kumulatif normal baku. Di Python kamu tidak perlu tabel z, cukup `NormalDist().cdf` dari modul `statistics`:\n\n```python\nimport math\nfrom statistics import NormalDist\n\ndef uji_z(x_a, n_a, x_b, n_b):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    p = (x_a + x_b) / (n_a + n_b)\n    se = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\n    z = (p_b - p_a) / se\n    p_value = 2 * (1 - NormalDist().cdf(abs(z)))\n    return z, p_value\n\nprint(uji_z(400, 8000, 470, 8000))\n```\n\nOutput (dibulatkan): `(2.4405, 0.0147)`. Karena p-value di bawah 0,05, kita menolak H0: ada beda konversi antara A dan B. Kenapa dua sisi? Sebelum eksperimen kita tidak tahu apakah tombol baru akan menaikkan atau malah menurunkan konversi, jadi kedua arah dihitung. Itu sebabnya ada `abs(z)` dan dikali 2.\n\n![Uji z dua proporsi untuk tombol checkout](slide:19)\n\nUji z memakai distribusi normal sebagai pendekatan. Pendekatan ini bagus bila setiap grup punya cukup banyak pembeli dan bukan pembeli (puluhan ke atas). Untuk sampel yang sangat kecil, orang memakai uji lain seperti uji eksak Fisher.\n\n## Welch t-test untuk rata-rata\n\nTidak semua metrik berupa proporsi. Tim KantinKu juga ingin tahu apakah belanja per pembeli berubah. Datanya: grup A rata-rata Rp48.000 dengan simpangan baku Rp30.000, grup B rata-rata Rp50.500 dengan simpangan baku Rp32.000, masing-masing 2000 pembeli.\n\nUntuk rata-rata, pakai **Welch t-test**. Bedanya dengan t-test klasik: Welch tidak menganggap varians kedua grup sama. Di eksperimen nyata, fitur baru sering mengubah sebaran belanja, bukan cuma rata-ratanya, jadi asumsi varians sama berbahaya. Rumusnya:\n\n- se = akar(s_a²/n_a + s_b²/n_b) = akar(30000²/2000 + 32000²/2000) = 980,8\n- t = (50500 - 48000) / 980,8 = 2,55\n- derajat bebas Welch-Satterthwaite sekitar 3981\n\n```python\nimport math\nfrom statistics import NormalDist\n\ndef welch_ringkas(m_a, s_a, n_a, m_b, s_b, n_b):\n    va, vb = s_a**2 / n_a, s_b**2 / n_b\n    t = (m_b - m_a) / math.sqrt(va + vb)\n    df = (va + vb) ** 2 / (va**2 / (n_a - 1) + vb**2 / (n_b - 1))\n    p = 2 * (1 - NormalDist().cdf(abs(t)))\n    return t, df, p\n\nprint(welch_ringkas(48000, 30000, 2000, 50500, 32000, 2000))\n```\n\nHasilnya t sekitar 2,55, df sekitar 3981, dan p sekitar 0,011. Jujur saja: p-value Welch yang benar memakai distribusi t, dan pustaka standar Python tidak punya distribusi t. Di sini kita memakai pendekatan normal. Dengan derajat bebas ribuan, distribusi t hampir sama persis dengan normal, jadi pendekatannya aman. Dengan sampel kecil (belasan data), pendekatan normal membuat p-value terlalu kecil, jadi jangan dipakai.\n\nDi dunia nyata, analis biasanya memakai SciPy: `scipy.stats.ttest_ind(a, b, equal_var=False)` menjalankan Welch t-test dengan distribusi t yang tepat. SciPy tidak tersedia di latihan kelas ini, jadi kita menulis rumusnya sendiri dengan `math` dan `statistics`.\n\n## Interval kepercayaan 95%\n\np-value hanya menjawab \"ada beda atau tidak\". Tim produk biasanya lebih butuh \"bedanya kira-kira seberapa besar\". Untuk itu pakai **interval kepercayaan** (*confidence interval*, CI).\n\nUntuk selisih proporsi, galat bakunya dihitung tanpa pooling, karena sekarang kita tidak menganggap H0 benar:\n\n```python\nimport math\n\ndef interval(x_a, n_a, x_b, n_b, z=1.96):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    se = math.sqrt(p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b)\n    d = p_b - p_a\n    return d - z * se, d + z * se\n\nprint(interval(400, 8000, 470, 8000))\nprint(interval(500, 10000, 560, 10000))\n```\n\nOutput (dibulatkan):\n\n```\n(0.00172, 0.01578)\n(-0.00021, 0.01221)\n```\n\nAngka 1,96 berasal dari `NormalDist().inv_cdf(0.975)`, yaitu 1,95996. Contoh pertama memberi CI +0,17 sampai +1,58 poin persen. Seluruh interval di atas nol, cocok dengan p-value 0,0147. Contoh kedua (500 dari 10000 vs 560 dari 10000) memberi CI -0,02 sampai +1,22 poin. Interval ini memuat nol, dan uji z-nya memberi p = 0,058. Artinya data belum cukup untuk memastikan ada beda, walaupun selisihnya mungkin saja nyata.\n\nCara membaca yang benar: bila eksperimen diulang berkali-kali dan setiap kali dibuat CI 95% dengan prosedur yang sama, sekitar 95% interval itu akan memuat selisih sebenarnya. Jadi CI bukan \"95% pasti benar\" untuk satu interval tertentu, tapi sifat prosedurnya.\n\nUntuk Welch, CI selisih rata-rata belanja adalah 2500 ± 1,96 x 980,8, yaitu Rp578 sampai Rp4.422.\n\n## Efek absolut dan efek relatif\n\nSelisih 0,875 poin persen disebut **efek absolut**. Kalau dibagi konversi A, kamu dapat **efek relatif** atau *lift*: 0,00875 / 0,05 = 17,5%. Dua angka ini sering tertukar. \"Konversi naik 17,5%\" terdengar jauh lebih heboh daripada \"naik 0,875 poin\", padahal kejadiannya sama. Di laporan, tulis keduanya dengan jelas. Untuk belanja, selisih Rp2.500 dari Rp48.000 berarti lift sekitar 5,2%.\n\n## Rangkuman\n\n- Galat baku mengukur goyangan angka sampel; sampel 4 kali lebih besar membuat galat baku jadi setengah.\n- Uji z dua proporsi memakai proporsi gabungan; 400/8000 vs 470/8000 memberi z = 2,44 dan p = 0,0147.\n- Welch t-test membandingkan rata-rata tanpa menganggap varians sama; dengan sampel besar, p-value boleh didekati dengan distribusi normal.\n- CI 95% selisih proporsi memakai galat baku tanpa pooling; CI yang memuat nol berarti belum terbukti ada beda.\n- Bedakan efek absolut (poin persen) dan efek relatif (lift), dan tulis keduanya di laporan.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Konversi 5% diukur pada 2000 pengguna. Kalau jumlah pengguna dinaikkan menjadi 8000, galat bakunya menjadi",
+          "code": "",
+          "options": [
+            "Dua kali lebih besar dari semula",
+            "Setengah dari galat baku semula",
+            "Seperempat dari galat baku semula",
+            "Tetap sama karena konversinya tetap 5%"
+          ],
+          "answer": 1,
+          "explanation": "Galat baku sebanding dengan 1 / akar(n), jadi sampel 4 kali lebih besar membuat galat baku tinggal setengah."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kenapa kode uji z ini memakai proporsi gabungan p untuk menghitung se?",
+          "code": "p = (x_a + x_b) / (n_a + n_b)\nse = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\nz = (p_b - p_a) / se",
+          "options": [
+            "Karena galat baku dihitung dengan menganggap H0 benar, yaitu A dan B punya konversi yang sama",
+            "Karena proporsi gabungan selalu menghasilkan p-value yang lebih kecil dan lebih mudah signifikan",
+            "Karena NormalDist hanya menerima satu proporsi, tidak bisa dua proporsi sekaligus",
+            "Karena tanpa pooling rumusnya hanya berlaku untuk rata-rata belanja, bukan proporsi"
+          ],
+          "answer": 0,
+          "explanation": "Uji z menilai seberapa aneh selisihnya bila H0 benar, jadi galat bakunya memakai satu konversi bersama."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Konversi A 5,00% dan B 5,875%. Mana pernyataan yang tepat tentang besar efeknya?",
+          "code": "",
+          "options": [
+            "Efek absolut 17,5 poin persen dan lift 0,875%",
+            "Efek absolut 0,875 poin persen dan lift 17,5%",
+            "Efek absolut dan lift sama-sama 0,875 karena dihitung dari angka yang sama",
+            "Lift tidak bisa dihitung tanpa mengetahui p-value uji z-nya"
+          ],
+          "answer": 1,
+          "explanation": "Selisih 5,875 - 5,00 = 0,875 poin persen, dan dibagi konversi A memberi lift 17,5%."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Welch t-test menganggap varians belanja grup A dan grup B sama besar.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "Justru Welch tidak menganggap varians sama; galat bakunya memakai varians masing-masing grup."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Uji z dan interval kepercayaan",
+          "prompt": "Lengkapi dua fungsi untuk membandingkan konversi dua varian.\n\n- `uji_z(x_a, n_a, x_b, n_b)` mengembalikan dict `{\"z\": ..., \"p\": ...}`. Pakai proporsi gabungan `(x_a + x_b) / (n_a + n_b)` untuk galat baku, `z = (p_b - p_a) / se`, dan p-value dua sisi `2 * (1 - NormalDist().cdf(abs(z)))`.\n- `interval(x_a, n_a, x_b, n_b)` mengembalikan tuple `(bawah, atas)` CI 95% untuk selisih `p_b - p_a`. Galat bakunya **tanpa pooling**: `sqrt(p_a(1-p_a)/n_a + p_b(1-p_b)/n_b)`, dan pengalinya `NormalDist().inv_cdf(0.975)`.\n\nContoh: 400 dari 8000 vs 470 dari 8000 memberi z sekitar 2,44 dan p sekitar 0,0147.",
+          "starter": {
+            "code": "import math\nfrom statistics import NormalDist\n\n\ndef uji_z(x_a, n_a, x_b, n_b):\n    # TODO: proporsi gabungan, galat baku, z, dan p-value dua sisi\n    return {\"z\": 0.0, \"p\": 1.0}\n\n\ndef interval(x_a, n_a, x_b, n_b):\n    # TODO: selisih p_b - p_a plus minus 1.96 x galat baku tanpa pooling\n    return (0.0, 0.0)\n\n\nprint(uji_z(400, 8000, 470, 8000))\nprint(interval(400, 8000, 470, 8000))\n"
+          },
+          "solution": {
+            "code": "import math\nfrom statistics import NormalDist\n\n\ndef uji_z(x_a, n_a, x_b, n_b):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    p = (x_a + x_b) / (n_a + n_b)\n    se = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\n    z = (p_b - p_a) / se\n    return {\"z\": z, \"p\": 2 * (1 - NormalDist().cdf(abs(z)))}\n\n\ndef interval(x_a, n_a, x_b, n_b):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    se = math.sqrt(p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b)\n    z = NormalDist().inv_cdf(0.975)\n    d = p_b - p_a\n    return (d - z * se, d + z * se)\n\n\nprint(uji_z(400, 8000, 470, 8000))\nprint(interval(400, 8000, 470, 8000))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "400/8000 vs 470/8000: z 2,44 dan p 0,0147",
+              "check": "abs(uji_z(400, 8000, 470, 8000)[\"z\"] - 2.4405) < 1e-3 and abs(uji_z(400, 8000, 470, 8000)[\"p\"] - 0.014667) < 1e-3"
+            },
+            {
+              "name": "500/10000 vs 560/10000 belum signifikan",
+              "check": "abs(uji_z(500, 10000, 560, 10000)[\"p\"] - 0.058258) < 1e-3 and uji_z(500, 10000, 560, 10000)[\"p\"] > 0.05"
+            },
+            {
+              "name": "Menukar A dan B membalik tanda z, p tetap",
+              "check": "abs(uji_z(470, 8000, 400, 8000)[\"z\"] + 2.4405) < 1e-3 and abs(uji_z(470, 8000, 400, 8000)[\"p\"] - 0.014667) < 1e-3"
+            },
+            {
+              "name": "CI 400/8000 vs 470/8000 seluruhnya positif",
+              "check": "abs(interval(400, 8000, 470, 8000)[0] - 0.001724) < 1e-4 and abs(interval(400, 8000, 470, 8000)[1] - 0.015776) < 1e-4"
+            },
+            {
+              "name": "CI 500/10000 vs 560/10000 memuat nol",
+              "check": "interval(500, 10000, 560, 10000)[0] < 0 < interval(500, 10000, 560, 10000)[1] and abs(interval(500, 10000, 560, 10000)[1] - 0.012209) < 1e-4"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Welch t-test untuk belanja",
+          "prompt": "Tulis `welch(a, b)` yang menerima dua list angka (belanja per pembeli, dalam ribuan rupiah) dan mengembalikan dict `{\"t\": ..., \"df\": ..., \"p\": ...}`.\n\n- `va = variance(a) / len(a)` dan `vb = variance(b) / len(b)`, dengan `variance` sampel (pembagi n - 1) dari modul `statistics`.\n- `t = (mean(b) - mean(a)) / sqrt(va + vb)`.\n- `df = (va + vb)**2 / (va**2 / (n_a - 1) + vb**2 / (n_b - 1))` (Welch-Satterthwaite).\n- `p = 2 * (1 - NormalDist().cdf(abs(t)))`. Ini pendekatan normal, cukup baik untuk sampel ratusan ke atas.\n\nPemeriksa sudah menyiapkan `BELANJA_A` dan `BELANJA_B`, masing-masing 400 angka.",
+          "starter": {
+            "code": "import math\nfrom statistics import NormalDist, mean, variance\n\n\ndef welch(a, b):\n    # TODO: hitung va, vb, t, df Welch-Satterthwaite, dan p pendekatan normal\n    return {\"t\": 0.0, \"df\": 0.0, \"p\": 1.0}\n\n\nprint(welch(BELANJA_A, BELANJA_B))\n"
+          },
+          "solution": {
+            "code": "import math\nfrom statistics import NormalDist, mean, variance\n\n\ndef welch(a, b):\n    va = variance(a) / len(a)\n    vb = variance(b) / len(b)\n    t = (mean(b) - mean(a)) / math.sqrt(va + vb)\n    df = (va + vb) ** 2 / (va**2 / (len(a) - 1) + vb**2 / (len(b) - 1))\n    p = 2 * (1 - NormalDist().cdf(abs(t)))\n    return {\"t\": t, \"df\": df, \"p\": p}\n\n\nprint(welch(BELANJA_A, BELANJA_B))\n"
+          },
+          "setup": "import random\n\n_r = random.Random(11)\nBELANJA_A = [max(5, round(_r.gauss(48, 30))) for _ in range(400)]\nBELANJA_B = [max(5, round(_r.gauss(53, 32))) for _ in range(400)]\n",
+          "tests": [
+            {
+              "name": "t dan df untuk dua list kecil",
+              "check": "abs(welch([42, 55, 38, 61, 47, 50, 44, 58], [51, 63, 49, 70, 58, 55, 60, 66])[\"t\"] - 2.50330) < 1e-3 and abs(welch([42, 55, 38, 61, 47, 50, 44, 58], [51, 63, 49, 70, 58, 55, 60, 66])[\"df\"] - 13.82968) < 1e-3"
+            },
+            {
+              "name": "p pendekatan normal untuk list kecil",
+              "check": "abs(welch([42, 55, 38, 61, 47, 50, 44, 58], [51, 63, 49, 70, 58, 55, 60, 66])[\"p\"] - 0.012304) < 1e-3"
+            },
+            {
+              "name": "Data belanja KantinKu: t, df, dan p",
+              "check": "abs(welch(BELANJA_A, BELANJA_B)[\"t\"] - 1.42225) < 1e-3 and abs(welch(BELANJA_A, BELANJA_B)[\"df\"] - 794.44005) < 1e-2 and abs(welch(BELANJA_A, BELANJA_B)[\"p\"] - 0.154953) < 1e-3"
+            },
+            {
+              "name": "Menukar urutan membalik tanda t",
+              "check": "abs(welch(BELANJA_B, BELANJA_A)[\"t\"] + welch(BELANJA_A, BELANJA_B)[\"t\"]) < 1e-9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "p-value-dan-jebakan",
+      "title": "p-value dan Jebakan Umum",
+      "est_minutes": 30,
+      "slide_from": 22,
+      "slide_to": 24,
+      "body": "## Tujuan\n\n- Menjelaskan arti p-value yang benar dan mengenali tiga salah kaprah umum.\n- Membedakan hasil yang signifikan secara statistik dengan hasil yang penting bagi bisnis.\n- Menunjukkan lewat simulasi A/A kenapa mengintip hasil lalu berhenti lebih awal menaikkan positif palsu.\n- Menghitung peluang salah dari banyak metrik dan memakai koreksi Bonferroni.\n\n## Arti p-value yang sebenarnya\n\nDi bab sebelumnya, uji tombol checkout KantinKu menghasilkan p = 0,0147. Banyak orang langsung bilang \"berarti 98,5% yakin tombol B lebih bagus\". Itu salah, dan kesalahan ini sangat umum, bahkan di kalangan orang yang sudah lama bekerja dengan data.\n\nDefinisi yang benar: **p-value adalah peluang melihat selisih sebesar yang teramati, atau lebih ekstrem, seandainya H0 benar** (tidak ada beda sama sekali antara A dan B). Jadi p = 0,0147 berarti: kalau tombol baru sebenarnya tidak berpengaruh apa pun, selisih sebesar 0,875 poin atau lebih hanya akan muncul sekitar 1,5% dari waktu karena kebetulan pengacakan. Karena itu jarang, kita berani menolak H0.\n\nTiga salah kaprah yang perlu kamu hindari:\n\n1. **p-value bukan peluang H0 benar.** p = 0,0147 tidak berarti peluang \"tombol tidak berpengaruh\" adalah 1,47%. p-value dihitung dengan *menganggap* H0 benar, jadi tidak bisa sekaligus menilai peluang H0.\n2. **p-value bukan peluang B lebih baik.** 1 - p tidak sama dengan keyakinan bahwa B unggul. Untuk pertanyaan semacam itu orang memakai pendekatan Bayesian, yang di luar cakupan kelas ini.\n3. **p besar bukan bukti tidak ada efek.** Eksperimen 500/10000 vs 560/10000 memberi p = 0,058. Itu tidak membuktikan tombolnya tidak berguna. Artinya data belum cukup untuk membedakan efek dari kebetulan. Lihat CI-nya: -0,02 sampai +1,22 poin, yang masih memuat kemungkinan efek cukup besar.\n\n![Membaca p-value dengan benar](slide:22)\n\n## Signifikan belum tentu penting\n\nKata \"signifikan\" di statistik hanya berarti \"sulit dijelaskan sebagai kebetulan\". Tidak ada hubungannya dengan besar atau kecilnya manfaat. Dengan sampel raksasa, efek yang sangat kecil pun bisa signifikan.\n\nContoh: sebuah aplikasi besar menguji warna ikon dengan 2 juta pengguna per grup. Konversi A 5,00% dan B 5,05%. Uji z memberi z = 2,29 dan p = 0,022, jadi signifikan. Tapi selisihnya hanya 0,05 poin persen, lift 1%. Apakah layak dirilis? Tergantung biaya. Kalau perubahannya hanya warna, mungkin ya. Kalau butuh tim merawat kode tambahan selamanya, mungkin tidak.\n\nKarena itu, sebelum eksperimen tetapkan juga **efek minimum yang berarti secara bisnis**. Ini mirip MDE yang kamu pakai saat menghitung ukuran sampel. Saat membaca hasil, lihat batas bawah CI: kalau batas bawahnya pun masih di atas efek minimum itu, keputusannya jelas.\n\n## Bahaya mengintip\n\nGodaan paling umum: membuka dasbor setiap hari, lalu menghentikan eksperimen begitu p-value turun di bawah 0,05. Kedengarannya efisien. Masalahnya, p-value sendiri naik turun seiring data masuk. Kalau kamu memberinya banyak kesempatan, cepat atau lambat ia akan menyentuh 0,05 hanya karena kebetulan.\n\nCara membuktikannya adalah dengan **simulasi A/A**: dua grup yang benar-benar sama (konversi 10% di keduanya), jadi setiap hasil \"signifikan\" pasti positif palsu. Kita jalankan 1000 eksperimen palsu, masing-masing 2000 pengguna per grup, dengan seed 1:\n\n| Cara melihat | Laju positif palsu |\n| --- | --- |\n| Sekali, di akhir | 5,4% |\n| Mengintip 10 kali, berhenti saat p < 0,05 | 19,2% |\n| Mengintip 20 kali, berhenti saat p < 0,05 | 22,8% |\n\nMelihat sekali di akhir memberi sekitar 5%, sesuai α yang kita pilih. Mengintip 10 kali membuat positif palsu hampir empat kali lipat. Kode intinya kira-kira seperti ini:\n\n```python\nimport random\n\ndef satu_eksperimen(r, n, p, intip, uji_p):\n    xa = xb = 0\n    langkah = n // intip\n    for k in range(1, intip + 1):\n        for _ in range(langkah):\n            xa += r.random() < p\n            xb += r.random() < p\n        m = k * langkah\n        if uji_p(xa, m, xb, m) < 0.05:\n            return True\n    return False\n```\n\nPerhatikan `random.Random(seed)` dipakai, bukan `random.random()` global, supaya simulasinya bisa diulang dan hasilnya sama setiap kali dijalankan.\n\nKenapa angka \"sekali di akhir\" tidak tepat 5,0%? Karena 1000 eksperimen palsu juga hanya sampel. Dengan seed lain hasilnya bisa sedikit di atas atau di bawah 5%. Yang penting polanya: semakin sering mengintip, semakin besar peluang tertipu. Simulasi seperti ini juga berguna di luar kelas. Sebelum mempercayai rumus atau platform eksperimen baru, jalankan A/A test atau simulasi A/A dulu. Kalau laju positif palsunya jauh dari α yang kamu pilih, berarti ada yang salah di rumus, data, atau cara kamu membacanya.\n\nSolusinya ada dua. Pertama, **tetapkan durasi di awal** dari perhitungan ukuran sampel, lalu analisis sekali di akhir. Kedua, kalau memang perlu berhenti lebih awal, pakai **metode sekuensial** yang dirancang untuk dilihat berkali-kali dengan batas yang lebih ketat. Beberapa platform eksperimen menyediakannya. Memantau guardrail setiap hari tetap boleh, bahkan wajib. Yang dilarang adalah berhenti *karena metrik utama kebetulan terlihat bagus*.\n\n## Banyak metrik, banyak peluang salah\n\nMasalah yang mirip muncul saat kamu menguji banyak hal sekaligus. Setiap uji dengan α = 0,05 punya peluang 5% memberi positif palsu. Kalau kamu menguji 10 metrik yang independen dan sebenarnya tidak ada yang berubah, peluang minimal satu terlihat signifikan adalah:\n\n```python\nprint(1 - 0.95 ** 10)\n```\n\nOutput: `0.4012630607616213`, sekitar 40%. Dengan 20 metrik naik jadi 64%. Hal yang sama terjadi pada eksperimen dengan banyak varian (A, B, C, D, E) yang semuanya dibandingkan dengan A.\n\nKoreksi paling sederhana adalah **Bonferroni**: bagi α dengan jumlah uji. Untuk 10 metrik, pakai ambang 0,05 / 10 = 0,005. Bonferroni cenderung terlalu ketat bila metriknya saling berkaitan, tapi mudah dipahami dan aman. Cara yang lebih praktis lagi: tetapkan **satu metrik utama** sebelum mulai, seperti di bab hipotesis. Metrik pendukung dipakai untuk menjelaskan, bukan untuk memutuskan.\n\n## Segmen dan p-hacking\n\nGodaan terakhir muncul setelah hasil keluar dan ternyata tidak signifikan. \"Coba lihat khusus siswa kelas 10. Kalau tidak, kelas 11. Kalau tidak, yang memakai HP Android.\" Membelah data terus sampai ketemu kelompok yang signifikan disebut **p-hacking**. Setiap belahan adalah uji baru, jadi peluang positif palsunya menumpuk persis seperti contoh 10 metrik tadi.\n\nTemuan segmen boleh dicatat, tapi statusnya **hipotesis untuk eksperimen berikutnya**, bukan dasar keputusan rilis. Kalau kamu curiga tombol baru hanya membantu kelas 10, rancang eksperimen baru yang memang menargetkan kelas 10, dengan metrik utama dan ukuran sampel yang ditetapkan di awal.\n\n## Rangkuman\n\n- p-value adalah peluang melihat selisih sebesar ini atau lebih bila H0 benar; bukan peluang H0 benar dan bukan peluang B lebih baik.\n- p besar hanya berarti belum cukup bukti; CI menunjukkan rentang efek yang masih mungkin.\n- Signifikan belum tentu penting: bandingkan besar efek dengan efek minimum yang berarti bagi bisnis.\n- Mengintip lalu berhenti saat p < 0,05 menaikkan positif palsu dari sekitar 5% ke 19,2% (10 kali intip) di simulasi A/A.\n- Banyak metrik memperbesar peluang salah (1 - 0,95^10 = 40%); pakai satu metrik utama, Bonferroni, dan perlakukan temuan segmen sebagai hipotesis baru.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Uji tombol checkout memberi p = 0,0147. Pernyataan mana yang benar?",
+          "code": "",
+          "options": [
+            "Peluang tombol baru tidak berpengaruh sama sekali hanya sebesar 1,47%",
+            "Kita 98,53% yakin bahwa tombol baru memang lebih bagus daripada tombol lama",
+            "Bila tombol tidak berpengaruh, selisih sebesar ini atau lebih jarang muncul",
+            "Tombol baru pasti menaikkan konversi sebanyak 1,47 poin persen di masa depan"
+          ],
+          "answer": 2,
+          "explanation": "p-value dihitung dengan menganggap H0 benar, jadi ia mengukur seberapa jarang selisih seperti ini muncul karena kebetulan."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Tim membuka dasbor tiap hari dan menghentikan eksperimen begitu p < 0,05. Apa akibatnya?",
+          "code": "",
+          "options": [
+            "Laju positif palsu naik jauh di atas 5%",
+            "Eksperimen jadi lebih akurat karena data dilihat lebih sering",
+            "Tidak ada akibat apa pun selama ukuran sampel awalnya sudah dihitung",
+            "Galat baku mengecil sehingga semua hasil menjadi lebih bisa dipercaya"
+          ],
+          "answer": 0,
+          "explanation": "Setiap intipan adalah kesempatan baru untuk kebetulan menyentuh 0,05; di simulasi A/A, 10 kali intip memberi 19,2%."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Kode ini menguji 10 metrik. Berapa ambang yang dipakai?",
+          "code": "p_values = [0.004, 0.01, 0.03, 0.2, 0.0049,\n            0.006, 0.5, 0.7, 0.04, 0.001]\nambang = 0.05 / len(p_values)\nprint(ambang)",
+          "options": [
+            "0,05, karena alpha tidak berubah walau jumlah metriknya bertambah",
+            "0,5, karena alpha dikalikan dengan jumlah metrik yang diuji",
+            "0,005",
+            "0,0005, karena ambang Bonferroni dibagi dengan kuadrat jumlah uji"
+          ],
+          "answer": 2,
+          "explanation": "Bonferroni membagi alpha dengan jumlah uji: 0,05 / 10 = 0,005."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Eksperimen dengan p = 0,058 membuktikan bahwa fitur baru tidak berpengaruh apa pun.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 1,
+          "explanation": "p besar hanya berarti belum cukup bukti; CI -0,02 sampai +1,22 poin masih memuat efek yang cukup besar."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Simulasi bahaya mengintip",
+          "prompt": "Tulis `simulasi_aa(seed, n_eksperimen, n, p, intip)` yang mengembalikan laju positif palsu (pecahan 0 sampai 1) dari eksperimen A/A, yaitu dua grup dengan konversi sama `p`.\n\nAturan supaya hasilnya bisa diulang dan sama dengan pemeriksa:\n\n1. Buat satu `r = random.Random(seed)` di awal fungsi, dan `langkah = n // intip`.\n2. Untuk setiap eksperimen, mulai dari `xa = xb = 0`. Ulangi `k` dari 1 sampai `intip`: sebanyak `langkah` kali, tambahkan `r.random() < p` ke `xa` lalu `r.random() < p` ke `xb` (urutan ini penting).\n3. Setelah tiap putaran `k`, hitung `uji_p(xa, k * langkah, xb, k * langkah)`. Kalau di bawah 0,05, hitung eksperimen ini sebagai positif palsu dan langsung lanjut ke eksperimen berikutnya.\n\nFungsi `uji_p(x_a, n_a, x_b, n_b)` (p-value uji z dua proporsi) sudah disiapkan pemeriksa. Dengan `intip=1` kamu hanya melihat sekali di akhir.",
+          "starter": {
+            "code": "import random\n\n\ndef simulasi_aa(seed, n_eksperimen, n, p, intip):\n    r = random.Random(seed)\n    positif = 0\n    # TODO: jalankan n_eksperimen eksperimen A/A dengan aturan di soal\n    return positif / n_eksperimen\n\n\nprint(simulasi_aa(1, 300, 300, 0.1, 1), simulasi_aa(1, 300, 300, 0.1, 10))\n"
+          },
+          "solution": {
+            "code": "import random\n\n\ndef simulasi_aa(seed, n_eksperimen, n, p, intip):\n    r = random.Random(seed)\n    positif = 0\n    langkah = n // intip\n    for _ in range(n_eksperimen):\n        xa = xb = 0\n        for k in range(1, intip + 1):\n            for _ in range(langkah):\n                xa += r.random() < p\n                xb += r.random() < p\n            if uji_p(xa, k * langkah, xb, k * langkah) < 0.05:\n                positif += 1\n                break\n    return positif / n_eksperimen\n\n\nprint(simulasi_aa(1, 300, 300, 0.1, 1), simulasi_aa(1, 300, 300, 0.1, 10))\n"
+          },
+          "setup": "import math\nfrom statistics import NormalDist\n\n\ndef uji_p(x_a, n_a, x_b, n_b):\n    p = (x_a + x_b) / (n_a + n_b)\n    if p in (0, 1):\n        return 1.0\n    se = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\n    z = (x_b / n_b - x_a / n_a) / se\n    return 2 * (1 - NormalDist().cdf(abs(z)))\n",
+          "tests": [
+            {
+              "name": "Lihat sekali di akhir: 4% di seed 1",
+              "check": "abs(simulasi_aa(1, 300, 300, 0.1, 1) - 0.04) < 1e-9"
+            },
+            {
+              "name": "Mengintip 10 kali: 21% di seed 1",
+              "check": "abs(simulasi_aa(1, 300, 300, 0.1, 10) - 0.21) < 1e-9"
+            },
+            {
+              "name": "Seed sama memberi hasil sama",
+              "check": "simulasi_aa(4, 100, 200, 0.1, 5) == simulasi_aa(4, 100, 200, 0.1, 5) and 0 <= simulasi_aa(4, 100, 200, 0.1, 5) <= 1"
+            },
+            {
+              "name": "Mengintip menaikkan positif palsu di seed lain",
+              "check": "all(simulasi_aa(s, 300, 300, 0.1, 10) > simulasi_aa(s, 300, 300, 0.1, 1) for s in (2, 3))"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "Banyak metrik dan Bonferroni",
+          "prompt": "Lengkapi dua fungsi:\n\n- `peluang_salah(m, alpha=0.05)` mengembalikan peluang minimal satu positif palsu dari `m` uji independen: `1 - (1 - alpha) ** m`.\n- `bonferroni(p_values, alpha=0.05)` mengembalikan list `bool` dengan urutan sama: `True` bila p-value itu di bawah `alpha / len(p_values)`. List kosong menghasilkan list kosong.\n\nContoh: dengan 10 metrik, ambangnya 0,005.",
+          "starter": {
+            "code": "def peluang_salah(m, alpha=0.05):\n    # TODO: peluang minimal satu positif palsu dari m uji\n    return alpha\n\n\ndef bonferroni(p_values, alpha=0.05):\n    # TODO: bandingkan setiap p dengan alpha / jumlah uji\n    return [p < alpha for p in p_values]\n\n\nprint(peluang_salah(10))\nprint(bonferroni([0.004, 0.01, 0.03]))\n"
+          },
+          "solution": {
+            "code": "def peluang_salah(m, alpha=0.05):\n    return 1 - (1 - alpha) ** m\n\n\ndef bonferroni(p_values, alpha=0.05):\n    if not p_values:\n        return []\n    ambang = alpha / len(p_values)\n    return [p < ambang for p in p_values]\n\n\nprint(peluang_salah(10))\nprint(bonferroni([0.004, 0.01, 0.03]))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "10 metrik: sekitar 40%",
+              "check": "abs(peluang_salah(10) - 0.401263) < 1e-3"
+            },
+            {
+              "name": "1 metrik tetap alpha, 20 metrik sekitar 64%",
+              "check": "abs(peluang_salah(1) - 0.05) < 1e-9 and abs(peluang_salah(20) - 0.641514) < 1e-3"
+            },
+            {
+              "name": "Bonferroni 10 metrik memakai ambang 0,005",
+              "check": "bonferroni([0.004, 0.01, 0.03, 0.2, 0.0049, 0.006, 0.5, 0.7, 0.04, 0.001]) == [True, False, False, False, True, False, False, False, False, True]"
+            },
+            {
+              "name": "Satu uji dan list kosong",
+              "check": "bonferroni([0.03]) == [True] and bonferroni([]) == [] and bonferroni([0.02, 0.03], 0.1) == [True, True]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "srm-cuped-dan-efek-waktu",
+      "title": "SRM, CUPED, dan Efek Waktu",
+      "est_minutes": 35,
+      "slide_from": 25,
+      "slide_to": 27,
+      "body": "## Tujuan\n\n- Mendeteksi sample ratio mismatch (SRM) dengan uji chi-kuadrat goodness of fit.\n- Menyebutkan penyebab umum SRM dan alasan hasil eksperimen dengan SRM tidak boleh dipercaya.\n- Menjelaskan cara CUPED memakai data sebelum eksperimen untuk mengecilkan varians.\n- Mengenali efek baru, efek primacy, dan pengaruh musim terhadap hasil eksperimen.\n\n## Sebelum melihat hasil, cek dulu datanya\n\nBayangkan tim KantinKu menjalankan eksperimen banner promo dengan pembagian 50/50. Setelah seminggu, dasbor menunjukkan 10000 pengguna di grup A dan 10500 di grup B. Selisih 500 orang. Apakah itu wajar karena pengacakan, atau tanda ada yang rusak?\n\nPengacakan memang tidak pernah menghasilkan pembagian yang persis sama, tapi ada batas kewajarannya. Kalau jumlah pengguna jauh dari rasio yang direncanakan, kondisi ini disebut **sample ratio mismatch** (SRM). SRM adalah alarm kebakaran eksperimen: hampir selalu berarti ada bug di suatu tempat, dan hasil apa pun yang keluar dari data itu tidak bisa dipercaya.\n\n## Uji chi-kuadrat untuk SRM\n\nUntuk memeriksanya, bandingkan jumlah yang **teramati** (O) dengan jumlah yang **diharapkan** (E) memakai uji chi-kuadrat *goodness of fit*:\n\nchi2 = jumlah dari (O - E)² / E untuk setiap grup\n\nDengan total 20500 pengguna dan rencana 50/50, harapan tiap grup adalah 10250. Jadi chi2 = (10000 - 10250)²/10250 + (10500 - 10250)²/10250 = 12,20.\n\nUntuk dua grup, derajat bebasnya 1. Ada trik bagus di sini: chi-kuadrat dengan derajat bebas 1 sama dengan kuadrat dari variabel normal baku. Karena itu p-value-nya bisa dihitung dengan `math.erfc` tanpa SciPy:\n\n```python\nimport math\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    total = n_a + n_b\n    e_a = total * rasio\n    e_b = total - e_a\n    chi2 = (n_a - e_a) ** 2 / e_a + (n_b - e_b) ** 2 / e_b\n    p = math.erfc(math.sqrt(chi2 / 2))\n    return chi2, p, p < 0.001\n\nprint(cek_srm(10000, 10500))\nprint(cek_srm(10120, 9880))\n```\n\nOutput (dibulatkan):\n\n```\n(12.20, 0.00048, True)\n(2.88, 0.090, False)\n```\n\n`math.erfc(math.sqrt(chi2 / 2))` memberi hasil yang sama dengan `2 * (1 - NormalDist().cdf(math.sqrt(chi2)))`. Data 10000 vs 10500 memberi p = 0,00048, jauh di bawah 0,001: itu SRM. Sebaliknya, 10120 vs 9880 memberi p = 0,090, masih wajar untuk pengacakan.\n\nKenapa ambangnya 0,001, bukan 0,05 seperti biasa? Cek SRM dijalankan di setiap eksperimen, sering berkali-kali. Dengan ambang 0,05, kamu akan sering mendapat alarm palsu. Praktik umum di tim eksperimen besar (dibahas di buku Kohavi dan kawan-kawan, *Trustworthy Online Controlled Experiments*) adalah mencurigai SRM bila p < 0,001. Sebagai pegangan, nilai kritis chi-kuadrat derajat bebas 1 adalah 3,841 untuk α 0,05 dan 10,828 untuk α 0,001.\n\nFungsi ini juga bekerja untuk pembagian tidak seimbang. Misalnya rollout 90/10 dengan 9100 di A dan 900 di B: harapannya 9000 dan 1000, chi2 = 11,11, p = 0,00086. Selisih 100 orang terlihat kecil, tapi untuk grup B yang hanya 1000 orang, itu sudah termasuk SRM.\n\n![Sample ratio mismatch](slide:25)\n\n## Kenapa SRM terjadi\n\nPenyebab SRM biasanya teknis, bukan statistik:\n\n- **Bug assignment.** Kode pembagian varian salah menghitung bucket, atau pengguna yang sudah login dan belum login dibagi dengan cara berbeda.\n- **Bot dan crawler.** Bot hanya mendarat di satu varian karena, misalnya, halaman B memuat skrip yang memicu lebih banyak permintaan.\n- **Redirect yang membuang pengguna.** Varian B mengalihkan ke halaman baru yang lebih lambat. Sebagian pengguna menutup aplikasi sebelum event pertama tercatat, jadi mereka hilang dari data B saja.\n- **Log hilang.** Pencatatan event di salah satu varian gagal sebagian, misalnya karena SDK versi baru belum mengirim event dengan benar.\n\nPerhatikan: banyak penyebab ini tidak acak. Pengguna yang hilang biasanya justru pengguna dengan koneksi lambat atau yang kurang tertarik. Akibatnya grup A dan B tidak lagi sebanding, dan perbandingan konversinya bisa menyesatkan ke arah mana pun. Aturannya tegas: **kalau ada SRM, jangan analisis hasilnya**. Cari penyebabnya, perbaiki, lalu jalankan ulang.\n\n## CUPED singkat\n\nSekarang masalah yang berbeda: eksperimen yang terlalu lama karena metriknya sangat bervariasi. Belanja per siswa di KantinKu misalnya, ada yang jajan Rp5.000 sehari, ada yang Rp40.000. Variasi besar ini membuat galat baku besar, sehingga butuh sampel besar.\n\nIde **CUPED** (Deng, Xu, Kohavi, dan Walker, 2013): sebagian besar variasi itu sudah bisa ditebak dari perilaku sebelum eksperimen. Siswa yang belanja banyak bulan lalu cenderung belanja banyak bulan ini. Jadi kita kurangi bagian yang bisa ditebak itu:\n\n- X = metrik yang sama sebelum eksperimen (belanja bulan lalu)\n- Y = metrik selama eksperimen\n- theta = kovarians(X, Y) / varians(X)\n- Y_cuped = Y - theta x (X - rata-rata X)\n\n```python\nimport random\nfrom statistics import covariance, mean, variance\n\nr = random.Random(7)\nx = [r.gauss(100, 20) for _ in range(1000)]\ny = [xi * 0.8 + r.gauss(20, 10) for xi in x]\n\ntheta = covariance(x, y) / variance(x)\nmx = mean(x)\ny_cuped = [yi - theta * (xi - mx) for xi, yi in zip(x, y)]\nprint(round(theta, 2), round(variance(y), 1), round(variance(y_cuped), 1))\n```\n\nOutput: `0.8 356.8 106.4`. Varians turun dari 356,8 ke 106,4, tinggal sekitar 30%. Korelasi X dan Y di data ini 0,84, dan teori bilang varians yang tersisa kira-kira 1 - rho² = 0,298. Cocok. Rata-rata Y tidak berubah karena bagian yang dikurangi rata-ratanya nol, jadi selisih A dan B tetap terukur dengan benar, hanya lebih tajam. Karena ukuran sampel sebanding dengan varians, kebutuhan sampelnya pun kira-kira tinggal 30%.\n\nSyarat penting: X harus diukur **sebelum** eksperimen dimulai, supaya tidak terpengaruh varian. Pengguna baru yang belum punya riwayat bisa diberi X sama dengan rata-rata, sehingga mereka tidak disesuaikan.\n\n## Efek baru dan musiman\n\nData yang bersih dan uji yang tepat masih bisa tertipu oleh waktu.\n\n**Efek baru** (*novelty*): tombol checkout berwarna mencolok diklik banyak orang di hari-hari pertama karena penasaran, lalu turun lagi setelah biasa. **Efek primacy** kebalikannya: pengguna lama butuh waktu membiasakan diri dengan tata letak baru, sehingga hasil awal tampak buruk lalu membaik. Cara mendeteksinya: lihat selisih per hari. Kalau grafiknya terus menurun atau terus naik, efeknya belum stabil.\n\n**Musim** juga berpengaruh. Di KantinKu, minggu gajian orang tua, libur sekolah, Ramadan, dan Harbolnas punya pola belanja yang sangat berbeda dari minggu biasa. Hasil eksperimen saat promo besar belum tentu berlaku di hari biasa.\n\nPegangan praktis: jalankan eksperimen minimal **satu minggu penuh** (atau kelipatannya) agar setiap hari dalam seminggu terwakili, hindari periode yang sangat tidak biasa, dan untuk perubahan besar simpan **grup holdout** kecil yang tetap memakai versi lama selama beberapa minggu untuk mengukur efek jangka panjang.\n\n## Rangkuman\n\n- SRM terjadi bila jumlah pengguna per grup jauh dari rasio rencana; uji dengan chi-kuadrat goodness of fit dan curigai bila p < 0,001.\n- Untuk dua grup, p-value chi-kuadrat bisa dihitung dengan `math.erfc(math.sqrt(chi2 / 2))`; 10000 vs 10500 memberi chi2 = 12,20 dan p = 0,00048.\n- Penyebab SRM biasanya bug assignment, bot, redirect, atau log hilang; jangan analisis hasil bila ada SRM.\n- CUPED mengurangi bagian metrik yang bisa ditebak dari data sebelum eksperimen; varians tersisa kira-kira 1 - rho².\n- Waspadai efek baru, efek primacy, dan musim; jalankan minggu penuh dan pakai holdout untuk perubahan besar.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Rencana 50/50, tetapi data menunjukkan 10000 pengguna di A dan 10500 di B (p = 0,00048). Apa langkah yang tepat?",
+          "code": "",
+          "options": [
+            "Tetap analisis konversi karena selisih 500 orang terlalu kecil untuk berpengaruh",
+            "Buang 500 pengguna B secara acak supaya jumlahnya sama, lalu analisis",
+            "Cari penyebab SRM dan jangan percaya hasil eksperimen sebelum diperbaiki",
+            "Turunkan ambang SRM ke 0,0001 supaya hasil eksperimen ini masih bisa dipakai"
+          ],
+          "answer": 2,
+          "explanation": "p di bawah 0,001 menandakan SRM; data kemungkinan rusak secara tidak acak, jadi hasilnya tidak bisa dipercaya."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Manakah yang paling mungkin menjadi penyebab SRM?",
+          "code": "",
+          "options": [
+            "Konversi varian B memang lebih tinggi daripada konversi varian A",
+            "Varian B memakai redirect lambat sehingga sebagian pengguna hilang sebelum tercatat",
+            "Eksperimen dijalankan tepat satu minggu penuh dari Senin sampai Minggu",
+            "Tim memakai uji z dua proporsi alih-alih Welch t-test untuk konversi"
+          ],
+          "answer": 1,
+          "explanation": "Redirect yang membuang pengguna di satu varian membuat jumlah pengguna tidak seimbang dan tidak acak."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Data ini punya korelasi X dan Y sekitar 0,84. Kira-kira berapa nilai rasio yang dicetak?",
+          "code": "theta = covariance(x, y) / variance(x)\nmx = mean(x)\ny_baru = [yi - theta * (xi - mx)\n          for xi, yi in zip(x, y)]\nprint(variance(y_baru) / variance(y))",
+          "options": [
+            "Sekitar 0,84, sama dengan korelasinya",
+            "Sekitar 0,16, yaitu 1 dikurangi korelasinya",
+            "Sekitar 1, karena CUPED tidak mengubah varians",
+            "Sekitar 0,3"
+          ],
+          "answer": 3,
+          "explanation": "Varians tersisa kira-kira 1 - rho kuadrat = 1 - 0,84 x 0,84, yaitu sekitar 0,3."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Konversi yang tinggi di hari-hari pertama lalu terus menurun bisa menjadi tanda efek baru (novelty).",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Pengguna mencoba fitur baru karena penasaran, lalu kembali ke kebiasaan lama setelah terbiasa."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Detektor sample ratio mismatch",
+          "prompt": "Tulis `cek_srm(n_a, n_b, rasio=0.5)` yang mengembalikan dict `{\"chi2\": ..., \"p\": ..., \"srm\": ...}`.\n\n- Harapan A: `(n_a + n_b) * rasio`, harapan B: sisanya.\n- `chi2` = jumlah `(teramati - harapan) ** 2 / harapan` untuk A dan B.\n- `p = math.erfc(math.sqrt(chi2 / 2))` (chi-kuadrat derajat bebas 1).\n- `srm` bernilai `True` bila `p < 0.001`.\n\nContoh: 10000 vs 10500 dengan rencana 50/50 memberi chi2 sekitar 12,20 dan p sekitar 0,00048.",
+          "starter": {
+            "code": "import math\n\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    # TODO: hitung harapan, chi2, p, dan tandai srm bila p < 0.001\n    return {\"chi2\": 0.0, \"p\": 1.0, \"srm\": False}\n\n\nprint(cek_srm(10000, 10500))\n"
+          },
+          "solution": {
+            "code": "import math\n\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    total = n_a + n_b\n    e_a = total * rasio\n    e_b = total - e_a\n    chi2 = (n_a - e_a) ** 2 / e_a + (n_b - e_b) ** 2 / e_b\n    p = math.erfc(math.sqrt(chi2 / 2))\n    return {\"chi2\": chi2, \"p\": p, \"srm\": p < 0.001}\n\n\nprint(cek_srm(10000, 10500))\n"
+          },
+          "setup": "",
+          "tests": [
+            {
+              "name": "10000 vs 10500 terdeteksi SRM",
+              "check": "abs(cek_srm(10000, 10500)[\"chi2\"] - 12.1951) < 1e-3 and abs(cek_srm(10000, 10500)[\"p\"] - 0.000479) < 1e-5 and cek_srm(10000, 10500)[\"srm\"] is True"
+            },
+            {
+              "name": "10120 vs 9880 masih wajar",
+              "check": "abs(cek_srm(10120, 9880)[\"chi2\"] - 2.88) < 1e-3 and abs(cek_srm(10120, 9880)[\"p\"] - 0.089686) < 1e-3 and cek_srm(10120, 9880)[\"srm\"] is False"
+            },
+            {
+              "name": "Rollout 90/10: 9100 vs 900 adalah SRM",
+              "check": "abs(cek_srm(9100, 900, 0.9)[\"chi2\"] - 11.1111) < 1e-3 and cek_srm(9100, 900, 0.9)[\"srm\"] is True"
+            },
+            {
+              "name": "Pembagian tepat memberi chi2 nol dan p satu",
+              "check": "cek_srm(9000, 1000, 0.9)[\"chi2\"] == 0 and abs(cek_srm(3000, 3000)[\"p\"] - 1) < 1e-9"
+            }
+          ]
+        },
+        {
+          "kind": "python",
+          "title": "CUPED pada belanja siswa",
+          "prompt": "Tulis `cuped(x, y)` yang mengembalikan tuple `(y_baru, rasio)`:\n\n- `theta = covariance(x, y) / variance(x)` (modul `statistics`, versi sampel).\n- `y_baru[i] = y[i] - theta * (x[i] - mean(x))`, list dengan panjang dan urutan sama seperti `y`.\n- `rasio = variance(y_baru) / variance(y)`, yaitu porsi varians yang tersisa.\n\nPemeriksa menyiapkan `X` (belanja sebelum eksperimen) dan `Y` (belanja selama eksperimen), masing-masing 1000 angka dari `random.Random(7)`.",
+          "starter": {
+            "code": "from statistics import covariance, mean, variance\n\n\ndef cuped(x, y):\n    # TODO: hitung theta, y_baru, dan rasio varians\n    return list(y), 1.0\n\n\ny_baru, rasio = cuped(X, Y)\nprint(round(rasio, 3))\n"
+          },
+          "solution": {
+            "code": "from statistics import covariance, mean, variance\n\n\ndef cuped(x, y):\n    theta = covariance(x, y) / variance(x)\n    mx = mean(x)\n    y_baru = [yi - theta * (xi - mx) for xi, yi in zip(x, y)]\n    return y_baru, variance(y_baru) / variance(y)\n\n\ny_baru, rasio = cuped(X, Y)\nprint(round(rasio, 3))\n"
+          },
+          "setup": "import random\nfrom statistics import correlation, mean\n\n_r = random.Random(7)\nX = [_r.gauss(100, 20) for _ in range(1000)]\nY = [xi * 0.8 + _r.gauss(20, 10) for xi in X]\n",
+          "tests": [
+            {
+              "name": "Varians tersisa sekitar 30%",
+              "check": "abs(cuped(X, Y)[1] - 0.298298) < 1e-3"
+            },
+            {
+              "name": "Rata-rata Y tidak berubah",
+              "check": "abs(mean(cuped(X, Y)[0]) - mean(Y)) < 1e-6 and len(cuped(X, Y)[0]) == len(Y)"
+            },
+            {
+              "name": "Rasio sama dengan 1 - rho kuadrat",
+              "check": "abs(cuped(X, Y)[1] - (1 - correlation(X, Y) ** 2)) < 1e-6"
+            },
+            {
+              "name": "Y yang sepenuhnya tertebak menjadi konstan",
+              "check": "cuped([1, 2, 3, 4], [2, 4, 6, 8])[1] < 1e-12 and all(abs(v - 5) < 1e-9 for v in cuped([1, 2, 3, 4], [2, 4, 6, 8])[0])"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "laporan-keputusan-dan-etika",
+      "title": "Laporan, Keputusan, dan Etika",
+      "est_minutes": 30,
+      "slide_from": 28,
+      "slide_to": 30,
+      "body": "## Tujuan\n\n- Membaca hasil eksperimen dengan urutan yang aman: SRM, guardrail, metrik utama, metrik pendukung.\n- Mengambil keputusan rilis dari interval kepercayaan dengan tabel keputusan yang jelas.\n- Menulis laporan eksperimen singkat yang bisa dipahami orang di luar tim data.\n- Menjelaskan batas etika eksperimen pada manusia dan kebiasaan membersihkan flag.\n\n## Urutan membaca hasil\n\nEksperimen tombol checkout KantinKu sudah berjalan dua minggu penuh sesuai rencana. Dasbor penuh angka hijau dan merah. Godaannya adalah langsung melihat konversi. Jangan. Ikuti urutan ini, dan berhenti di langkah mana pun yang gagal:\n\n1. **Cek SRM.** Apakah jumlah pengguna A dan B sesuai rasio rencana? Kalau p < 0,001, berhenti. Data rusak, dan semua angka di bawahnya tidak bisa dipercaya.\n2. **Cek guardrail.** Apakah waktu muat, pembatalan pesanan, atau keluhan memburuk melewati batas yang ditetapkan di awal? Kalau ada yang jebol, varian B tidak boleh dirilis, sebagus apa pun konversinya.\n3. **Metrik utama.** Lihat selisih dan CI 95%-nya, bukan cuma p-value.\n4. **Metrik pendukung.** Pakai untuk menjelaskan *kenapa* metrik utama bergerak. Misalnya konversi naik karena lebih banyak siswa menekan tombol checkout, bukan karena keranjangnya lebih besar.\n5. **Segmen.** Hanya sebagai ide untuk eksperimen berikutnya, bukan dasar keputusan.\n\nUrutan ini penting karena setiap langkah melindungi langkah sesudahnya. Membaca konversi dari data yang kena SRM sama seperti membaca nilai rapor yang setengah kolomnya hilang.\n\n## Tabel keputusan\n\nSetelah SRM aman dan guardrail lolos, keputusan bisa dibaca dari CI selisih metrik utama (B - A):\n\n| Kondisi | Keputusan |\n| --- | --- |\n| Ada SRM | Periksa data, jangan analisis |\n| Guardrail jebol | Jangan rilis |\n| CI seluruhnya di bawah nol | Jangan rilis |\n| CI seluruhnya di atas nol | Rilis |\n| CI memuat nol | Lanjutkan atau putuskan dengan pertimbangan biaya |\n\nDengan contoh dari bab uji statistik: 400/8000 vs 470/8000 memberi CI +0,17 sampai +1,58 poin, seluruhnya positif, jadi rilis (bila guardrail aman). Sedangkan 500/10000 vs 560/10000 memberi CI -0,02 sampai +1,22 poin, memuat nol.\n\nApa arti \"lanjutkan\" di baris terakhir? Bukan berarti eksperimen boleh diperpanjang sesuka hati sampai signifikan, karena itu sama saja dengan mengintip. Pilihannya: jalankan eksperimen baru yang dirancang dengan ukuran sampel lebih besar, atau putuskan berdasarkan biaya. Kalau tombol B tidak lebih mahal dirawat dan CI-nya condong positif, tim bisa saja memilih B dengan sadar bahwa buktinya belum kuat. Yang penting, alasannya ditulis.\n\nDalam kode, tabel itu menjadi rangkaian `if` yang urutannya sama dengan urutan membaca:\n\n```python\ndef keputusan(srm, guardrail_ok, ci):\n    if srm:\n        return \"periksa data\"\n    if not guardrail_ok or ci[1] < 0:\n        return \"jangan rilis\"\n    if ci[0] > 0:\n        return \"rilis\"\n    return \"lanjutkan\"\n\nprint(keputusan(False, True, (-0.0002, 0.0122)))\n```\n\nOutput: `lanjutkan`. Coba tukar urutan `if` pertama dan kedua, lalu bayangkan data dengan SRM sekaligus guardrail jebol. Hasilnya tetap \"jangan rilis\", tapi pesannya salah: tim akan mengira varian B buruk, padahal masalahnya ada di data.\n\n![Keputusan dan laporan eksperimen](slide:29)\n\n## Menulis laporan eksperimen\n\nLaporan eksperimen dibaca oleh orang yang tidak ikut menghitung: guru pembimbing, pemilik kantin, atau tim lain setahun lagi. Buat singkat dan selalu dengan struktur yang sama:\n\n- **Hipotesis.** \"Karena tombol checkout lama tertutup banner, kami yakin tombol yang lebih besar akan menaikkan konversi, diukur dengan pembeli per pengguna.\"\n- **Rancangan.** Unit randomisasi, pembagian, salt, durasi, ukuran sampel, metrik utama, dan guardrail. Semua ditetapkan sebelum mulai.\n- **Hasil.** Cek SRM, guardrail, lalu metrik utama dengan angka A, angka B, selisih absolut, lift, dan CI 95%.\n- **Keputusan.** Satu dari empat keputusan di tabel, beserta alasannya.\n- **Pelajaran.** Apa yang mengejutkan, dan ide eksperimen berikutnya.\n\nSatu paragraf ringkasan bisa dibuat otomatis dari angka:\n\n```python\npa, pb = 500 / 10000, 560 / 10000\nprint(f\"Konversi A {pa*100:.2f}%, B {pb*100:.2f}%, \"\n      f\"selisih {(pb-pa)*100:+.2f} poin.\")\n```\n\nOutput: `Konversi A 5.00%, B 5.60%, selisih +0.60 poin.` Format `+.2f` menulis tanda plus atau minus dan dua angka desimal, cocok untuk selisih. Python memakai titik sebagai pemisah desimal; kalau laporannya untuk pembaca umum, kamu bisa menggantinya dengan koma saat menyalin ke dokumen.\n\nContoh laporan lengkap untuk eksperimen ini cukup beberapa kalimat: \"Tombol checkout besar diuji selama dua minggu pada 20000 siswa, dibagi 50/50 dengan hash salt `checkout-v2`. Tidak ada SRM dan guardrail waktu muat aman. Konversi naik dari 5,00% ke 5,60% (lift 12%), tetapi CI 95% selisihnya -0,02 sampai +1,22 poin, jadi belum cukup bukti. Keputusan: lanjutkan dengan eksperimen yang lebih besar.\" Pembaca langsung tahu apa yang diuji, seberapa kuat buktinya, dan apa langkah berikutnya.\n\n**Hasil netral juga berharga.** Eksperimen yang tidak menemukan beda tetap dicatat di arsip laporan. Tanpa catatan itu, setahun lagi tim lain akan menguji ide yang sama dan membuang waktu dua minggu lagi. Organisasi yang rajin bereksperimen biasanya mendapati bahwa sebagian besar ide tidak menggerakkan metrik, dan itu normal.\n\n## Bersihkan flag setelah keputusan\n\nBegitu keputusan diambil, kerjakan pekerjaan rumahnya. Kalau B dirilis, ubah flag menjadi 100% B, lalu hapus kode varian A dan hapus flag-nya dari kode. Kalau B tidak dirilis, hapus kode B. Flag yang dibiarkan menumpuk menjadi **flag debt**: kode penuh cabang `if` yang tidak ada yang berani menghapus, dan suatu hari ada yang tidak sengaja menyalakan flag lama.\n\n## Etika eksperimen\n\nEksperimen A/B adalah eksperimen pada manusia. Contoh terkenal adalah studi Facebook tahun 2014 yang mengubah komposisi emosi di feed ratusan ribu pengguna untuk melihat pengaruhnya pada unggahan mereka. Studi itu dikritik luas karena pengguna tidak tahu dan tidak bisa menolak.\n\nBeberapa batas yang perlu kamu pegang:\n\n- **Jangan menguji hal yang merugikan.** Harga yang berbeda untuk kelompok tertentu secara diskriminatif, *dark pattern* (misalnya tombol batal yang disembunyikan), atau menyembunyikan informasi penting seperti total biaya bukan bahan eksperimen.\n- **Kumpulkan data seperlunya.** Untuk menghitung konversi, kamu butuh ID pengguna acak, varian, dan event beli. Tidak perlu nama lengkap, nomor HP, atau alamat rumah siswa.\n- **Hormati aturan perlindungan data.** Di Indonesia ada UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi, yang secara umum mengatur dasar pemrosesan data pribadi, hak pemilik data, dan kewajiban menjaga keamanannya. Untuk kasus nyata, tanyakan pada pihak yang paham hukum; bagian ini bukan nasihat hukum.\n\nIngat bahwa di balik setiap angka konversi ada siswa yang sedang lapar dan ingin cepat jajan.\n\n## Langkah berikutnya\n\nDi proyek akhir kelas ini, kamu akan menggabungkan semua yang sudah dipelajari: assignment dengan hash, ringkasan pengguna unik, cek SRM, uji z, CI, dan fungsi keputusan pada log eksperimen tombol checkout. Kalau ingin membangun sisi rekayasanya, lanjutkan ke Studio Proyek **Platform Eksperimen A/B**, tempat kamu menyusun SDK, pencatatan event, dan analisis dalam satu sistem.\n\n## Rangkuman\n\n- Baca hasil berurutan: SRM, guardrail, metrik utama dengan CI, metrik pendukung, lalu segmen sebagai ide saja.\n- CI seluruhnya positif berarti rilis, seluruhnya negatif berarti jangan rilis, memuat nol berarti belum cukup bukti.\n- Laporan berisi hipotesis, rancangan, hasil dengan CI, keputusan, dan pelajaran; hasil netral tetap dicatat.\n- Setelah keputusan, hapus flag dan kode varian yang kalah untuk mencegah flag debt.\n- Jangan menguji hal yang merugikan pengguna, kumpulkan data seperlunya, dan pahami UU PDP secara umum.",
+      "quiz": [
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Apa urutan yang benar saat membaca hasil eksperimen?",
+          "code": "",
+          "options": [
+            "Metrik utama, lalu metrik pendukung, lalu SRM bila hasilnya mencurigakan",
+            "SRM, guardrail, metrik utama dengan CI, lalu metrik pendukung",
+            "Segmen yang signifikan dulu, lalu metrik utama, lalu guardrail di akhir",
+            "Guardrail, metrik pendukung, lalu SRM hanya bila p-value di bawah 0,05"
+          ],
+          "answer": 1,
+          "explanation": "SRM menentukan apakah data bisa dipercaya, guardrail menentukan apakah boleh rilis, baru metrik utama dibaca."
+        },
+        {
+          "type": "baca_kode",
+          "prompt": "Apa yang dicetak kode ini?",
+          "code": "def keputusan(srm, guardrail_ok, ci):\n    if srm:\n        return \"periksa data\"\n    if not guardrail_ok or ci[1] < 0:\n        return \"jangan rilis\"\n    if ci[0] > 0:\n        return \"rilis\"\n    return \"lanjutkan\"\n\nprint(keputusan(False, True, (-0.0002, 0.0122)))",
+          "options": [
+            "rilis, karena batas atas CI berada di atas nol",
+            "jangan rilis, karena batas bawah CI berada di bawah nol",
+            "periksa data, karena CI memuat nol sehingga data dianggap rusak",
+            "lanjutkan"
+          ],
+          "answer": 3,
+          "explanation": "Tidak ada SRM, guardrail aman, batas atas positif tetapi batas bawah negatif, jadi CI memuat nol."
+        },
+        {
+          "type": "pilihan_ganda",
+          "prompt": "Eksperimen banner promo tidak menunjukkan beda apa pun. Apa yang sebaiknya dilakukan dengan hasilnya?",
+          "code": "",
+          "options": [
+            "Hapus saja karena hasil netral tidak berguna bagi tim produk mana pun",
+            "Bagi data per segmen sampai ketemu kelompok yang signifikan, lalu laporkan itu",
+            "Perpanjang eksperimen sampai p-value turun di bawah 0,05, lalu ambil keputusan",
+            "Tulis di arsip laporan agar ide yang sama tidak diuji ulang"
+          ],
+          "answer": 3,
+          "explanation": "Hasil netral tetap pengetahuan; tanpa catatan, tim lain bisa membuang waktu menguji ide yang sama."
+        },
+        {
+          "type": "benar_salah",
+          "prompt": "Menguji harga yang lebih mahal hanya untuk siswa dari kelompok tertentu tanpa sepengetahuan mereka termasuk eksperimen yang sebaiknya tidak dilakukan.",
+          "code": "",
+          "options": [
+            "Benar",
+            "Salah"
+          ],
+          "answer": 0,
+          "explanation": "Harga diskriminatif merugikan pengguna, jadi tidak layak dijadikan bahan eksperimen."
+        }
+      ],
+      "exercises": [
+        {
+          "kind": "python",
+          "title": "Keputusan dan laporan otomatis",
+          "prompt": "Setiap hasil eksperimen berbentuk dict `{\"nama\", \"x_a\", \"n_a\", \"x_b\", \"n_b\", \"guardrail_ok\"}` (pembeli dan pengguna per varian). Pemeriksa sudah menyiapkan `cek_srm`, `interval` (CI 95% selisih B - A), dan `hasil(...)` untuk membuat dict itu.\n\n1. `keputusan(h)` mengembalikan salah satu dari empat teks, diperiksa berurutan: `\"periksa data\"` bila `cek_srm(n_a, n_b)` menandai SRM; `\"jangan rilis\"` bila `guardrail_ok` bernilai `False` atau batas atas CI di bawah nol; `\"rilis\"` bila batas bawah CI di atas nol; selain itu `\"lanjutkan\"`.\n2. `laporan_teks(h)` mengembalikan satu kalimat persis dengan format:\n\n```\nNAMA: konversi A 5.00%, B 5.60%, selisih +0.60 poin (CI 95% -0.02 sampai +1.22). Keputusan: lanjutkan.\n```\n\nKonversi dalam persen (`x / n * 100`) dengan format `.2f`. Selisih `(x_b / n_b - x_a / n_a) * 100` serta kedua batas CI (dikali 100) memakai format `+.2f`.",
+          "starter": {
+            "code": "def keputusan(h):\n    # TODO: urutan SRM -> guardrail atau CI negatif -> CI positif -> lanjutkan\n    return \"lanjutkan\"\n\n\ndef laporan_teks(h):\n    # TODO: susun kalimat laporan sesuai format di soal\n    return h[\"nama\"]\n\n\nprint(laporan_teks(hasil(\"checkout-v2\", 500, 10000, 560, 10000)))\n"
+          },
+          "solution": {
+            "code": "def keputusan(h):\n    if cek_srm(h[\"n_a\"], h[\"n_b\"])[\"srm\"]:\n        return \"periksa data\"\n    bawah, atas = interval(h[\"x_a\"], h[\"n_a\"], h[\"x_b\"], h[\"n_b\"])\n    if not h[\"guardrail_ok\"] or atas < 0:\n        return \"jangan rilis\"\n    if bawah > 0:\n        return \"rilis\"\n    return \"lanjutkan\"\n\n\ndef laporan_teks(h):\n    p_a = h[\"x_a\"] / h[\"n_a\"] * 100\n    p_b = h[\"x_b\"] / h[\"n_b\"] * 100\n    d = (h[\"x_b\"] / h[\"n_b\"] - h[\"x_a\"] / h[\"n_a\"]) * 100\n    bawah, atas = interval(h[\"x_a\"], h[\"n_a\"], h[\"x_b\"], h[\"n_b\"])\n    return (f\"{h['nama']}: konversi A {p_a:.2f}%, B {p_b:.2f}%, selisih {d:+.2f} poin \"\n            f\"(CI 95% {bawah * 100:+.2f} sampai {atas * 100:+.2f}). Keputusan: {keputusan(h)}.\")\n\n\nprint(laporan_teks(hasil(\"checkout-v2\", 500, 10000, 560, 10000)))\n"
+          },
+          "setup": "import math\nfrom statistics import NormalDist\n\n\ndef cek_srm(n_a, n_b, rasio=0.5):\n    total = n_a + n_b\n    e_a = total * rasio\n    e_b = total - e_a\n    chi2 = (n_a - e_a) ** 2 / e_a + (n_b - e_b) ** 2 / e_b\n    p = math.erfc(math.sqrt(chi2 / 2))\n    return {\"chi2\": chi2, \"p\": p, \"srm\": p < 0.001}\n\n\ndef interval(x_a, n_a, x_b, n_b):\n    p_a, p_b = x_a / n_a, x_b / n_b\n    se = math.sqrt(p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b)\n    z = NormalDist().inv_cdf(0.975)\n    return (p_b - p_a - z * se, p_b - p_a + z * se)\n\n\ndef hasil(nama, x_a, n_a, x_b, n_b, guardrail_ok=True):\n    return {\"nama\": nama, \"x_a\": x_a, \"n_a\": n_a, \"x_b\": x_b, \"n_b\": n_b, \"guardrail_ok\": guardrail_ok}\n",
+          "tests": [
+            {
+              "name": "CI positif dan guardrail aman: rilis",
+              "check": "keputusan(hasil(\"checkout-v2\", 400, 8000, 470, 8000)) == \"rilis\""
+            },
+            {
+              "name": "Guardrail jebol atau CI negatif: jangan rilis",
+              "check": "keputusan(hasil(\"checkout-v2\", 400, 8000, 470, 8000, False)) == \"jangan rilis\" and keputusan(hasil(\"checkout-v2\", 470, 8000, 400, 8000)) == \"jangan rilis\""
+            },
+            {
+              "name": "SRM diperiksa paling dulu",
+              "check": "keputusan(hasil(\"banner\", 500, 10000, 620, 10500)) == \"periksa data\" and keputusan(hasil(\"banner\", 500, 10000, 620, 10500, False)) == \"periksa data\""
+            },
+            {
+              "name": "CI memuat nol: lanjutkan",
+              "check": "keputusan(hasil(\"checkout-v2\", 500, 10000, 560, 10000)) == \"lanjutkan\""
+            },
+            {
+              "name": "Kalimat laporan sesuai format",
+              "check": "laporan_teks(hasil(\"checkout-v2\", 500, 10000, 560, 10000)) == \"checkout-v2: konversi A 5.00%, B 5.60%, selisih +0.60 poin (CI 95% -0.02 sampai +1.22). Keputusan: lanjutkan.\" and laporan_teks(hasil(\"tombol\", 470, 8000, 400, 8000)).endswith(\"Keputusan: jangan rilis.\")"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
